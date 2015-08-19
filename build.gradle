@@ -1,0 +1,68 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'application'
+apply plugin: 'spring-boot'
+
+mainClassName = 'de.zalando.bazaar.lab.HelloWorld'
+
+// tag::repositories[]
+repositories {
+    //mavenCentral()
+    maven {
+        credentials {
+            username 'jjochens'
+            password 'xxxxxxx'
+            //username "${bazaar.username}"
+            //password "${bazaar.password}"
+        }
+        url "https://maven.zalando.net/content/groups/public"
+    }
+}
+// end::repositories[]
+
+buildscript {
+    repositories {
+        //mavenCentral()
+        maven {
+            credentials {
+                username 'jjochens'
+                password 'fnCmAioi8419tf2V'
+                //username "${bazaar.username}"
+                //password "${bazaar.password}"
+            }
+            url "https://maven.zalando.net/content/groups/public"
+        }
+    }
+
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
+    }
+}
+
+// tag::jar[]
+jar {
+    baseName = 'gs-gradle'
+    version =  '0.1.0'
+}
+// end::jar[]
+
+// tag::dependencies[]
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    compile "de.zalando.messaging:messaging-common:2.2.0"
+    compile "de.zalando:zalando-sprocwrapper:1.1.9"
+    compile "joda-time:joda-time:2.2"
+    compile "org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE"
+    compile "postgresql:postgresql:9.0-801-ZAL-3"
+    compile "redis.clients:jedis:2.1.0"
+    testCompile "org.springframework.boot:spring-boot-starter-test"
+}
+// end::dependencies[]
+
+// tag::wrapper[]
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
+}
+// end::wrapper[]]]]]]]]]
