@@ -2,6 +2,7 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'spring-boot'
+apply plugin: 'scala'
 
 mainClassName = 'de.zalando.bazaar.lab.HelloWorld'
 
@@ -57,7 +58,11 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE"
     compile "postgresql:postgresql:9.0-801-ZAL-3"
     compile "redis.clients:jedis:2.1.0"
+    compile 'org.scala-lang:scala-library:2.11.6'
+    testCompile "org.scalatest:scalatest_2.11:2.2.4"
+    testCompile "junit:junit:4.12"
     testCompile "org.springframework.boot:spring-boot-starter-test"
+    testRuntime 'org.pegdown:pegdown:1.1.0'
 }
 // end::dependencies[]
 
