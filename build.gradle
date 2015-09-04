@@ -1,43 +1,56 @@
+import groovy.sql.Sql
+import static groovy.io.FileType.FILES
+
 apply plugin: 'java'
+apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'spring-boot'
+apply plugin: 'com.lv.dbdeploy'
 
 mainClassName = 'de.zalando.bazaar.lab.HelloWorld'
 
 // tag::repositories[]
 repositories {
-    //mavenCentral()
-    maven {
-        credentials {
-            username 'jjochens'
-            password 'xxxxxxx'
+    mavenCentral()
+    //maven {
+    //    credentials {
+    //        username 'jjochens'
+    //        password 'xxxxxxx'
             //username "${bazaar.username}"
             //password "${bazaar.password}"
-        }
-        url "https://maven.zalando.net/content/groups/public"
-    }
+    //    }
+    //    url "https://maven.zalando.net/content/groups/public"
+    //}
 }
 // end::repositories[]
 
 buildscript {
     repositories {
-        //mavenCentral()
+        mavenCentral()
         maven {
-            credentials {
-                username 'jjochens'
-                password 'fnCmAioi8419tf2V'
-                //username "${bazaar.username}"
-                //password "${bazaar.password}"
-            }
-            url "https://maven.zalando.net/content/groups/public"
+            url "https://plugins.gradle.org/m2/"
         }
+        //maven {
+        //  credentials {
+        //       username 'jjochens'
+        //      password 'fnCmAioi8419tf2V'
+        //username "${bazaar.username}"
+        //password "${bazaar.password}"
+        //   }
+        //    url "https://maven.zalando.net/content/groups/public"
+        //}
     }
 
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
+        classpath "gradle.plugin.com.lv.plugins:gradle-dbdeploy-plugin:1.3"
+        classpath "postgresql:postgresql:9.1-901-1.jdbc4"
     }
 }
+
+
+//apply plugin: "com.lv.dbdeploy"
 
 // tag::jar[]
 jar {
@@ -50,13 +63,37 @@ jar {
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration-test/java')
+        }
+        resources.srcDir file('src/integration-test/resources')
+    }
+}
+
+configurations {
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+    pgsql
+}
+
+
 dependencies {
-    compile "de.zalando.messaging:messaging-common:2.2.0"
-    compile "de.zalando:zalando-sprocwrapper:1.1.9"
+    pgsql "postgresql:postgresql:9.1-901-1.jdbc4"
+//    compile "de.zalando.messaging:messaging-common:2.2.0"
+    //   compile "de.zalando:zalando-sprocwrapper:1.1.9"
     compile "joda-time:joda-time:2.2"
     compile "org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE"
-    compile "postgresql:postgresql:9.0-801-ZAL-3"
+    compile "org.springframework:spring-context:4.2.0.RELEASE"
+    compile "org.springframework:spring-jdbc:4.2.0.RELEASE"
+//    compile "postgresql:postgresql:9.0-801-ZAL-3"
+    compile "postgresql:postgresql:9.1-901-1.jdbc4"
     compile "redis.clients:jedis:2.1.0"
+    compile "redis.clients:jedis:2.1.0"
+    testCompile "junit:junit:4.12"
     testCompile "org.springframework.boot:spring-boot-starter-test"
 }
 // end::dependencies[]
@@ -65,4 +102,58 @@ dependencies {
 task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
 }
+
+task integrationTest(type: Test) {
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+task dbBootstrap << {
+    // This is needed to get postgreSQL driver onto the Groovy/Gradle classpath
+    configurations.pgsql.each { file ->
+        println "Adding URL: $file"
+        gradle.class.classLoader.addURL(file.toURI().toURL())
+    }
+
+    def db = [driver: 'org.postgresql.Driver', jdbcUrl: 'jdbc:postgresql://localhost:5432/bazaar_lab', user: 'postgres', password: 'postgres']
+    def sql = Sql.newInstance(db.jdbcUrl, db.user, db.password, db.driver)
+
+    def sqlFileList = getSortedSqlFiles()
+
+    sqlFileList.each {
+        println 'Running script: ' + it
+        String sqlString = it.text
+        sql.execute(sqlString)
+    }
+
+    sql.close()
+}
+
 // end::wrapper[]]]]]]]]]
+
+test {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+integrationTest {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+integrationTest.mustRunAfter test
+
+check.dependsOn test
+
+def getSortedSqlFiles() {
+    def sqlFileList = []
+    new File('database').eachFileRecurse(FILES) {
+        if(it.name.endsWith('.sql')) {
+            sqlFileList << it
+        }
+    }
+
+    sqlFileList.sort()
+}
