@@ -9,7 +9,7 @@ apply plugin: 'spring-boot'
 apply plugin: 'com.lv.dbdeploy'
 apply plugin: 'scala'
 
-mainClassName = 'de.zalando.bazaar.lab.HelloWorld'
+mainClassName = 'de.zalando.bazaar.lab.Application'
 
 repositories {
 //    mavenCentral()
@@ -70,20 +70,26 @@ configurations {
 
 
 dependencies {
-    pgsql "postgresql:postgresql:9.0-801-ZAL-3"
-    compile "de.zalando.messaging:messaging-common:2.2.0"
-    compile "de.zalando:zalando-sprocwrapper:1.1.9"
-    compile "joda-time:joda-time:2.2"
-    compile "org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE"
-    compile "org.springframework:spring-context:4.2.0.RELEASE"
-    compile "org.springframework:spring-jdbc:4.2.0.RELEASE"
-    compile "postgresql:postgresql:9.0-801-ZAL-3"
-    compile "redis.clients:jedis:2.1.0"
-    compile "redis.clients:jedis:2.1.0"
+    pgsql 'postgresql:postgresql:9.0-801-ZAL-3'
+    compile 'de.zalando.messaging:messaging-common:2.2.0'
+    compile('org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE') {
+        exclude module: 'logback-classic'
+    }
+    compile 'org.springframework:spring-context:4.2.0.RELEASE'
+    compile 'org.springframework:spring-jdbc:4.2.0.RELEASE'
+    compile 'redis.clients:jedis:2.1.0'
     compile 'org.scala-lang:scala-library:2.11.6'
-    testCompile "org.scalatest:scalatest_2.11:2.2.4"
-    testCompile "junit:junit:4.12"
-    testCompile "org.springframework.boot:spring-boot-starter-test"
+    compile 'joda-time:joda-time:2.2'
+    compile 'postgresql:postgresql:9.0-801-ZAL-3'
+    compile 'de.zalando:zalando-sprocwrapper:1.1.9'
+    compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
+    compile 'io.springfox:springfox-swagger2:2.2.2'
+    compile 'io.springfox:springfox-swagger-ui:2.2.2'
+//    compile 'com.mangofactory:swagger-springmvc:1.0.2'
+
+    testCompile 'org.scalatest:scalatest_2.11:2.2.4'
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
     testRuntime 'org.pegdown:pegdown:1.1.0'
 }
 // end::dependencies[]
