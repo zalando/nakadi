@@ -1,0 +1,53 @@
+---
+  swagger: "2.0"
+  info: 
+    description: "Prototype for next gen technologies for Zalando - Bazaar team."
+    version: "2.0"
+    title: "Bazaar prototype"
+    contact: 
+      name: "springfox"
+    license: 
+      name: "Apache License Version 2.0"
+      url: "https://github.com/springfox/springfox/blob/master/LICENSE"
+  host: "localhost:8080"
+  basePath: "/"
+  tags: 
+    - 
+      name: "echo-api"
+      description: "Operations with echos"
+  paths: 
+    /api/echo: 
+      get: 
+        tags: 
+          - "echo-api"
+        summary: "Echo a message"
+        operationId: "echoUsingGET"
+        consumes: 
+          - "application/json"
+        produces: 
+          - "text/plain"
+        parameters: 
+          - 
+            name: "toEcho"
+            in: "query"
+            description: "toEcho"
+            required: true
+            type: "string"
+        responses: 
+          200: 
+            description: "OK"
+            schema: 
+              type: "string"
+          202: 
+            description: "Success"
+            schema: 
+              type: "string"
+          400: 
+            description: "Fields are with validation errors"
+          401: 
+            description: "Unauthorized"
+          403: 
+            description: "Forbidden"
+          404: 
+            description: "Not Found"
+

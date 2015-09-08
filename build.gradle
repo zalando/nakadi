@@ -60,11 +60,22 @@ sourceSets {
         }
         resources.srcDir file('src/integration-test/resources')
     }
+
+    acceptanceTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/acceptance-test/java')
+        }
+        resources.srcDir file('src/acceptance-test/resources')
+    }
 }
 
 configurations {
     integrationTestCompile.extendsFrom testCompile
     integrationTestRuntime.extendsFrom testRuntime
+    acceptanceTestCompile.extendsFrom testCompile
+    acceptanceTestRuntime.extendsFrom testRuntime
     pgsql
 }
 
@@ -74,6 +85,7 @@ dependencies {
     compile 'de.zalando.messaging:messaging-common:2.2.0'
     compile('org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE') {
         exclude module: 'logback-classic'
+        exclude module: 'log4j-over-slf4j'
     }
     compile 'org.springframework:spring-context:4.2.0.RELEASE'
     compile 'org.springframework:spring-jdbc:4.2.0.RELEASE'
@@ -85,11 +97,12 @@ dependencies {
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
     compile 'io.springfox:springfox-swagger2:2.2.2'
     compile 'io.springfox:springfox-swagger-ui:2.2.2'
-//    compile 'com.mangofactory:swagger-springmvc:1.0.2'
 
     testCompile 'org.scalatest:scalatest_2.11:2.2.4'
     testCompile 'junit:junit:4.12'
     testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile 'org.mockito:mockito-all:1.10.19'
+    testCompile 'com.jayway.restassured:rest-assured:2.5.0'
     testRuntime 'org.pegdown:pegdown:1.1.0'
 }
 // end::dependencies[]
@@ -102,6 +115,11 @@ task wrapper(type: Wrapper) {
 task integrationTest(type: Test) {
     testClassesDir = sourceSets.integrationTest.output.classesDir
     classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+task acceptanceTest(type: Test) {
+    testClassesDir = sourceSets.acceptanceTest.output.classesDir
+    classpath = sourceSets.acceptanceTest.runtimeClasspath
 }
 
 task cleanDb << {
@@ -138,9 +156,24 @@ integrationTest {
     }
 }
 
+acceptanceTest {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
 integrationTest.mustRunAfter test
 
 check.dependsOn test
+
+task development << {
+    bootRun.systemProperty 'spring.profiles.active', 'development'
+}
+
+bootRun {
+    addResources = false
+    main = 'de.zalando.bazaar.lab.Application'
+}
 
 def getSortedSqlFiles() {
     def sqlFileList = []
