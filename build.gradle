@@ -8,8 +8,11 @@ apply plugin: 'application'
 apply plugin: 'spring-boot'
 apply plugin: 'com.lv.dbdeploy'
 apply plugin: 'scala'
+apply plugin: 'docker'
 
 mainClassName = 'de.zalando.bazaar.lab.Application'
+def dockerGroup = "bazaar"
+def dockerApplicationName = "hello-world-ng"
 
 repositories {
 //    mavenCentral()
@@ -19,6 +22,26 @@ repositories {
             password nexusPassword
         }
         url "https://maven.zalando.net/content/groups/public"
+    }
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration-test/java')
+        }
+        resources.srcDir file('src/integration-test/resources')
+    }
+
+    acceptanceTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/acceptance-test/java')
+        }
+        resources.srcDir file('src/acceptance-test/resources')
     }
 }
 
@@ -40,6 +63,7 @@ buildscript {
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
         classpath "gradle.plugin.com.lv.plugins:gradle-dbdeploy-plugin:1.3"
+        classpath "se.transmode.gradle:gradle-docker:1.2"
     }
 }
 
@@ -50,26 +74,6 @@ jar {
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
-
-sourceSets {
-    integrationTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/integration-test/java')
-        }
-        resources.srcDir file('src/integration-test/resources')
-    }
-
-    acceptanceTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/acceptance-test/java')
-        }
-        resources.srcDir file('src/acceptance-test/resources')
-    }
-}
 
 configurations {
     integrationTestCompile.extendsFrom testCompile
@@ -112,6 +116,20 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
 }
 
+docker {
+    baseImage "zalando/openjdk:8u45-b14-6"
+    group = dockerGroup
+    applicationName = dockerApplicationName
+}
+
+task startDockerContainer (type:Exec) {
+    commandLine "bash", "-c", "docker run -p 8080:8080 -i -t -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+}
+
+task stopDockerContainer (type:Exec) {
+    commandLine "bash", "-c", "docker stop \$(docker ps | grep \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk '{print \$3}') | awk '{print \$1}')"
+}
+
 task integrationTest(type: Test) {
     testClassesDir = sourceSets.integrationTest.output.classesDir
     classpath = sourceSets.integrationTest.runtimeClasspath
@@ -120,6 +138,12 @@ task integrationTest(type: Test) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
+}
+
+task fullAcceptanceTest(type: GradleBuild) {
+    dependsOn startDockerContainer
+    tasks = ['acceptanceTest']
+    finalizedBy stopDockerContainer
 }
 
 task cleanDb << {
@@ -162,10 +186,6 @@ acceptanceTest {
     }
 }
 
-integrationTest.mustRunAfter test
-
-check.dependsOn test
-
 task development << {
     bootRun.systemProperty 'spring.profiles.active', 'development'
 }
@@ -174,6 +194,9 @@ bootRun {
     addResources = false
     main = 'de.zalando.bazaar.lab.Application'
 }
+
+check.dependsOn integrationTest
+integrationTest.mustRunAfter test
 
 def getSortedSqlFiles() {
     def sqlFileList = []
