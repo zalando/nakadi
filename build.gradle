@@ -101,6 +101,7 @@ dependencies {
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
     compile 'io.springfox:springfox-swagger2:2.2.2'
     compile 'io.springfox:springfox-swagger-ui:2.2.2'
+    compile 'org.slf4j:slf4j-log4j12:1.7.12'
 
     testCompile 'org.scalatest:scalatest_2.11:2.2.4'
     testCompile 'junit:junit:4.12'
@@ -123,7 +124,7 @@ docker {
 }
 
 task startDockerContainer (type:Exec) {
-    commandLine "bash", "-c", "docker run -p 8080:8080 -i -t -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+    commandLine "bash", "-c", "docker run -p 8080:8080 -i -t -d -v /data/zalando/logs:/data/zalando/logs \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
 }
 
 task stopDockerContainer (type:Exec) {
