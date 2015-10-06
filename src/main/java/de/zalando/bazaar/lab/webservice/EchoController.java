@@ -4,6 +4,9 @@ import static org.springframework.web.bind.annotation.RequestMethod.GET;
 
 import javax.ws.rs.core.MediaType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +21,8 @@ import io.swagger.annotations.ApiResponses;
 @RequestMapping(value = "/api", produces = MediaType.TEXT_PLAIN)
 public class EchoController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(EchoController.class);
+
     @ApiOperation(value = "Echo a message")
     @ApiResponses(
         value = {
@@ -27,6 +32,7 @@ public class EchoController {
     )
     @RequestMapping(value = "/echo", method = GET)
     public String echo(@RequestParam(value = "toEcho") final String toEcho) {
+        LOG.info("Echo is called");
         return toEcho;
     }
 }
