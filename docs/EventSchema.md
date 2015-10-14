@@ -9,20 +9,31 @@ DRAFT JSON-Schema definitions:
 definitions:
   Event:
     type: object
-    required: [ event, partitioning_key, meta_data ]
+    description: "NOTE: Swagger definition currently not showing possibility of arbitrary fields"
+    required:
+      - event
+      - partitioning_key
+      - meta_data
     properties:
-      event: { type: string }
-      ordering_key: { type: string }
+      event:
+         type: string
+         example: "https://resource-events.zalando.com/ResourceCreated"
+      partitioning_key:
+         type: string
+         example: "ARTICLE:ABC123XXX-001"
       meta_data:
-        type: { $ref: '#/definitions/EventMetaData' }
+        $ref: '#/definitions/EventMetaData'
 
   EventMetaData:
     type: object
-    required: [ created, id, scopes ]
+    required: [ id, created ]
     properties:
-      created: { type: string, format: data-time }
       id: { type: string, format: uuid }
+      created: { type: string, format: data-time }
       root_id: { type: string, format: uuid }
       parent_id: { type: string, format: uuid }
-      scopes: { type: array, items: [ type: string ] }
+      scopes:
+        type: array
+        items:
+          type: string
 ```
