@@ -1,0 +1,18 @@
+FROM zalando/openjdk:8u45-b14-6
+
+ENV KAFKA_VERSION="0.8.2.1" SCALA_VERSION="2.10"
+ENV KAFKA_IMG="kafka_${SCALA_VERSION}-${KAFKA_VERSION}"
+ENV KAFKA_DIR="/opt/${KAFKA_IMG}"
+
+# the script is used here to make it possible to use the same script in travis-ci.org
+ADD install-local-kafka.sh /
+RUN bash /install-local-kafka.sh
+RUN rm /install-local-kafka.sh
+
+WORKDIR ${KAFKA_DIR}
+
+ADD start-local-kafka.sh ${KAFKA_DIR}/
+
+ENTRYPOINT bash start-local-kafka.sh
+
+EXPOSE 9092
