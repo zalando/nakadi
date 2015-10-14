@@ -1,7 +1,13 @@
 swagger: '2.0'
 info:
-  title: Event Store
-  description: "API for event-store operations. A few concepts in this working draft: Partition resolution: event store will infer the partition where a message needs to be set looking into a specified field in the message body. Schema validation: event store MUST validate that the required fields on each message are set."
+  title: Nakadi
+  description: |
+    API for nakadi operations
+    =========================
+    A few concepts in this working draft:
+    * Stantardised event format (see #/definitions/Event);
+    * Partition resolution: event store will infer the partition where a message needs to be set looking into the `partitioning_key` in the message body;
+    * High level API should support automatic redistribution of the event streams during client topology changes.
   version: '0.3'
   contact:
     name: Team Aruha
@@ -42,7 +48,7 @@ paths:
 
   /topics:
     get:
-      description: Lists all known `Topics` to Event Store.
+      description: Lists all known `Topics` to Nakadi
       tags:
         - monitoring
       operationId: hack.get_topics
@@ -67,7 +73,7 @@ paths:
       description: |
         Post a single `Event` to the given `Topic`.
 
-        Partition selection is done using the defined partition resolution. The partition resolution strategy is defined per topic and is managed by Event Store (currently resolved from a hash over `ordering_key`).
+        Partition selection is done using the defined partition resolution. The partition resolution strategy is defined per topic and is managed by Nakadi (currently resolved from a hash over `ordering_key`).
 
         If explicit control over to which partition in a topic an event is being sent to is needed, a client is advised to use the low level api.
       operationId: hack.post_event
@@ -303,7 +309,7 @@ paths:
 
               - `id` MUST not left unset;
               - `topic` specifies the topic name to which a subscription is being done;
-              - `application` defines the namespace for this `Subscription`, being, together with the topic, unique for this Event Store cluster.
+              - `application` defines the namespace for this `Subscription`, being, together with the topic, unique for this Nakadi cluster.
           schema:
             $ref: '#/definitions/Subscription'
           required: true
@@ -400,7 +406,7 @@ paths:
         - streaming-api
       summary: Registers a new StreamClient for this Subscription.
       description: |
-         A `StreamClient` is the control entity for a managed flow of events from Event Store to a client.
+         A `StreamClient` is the control entity for a managed flow of events from Nakadi to a client.
 
          Upon registration of a new client consumer rebalancing takes place.
          Submission might be interrupting during this time and the newly defined topology will be communicated to already existing (and connected) `StreamClient`s. Id is generated and returned.
@@ -550,7 +556,7 @@ definitions:
       detail:
         type: string
         description: Problem description
-        example: Topic doesn't exist
+        example: Topic does not exist
 
   Metrics:
     type: object
@@ -569,18 +575,31 @@ definitions:
     type: object
     description: "NOTE: Swagger definition currently not showing possibility of arbitrary fields"
     required:
-      - event_type
-      - ordering_key
-      - metadata
+      - event
+      - partitioning_key
+      - meta_data
     properties:
-      event_type:
+      event:
          type: string
          example: "https://resource-events.zalando.com/ResourceCreated"
-      ordering_key:
+      partitioning_key:
          type: string
          example: "ARTICLE:ABC123XXX-001"
-      metadata:
-        type: object
+      meta_data:
+        $ref: '#/definitions/EventMetaData'
+
+  EventMetaData:
+    type: object
+    required: [ id, created ]
+    properties:
+      id: { type: string, format: uuid }
+      created: { type: string, format: data-time }
+      root_id: { type: string, format: uuid }
+      parent_id: { type: string, format: uuid }
+      scopes:
+        type: array
+        items:
+          type: string
 
   Subscription:
     required:
@@ -659,7 +678,6 @@ definitions:
         items:
           $ref: '#/definitions/Event'
       topology:
-        description: asdfasdfasdf
         type: array
         items:
           type: object
