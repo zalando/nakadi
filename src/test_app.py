@@ -117,10 +117,11 @@ class EventstoreDataIndependentTestCase(unittest.TestCase):
 
     def __create_dummy_event(self):
         return {
-            'event_type': 'dummy-type',
-            'ordering_key': 'dummy-key',
-            'metadata': {
-                'dummy-field': 'blah'
+            'event': 'dummy-type',
+            'partitioning_key': 'dummy-key',
+            'meta_data': {
+                'id': 'blah-id',
+                'created': '11-11-1111'
             }
         }
 
