@@ -207,7 +207,7 @@ def post_event(topic):
 
     event = flask.request.json
     logging.info('[#GOTEVENT] Received event:\n%s', event)
-    key = event['ordering_key']
+    key = event['partitioning_key']
     logging.debug('Using key %s', key)
 
     try:
