@@ -15,7 +15,7 @@ class TestDummy(unittest.TestCase):
     def test_2_plus_2(self):
         assert 2 + 2 == 4
 
-    def simple_app_test(self):
+    def test_when_get_topics_then_not_authorized(self):
         client = hack.application.test_client()
         response = client.get('/topics')
         assert response.status_code == 401
