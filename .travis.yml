@@ -1,9 +1,23 @@
+sudo: required
+
 language: python
+
+services:
+  - docker
+
 python:
   - "3.4"
+
+before_install:
+  - cd local-test
+  - docker build --file Dockerfile.kafka -t local-kafka .
+  - docker run -p 9092:9092 -P --name local-kafka -d local-kafka
+
 # install dependencies
 install:
+  - cp swagger.yaml src/swagger.yaml
   - pip install -r requirements.txt
+
 # run tests
 script:
   - cd src
