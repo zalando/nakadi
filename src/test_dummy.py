@@ -13,4 +13,4 @@ class TestDummy(unittest.TestCase):
         assert 1 + 1 == 2
 
     def test_2_plus_2(self):
-        assert 2 + 2 == 4
+        assert 2 + 2 == 3
