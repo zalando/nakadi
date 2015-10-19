@@ -9,10 +9,14 @@ python:
   - "3.4"
 
 before_install:
+  # application expects swagger.yaml to be in the same folder as python scripts
   - cp swagger.yaml src/swagger.yaml
+
+  # build and run docker container with kafka
   - cd local-test
   - docker build --file Dockerfile.kafka -t local-kafka .
   - docker run -p 9092:9092 -P --name local-kafka -d local-kafka
+  - cd ..
 
 # install dependencies
 install:
