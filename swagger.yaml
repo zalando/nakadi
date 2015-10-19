@@ -248,6 +248,12 @@ paths:
           type: integer
           format: int32
           required: false
+        - name: batch_keep_alive_limit
+          in: query
+          description: Maximum number of keep-alive messages to get in a row before closing the connection. Unlimited by default.
+          type: integer
+          format: int32
+          required: false
       responses:
         200:
           description:
@@ -548,32 +554,11 @@ paths:
 
 definitions:
 
-  Problem:
-    type: object
-    required:
-      - detail
-    properties:
-      detail:
-        type: string
-        description: Problem description
-        example: Topic does not exist
-
-  Metrics:
-    type: object
-
-  Topic:
-    type: object
-    required:
-      - name
-    properties:
-      name:
-        type: string
-        description: Topic name
-        example: "article.120"
-
   Event:
     type: object
-    description: "NOTE: Swagger definition currently not showing possibility of arbitrary fields"
+    description: |
+      This is the most general representation of an event, that can be processed by Nakadi.
+      It should be used as a base definition for all events, that flow through Nakadi by extending attributes of this object type.
     required:
       - event
       - partitioning_key
@@ -600,6 +585,30 @@ definitions:
         type: array
         items:
           type: string
+
+  Problem:
+    type: object
+    required:
+      - detail
+    properties:
+      detail:
+        type: string
+        description: Problem description
+        example: Topic does not exist
+
+  Metrics:
+    type: object
+
+  Topic:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        description: Topic name
+        example: "article.120"
+
 
   Subscription:
     required:
