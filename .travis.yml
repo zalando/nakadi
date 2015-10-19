@@ -25,4 +25,5 @@ install:
 # run tests
 script:
   - cd src
-  - python3 -m unittest test_dummy
+  - ./test_hack.py
+  - ./test_streaming.py
