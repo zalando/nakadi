@@ -248,6 +248,12 @@ paths:
           type: integer
           format: int32
           required: false
+        - name: batch_keep_alive_limit
+          in: query
+          description: Maximum number of keep-alive messages to get in a row before closing the connection. Unlimited by default.
+          type: integer
+          format: int32
+          required: false
       responses:
         200:
           description:
