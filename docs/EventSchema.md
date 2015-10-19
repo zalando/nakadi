@@ -9,7 +9,9 @@ DRAFT JSON-Schema definitions:
 definitions:
   Event:
     type: object
-    description: "NOTE: Swagger definition currently not showing possibility of arbitrary fields"
+    description: |
+      This is the most general representation of an event, that can be processed by Nakadi.
+      It should be used as a base definition for all events, that flow through Nakadi by extending attributes of this object type.
     required:
       - event
       - partitioning_key
