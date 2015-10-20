@@ -14,8 +14,7 @@ before_install:
 
   # build and run docker container with kafka
   - cd local-test
-  - docker build --file Dockerfile.kafka -t local-kafka .
-  - docker run -p 9092:9092 -P --name local-kafka -d local-kafka
+  - make run
   - cd ..
 
 # install dependencies
@@ -25,5 +24,4 @@ install:
 # run tests
 script:
   - cd src
-  - ./test_hack.py
-  - ./test_streaming.py
+  - python -m unittest discover
