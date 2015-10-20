@@ -2,8 +2,10 @@
 import json
 import logging
 import unittest
-import test_common
-from test_common import TEST_TOPIC, TEST_PARTITIONS_NUM
+
+from nakadi.test import test_common
+from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM
+
 
 # test case for streaming endpoint
 # for api version 0.3
@@ -12,7 +14,7 @@ class StreamingTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.hack = test_common.get_monkey_patched_hack()
-        cls.app = cls.hack.application.test_client()
+        cls.app = cls.hack.conn_app.app.test_client()
 
         # bootstrap, so that each partition holds some events
         logging.info("Bootstraping events...")

@@ -5,7 +5,7 @@ from flask import request
 from requests.exceptions import RequestException
 from cachetools import ttl_cache
 
-import config
+from nakadi import config
 
 class FailedTokenInfoEndpoint(Exception):
     pass

@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-import logging
-
 TEST_TOPIC = 'test-topic'
 TEST_PARTITIONS_NUM = 128
 
 
 def get_monkey_patched_hack():
     # monkey patch to switch off authentication
-    import security
+    from nakadi import security
     def fake_authenticate(function):
         def function_wrapper(*args, **kwargs):
             return function(*args, **kwargs)
@@ -15,7 +13,7 @@ def get_monkey_patched_hack():
     security.authenticate = fake_authenticate
 
     # monkey patch eventstore uid check
-    import hack
+    from nakadi import hack
     def __fake_uid_check():
         return True
     hack.__uid_is_valid_to_post = __fake_uid_check

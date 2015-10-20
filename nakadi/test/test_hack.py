@@ -2,8 +2,8 @@
 import json
 import unittest
 
-import test_common
-from test_common import TEST_TOPIC, TEST_PARTITIONS_NUM
+from nakadi.test import test_common
+from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM
 
 
 # this test case doesn't care if there are any events present or not
@@ -13,7 +13,7 @@ class EventstoreDataIndependentTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.hack = test_common.get_monkey_patched_hack()
-        cls.app = cls.hack.application.test_client()
+        cls.app = cls.hack.conn_app.app.test_client()
 
     @classmethod
     def tearDownClass(cls):

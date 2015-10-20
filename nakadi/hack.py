@@ -9,13 +9,9 @@ from time import sleep
 from kafka import KeyedProducer, SimpleConsumer
 from kafka.common import KafkaError
 
-import event_stream
-import kafka_pool
-import monitoring
-import config
-import kafka_consumer_patch
-from security import authenticate
-from metrics import measured, aggregate_measures
+from nakadi import event_stream, kafka_pool, monitoring, config, kafka_consumer_patch
+from nakadi.security import authenticate
+from nakadi.metrics import measured, aggregate_measures
 
 
 def retry_if_failed(fn, *args, retry_limit = 5, retry_wait_s = 1, **kwargs):
@@ -320,9 +316,8 @@ logging.info('Kafka broker list: %s' % config.KAFKA_BROKER)
 kafka_pool = kafka_pool.KafkaClientPool(config.KAFKA_BROKER, config.KAFKA_CLIENTS_INIT_POOL_SIZE, config.KAFKA_CLIENTS_MAX_POOL_SIZE)
 
 # create connexion application
-app = connexion.App(__name__, port=config.ARUHA_LISTEN_PORT, debug=True)
-app.add_api('swagger.yaml')
-application=app.app
+conn_app = connexion.App(__name__, port=config.ARUHA_LISTEN_PORT, debug=True)
+conn_app.add_api('swagger.yaml')
 
-if __name__ == '__main__':
-    app.run()
+# expose flask application so that it can be run in external container
+application=conn_app.app

@@ -31,7 +31,7 @@ paths:
       tags:
         - monitoring
       summary: Get monitoring metrics
-      operationId: hack.get_metrics
+      operationId: nakadi.hack.get_metrics
       responses:
         200:
           description: Metrics data
@@ -51,7 +51,7 @@ paths:
       description: Lists all known `Topics` to Nakadi
       tags:
         - monitoring
-      operationId: hack.get_topics
+      operationId: nakadi.hack.get_topics
       responses:
         200:
           description: Returns list of all `Topic`s.
@@ -76,7 +76,7 @@ paths:
         Partition selection is done using the defined partition resolution. The partition resolution strategy is defined per topic and is managed by Nakadi (currently resolved from a hash over `ordering_key`).
 
         If explicit control over to which partition in a topic an event is being sent to is needed, a client is advised to use the low level api.
-      operationId: hack.post_event
+      operationId: nakadi.hack.post_event
       parameters:
         - name: topic
           in: path
@@ -114,7 +114,7 @@ paths:
         - low-level-api
         - monitoring
       summary: Lists the partitions for the given topic
-      operationId: hack.get_partitions
+      operationId: nakadi.hack.get_partitions
       parameters:
         - name: topic
           in: path
@@ -134,7 +134,7 @@ paths:
       tags:
         - low-level-api
       summary: Returns the current state information for the given partition on this topic
-      operationId: hack.get_partition
+      operationId: nakadi.hack.get_partition
       parameters:
         - name: topic
           in: path
@@ -157,7 +157,7 @@ paths:
       tags:
         - low-level-api
       summary: Posts an event to the specified partition of this topic.
-      operationId: hack.post_event_to_partition
+      operationId: nakadi.hack.post_event_to_partition
       parameters:
         - name: topic
           in: path
@@ -197,7 +197,7 @@ paths:
     get:
       tags:
         - low-level-api
-      operationId: hack.get_events
+      operationId: nakadi.hack.get_events
       summary: "Starts a stream delivery for the specified partition of the given topic. The tracking of the current position in the partition and of which partition is being read is in the responsibility of the client. No commits are needed."
       parameters:
         - name: topic
@@ -284,7 +284,7 @@ paths:
         - monitoring
       summary: List event subscriptions
       description: Lists all subscriptions currently registered. Subscriptions are the binding point for the high-level usage of event store, registering an interested party that listens to a topic and expected to receive its events, with the possibility of a filter being applied to the messages the flow out.
-      operationId: hack.get_subscriptions
+      operationId: nakadi.hack.get_subscriptions
       responses:
         200:
           description: List of subscriptions
@@ -306,7 +306,7 @@ paths:
         - streaming-api
       summary: Create event subscription
       description: "Creates event subscription for the given `Topic`. If the application already has a subscription to the topic the existing one is returned."
-      operationId: hack.post_subscription
+      operationId: nakadi.hack.post_subscription
       parameters:
         - name: subscription
           in: body
@@ -349,7 +349,7 @@ paths:
         - push-api
         - streaming-api
       summary: Returns status information about the given `Subscription`.
-      operationId: hack.get_subscription
+      operationId: nakadi.hack.get_subscription
       parameters:
         - name: subscription_id
           in: path
@@ -369,7 +369,7 @@ paths:
         - push-api
         - streaming-api
       summary: Delete event subscriptions. TODO do we cascade to existing clients?
-      operationId: hack.delete_subscription
+      operationId: nakadi.hack.delete_subscription
       parameters:
         - name: subscription_id
           in: path
@@ -393,7 +393,7 @@ paths:
       tags:
         - streaming-api
       summary: Lists all registered `StreamClient`s for this `Subscription`.
-      operationId: hack.get_subscription_clients
+      operationId: nakadi.hack.get_subscription_clients
       parameters:
         - name: subscription_id
           in: path
@@ -418,7 +418,7 @@ paths:
          Submission might be interrupting during this time and the newly defined topology will be communicated to already existing (and connected) `StreamClient`s. Id is generated and returned.
 
          A new client will
-      operationId: hack.post_subscription_client
+      operationId: nakadi.hack.post_subscription_client
       parameters:
         - name: subscription_id
           in: path
@@ -448,7 +448,7 @@ paths:
       tags:
         - streaming-api
       summary: Gets information on this client.
-      operationId: hack.get_client
+      operationId: nakadi.hack.get_client
       parameters:
         - name: subscription_id
           in: path
@@ -475,7 +475,7 @@ paths:
       tags:
         - streaming-api
       summary: Gets the current status of the Cursors for this client.
-      operationId: hack.get_client_cursors
+      operationId: nakadi.hack.get_client_cursors
       parameters:
         - name: subscription_id
           in: path
@@ -499,7 +499,7 @@ paths:
 
     patch:
       summary: Commit the progress (new state of Cursors) for this client.
-      operationId: hack.commit_cursor
+      operationId: nakadi.hack.commit_cursor
       parameters:
         - name: subscription_id
           in: path
@@ -522,7 +522,7 @@ paths:
       tags:
         - streaming-api
       summary: Starts streaming events for this client..
-      operationId: hack.stream_for_client
+      operationId: nakadi.hack.stream_for_client
       parameters:
         - name: subscription_id
           in: path
