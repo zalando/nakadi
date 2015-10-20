@@ -4,9 +4,8 @@ import logging
 TEST_TOPIC = 'test-topic'
 TEST_PARTITIONS_NUM = 128
 
-logging.basicConfig(level=logging.INFO)
 
-def get_mokey_patched_app():
+def get_monkey_patched_hack():
     # monkey patch to switch off authentication
     import security
     def fake_authenticate(function):
@@ -21,7 +20,7 @@ def get_mokey_patched_app():
         return True
     hack.__uid_is_valid_to_post = __fake_uid_check
 
-    return hack.application
+    return hack
 
 
 def create_dummy_event(partitioning_key):
