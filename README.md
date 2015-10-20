@@ -18,7 +18,7 @@ The main drivers for the development of this project are several requirements, t
 
 * enable convient develpment of event driven applications
 * team autonomy
-* [standard API](/swagger.yaml) to abstract inter-team event exchange
+* [standard API](/nakadi/swagger.yaml) to abstract inter-team event exchange
 * no organizational bottlenecks  
   (minimize the number of bureaucratic bodies)
 * no technological bottlenecks  
