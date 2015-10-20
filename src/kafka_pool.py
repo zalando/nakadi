@@ -35,6 +35,11 @@ class KafkaClientPool(object):
         logging.info("Put (thread: %s)", threading.current_thread().getName())
         return self.queue.put(client)
 
+    def close(self):
+        while not self.queue.empty():
+            client = self.queue.get(block=False)
+            client.close()
+
     @contextmanager
     def kafka_client(self):
 

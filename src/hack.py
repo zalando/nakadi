@@ -192,13 +192,17 @@ def get_events(topic, partition):
     return flask.Response(stream_generator, mimetype = 'text/plain', status = 200)
 
 
+def __uid_is_valid_to_post():
+    return flask.request.token_info.get("uid") == config.UID_TO_POST_EVENT
+
+
 @measured('post_event')
 @authenticate
 def post_event(topic):
 
     call_start = datetime.datetime.now()
 
-    if flask.request.token_info.get("uid") != config.UID_TO_POST_EVENT:
+    if not __uid_is_valid_to_post():
         logging.info('[#OAUTH_401] Received uuid is not valid for posting: %s', flask.request.token_info.get("uid"))
         return {'detail': 'Not Authorized. You are not allowed to use this endpoint'}, 401
 
