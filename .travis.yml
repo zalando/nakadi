@@ -8,11 +8,8 @@ services:
 python:
   - "3.4"
 
+# build and run docker container with kafka
 before_install:
-  # application expects swagger.yaml to be in the same folder as python scripts
-  - cp swagger.yaml src/swagger.yaml
-
-  # build and run docker container with kafka
   - cd local-test
   - make run
   - cd ..
@@ -23,5 +20,4 @@ install:
 
 # run tests
 script:
-  - cd src
-  - python -m unittest discover
+  - python -m unittest discover nakadi/test
