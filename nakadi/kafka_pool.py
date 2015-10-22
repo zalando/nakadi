@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import logging
 import queue
 import threading
+import traceback
 from kafka import KafkaClient
 from kafka.common import KafkaError
 
@@ -59,6 +60,8 @@ class KafkaClientPool(object):
                 logging.warning("Exception when closing kafka client: %s", e)
             raise kafka_error
         except:
+            logging.warning("Exception occured while kafka client was out of pool:")
+            traceback.print_exc()
             self.__put(client)
         finally:
             self.released_clients.release()
