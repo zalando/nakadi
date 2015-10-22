@@ -16,7 +16,7 @@ bin/kafka-server-start.sh config/server.properties &
 wait_for 9092
 
 echo Creating topic
-bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 128 --topic $TEST_TOPIC_NAME
+bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 8 --topic $TEST_TOPIC_NAME
 echo '################## Topic Created'
 
 wait
