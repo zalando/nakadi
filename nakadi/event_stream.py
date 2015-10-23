@@ -7,15 +7,14 @@ from kafka.common import ConsumerTimeout
 import sys
 
 
-def create_stream_generator(kafka_pool, topic, partition, start_from, opts):
-
-    partitions_offsets = [(0, 0), (1, 0), (2, 0)]
+def create_stream_generator(kafka_pool, topic, cursors, opts):
 
     topics = {}
-    for partition_offset in partitions_offsets:
-        topics[(topic, partition_offset[0])] = partition_offset[1]
+    for cursor in cursors:
+        topic_partition = (topic, int(cursor['partition']))
+        topics[topic_partition] = int(cursor['offset'])
 
-    partitions = [partition_offset[0] for partition_offset in partitions_offsets]
+    partitions = [int(cursor['partition']) for cursor in cursors]
 
     start = datetime.datetime.now()
 
@@ -24,8 +23,8 @@ def create_stream_generator(kafka_pool, topic, partition, start_from, opts):
 
         keep_alive_in_a_row = 0
 
-        messages_read =  0
-        current_batch = dict(zip(partitions, [[] for partition in partitions]))
+        messages_read = 0
+        current_batch = dict(zip(partitions, [[] for _ in partitions]))
 
         batch_start_time = datetime.datetime.now()
         with kafka_pool.kafka_client() as client:
@@ -33,8 +32,7 @@ def create_stream_generator(kafka_pool, topic, partition, start_from, opts):
             consumer = KafkaConsumer(topics,
                                      kafka_client=client,
                                      auto_commit_enable=False,
-                                     consumer_timeout_ms=200,
-                                     fetch_message_max_bytes= 1024) # 128 kb max batch size for topic/partition
+                                     consumer_timeout_ms=200)
 
             while True:
                 try:
@@ -52,9 +50,10 @@ def create_stream_generator(kafka_pool, topic, partition, start_from, opts):
 
                 # check if it's time to send the batch
                 time_since_batch_start = datetime.datetime.now() - batch_start_time
-                max_batch_size = max([len(batch_per_partition) for batch_per_partition in current_batch.values()])
+                batch_sum = sum([len(batch_per_partition) for batch_per_partition in current_batch.values()])
                 latest_offsets = consumer.offsets("fetch")
-                if time_since_batch_start.total_seconds() >= opts['batch_flush_timeout'] != 0 or max_batch_size >= opts['batch_limit']:
+
+                if time_since_batch_start.total_seconds() >= opts['batch_flush_timeout'] != 0 or batch_sum >= opts['batch_limit']:
                     for partition in partitions:
                         topic_partition = (topic.encode('UTF-8'), partition)
                         # send the messages we could read so far
@@ -68,7 +67,7 @@ def create_stream_generator(kafka_pool, topic, partition, start_from, opts):
                             yield __create_stream_message(partition, latest_offsets[topic_partition])
 
                     # if we hit keep alive count limit - close the stream
-                    if max_batch_size == 0:
+                    if batch_sum == 0:
                         if keep_alive_in_a_row >= opts['batch_keep_alive_limit'] != -1:
                             break
                         keep_alive_in_a_row += 1
@@ -77,13 +76,13 @@ def create_stream_generator(kafka_pool, topic, partition, start_from, opts):
                     current_batch = dict(zip(partitions, [[] for _ in partitions]))
                     batch_start_time = datetime.datetime.now()
 
-                    yield '\n\n\n'
+                    yield '\n'
 
                 # check if we reached the stream timeout or message count limit
                 time_since_start = datetime.datetime.now() - start
                 if time_since_start.total_seconds() >= opts['stream_timeout'] > 0 or 0 < opts['stream_limit'] <= messages_read:
 
-                    if max_batch_size > 0:
+                    if batch_sum > 0:
                         for partition in partitions:
                             topic_partition = (topic.encode('UTF-8'), partition)
                             # send the messages we could read so far

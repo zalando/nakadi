@@ -194,27 +194,27 @@ paths:
           description: Not available
           schema:
             $ref: '#/definitions/Problem'
+
+  /topics/{topic}/events:
     get:
       tags:
         - low-level-api
       operationId: nakadi.hack.get_events
-      summary: "Starts a stream delivery for the specified partition of the given topic. The tracking of the current position in the partition and of which partition is being read is in the responsibility of the client. No commits are needed."
+      summary: "Starts a stream delivery for the specified partitions of the given topic. The tracking of the current position in the partitions and of which partitions is being read is in the responsibility of the client. No commits are needed."
       parameters:
         - name: topic
           in: path
           description: Topic where to get events from
           type: string
           required: true
-        - name: partition
-          in: path
-          description: Id of the partition where to get events from
-          type: string
-          required: true
-        - name: start_from
-          in: query
-          description: Starting offset of the stream. Must be in the range defined by the `TopicPartition`.
-          type: string
-          required: true
+        - name: x-nakadi-cursors
+          in: header
+          description: Cursors pointing to partitions/offsets to start read from
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cursor'
         - name: batch_limit
           in: query
           description: "Maximum number of `SimpleStreamElement`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted)."

@@ -137,14 +137,8 @@ def __try_get_parameter_as_int(parameter_name, request, required = False, defaul
 
 @measured('get_events')
 @authenticate
-def get_events(topic, partition):
-
+def get_events(topic):
     # get and check parameters
-    valid, result = __try_get_parameter_as_int('start_from', flask.request, True)
-    if not valid:
-        return result
-    start_from = result
-
     stream_opts = {}
     valid, result = __try_get_parameter_as_int('batch_limit', flask.request, False, 1)
     if not valid:
@@ -171,20 +165,24 @@ def get_events(topic, partition):
         return result
     stream_opts['stream_timeout'] = result
 
-    # check that partition is integer
-    if not partition.isdigit():
-        return {'detail': '"partition" path parameter should be an integer number'}, 400
-    else:
-        partition = int(partition)
-
     # check that topic and partition exist
     if not __topic_exists(topic):
         return {'detail': 'topic not found'}, 404
-    if not __partition_exists(topic, partition):
-        return {'detail': 'partition not found'}, 404
+
+    cursors_str = flask.request.headers.get('x-nakadi-cursors')
+    if not cursors_str:
+        # if cursors are not specified - read from all partitions from the latest offset
+        partitions_offsets = __get_partitions_offsets(topic)
+        cursors = [{
+                       'partition': offset['partition_id'],
+                       'offset': offset['newest_available_offset']
+                   } for offset in partitions_offsets]
+    else:
+        # todo: check that format is correct and partitions exist
+        cursors = json.loads(cursors_str)
 
     # returning generator in response will create a stream
-    stream_generator = event_stream.create_stream_generator(kafka_pool, topic, partition, start_from, stream_opts)
+    stream_generator = event_stream.create_stream_generator(kafka_pool, topic, cursors, stream_opts)
     return flask.Response(stream_generator, mimetype = 'text/plain', status = 200)
 
 
