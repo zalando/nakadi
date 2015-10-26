@@ -5,7 +5,7 @@ import unittest
 
 from nakadi.test import test_common
 from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM
-
+from nakadi.event_stream import BATCH_SEPARATOR
 
 # test case for streaming endpoint
 # for api version 0.3
@@ -29,26 +29,52 @@ class StreamingTestCase(unittest.TestCase):
         if hasattr(cls, 'hack'):
             cls.hack.kafka_pool.close()
 
-    def test_when_get_single_event_then_ok(self):
+    def test_when_get_single_batch_then_ok(self):
         initial_offset = 0
         batch_size = 3
-        response = self.app.get('/topics/%s/partitions/0/events' % TEST_TOPIC,
+        response = self.app.get('/topics/%s/events' % TEST_TOPIC,
                                 query_string = {
-                                    'start_from': initial_offset,
                                     'batch_limit': batch_size,
                                     'stream_limit': batch_size,
                                     'batch_flush_timeout': '1',
                                     'stream_timeout': '1'
-                                })
+                                },
+                                headers={'x-nakadi-cursors': '[{"partition": "0", "offset": "%s"}]' % initial_offset})
+        print(response.data)
+        assert response.status_code == 200
+        self.__validate_batch_structure(json.loads(response.data.decode('utf-8')), initial_offset + batch_size, 0, batch_size)
+
+    def test_when_get_multiple_batches_from_one_partition_then_ok(self):
+        initial_offset = 0
+        batch_size = 3
+        num_batches = 2
+        response = self.app.get('/topics/%s/events' % TEST_TOPIC,
+                                query_string = {
+                                    'batch_limit': batch_size,
+                                    'stream_limit': batch_size * num_batches,
+                                    'batch_flush_timeout': '1',
+                                    'stream_timeout': '1'
+                                },
+                                headers={'x-nakadi-cursors': '[{"partition": "0", "offset": "%s"}]' % initial_offset})
+        print(response.data)
         assert response.status_code == 200
 
-        data = json.loads(response.data.decode('utf-8'))
-        assert 'cursor' in data
-        assert data['cursor']['offset'] == str(initial_offset + batch_size)
-        assert data['cursor']['partition'] == '0'
+        batches = response.data.decode('utf-8').split(BATCH_SEPARATOR + BATCH_SEPARATOR)
+        batches.pop()
 
-        assert 'events' in data
-        assert len(data['events']) == 3
+        assert len(batches) == num_batches
+        for batch in batches:
+            self.__validate_batch_structure(json.loads(batch), initial_offset + batch_size, 0, batch_size)
+            initial_offset += batch_size
+
+    def __validate_batch_structure(self, json_data, offset, partition, batch_size):
+        assert 'cursor' in json_data
+        print(json_data['cursor']['offset'])
+        print(offset)
+        assert json_data['cursor']['offset'] == str(offset)
+        assert json_data['cursor']['partition'] == str(partition)
+        assert 'events' in json_data
+        assert len(json_data['events']) == batch_size
 
 if __name__ == '__main__':
     unittest.main()
