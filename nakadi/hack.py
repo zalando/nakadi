@@ -155,6 +155,10 @@ def get_events(topic):
     else:
         try:
             cursors = get_cursors(cursors_str)
+            for cursor in cursors:
+                if not __partition_exists(topic, int(cursor['partition'])):
+                    return {'detail': 'partition not found'}, 404
+
         except WrongCursorsFormatException:
             return {'detail': '"x-nakadi-cursors" header has wrong format'}, 400
 

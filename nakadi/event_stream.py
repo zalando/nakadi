@@ -6,6 +6,8 @@ from kafka import KafkaConsumer
 from kafka.common import ConsumerTimeout
 import sys
 
+BATCH_SEPARATOR = '\n'
+
 
 def create_stream_generator(kafka_pool, topic, cursors, opts):
 
@@ -22,11 +24,15 @@ def create_stream_generator(kafka_pool, topic, cursors, opts):
     def generator():
 
         keep_alive_in_a_row = 0
-
         messages_read = 0
-        current_batch = dict(zip(partitions, [[] for _ in partitions]))
 
+        # init batch
+        messages_read_in_batch = 0
+        current_batch = {}
+        for partition in partitions:
+            current_batch[partition] = []
         batch_start_time = datetime.datetime.now()
+
         with kafka_pool.kafka_client() as client:
 
             consumer = KafkaConsumer(topics,
@@ -42,6 +48,7 @@ def create_stream_generator(kafka_pool, topic, cursors, opts):
 
                     # put message to batch
                     messages_read += 1
+                    messages_read_in_batch += 1
                     message_json = json.loads(message.value.decode('utf-8'))
                     current_batch[message.partition].append(message_json)
 
@@ -50,10 +57,9 @@ def create_stream_generator(kafka_pool, topic, cursors, opts):
 
                 # check if it's time to send the batch
                 time_since_batch_start = datetime.datetime.now() - batch_start_time
-                batch_sum = sum([len(batch_per_partition) for batch_per_partition in current_batch.values()])
                 latest_offsets = consumer.offsets("fetch")
 
-                if time_since_batch_start.total_seconds() >= opts['batch_flush_timeout'] != 0 or batch_sum >= opts['batch_limit']:
+                if time_since_batch_start.total_seconds() >= opts['batch_flush_timeout'] != 0 or messages_read_in_batch >= opts['batch_limit']:
                     for partition in partitions:
                         topic_partition = (topic.encode('UTF-8'), partition)
                         # send the messages we could read so far
@@ -67,22 +73,25 @@ def create_stream_generator(kafka_pool, topic, cursors, opts):
                             yield __create_stream_message(partition, latest_offsets[topic_partition])
 
                     # if we hit keep alive count limit - close the stream
-                    if batch_sum == 0:
+                    if messages_read_in_batch == 0:
                         if keep_alive_in_a_row >= opts['batch_keep_alive_limit'] != -1:
                             break
                         keep_alive_in_a_row += 1
 
                     # init new batch
-                    current_batch = dict(zip(partitions, [[] for _ in partitions]))
+                    messages_read_in_batch = 0
+                    current_batch = {}
+                    for partition in partitions:
+                        current_batch[partition] = []
                     batch_start_time = datetime.datetime.now()
 
-                    yield '\n'
+                    yield BATCH_SEPARATOR
 
                 # check if we reached the stream timeout or message count limit
                 time_since_start = datetime.datetime.now() - start
                 if time_since_start.total_seconds() >= opts['stream_timeout'] > 0 or 0 < opts['stream_limit'] <= messages_read:
 
-                    if batch_sum > 0:
+                    if messages_read_in_batch > 0:
                         for partition in partitions:
                             topic_partition = (topic.encode('UTF-8'), partition)
                             # send the messages we could read so far
@@ -111,7 +120,7 @@ def __create_stream_message(partition, offset, events = None, topology = None):
         message['events'] = events
     if topology is not None:
         message['topology'] = topology
-    return json.dumps(message) + '\n'
+    return json.dumps(message) + BATCH_SEPARATOR
 
 
 @contextmanager
