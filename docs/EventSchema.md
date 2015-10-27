@@ -12,10 +12,10 @@ oneOf:
 definitions:
   EventMetaData:
     type: object
-
     properties:
       id: { type: string, format: uuid }
-      created: { type: string, format: data-time }
+      event_time: { type: string, format: date-time, description: "time at which the event occured, UTC" }
+      created: { type: string, format: date-time, description: "time at which this message was created, UTC" }
       root_id: { type: string, format: uuid }
       parent_id: { type: string, format: uuid }
       content_type: 
@@ -29,7 +29,7 @@ definitions:
       scopes:
         type: array
         items: { type: string }
-    required: [ id, created, content_type ]
+    required: [ id, event_time, content_type ]
 
   BusinessEvent:   
     properties:
