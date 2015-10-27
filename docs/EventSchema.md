@@ -6,36 +6,56 @@ of that format is to have a transparent way to exchange events between distribut
 
 DRAFT JSON-Schema definitions:
 ```yaml
+oneOf: 
+  - $ref: "#/definitions/ResourceEvent"
+  - $ref: "#/definitions/BusinessEvent"
 definitions:
-  Event:
-    type: object
-    description: |
-      This is the most general representation of an event, that can be processed by Nakadi.
-      It should be used as a base definition for all events, that flow through Nakadi by extending attributes of this object type.
-    required:
-      - event
-      - partitioning_key
-      - meta_data
-    properties:
-      event:
-         type: string
-         example: "https://resource-events.zalando.com/ResourceCreated"
-      partitioning_key:
-         type: string
-         example: "ARTICLE:ABC123XXX-001"
-      meta_data:
-        $ref: '#/definitions/EventMetaData'
-
   EventMetaData:
     type: object
-    required: [ id, created ]
+
     properties:
       id: { type: string, format: uuid }
       created: { type: string, format: data-time }
       root_id: { type: string, format: uuid }
       parent_id: { type: string, format: uuid }
+      content_type: 
+        type: string
+        format: uri
+        description: |
+          the payload's content type, examples are:
+          https://types.zalan.do/events/order-canceled
+          https://types.zalan.do/resources/article-simple          
+      partitioning_key: {type:string, description: "tbd."}
       scopes:
         type: array
-        items:
-          type: string
+        items: { type: string }
+    required: [ id, created, content_type ]
+
+  BusinessEvent:   
+    properties:
+      meta_data: { $ref:  "#/definitions/EventMetaData" }
+      data:         { not: {} }
+      data_key:     { not: {} }
+      data_op_type: { not: {} }
+    required: [ meta_data ]
+    additionalProperties: {type: string, comment: " not nested structures allowed in business events? tbd." }
+
+  ResourceEvent:
+    properties:       
+      meta_data: { $ref:  "#/definitions/EventMetaData" }
+      data:
+        description: "Complete state description of this very resource _after_ the event"
+        type: object
+      data_key: 
+        type: object
+        description: "1..n key/value pairs to uniquely identify this very resource amongst all resources of the given resource type"
+      data_op_type:
+        type: string
+        description: "the modifying operation"
+        enum: [ created, updated, deleted, audit ]
+    required:
+      - meta_data
+      - data
+      - data_key
+      - data_op_type
 ```
