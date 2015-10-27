@@ -3,12 +3,12 @@ import json
 import unittest
 
 from nakadi.test import test_common
-from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM
+from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM, validate_error_response
 
 
-# this test case doesn't care if there are any events present or not
+# test case for nakadi endpoints (except streaming endpoint)
 # for api version 0.3
-class EventstoreDataIndependentTestCase(unittest.TestCase):
+class NakadiEndpointsTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -48,24 +48,24 @@ class EventstoreDataIndependentTestCase(unittest.TestCase):
 
     def test_when_get_partition_for_not_existing_topic_then_topic_not_found(self):
         response = self.app.get('/topics/blahtopic/partitions/0')
-        self.__validate_error_response(response, 404, 'topic not found')
+        validate_error_response(response, 404, 'topic not found')
 
     def test_when_get_not_existing_partition_then_partition_not_found(self):
         response = self.app.get('/topics/%s/partitions/2341' % TEST_TOPIC)
-        self.__validate_error_response(response, 404, 'partition not found')
+        validate_error_response(response, 404, 'partition not found')
 
     def test_when_get_letter_partition_then_partition_not_a_number(self):
         response = self.app.get('/topics/%s/partitions/ab' % TEST_TOPIC)
-        self.__validate_error_response(response, 400, '"partition" path parameter should be an integer number')
+        validate_error_response(response, 400, '"partition" path parameter should be an integer number')
 
     def test_when_get_partitions_for_not_existing_topic_then_topic_not_found(self):
         response = self.app.get('/topics/not_existing_topic/partitions')
-        self.__validate_error_response(response, 404, 'topic not found')
+        validate_error_response(response, 404, 'topic not found')
 
     def test_when_post_event_then_ok(self):
         response = self.app.post('/topics/%s/events' % TEST_TOPIC,
                                  headers = {'Content-type': 'application/json'},
-                                 data = json.dumps(self.__create_dummy_event()))
+                                 data = json.dumps(test_common.create_dummy_event('dummy-key')))
         assert response.status_code == 201
 
     def test_when_post_event_then_newest_offset_in_one_partition_was_increased(self):
@@ -89,22 +89,6 @@ class EventstoreDataIndependentTestCase(unittest.TestCase):
                 number_of_partitions_with_increased_offset += 1
 
         assert number_of_partitions_with_increased_offset == 1
-
-    def __create_dummy_event(self):
-        return {
-            'event': 'dummy-type',
-            'partitioning_key': 'dummy-key',
-            'meta_data': {
-                'id': 'blah-id',
-                'created': '11-11-1111'
-            }
-        }
-
-    def __validate_error_response(self, response, status_code, problem_detail):
-        assert response.status_code == status_code
-        problem = json.loads(response.data.decode('utf-8'))
-        assert 'detail' in problem
-        assert problem['detail'] == problem_detail
 
     def __validate_partition_structure(self, partition):
         assert 'partition_id' in partition
