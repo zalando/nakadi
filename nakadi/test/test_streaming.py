@@ -138,7 +138,6 @@ class StreamingTestCase(unittest.TestCase):
 
         response = self.app.get('/topics/%s/partitions' % TEST_TOPIC)
         partitions = json.loads(response.data.decode('utf-8'))
-        # print(partitions)
 
         total_events = 0
         # validate that we stream from latest offsets

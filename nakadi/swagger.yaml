@@ -72,7 +72,7 @@ paths:
     get:
       tags:
         - low-level-api
-      operationId: nakadi.hack.get_events
+      operationId: nakadi.hack.get_events_from_multiple_partitions
       summary: "Starts a stream delivery for the specified partitions of the given topic. The tracking of the current position in the partitions and of which partitions is being read is in the responsibility of the client. No commits are needed."
       parameters:
         - name: topic
@@ -272,6 +272,88 @@ paths:
             $ref: '#/definitions/Problem'
         503:
           description: Not available
+          schema:
+            $ref: '#/definitions/Problem'
+    get:
+      tags:
+        - low-level-api
+      operationId: nakadi.hack.get_events_from_single_partition
+      summary: "Starts a stream delivery for the specified partition of the given topic. The tracking of the current position in the partition and of which partition is being read is in the responsibility of the client. No commits are needed."
+      parameters:
+        - name: topic
+          in: path
+          description: Topic where to get events from
+          type: string
+          required: true
+        - name: partition
+          in: path
+          description: Id of the partition where to get events from
+          type: string
+          required: true
+        - name: start_from
+          in: query
+          description: Starting offset of the stream. Must be in the range defined by the `TopicPartition`.
+          type: string
+          required: true
+        - name: batch_limit
+          in: query
+          description: "Maximum number of `SimpleStreamElement`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted)."
+          type: integer
+          format: int32
+          required: false
+          default: 1
+        - name: stream_limit
+          in: query
+          description: |
+            Maximum number of `Event`s in this stream. If 0 or undefined, will stream indefinately.
+
+            Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
+          type: integer
+          format: int32
+          required: false
+        - name: batch_flush_timeout
+          in: query
+          description: "Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached before this time is reached the messages are immediately flushed to the client."
+          type: integer
+          format: int32
+          required: false
+        - name: stream_timeout
+          in: query
+          description: |
+            Maximum time in seconds a stream will live before being interrupted. If unspecified will stream indefinately.
+
+            If this timeout is reached any pending messages (in the sense of `stream_limit`) will be flushed to the client.
+
+            Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+          type: integer
+          format: int32
+          required: false
+        - name: batch_keep_alive_limit
+          in: query
+          description: Maximum number of keep-alive messages to get in a row before closing the connection. Unlimited by default.
+          type: integer
+          format: int32
+          required: false
+      responses:
+        200:
+          description:
+            Starts streaming to the client. Stream format is a continuous series of `SimpleStreamEvent`s separated by `\n`.
+          schema:
+            $ref: '#/definitions/SimpleStreamEvent'
+        400:
+          description: Bad syntax
+          schema:
+            $ref: '#/definitions/Problem'
+        401:
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        404:
+          description: Not found. Typically in case of requesting from a non existing topic of partition.
+          schema:
+            $ref: '#/definitions/Problem'
+        500:
+          description: Not found. Typically in case of requesting from a non existing topic of partition.
           schema:
             $ref: '#/definitions/Problem'
 
