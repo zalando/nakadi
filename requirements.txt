@@ -1,4 +1,4 @@
-connexion>=0.8.6
+connexion>=0.12.0
 kafka-python
 stups-tokens>=0.3
 prometheus

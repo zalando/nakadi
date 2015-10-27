@@ -58,7 +58,8 @@ class KafkaClientPool(object):
             except Exception as e:
                 logging.warning("Exception when closing kafka client: %s", e)
             raise kafka_error
-        except:
+        except Exception as e:
+            logging.warning("Exception occurred while kafka client was out of pool: %s", e)
             self.__put(client)
         finally:
             self.released_clients.release()

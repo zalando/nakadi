@@ -12,6 +12,8 @@ from kafka.common import KafkaError
 from nakadi import event_stream, kafka_pool, monitoring, config, kafka_consumer_patch
 from nakadi.security import authenticate
 from nakadi.metrics import measured, aggregate_measures
+from nakadi.utils.request_helpers import NotIntegerParameterException, RequiredParameterNotFoundException, \
+    WrongCursorsFormatException, get_int_parameter, get_cursors
 
 
 def retry_if_failed(fn, *args, retry_limit = 5, retry_wait_s = 1, **kwargs):
@@ -120,71 +122,74 @@ def __get_partitions_offsets(topic):
     return partition_offsets
 
 
-def __try_get_parameter_as_int(parameter_name, request, required = False, default_value = None):
-    parameter = request.args.get(parameter_name)
-
-    if parameter is None:
-        if required:
-            return False, ({'detail': 'missing required query parameter "%s"' % parameter_name}, 400)
-        else:
-            return True, default_value
-
-    if not parameter.isdigit():
-        return False, ({'detail': '"%s" query parameter should be an integer number' % parameter_name}, 400)
-    else:
-        return True, int(parameter)
-
-
-@measured('get_events')
+@measured('get_events_from_single_partition')
 @authenticate
-def get_events(topic, partition):
+def get_events_from_single_partition(topic, partition):
 
-    # get and check parameters
-    valid, result = __try_get_parameter_as_int('start_from', flask.request, True)
-    if not valid:
-        return result
-    start_from = result
-
-    stream_opts = {}
-    valid, result = __try_get_parameter_as_int('batch_limit', flask.request, False, 1)
-    if not valid:
-        return result
-    stream_opts['batch_limit'] = result
-
-    valid, result = __try_get_parameter_as_int('batch_flush_timeout', flask.request, False, 0)
-    if not valid:
-        return result
-    stream_opts['batch_flush_timeout'] = result
-
-    valid, result = __try_get_parameter_as_int('batch_keep_alive_limit', flask.request, False, -1)
-    if not valid:
-        return result
-    stream_opts['batch_keep_alive_limit'] = result
-
-    valid, result = __try_get_parameter_as_int('stream_limit', flask.request, False, 0)
-    if not valid:
-        return result
-    stream_opts['stream_limit'] = result
-
-    valid, result = __try_get_parameter_as_int('stream_timeout', flask.request, False, 0)
-    if not valid:
-        return result
-    stream_opts['stream_timeout'] = result
-
-    # check that partition is integer
-    if not partition.isdigit():
-        return {'detail': '"partition" path parameter should be an integer number'}, 400
-    else:
-        partition = int(partition)
-
-    # check that topic and partition exist
+    # check if topic exists
     if not __topic_exists(topic):
         return {'detail': 'topic not found'}, 404
-    if not __partition_exists(topic, partition):
-        return {'detail': 'partition not found'}, 404
+
+    # create cursor for single partition
+    try:
+        start_from = get_int_parameter('start_from', flask.request, True, 0)
+    except NotIntegerParameterException as e:
+        return {'detail': '"%s" query parameter should be an integer number' % e.parameter}, 400
+    except RequiredParameterNotFoundException as e:
+        return {'detail': 'missing required query parameter "%s"' % e.parameter}, 400
+    cursors = [{'partition': str(partition), 'offset': str(start_from)}]
+
+    return __get_events(topic, cursors)
+
+
+@measured('get_events_from_multiple_partitions')
+@authenticate
+def get_events_from_multiple_partitions(topic):
+
+    # check if topic exists
+    if not __topic_exists(topic):
+        return {'detail': 'topic not found'}, 404
+
+    # get cursors to start reading from
+    cursors_str = flask.request.headers.get('x-nakadi-cursors')
+    if not cursors_str:
+        # if cursors are not specified - read from all partitions from the latest offset
+        partitions_offsets = __get_partitions_offsets(topic)
+        cursors = [{
+                       'partition': offset['partition_id'],
+                       'offset': offset['newest_available_offset']
+                   } for offset in partitions_offsets]
+    else:
+        try:
+            cursors = get_cursors(cursors_str)
+        except WrongCursorsFormatException:
+            return {'detail': '"x-nakadi-cursors" header has wrong format'}, 400
+
+    return __get_events(topic, cursors)
+
+
+def __get_events(topic, cursors):
+
+    # get and check parameters
+    stream_opts = {}
+    try:
+        stream_opts['batch_limit'] = get_int_parameter('batch_limit', flask.request, False, 1)
+        stream_opts['batch_flush_timeout'] = get_int_parameter('batch_flush_timeout', flask.request, False, 0)
+        stream_opts['batch_keep_alive_limit'] = get_int_parameter('batch_keep_alive_limit', flask.request, False, -1)
+        stream_opts['stream_limit'] = get_int_parameter('stream_limit', flask.request, False, 0)
+        stream_opts['stream_timeout'] = get_int_parameter('stream_timeout', flask.request, False, 0)
+    except NotIntegerParameterException as e:
+        return {'detail': '"%s" query parameter should be an integer number' % e.parameter}, 400
+    except RequiredParameterNotFoundException as e:
+        return {'detail': 'missing required query parameter "%s"' % e.parameter}, 400
+
+    # check that partitions exist
+    for cursor in cursors:
+        if not __partition_exists(topic, int(cursor['partition'])):
+            return {'detail': 'partition not found'}, 404
 
     # returning generator in response will create a stream
-    stream_generator = event_stream.create_stream_generator(kafka_pool, topic, partition, start_from, stream_opts)
+    stream_generator = event_stream.create_stream_generator(kafka_pool, topic, cursors, stream_opts)
     return flask.Response(stream_generator, mimetype = 'text/plain', status = 200)
 
 

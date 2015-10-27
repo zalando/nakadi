@@ -20,4 +20,4 @@ install:
 
 # run tests
 script:
-  - python -m unittest discover nakadi/test
+  - py.test nakadi/test
