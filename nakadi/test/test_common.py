@@ -2,7 +2,7 @@
 import json
 
 TEST_TOPIC = 'test-topic'
-TEST_PARTITIONS_NUM = 128
+TEST_PARTITIONS_NUM = 8
 
 
 def get_monkey_patched_hack():
