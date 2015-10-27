@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import json
 import logging
-import unittest
 
 from nakadi.test import test_common
 from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM, validate_error_response
@@ -9,10 +8,10 @@ from nakadi.event_stream import BATCH_SEPARATOR
 
 # test case for streaming endpoint
 # for api version 0.3
-class StreamingTestCase(unittest.TestCase):
+class TestStreamingEndpoint:
 
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.hack = test_common.get_monkey_patched_hack()
         cls.app = cls.hack.conn_app.app.test_client()
 
@@ -25,7 +24,7 @@ class StreamingTestCase(unittest.TestCase):
                      data=json.dumps(event))
 
     @classmethod
-    def tearDownClass(cls):
+    def teardown_class(cls):
         if hasattr(cls, 'hack'):
             cls.hack.kafka_pool.close()
 
@@ -205,6 +204,3 @@ class StreamingTestCase(unittest.TestCase):
         assert batch_json['cursor']['offset'] == str(offset)
         assert batch_json['cursor']['partition'] == str(partition)
         assert len(batch_json['events']) == batch_size
-
-if __name__ == '__main__':
-    unittest.main()

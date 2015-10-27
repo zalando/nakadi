@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import json
-import unittest
 
 from nakadi.test import test_common
 from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM, validate_error_response
@@ -8,15 +7,15 @@ from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM, validate_er
 
 # test case for nakadi endpoints (except streaming endpoint)
 # for api version 0.3
-class NakadiEndpointsTestCase(unittest.TestCase):
+class TestNakadiEndpoints:
 
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.hack = test_common.get_monkey_patched_hack()
         cls.app = cls.hack.conn_app.app.test_client()
 
     @classmethod
-    def tearDownClass(cls):
+    def teardown_class(cls):
         if hasattr(cls, 'hack'):
             cls.hack.kafka_pool.close()
 
@@ -94,7 +93,3 @@ class NakadiEndpointsTestCase(unittest.TestCase):
         assert 'partition_id' in partition
         assert 'oldest_available_offset' in partition
         assert 'newest_available_offset' in partition
-
-
-if __name__ == '__main__':
-    unittest.main()
