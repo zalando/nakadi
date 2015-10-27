@@ -182,7 +182,7 @@ class StreamingTestCase(unittest.TestCase):
                                 query_string = {
                                     param: 'a'
                                 })
-            validate_error_response(response, 400, '"%s" query parameter should be an integer number' % param)
+            assert response.status_code == 400
 
     def test_when_get_events_with_unknown_topic_then_topic_not_found(self):
         response = self.app.get('/topics/dummy-topic/events')
