@@ -3,11 +3,10 @@ FROM zalando/python:3.4.0-2
 COPY requirements.txt /
 RUN pip3 install -r /requirements.txt
 
-RUN mkdir nakadi
-RUN mkdir nakadi/test
-COPY nakadi/*.py nakadi/
-COPY nakadi/swagger.yaml nakadi/
-COPY nakadi/test/*.py nakadi/test/
+# copy project code
+ADD nakadi /nakadi
+# remove python cache files
+RUN find ./nakadi | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
 WORKDIR /
 
