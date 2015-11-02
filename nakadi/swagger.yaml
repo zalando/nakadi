@@ -638,10 +638,10 @@ definitions:
     description: |
       This is the most general representation of an event, that can be processed by Nakadi.
       It should be used as a base definition for all events, that flow through Nakadi by extending attributes of this object type.
-    required:
-      - event
-      - partitioning_key
-      - meta_data
+#    required:
+#      - event
+#      - partitioning_key
+#      - meta_data
     properties:
       event:
          type: string
@@ -654,7 +654,7 @@ definitions:
 
   EventMetaData:
     type: object
-    required: [ id, created ]
+#    required: [ id, created ]
     properties:
       id: { type: string, format: uuid }
       created: { type: string, format: data-time }
