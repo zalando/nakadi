@@ -2,7 +2,7 @@
 import logging
 
 # 32 workers (processes)
-workers = 2
+workers = 32
 
 # worker type: eventlet ("green threads")
 worker_class = 'eventlet'
