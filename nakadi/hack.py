@@ -331,6 +331,7 @@ conn_app.add_api('swagger.yaml')
 application=conn_app.app
 
 
-@application.route('/health', methods=['GET'])
+# we map it with route-decorator because we don't want to have this endpoint in our API description schema
+@conn_app.route('/health', methods=['GET'])
 def health():
     return 'OK', 200
