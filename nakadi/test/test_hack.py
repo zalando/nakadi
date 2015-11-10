@@ -19,6 +19,10 @@ class TestNakadiEndpoints:
         if hasattr(cls, 'hack'):
             cls.hack.kafka_pool.close()
 
+    def test_when_health_check_then_ok(self):
+        response = self.app.get('/health')
+        assert response.status_code == 200
+
     def test_when_get_topics_then_ok(self):
         response = self.app.get('/topics')
         assert response.status_code == 200
