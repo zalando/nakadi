@@ -329,3 +329,8 @@ conn_app.add_api('swagger.yaml')
 
 # expose flask application so that it can be run in external container
 application=conn_app.app
+
+
+@application.route('/health', methods=['GET'])
+def health():
+    return 'OK', 200
