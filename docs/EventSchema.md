@@ -7,11 +7,12 @@ of that format is to have a transparent way to exchange events between distribut
 DRAFT JSON-Schema definitions:
 ```yaml
 definitions:
-  event:
+  Event:
     type: object
     description: |
       This is the most general representation of an event, that can be processed by Nakadi.
-      It should be used as a base definition for all events, that flow through Nakadi by extending attributes of this object type.
+      It should be used as a base definition for all events, that flow through Nakadi
+      by extending attributes of this object type.
     required:
       - event
       - partitioning_key
@@ -32,9 +33,9 @@ definitions:
            A value by which the partition is to be  determined.
            Partitions are sequences of values within which the ordering is preserved
       meta_data:
-        $ref: '#/definitions/event_meta_data'
+        $ref: '#/definitions/EventMetaData'
 
-  event_meta_data:
+  EventMetaData:
     type: object
     required: [ created ]
     properties:
