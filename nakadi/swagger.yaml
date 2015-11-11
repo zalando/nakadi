@@ -16,7 +16,7 @@ info:
     * High level API should support automatic redistribution of the event streams
     during client topology changes.
 
-  version: 0.3
+  version: '0.3'
   contact:
     name: Team Aruha
     email: team-aruha@zalando.de
