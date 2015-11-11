@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/zalando/nakadi.svg)](https://travis-ci.org/zalando/nakadi)
+[![Build Status](https://travis-ci.org/zalando/nakadi.svg)](https://travis-ci.org/zalando/nakadi) [![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)](http://editor.swagger.io/#/?import=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)
 
 Distributed Event Bus
 =====================
