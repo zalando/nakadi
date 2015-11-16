@@ -7,10 +7,12 @@ import flask
 
 METRICS_FOLDER = os.environ.get('METRICS_FOLDER', '/tmp')
 
-log = open('%s/metrics_%s.raw' % (METRICS_FOLDER, os.getpid()), 'w', 1)
+endpoints_log = open('%s/endpoints_metrics_%s.raw' % (METRICS_FOLDER, os.getpid()), 'w', 1)
+events_log = open('%s/events_metrics_%s.raw' % (METRICS_FOLDER, os.getpid()), 'w', 1)
 
 def close_file():
-    log.close()
+    endpoints_log.close()
+    events_log.close()
 
 atexit.register(close_file)
 
@@ -27,7 +29,7 @@ def measured(fn_name):
             else:
                 response_status = response[1]
 
-            log.write('%s:%s:%s\n' % (fn_name, timestamp, response_status))
+            endpoints_log.write('%s:%s:%s\n' % (timestamp, fn_name, response_status))
 
             return response
 
@@ -36,9 +38,43 @@ def measured(fn_name):
     return measured_decorator
 
 
-def aggregate_measures(cutoff_minutes):
+def log_events(uid, topic, partition, events_pushed, events_consumed):
+    events_log.write('%s:%s:%s:%s:%s:%s\n' % (time.time(), uid, topic, partition, events_pushed, events_consumed))
 
-    files = glob('%s/metrics_*.raw' % METRICS_FOLDER)
+
+def aggregate_consumption_stats(cutoff_minutes):
+    files = glob('%s/events_metrics_*.raw' % METRICS_FOLDER)
+    cutoff_timestamp = time.time() - (cutoff_minutes * 60)
+    stats = {}
+
+    for file_name in files:
+
+        with open(file_name) as file:
+            for current_line in file:
+
+                line_values = current_line[:-1].split(':')
+                timestamp, uid, topic, partition, events_pushed, events_consumed = \
+                    float(line_values[0]), line_values[1], line_values[2], line_values[3], int(line_values[4]), int(line_values[5])
+
+                if timestamp > cutoff_timestamp:
+                    if topic not in stats:
+                        stats[topic] = {}
+                        stats[topic]['pushed'] = {}
+                        stats[topic]['consumed'] = {}
+                    if events_pushed > 0:
+                        if uid not in stats[topic]['pushed']:
+                            stats[topic]['pushed'][uid] = 0
+                        stats[topic]['pushed'][uid] += events_pushed
+                    if events_consumed > 0:
+                        if uid not in stats[topic]['consumed']:
+                            stats[topic]['consumed'][uid] = 0
+                        stats[topic]['consumed'][uid] += events_consumed
+    return stats
+
+
+def aggregate_endpoints_stats(cutoff_minutes):
+
+    files = glob('%s/endpoints_metrics_*.raw' % METRICS_FOLDER)
 
     call_count = collections.defaultdict(list)
     status_codes = {}
@@ -49,7 +85,7 @@ def aggregate_measures(cutoff_minutes):
         with open(file_name) as file:
             for current_line in file:
                 line_values = current_line[:-1].split(':')
-                function_name, timestamp, response_status = line_values[0], float(line_values[1]), line_values[2]
+                timestamp, function_name, response_status = float(line_values[0]), line_values[1], line_values[2]
                 if timestamp > cutoff_timestamp:
                     call_count[function_name].append(timestamp)
 
