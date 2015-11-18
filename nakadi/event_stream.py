@@ -1,6 +1,5 @@
 from contextlib import contextmanager
-import datetime
-import json
+import time
 import logging
 from kafka import KafkaConsumer
 from kafka.common import ConsumerTimeout
@@ -11,14 +10,24 @@ BATCH_SEPARATOR = '\n'
 
 def create_stream_generator(kafka_pool, topic, cursors, opts):
 
-    topics = {}
-    for cursor in cursors:
-        topic_partition = (topic, int(cursor['partition']))
-        topics[topic_partition] = int(cursor['offset'])
-
+    topics = {(topic, int(cursor['partition'])): int(cursor['offset']) for cursor in cursors}
     partitions = [int(cursor['partition']) for cursor in cursors]
 
-    start = datetime.datetime.now()
+    start = time.time()
+
+    def process_batch(latest_offsets, current_batch):
+        for partition in partitions:
+            topic_partition = (topic.encode('UTF-8'), partition)
+            # send the messages we could read so far
+            if len(current_batch[partition]) > 0:
+                stream_message = __create_stream_message(partition, latest_offsets[topic_partition],
+                                                         current_batch[partition])
+                with __measure_time(current_batch[partition], stream_message):
+                    yield stream_message
+
+            # just send the keep alive
+            else:
+                yield __create_stream_message(partition, latest_offsets[topic_partition])
 
     # stream
     def generator():
@@ -28,10 +37,8 @@ def create_stream_generator(kafka_pool, topic, cursors, opts):
 
         # init batch
         messages_read_in_batch = 0
-        current_batch = {}
-        for partition in partitions:
-            current_batch[partition] = []
-        batch_start_time = datetime.datetime.now()
+        current_batch = {partition: [] for partition in partitions}
+        batch_start_time = time.time()
 
         with kafka_pool.kafka_client() as client:
 
@@ -49,28 +56,18 @@ def create_stream_generator(kafka_pool, topic, cursors, opts):
                     # put message to batch
                     messages_read += 1
                     messages_read_in_batch += 1
-                    message_json = json.loads(message.value.decode('utf-8'))
-                    current_batch[message.partition].append(message_json)
+                    current_batch[message.partition].append(message.value.decode('utf-8'))
 
                 except ConsumerTimeout:
                     pass
 
                 # check if it's time to send the batch
-                time_since_batch_start = datetime.datetime.now() - batch_start_time
+                time_since_batch_start = time.time() - batch_start_time
                 latest_offsets = consumer.offsets("fetch")
 
-                if time_since_batch_start.total_seconds() >= opts['batch_flush_timeout'] != 0 or messages_read_in_batch >= opts['batch_limit']:
-                    for partition in partitions:
-                        topic_partition = (topic.encode('UTF-8'), partition)
-                        # send the messages we could read so far
-                        if len(current_batch[partition]) > 0:
-                            stream_message = __create_stream_message(partition, latest_offsets[topic_partition], current_batch[partition])
-                            with __measure_time(current_batch[partition], stream_message):
-                                yield stream_message
-
-                        # just send the keep alive
-                        else:
-                            yield __create_stream_message(partition, latest_offsets[topic_partition])
+                if time_since_batch_start >= opts['batch_flush_timeout'] != 0 or \
+                        messages_read_in_batch >= opts['batch_limit']:
+                    yield from process_batch(latest_offsets, current_batch)
 
                     # if we hit keep alive count limit - close the stream
                     if messages_read_in_batch == 0:
@@ -80,47 +77,31 @@ def create_stream_generator(kafka_pool, topic, cursors, opts):
 
                     # init new batch
                     messages_read_in_batch = 0
-                    current_batch = {}
-                    for partition in partitions:
-                        current_batch[partition] = []
-                    batch_start_time = datetime.datetime.now()
+                    current_batch = {partition: [] for partition in partitions}
+                    batch_start_time = time.time()
 
                     yield BATCH_SEPARATOR
 
                 # check if we reached the stream timeout or message count limit
-                time_since_start = datetime.datetime.now() - start
-                if time_since_start.total_seconds() >= opts['stream_timeout'] > 0 or 0 < opts['stream_limit'] <= messages_read:
+                time_since_start = time.time() - start
+                if time_since_start >= opts['stream_timeout'] > 0 or 0 < opts['stream_limit'] <= messages_read:
 
                     if messages_read_in_batch > 0:
-                        for partition in partitions:
-                            topic_partition = (topic.encode('UTF-8'), partition)
-                            # send the messages we could read so far
-                            if len(current_batch[partition]) > 0:
+                        yield from process_batch(latest_offsets, current_batch)
 
-                                stream_message = __create_stream_message(partition, latest_offsets[topic_partition], current_batch[partition])
-                                with __measure_time(current_batch[partitions], stream_message):
-                                    yield stream_message
-
-                            # just send the keep alive
-                            else:
-                                yield __create_stream_message(partition, latest_offsets[topic_partition])
                     break
 
     return generator()
 
 
-def __create_stream_message(partition, offset, events = None, topology = None):
-    message = {
-        'cursor': {
-            'partition': str(partition),
-            'offset': str(offset)
-        }
-    }
+def __create_stream_message(partition, offset, events=None, topology=None):
+    message = ['{"cursor":{"partition":"', str(partition), '","offset":"', str(offset), '"}']
     if events is not None:
-        message['events'] = events
+        message.extend([',"events":[', ','.join(events), ']'])
     if topology is not None:
-        message['topology'] = topology
-    return json.dumps(message) + BATCH_SEPARATOR
+        message.extend([',"topology":[', ','.join(topology), ']'])
+    message.extend(['}', BATCH_SEPARATOR])
+    return ''.join(message)
 
 
 @contextmanager
@@ -129,12 +110,13 @@ def __measure_time(batch, message):
     message_size_bytes = sys.getsizeof(message)
     batch_length = len(batch)
 
-    before = datetime.datetime.now()
+    before = time.time()
 
     yield
 
-    after = datetime.datetime.now()
-    delta =  after - before
-    ms = int(delta.total_seconds() * 1000)
+    after = time.time()
+    delta = after - before
+    ms = int(delta * 1000)
 
-    logging.info("[#BAND_CHECK] Batch size: %s; Size in bytes: %s; Ms spent on yielding: %s", batch_length, message_size_bytes, ms)
+    logging.info("[#BAND_CHECK] Batch size: %s; Size in bytes: %s; Ms spent on yielding: %s",
+                 batch_length, message_size_bytes, ms)
