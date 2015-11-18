@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
 
+from nakadi import config
+
 TEST_TOPIC = 'test-topic'
 TEST_PARTITIONS_NUM = 8
 
@@ -16,9 +18,9 @@ def get_monkey_patched_hack():
 
     # monkey patch eventstore uid check
     from nakadi import hack
-    def __fake_uid_check():
-        return True
-    hack.__uid_is_valid_to_post = __fake_uid_check
+    def __fake_get_uid():
+        return config.UID_TO_POST_EVENT
+    hack.__get_uid = __fake_get_uid
 
     return hack
 

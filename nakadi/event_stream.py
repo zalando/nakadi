@@ -5,10 +5,12 @@ from kafka import KafkaConsumer
 from kafka.common import ConsumerTimeout
 import sys
 
+from nakadi.metrics import log_events
+
 BATCH_SEPARATOR = '\n'
 
 
-def create_stream_generator(kafka_pool, topic, cursors, opts):
+def create_stream_generator(kafka_pool, topic, cursors, opts, uid):
 
     topics = {(topic, int(cursor['partition'])): int(cursor['offset']) for cursor in cursors}
     partitions = [int(cursor['partition']) for cursor in cursors]
@@ -24,6 +26,7 @@ def create_stream_generator(kafka_pool, topic, cursors, opts):
                                                          current_batch[partition])
                 with __measure_time(current_batch[partition], stream_message):
                     yield stream_message
+                log_events(uid, topic, partition, 0, len(current_batch[partition]))
 
             # just send the keep alive
             else:

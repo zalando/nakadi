@@ -11,7 +11,7 @@ from kafka.common import KafkaError
 
 from nakadi import event_stream, kafka_pool, monitoring, config, kafka_consumer_patch
 from nakadi.security import authenticate
-from nakadi.metrics import measured, aggregate_measures
+from nakadi.metrics import measured, log_events, aggregate_endpoints_stats, aggregate_consumption_stats
 from nakadi.utils.request_helpers import NotIntegerParameterException, RequiredParameterNotFoundException, \
     WrongCursorsFormatException, get_int_parameter, get_cursors
 
@@ -80,7 +80,11 @@ def get_partition(topic, partition):
     if not __partition_exists(topic, partition):
         return {'detail': 'partition not found'}, 404
 
-    offsets = __get_partitions_offsets(topic)
+    try:
+        offsets = __get_partitions_offsets(topic)
+    except:
+        return {'detail': 'Not Available'}, 503
+
     partition_offsets = next(offset for offset in offsets if offset.get('partition_id') == partition)
     return partition_offsets, 200
 
@@ -92,7 +96,12 @@ def get_partitions(topic):
     if not __topic_exists(topic):
         return {'detail': 'topic not found'}, 404
 
-    return __get_partitions_offsets(topic), 200
+    try:
+        offsets = __get_partitions_offsets(topic)
+    except:
+        return {'detail': 'Not Available'}, 503
+
+    return offsets, 200
 
 
 def __get_partitions_offsets(topic):
@@ -100,7 +109,7 @@ def __get_partitions_offsets(topic):
     try:
         consumer = retry_if_failed(SimpleConsumer, "dummy-group", topic)
     except:
-        return {'detail': 'Not Available'}, 503
+        raise Exception('Kafka failed')
 
     # scroll to the oldest offsets and grab them
     consumer.seek(offset=0, whence=0)
@@ -154,7 +163,10 @@ def get_events_from_multiple_partitions(topic):
     cursors_str = flask.request.headers.get('x-nakadi-cursors')
     if not cursors_str:
         # if cursors are not specified - read from all partitions from the latest offset
-        partitions_offsets = __get_partitions_offsets(topic)
+        try:
+            partitions_offsets = __get_partitions_offsets(topic)
+        except:
+            return {'detail': 'Not Available'}, 503
         cursors = [{
                        'partition': offset['partition_id'],
                        'offset': offset['newest_available_offset']
@@ -189,12 +201,12 @@ def __get_events(topic, cursors):
             return {'detail': 'partition not found'}, 404
 
     # returning generator in response will create a stream
-    stream_generator = event_stream.create_stream_generator(kafka_pool, topic, cursors, stream_opts)
+    stream_generator = event_stream.create_stream_generator(kafka_pool, topic, cursors, stream_opts, __get_uid())
     return flask.Response(stream_generator, mimetype = 'text/plain', status = 200)
 
 
-def __uid_is_valid_to_post():
-    return flask.request.token_info.get("uid") == config.UID_TO_POST_EVENT
+def __get_uid():
+    return flask.request.token_info.get("uid")
 
 
 @measured('post_event')
@@ -203,7 +215,7 @@ def post_event(topic):
 
     call_start = datetime.datetime.now()
 
-    if not __uid_is_valid_to_post():
+    if not __get_uid() == config.UID_TO_POST_EVENT:
         logging.info('[#OAUTH_401] Received uuid is not valid for posting: %s', flask.request.token_info.get("uid"))
         return {'detail': 'Not Authorized. You are not allowed to use this endpoint'}, 401
 
@@ -226,6 +238,8 @@ def post_event(topic):
     ms_elapsed = monitoring.stop_time_measure(call_start)
     logging.info('[#POST_TIME_TOTAL] Time spent total %s ms', ms_elapsed)
 
+    log_events(__get_uid(), topic, "-", 1, 0)
+
     return {}, 201
 
 
@@ -237,7 +251,21 @@ def __produce_kafka_message(client, topic, key, event):
 @measured('get_metrics')
 @authenticate
 def get_metrics():
-    return aggregate_measures(15), 200
+    metrics = {
+        'last15min': {
+            'endpoints': aggregate_endpoints_stats(15),
+            'events': aggregate_consumption_stats(15)
+        },
+        'last5min': {
+            'endpoints': aggregate_endpoints_stats(5),
+            'events': aggregate_consumption_stats(5)
+        },
+        'last1min': {
+            'endpoints': aggregate_endpoints_stats(1),
+            'events': aggregate_consumption_stats(1)
+        }
+    }
+    return metrics, 200
 
 
 @measured('post_subscription')
