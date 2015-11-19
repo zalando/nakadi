@@ -67,8 +67,19 @@ class TestNakadiEndpoints:
 
     def test_when_post_event_then_ok(self):
         response = self.app.post('/topics/%s/events' % TEST_TOPIC,
-                                 headers = {'Content-type': 'application/json'},
-                                 data = json.dumps(test_common.create_dummy_event('dummy-key')))
+                                 headers={'Content-type': 'application/json'},
+                                 data=json.dumps(test_common.create_dummy_event('dummy-key')))
+        assert response.status_code == 201
+
+    def test_when_post_events_then_ok(self, events_num=10):
+        events = []
+        for _ in range(events_num):
+            events.append(test_common.create_dummy_event('dummy-key'))
+        events_str = json.dumps(events)
+
+        response = self.app.post('/topics/%s/events/batch' % TEST_TOPIC,
+                                 headers={'Content-type': 'application/json'},
+                                 data=events_str)
         assert response.status_code == 201
 
     def test_when_post_event_then_newest_offset_in_one_partition_was_increased(self):
@@ -92,6 +103,29 @@ class TestNakadiEndpoints:
                 number_of_partitions_with_increased_offset += 1
 
         assert number_of_partitions_with_increased_offset == 1
+
+
+    def test_when_post_events_then_newest_offset_in_partitions_was_increased(self):
+        # get initial offsets
+        response = self.app.get('/topics/%s/partitions' % TEST_TOPIC)
+        initial_partitions_offsets = json.loads(response.data.decode('utf-8'))
+
+        # post messages
+        messages_to_post = 10
+        self.test_when_post_events_then_ok(events_num=messages_to_post)
+
+        # get new partitions offsets
+        response = self.app.get('/topics/%s/partitions' % TEST_TOPIC)
+        new_partitions_offsets = json.loads(response.data.decode('utf-8'))
+
+        # check that total offset was increased by the number of messages we posted
+        total_offset_increase = 0
+        for initial_offset in initial_partitions_offsets:
+            new_offset = [partition for partition in new_partitions_offsets if partition.get('partition_id') == initial_offset['partition_id']][0]
+            if new_offset['newest_available_offset'] > initial_offset['newest_available_offset']:
+                total_offset_increase += new_offset['newest_available_offset'] - initial_offset['newest_available_offset']
+        assert total_offset_increase == messages_to_post
+
 
     def __validate_partition_structure(self, partition):
         assert 'partition_id' in partition

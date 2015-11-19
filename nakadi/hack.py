@@ -212,6 +212,16 @@ def __get_uid():
 @measured('post_event')
 @authenticate
 def post_event(topic):
+    return __push_events_to_kafka(topic, [flask.request.json])
+
+
+@measured('post_events')
+@authenticate
+def post_events(topic):
+    return __push_events_to_kafka(topic, flask.request.json)
+
+
+def __push_events_to_kafka(topic, events):
 
     call_start = datetime.datetime.now()
 
@@ -222,25 +232,27 @@ def post_event(topic):
     if not __topic_exists(topic):
         return {'detail': 'Topic does not exist'}, 422
 
-    event = flask.request.json
-    logging.info('[#GOTEVENT] Received event:\n%s', event)
-    if 'partitioning_key' in event:
-        key = event['partitioning_key']
-    else:
-        key = event['ordering_key']
-    logging.debug('Using key %s', key)
+    failed = 0
+    for event in events:
+        if 'partitioning_key' in event:
+            key = event['partitioning_key']
+        else:
+            key = event['ordering_key']
 
-    try:
-        retry_if_failed(__produce_kafka_message, topic.encode('utf-8'), key.encode('utf-8'), json.dumps(event).encode('utf-8'))
-    except:
-        return {'detail': 'Failed to write event to kafka'}, 503
+        try:
+            retry_if_failed(__produce_kafka_message, topic.encode('utf-8'), key.encode('utf-8'), json.dumps(event).encode('utf-8'))
+        except:
+            failed += 1
 
     ms_elapsed = monitoring.stop_time_measure(call_start)
     logging.info('[#POST_TIME_TOTAL] Time spent total %s ms', ms_elapsed)
 
-    log_events(__get_uid(), topic, "-", 1, 0)
+    log_events(__get_uid(), topic, "-", len(events) - failed, 0)
 
-    return {}, 201
+    if failed > 0:
+        return {'detail': 'Failed to write %s event(s) to kafka' % failed}, 503
+    else:
+        return {}, 201
 
 
 def __produce_kafka_message(client, topic, key, event):
