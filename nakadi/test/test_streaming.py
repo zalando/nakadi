@@ -26,7 +26,7 @@ class TestStreamingEndpoint:
     @classmethod
     def teardown_class(cls):
         if hasattr(cls, 'hack'):
-            cls.hack.kafka_pool.close()
+            cls.hack.kafka_client_pool.close()
 
     def test_when_get_single_batch_then_ok(self):
         initial_offset = 0

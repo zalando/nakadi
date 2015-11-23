@@ -9,9 +9,11 @@ from time import sleep
 from kafka import KeyedProducer, SimpleConsumer
 from kafka.common import KafkaError
 
+logging.basicConfig(level=logging.INFO)
+
 from nakadi import event_stream, kafka_pool, monitoring, config, kafka_consumer_patch
 from nakadi.security import authenticate
-from nakadi.metrics import measured, log_events, aggregate_endpoints_stats, aggregate_consumption_stats
+from nakadi.metrics import measured, metrics_writer
 from nakadi.utils.request_helpers import NotIntegerParameterException, RequiredParameterNotFoundException, \
     WrongCursorsFormatException, get_int_parameter, get_cursors
 
@@ -21,7 +23,7 @@ def retry_if_failed(fn, *args, retry_limit = 5, retry_wait_s = 1, **kwargs):
 
     while retry_attempts < retry_limit:
         try:
-            with kafka_pool.kafka_client() as client:
+            with kafka_client_pool.kafka_client() as client:
                 call_result = fn(client, *args, **kwargs)
 
             if retry_attempts > 0:
@@ -201,7 +203,7 @@ def __get_events(topic, cursors):
             return {'detail': 'partition not found'}, 404
 
     # returning generator in response will create a stream
-    stream_generator = event_stream.create_stream_generator(kafka_pool, topic, cursors, stream_opts, __get_uid())
+    stream_generator = event_stream.create_stream_generator(kafka_client_pool, topic, cursors, stream_opts, __get_uid())
     return flask.Response(stream_generator, mimetype = 'text/plain', status = 200)
 
 
@@ -238,7 +240,7 @@ def post_event(topic):
     ms_elapsed = monitoring.stop_time_measure(call_start)
     logging.info('[#POST_TIME_TOTAL] Time spent total %s ms', ms_elapsed)
 
-    log_events(__get_uid(), topic, "-", 1, 0)
+    metrics_writer.log_events(__get_uid(), topic, "-", 1, 0)
 
     return {}, 201
 
@@ -253,16 +255,16 @@ def __produce_kafka_message(client, topic, key, event):
 def get_metrics():
     metrics = {
         'last15min': {
-            'endpoints': aggregate_endpoints_stats(15),
-            'events': aggregate_consumption_stats(15)
+            'endpoints': metrics_writer.aggregate_endpoints_stats(15),
+            'events': metrics_writer.aggregate_consumption_stats(15)
         },
         'last5min': {
-            'endpoints': aggregate_endpoints_stats(5),
-            'events': aggregate_consumption_stats(5)
+            'endpoints': metrics_writer.aggregate_endpoints_stats(5),
+            'events': metrics_writer.aggregate_consumption_stats(5)
         },
         'last1min': {
-            'endpoints': aggregate_endpoints_stats(1),
-            'events': aggregate_consumption_stats(1)
+            'endpoints': metrics_writer.aggregate_endpoints_stats(1),
+            'events': metrics_writer.aggregate_consumption_stats(1)
         }
     }
     return metrics, 200
@@ -343,13 +345,12 @@ def not_implemented():
 kafka_consumer_patch.monkey_patch_kafka_consumer()
 
 # init logging
-logging.basicConfig(level=logging.INFO)
 logging.getLogger('kafka').setLevel(logging.INFO)
 logging.info('Starting aruha-event-store')
 
 # create kafka clients pool
 logging.info('Kafka broker list: %s' % config.KAFKA_BROKER)
-kafka_pool = kafka_pool.KafkaClientPool(config.KAFKA_BROKER, config.KAFKA_CLIENTS_INIT_POOL_SIZE, config.KAFKA_CLIENTS_MAX_POOL_SIZE)
+kafka_client_pool = kafka_pool.KafkaClientPool(config.KAFKA_BROKER, config.KAFKA_CLIENTS_INIT_POOL_SIZE, config.KAFKA_CLIENTS_MAX_POOL_SIZE)
 
 # create connexion application
 conn_app = connexion.App(__name__, port=config.ARUHA_LISTEN_PORT, debug=True)

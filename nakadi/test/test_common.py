@@ -5,7 +5,7 @@ from nakadi import config
 
 TEST_TOPIC = 'test-topic'
 TEST_PARTITIONS_NUM = 8
-
+config.ENABLE_LOGS_ROTATION = False
 
 def get_monkey_patched_hack():
     # monkey patch to switch off authentication
