@@ -17,7 +17,7 @@ class TestNakadiEndpoints:
     @classmethod
     def teardown_class(cls):
         if hasattr(cls, 'hack'):
-            cls.hack.kafka_pool.close()
+            cls.hack.kafka_client_pool.close()
 
     def test_when_health_check_then_ok(self):
         response = self.app.get('/health')
