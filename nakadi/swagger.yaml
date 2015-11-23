@@ -206,6 +206,50 @@ paths:
           description: Not available
           schema:
             $ref: '#/definitions/Problem'
+  '/topics/{topic}/events/batch':
+    post:
+      description: |
+        Post a batch of `Event`s to the given `Topic`.
+
+        Partition selection is done using the defined partition resolution. The
+        partition resolution strategy is defined per topic and is managed by
+        Nakadi (currently resolved from a hash over `ordering_key`).
+
+        If explicit control over to which partition in a topic an event is being
+        sent to is needed, a client is advised to use the low level api.
+      operationId: nakadi.hack.post_events
+      parameters:
+        - name: topic
+          in: path
+          description: Topic name where to send events to
+          type: string
+          required: true
+        - name: event
+          in: body
+          description: Even being sent.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Event'
+      responses:
+        '201':
+          description: Event submitted.
+        '401':
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Not allowed
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Not available
+          schema:
+            $ref: '#/definitions/Problem'
   '/topics/{topic}/partitions':
     get:
       tags:
