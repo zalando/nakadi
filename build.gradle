@@ -105,7 +105,7 @@ docker {
 
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -p 8080:8080 -P -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+    commandLine "bash", "-c", "docker run -p 8080:8080 -i -t -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
 }
 
 task stopDockerContainer(type: Exec) {
