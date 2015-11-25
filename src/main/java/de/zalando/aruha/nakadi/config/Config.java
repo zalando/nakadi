@@ -1,4 +1,4 @@
-package de.zalando.bazaar.lab.config;
+package de.zalando.aruha.nakadi.config;
 
 import javax.sql.DataSource;
 

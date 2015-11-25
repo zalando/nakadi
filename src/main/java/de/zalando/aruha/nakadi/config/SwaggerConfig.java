@@ -1,4 +1,4 @@
-package de.zalando.bazaar.lab.config;
+package de.zalando.aruha.nakadi.config;
 
 import static com.google.common.base.Predicates.or;
 
@@ -28,8 +28,12 @@ public class SwaggerConfig {
 
     @Bean
     public Docket api() {
-        return new Docket(DocumentationType.SWAGGER_2).groupName("api").apiInfo(apiInfo()).select().paths(apiPaths())
-                                                      .build();
+        return new Docket(DocumentationType.SWAGGER_2)
+                .groupName("api")
+                .apiInfo(apiInfo())
+                .select()
+                .paths(apiPaths())
+                .build();
     }
 
     private Predicate<String> apiPaths() {

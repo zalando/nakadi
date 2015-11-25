@@ -1,10 +1,10 @@
-package de.zalando.bazaar.lab.webservice;
+package de.zalando.aruha.nakadi.webservice;
 
 import static org.hamcrest.CoreMatchers.is;
 
 import static com.jayway.restassured.RestAssured.given;
-import static com.jayway.restassured.RestAssured.when;
 
+import de.zalando.aruha.nakadi.Application;
 import org.apache.http.HttpStatus;
 
 import org.junit.Before;
@@ -18,8 +18,6 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 
 import com.jayway.restassured.RestAssured;
-
-import de.zalando.bazaar.lab.Application;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(classes = Application.class)

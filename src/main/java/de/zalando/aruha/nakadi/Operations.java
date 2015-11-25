@@ -1,4 +1,4 @@
-package de.zalando.bazaar.lab;
+package de.zalando.aruha.nakadi;
 
 public class Operations {
 

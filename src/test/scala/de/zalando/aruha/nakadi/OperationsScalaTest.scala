@@ -1,4 +1,4 @@
-package de.zalando.bazaar.lab
+package de.zalando.aruha.nakadi
 
 import org.junit.runner.RunWith
 import org.scalatest._

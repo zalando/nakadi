@@ -1,4 +1,4 @@
-package de.zalando.bazaar.lab.webservice;
+package de.zalando.aruha.nakadi.webservice;
 
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
 

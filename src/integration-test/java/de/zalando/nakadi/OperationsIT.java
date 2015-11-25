@@ -1,10 +1,10 @@
-package de.zalando.bazaar;
+package de.zalando.nakadi;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import de.zalando.bazaar.lab.Operations;
+import de.zalando.aruha.nakadi.Operations;
 
 public class OperationsIT {
 

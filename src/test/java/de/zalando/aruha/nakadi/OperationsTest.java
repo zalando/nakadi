@@ -1,4 +1,4 @@
-package de.zalando.bazaar.lab;
+package de.zalando.aruha.nakadi;
 
 import static org.junit.Assert.assertEquals;
 

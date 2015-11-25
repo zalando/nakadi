@@ -1,4 +1,3 @@
-import groovy.sql.Sql
 import static groovy.io.FileType.FILES
 
 apply plugin: 'java'
@@ -10,19 +9,12 @@ apply plugin: 'com.lv.dbdeploy'
 apply plugin: 'scala'
 apply plugin: 'docker'
 
-mainClassName = 'de.zalando.bazaar.lab.Application'
-def dockerGroup = "bazaar"
-def dockerApplicationName = "hello-world-ng"
+mainClassName = 'de.zalando.aruha.nakadi.Application'
+def dockerGroup = "aruha"
+def dockerApplicationName = "nakadi"
 
 repositories {
-//    mavenCentral()
-    maven {
-        credentials {
-            username nexusUser
-            password nexusPassword
-        }
-        url "https://maven.zalando.net/content/groups/public"
-    }
+    mavenCentral()
 }
 
 sourceSets {
@@ -47,16 +39,9 @@ sourceSets {
 
 buildscript {
     repositories {
-//        mavenCentral()
+        mavenCentral()
         maven {
             url "https://plugins.gradle.org/m2/"
-        }
-        maven {
-            credentials {
-                username nexusUser
-                password nexusPassword
-            }
-            url "https://maven.zalando.net/content/groups/public"
         }
     }
 
@@ -68,7 +53,7 @@ buildscript {
 }
 
 jar {
-    baseName = 'gs-gradle'
+    baseName = 'nakadi'
     version = '0.1.0'
 }
 
@@ -80,13 +65,10 @@ configurations {
     integrationTestRuntime.extendsFrom testRuntime
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
-    pgsql
 }
 
 
 dependencies {
-    pgsql 'postgresql:postgresql:9.0-801-ZAL-3'
-    compile 'de.zalando.messaging:messaging-common:2.2.0'
     compile('org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE') {
         exclude module: 'logback-classic'
         exclude module: 'log4j-over-slf4j'
@@ -96,8 +78,6 @@ dependencies {
     compile 'redis.clients:jedis:2.1.0'
     compile 'org.scala-lang:scala-library:2.11.6'
     compile 'joda-time:joda-time:2.2'
-    compile 'postgresql:postgresql:9.0-801-ZAL-3'
-    compile 'de.zalando:zalando-sprocwrapper:1.1.9'
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
     compile 'io.springfox:springfox-swagger2:2.2.2'
     compile 'io.springfox:springfox-swagger-ui:2.2.2'
@@ -123,11 +103,12 @@ docker {
     applicationName = dockerApplicationName
 }
 
-task startDockerContainer (type:Exec) {
-    commandLine "bash", "-c", "docker run -p 8080:8080 -i -t -d -v /data/zalando/logs:/data/zalando/logs \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+
+task startDockerContainer(type: Exec) {
+    commandLine "bash", "-c", "docker run -p 8080:8080 -P -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
 }
 
-task stopDockerContainer (type:Exec) {
+task stopDockerContainer(type: Exec) {
     commandLine "bash", "-c", "docker stop \$(docker ps | grep \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk '{print \$3}') | awk '{print \$1}')"
 }
 
@@ -147,26 +128,8 @@ task fullAcceptanceTest(type: GradleBuild) {
     finalizedBy stopDockerContainer
 }
 
-task cleanDb << {
-    def sql = getSqlInstance()
-
-    sql.execute('DROP TABLE "Person"')
-
-    sql.close()
-}
-
-task dbBootstrap << {
-    def sql = getSqlInstance()
-
-    def sqlFileList = getSortedSqlFiles()
-
-    sqlFileList.each {
-        println 'Running script: ' + it
-        String sqlString = it.text
-        sql.execute(sqlString)
-    }
-
-    sql.close()
+task bootstrapData << {
+    //todo: run kafka docker with some topics
 }
 
 test {
@@ -193,30 +156,8 @@ task development << {
 
 bootRun {
     addResources = false
-    main = 'de.zalando.bazaar.lab.Application'
+    main = 'de.zalando.aruha.nakadi.Application'
 }
 
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
-
-def getSortedSqlFiles() {
-    def sqlFileList = []
-    new File('database').eachFileRecurse(FILES) {
-        if (it.name.endsWith('.sql')) {
-            sqlFileList << it
-        }
-    }
-
-    sqlFileList.sort()
-}
-
-def getSqlInstance() {
-    // This is needed to get postgreSQL driver onto the Groovy/Gradle classpath
-    configurations.pgsql.each { file ->
-        println "Adding URL: $file"
-        gradle.class.classLoader.addURL(file.toURI().toURL())
-    }
-
-    def db = [driver: 'org.postgresql.Driver', jdbcUrl: 'jdbc:postgresql://localhost:5432/bazaar_lab', user: 'postgres', password: 'postgres']
-    Sql.newInstance(db.jdbcUrl, db.user, db.password, db.driver)
-}
