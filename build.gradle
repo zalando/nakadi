@@ -1,3 +1,4 @@
+import java.util.concurrent.TimeUnit
 import static groovy.io.FileType.FILES
 
 apply plugin: 'java'
@@ -92,7 +93,7 @@ dependencies {
     compile 'org.apache.zookeeper:zookeeper:3.4.5'
     //compile 'redis.clients:jedis:2.1.0'
 
-	// scala dependencies
+    // scala dependencies
     //compile 'org.scala-lang:scala-library:2.11.6'
     //testCompile 'org.scalatest:scalatest_2.11:2.2.4'
 
@@ -134,17 +135,57 @@ task acceptanceTest(type: Test) {
     classpath = sourceSets.acceptanceTest.runtimeClasspath
 }
 
-task waitForApplicationPort() {
+def execAndWait(command, timeoutInSeconds = 15) {
+    println "Running command: " + command
+    ProcessBuilder pb = new ProcessBuilder(["bash", "-c", command]).inheritIO();
+    Process proc = pb.start();
+    proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS);
+    return proc.exitValue()
+}
+
+task stopKafkaInDocker {
+    doLast {
+        execAndWait("docker ps | grep 'local-kafka' | awk '{print \$1}' | xargs docker stop")
+    }
+    outputs.upToDateWhen { false }
+}
+/*
+task buildLocalKafkaDocker {
+    inputs.files(['Dockerfile.kafka', 'install-local-kafka.sh', 'start-local-kafka.sh'].collect{f -> project.file('local-kafka/' + f)})
+    doLast {
+        execAndWait("docker build --file local-kafka/Dockerfile.kafka -t local-kafka local-kafka", 120)
+    }
+    outputs.property 'local-kafka-docker.uptodate', 'true'
+    //outputs.upToDateWhen { false }
+}
+
+buildLocalKafkaDocker.onlyIf { !buildLocalKafkaDocker.isUpToDate}
+*/
+
+task startKafkaInDocker (type: Exec) {
+    workingDir 'local-kafka'
+    commandLine 'make', 'run'
+}
+
+task startDockerContainerAndWait() {
+    // start app with docker
+    dependsOn startDockerContainer
+
+    doLast {
+        // wait till application is up (health check is successful)
+        int result = 1
+        while (result != 0) {
+            result = execAndWait('curl http://localhost:8080/health')
+            sleep(1000L)
+        }
+    }
+    outputs.upToDateWhen { false }
 }
 
 task fullAcceptanceTest(type: GradleBuild) {
-    dependsOn startDockerContainer, waitForApplicationPort
+    dependsOn startKafkaInDocker, startDockerContainerAndWait
     tasks = ['acceptanceTest']
-    finalizedBy stopDockerContainer
-}
-
-task bootstrapData << {
-    //todo: run kafka docker with some topics
+    finalizedBy stopKafkaInDocker, stopDockerContainer
 }
 
 test {
@@ -166,7 +207,7 @@ acceptanceTest {
 }
 
 task development << {
-	jvmArgs = ["-Dnakadi.config=envs/development.conf"]
+    jvmArgs = ["-Dnakadi.config=envs/development.conf"]
     //bootRun.systemProperty 'nakadi.config', 'envs/development.conf'
 }
 
