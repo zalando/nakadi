@@ -6,7 +6,8 @@ apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'spring-boot'
 apply plugin: 'com.lv.dbdeploy'
-apply plugin: 'scala'
+// if this is applied, include scala dependencies (see below)
+// apply plugin: 'scala'
 apply plugin: 'docker'
 
 mainClassName = 'de.zalando.aruha.nakadi.Application'
@@ -75,15 +76,24 @@ dependencies {
     }
     compile 'org.springframework:spring-context:4.2.0.RELEASE'
     compile 'org.springframework:spring-jdbc:4.2.0.RELEASE'
-    compile 'redis.clients:jedis:2.1.0'
-    compile 'org.scala-lang:scala-library:2.11.6'
     compile 'joda-time:joda-time:2.2'
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
     compile 'io.springfox:springfox-swagger2:2.2.2'
     compile 'io.springfox:springfox-swagger-ui:2.2.2'
-    compile 'org.slf4j:slf4j-log4j12:1.7.12'
 
-    testCompile 'org.scalatest:scalatest_2.11:2.2.4'
+    compile 'org.slf4j:slf4j-log4j12:1.7.12'
+    compile 'io.dropwizard.metrics:metrics-core:3.1.0'
+    compile 'com.ryantenney.metrics:metrics-spring:3.1.0'
+    compile 'io.dropwizard.metrics:metrics-servlets:3.1.0'
+
+    compile 'org.apache.kafka:kafka-clients:0.8.2.2'
+    compile 'org.apache.zookeeper:zookeeper:3.4.5'
+    //compile 'redis.clients:jedis:2.1.0'
+
+	// scala dependencies
+    //compile 'org.scala-lang:scala-library:2.11.6'
+    //testCompile 'org.scalatest:scalatest_2.11:2.2.4'
+
     testCompile 'junit:junit:4.12'
     testCompile 'org.springframework.boot:spring-boot-starter-test'
     testCompile 'org.mockito:mockito-all:1.10.19'
@@ -154,12 +164,14 @@ acceptanceTest {
 }
 
 task development << {
-    bootRun.systemProperty 'spring.profiles.active', 'development'
+	jvmArgs = ["-Dnakadi.config=envs/development.conf"]
+    //bootRun.systemProperty 'nakadi.config', 'envs/development.conf'
 }
 
 bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
+    jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
 }
 
 check.dependsOn integrationTest

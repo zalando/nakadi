@@ -16,3 +16,4 @@ ADD start-local-kafka.sh ${KAFKA_DIR}/
 ENTRYPOINT bash start-local-kafka.sh
 
 EXPOSE 9092
+EXPOSE 2181
