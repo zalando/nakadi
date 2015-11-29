@@ -14,6 +14,7 @@ import com.codahale.metrics.annotation.Timed;
 
 import de.zalando.aruha.nakadi.domain.Problem;
 import de.zalando.aruha.nakadi.domain.Topic;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 
 import io.swagger.annotations.ApiOperation;
@@ -54,13 +55,13 @@ public class TopicsController {
 
     @Timed
     @RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
-    public void listPartitions(@PathVariable("topicId") final String topicId) {
-        throw new UnsupportedOperationException();
+    public List<TopicPartition> listPartitions(@PathVariable("topicId") final String topicId) {
+    	return topicRepository.listPartitions(topicId);
     }
 
     @Timed
     @RequestMapping(value = "/{topicId}/partitions/{partitionId}", method = RequestMethod.GET)
-    public void getPartition(@PathVariable("topicId") final String topicId) {
+    public TopicPartition getPartition(@PathVariable("topicId") final String topicId) {
         throw new UnsupportedOperationException();
     }
 

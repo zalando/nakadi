@@ -18,6 +18,7 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 
 import de.zalando.aruha.nakadi.domain.Topic;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 
@@ -41,7 +42,7 @@ public class KafkaRepository implements TopicRepository {
 					.collect(Collectors.toList());
 			LOG.info("topics: {}", children);
 			return children;
-		} catch (KeeperException | InterruptedException | IOException | NullPointerException e) {
+		} catch (KeeperException | InterruptedException | IOException e) {
 			LOG.error("Failed to list topics", e);
 		}
 
@@ -54,6 +55,18 @@ public class KafkaRepository implements TopicRepository {
 
 		final ProducerRecord record = new ProducerRecord<String, String>(topicId, partitionId, v);
 		factory.createProducer().send(record);
+	}
+
+	@Override
+	public List<TopicPartition> listPartitions(final String topicId) {
+
+		try {
+			return zkFactory.get().getChildren(String.format("/brokers/topics/%s/partitions", topicId), false).stream()
+					.map(p -> new TopicPartition(topicId, p)).collect(Collectors.toList());
+		} catch (KeeperException | InterruptedException | IOException e) {
+			LOG.error("Failed to get partitions", e);
+		}
+		return null;
 	}
 }
 
