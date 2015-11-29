@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.PropertySource;
+
 import org.springframework.stereotype.Component;
 
 import de.zalando.aruha.nakadi.domain.Topic;
@@ -36,7 +36,9 @@ public class KafkaRepository implements TopicRepository {
         LOG.info("list topics");
         try {
             final ZooKeeper zk = zkFactory.get();
-            final List<Topic> children = zk.getChildren("/brokers/topics", false).stream().map(s -> new Topic(s)).collect(Collectors.toList());
+
+            final List<Topic> children = zk.getChildren("/brokers/topics", false).stream().map(s -> new Topic(s))
+            		.collect(Collectors.toList());
             LOG.info("topics: {}", children);
             return children;
         } catch (KeeperException | InterruptedException | IOException | NullPointerException e) {

@@ -4,10 +4,10 @@ public class Topic {
     private String name;
 
     public Topic(final String name) {
-    	setName(name);
-	}
+        setName(name);
+    }
 
-	public String getName() {
+    public String getName() {
         return name;
     }
 
@@ -15,9 +15,9 @@ public class Topic {
         this.name = name;
     }
 
-	@Override
-	public String toString() {
-		return "Topic [name=" + name + "]";
-	}
+    @Override
+    public String toString() {
+        return "Topic [name=" + name + "]";
+    }
 
 }
