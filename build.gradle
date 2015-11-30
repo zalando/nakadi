@@ -76,6 +76,8 @@ dependencies {
     }
     compile 'org.springframework:spring-context:4.2.0.RELEASE'
     compile 'org.springframework:spring-jdbc:4.2.0.RELEASE'
+    compile 'org.springframework:spring-web:4.2.0.RELEASE'
+
     compile 'joda-time:joda-time:2.2'
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
     compile 'io.springfox:springfox-swagger2:2.2.2'
@@ -86,7 +88,7 @@ dependencies {
     compile 'com.ryantenney.metrics:metrics-spring:3.1.0'
     compile 'io.dropwizard.metrics:metrics-servlets:3.1.0'
 
-    compile 'org.apache.kafka:kafka-clients:0.8.2.2'
+    compile 'org.apache.kafka:kafka-clients:0.9.0.0'
     compile 'org.apache.zookeeper:zookeeper:3.4.5'
     //compile 'redis.clients:jedis:2.1.0'
 
@@ -171,6 +173,9 @@ task development << {
 bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
+    jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
+}
+run {
     jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
 }
 

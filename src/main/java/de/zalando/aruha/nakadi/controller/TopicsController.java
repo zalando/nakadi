@@ -2,6 +2,8 @@ package de.zalando.aruha.nakadi.controller;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,8 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.codahale.metrics.annotation.Metered;
 import com.codahale.metrics.annotation.Timed;
 
+import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.Problem;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
@@ -24,7 +28,7 @@ import io.swagger.annotations.ApiResponses;
 @RestController
 @RequestMapping(value = "/topics")
 public class TopicsController {
-
+	private static final Logger LOG = LoggerFactory.getLogger(TopicsController.class);
     @Autowired
     private TopicRepository topicRepository;
 
@@ -69,6 +73,7 @@ public class TopicsController {
     @RequestMapping(value = "/{topicId}/partitions/{partitionId}", method = RequestMethod.POST)
     public void postMessageToPartition(@PathVariable("topicId") final String topicId,
             @PathVariable("partitionId") final String partitionId, @RequestBody final String v) {
+    	LOG.info("{} {} {}", new Object [] {topicId, partitionId, v});
         topicRepository.postMessage(topicId, partitionId, v);
     }
 

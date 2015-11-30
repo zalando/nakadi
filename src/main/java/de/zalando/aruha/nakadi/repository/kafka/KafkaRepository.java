@@ -2,12 +2,16 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
@@ -70,6 +74,7 @@ public class KafkaRepository implements TopicRepository {
 	}
 }
 
+
 @Component
 @PropertySource("${nakadi.config}")
 class Factory {
@@ -83,13 +88,20 @@ class Factory {
 	public Factory() {
 	}
 
-	public Producer createProducer() {
+	public Producer<String, String> createProducer() {
+		return new org.apache.kafka.clients.producer.KafkaProducer(getProps());
+	}
 
+	public Consumer<String, String> createConsumer() {
+		return  new org.apache.kafka.clients.consumer.KafkaConsumer<>(getProps());
+	}
+
+	private Properties getProps() {
 		final Properties props = new Properties();
 		props.put("metadata.broker.list", zookeeperAddress);
-
-		final Producer<KafkaDefaults.KeySerializer, KafkaDefaults.ValueSerializer> p = new KafkaProducer<>(props);
-
-		return p;
+		props.put("bootstrap.servers", kafkaAddress);
+		props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+		props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+		return props;
 	}
 }
