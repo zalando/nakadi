@@ -219,6 +219,7 @@ task development << {
 bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
+    environment 'NAKADI_OAUTH2_ENABLED', 'false'
     jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
 }
 
