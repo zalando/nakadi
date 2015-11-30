@@ -7,6 +7,7 @@ import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -21,6 +22,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 
+import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -37,43 +39,35 @@ public class KafkaRepository implements TopicRepository {
 	private ZooKeeperHolder zkFactory;
 
 	@Override
-	public List<Topic> listTopics() {
-		LOG.info("list topics");
+	public List<Topic> listTopics() throws NakadiException {
 		try {
-			final ZooKeeper zk = zkFactory.get();
-
-			final List<Topic> children = zk.getChildren("/brokers/topics", false).stream().map(s -> new Topic(s))
+			return zkFactory.get().getChildren("/brokers/topics", false).stream().map(s -> new Topic(s))
 					.collect(Collectors.toList());
-			LOG.info("topics: {}", children);
-			return children;
 		} catch (KeeperException | InterruptedException | IOException e) {
-			LOG.error("Failed to list topics", e);
+			throw new NakadiException("Failed to get partitions", e);
 		}
-
-		return null;
 	}
 
 	@Override
-	public void postMessage(final String topicId, final String partitionId, final String v) {
-		LOG.info("%s %s %s", topicId, partitionId, v);
+	public void postEvent(final String topicId, final String partitionId, final String payload) {
+		LOG.info("%s %s %s", topicId, partitionId, payload);
 
-		final ProducerRecord record = new ProducerRecord<String, String>(topicId, partitionId, v);
+		final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, partitionId, payload);
 		factory.createProducer().send(record);
 	}
 
 	@Override
-	public List<TopicPartition> listPartitions(final String topicId) {
+	public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
 
 		try {
 			return zkFactory.get().getChildren(String.format("/brokers/topics/%s/partitions", topicId), false).stream()
 					.map(p -> new TopicPartition(topicId, p)).collect(Collectors.toList());
 		} catch (KeeperException | InterruptedException | IOException e) {
-			LOG.error("Failed to get partitions", e);
+			throw new NakadiException("Failed to get partitions", e);
 		}
-		return null;
+
 	}
 }
-
 
 @Component
 @PropertySource("${nakadi.config}")
@@ -89,11 +83,11 @@ class Factory {
 	}
 
 	public Producer<String, String> createProducer() {
-		return new org.apache.kafka.clients.producer.KafkaProducer(getProps());
+		return new KafkaProducer(getProps());
 	}
 
 	public Consumer<String, String> createConsumer() {
-		return  new org.apache.kafka.clients.consumer.KafkaConsumer<>(getProps());
+		return new KafkaConsumer<>(getProps());
 	}
 
 	private Properties getProps() {

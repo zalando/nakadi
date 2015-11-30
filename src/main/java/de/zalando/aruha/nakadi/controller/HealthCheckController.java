@@ -1,5 +1,6 @@
-package de.zalando.aruha.nakadi.webservice;
+package de.zalando.aruha.nakadi.controller;
 
+import static org.springframework.http.ResponseEntity.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,8 +13,8 @@ import static org.springframework.web.bind.annotation.RequestMethod.GET;
 @RequestMapping(value = "/health", produces = MediaType.TEXT_PLAIN)
 public class HealthCheckController {
 
-    @RequestMapping(method = GET)
-    public ResponseEntity<String> healthCheck() {
-        return ResponseEntity.ok().body("Ok");
-    }
+	@RequestMapping(method = GET)
+	public ResponseEntity<String> healthCheck() {
+		return ok().body("OK");
+	}
 }
