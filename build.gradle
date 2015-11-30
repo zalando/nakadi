@@ -126,9 +126,16 @@ docker {
     applicationName = dockerApplicationName
 }
 
+task buildDockerContainer {
+    doLast {
+        execAndWait("docker build -t aruha/nakadi .", 120)
+    }
+    outputs.upToDateWhen { false }
+}
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -p 8080:8080 -i -t -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -p 8080:8080 -i -t -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+    dependsOn buildDockerContainer
 }
 
 task stopDockerContainer(type: Exec) {

@@ -1,5 +1,7 @@
 package de.zalando.aruha.nakadi.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +18,7 @@ import java.text.MessageFormat;
 @Configuration
 public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SecurityConfiguration.class);
     public static final String UID = "uid";
 
     @Value("${nakadi.oauth2.tokenInfoUri}")
@@ -29,6 +32,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
     @Override
     public void configure(final HttpSecurity http) throws Exception {
+        LOG.info("Security: OAuth2 is " + (oauthEnabled ? "enabled" : "disabled"));
         if (oauthEnabled) {
             http.authorizeRequests()
                     .antMatchers("/health").permitAll()
