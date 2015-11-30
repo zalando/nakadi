@@ -149,18 +149,6 @@ task stopKafkaInDocker {
     }
     outputs.upToDateWhen { false }
 }
-/*
-task buildLocalKafkaDocker {
-    inputs.files(['Dockerfile.kafka', 'install-local-kafka.sh', 'start-local-kafka.sh'].collect{f -> project.file('local-kafka/' + f)})
-    doLast {
-        execAndWait("docker build --file local-kafka/Dockerfile.kafka -t local-kafka local-kafka", 120)
-    }
-    outputs.property 'local-kafka-docker.uptodate', 'true'
-    //outputs.upToDateWhen { false }
-}
-
-buildLocalKafkaDocker.onlyIf { !buildLocalKafkaDocker.isUpToDate}
-*/
 
 task startKafkaInDocker (type: Exec) {
     workingDir 'local-kafka'
@@ -212,10 +200,12 @@ task development << {
 }
 
 bootRun {
+    dependsOn startKafkaInDocker
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
     jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
 }
+
 run {
     jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
 }
