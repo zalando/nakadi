@@ -9,6 +9,7 @@ from time import sleep
 from kafka import SimpleConsumer
 from kafka.common import KafkaError
 from kafka.producer.base import Producer
+from nakadi.utils.utils import string_hashcode
 
 logging.basicConfig(level=logging.INFO)
 
@@ -260,9 +261,10 @@ def __push_events_to_kafka(topic, events):
 
 def __produce_kafka_message(client, topic, key, event):
     partition_ids = client.get_partition_ids_for_topic(topic)
-    key_stripped = key.upper().strip()
-    partition_to_use = hash(key_stripped) % len(partition_ids)
-    logging.info("Using partition %s for key %s (stripped: %s)", partition_to_use, key, key_stripped)
+    key_stripped = key.decode("utf-8").upper().strip()
+    key_hash = string_hashcode(key_stripped)
+    partition_to_use = key_hash % len(partition_ids)
+    logging.info("Using partition %s for key %s (stripped: %s, hash: %s)", partition_to_use, key, key_stripped, key_hash)
 
     producer = Producer(client)
     producer.send_messages(topic, partition_to_use, event)
