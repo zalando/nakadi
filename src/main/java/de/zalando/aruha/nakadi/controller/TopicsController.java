@@ -51,12 +51,6 @@ public class TopicsController {
 	}
 
 	@Timed
-	@RequestMapping(value = "/{topicId}", method = RequestMethod.GET)
-	public void getTopic(@PathVariable("topicId") final String topicId) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Timed
 	@RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
 	public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
 		try {
@@ -73,11 +67,26 @@ public class TopicsController {
 	}
 
 	@Timed
-	@RequestMapping(value = "/{topicId}/partitions/{partitionId}", method = RequestMethod.POST)
+	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events", method = RequestMethod.POST)
 	public ResponseEntity<?> postEventToPartition(@PathVariable("topicId") final String topicId,
 			@PathVariable("partitionId") final String partitionId, @RequestBody final String messagePayload) {
 		LOG.trace("Event received: {}, {}, {}", new Object[] { topicId, partitionId, messagePayload });
-		topicRepository.postEvent(topicId, partitionId, messagePayload);
+		try {
+			topicRepository.postEvent(topicId, partitionId, messagePayload);
+			return ok().build();
+		} catch (final NakadiException e) {
+			LOG.error("error posting to partition", e);
+			return status(500).body(e.getProblemMessage());
+		}
+	}
+
+	@Timed
+	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events", method = RequestMethod.GET)
+	public ResponseEntity<?> readEventFromPartition(@PathVariable("topicId") final String topicId,
+			@PathVariable("partitionId") final String partitionId, @RequestBody final String messagePayload) {
+		// LOG.trace("Event received: {}, {}, {}", new Object[] { topicId,
+		// partitionId, messagePayload });
+		topicRepository.readEvent(topicId, partitionId);
 		return ok().build();
 	}
 
