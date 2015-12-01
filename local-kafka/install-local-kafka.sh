@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#KAFKA_VERSION="0.8.2.1"
-#SCALA_VERSION="2.10"
+#KAFKA_VERSION="0.9.0.0"
+#SCALA_VERSION="2.11"
 #KAFKA_IMG="kafka_${SCALA_VERSION}-${KAFKA_VERSION}"
 
 apt-get update
