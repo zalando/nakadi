@@ -24,7 +24,7 @@ class KafkaClientPool(object):
         return KafkaClient(self.kafka_brokers)
 
     def __pick(self):
-        logging.info("Pick (thread: %s)", threading.current_thread().getName())
+        # logging.info("Pick (thread: %s)", threading.current_thread().getName())
         try:
             client = self.queue.get(block=False)
         except queue.Empty:
@@ -32,7 +32,7 @@ class KafkaClientPool(object):
         return client
 
     def __put(self, client):
-        logging.info("Put (thread: %s)", threading.current_thread().getName())
+        # logging.info("Put (thread: %s)", threading.current_thread().getName())
         return self.queue.put(client)
 
     def close(self):
@@ -43,7 +43,7 @@ class KafkaClientPool(object):
     @contextmanager
     def kafka_client(self):
 
-        logging.info("Potential kafka clients left: %s", self.released_clients._value)
+        # logging.info("Potential kafka clients left: %s", self.released_clients._value)
         if not self.released_clients.acquire(blocking=True, timeout=0.5):
             raise TooManyKafkaClientsException()
 
