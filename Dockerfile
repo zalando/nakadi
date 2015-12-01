@@ -18,4 +18,4 @@ RUN chmod 777 ${METRICS_FOLDER}
 # - 32 workers (processes)
 # - worker type: eventlet ("green threads")
 # - log access_log to stderr
-CMD gunicorn --workers 32 --worker-class eventlet --access-logfile - --bind 0.0.0.0:8080 nakadi.hack:application
+CMD gunicorn --workers 32 --worker-class eventlet --access-logfile - --error-logfile - --log-level debug --bind 0.0.0.0:8080 nakadi.hack:application
