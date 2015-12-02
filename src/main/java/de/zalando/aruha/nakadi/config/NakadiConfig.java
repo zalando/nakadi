@@ -8,8 +8,11 @@ import javax.servlet.ServletContainerInitializer;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Metric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletContextInitializer;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.boot.context.web.ServletContextApplicationContextInitializer;
@@ -43,12 +46,16 @@ public class NakadiConfig {
 
 	@Bean
 	public MetricsConfigurerAdapter metricsConfigurerAdapter() {
-		final MetricsConfigurerAdapter mca = new MetricsConfigurerAdapter() {
+		return new MetricsConfigurerAdapter() {
 			@Override
 			public void configureReporters(final MetricRegistry metricRegistry) {
 				//ConsoleReporter.forRegistry(metricRegistry).build().start(15, TimeUnit.SECONDS);
 			}
+
+			@Override
+			public MetricRegistry getMetricRegistry() {
+				return METRIC_REGISTRY;
+			}
 		};
-		return mca ;
 	}
 }
