@@ -1,15 +1,17 @@
 import java.util.concurrent.TimeUnit
-import static groovy.io.FileType.FILES
 
 apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'spring-boot'
-apply plugin: 'com.lv.dbdeploy'
 // if this is applied, include scala dependencies (see below)
 // apply plugin: 'scala'
-apply plugin: 'docker'
+
+group 'de.zalando.aruha'
+version '0.1.0'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 mainClassName = 'de.zalando.aruha.nakadi.Application'
 def dockerGroup = "aruha"
@@ -49,18 +51,12 @@ buildscript {
 
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
-        classpath "gradle.plugin.com.lv.plugins:gradle-dbdeploy-plugin:1.3"
-        classpath "se.transmode.gradle:gradle-docker:1.2"
     }
 }
 
 jar {
     baseName = 'nakadi'
-    version = '0.1.0'
 }
-
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 
 configurations {
     integrationTestCompile.extendsFrom testCompile
@@ -121,13 +117,8 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
 }
 
-docker {
-    baseImage "zalando/openjdk:8u66-b17-1-3"
-    group = dockerGroup
-    applicationName = dockerApplicationName
-}
-
 task buildDockerContainer {
+    dependsOn bootRepackage
     doLast {
         execAndWait("docker build -t aruha/nakadi .", 120)
     }
@@ -135,7 +126,8 @@ task buildDockerContainer {
 }
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -p 8080:8080 -i -t -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=development.conf\" -p 8080:8080 -i -t -d " +
+            "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
     dependsOn buildDockerContainer
 }
 
