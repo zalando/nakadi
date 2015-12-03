@@ -4,54 +4,38 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.network.KafkaChannel;
-import org.apache.kafka.common.requests.FetchRequest;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import kafka.api.FetchRequestBuilder;
-import kafka.api.OffsetRequest;
+
 import kafka.api.PartitionOffsetRequestInfo;
 import kafka.common.TopicAndPartition;
+import kafka.javaapi.OffsetRequest;
 import kafka.javaapi.OffsetResponse;
 import kafka.javaapi.consumer.SimpleConsumer;
-import kafka.log.Log;
-
-import static com.google.common.base.Strings.isNullOrEmpty;
-import static java.util.stream.Collectors.*;
 
 @Component
 public class KafkaRepository implements TopicRepository {
@@ -94,31 +78,34 @@ public class KafkaRepository implements TopicRepository {
 	public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
 
 		final SimpleConsumer sc = factory.getSimpleConsumer();
+		try {
+			final List<TopicAndPartition> partitions = factory.getConsumer().partitionsFor(topicId).stream()
+					.map(p -> new TopicAndPartition(p.topic(), p.partition())).collect(Collectors.toList());
 
-		final List<TopicAndPartition> partitions = factory.getConsumer().partitionsFor(topicId).stream()
-				.map(p -> new TopicAndPartition(p.topic(), p.partition())).collect(Collectors.toList());
+			final Map<TopicAndPartition, PartitionOffsetRequestInfo> latestPartitionRequests = partitions.stream()
+					.collect(Collectors.toMap(Function.identity(),
+							t -> new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), 1)));
+			final Map<TopicAndPartition, PartitionOffsetRequestInfo> earliestPartitionRequests = partitions.stream()
+					.collect(Collectors.toMap(Function.identity(),
+							t -> new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.EarliestTime(), 1)));
 
-		final Map<TopicAndPartition, PartitionOffsetRequestInfo> latestPartitionRequests = partitions.stream()
-				.collect(Collectors.toMap(Function.identity(),
-						t -> new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), 1)));
-		final Map<TopicAndPartition, PartitionOffsetRequestInfo> earliestPartitionRequests = partitions.stream()
-				.collect(Collectors.toMap(Function.identity(),
-						t -> new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.EarliestTime(), 1)));
+			final OffsetResponse latestPartitionData = fetchPartitionData(sc, latestPartitionRequests);
+			final OffsetResponse earliestPartitionData = fetchPartitionData(sc, earliestPartitionRequests);
 
-		final OffsetResponse latestPartitionData = fetchPartitionData(sc, latestPartitionRequests);
-		final OffsetResponse earliestPartitionData = fetchPartitionData(sc, earliestPartitionRequests);
-
-		return partitions.stream()
-				.map(r -> processTopicPartitionMetadata(r, latestPartitionData, earliestPartitionData))
-				.collect(Collectors.toList());
-
+			return partitions.stream()
+					.map(r -> processTopicPartitionMetadata(r, latestPartitionData, earliestPartitionData))
+					.collect(Collectors.toList());
+		} finally {
+			sc.close();
+		}
 	}
 
-	private TopicPartition processTopicPartitionMetadata(final TopicAndPartition r,
+	private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,
 			final OffsetResponse latestPartitionData, final OffsetResponse earliestPartitionData) {
-		final TopicPartition tp = new TopicPartition(r.topic(), Integer.toString(r.partition()));
-		final long latestOffset = latestPartitionData.offsets(r.topic(), r.partition())[0];
-		final long earliestOffset = earliestPartitionData.offsets(r.topic(), r.partition())[0];
+
+		final TopicPartition tp = new TopicPartition(partition.topic(), Integer.toString(partition.partition()));
+		final long latestOffset = latestPartitionData.offsets(partition.topic(), partition.partition())[0];
+		final long earliestOffset = earliestPartitionData.offsets(partition.topic(), partition.partition())[0];
 
 		tp.setNewestAvailableOffset(Long.toString(latestOffset));
 		tp.setOldestAvailableOffset(Long.toString(earliestOffset));
@@ -128,8 +115,8 @@ public class KafkaRepository implements TopicRepository {
 
 	private OffsetResponse fetchPartitionData(final SimpleConsumer sc,
 			final Map<TopicAndPartition, PartitionOffsetRequestInfo> partitionRequests) {
-		final kafka.javaapi.OffsetRequest request = new kafka.javaapi.OffsetRequest(partitionRequests,
-				OffsetRequest.CurrentVersion(), "offsetlookup");
+		final OffsetRequest request = new OffsetRequest(partitionRequests, kafka.api.OffsetRequest.CurrentVersion(),
+				"offsetlookup_" + UUID.randomUUID());
 		return sc.getOffsetsBefore(request);
 	}
 
@@ -147,19 +134,17 @@ public class KafkaRepository implements TopicRepository {
 }
 
 @Component
+@PropertySource("${nakadi.config}")
 class Factory {
 
-	@Autowired
-	@Qualifier("kafkaBrokers")
+	@Value("${nakadi.kafka.broker}")
 	private String kafkaAddress;
 
-	@Autowired
-	@Qualifier("zookeeperBrokers")
+	@Value("${nakadi.zookeeper.brokers}")
 	private String zookeeperAddress;
 
 	@Autowired
 	private Producer<String, String> producer;
-
 	@Autowired
 	private Consumer<String, String> consumer;
 
