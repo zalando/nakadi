@@ -9,7 +9,7 @@ apply plugin: 'spring-boot'
 // apply plugin: 'scala'
 
 group 'de.zalando.aruha'
-version '0.1.0'
+//version '0.1.0'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -117,6 +117,20 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
 }
 
+task stopKafkaInDocker {
+    doLast {
+        execAndWait("docker ps | grep 'local-kafka' | awk '{print \$1}' | xargs docker stop")
+    }
+    outputs.upToDateWhen { false }
+}
+
+task startKafkaInDocker() {
+    doLast {
+        execAndWait("make --directory local-kafka run")
+    }
+    outputs.upToDateWhen { false }
+}
+
 task buildDockerContainer {
     dependsOn bootRepackage
     doLast {
@@ -126,9 +140,10 @@ task buildDockerContainer {
 }
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=development.conf\" -p 8080:8080 -i -t -d " +
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=development.conf\" " +
+            "--link local-kafka:local_kafka -p 8080:8080 -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
-    dependsOn buildDockerContainer
+    dependsOn buildDockerContainer, startKafkaInDocker
 }
 
 task stopDockerContainer(type: Exec) {
@@ -153,18 +168,6 @@ def execAndWait(command, timeoutInSeconds = 15) {
     return proc.exitValue()
 }
 
-task stopKafkaInDocker {
-    doLast {
-        execAndWait("docker ps | grep 'local-kafka' | awk '{print \$1}' | xargs docker stop")
-    }
-    outputs.upToDateWhen { false }
-}
-
-task startKafkaInDocker (type: Exec) {
-    workingDir 'local-kafka'
-    commandLine 'make', 'run'
-}
-
 task startDockerContainerAndWait() {
     // start app with docker
     dependsOn startDockerContainer
@@ -181,7 +184,7 @@ task startDockerContainerAndWait() {
 }
 
 task fullAcceptanceTest(type: GradleBuild) {
-    dependsOn startKafkaInDocker, startDockerContainerAndWait
+    dependsOn startDockerContainerAndWait
     tasks = ['acceptanceTest']
     finalizedBy stopKafkaInDocker, stopDockerContainer
 }

@@ -27,6 +27,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.PropertySource;
@@ -49,6 +50,7 @@ import kafka.javaapi.OffsetResponse;
 import kafka.javaapi.consumer.SimpleConsumer;
 import kafka.log.Log;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.stream.Collectors.*;
 
 @Component
@@ -145,17 +147,19 @@ public class KafkaRepository implements TopicRepository {
 }
 
 @Component
-@PropertySource("${nakadi.config}")
 class Factory {
 
-	@Value("${nakadi.kafka.broker}")
+	@Autowired
+	@Qualifier("kafkaBrokers")
 	private String kafkaAddress;
 
-	@Value("${nakadi.zookeeper.brokers}")
+	@Autowired
+	@Qualifier("zookeeperBrokers")
 	private String zookeeperAddress;
 
 	@Autowired
 	private Producer<String, String> producer;
+
 	@Autowired
 	private Consumer<String, String> consumer;
 
