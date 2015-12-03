@@ -9,7 +9,6 @@ apply plugin: 'spring-boot'
 // apply plugin: 'scala'
 
 group 'de.zalando.aruha'
-//version '0.1.0'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -158,6 +157,7 @@ task integrationTest(type: Test) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
+    jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
 }
 
 def execAndWait(command, timeoutInSeconds = 15) {
