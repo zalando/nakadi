@@ -16,6 +16,7 @@ import org.springframework.boot.context.web.ServletContextApplicationContextInit
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.web.WebApplicationInitializer;
 
 import com.codahale.metrics.ConsoleReporter;
@@ -24,6 +25,8 @@ import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.servlets.AdminServlet;
 import com.codahale.metrics.servlets.HealthCheckServlet;
 import com.codahale.metrics.servlets.MetricsServlet;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurationSupport;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
@@ -50,5 +53,12 @@ public class NakadiConfig {
 			}
 		};
 		return mca ;
+	}
+
+	@Bean
+	@Primary
+	public ObjectMapper jacksonObjectMapper() {
+	    return new ObjectMapper().setPropertyNamingStrategy(
+	            PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
 	}
 }
