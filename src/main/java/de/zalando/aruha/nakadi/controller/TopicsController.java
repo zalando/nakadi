@@ -5,6 +5,7 @@ import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
 
 import de.zalando.aruha.nakadi.service.EventStream;
+import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,7 +109,7 @@ public class TopicsController {
 			@RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
 			@RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit) {
 
-        final EventStream.StreamConfig streamConfig = new EventStream.StreamConfig(topic, partition, startFrom,
+        final EventStreamConfig streamConfig = new EventStreamConfig(topic, partition, startFrom,
                 batchLimit, ofNullable(streamLimit), ofNullable(batchTimeout), ofNullable(streamTimeout),
                 ofNullable(batchKeepAliveLimit));
 
