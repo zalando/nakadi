@@ -57,7 +57,7 @@ public class EventStream implements Runnable {
         for (String partition : config.getCursors().keySet()) {
             List<String> events = ImmutableList.of();
 
-            // if there are some events read for current partitions - grab them
+            // if there are some events read for current partition - grab them
             if (currentBatch.get(partition) != null && !currentBatch.get(partition).isEmpty()) {
                 events = currentBatch.get(partition);
             }
