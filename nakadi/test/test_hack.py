@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import json
+from io import BytesIO
+import gzip
 
 from nakadi.test import test_common
 from nakadi.test.test_common import TEST_TOPIC, TEST_PARTITIONS_NUM, validate_error_response
@@ -104,7 +106,6 @@ class TestNakadiEndpoints:
 
         assert number_of_partitions_with_increased_offset == 1
 
-
     def test_when_post_events_then_newest_offset_in_partitions_was_increased(self):
         # get initial offsets
         response = self.app.get('/topics/%s/partitions' % TEST_TOPIC)
@@ -126,6 +127,32 @@ class TestNakadiEndpoints:
                 total_offset_increase += new_offset['newest_available_offset'] - initial_offset['newest_available_offset']
         assert total_offset_increase == messages_to_post
 
+    def test_when_post_events_with_compression_then_ok(self, events_num=10):
+        events = []
+        for _ in range(events_num):
+            events.append(test_common.create_dummy_event('dummy-key'))
+        events_str = json.dumps(events).encode()
+
+        out = BytesIO()
+        with gzip.GzipFile(fileobj=out, mode="w") as f:
+            f.write(events_str)
+        compressed_json = out.getvalue()
+
+        response = self.app.post('/topics/%s/events/batch' % TEST_TOPIC,
+                                headers={'Content-Encoding': 'gzip'},
+                                data=compressed_json)
+        assert response.status_code == 201
+
+    def test_when_post_not_compressed_events_with_compression_then_unprocessable_entity(self, events_num=10):
+        events = []
+        for _ in range(events_num):
+            events.append(test_common.create_dummy_event('dummy-key'))
+        events_str = json.dumps(events)
+
+        response = self.app.post('/topics/%s/events/batch' % TEST_TOPIC,
+                                headers={'Content-Encoding': 'gzip'},
+                                data=events_str)
+        validate_error_response(response, 422, 'Body decompression failed')
 
     def __validate_partition_structure(self, partition):
         assert 'partition_id' in partition
