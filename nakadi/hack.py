@@ -224,6 +224,7 @@ def post_event(topic):
 @measured('post_events')
 @authenticate
 def post_events(topic):
+    call_start = datetime.datetime.now()
     encoding = flask.request.headers.get('Content-Encoding')
     if encoding == 'gzip':
         try:
@@ -237,7 +238,10 @@ def post_events(topic):
     else:
         json_data = flask.request.json
 
+    ms_elapsed = monitoring.stop_time_measure(call_start)
+
     logging.info('Received batch of %s events', len(json_data))
+    logging.info('[#DECMP_DESRL_TIME] Time spent on uncompression/deserialization: %s ms', ms_elapsed)
     return __push_events_to_kafka(topic, json_data)
 
 
@@ -265,7 +269,7 @@ def __push_events_to_kafka(topic, events):
             failed += 1
 
     ms_elapsed = monitoring.stop_time_measure(call_start)
-    logging.info('[#POST_TIME_TOTAL] Time spent total %s ms', ms_elapsed)
+    logging.info('[#KAFKA_PUSH_TIME] Time spent total for pushing to kafka: %s ms', ms_elapsed)
 
     metrics_writer.log_events(__get_uid(), topic, "-", len(events) - failed, 0)
 
