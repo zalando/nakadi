@@ -139,7 +139,7 @@ task buildDockerContainer {
 }
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=development.conf\" " +
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=file:////envs/development.conf\" " +
             "--link local-kafka:local_kafka -p 8080:8080 -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
     dependsOn buildDockerContainer, startKafkaInDocker
@@ -157,7 +157,7 @@ task integrationTest(type: Test) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
-    jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 def execAndWait(command, timeoutInSeconds = 15) {
@@ -216,11 +216,11 @@ bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
     environment 'NAKADI_OAUTH2_ENABLED', 'false'
-    jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 run {
-    jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 check.dependsOn integrationTest

@@ -8,4 +8,4 @@ ADD envs envs
 EXPOSE 8080
 
 # run the server when a container based on this image is being run
-ENTRYPOINT java -jar -Djava.security.egd=file:/dev/./urandom -Dnakadi.config=file:////envs/${NAKADI_CONFIG} nakadi.jar
+ENTRYPOINT java -jar -Djava.security.egd=file:/dev/./urandom nakadi.jar
