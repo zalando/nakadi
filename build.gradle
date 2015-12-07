@@ -118,7 +118,7 @@ task wrapper(type: Wrapper) {
 
 task stopKafkaInDocker {
     doLast {
-        execAndWait("docker ps | grep 'local-kafka' | awk '{print \$1}' | xargs docker stop")
+        execAndWait("docker ps | awk '/local-kafka/ {print \$1}' | xargs -n 1 docker stop")
     }
     outputs.upToDateWhen { false }
 }
