@@ -4,6 +4,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
 
+import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import org.slf4j.Logger;
@@ -109,7 +110,7 @@ public class TopicsController {
 			@RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
 			@RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit) {
 
-        final EventStreamConfig streamConfig = new EventStreamConfig(topic, partition, startFrom,
+        final EventStreamConfig streamConfig = new EventStreamConfig(topic, ImmutableMap.of(partition, startFrom),
                 batchLimit, ofNullable(streamLimit), ofNullable(batchTimeout), ofNullable(streamTimeout),
                 ofNullable(batchKeepAliveLimit));
 

@@ -1,28 +1,26 @@
 package de.zalando.aruha.nakadi.service;
 
+import java.util.Map;
 import java.util.Optional;
 
 public class EventStreamConfig {
-    private String topicId;
-    private String partitionId;
-    private String startFrom;
+    private String topic;
+    private Map<String, String> cursors;
     private Integer batchLimit;
     private Optional<Integer> streamLimit;
     private Optional<Integer> batchTimeout;
     private Optional<Integer> streamTimeout;
     private Optional<Integer> batchKeepAliveLimit;
 
-    public EventStreamConfig(final String topicId,
-                             final String partitionId,
-                             final String startFrom,
+    public EventStreamConfig(final String topic,
+                             final Map<String, String> cursors,
                              final Integer batchLimit,
                              final Optional<Integer> streamLimit,
                              final Optional<Integer> batchTimeout,
                              final Optional<Integer> streamTimeout,
                              final Optional<Integer> batchKeepAliveLimit) {
-        this.topicId = topicId;
-        this.partitionId = partitionId;
-        this.startFrom = startFrom;
+        this.topic = topic;
+        this.cursors = cursors;
         this.batchLimit = batchLimit;
         this.streamLimit = streamLimit;
         this.batchTimeout = batchTimeout;
@@ -30,16 +28,12 @@ public class EventStreamConfig {
         this.batchKeepAliveLimit = batchKeepAliveLimit;
     }
 
-    public String getTopicId() {
-        return topicId;
+    public String getTopic() {
+        return topic;
     }
 
-    public String getPartitionId() {
-        return partitionId;
-    }
-
-    public String getStartFrom() {
-        return startFrom;
+    public Map<String, String> getCursors() {
+        return cursors;
     }
 
     public Integer getBatchLimit() {
