@@ -38,6 +38,12 @@ public class EventStream implements Runnable {
 
     @Override
     public void run() {
+        // todo: currently if:
+        // - stream limit and timeout are not set AND
+        // - the keep-alive is not set AND
+        // - client closed the connection
+        // => this thread can stuck till it tries to write to responseEmitter (which can be quite long).
+        // So we should check somehow the status of connection in such cases, or forbid polling without keep-alive
         try {
             int keepAliveInARow = 0;
             int messagesRead = 0;
@@ -99,7 +105,10 @@ public class EventStream implements Runnable {
             }
         }
         catch (IOException e) {
-            LOG.info("I/O error occured when streaming events (possibly client closed connection)", e);
+            LOG.info("I/O error occurred when streaming events (possibly client closed connection)", e);
+        }
+        catch (IllegalStateException e) {
+            LOG.info("Error occurred when streaming events (possibly server closed connection)", e);
         }
         catch (NakadiException e) {
             LOG.error("Error occurred when polling events from kafka", e);

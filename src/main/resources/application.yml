@@ -5,6 +5,8 @@ logging:
     ROOT: INFO
     org.springframework.web: INFO
 nakadi:
+  stream:
+    timeoutMs: 31536000000 # 1 year :-P
   oauth2:
     enabled: true
     tokenInfoUri: https://auth.zalando.com/oauth2/tokeninfo

@@ -11,7 +11,9 @@ import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,6 +34,9 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
 @RestController
 @RequestMapping(value = "/topics")
 public class TopicsController {
@@ -43,6 +48,9 @@ public class TopicsController {
 
 	@Autowired
 	private TaskExecutor taskExecutor;
+
+    @Value("${nakadi.stream.timeoutMs}")
+    private long nakadiStreamTimeout;
 
 	@Timed
 	@RequestMapping(value = "/", method = RequestMethod.GET)
@@ -107,19 +115,47 @@ public class TopicsController {
 			@RequestParam("start_from") final String startFrom,
 			@RequestParam(value = "batch_limit", required = false, defaultValue = "1") final Integer batchLimit,
 			@RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
-			@RequestParam(value = "batch_timeout", required = false) final Integer batchTimeout,
+			@RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
 			@RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
-			@RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit) {
+			@RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
+            final HttpServletResponse response) throws IOException {
 
-        final EventStreamConfig streamConfig = new EventStreamConfig(topic, ImmutableMap.of(partition, startFrom),
-                batchLimit, ofNullable(streamLimit), ofNullable(batchTimeout), ofNullable(streamTimeout),
-                ofNullable(batchKeepAliveLimit));
-		final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic, streamConfig.getCursors());
-        final ResponseBodyEmitter responseEmitter = new ResponseBodyEmitter();
+        final ResponseBodyEmitter responseEmitter = new ResponseBodyEmitter(nakadiStreamTimeout);
 
-		final EventStream eventStreamTask = new EventStream(eventConsumer, responseEmitter, streamConfig);
-        taskExecutor.execute(eventStreamTask);
+        try {
+            // check if topic exists
+            final boolean topicExists = topicRepository.listTopics().stream().anyMatch(t -> topic.equals(t.getName()));
+            if (!topicExists) {
+                response.setStatus(HttpStatus.NOT_FOUND.value());
+                responseEmitter.send(new Problem("topic not found"));
+                responseEmitter.complete();
+            }
 
-		return responseEmitter;
+            // check if partition exists (todo)
+            // check if offset is correct (todo)
+
+            final EventStreamConfig streamConfig = EventStreamConfig.builder()
+                    .withTopic(topic)
+                    .withCursors(ImmutableMap.of(partition, startFrom))
+                    .withBatchLimit(batchLimit)
+                    .withStreamLimit(ofNullable(streamLimit))
+                    .withBatchTimeout(ofNullable(batchTimeout))
+                    .withStreamTimeout(ofNullable(streamTimeout))
+                    .withBatchKeepAliveLimit(ofNullable(batchKeepAliveLimit))
+                    .build();
+
+            final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic, streamConfig.getCursors());
+
+            final EventStream eventStreamTask = new EventStream(eventConsumer, responseEmitter, streamConfig);
+            taskExecutor.execute(eventStreamTask);
+
+            response.setStatus(HttpStatus.OK.value());
+        }
+        catch (NakadiException e) {
+            response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+            responseEmitter.send(e.asProblem());
+            responseEmitter.complete();
+        }
+        return responseEmitter;
 	}
 }

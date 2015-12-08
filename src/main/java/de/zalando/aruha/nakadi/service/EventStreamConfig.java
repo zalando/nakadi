@@ -55,4 +55,64 @@ public class EventStreamConfig {
     public Optional<Integer> getBatchKeepAliveLimit() {
         return batchKeepAliveLimit;
     }
+
+    public static Builder builder() {
+        return Builder.anEventStreamConfig();
+    }
+
+    public static class Builder {
+        private String topic;
+        private Map<String, String> cursors;
+        private Integer batchLimit;
+        private Optional<Integer> streamLimit;
+        private Optional<Integer> batchTimeout;
+        private Optional<Integer> streamTimeout;
+        private Optional<Integer> batchKeepAliveLimit;
+
+        private Builder() {
+        }
+
+        public static Builder anEventStreamConfig() {
+            return new Builder();
+        }
+
+        public Builder withTopic(final String topic) {
+            this.topic = topic;
+            return this;
+        }
+
+        public Builder withCursors(final  Map<String, String> cursors) {
+            this.cursors = cursors;
+            return this;
+        }
+
+        public Builder withBatchLimit(final Integer batchLimit) {
+            this.batchLimit = batchLimit;
+            return this;
+        }
+
+        public Builder withStreamLimit(final Optional<Integer> streamLimit) {
+            this.streamLimit = streamLimit;
+            return this;
+        }
+
+        public Builder withBatchTimeout(final Optional<Integer> batchTimeout) {
+            this.batchTimeout = batchTimeout;
+            return this;
+        }
+
+        public Builder withStreamTimeout(final Optional<Integer> streamTimeout) {
+            this.streamTimeout = streamTimeout;
+            return this;
+        }
+
+        public Builder withBatchKeepAliveLimit(final Optional<Integer> batchKeepAliveLimit) {
+            this.batchKeepAliveLimit = batchKeepAliveLimit;
+            return this;
+        }
+
+        public EventStreamConfig build() {
+            return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout, batchKeepAliveLimit);
+        }
+    }
 }
