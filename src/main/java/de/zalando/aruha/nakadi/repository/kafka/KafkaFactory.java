@@ -6,6 +6,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.PropertySource;
@@ -14,14 +15,15 @@ import org.springframework.stereotype.Component;
 import java.util.Properties;
 
 @Component
-@PropertySource("${nakadi.config}")
 class KafkaFactory {
 
-	@Value("${nakadi.kafka.broker}")
-	private String kafkaAddress;
+    @Autowired
+    @Qualifier("kafkaBrokers")
+    private String kafkaAddress;
 
-	@Value("${nakadi.zookeeper.brokers}")
-	private String zookeeperAddress;
+    @Autowired
+    @Qualifier("zookeeperBrokers")
+    private String zookeeperAddress;
 
 	@Autowired
 	private Producer<String, String> producer;
