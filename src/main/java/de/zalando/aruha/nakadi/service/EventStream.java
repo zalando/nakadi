@@ -1,6 +1,9 @@
 package de.zalando.aruha.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
@@ -9,6 +12,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static java.lang.System.currentTimeMillis;
+import static java.util.function.Function.identity;
 
 public class EventStream implements Runnable {
 
@@ -16,11 +23,14 @@ public class EventStream implements Runnable {
 
     private static final String BATCH_SEPARATOR = "\n";
 
-    private ResponseBodyEmitter responseEmitter;
+    private final ResponseBodyEmitter responseEmitter;
 
-    private EventStreamConfig config;
+    private final EventConsumer eventConsumer;
 
-    public EventStream(final ResponseBodyEmitter responseEmitter, final EventStreamConfig config) {
+    private final EventStreamConfig config;
+
+    public EventStream(final EventConsumer eventConsumer, final ResponseBodyEmitter responseEmitter, final EventStreamConfig config) {
+        this.eventConsumer = eventConsumer;
         this.responseEmitter = responseEmitter;
         this.config = config;
     }
@@ -28,15 +38,81 @@ public class EventStream implements Runnable {
     @Override
     public void run() {
         try {
+            int keepAliveInARow = 0;
+            int messagesRead = 0;
+            int messagesReadInBatch = 0;
+            Map<String, List<String>> currentBatch = emptyBatch();
+            long start = currentTimeMillis();
+            long batchStartTime = start;
+
             while (true) {
-                Thread.sleep(2000);
-                responseEmitter.send("blah\n");
+                final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
+
+                if (eventOrEmpty.isPresent()) {
+                    final ConsumedEvent event = eventOrEmpty.get();
+
+                    // put message to batch
+                    currentBatch.get(event.getPartition()).add(event.getEvent());
+                    messagesRead++;
+                    messagesReadInBatch++;
+
+                    // if we read the message - reset keep alive counter
+                    keepAliveInARow = 0;
+                }
+
+                // check if it's time to send the batch
+                long timeSinceBatchStart = currentTimeMillis() - batchStartTime;
+                final Map<String, String> latestOffsets = eventConsumer.fetchNextOffsets();
+
+                if (config.getBatchTimeout().isPresent() && config.getBatchTimeout().get() * 1000 <= timeSinceBatchStart
+                        || messagesReadInBatch >= config.getBatchLimit()) {
+
+                    sendBatch(latestOffsets, currentBatch);
+
+                    // if we hit keep alive count limit - close the stream
+                    if (messagesReadInBatch == 0) {
+                        if (config.getBatchKeepAliveLimit().isPresent() && keepAliveInARow >= config.getBatchKeepAliveLimit().get()) {
+                            break;
+                        }
+                        keepAliveInARow++;
+                    }
+
+                    // init new batch
+                    messagesReadInBatch = 0;
+                    currentBatch = emptyBatch();
+                    batchStartTime = currentTimeMillis();
+
+                    responseEmitter.send(BATCH_SEPARATOR);
+                }
+
+                // check if we reached the stream timeout or message count limit
+                long timeSinceStart = currentTimeMillis() - start;
+                if (config.getStreamTimeout().isPresent() && timeSinceStart >= config.getStreamTimeout().get() * 1000
+                        || config.getStreamLimit().isPresent() && messagesRead >= config.getStreamLimit().get()) {
+
+                    if (messagesReadInBatch > 0) {
+                        sendBatch(latestOffsets, currentBatch);
+                    }
+                    break;
+                }
             }
-        } catch (InterruptedException e) {
-            LOG.error("Stream thread was interrupted while streaming", e);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             LOG.info("I/O error occured when streaming events (possibly client closed connection)", e);
         }
+        finally {
+            responseEmitter.complete();
+        }
+    }
+
+    private Map<String, List<String>> emptyBatch() {
+        return config.getCursors()
+                .keySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        identity(),
+                        Lists::newArrayList
+                ));
     }
 
     private String createStreamEvent(final String partition, final String offset, final List<String> events,
@@ -52,7 +128,7 @@ public class EventStream implements Runnable {
         return builder.toString();
     }
 
-    public void sendBatch(final Map<String, String> latestOffsets, final Map<String, List<String>> currentBatch) throws IOException {
+    private void sendBatch(final Map<String, String> latestOffsets, final Map<String, List<String>> currentBatch) throws IOException {
         // iterate through all partitions we stream for
         for (String partition : config.getCursors().keySet()) {
             List<String> events = ImmutableList.of();

@@ -5,6 +5,7 @@ import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
 
 import com.google.common.collect.ImmutableMap;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import org.slf4j.Logger;
@@ -113,10 +114,10 @@ public class TopicsController {
         final EventStreamConfig streamConfig = new EventStreamConfig(topic, ImmutableMap.of(partition, startFrom),
                 batchLimit, ofNullable(streamLimit), ofNullable(batchTimeout), ofNullable(streamTimeout),
                 ofNullable(batchKeepAliveLimit));
-
+		final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic, streamConfig.getCursors());
         final ResponseBodyEmitter responseEmitter = new ResponseBodyEmitter();
 
-        final EventStream eventStreamTask = new EventStream(responseEmitter, streamConfig);
+		final EventStream eventStreamTask = new EventStream(eventConsumer, responseEmitter, streamConfig);
         taskExecutor.execute(eventStreamTask);
 
 		return responseEmitter;

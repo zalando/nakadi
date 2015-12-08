@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository;
 
 import java.util.List;
+import java.util.Map;
 
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Topic;
@@ -21,4 +22,5 @@ public interface TopicRepository {
 
     void readEvent(String topicId, String partitionId);
 
+    EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors);
 }
