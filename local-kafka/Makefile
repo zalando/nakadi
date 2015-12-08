@@ -1,8 +1,7 @@
-.IGNORE:
-remove-and-stop:
-	docker stop local-kafka && docker rm local-kafka
+stop-and-remove:
+	-docker stop local-kafka && docker rm local-kafka
 
-build-kafka-docker-image: Dockerfile.kafka install-local-kafka.sh start-local-kafka.sh remove-and-stop
+build-kafka-docker-image: Dockerfile.kafka install-local-kafka.sh start-local-kafka.sh stop-and-remove
 	docker build --file Dockerfile.kafka -t local-kafka .
 
 run: build-kafka-docker-image
