@@ -1,15 +1,16 @@
 import java.util.concurrent.TimeUnit
-import static groovy.io.FileType.FILES
 
 apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'spring-boot'
-apply plugin: 'com.lv.dbdeploy'
 // if this is applied, include scala dependencies (see below)
 // apply plugin: 'scala'
-apply plugin: 'docker'
+
+group 'de.zalando.aruha'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 mainClassName = 'de.zalando.aruha.nakadi.Application'
 def dockerGroup = "aruha"
@@ -49,18 +50,12 @@ buildscript {
 
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
-        classpath "gradle.plugin.com.lv.plugins:gradle-dbdeploy-plugin:1.3"
-        classpath "se.transmode.gradle:gradle-docker:1.2"
     }
 }
 
 jar {
     baseName = 'nakadi'
-    version = '0.1.0'
 }
-
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 
 configurations {
     integrationTestCompile.extendsFrom testCompile
@@ -122,13 +117,22 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
 }
 
-docker {
-    baseImage "zalando/openjdk:8u66-b17-1-3"
-    group = dockerGroup
-    applicationName = dockerApplicationName
+task stopKafkaInDocker {
+    doLast {
+        execAndWait("docker ps | awk '/local-kafka/ {print \$1}' | xargs -n 1 docker stop")
+    }
+    outputs.upToDateWhen { false }
+}
+
+task startKafkaInDocker() {
+    doLast {
+        execAndWait("make --directory local-kafka run")
+    }
+    outputs.upToDateWhen { false }
 }
 
 task buildDockerContainer {
+    dependsOn bootRepackage
     doLast {
         execAndWait("docker build -t aruha/nakadi .", 120)
     }
@@ -136,8 +140,10 @@ task buildDockerContainer {
 }
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -p 8080:8080 -i -t -d \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
-    dependsOn buildDockerContainer
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=file:////envs/development.conf\" " +
+            "--link local-kafka:local_kafka -p 8080:8080 -i -t -d " +
+            "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+    dependsOn buildDockerContainer, startKafkaInDocker
 }
 
 task stopDockerContainer(type: Exec) {
@@ -152,6 +158,7 @@ task integrationTest(type: Test) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 def execAndWait(command, timeoutInSeconds = 15) {
@@ -160,18 +167,6 @@ def execAndWait(command, timeoutInSeconds = 15) {
     Process proc = pb.start();
     proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS);
     return proc.exitValue()
-}
-
-task stopKafkaInDocker {
-    doLast {
-        execAndWait("docker ps | grep 'local-kafka' | awk '{print \$1}' | xargs docker stop")
-    }
-    outputs.upToDateWhen { false }
-}
-
-task startKafkaInDocker (type: Exec) {
-    workingDir 'local-kafka'
-    commandLine 'make', 'run'
 }
 
 task startDockerContainerAndWait() {
@@ -190,7 +185,7 @@ task startDockerContainerAndWait() {
 }
 
 task fullAcceptanceTest(type: GradleBuild) {
-    dependsOn startKafkaInDocker, startDockerContainerAndWait
+    dependsOn startDockerContainerAndWait
     tasks = ['acceptanceTest']
     finalizedBy stopKafkaInDocker, stopDockerContainer
 }
@@ -222,11 +217,11 @@ bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
     environment 'NAKADI_OAUTH2_ENABLED', 'false'
-    jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 run {
-    jvmArgs = ["-Dnakadi.config=file:///" + projectDir + "/envs/development.conf"]
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 check.dependsOn integrationTest
