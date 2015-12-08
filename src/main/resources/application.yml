@@ -1,0 +1,11 @@
+server:
+  port: 8080
+logging:
+  level:
+    ROOT: INFO
+    org.springframework.web: INFO
+nakadi:
+  oauth2:
+    enabled: true
+    tokenInfoUri: https://auth.zalando.com/oauth2/tokeninfo
+    clientId: stups_aruha-event-store-poc
