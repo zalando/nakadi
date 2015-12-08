@@ -49,6 +49,11 @@ public class TopicsController {
 
 	@Timed
 	@RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
+	@ApiOperation("Lists the partitions for the given topic")
+	@ApiResponses({ @ApiResponse(code = 200, message = "Returns list of all partitions for the given topic",
+			response = TopicPartition.class),
+		@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
+		@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
 	public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
 		try {
 			return ok().body(topicRepository.listPartitions(topicId));
@@ -65,6 +70,10 @@ public class TopicsController {
 
 	@Timed
 	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events", method = RequestMethod.POST)
+	@ApiOperation("Posts an event to the specified partition of this topic.")
+	@ApiResponses({ @ApiResponse(code = 201, message = "Event submitted"),
+		@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
+		@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
 	public ResponseEntity<?> postEventToPartition(@PathVariable("topicId") final String topicId,
 			@PathVariable("partitionId") final String partitionId, @RequestBody final String messagePayload) {
 		LOG.trace("Event received: {}, {}, {}", new Object[] { topicId, partitionId, messagePayload });
