@@ -21,6 +21,7 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 
@@ -54,7 +55,8 @@ public class TopicsController {
 			response = TopicPartition.class),
 		@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
 		@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
-	public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
+	public ResponseEntity<?> listPartitions(
+			@ApiParam(name = "topic", value = "Topic name", required = true) @PathVariable("topicId") final String topicId) {
 		try {
 			return ok().body(topicRepository.listPartitions(topicId));
 		} catch (final NakadiException e) {
@@ -74,8 +76,10 @@ public class TopicsController {
 	@ApiResponses({ @ApiResponse(code = 201, message = "Event submitted"),
 		@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
 		@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
-	public ResponseEntity<?> postEventToPartition(@PathVariable("topicId") final String topicId,
-			@PathVariable("partitionId") final String partitionId, @RequestBody final String messagePayload) {
+	public ResponseEntity<?> postEventToPartition(
+			@ApiParam(name = "topic", value = "Topic where to send events to", required = true) @PathVariable("topicId") final String topicId,
+			@ApiParam(name = "partition", value = "Partition where to send events to", required = true) @PathVariable("partitionId") final String partitionId,
+			@RequestBody final String messagePayload) {
 		LOG.trace("Event received: {}, {}, {}", new Object[] { topicId, partitionId, messagePayload });
 		try {
 			topicRepository.postEvent(topicId, partitionId, messagePayload);
