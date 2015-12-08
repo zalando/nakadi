@@ -22,5 +22,5 @@ public interface TopicRepository {
 
     void readEvent(String topicId, String partitionId);
 
-    EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors);
+    EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
 }
