@@ -5,13 +5,13 @@ public class ConsumedEvent {
     private String event;
     private String topic;
     private String partition;
-    private String offset;
+    private String nextOffset;
 
-    public ConsumedEvent(final String event, final String topic, final String partition, final String offset) {
+    public ConsumedEvent(final String event, final String topic, final String partition, final String nextOffset) {
         this.event = event;
         this.topic = topic;
         this.partition = partition;
-        this.offset = offset;
+        this.nextOffset = nextOffset;
     }
 
     public String getEvent() {
@@ -26,7 +26,7 @@ public class ConsumedEvent {
         return partition;
     }
 
-    public String getOffset() {
-        return offset;
+    public String getNextOffset() {
+        return nextOffset;
     }
 }

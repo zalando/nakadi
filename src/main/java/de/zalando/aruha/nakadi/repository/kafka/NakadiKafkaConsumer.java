@@ -71,7 +71,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
             eventQueue = StreamSupport
                     .stream(records.spliterator(), false)
                     .map(record -> new ConsumedEvent(record.value(), record.topic(), Integer.toString(record.partition()),
-                            Long.toString(record.offset())))
+                            Long.toString(record.offset() + 1)))
                     .collect(Collectors.toCollection(Lists::newLinkedList));
         }
         catch (InvalidOffsetException e) {

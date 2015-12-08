@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
@@ -48,7 +49,10 @@ public class EventStream implements Runnable {
             int keepAliveInARow = 0;
             int messagesRead = 0;
             int messagesReadInBatch = 0;
+
             Map<String, List<String>> currentBatch = emptyBatch();
+            final Map<String, String> latestOffsets = Maps.newHashMap(config.getCursors());
+
             long start = currentTimeMillis();
             long batchStartTime = start;
 
@@ -57,6 +61,9 @@ public class EventStream implements Runnable {
 
                 if (eventOrEmpty.isPresent()) {
                     final ConsumedEvent event = eventOrEmpty.get();
+
+                    // update offset for the partition of event that was read
+                    latestOffsets.put(event.getPartition(), event.getNextOffset());
 
                     // put message to batch
                     currentBatch.get(event.getPartition()).add(event.getEvent());
@@ -69,8 +76,6 @@ public class EventStream implements Runnable {
 
                 // check if it's time to send the batch
                 long timeSinceBatchStart = currentTimeMillis() - batchStartTime;
-                final Map<String, String> latestOffsets = eventConsumer.fetchNextOffsets();
-
                 if (config.getBatchTimeout().isPresent() && config.getBatchTimeout().get() * 1000 <= timeSinceBatchStart
                         || messagesReadInBatch >= config.getBatchLimit()) {
 
@@ -124,7 +129,7 @@ public class EventStream implements Runnable {
                 .stream()
                 .collect(Collectors.toMap(
                         identity(),
-                        Lists::newArrayList
+                        partition -> Lists.newArrayList()
                 ));
     }
 
