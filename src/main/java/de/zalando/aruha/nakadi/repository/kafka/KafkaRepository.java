@@ -16,6 +16,7 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import de.zalando.aruha.nakadi.NakadiException;
@@ -41,8 +42,12 @@ public class KafkaRepository implements TopicRepository {
 
 	@Autowired
 	private KafkaFactory factory;
+
 	@Autowired
 	private ZooKeeperHolder zkFactory;
+
+    @Value("${nakadi.kafka.poll.timeoutMs}")
+    private long kafkaPollTimeout;
 
 	@Override
 	public List<Topic> listTopics() throws NakadiException {
@@ -127,7 +132,7 @@ public class KafkaRepository implements TopicRepository {
 
 	@Override
 	public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) {
-		return new NakadiKafkaConsumer(factory, topic, cursors);
+		return new NakadiKafkaConsumer(factory, topic, cursors, kafkaPollTimeout);
 	}
 }
 

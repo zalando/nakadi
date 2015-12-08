@@ -21,17 +21,19 @@ import java.util.stream.StreamSupport;
 
 public class NakadiKafkaConsumer implements EventConsumer {
 
-    private static final int KAFKA_POLL_TIMEOUT = 100; // todo: this should go to some application settings
-
     private Consumer<String, String> kafkaConsumer;
 
     private List<TopicPartition> topicPartitions;
 
     private Queue<ConsumedEvent> eventQueue;
 
-    public NakadiKafkaConsumer(final KafkaFactory factory, final String topic, final Map<String, String> cursors) {
+    private long pollTimeout;
+
+    public NakadiKafkaConsumer(final KafkaFactory factory, final String topic, final Map<String, String> cursors,
+                               final long pollTimeout) {
         eventQueue = Lists.newLinkedList();
         kafkaConsumer = factory.createConsumer();
+        this.pollTimeout = pollTimeout;
 
         // define topic/partitions to consume from
         topicPartitions = cursors
@@ -67,7 +69,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
 
     private void pollFromKafka() throws NakadiException {
         try {
-            final ConsumerRecords<String, String> records = kafkaConsumer.poll(KAFKA_POLL_TIMEOUT);
+            final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
             eventQueue = StreamSupport
                     .stream(records.spliterator(), false)
                     .map(record -> new ConsumedEvent(record.value(), record.topic(), Integer.toString(record.partition()),
