@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.Lists;
+import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import kafka.common.AuthorizationException;
@@ -47,7 +48,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
     }
 
     @Override
-    public Optional<ConsumedEvent> readEvent() {
+    public Optional<ConsumedEvent> readEvent() throws NakadiException {
         if (eventQueue.isEmpty()) {
             pollFromKafka();
         }
@@ -64,7 +65,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
                 );
     }
 
-    private void pollFromKafka() {
+    private void pollFromKafka() throws NakadiException {
         try {
             final ConsumerRecords<String, String> records = kafkaConsumer.poll(KAFKA_POLL_TIMEOUT);
             eventQueue = StreamSupport
@@ -74,16 +75,10 @@ public class NakadiKafkaConsumer implements EventConsumer {
                     .collect(Collectors.toCollection(Lists::newLinkedList));
         }
         catch (InvalidOffsetException e) {
-
+            throw new NakadiException("Wrong offset provided", e);
         }
-        catch (WakeupException e) {
-
-        }
-        catch (AuthorizationException e) {
-
-        }
-        catch (KafkaException e) {
-
+        catch (WakeupException | AuthorizationException | KafkaException e) {
+            throw new NakadiException("Error occured when polling from kafka", e);
         }
     }
 }

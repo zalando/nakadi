@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import org.slf4j.Logger;
@@ -99,6 +100,9 @@ public class EventStream implements Runnable {
         }
         catch (IOException e) {
             LOG.info("I/O error occured when streaming events (possibly client closed connection)", e);
+        }
+        catch (NakadiException e) {
+            LOG.error("Error occurred when polling events from kafka", e);
         }
         finally {
             responseEmitter.complete();
