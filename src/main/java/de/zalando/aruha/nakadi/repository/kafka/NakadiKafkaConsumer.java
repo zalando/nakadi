@@ -21,13 +21,13 @@ import java.util.stream.StreamSupport;
 
 public class NakadiKafkaConsumer implements EventConsumer {
 
-    private Consumer<String, String> kafkaConsumer;
+    private final Consumer<String, String> kafkaConsumer;
 
-    private List<TopicPartition> topicPartitions;
+    private final List<TopicPartition> topicPartitions;
 
     private Queue<ConsumedEvent> eventQueue;
 
-    private long pollTimeout;
+    private final long pollTimeout;
 
     public NakadiKafkaConsumer(final KafkaFactory factory, final String topic, final Map<String, String> cursors,
                                final long pollTimeout) {
