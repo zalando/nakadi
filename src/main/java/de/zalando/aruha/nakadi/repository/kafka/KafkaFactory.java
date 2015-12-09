@@ -42,6 +42,7 @@ class KafkaFactory {
 		return new KafkaConsumer<>(getProps());
 	}
 
+    @Bean(name = "kafkaProperties")
 	private Properties getProps() {
 		final Properties props = new Properties();
 		props.put("metadata.broker.list", zookeeperAddress);
