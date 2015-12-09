@@ -25,6 +25,7 @@ class KafkaFactory {
 
 	@Autowired
 	private Producer<String, String> producer;
+
 	@Autowired
 	private Consumer<String, String> consumer;
 
@@ -33,7 +34,7 @@ class KafkaFactory {
 
 	@Bean
 	public Producer<String, String> createProducer() {
-		return new KafkaProducer(getProps());
+		return new KafkaProducer<>(getProps());
 	}
 
 	@Bean
