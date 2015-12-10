@@ -17,4 +17,16 @@ public class TestUtils {
     public static int randomUInt() {
         return Math.abs(random.nextInt());
     }
+
+    public static String randomUIntAsString() {
+        return Integer.toString(randomUInt());
+    }
+
+    public static long randomULong() {
+        return Math.abs(random.nextLong());
+    }
+
+    public static String randomULongAsString() {
+        return Long.toString(randomULong());
+    }
 }

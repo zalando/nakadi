@@ -4,36 +4,82 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
-import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 
+import java.util.List;
 import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
 
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomUInt;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomUIntAsString;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomULong;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomULongAsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class NakadiKafkaConsumerTest {
 
-    private static final String TOPIC = "my-topic";
-    private static final int PARTITION = 12;
-    private static final long POLL_TIMEOUT = 100;
+    private static final String TOPIC = randomString();
+    private static final int PARTITION = randomUInt();
+    private static final long POLL_TIMEOUT = randomULong();
 
     @Test
     @SuppressWarnings("unchecked")
-    public void whenReadEventThenOk() throws NakadiException {
+    public void whenCreateConsumerThenKafkaConsumerConfiguredCorrectly() {
+
+        // ARRANGE //
+        final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
+
+        Class<List<TopicPartition>> topicPartitionListClass = (Class<List<TopicPartition>>)(Class)List.class;
+        final ArgumentCaptor<List<TopicPartition>> partitionsCaptor = ArgumentCaptor.forClass(topicPartitionListClass);
+        doNothing().when(kafkaConsumerMock).assign(partitionsCaptor.capture());
+
+        final ArgumentCaptor<TopicPartition> tpCaptor = ArgumentCaptor.forClass(TopicPartition.class);
+        final ArgumentCaptor<Long> offsetCaptor = ArgumentCaptor.forClass(Long.class);
+        doNothing().when(kafkaConsumerMock).seek(tpCaptor.capture(), offsetCaptor.capture());
+
+        final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
+
+        final ImmutableMap<String, String> cursors = ImmutableMap.of(
+                randomUIntAsString(), randomULongAsString(),
+                randomUIntAsString(), randomULongAsString(),
+                randomUIntAsString(), randomULongAsString()
+        );
+
+        // ACT //
+        new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, cursors, POLL_TIMEOUT);
+
+        // ASSERT //
+        final List<TopicPartition> assignedPartitions = partitionsCaptor.getValue();
+        assertThat(assignedPartitions, hasSize(cursors.size()));
+        assignedPartitions.forEach(partition -> {
+            assertThat(partition.topic(), equalTo(TOPIC));
+            assertThat(cursors.keySet().contains((Integer.toString(partition.partition()))), is(true));
+        });
+
+        final List<TopicPartition> topicPartitions = tpCaptor.getAllValues();
+        final List<Long> offsets = offsetCaptor.getAllValues();
+        assertThat(topicPartitions, hasSize(cursors.size()));
+        assertThat(offsets, hasSize(cursors.size()));
+        cursors.entrySet().stream().forEach(cursor -> {
+            assertThat(topicPartitions.contains(new TopicPartition(TOPIC, Integer.parseInt(cursor.getKey()))), is(true));
+            assertThat(offsets.contains(Long.parseLong(cursor.getValue())), is(true));
+        });
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void whenReadEventsThenGetRightEvents() throws NakadiException {
 
         // ARRANGE //
         final String event1 = randomString();
@@ -52,8 +98,7 @@ public class NakadiKafkaConsumerTest {
         final ArgumentCaptor<Long> pollTimeoutCaptor = ArgumentCaptor.forClass(Long.class);
         when(kafkaConsumerMock.poll(pollTimeoutCaptor.capture())).thenReturn(consumerRecords, emptyRecords);
 
-        final KafkaFactory kafkaFactoryMock = mock(KafkaFactory.class);
-        when(kafkaFactoryMock.createConsumer()).thenReturn(kafkaConsumerMock);
+        final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
         // we mock KafkaConsumer anyway, so the cursors we pass are not really important
         final ImmutableMap<String, String> cursors = ImmutableMap.of(Integer.toString(PARTITION), "0");
 
@@ -79,6 +124,12 @@ public class NakadiKafkaConsumerTest {
         assertThat("The kafka poll should be called with timeout we defined",
                 pollTimeoutCaptor.getValue(),
                 equalTo(POLL_TIMEOUT));
+    }
+
+    private KafkaFactory createKafkaFactoryMock(final KafkaConsumer<String, String> kafkaConsumerMock) {
+        final KafkaFactory kafkaFactoryMock = mock(KafkaFactory.class);
+        when(kafkaFactoryMock.createConsumer()).thenReturn(kafkaConsumerMock);
+        return kafkaFactoryMock;
     }
 
 }

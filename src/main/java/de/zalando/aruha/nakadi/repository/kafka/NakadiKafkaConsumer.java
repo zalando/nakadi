@@ -80,7 +80,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
             throw new NakadiException("Wrong offset provided", e);
         }
         catch (WakeupException | AuthorizationException | KafkaException e) {
-            throw new NakadiException("Error occured when polling from kafka", e);
+            throw new NakadiException("Error occurred when polling from kafka", e);
         }
     }
 }
