@@ -7,6 +7,8 @@ import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,6 +21,7 @@ import static de.zalando.aruha.nakadi.utils.TestUtils.randomUInt;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomUIntAsString;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomULong;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomULongAsString;
+import static junit.framework.TestCase.fail;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
@@ -124,6 +127,35 @@ public class NakadiKafkaConsumerTest {
         assertThat("The kafka poll should be called with timeout we defined",
                 pollTimeoutCaptor.getValue(),
                 equalTo(POLL_TIMEOUT));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void whenReadEventsThenNakadiException() {
+
+        // ARRANGE //
+        final ImmutableList<RuntimeException> exceptions = ImmutableList.of(
+                new NoOffsetForPartitionException(new TopicPartition("", 0)),
+                new KafkaException()
+        );
+
+        int numberOfNakadiExceptions = 0;
+        for (final Exception exception: exceptions) {
+            final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
+            when(kafkaConsumerMock.poll(POLL_TIMEOUT)).thenThrow(exception);
+            final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
+            try {
+                // ACT //
+                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, ImmutableMap.of(), POLL_TIMEOUT);
+                consumer.readEvent();
+
+                // ASSERT //
+                fail("The NakadiException should be thrown");
+            } catch (NakadiException e) {
+                numberOfNakadiExceptions++;
+            }
+        }
+        assertThat("We should get a NakadiException for every call", numberOfNakadiExceptions, equalTo(exceptions.size()));
     }
 
     private KafkaFactory createKafkaFactoryMock(final KafkaConsumer<String, String> kafkaConsumerMock) {
