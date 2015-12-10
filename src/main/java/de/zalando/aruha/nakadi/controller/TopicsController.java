@@ -8,6 +8,8 @@ import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
+import de.zalando.aruha.nakadi.utils.FlushableGZIPOutputStream;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +35,12 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.OutputStream;
 
 @RestController
 @RequestMapping(value = "/topics")
@@ -158,4 +163,34 @@ public class TopicsController {
         }
         return responseEmitter;
 	}
+
+	@RequestMapping("/gzip")
+	public StreamingResponseBody handle(final HttpServletResponse response, final HttpServletRequest request) {
+		return new StreamingResponseBody() {
+			@Override
+			public void writeTo(final OutputStream outputStream) throws IOException {
+				final String acceptEncoding = request.getHeader("Accept-Encoding");
+				final boolean gzipEnabled = acceptEncoding != null && acceptEncoding.contains("gzip");
+				final OutputStream output = gzipEnabled ? new FlushableGZIPOutputStream(outputStream) : outputStream;
+
+				if (gzipEnabled)
+					response.addHeader("Content-Encoding", "gzip");
+
+				for (Integer i = 0; i < 20; i++) {
+					try {
+						output.write((i.toString() + "\n").getBytes());
+						if (i % 2 == 0)
+							output.flush();
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+
+				if (gzipEnabled)
+					output.close();
+			}
+		};
+	}
+
 }
