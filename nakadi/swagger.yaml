@@ -713,13 +713,13 @@ definitions:
       It should be used as a base definition for all events, that flow through
       Nakadi by extending attributes of this object type.
     properties:
-      event:
+      event_type:
         type: string
         example: 'https://resource-events.zalando.com/ResourceCreated'
       partitioning_key:
         type: string
         example: 'ARTICLE:ABC123XXX-001'
-      meta_data:
+      metadata:
         $ref: '#/definitions/EventMetaData'
   EventMetaData:
     type: object
