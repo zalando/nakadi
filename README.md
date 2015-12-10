@@ -41,3 +41,19 @@ What does the prototype already have?
     * automatic redistribution of partitions between consuming clients
     * commits should be issued to move server-side cursors
 
+Running it locally
+==================
+
+To run the project locally
+
+Install python requirements
+
+    pip3 install -r requirements.txt
+
+Run ZooKeeper and Kafka docker images
+
+    make --directory local-karka run
+    
+Run the local service
+
+    python3 run_local.py
