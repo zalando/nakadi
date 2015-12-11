@@ -1,22 +1,16 @@
 swagger: '2.0'
 info:
-  title: Nakadi
+  title: Nakadi Event Bus API
   description: |
-    -------------------------
-    API for nakadi operations
-    -------------------------
+    -------------------------------
+    Nakadi Event Bus API Definition
+    -------------------------------
 
-    A few concepts in this working draft:
+    * Low-level API
+    * Stantardised event format (see #/definitions/Event)
+    * Partition strategy: event store will infer the partition from the `partitioning_key` in the message body
 
-    * Stantardised event format (see #/definitions/Event);
-
-    * Partition resolution: event store will infer the partition where a message
-    needs to be set looking into the `partitioning_key` in the message body;
-
-    * High level API should support automatic redistribution of the event streams
-    during client topology changes.
-
-  version: '0.3'
+  version: '0.3.1'
   contact:
     name: Team Aruha
     email: team-aruha@zalando.de
@@ -26,13 +20,7 @@ consumes:
   - application/json
 produces:
   - application/json
-securityDefinitions:
-  oauth2:
-    type: oauth2
-    flow: implicit
-    authorizationUrl: 'https://auth.zalando.com/oauth2/tokeninfo'
-    scopes:
-      uid: Unique identifier of the user accessing the service.
+
 paths:
   /metrics:
     get:
@@ -96,7 +84,8 @@ paths:
           required: false
           type: array
           items:
-            $ref: '#/definitions/Cursor'
+            type: string
+            format: '#/definitions/Cursor'
         - name: batch_limit
           in: query
           description: Maximum number of `SimpleStreamElement`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
@@ -289,46 +278,6 @@ paths:
           schema:
             $ref: '#/definitions/TopicPartition'
   '/topics/{topic}/partitions/{partition}/events':
-    post:
-      tags:
-        - low-level-api
-      summary: Posts an event to the specified partition of this topic.
-      operationId: nakadi.hack.post_event_to_partition
-      parameters:
-        - name: topic
-          in: path
-          description: Topic where to send events to.
-          type: string
-          required: true
-        - name: partition
-          in: path
-          description: Partition where to send events to.
-          type: string
-          required: true
-        - name: event
-          in: body
-          description: Even being sent.
-          schema:
-            $ref: '#/definitions/Event'
-      responses:
-        '201':
-          description: Event submitted.
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Not allowed
-          schema:
-            $ref: '#/definitions/Problem'
-        '422':
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Not available
-          schema:
-            $ref: '#/definitions/Problem'
     get:
       tags:
         - low-level-api
@@ -429,280 +378,6 @@ paths:
           description: Not found. Typically in case of requesting from a non existing topic of partition.
           schema:
             $ref: '#/definitions/Problem'
-  /subscriptions:
-    get:
-      tags:
-        - monitoring
-      summary: List event subscriptions
-      description: |
-        Lists all subscriptions currently registered.
-        Subscriptions are the binding point for the high-level usage of event store,
-        registering an interested party that listens to a topic
-        and expected to receive its events, with the possibility of a filter
-        being applied to the messages the flow out
-      operationId: nakadi.hack.get_subscriptions
-      responses:
-        '200':
-          description: List of subscriptions
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Subscription'
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Not available
-          schema:
-            $ref: '#/definitions/Problem'
-    post:
-      tags:
-        - push-api
-        - streaming-api
-      summary: Create event subscription
-      description: Creates event subscription for the given `Topic`. If the application already has a subscription to the topic the existing one is returned.
-      operationId: nakadi.hack.post_subscription
-      parameters:
-        - name: subscription
-          in: body
-          description: |
-            Description of a subscription.
-
-              - `id` MUST not left unset;
-              - `topic` specifies the topic name to which a subscription
-                is being done;
-              - `application` defines the namespace for this `Subscription`,
-                being, together with the topic, unique for this Nakadi cluster.
-          schema:
-            $ref: '#/definitions/Subscription'
-          required: true
-      responses:
-        '200':
-          description: OK. The returned object is an already existing `Subscription`.
-        '201':
-          description: Resource created. The returned object will contain a `subscription_id` for this newly registered subscription.
-          schema:
-            $ref: '#/definitions/Subscription'
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: Not found. Usually because of non existing `Topic`.
-          schema:
-            $ref: '#/definitions/Problem'
-        '422':
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Not available. Usually in case of problems communicating with the backing Kafka server.
-          schema:
-            $ref: '#/definitions/Problem'
-  '/subscriptions/{subscription_id}':
-    get:
-      tags:
-        - push-api
-        - streaming-api
-      summary: Returns status information about the given `Subscription`.
-      operationId: nakadi.hack.get_subscription
-      parameters:
-        - name: subscription_id
-          in: path
-          description: Id of the requested `Subscription`
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '200':
-          description: OK
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/Problem'
-    delete:
-      tags:
-        - push-api
-        - streaming-api
-      summary: Delete event subscriptions. TODO do we cascade to existing clients?
-      operationId: nakadi.hack.delete_subscription
-      parameters:
-        - name: subscription_id
-          in: path
-          description: id of the `Subscription` to be deleted.
-          type: string
-          required: true
-      responses:
-        '204':
-          description: Resource deleted
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: Subscription does not exist
-          schema:
-            $ref: '#/definitions/Problem'
-  '/subscriptions/{subscription_id}/clients':
-    get:
-      tags:
-        - streaming-api
-      summary: Lists all registered `StreamClient`s for this `Subscription`.
-      operationId: nakadi.hack.get_subscription_clients
-      parameters:
-        - name: subscription_id
-          in: path
-          description: Id of the `Subscription` from which to list clients
-          type: string
-          required: true
-      responses:
-        '200':
-          description: OK
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/StreamClient'
-    post:
-      tags:
-        - streaming-api
-      summary: Registers a new StreamClient for this Subscription.
-      description: |
-        A `StreamClient` is the control entity for a managed flow of events from
-        Nakadi to a client.
-
-        Upon registration of a new client consumer rebalancing takes place.
-
-        Submission might be interrupting during this time and the newly defined
-        topology will be communicated to already existing (and connected)
-        `StreamClient`s. Id is generated and returned.
-
-        A new client will... TODO
-      operationId: nakadi.hack.post_subscription_client
-      parameters:
-        - name: subscription_id
-          in: path
-          description: Id of the `Subscription` from which to list clients
-          type: string
-          required: true
-        - name: client
-          in: body
-          description: Description
-          required: true
-          schema:
-            $ref: '#/definitions/StreamClient'
-      responses:
-        '201':
-          description: Created
-          schema:
-            $ref: '#/definitions/StreamClient'
-        '404':
-          description: Not found
-        '500':
-          description: Client count exceeds partitions
-  '/subscriptions/{subscription_id}/clients/{client_id}':
-    get:
-      tags:
-        - streaming-api
-      summary: Gets information on this client.
-      operationId: nakadi.hack.get_client
-      parameters:
-        - name: subscription_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: client_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '200':
-          description: OK
-          schema:
-            $ref: '#/definitions/StreamClient'
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/Problem'
-  '/subscriptions/{subscription_id}/clients/{client_id}/cursors':
-    get:
-      tags:
-        - streaming-api
-      summary: Gets the current status of the Cursors for this client.
-      operationId: nakadi.hack.get_client_cursors
-      parameters:
-        - name: subscription_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: client_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '200':
-          description: List of current Cursors for this client.
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Cursor'
-        '404':
-          description: Not found
-    patch:
-      summary: Commit the progress (new state of Cursors) for this client.
-      operationId: nakadi.hack.commit_cursor
-      parameters:
-        - name: subscription_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: client_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '201':
-          description: Updated
-  '/subscriptions/{subscription_id}/clients/{client_id}/events':
-    get:
-      tags:
-        - streaming-api
-      summary: Starts streaming events for this client..
-      operationId: nakadi.hack.stream_for_client
-      parameters:
-        - name: subscription_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: client_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: batch_limit
-          in: query
-          type: integer
-          required: false
-        - name: timeout
-          in: query
-          type: integer
-          required: false
-      responses:
-        '200':
-          description: |
-            Starts streaming events to the client.
-            The stream format is a series of SimpleStreamEvents separated by a `\n`
-          schema:
-            $ref: '#/definitions/SimpleStreamEvent'
-        '404':
-          description: Not found
 definitions:
   Event:
     type: object
@@ -718,7 +393,7 @@ definitions:
         example: 'https://resource-events.zalando.com/ResourceCreated'
       partitioning_key:
         type: string
-        example: 'ARTICLE:ABC123XXX-001'
+        example: 'ABC123XXX-001'
       metadata:
         $ref: '#/definitions/EventMetaData'
   EventMetaData:
@@ -760,40 +435,6 @@ definitions:
         type: string
         description: Topic name
         example: article.120
-  Subscription:
-    required:
-      - topic
-      - application
-    properties:
-      id:
-        type: string
-        format: uuid
-        example: 346c685a-6abf-4841-886e-25bbae7a6f3a
-      topic:
-        type: string
-        example: article.120
-      callback:
-        type: string
-        example: 'https://myservice.example.org/events'
-      application:
-        type: string
-        example: My event processor for use case X
-      default_client_ttl:
-        type: integer
-        example: 3600
-  StreamClient:
-    properties:
-      id:
-        type: string
-        format: uuid
-      topic:
-        type: string
-      subscription_id:
-        type: string
-        format: uuid
-      expires_at:
-        type: string
-        format: date-time
   TopicPartition:
     required:
       - partition
@@ -815,12 +456,6 @@ definitions:
         type: string
       offset:
         type: string
-  SubscriptionFilter:
-    required:
-      - filter_expression
-    properties:
-      filter_expression:
-        type: object
   SimpleStreamEvent:
     required:
       - cursor
@@ -831,17 +466,3 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Event'
-      topology:
-        type: array
-        items:
-          type: object
-          required:
-            - client_id
-            - partitions
-          properties:
-            client_id:
-              type: string
-            partitions:
-              type: array
-              items:
-                type: string
