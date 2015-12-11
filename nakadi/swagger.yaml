@@ -89,13 +89,12 @@ paths:
           schema:
             type: array
             description: An array of events to be pushed to Nakadi
-              items:
-                $ref: '#/definitions/Event'
+            items:
+              $ref: '#/definitions/Event'
         - name: Content-Encoding
           in: header
           required: false
-          description: Allow the publisher to gzip compress the payload by setting this header to "gzip".
-          example: Content-Encoding: gzip
+          description: '"Allow the publisher to gzip compress the payload by setting this header to "gzip". For Example "Content-Encoding: gzip"'
           type: string
       responses:
         '201':
@@ -178,8 +177,7 @@ paths:
         - name: Content-Encoding
           in: header
           required: false
-          description: Allow the publisher to gzip compress the payload by setting this header to "gzip".
-          example: Content-Encoding: gzip
+          description: '"Allow the publisher to gzip compress the payload by setting this header to "gzip". For Example "Content-Encoding: gzip"'
           type: string
         - name: event
           in: body
@@ -275,6 +273,11 @@ paths:
           type: integer
           format: int32
           required: false
+        - name: Accept-Encoding
+          in: header
+          required: false
+          description: '"If set the client requests the body to be gzip compressed. For Example "Content-Encoding: gzip"'
+          type: string
       responses:
         '200':
           description: |
