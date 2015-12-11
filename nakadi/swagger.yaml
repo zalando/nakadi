@@ -20,14 +20,6 @@ consumes:
   - application/json
 produces:
   - application/json
-securityDefinitions:
-  oauth2:
-    description: |
-      OAuth2 is used for authorization to write/read to/from Nakadi. Scopes are defined in resouces level.
-    type: oauth2
-    flow: implicit
-    scopes:
-      uid: Unique identifier of the user accessing the service.
 
 paths:
   /metrics:
