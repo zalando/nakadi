@@ -367,27 +367,6 @@ definitions:
         type: string
         description: Topic name
         example: article.120
-  Subscription:
-    required:
-      - topic
-      - application
-    properties:
-      id:
-        type: string
-        format: uuid
-        example: 346c685a-6abf-4841-886e-25bbae7a6f3a
-      topic:
-        type: string
-        example: article.120
-      callback:
-        type: string
-        example: 'https://myservice.example.org/events'
-      application:
-        type: string
-        example: My event processor for use case X
-      default_client_ttl:
-        type: integer
-        example: 3600
   StreamClient:
     properties:
       id:
