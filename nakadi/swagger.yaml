@@ -1,25 +1,19 @@
 swagger: '2.0'
 info:
-  title: Nakadi
+  title: Nakadi API Definition
   description: |
     -------------------------
-    API for nakadi operations
+    Nakadi API Definition
     -------------------------
 
-    A few concepts in this working draft:
-
+    * Low-level API
     * Stantardised event format (see #/definitions/Event);
+    * Partition strategy: event store will infer the partition from the `partitioning_key` in the message body;
 
-    * Partition resolution: event store will infer the partition where a message
-    needs to be set looking into the `partitioning_key` in the message body;
-
-    * High level API should support automatic redistribution of the event streams
-    during client topology changes.
-
-  version: '0.3'
+  version: '0.4'
   contact:
-    name: Team Aruha
-    email: team-aruha@zalando.de
+    name: Team Aruha @ Zalando
+    email: nakadi-users@zalando.de
 schemes:
   - https
 consumes:
@@ -28,11 +22,13 @@ produces:
   - application/json
 securityDefinitions:
   oauth2:
+    description: |
+      OAuth2 is used for authorization to write/read to/from Nakadi. Scopes are defined in resouces level.
     type: oauth2
     flow: implicit
-    authorizationUrl: 'https://auth.zalando.com/oauth2/tokeninfo'
     scopes:
       uid: Unique identifier of the user accessing the service.
+
 paths:
   /metrics:
     get:
@@ -703,6 +699,14 @@ paths:
             $ref: '#/definitions/SimpleStreamEvent'
         '404':
           description: Not found
+
+
+# ################################### #
+#                                     #
+#             Definitions             #
+#                                     #
+# ################################### #
+
 definitions:
   Event:
     type: object
