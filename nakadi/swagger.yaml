@@ -35,7 +35,7 @@ paths:
       tags:
         - monitoring
       summary: Get monitoring metrics
-      operationId: nakadi.hack.get_metrics
+      operationId: nakadi.metrics.get
       responses:
         '200':
           description: Metrics data
@@ -51,15 +51,15 @@ paths:
             $ref: '#/definitions/Problem'
   /topics:
     get:
-      description: Lists all known `Topics` to Nakadi
+      description: Lists all known `Topics` of this Nakadi cluster
       tags:
         - monitoring
-      operationId: nakadi.hack.get_topics
       responses:
         '200':
-          description: Returns list of all `Topic`s.
+          description: The request was successful. Returns a list `Topic`s in the response body.
           schema:
             type: array
+            description: An array of topics
             items:
               $ref: '#/definitions/Topic'
         '401':
@@ -71,161 +71,35 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
   '/topics/{topic}/events':
-    get:
-      tags:
-        - low-level-api
-      operationId: nakadi.hack.get_events_from_multiple_partitions
-      summary: |
-        Starts a stream delivery for the specified partitions of the given topic.
-        The tracking of the current position in the partitions and of which
-        partitions is being read is in the responsibility of the client.
-        No commits are needed.
+    post:
+      description: |
+        Post a one or more `Event`s to a given `Topic`.
+        The partition is implicitly controlled by the partitioning_key attribute of the event. Nakadi guarantees that
+        all events with the same partitioning_key end up in the same partition.
       parameters:
         - name: topic
           in: path
-          description: Topic where to get events from
+          description: Topic name where to send events to
           type: string
           required: true
-        - name: x-nakadi-cursors
+        - name: event
+          in: body
+          description: The body contains an array of events being sent.
+          required: true
+          schema:
+            type: array
+            description: An array of events to be pushed to Nakadi
+              items:
+                $ref: '#/definitions/Event'
+        - name: Content-Encoding
           in: header
-          description: Cursors pointing to partitions/offsets to start read from
           required: false
-          type: array
-          items:
-            $ref: '#/definitions/Cursor'
-        - name: batch_limit
-          in: query
-          description: Maximum number of `SimpleStreamElement`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
-          type: integer
-          format: int32
-          required: false
-          default: 1
-        - name: stream_limit
-          in: query
-          description: |
-            Maximum number of `Event`s in this stream. If 0 or undefined, will
-            stream indefinately.
-
-            Stream initialization will fail if `stream_limit` is lower than
-            `batch_limit`.
-          type: integer
-          format: int32
-          required: false
-        - name: batch_flush_timeout
-          in: query
-          description: Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached before this time is reached the messages are immediately flushed to the client.
-          type: integer
-          format: int32
-          required: false
-        - name: stream_timeout
-          in: query
-          description: |
-            Maximum time in seconds a stream will live before being interrupted.
-            If unspecified will stream indefinately.
-
-            If this timeout is reached any pending messages (in the sense of
-            `stream_limit`) will be flushed to the client.
-
-            Stream initialization will fail if `stream_timeout` is lower than
-            `batch_flush_timeout`.
-          type: integer
-          format: int32
-          required: false
-        - name: batch_keep_alive_limit
-          in: query
-          description: Maximum number of keep-alive messages to get in a row before closing the connection. Unlimited by default.
-          type: integer
-          format: int32
-          required: false
-      responses:
-        '200':
-          description: |
-            Starts streaming to the client.  
-            Stream format is a continuous series of 
-            `SimpleStreamEvent`s separated by `\n`
-          schema:
-            $ref: '#/definitions/SimpleStreamEvent'
-        '400':
-          description: Bad syntax
-          schema:
-            $ref: '#/definitions/Problem'
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: Not found. Typically in case of requesting from a non existing topic of partition.
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Not found. Typically in case of requesting from a non existing topic of partition.
-          schema:
-            $ref: '#/definitions/Problem'
-    post:
-      description: |
-        Post a single `Event` to the given `Topic`.
-
-        Partition selection is done using the defined partition resolution. The
-        partition resolution strategy is defined per topic and is managed by
-        Nakadi (currently resolved from a hash over `ordering_key`).
-
-        If explicit control over to which partition in a topic an event is being
-        sent to is needed, a client is advised to use the low level api.
-      operationId: nakadi.hack.post_event
-      parameters:
-        - name: topic
-          in: path
-          description: Topic name where to send events to
+          description: Allow the publisher to gzip compress the payload by setting this header to "gzip".
+          example: Content-Encoding: gzip
           type: string
-          required: true
-        - name: event
-          in: body
-          description: Even being sent.
-          schema:
-            $ref: '#/definitions/Event'
       responses:
         '201':
-          description: Event submitted.
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Not allowed
-          schema:
-            $ref: '#/definitions/Problem'
-        '422':
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Not available
-          schema:
-            $ref: '#/definitions/Problem'
-  '/topics/{topic}/events/batch':
-    post:
-      description: |
-        Post a batch of `Event`s to the given `Topic`.
-
-        Partition selection is done using the defined partition resolution. The
-        partition resolution strategy is defined per topic and is managed by
-        Nakadi (currently resolved from a hash over `ordering_key`).
-
-        If explicit control over to which partition in a topic an event is being
-        sent to is needed, a client is advised to use the low level api.
-      operationId: nakadi.hack.post_events
-      parameters:
-        - name: topic
-          in: path
-          description: Topic name where to send events to
-          type: string
-          required: true
-        - name: event
-          in: body
-          description: Even being sent.
-      responses:
-        '201':
-          description: Event submitted.
+          description: All events are submitted successfully.
         '401':
           description: Not authenticated
           schema:
@@ -247,8 +121,7 @@ paths:
       tags:
         - low-level-api
         - monitoring
-      summary: Lists the partitions for the given topic
-      operationId: nakadi.hack.get_partitions
+      summary: Lists the `Partition`s for the given topic
       parameters:
         - name: topic
           in: path
@@ -260,14 +133,14 @@ paths:
           description: OK
           schema:
             type: array
+            description: An array of `Partition`s
             items:
-              $ref: '#/definitions/TopicPartition'
+              $ref: '#/definitions/Partition'
   '/topics/{topic}/partitions/{partition}':
     get:
       tags:
         - low-level-api
-      summary: Returns the current state information for the given partition on this topic
-      operationId: nakadi.hack.get_partition
+      summary: Returns the given `Partition` of this topic
       parameters:
         - name: topic
           in: path
@@ -283,13 +156,14 @@ paths:
         '200':
           description: OK
           schema:
-            $ref: '#/definitions/TopicPartition'
+            $ref: '#/definitions/Partition'
   '/topics/{topic}/partitions/{partition}/events':
     post:
       tags:
         - low-level-api
-      summary: Posts an event to the specified partition of this topic.
-      operationId: nakadi.hack.post_event_to_partition
+      summary: |
+        Posts a batch of `Event`s to the specified partition of this topic.
+        Note that this overwrites the evaluation of the partitioning_key.
       parameters:
         - name: topic
           in: path
@@ -298,14 +172,22 @@ paths:
           required: true
         - name: partition
           in: path
-          description: Partition where to send events to.
+          description: Partition where which the events are stored.
           type: string
           required: true
+        - name: Content-Encoding
+          in: header
+          required: false
+          description: Allow the publisher to gzip compress the payload by setting this header to "gzip".
+          example: Content-Encoding: gzip
+          type: string
         - name: event
           in: body
-          description: Even being sent.
+          description: Array of `Event`s being sent.
           schema:
-            $ref: '#/definitions/Event'
+            type: array
+            items:
+              $ref: '#/definitions/Event'
       responses:
         '201':
           description: Event submitted.
@@ -328,17 +210,15 @@ paths:
     get:
       tags:
         - low-level-api
-        - depricated
-      operationId: nakadi.hack.get_events_from_single_partition
       summary: |
-        Starts a stream delivery for the specified partition of the given topic.
+        Starts a stream delivery for the specified partition of the given topic. The events are send in batches.
         The tracking of the current position in the partition and of which
         partition is being read is in the responsibility of the client.
         No commits are needed.
       parameters:
         - name: topic
           in: path
-          description: Topic where to get events from
+          description: Topic to consume events from
           type: string
           required: true
         - name: partition
@@ -348,7 +228,7 @@ paths:
           required: true
         - name: start_from
           in: query
-          description: Starting offset of the stream. Must be in the range defined by the `TopicPartition`.
+          description: Starting offset of the stream. Must be in the range defined by the `Partition`.
           type: string
           required: true
         - name: batch_limit
@@ -361,34 +241,28 @@ paths:
         - name: stream_limit
           in: query
           description: |
-            Maximum number of `Event`s in this stream. If 0 or undefined, will
-            stream indefinately.
-
-            Stream initialization will fail if `stream_limit` is lower than
-            `batch_limit`.
+            Maximum number of `Event`s in this stream. If 0 or undefined, will stream indefinately.
+            Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
           type: integer
           format: int32
           required: false
         - name: batch_flush_timeout
           in: query
           description: |
-            Maximum time in seconds to wait for the flushing of each chunk;
-            if the `batch_limit` is reached before this time is reached
-            the messages are immediately flushed to the client.
+            Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached before this
+            time is reached the messages are immediately flushed to the client.
+            A value of 0 will flush every batch events immediatly as soon as they come in.
           type: integer
           format: int32
           required: false
         - name: stream_timeout
           in: query
           description: |
-            Maximum time in seconds a stream will live before being interrupted.
-            If unspecified will stream indefinately.
-
-            If this timeout is reached any pending messages (in the sense of
-            `stream_limit`) will be flushed to the client.
-
-            Stream initialization will fail if `stream_timeout` is lower than
-            `batch_flush_timeout`.
+            Maximum time in seconds a stream will live before being interrupted. If unspecified will stream
+            indefinately.
+            If this timeout is reached any pending messages (in the sense of `stream_limit`) will be flushed to the
+            client.
+            Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
           type: integer
           format: int32
           required: false
@@ -425,280 +299,6 @@ paths:
           description: Not found. Typically in case of requesting from a non existing topic of partition.
           schema:
             $ref: '#/definitions/Problem'
-  /subscriptions:
-    get:
-      tags:
-        - monitoring
-      summary: List event subscriptions
-      description: |
-        Lists all subscriptions currently registered.
-        Subscriptions are the binding point for the high-level usage of event store,
-        registering an interested party that listens to a topic
-        and expected to receive its events, with the possibility of a filter
-        being applied to the messages the flow out
-      operationId: nakadi.hack.get_subscriptions
-      responses:
-        '200':
-          description: List of subscriptions
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Subscription'
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Not available
-          schema:
-            $ref: '#/definitions/Problem'
-    post:
-      tags:
-        - push-api
-        - streaming-api
-      summary: Create event subscription
-      description: Creates event subscription for the given `Topic`. If the application already has a subscription to the topic the existing one is returned.
-      operationId: nakadi.hack.post_subscription
-      parameters:
-        - name: subscription
-          in: body
-          description: |
-            Description of a subscription.
-
-              - `id` MUST not left unset;
-              - `topic` specifies the topic name to which a subscription
-                is being done;
-              - `application` defines the namespace for this `Subscription`,
-                being, together with the topic, unique for this Nakadi cluster.
-          schema:
-            $ref: '#/definitions/Subscription'
-          required: true
-      responses:
-        '200':
-          description: OK. The returned object is an already existing `Subscription`.
-        '201':
-          description: Resource created. The returned object will contain a `subscription_id` for this newly registered subscription.
-          schema:
-            $ref: '#/definitions/Subscription'
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: Not found. Usually because of non existing `Topic`.
-          schema:
-            $ref: '#/definitions/Problem'
-        '422':
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Not available. Usually in case of problems communicating with the backing Kafka server.
-          schema:
-            $ref: '#/definitions/Problem'
-  '/subscriptions/{subscription_id}':
-    get:
-      tags:
-        - push-api
-        - streaming-api
-      summary: Returns status information about the given `Subscription`.
-      operationId: nakadi.hack.get_subscription
-      parameters:
-        - name: subscription_id
-          in: path
-          description: Id of the requested `Subscription`
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '200':
-          description: OK
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/Problem'
-    delete:
-      tags:
-        - push-api
-        - streaming-api
-      summary: Delete event subscriptions. TODO do we cascade to existing clients?
-      operationId: nakadi.hack.delete_subscription
-      parameters:
-        - name: subscription_id
-          in: path
-          description: id of the `Subscription` to be deleted.
-          type: string
-          required: true
-      responses:
-        '204':
-          description: Resource deleted
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: Subscription does not exist
-          schema:
-            $ref: '#/definitions/Problem'
-  '/subscriptions/{subscription_id}/clients':
-    get:
-      tags:
-        - streaming-api
-      summary: Lists all registered `StreamClient`s for this `Subscription`.
-      operationId: nakadi.hack.get_subscription_clients
-      parameters:
-        - name: subscription_id
-          in: path
-          description: Id of the `Subscription` from which to list clients
-          type: string
-          required: true
-      responses:
-        '200':
-          description: OK
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/StreamClient'
-    post:
-      tags:
-        - streaming-api
-      summary: Registers a new StreamClient for this Subscription.
-      description: |
-        A `StreamClient` is the control entity for a managed flow of events from
-        Nakadi to a client.
-
-        Upon registration of a new client consumer rebalancing takes place.
-
-        Submission might be interrupting during this time and the newly defined
-        topology will be communicated to already existing (and connected)
-        `StreamClient`s. Id is generated and returned.
-
-        A new client will... TODO
-      operationId: nakadi.hack.post_subscription_client
-      parameters:
-        - name: subscription_id
-          in: path
-          description: Id of the `Subscription` from which to list clients
-          type: string
-          required: true
-        - name: client
-          in: body
-          description: Description
-          required: true
-          schema:
-            $ref: '#/definitions/StreamClient'
-      responses:
-        '201':
-          description: Created
-          schema:
-            $ref: '#/definitions/StreamClient'
-        '404':
-          description: Not found
-        '500':
-          description: Client count exceeds partitions
-  '/subscriptions/{subscription_id}/clients/{client_id}':
-    get:
-      tags:
-        - streaming-api
-      summary: Gets information on this client.
-      operationId: nakadi.hack.get_client
-      parameters:
-        - name: subscription_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: client_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '200':
-          description: OK
-          schema:
-            $ref: '#/definitions/StreamClient'
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/Problem'
-  '/subscriptions/{subscription_id}/clients/{client_id}/cursors':
-    get:
-      tags:
-        - streaming-api
-      summary: Gets the current status of the Cursors for this client.
-      operationId: nakadi.hack.get_client_cursors
-      parameters:
-        - name: subscription_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: client_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '200':
-          description: List of current Cursors for this client.
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Cursor'
-        '404':
-          description: Not found
-    patch:
-      summary: Commit the progress (new state of Cursors) for this client.
-      operationId: nakadi.hack.commit_cursor
-      parameters:
-        - name: subscription_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: client_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-      responses:
-        '201':
-          description: Updated
-  '/subscriptions/{subscription_id}/clients/{client_id}/events':
-    get:
-      tags:
-        - streaming-api
-      summary: Starts streaming events for this client..
-      operationId: nakadi.hack.stream_for_client
-      parameters:
-        - name: subscription_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: client_id
-          in: path
-          type: string
-          format: uuid
-          required: true
-        - name: batch_limit
-          in: query
-          type: integer
-          required: false
-        - name: timeout
-          in: query
-          type: integer
-          required: false
-      responses:
-        '200':
-          description: |
-            Starts streaming events to the client.
-            The stream format is a series of SimpleStreamEvents separated by a `\n`
-          schema:
-            $ref: '#/definitions/SimpleStreamEvent'
-        '404':
-          description: Not found
 
 
 # ################################### #
@@ -798,7 +398,7 @@ definitions:
       expires_at:
         type: string
         format: date-time
-  TopicPartition:
+  Partition:
     required:
       - partition
       - oldest_available_offset
@@ -819,12 +419,6 @@ definitions:
         type: string
       offset:
         type: string
-  SubscriptionFilter:
-    required:
-      - filter_expression
-    properties:
-      filter_expression:
-        type: object
   SimpleStreamEvent:
     required:
       - cursor
@@ -835,17 +429,3 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Event'
-      topology:
-        type: array
-        items:
-          type: object
-          required:
-            - client_id
-            - partitions
-          properties:
-            client_id:
-              type: string
-            partitions:
-              type: array
-              items:
-                type: string
