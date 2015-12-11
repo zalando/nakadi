@@ -32,6 +32,7 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
@@ -75,7 +76,13 @@ public class TopicsController {
 
 	@Timed
 	@RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
-	public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
+	@ApiOperation("Lists the partitions for the given topic")
+	@ApiResponses({ @ApiResponse(code = 200, message = "Returns list of all partitions for the given topic",
+			response = TopicPartition.class),
+		@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
+		@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
+	public ResponseEntity<?> listPartitions(
+			@ApiParam(name = "topic", value = "Topic name", required = true) @PathVariable("topicId") final String topicId) {
 		try {
 			return ok().body(topicRepository.listPartitions(topicId));
 		} catch (final NakadiException e) {
@@ -91,8 +98,14 @@ public class TopicsController {
 
 	@Timed
 	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events", method = RequestMethod.POST)
-	public ResponseEntity<?> postEventToPartition(@PathVariable("topicId") final String topicId,
-			@PathVariable("partitionId") final String partitionId, @RequestBody final String messagePayload) {
+	@ApiOperation("Posts an event to the specified partition of this topic.")
+	@ApiResponses({ @ApiResponse(code = 201, message = "Event submitted"),
+		@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
+		@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
+	public ResponseEntity<?> postEventToPartition(
+			@ApiParam(name = "topic", value = "Topic where to send events to", required = true) @PathVariable("topicId") final String topicId,
+			@ApiParam(name = "partition", value = "Partition where to send events to", required = true) @PathVariable("partitionId") final String partitionId,
+			@RequestBody final String messagePayload) {
 		LOG.trace("Event received: {}, {}, {}", new Object[] { topicId, partitionId, messagePayload });
 		try {
 			topicRepository.postEvent(topicId, partitionId, messagePayload);
