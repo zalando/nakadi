@@ -32,7 +32,6 @@ paths:
       tags:
         - monitoring
       summary: Get monitoring metrics
-      operationId: nakadi.metrics.get
       responses:
         '200':
           description: Metrics data
