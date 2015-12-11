@@ -367,19 +367,6 @@ definitions:
         type: string
         description: Topic name
         example: article.120
-  StreamClient:
-    properties:
-      id:
-        type: string
-        format: uuid
-      topic:
-        type: string
-      subscription_id:
-        type: string
-        format: uuid
-      expires_at:
-        type: string
-        format: date-time
   Partition:
     required:
       - partition
