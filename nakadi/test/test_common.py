@@ -19,7 +19,7 @@ def get_monkey_patched_hack():
     # monkey patch eventstore uid check
     from nakadi import hack
     def __fake_get_uid():
-        return config.UID_TO_POST_EVENT
+        return config.UIDS_TO_POST_EVENT[0]
     hack.__get_uid = __fake_get_uid
 
     return hack
