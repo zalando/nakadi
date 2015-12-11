@@ -8,7 +8,7 @@ ENABLE_LOGS_ROTATION = True
 
 # OAuth2 settings
 TOKEN_INFO_URL = os.environ.get('HTTP_TOKENINFO_URL', 'https://auth.zalando.com/oauth2/tokeninfo')
-UID_TO_POST_EVENT = os.environ.get('OAUTH2_UID_TO_POST_EVENT', 'stups_shop-updater-hack')
+UIDS_TO_POST_EVENT = os.environ.get('OAUTH2_UID_TO_POST_EVENT', 'stups_shop-updater-hack').split(',')
 TOKEN_CACHE_SIZE = 1024
 TOKEN_CACHE_TTL = 60
 TOKEN_INFO_RETRY_LIMIT = 3

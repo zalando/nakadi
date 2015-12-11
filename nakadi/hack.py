@@ -249,7 +249,7 @@ def __push_events_to_kafka(topic, events):
 
     call_start = datetime.datetime.now()
 
-    if not __get_uid() == config.UID_TO_POST_EVENT:
+    if __get_uid() not in config.UIDS_TO_POST_EVENT:
         logging.info('[#OAUTH_401] Received uuid is not valid for posting: %s', flask.request.token_info.get("uid"))
         return {'detail': 'Not Authorized. You are not allowed to use this endpoint'}, 401
 
