@@ -20,6 +20,11 @@ consumes:
   - application/json
 produces:
   - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: implicit
+    authorizationUrl: 'https://auth.example.com/oauth2/tokeninfo'
 
 paths:
   /metrics:
