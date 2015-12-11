@@ -216,10 +216,6 @@ paths:
         - name: event
           in: body
           description: Even being sent.
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Event'
       responses:
         '201':
           description: Event submitted.
