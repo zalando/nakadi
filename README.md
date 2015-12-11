@@ -52,7 +52,7 @@ Install python requirements
 
 Run ZooKeeper and Kafka docker images
 
-    make -C local-test run
+    make --directory local-test run
     
 Run the local service
 
