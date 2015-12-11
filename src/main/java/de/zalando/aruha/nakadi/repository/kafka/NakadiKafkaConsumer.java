@@ -4,13 +4,11 @@ import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
-import kafka.common.AuthorizationException;
-import kafka.common.InvalidOffsetException;
-import kafka.common.KafkaException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.InvalidOffsetException;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.WakeupException;
 
 import java.util.List;
 import java.util.Map;
@@ -79,8 +77,8 @@ public class NakadiKafkaConsumer implements EventConsumer {
         catch (InvalidOffsetException e) {
             throw new NakadiException("Wrong offset provided", e);
         }
-        catch (WakeupException | AuthorizationException | KafkaException e) {
-            throw new NakadiException("Error occured when polling from kafka", e);
+        catch (KafkaException e) {
+            throw new NakadiException("Error occurred when polling from kafka", e);
         }
     }
 }
