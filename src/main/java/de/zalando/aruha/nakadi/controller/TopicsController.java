@@ -4,6 +4,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.service.EventStream;
@@ -52,11 +53,8 @@ public class TopicsController {
 	@Autowired
 	private TopicRepository topicRepository;
 
-	@Autowired
-	private TaskExecutor taskExecutor;
-
-    @Value("${nakadi.stream.timeoutMs}")
-    private long nakadiStreamTimeout;
+    @Autowired
+    private ObjectMapper jsonMapper;
 
 	@Timed
 	@RequestMapping(value = "/", method = RequestMethod.GET)
@@ -127,7 +125,7 @@ public class TopicsController {
 	}
 
 	@RequestMapping(value = "/{topic}/partitions/{partition}/events/stream", method = RequestMethod.GET)
-	public ResponseBodyEmitter streamEventsFromPartition(
+	public StreamingResponseBody streamEventsFromPartition(
 			@PathVariable("topic") final String topic,
 			@PathVariable("partition") final String partition,
 			@RequestParam("start_from") final String startFrom,
@@ -136,74 +134,58 @@ public class TopicsController {
 			@RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
 			@RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
 			@RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
+            final HttpServletRequest request,
             final HttpServletResponse response) throws IOException {
 
-        final ResponseBodyEmitter responseEmitter = new ResponseBodyEmitter(nakadiStreamTimeout);
+        return outputStream -> {
+            try {
+                // check if topic exists
+                final boolean topicExists = topicRepository.listTopics().stream().anyMatch(t -> topic.equals(t.getName()));
+                if (!topicExists) {
+                    response.setStatus(HttpStatus.NOT_FOUND.value());
+                    jsonMapper.writer().writeValue(outputStream, new Problem("topic not found"));
+                }
 
-        try {
-            // check if topic exists
-            final boolean topicExists = topicRepository.listTopics().stream().anyMatch(t -> topic.equals(t.getName()));
-            if (!topicExists) {
-                response.setStatus(HttpStatus.NOT_FOUND.value());
-                responseEmitter.send(new Problem("topic not found"));
-                responseEmitter.complete();
+                // check if partition exists (todo)
+                // check if offset is correct (todo)
+
+                final EventStreamConfig streamConfig = EventStreamConfig.builder()
+                        .withTopic(topic)
+                        .withCursors(ImmutableMap.of(partition, startFrom))
+                        .withBatchLimit(batchLimit)
+                        .withStreamLimit(ofNullable(streamLimit))
+                        .withBatchTimeout(ofNullable(batchTimeout))
+                        .withStreamTimeout(ofNullable(streamTimeout))
+                        .withBatchKeepAliveLimit(ofNullable(batchKeepAliveLimit))
+                        .build();
+
+                response.setStatus(HttpStatus.OK.value());
+
+                final String acceptEncoding = request.getHeader("Accept-Encoding");
+                final boolean gzipEnabled = acceptEncoding != null && acceptEncoding.contains("gzip");
+                final OutputStream output = gzipEnabled ? new FlushableGZIPOutputStream(outputStream) : outputStream;
+
+                if (gzipEnabled) {
+                    response.addHeader("Content-Encoding", "gzip");
+                }
+
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic, streamConfig.getCursors());
+                final EventStream eventStream = new EventStream(eventConsumer, output, streamConfig);
+                eventStream.streamEvents();
+
+                if (gzipEnabled) {
+                    output.close();
+                }
+
+            } catch (NakadiException e) {
+                response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+                jsonMapper.writer().writeValue(outputStream, e.asProblem());
             }
-
-            // check if partition exists (todo)
-            // check if offset is correct (todo)
-
-            final EventStreamConfig streamConfig = EventStreamConfig.builder()
-                    .withTopic(topic)
-                    .withCursors(ImmutableMap.of(partition, startFrom))
-                    .withBatchLimit(batchLimit)
-                    .withStreamLimit(ofNullable(streamLimit))
-                    .withBatchTimeout(ofNullable(batchTimeout))
-                    .withStreamTimeout(ofNullable(streamTimeout))
-                    .withBatchKeepAliveLimit(ofNullable(batchKeepAliveLimit))
-                    .build();
-
-            final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic, streamConfig.getCursors());
-
-            final EventStream eventStreamTask = new EventStream(eventConsumer, responseEmitter, streamConfig);
-            taskExecutor.execute(eventStreamTask);
-
-            response.setStatus(HttpStatus.OK.value());
-        }
-        catch (NakadiException e) {
-            response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
-            responseEmitter.send(e.asProblem());
-            responseEmitter.complete();
-        }
-        return responseEmitter;
-	}
-
-	@RequestMapping("/gzip")
-	public StreamingResponseBody handle(final HttpServletResponse response, final HttpServletRequest request) {
-		return new StreamingResponseBody() {
-			@Override
-			public void writeTo(final OutputStream outputStream) throws IOException {
-				final String acceptEncoding = request.getHeader("Accept-Encoding");
-				final boolean gzipEnabled = acceptEncoding != null && acceptEncoding.contains("gzip");
-				final OutputStream output = gzipEnabled ? new FlushableGZIPOutputStream(outputStream) : outputStream;
-
-				if (gzipEnabled)
-					response.addHeader("Content-Encoding", "gzip");
-
-				for (Integer i = 0; i < 20; i++) {
-					try {
-						output.write((i.toString() + "\n").getBytes());
-						if (i % 2 == 0)
-							output.flush();
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-
-				if (gzipEnabled)
-					output.close();
-			}
-		};
+            finally {
+                outputStream.flush();
+                outputStream.close();
+            }
+        };
 	}
 
 }

@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,26 +20,25 @@ import java.util.stream.Collectors;
 import static java.lang.System.currentTimeMillis;
 import static java.util.function.Function.identity;
 
-public class EventStream implements Runnable {
+public class EventStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
 
     private static final String BATCH_SEPARATOR = "\n";
 
-    private final ResponseBodyEmitter responseEmitter;
+    private final OutputStream outputStream;
 
     private final EventConsumer eventConsumer;
 
     private final EventStreamConfig config;
 
-    public EventStream(final EventConsumer eventConsumer, final ResponseBodyEmitter responseEmitter, final EventStreamConfig config) {
+    public EventStream(final EventConsumer eventConsumer, final OutputStream outputStream, final EventStreamConfig config) {
         this.eventConsumer = eventConsumer;
-        this.responseEmitter = responseEmitter;
+        this.outputStream = outputStream;
         this.config = config;
     }
 
-    @Override
-    public void run() {
+    public void streamEvents() {
         // todo: currently if:
         // - stream limit and timeout are not set AND
         // - the keep-alive is not set AND
@@ -94,7 +94,8 @@ public class EventStream implements Runnable {
                     currentBatch = emptyBatch();
                     batchStartTime = currentTimeMillis();
 
-                    responseEmitter.send(BATCH_SEPARATOR);
+                    outputStream.write(BATCH_SEPARATOR.getBytes());
+                    outputStream.flush();
                 }
 
                 // check if we reached the stream timeout or message count limit
@@ -117,9 +118,6 @@ public class EventStream implements Runnable {
         }
         catch (NakadiException e) {
             LOG.error("Error occurred when polling events from kafka", e);
-        }
-        finally {
-            responseEmitter.complete();
         }
     }
 
@@ -158,7 +156,7 @@ public class EventStream implements Runnable {
 
             // create stream event for current partition and send it; if there were no events, it will be just a keep-alive
             final String streamEvent = createStreamEvent(partition, latestOffsets.get(partition), events, Optional.empty());
-            responseEmitter.send(streamEvent);
+            outputStream.write(streamEvent.getBytes());
         }
     }
 
