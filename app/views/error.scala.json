@@ -1,5 +1,0 @@
-@(messages: String*) {
-    "messages": [
-    @for(message <- messages) { "@message"
-    } ]
-}

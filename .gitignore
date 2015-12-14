@@ -10,3 +10,5 @@ target
 tmp
 dist
 .cache
+
+.sbtserver*

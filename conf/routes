@@ -1,10 +1,7 @@
-GET         /databases                               controllers.RootController.databases()
-GET         /procs                                   controllers.RootController.procs()
-GET         /procs/:database                         controllers.RootController.procsForDatabase(database: String)
-GET         /procs/:database/:namespace              controllers.RootController.procsForNamespace(database: String, namespace: String)
-GET         /procs/:database/:namespace/:name        controllers.RootController.procEntry(database: String, namespace: String, name: String)
-GET         /types                                   controllers.RootController.types()
-GET         /types/:database                         controllers.RootController.typesForDatabase(database: String)
-GET         /types/:database/:id                     controllers.RootController.typeOf(database: String, id: Long)
-POST        /call/:database/:namespace/:name         controllers.RootController.call(database: String, namespace: String, name: String)
+GET         /metrics                                    controllers.EventBrokerController.getMetrics
+GET         /topics                                     controllers.EventBrokerController.getTopics
+GET         /topics/:topic/events                       controllers.EventBrokerController.getEventsFromTopic(topic: String)
+POST        /topics/:topic/events                       controllers.EventBrokerController.postEventsIntoTopic(topic: String)
+GET         /topics/:topic/partitions                   controllers.EventBrokerController.getPartitionsForTopic(topic: String)
+GET         /topics/:topic/partitions/:partition/events controllers.EventBrokerController.getEventsFromPartition(topic: String, partition: String)
 

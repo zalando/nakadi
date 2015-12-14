@@ -1,26 +1,24 @@
-name := "nakadi"
+name := """nakadi"""
 
-version := "0.1"
+version := "0.1-SNAPSHOT"
 
 scalaVersion := "2.11.7"
-scalacOptions ++= Seq("-feature", "-deprecation")
-scalacOptions in Test ++= Seq("-Yrangepos")
 
-parallelExecution in Test := true
+// scalacOptions ++= Seq("-feature", "-deprecation")
+// scalacOptions in Test ++= Seq("-Yrangepos")
 
-resolvers += "Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository"
+//parallelExecution in Test := true
+
+lazy val root = (project in file(".")).enablePlugins(PlayScala)
+
 resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases"
 
 libraryDependencies ++= Seq(
-  // "com.typesafe.akka" %% "akka-actor" % "2.4.1",
-  // "com.jsuereth" % "scala-arm" % "1.4",
-  "com.gilt" %% "play-json-service-lib-2-3" % "1.1.0",
-  specs2 % "test"
+  specs2 % Test
 )
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala, SbtTwirl)
-
-TwirlKeys.templateFormats += ("json" -> "com.gilt.play.json.templates.JsonFormat")
+routesGenerator := InjectedRoutesGenerator
+fork in run := true
 
 // scoverage
 
