@@ -1,4 +1,12 @@
-.cache
-__pycache__
 .coverage
-*.pyc
+
+.idea/
+*.sw?
+
+logs
+project/project
+project/target
+target
+tmp
+dist
+.cache
