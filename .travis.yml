@@ -10,9 +10,7 @@ python:
 
 # build and run docker container with kafka
 before_install:
-  - cd local-test
-  - make run
-  - cd ..
+  - make --directory local-test run
 
 # install dependencies
 install:
