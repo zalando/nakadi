@@ -13,6 +13,9 @@ import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.web.WebApplicationInitializer;
 
 @Configuration
 @EnableMetrics
@@ -21,6 +24,11 @@ public class NakadiConfig {
 
 	public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
 	public static final HealthCheckRegistry HEALTH_CHECK_REGISTRY = new HealthCheckRegistry();
+
+	@Bean
+	public TaskExecutor taskExecutor() {
+		return new SimpleAsyncTaskExecutor();
+	}
 
 	@Bean
 	public ServletRegistrationBean servletRegistrationBean() {
