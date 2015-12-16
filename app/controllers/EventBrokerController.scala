@@ -2,15 +2,20 @@ package controllers
 
 import javax.inject.Inject
 
-import play.api.mvc.Controller
+import models.Metrics
+import play.api.libs.json.Json
+import play.api.mvc.{Codec, Action, Controller}
 
 import scala.concurrent.ExecutionContext
 
 class EventBrokerController @Inject() ()
                                    (implicit ec: ExecutionContext) extends Controller {
 
-  def getMetrics = {
-    play.mvc.Results.TODO
+  implicit val defaultCodec = Codec.utf_8
+
+  val getMetrics = Action { result =>
+    Ok( Json.toJson(Metrics(applicationName = "Nakadi Event Bus")) )
+      .as(JSON)
   }
 
   def getTopics = play.mvc.Results.TODO

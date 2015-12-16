@@ -1,23 +1,26 @@
-sudo: required
+sudo: false
 
-language: python
+language: scala
+scala:
+  - 2.11.7
+
+cache:
+  directories:
+    - $HOME/.m2/repository
+    - $HOME/.sbt
+    - $HOME/.ivy2
 
 services:
   - docker
 
-python:
-  - "3.4"
-
 # build and run docker container with kafka
 before_install:
-  - cd local-test
-  - make run
-  - cd ..
+  - make -C local-test run
 
-# install dependencies
-install:
-  - pip install -r requirements.txt
 
-# run tests
 script:
-  - py.test nakadi/test
+  - sbt ++$TRAVIS_SCALA_VERSION compile test:compile
+  - sbt ++$TRAVIS_SCALA_VERSION test
+
+  # Trick to avoid unnecessary cache updates
+  - find $HOME/.sbt -name "*.lock" | xargs rm

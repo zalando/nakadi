@@ -23,7 +23,7 @@ class ApplicationSpec extends Specification {
       val metrics = route(FakeRequest(GET, "/metrics")).get
 
       status(metrics) must equalTo(OK)
-      contentType(metrics) must beSome.which(_ == "text/html")
+      contentType(metrics) must beSome.which(_ == "application/json")
     }
   }
 }

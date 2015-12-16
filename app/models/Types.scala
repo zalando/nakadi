@@ -13,6 +13,12 @@ object CommonTypes {
   type Scope = String
 }
 
+case class Metrics(applicationName: String)
+
+object Metrics {
+  implicit val metricsFormat = Json.format[Metrics]
+}
+
 case class Topic(name: TopicName)
 
 object Topic {
@@ -31,7 +37,7 @@ object Partition {
 case class EventMetaData(
                          id: EventId,
                          created: Date,
-                         root_id: Option[EventId],
+                         rootId: Option[EventId],
                          scopes: Option[List[Scope]]
                         )
 
