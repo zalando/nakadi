@@ -91,7 +91,8 @@ paths:
             format: '#/definitions/Cursor'
         - name: batch_limit
           in: query
-          description: Maximum number of `SimpleStreamElement`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
+          description: |
+            Maximum number of `EventStreamAtom`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
           type: integer
           format: int32
           required: false
@@ -137,10 +138,9 @@ paths:
         '200':
           description: |
             Starts streaming to the client.
-            Stream format is a continuous series of
-            `SimpleStreamEvent`s separated by `\n`
+            Stream format is a continuous series of `EventStreamAtom`s separated by `\n`
           schema:
-            $ref: '#/definitions/SimpleStreamEvent'
+            $ref: '#/definitions/EventStreamAtom'
         '400':
           description: Bad syntax
           schema:
@@ -150,11 +150,11 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '404':
-          description: Not found. Typically in case of requesting from a non existing topic of partition.
+          description: Not found. Typically in case of requesting from a non existing topic or partition. Details are provided on the returned `Problem`.
           schema:
             $ref: '#/definitions/Problem'
         '500':
-          description: Not found. Typically in case of requesting from a non existing topic of partition.
+          description: Internal Server Error. Details are provided on the returned `Problem`.
           schema:
             $ref: '#/definitions/Problem'
     post:
@@ -317,7 +317,7 @@ paths:
           required: true
         - name: batch_limit
           in: query
-          description: Maximum number of `SimpleStreamElement`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
+          description: Maximum number of `EventStreamAtom`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
           type: integer
           format: int32
           required: false
@@ -367,11 +367,10 @@ paths:
       responses:
         '200':
           description: |
-            Starts streaming to the client.  
-            Stream format is a continuous series of
-            `SimpleStreamEvent`s separated by `\n`
+            Starts streaming to the client.
+            Stream format is a continuous series of `EventStreamAtom`s separated by `\n`
           schema:
-            $ref: '#/definitions/SimpleStreamEvent'
+            $ref: '#/definitions/EventStreamAtom'
         '400':
           description: Bad syntax
           schema:
@@ -474,7 +473,7 @@ definitions:
         type: string
       offset:
         type: string
-  SimpleStreamEvent:
+  EventStreamAtom:
     required:
       - cursor
     properties:
