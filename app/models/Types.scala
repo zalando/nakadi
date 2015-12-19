@@ -13,11 +13,12 @@ object CommonTypes {
   type Scope = String
 }
 
-case class Metrics(applicationName: String)
+case class Metrics(application_name: String)
 
 object Metrics {
   implicit val metricsFormat = Json.format[Metrics]
 }
+
 
 case class Topic(name: TopicName)
 
@@ -37,16 +38,16 @@ object Partition {
 case class EventMetaData(
                          id: EventId,
                          created: Date,
-                         rootId: Option[EventId],
-                         scopes: Option[List[Scope]]
+                         root_id: Option[EventId],
+                         scopes: Option[Seq[Scope]]
                         )
 
 object EventMetaData {
   implicit val eventMetaData = Json.format[EventMetaData]
 }
 
-case class Event(eventType: String,
-                 partitioningKey: String,
+case class Event(event_type: String,
+                 partitioning_key: String,
                  metadata: EventMetaData
                 )
 
@@ -60,7 +61,7 @@ object PartitionCursor {
   implicit val partitionCursorFormat = Json.format[PartitionCursor]
 }
 
-case class SimpleStreamEvent(cursor: PartitionCursor, events: List[Event])
+case class SimpleStreamEvent(cursor: PartitionCursor, events: Seq[Event])
 
 object SimpleStreamEvent {
   implicit val simpleStreamEvent = Json.format[SimpleStreamEvent]
