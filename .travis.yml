@@ -13,10 +13,9 @@ cache:
 services:
   - docker
 
-#before_install:
-#  # build and run docker container with kafka
-#  - make -C local-test run
-
+before_install:  
+  - sudo apt-get update
+  - sudo apt-get install docker-engine
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION clean compile test:compile
