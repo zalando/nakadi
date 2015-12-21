@@ -57,7 +57,7 @@ public class TopicsController {
     private ObjectMapper jsonMapper;
 
 	@Timed
-	@RequestMapping(value = "/", method = RequestMethod.GET)
+	@RequestMapping(method = RequestMethod.GET)
 	@ApiOperation("Lists all known topics")
 
 	// FIXME: response for 200 does not match reality
@@ -115,7 +115,7 @@ public class TopicsController {
 	}
 
 	@Timed
-	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events", method = RequestMethod.GET)
+	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events/one", method = RequestMethod.GET)
 	public ResponseEntity<?> readEventFromPartition(@PathVariable("topicId") final String topicId,
 			@PathVariable("partitionId") final String partitionId, @RequestBody final String messagePayload) {
 		// LOG.trace("Event received: {}, {}, {}", new Object[] { topicId,
@@ -124,7 +124,7 @@ public class TopicsController {
 		return ok().build();
 	}
 
-	@RequestMapping(value = "/{topic}/partitions/{partition}/events/stream", method = RequestMethod.GET)
+	@RequestMapping(value = "/{topic}/partitions/{partition}/events", method = RequestMethod.GET)
 	public StreamingResponseBody streamEventsFromPartition(
 			@PathVariable("topic") final String topic,
 			@PathVariable("partition") final String partition,
