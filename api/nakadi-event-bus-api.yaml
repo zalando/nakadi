@@ -3,12 +3,40 @@ info:
   title: Nakadi Event Bus API Definition
   description: |
     -------------------------------
-    Nakadi Event Bus API Definition
+
+    Scope
     -------------------------------
 
-    * Low-level API
+    The present document's purpose is the specification of the API and behaviour of Nakadi from a client perspective, i.e. as a Producer or Consumer of events.
+
+    In this document, ready for review, are included:
+
+    * Low-level API communication API
     * Stantardised event format (see #/definitions/Event)
     * Partition strategy: event store will infer the partition from the `partitioning_key` in the message body
+
+    Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included in this version of this specification.
+
+    Definitions
+    -----------
+    Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API. By doing this, Nakadi abstracts away, as much as possible, details of the backing messaging infrastructure. The single currently supported messaging middleware is Kafka.
+
+    Nakadi itself will impose as little as possible in the event structure and its contents. Nevertheless, Nakadi provides for extensible validation of incoming messages based on its structure and content. This means that, although Nakadi strives to act transparently as a message broker, it provides means to safeguard the content quality of the events flowing in.
+
+    Similar approach is used to support enrichment of the content of events.
+
+    In terms of management of the communication streams, Nakadi offers 2 distinct levels of interaction, named low-level and hi-level APIs. The **low-level** API delegates to the consumer the whole responsibility of tracking the pointer of consumption of a stream. On the other hand, with this responsibility one gains the possibility of having full control of consumption and very little overhead on Nakadi's side.
+
+    The alternative to low-level is the **high-level** API, where consumers have a "stateful stream", where Nakadi assumes the responsibility of managing the pointer tracking of the streams vis-a-vis each subscribed consumer.
+
+    Status of this document
+    -----------------------
+    The present API specification is in **draft** state and is subject to change.
+
+    Notable omissions here are:
+    * The process of creating a `Topic` and definition of the related `EventType`s is not fully defined and its details will be added as it becomes more clear.
+    * Certain aspects of the validation procedures of incoming events might not be possible to finalize until the preceding point is pending.
+    * The specific ways of defining the validation and enrichment of events are unspecified at this point.
 
   version: '0.4'
   contact:
