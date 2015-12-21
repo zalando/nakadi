@@ -15,6 +15,10 @@ run: build-kafka-docker-image
 interactive: build-kafka-docker-image
 	docker run -p 9092:9092 -p 2181:2181 -it local-kafka
 
+DOCKER_ID=$(shell docker ps -qf "ancestor=local-kafka")
+
 kill:
-	docker kill $(shell docker ps -qf "ancestor=local-kafka")
+ifneq ($(DOCKER_ID),)
+	@echo "Killing container $(shell docker kill $(DOCKER_ID))"
+endif
 
