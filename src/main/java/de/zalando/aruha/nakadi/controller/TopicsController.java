@@ -112,15 +112,6 @@ public class TopicsController {
 	}
 
 	@Timed
-	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events/one", method = RequestMethod.GET)
-	public ResponseEntity<?> readEventFromPartition(@PathVariable("topicId") final String topicId,
-			@PathVariable("partitionId") final String partitionId, @RequestBody final String messagePayload) {
-		// LOG.trace("Event received: {}, {}, {}", new Object[] { topicId,
-		// partitionId, messagePayload });
-		topicRepository.readEvent(topicId, partitionId);
-		return ok().build();
-	}
-
 	@RequestMapping(value = "/{topic}/partitions/{partition}/events", method = RequestMethod.GET)
 	public StreamingResponseBody streamEventsFromPartition(
 			@PathVariable("topic") final String topic,
