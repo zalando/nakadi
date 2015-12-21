@@ -2,12 +2,12 @@ swagger: '2.0'
 info:
   title: Nakadi Event Bus API Definition
   description: |
-    -------------------------------
-
+    -----
     Scope
-    -------------------------------
+    -----
 
-    The present document's purpose is the specification of the API and behaviour of Nakadi from a client perspective, i.e. as a Producer or Consumer of events.
+    The present document's purpose is the specification of the API and behaviour of Nakadi from a client perspective,
+    i.e. as a Producer or Consumer of events.
 
     In this document, ready for review, are included:
 
