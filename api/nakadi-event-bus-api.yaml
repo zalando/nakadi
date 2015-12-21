@@ -2,9 +2,7 @@ swagger: '2.0'
 info:
   title: Nakadi Event Bus API Definition
   description: |
-    -------------------------------
-
-
+    -----------
     Definitions
     -----------
     Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API. By doing this, Nakadi abstracts away, as much as possible, details of the backing messaging infrastructure. The single currently supported messaging middleware is Kafka.
@@ -48,7 +46,7 @@ info:
   version: '0.4'
   contact:
     name: Team Aruha @ Zalando
-    email: nakadi-users@zalando.de
+    email: team-aruha+nakadi-maintainers@zalando.de
 schemes:
   - https
 consumes:
