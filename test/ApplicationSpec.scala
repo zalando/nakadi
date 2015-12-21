@@ -1,3 +1,4 @@
+import models.Topic
 import org.specs2.mutable._
 import org.specs2.runner._
 import org.junit.runner._
@@ -24,6 +25,15 @@ class ApplicationSpec extends Specification {
 
       status(metrics) must equalTo(OK)
       contentType(metrics) must beSome.which(_ == "application/json")
+    }
+
+    "get topics" in new WithApplication{
+      val topics = route(FakeRequest(GET, "/topics")).get
+
+      status(topics) must equalTo(OK)
+      contentType(topics) must beSome.which(_ == "application/json")
+      // TODO: fix this as topics is actually an array of topics
+      // contentAsJson(topics).as[Topic].name must be("test-topic")
     }
   }
 }

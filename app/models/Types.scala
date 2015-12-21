@@ -13,7 +13,10 @@ object CommonTypes {
   type Scope = String
 }
 
-case class Metrics(application_name: String)
+case class Metrics(application_name: String,
+                   kafka_servers: Seq[String],
+                   zookeeper_servers: Seq[String]
+                  )
 
 object Metrics {
   implicit val metricsFormat = Json.format[Metrics]
@@ -27,8 +30,8 @@ object Topic {
 }
 
 case class Partition(name: PartitionName,
-                     oldestAvailableOffset: PartitionOffset,
-                     newestAvailableOffset: PartitionOffset
+                     oldest_available_offset: PartitionOffset,
+                     newest_available_offset: PartitionOffset
                     )
 
 object Partition {

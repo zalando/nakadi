@@ -1,6 +1,8 @@
 FROM zalando/openjdk:8u45-b14-6
 
-ENV KAFKA_VERSION="0.8.2.1" SCALA_VERSION="2.10"
+ARG KAFKA_ADVERTISED_HOST_NAME=localhost
+
+ENV KAFKA_VERSION="0.9.0.0" SCALA_VERSION="2.11"
 ENV KAFKA_IMG="kafka_${SCALA_VERSION}-${KAFKA_VERSION}"
 ENV KAFKA_DIR="/opt/${KAFKA_IMG}"
 
@@ -11,9 +13,10 @@ RUN rm /install-local-kafka.sh
 
 WORKDIR ${KAFKA_DIR}
 
-ADD start-local-kafka.sh ${KAFKA_DIR}/
-
-ENTRYPOINT bash start-local-kafka.sh
+ADD start-local-kafka.sh ${KAFKA_DIR}
 
 EXPOSE 2181
 EXPOSE 9092
+
+ENTRYPOINT bash start-local-kafka.sh
+

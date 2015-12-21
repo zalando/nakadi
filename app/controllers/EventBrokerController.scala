@@ -5,6 +5,7 @@ import javax.inject.Inject
 import akka.actor.{Props, ActorSystem}
 import models.CommonTypes.{PartitionOffset, PartitionName, TopicName}
 import models.Metrics
+import play.api.Logger
 import play.api.libs.json.{Writes, Json}
 import play.api.mvc.{Results, Codec, Action, Controller}
 
@@ -38,10 +39,16 @@ import controllers.ActorCommands._
 class EventBrokerController @Inject() ()
                                    (implicit ec: ExecutionContext) extends Controller {
 
+  val LOG = Logger("EventBrokerController")
+
   implicit val defaultCodec = Codec.utf_8
 
   val getMetrics = Action { result =>
-    Ok( Json.toJson(Metrics(application_name = "Nakadi Event Bus")) )
+    Ok( Json.toJson(Metrics(
+      application_name = "Nakadi Event Bus",
+      kafka_servers = ConfigFactory.load().getString("kafka.host").split(','), // fast and dirty
+      zookeeper_servers = ConfigFactory.load().getString("zookeeper.host").split(',') // fast and dirty
+    ) ) )
       .as(JSON)
   }
 
@@ -49,7 +56,14 @@ class EventBrokerController @Inject() ()
     consumer.listTopics().asScala.keys.map(Topic.apply)
   }
 
-  def getPartitionsForTopic(topic: String) = play.mvc.Results.TODO
+  def getPartitionsForTopic(topic: String) = withConsumer { consumer =>
+    consumer.partitionsFor(topic).asScala.map { pi =>
+      Partition(
+        name = pi.partition().toString,
+        oldest_available_offset = "UNKNOWN",
+        newest_available_offset = "UNKNOWN" )
+    } sortBy(_.name)
+  }
   def getEventsFromTopic(topic: String) = play.mvc.Results.TODO
 
   def postEventsIntoTopic(topic: String) = play.mvc.Results.TODO
@@ -66,14 +80,6 @@ class EventBrokerController @Inject() ()
     implicit val timeout = akka.util.Timeout(5, TimeUnit.SECONDS)
     akka.pattern.ask(actor, Start).mapTo[Enumerator[Event]].map(
       evt => Results.Ok.chunked(evt.map(Json.toJson(_))))
-  }
-
-  def getTopicPartitions(topic: String) = withConsumer { consumer =>
-    consumer.partitionsFor(topic).asScala.map { (partitionInfo: PartitionInfo) =>
-      Partition(name = partitionInfo.partition().toString,
-                oldestAvailableOffset = ???,
-                newestAvailableOffset = ???)
-    }
   }
 
   private def withConsumer[A](f: KafkaConsumer[_, _] => A)(implicit w: Writes[A]): Action[AnyContent] = {
@@ -94,6 +100,9 @@ class EventBrokerController @Inject() ()
 }
 
 object KafkaClient {
+
+  val LOG = Logger("application.KafkaClient")
+
   def apply() = new KafkaConsumer[String, String]({
     val set = ConfigFactory.load().getConfig("kafka.consumer").entrySet().asScala
     val props = set.foldLeft(new Properties) {
@@ -102,14 +111,17 @@ object KafkaClient {
         val value = item.getValue.unwrapped().toString
         require(p.getProperty(key) == null, s"key ${item.getKey} exists more than once")
         p.setProperty(key, value)
+        LOG.debug(s"Read key ${key} with value ${value}")
         p
     }
-    props.setProperty("group.id", UUID.randomUUID().toString)
+    // props.setProperty("group.id", UUID.randomUUID().toString)
     props
   })
 }
 
 class KafkaConsumerActor(topic: String, partition: String, cursor: String, streamLimit: Int) extends Actor {
+
+  val LOG = Logger("application.KafkaConsumerActor")
 
   lazy val consumer = KafkaClient()
   val topicPartition = new TopicPartition(topic, partition.toInt)
@@ -118,26 +130,32 @@ class KafkaConsumerActor(topic: String, partition: String, cursor: String, strea
 
   override def receive: Receive = {
     case Start =>
-      println("Got Start signal")
-
-      consumer.assign(util.Arrays.asList(topicPartition))
-      consumer.seek(topicPartition, cursor.toLong)
+      LOG.debug("Got Start signal")
+      blocking(consumer.assign(util.Arrays.asList(topicPartition)))
+      LOG.debug(s"Assigned partition ${topicPartition}")
+      blocking(consumer.seek(topicPartition, cursor.toLong))
+      LOG.debug(s"Seeked to ${cursor} in partition ${topicPartition}")
       sender ! Concurrent.unicast((c: Channel[Event]) => {
         this.channel = c
         self ! Next
-      }).onDoneEnumerating(self ! Shutdown)
+      }).onDoneEnumerating({
+        // TODO: this does not really work :(
+        LOG.debug("Done enumerating")
+        self ! Shutdown
+      })
     case Next =>
-      println("Got Next signal")
+      LOG.debug("Got Next signal")
       // annoyingly, poll will block more or less forever if kafka isn't running
       val records = blocking(consumer.poll(500).asScala)
-      println(s"got ${records.size} event from the queue")
+      LOG.debug(s"got ${records.size} event from the queue")
       if (records.isEmpty) {
+        // TODO: schedule this event in future
         self ! Next
       } else {
         val toStream = if (streamLimit == 0) records else records.take(math.min(remaining, records.size))
         toStream.foreach { (r: ConsumerRecord[String, String]) =>
           Json.fromJson[Event](Json.parse(r.value())).asOpt.fold {
-            println(s"Could not parse ${r.value()}")
+            LOG.error(s"Could not parse ${r.value()}")
           } {
             channel.push(_)
           }
@@ -151,7 +169,7 @@ class KafkaConsumerActor(topic: String, partition: String, cursor: String, strea
         }
       }
     case Shutdown =>
-      println("Got Shutdown signal")
+      LOG.debug("Got Shutdown signal")
       self ! PoisonPill
       Try(consumer.close())
   }
