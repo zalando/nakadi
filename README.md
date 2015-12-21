@@ -20,7 +20,7 @@ Some additional technical requirements that we wanted to cover by this architect
 * scalable and highly available architecture
 * [STUPS](https://stups.io/) compatible
 
-Additional topics, that we plan to cover in the near future are: 
+Additional topics, that we plan to cover in the near future are:
 
 * discoverability of the resource structures flowing into the event bus
 * centralized discovery service, that will use these capabilities to collect resource schema information for easy lookup by developers
@@ -52,16 +52,19 @@ Install `sbt`
 
 Run ZooKeeper and Kafka docker container
 
+    eval "$(docker-machine env default)"
     make -C local-test run
-    
-Export the address of the `docker-machine`
+
+Run test (actually these are integration tests)
+
+    sbt test
+
+When running the service locally, you have to manually set `KAFKA_HOST` and `ZOOKEEPER_HOST` environment variables before starting the service.
+
+    export KAFKA_HOST=$(docker-machine ip default)
+    export ZOOKEEPER_HOST=$KAFKA_HOST
 
 Run the local service
 
     sbt run
 
-As tests are designed to run as an independent component, they are starting the Kafka docker container itself,
-so do not forget to stop the `local-test` container before running tests:
-
-    make -C local-test kill
-    sbt test

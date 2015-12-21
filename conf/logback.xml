@@ -17,7 +17,7 @@
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%date{HH:mm:ss ZZZZ} %coloredLevel %logger{15} - %message%n%xException{10}</pattern>
+            <pattern>%date{HH:mm:ss.SSS} %coloredLevel %logger{15} - %message%n%xException{10}</pattern>
         </encoder>
     </appender>
 
@@ -38,7 +38,7 @@
     <logger name="com.avaje.ebeaninternal.server.lib.BackgroundThread" level="OFF" />
     <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
 
-    <logger name="org.apache.kafka" level="DEBUG" />
+    <logger name="org.apache.kafka" level="INFO" />
 
     <root level="WARN">
         <appender-ref ref="ASYNCFILE" />
