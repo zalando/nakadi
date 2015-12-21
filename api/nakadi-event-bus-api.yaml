@@ -41,7 +41,7 @@ info:
   version: '0.4'
   contact:
     name: Team Aruha @ Zalando
-    email: nakadi-users@zalando.de
+    email: team-aruha+nakadi-maintainers@zalando.de
 schemes:
   - https
 consumes:
