@@ -11,6 +11,18 @@ bin/zookeeper-server-start.sh config/zookeeper.properties > /dev/null &
 echo '################## Waiting for ZooKeeper to start'
 wait_for 2181
 
+
+if [ "$USE_CONTAINER_IP" = "true" ]; then
+    # this is a dirty hack to get the IP container runs on, we should invent something better
+    KAFKA_HOST=$(awk 'NR==1 {print $1}' /etc/hosts)
+fi
+: ${KAFKA_HOST=localhost}
+
+cat >> config/server.properties << --
+advertised.host.name=${KAFKA_HOST}
+advertised.host.port=9092
+--
+
 echo Starting Kafka
 bin/kafka-server-start.sh config/server.properties &
 wait_for 9092
