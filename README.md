@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/zalando/nakadi.svg)](https://travis-ci.org/zalando/nakadi) [![ReviewNinja](https://app.review.ninja/44234368/badge)](https://app.review.ninja/zalando/nakadi)
 
-[![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)](http://online.swagger.io/validator/debug?url=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)
+[![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-on-play/api/nakadi-event-bus-api.yaml)](http://online.swagger.io/validator/debug?url=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)
 
 Nakadi Event Bus
 =====================
@@ -41,19 +41,27 @@ What does the prototype already have?
     * automatic redistribution of partitions between consuming clients
     * commits should be issued to move server-side cursors
 
-Running it locally
-==================
+Running it locally (MacOS)
+==========================
 
 To run the project locally
 
-Install python requirements
+Install `sbt`
 
-    pip3 install -r requirements.txt
+    brew install sbt
 
-Run ZooKeeper and Kafka docker images
+Run ZooKeeper and Kafka docker container
 
-    make --directory local-test run
+    make -C local-test run
     
+Export the address of the `docker-machine`
+
 Run the local service
 
-    python3 run_local.py
+    sbt run
+
+As tests are designed to run as an independent component, they are starting the Kafka docker container itself,
+so do not forget to stop the `local-test` container before running tests:
+
+    make -C local-test kill
+    sbt test
