@@ -5,7 +5,7 @@ info:
     -----------
     Definitions
     -----------
-    Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API. By doing this, Nakadi abstracts away, as much as possible, details of the backing messaging infrastructure. The single currently supported messaging middleware is Kafka.
+    Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API. By doing this, Nakadi abstracts away, as much as possible, details of the backing messaging infrastructure. The single currently supported messaging middleware is Kafka (Kinesis is planned for the future).
 
     Nakadi itself will impose as little as possible in the event structure and its contents. Nevertheless, Nakadi provides for extensible validation of incoming messages based on its structure and content. This means that, although Nakadi strives to act transparently as a message broker, it provides means to safeguard the content quality of the events flowing in.
 
@@ -13,11 +13,11 @@ info:
 
     From the perspective of operation of Nakadi, a event and a management APIs are provided. The **event** API contains the operations reletad to the communication strems (i.e. sending and receiving events, in its different forms).
 
-    The management of the communication streams is offered by Nakadi in 2 distinct levels of abstraction, named low-level and hi-level APIs. The **low-level** API delegates to the consumer the whole responsibility of tracking the pointer of consumption of a stream. On the other hand, with this responsibility one gains the possibility of having full control of consumption and very little overhead on Nakadi's side.
+    The management of the communication streams is offered by Nakadi in 2 distinct levels of abstraction, named low-level and hi-level APIs. The **low-level** API delegates to the consumer the whole responsibility of tracking the pointer of consumption of a stream, as well as the partitioning. On the other hand, with this responsibility one gains the possibility of having full control of consumption and very little overhead on Nakadi's side.
 
-    The alternative to low-level is the **high-level** API, where consumers have a "stateful stream", where Nakadi assumes the responsibility of managing the pointer tracking of the streams vis-a-vis each subscribed consumer.
+    The alternative to low-level is the **high-level** API, where consumers have a "stateful stream", where Nakadi assumes the responsibility of managing the pointer tracking of the streams vis-a-vis each subscribed consumer. *Nakadi partitions the data respecting a `PartitioningStrategy` that is set per resource/topic (details TBD).*
 
-    The **management** API in Nakadi contains methods related to registration and configuration of `Topic`s and of `EventType`s, among others. *The processes involved in the registration of `Topic`s and assignment of responsbility over `EventType`s to them, as well as the configuration of its format validation, are still to be defined.*
+    The **management** API in Nakadi contains methods related to registration and configuration of `Topic`s and of `EventType`s, among others. *The processes involved in the registration of `Topic`s and assignment of responsbility over `EventType`s to them, as well as the configuration of its **format validation**, are still to be defined.*
 
     Although the APIs are semantically grouped as relevant for event and management purposes, they interact in important ways. Most important is that the steering of validation and enrichment of messages of a given EventType on a Topic are defined via the management API. Therefore understanding of the event API is not complete without the management API.
 
@@ -42,6 +42,8 @@ info:
     * Certain aspects of the validation procedures of incoming events might not be possible to finalize until the preceding point is pending.
     * The specific ways of defining the validation and enrichment of events are unspecified at this point.
     * The contract between Nakadi and clients in the context of the high-level API.
+    * Submission of events to topics in batched manner.
+    *
 
   version: '0.4'
   contact:
@@ -105,6 +107,7 @@ paths:
     post:
       tags:
         - management-api
+        - draft
       description: |
         Creates a topic.
 
@@ -117,7 +120,6 @@ paths:
             type: object
             $ref: '#/definitions/Topic'
           required: true
-
       responses:
         '200':
           description: The request was successful. Returns a list `Topic`s in the response body.
@@ -126,10 +128,15 @@ paths:
             description: An array of topics
             items:
               $ref: '#/definitions/Topic'
+        '400':
+          description: The request for topic creation was not successful. Further details in the returned response.
+          schema:
+            $ref: '#/definitions/Problem'
   '/topics/{topic}/events':
     get:
       tags:
-        - low-level-api
+        - high-level-api
+        - draft
       summary: |
         Starts a stream delivery for the specified partitions of the given topic.
         The tracking of the current position in the partitions and of which
@@ -152,8 +159,8 @@ paths:
         - name: batch_limit
           in: query
           description: |
-            Maximum number of `Event`s in each chunk of the stream. If unspecified assumes default value 1 
-            (i.e. each event is individually submitted). This limit is applied per partition. 
+            Maximum number of `Event`s in each chunk of the stream. If unspecified assumes default value 1
+            (i.e. each event is individually submitted). This limit is applied per partition.
           type: integer
           format: int32
           required: false
@@ -200,9 +207,9 @@ paths:
         '200':
           description: |
             Starts streaming to the client.
-            Stream format is a continuous series of `EventStreamAtom`s separated by `\n`
+            Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
           schema:
-            $ref: '#/definitions/EventStreamAtom'
+            $ref: '#/definitions/EventStreamFetch'
         '400':
           description: Bad syntax
           schema:
@@ -221,7 +228,8 @@ paths:
             $ref: '#/definitions/Problem'
     post:
       tags:
-        - low-level-api
+        - high-level-api
+        - draft
       description: |
         Post a one or more `Event`s to a given `Topic`.
         The partition is implicitly controlled by the partitioning_key attribute of the event. Nakadi guarantees that
@@ -268,8 +276,8 @@ paths:
   '/topics/{topic}/partitions':
     get:
       tags:
-        - low-level-api
         - monitoring
+        - management-api
       summary: Lists the `Partition`s for the given topic
       parameters:
         - name: topic
@@ -307,6 +315,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/Partition'
+
   '/topics/{topic}/partitions/{partition}/events':
     post:
       tags:
@@ -314,6 +323,8 @@ paths:
       summary: |
         Posts a batch of `Event`s to the specified partition of this topic.
         Note that this overwrites the evaluation of the partitioning_key.
+
+        **To be defined:** Every `Event` submitted to a topic will have its content validated and enriched, respectively, by the `EventValidationStrategy` and the `EventEnrichmentStrategy` defined for this `Topic` (see POST /topics for details).
       parameters:
         - name: topic
           in: path
@@ -360,7 +371,7 @@ paths:
       tags:
         - low-level-api
       summary: |
-        Starts a stream delivery for the specified partition of the given topic. The events are send in batches.
+        Starts a stream delivery for the specified partition of the given topic. The events are send in `EventStreamBatch`es.
         The tracking of the current position in the partition and of which
         partition is being read is in the responsibility of the client.
         No commits are needed.
@@ -382,7 +393,7 @@ paths:
           required: true
         - name: batch_limit
           in: query
-          description: Maximum number of `EventStreamAtom`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
+          description: Maximum number of `EventStreamBatch`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
           type: integer
           format: int32
           required: false
@@ -433,9 +444,9 @@ paths:
         '200':
           description: |
             Starts streaming to the client.
-            Stream format is a continuous series of `EventStreamAtom`s separated by `\n`
+            Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
           schema:
-            $ref: '#/definitions/EventStreamAtom'
+            $ref: '#/definitions/EventStreamBatch'
         '400':
           description: Bad syntax
           schema:
@@ -449,7 +460,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '500':
-          description: Not found. Typically in case of requesting from a non existing topic of partition.
+          description: Server error. Details are given in the response body.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -464,7 +475,7 @@ definitions:
   Event:
     type: object
     description: |
-      This is the most general representation of an event, that can be processed
+      **To be changed**. This is the most general representation of an event, that can be processed
       by Nakadi.
 
       It should be used as a base definition for all events, that flow through
@@ -486,7 +497,7 @@ definitions:
         format: uuid
       created:
         type: string
-        format: data-time
+        format: date-time
       root_id:
         type: string
         format: uuid
@@ -538,7 +549,11 @@ definitions:
         type: string
       offset:
         type: string
-  EventStreamAtom:
+  EventStreamBatch:
+    description: |
+      One chunk of events in a stream. A batch consists of an array of `Event`s plus a `Cursor` pointing to the offset of the last Event in the stream.
+
+      The size of the array of Event is limited by the parameters used to initialize a Stream.
     required:
       - cursor
     properties:
