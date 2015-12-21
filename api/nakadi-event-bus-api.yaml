@@ -152,7 +152,8 @@ paths:
         - name: batch_limit
           in: query
           description: |
-            Maximum number of `EventStreamAtom`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
+            Maximum number of `Event`s in each chunk of the stream. If unspecified assumes default value 1 
+            (i.e. each event is individually submitted). This limit is applied per partition. 
           type: integer
           format: int32
           required: false
@@ -168,6 +169,7 @@ paths:
           type: integer
           format: int32
           required: false
+          default: 0
         - name: batch_flush_timeout
           in: query
           description: Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached before this time is reached the messages are immediately flushed to the client.
