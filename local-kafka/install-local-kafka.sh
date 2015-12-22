@@ -10,3 +10,9 @@ apt-get install --yes netcat
 curl -O -s http://ftp.halifax.rwth-aachen.de/apache/kafka/${KAFKA_VERSION}/${KAFKA_IMG}.tgz
 mkdir -p opt && echo "Created opt directory"
 tar -xzf ${KAFKA_IMG}.tgz -C opt && rm ${KAFKA_IMG}.tgz && echo "Extracted $KAFKA_IMG"
+
+cat >> opt/${KAFKA_IMG}/config/server.properties << --
+
+advertised.host.name=localhost
+advertised.host.port=9092
+--

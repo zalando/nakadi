@@ -137,9 +137,9 @@ task startKafkaInDocker() {
     outputs.upToDateWhen { false }
 }
 
-task startKafkaInDockerLinked() {
+task startKafkaInDockerBound() {
     doLast {
-        execAndWait("make RUN_KAFKA_LINKED=\"true\" --directory local-kafka run")
+        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-kafka run")
     }
     outputs.upToDateWhen { false }
 }
@@ -154,9 +154,9 @@ task buildDockerContainer {
 
 task startDockerContainer(type: Exec) {
     commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=file:////envs/development.conf\" " +
-            "--link local-kafka:local_kafka -p 8080:8080 -i -t -d " +
+            "--net container:local-kafka -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
-    dependsOn buildDockerContainer, startKafkaInDockerLinked
+    dependsOn buildDockerContainer, startKafkaInDockerBound
 }
 
 task stopDockerContainer(type: Exec) {
