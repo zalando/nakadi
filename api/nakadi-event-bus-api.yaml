@@ -11,13 +11,13 @@ info:
 
     Similar approach is used to support enrichment of the content of events, where certain pieces of information on the events are set upon reception on Nakadi. Besides this possibility of content enrichment, Nakadi will never manipulate the content of events.
 
-    From the perspective of operation of Nakadi, a event and a management APIs are provided. The **event** API contains the operations reletad to the communication strems (i.e. sending and receiving events, in its different forms).
+    From the perspective of operation of Nakadi, an event and a management APIs are provided. The **event API** contains the operations related to the communication streams (i.e. sending and receiving events, in its different forms).
 
-    The management of the communication streams is offered by Nakadi in 2 distinct levels of abstraction, named low-level and hi-level APIs. The **low-level** API delegates to the consumer the whole responsibility of tracking the pointer of consumption of a stream, as well as the partitioning. On the other hand, with this responsibility one gains the possibility of having full control of consumption and very little overhead on Nakadi's side.
+    The management of the communication streams is offered by Nakadi in 2 distinct levels of abstraction, named low-level and hi-level APIs. The **low-level API** delegates to the consumer the whole responsibility of tracking the pointer of consumption of a stream, as well as the partitioning. On the other hand, with this responsibility one gains the possibility of having full control of consumption and very little overhead on Nakadi's side.
 
-    The alternative to low-level is the **high-level** API, where consumers have a "stateful stream", where Nakadi assumes the responsibility of managing the pointer tracking of the streams vis-a-vis each subscribed consumer. *Nakadi partitions the data respecting a `PartitioningStrategy` that is set per resource/topic (details TBD).*
+    The alternative to low-level is the **high-level API**, where consumers have a "stateful stream", where Nakadi assumes the responsibility of managing the pointer tracking of the streams vis-a-vis each subscribed consumer. *Nakadi partitions the data respecting a `PartitioningStrategy` that is set per resource/topic (details TBD).*
 
-    The **management** API in Nakadi contains methods related to registration and configuration of `Topic`s and of `EventType`s, among others. *The processes involved in the registration of `Topic`s and assignment of responsbility over `EventType`s to them, as well as the configuration of its **format validation**, are still to be defined.*
+    The **management API** in Nakadi contains methods related to registration and configuration of `Topic`s and of `EventType`s, among others. *The processes involved in the registration of `Topic`s and assignment of responsbility over `EventType`s to them, as well as the configuration of its **format validation**, are still to be defined.*
 
     Although the APIs are semantically grouped as relevant for event and management purposes, they interact in important ways. Most important is that the steering of validation and enrichment of messages of a given EventType on a Topic are defined via the management API. Therefore understanding of the event API is not complete without the management API.
 
