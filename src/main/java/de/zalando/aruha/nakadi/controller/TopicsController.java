@@ -14,8 +14,6 @@ import de.zalando.aruha.nakadi.utils.FlushableGZIPOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,7 +34,6 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import javax.servlet.http.HttpServletRequest;
@@ -57,7 +54,7 @@ public class TopicsController {
     private ObjectMapper jsonMapper;
 
 	@Timed
-	@RequestMapping(value = "/", method = RequestMethod.GET)
+	@RequestMapping(method = RequestMethod.GET)
 	@ApiOperation("Lists all known topics")
 
 	// FIXME: response for 200 does not match reality
@@ -115,16 +112,7 @@ public class TopicsController {
 	}
 
 	@Timed
-	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events", method = RequestMethod.GET)
-	public ResponseEntity<?> readEventFromPartition(@PathVariable("topicId") final String topicId,
-			@PathVariable("partitionId") final String partitionId, @RequestBody final String messagePayload) {
-		// LOG.trace("Event received: {}, {}, {}", new Object[] { topicId,
-		// partitionId, messagePayload });
-		topicRepository.readEvent(topicId, partitionId);
-		return ok().build();
-	}
-
-	@RequestMapping(value = "/{topic}/partitions/{partition}/events/stream", method = RequestMethod.GET)
+	@RequestMapping(value = "/{topic}/partitions/{partition}/events", method = RequestMethod.GET)
 	public StreamingResponseBody streamEventsFromPartition(
 			@PathVariable("topic") final String topic,
 			@PathVariable("partition") final String partition,
