@@ -104,10 +104,10 @@ public class TopicsController {
 			@ApiParam(name = "topic", value = "Topic where to send events to", required = true) @PathVariable("topicId") final String topicId,
 			@ApiParam(name = "partition", value = "Partition where to send events to", required = true) @PathVariable("partitionId") final String partitionId,
 			@RequestBody final String messagePayload) {
-		LOG.trace("Event received: {}, {}, {}", new Object[] { topicId, partitionId, messagePayload });
+		LOG.trace("Event received: {}, {}, {}", topicId, partitionId, messagePayload);
 		try {
 			topicRepository.postEvent(topicId, partitionId, messagePayload);
-			return ok().build();
+			return status(HttpStatus.CREATED).build();
 		} catch (final NakadiException e) {
 			LOG.error("error posting to partition", e);
 			return status(500).body(e.getProblemMessage());
