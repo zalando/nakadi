@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/zalando/nakadi.svg)](https://travis-ci.org/zalando/nakadi)
+
 Simple Nakadi startup:
 
 gradle run

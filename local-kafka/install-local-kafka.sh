@@ -15,4 +15,5 @@ cat >> opt/${KAFKA_IMG}/config/server.properties << --
 
 advertised.host.name=localhost
 advertised.host.port=9092
+auto.create.topics.enable = false
 --

@@ -20,6 +20,8 @@ public interface TopicRepository {
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
+    boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
+
     void readEvent(String topicId, String partitionId);
 
     EventConsumer createEventConsumer(String topic, Map<String, String> cursors);

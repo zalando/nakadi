@@ -60,6 +60,19 @@ public class EventStreamConfig {
         return Builder.anEventStreamConfig();
     }
 
+    @Override
+    public String toString() {
+        return "EventStreamConfig{" +
+                "topic='" + topic + '\'' +
+                ", cursors=" + cursors +
+                ", batchLimit=" + batchLimit +
+                ", streamLimit=" + streamLimit +
+                ", batchTimeout=" + batchTimeout +
+                ", streamTimeout=" + streamTimeout +
+                ", batchKeepAliveLimit=" + batchKeepAliveLimit +
+                '}';
+    }
+
     public static class Builder {
         private String topic;
         private Map<String, String> cursors;

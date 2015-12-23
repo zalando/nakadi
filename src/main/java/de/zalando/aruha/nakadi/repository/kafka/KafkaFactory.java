@@ -26,9 +26,6 @@ class KafkaFactory {
 	@Autowired
 	private Producer<String, String> producer;
 
-	@Autowired
-	private Consumer<String, String> consumer;
-
 	public KafkaFactory() {
 	}
 
@@ -37,15 +34,9 @@ class KafkaFactory {
 		return new KafkaProducer<>(getProps());
 	}
 
-	@Bean
-	public Consumer<String, String> createConsumer() {
-		return new KafkaConsumer<>(getProps());
-	}
-
     @Bean(name = "kafkaProperties")
 	private Properties getProps() {
 		final Properties props = new Properties();
-		props.put("metadata.broker.list", zookeeperAddress);
 		props.put("bootstrap.servers", kafkaAddress);
 		props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 		props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
@@ -60,7 +51,7 @@ class KafkaFactory {
 	}
 
 	public Consumer<String, String> getConsumer() {
-		return consumer;
+		return new KafkaConsumer<>(getProps());
 	}
 
 	public SimpleConsumer getSimpleConsumer() {

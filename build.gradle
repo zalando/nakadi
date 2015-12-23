@@ -16,6 +16,8 @@ mainClassName = 'de.zalando.aruha.nakadi.Application'
 def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
 
+def dockerRunTimeout = 300
+
 repositories {
     mavenCentral()
 }
@@ -132,7 +134,14 @@ task stopKafkaInDocker {
 
 task startKafkaInDocker() {
     doLast {
-        execAndWait("make --directory local-kafka run")
+        execAndWait("make --directory local-kafka run", dockerRunTimeout)
+    }
+    outputs.upToDateWhen { false }
+}
+
+task startKafkaInDockerBound() {
+    doLast {
+        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-kafka run", dockerRunTimeout)
     }
     outputs.upToDateWhen { false }
 }
@@ -140,16 +149,16 @@ task startKafkaInDocker() {
 task buildDockerContainer {
     dependsOn bootRepackage
     doLast {
-        execAndWait("docker build -t aruha/nakadi .", 120)
+        execAndWait("docker build -t aruha/nakadi .", dockerRunTimeout)
     }
     outputs.upToDateWhen { false }
 }
 
 task startDockerContainer(type: Exec) {
     commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=file:////envs/development.conf\" " +
-            "--link local-kafka:local_kafka -p 8080:8080 -i -t -d " +
+            "--net container:local-kafka -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
-    dependsOn buildDockerContainer, startKafkaInDocker
+    dependsOn buildDockerContainer, startKafkaInDockerBound
 }
 
 task stopDockerContainer(type: Exec) {

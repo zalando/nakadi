@@ -193,7 +193,7 @@ public class NakadiKafkaConsumerTest {
 
     private KafkaFactory createKafkaFactoryMock(final KafkaConsumer<String, String> kafkaConsumerMock) {
         final KafkaFactory kafkaFactoryMock = mock(KafkaFactory.class);
-        when(kafkaFactoryMock.createConsumer()).thenReturn(kafkaConsumerMock);
+        when(kafkaFactoryMock.getConsumer()).thenReturn(kafkaConsumerMock);
         return kafkaFactoryMock;
     }
 

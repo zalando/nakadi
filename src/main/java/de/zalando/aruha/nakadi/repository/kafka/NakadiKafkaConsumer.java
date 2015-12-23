@@ -30,7 +30,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
     public NakadiKafkaConsumer(final KafkaFactory factory, final String topic, final Map<String, String> cursors,
                                final long pollTimeout) {
         eventQueue = Lists.newLinkedList();
-        kafkaConsumer = factory.createConsumer();
+        kafkaConsumer = factory.getConsumer();
         this.pollTimeout = pollTimeout;
 
         // define topic/partitions to consume from
