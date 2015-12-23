@@ -10,4 +10,4 @@ services:
 
 # run tests
 script:
-  - gradle fullAcceptanceTest
+  - gradle fullAcceptanceTest --stacktrace
