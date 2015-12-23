@@ -13,10 +13,10 @@ public class KafkaLocationConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaLocationConfig.class);
 
-    @Value("${nakadi.kafka.broker}")
+    @Value("${KAFKA_BROKERS}")
     private String kafkaAddress;
 
-    @Value("${nakadi.zookeeper.brokers}")
+    @Value("${ZK_BROKERS}")
     private String zookeeperAddress;
 
     // in a case if we run nakadi in a docker container with a linked kafka docker
