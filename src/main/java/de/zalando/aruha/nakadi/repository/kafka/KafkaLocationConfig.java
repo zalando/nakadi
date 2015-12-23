@@ -1,14 +1,17 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.base.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
 @Configuration
-@PropertySource("${nakadi.config}")
 public class KafkaLocationConfig {
+
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaLocationConfig.class);
 
     @Value("${nakadi.kafka.broker}")
     private String kafkaAddress;
@@ -33,20 +36,34 @@ public class KafkaLocationConfig {
     @Bean(name = "kafkaBrokers")
     public String kafkaBrokers() {
         if (Strings.isNullOrEmpty(linkedContainerKafkaAddress)) {
+            if (LOG.isInfoEnabled()) {
+                LOG.info("No linked Kafka container configured. Starting with Kafka brokers: " + kafkaAddress);
+            }
             return kafkaAddress;
         }
         else {
-            return linkedContainerKafkaAddress + ":" + linkedContainerKafkaPort;
+            final String connectionString = linkedContainerKafkaAddress + ":" + linkedContainerKafkaPort;
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Linked Kafka containers are configured. Starting with Kafka brokers: " + connectionString);
+            }
+            return connectionString;
         }
     }
 
     @Bean(name = "zookeeperBrokers")
     public String zookeeperBrokers() {
         if (Strings.isNullOrEmpty(linkedContainerZookeeperAddress)) {
+                if (LOG.isInfoEnabled()) {
+                    LOG.info("No linked Zookeeper container configured. Starting with Zookeeper brokers: " + kafkaAddress);
+                }
             return zookeeperAddress;
         }
         else {
-            return linkedContainerZookeeperAddress + ":" + linkedContainerZookeeperPort;
+            final String connectionString = linkedContainerZookeeperAddress + ":" + linkedContainerZookeeperPort;
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Linked Zookeeper containers are configured. Starting with Zookeeper brokers: " + connectionString);
+            }
+            return connectionString;
         }
     }
 
