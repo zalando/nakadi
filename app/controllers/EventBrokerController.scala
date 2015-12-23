@@ -6,10 +6,11 @@ import akka.actor.{Props, ActorSystem}
 import models.CommonTypes.{PartitionOffset, PartitionName, TopicName}
 import models.Metrics
 import play.api.Logger
+import play.api.libs.iteratee.Input.Empty
 import play.api.libs.json.{Writes, Json}
 import play.api.mvc.{Results, Codec, Action, Controller}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.{Properties, UUID}
@@ -22,12 +23,12 @@ import org.apache.kafka.common.{PartitionInfo, TopicPartition}
 import play.api.http.Writeable
 import play.api.libs.iteratee.Concurrent.Channel
 import play.api.libs.iteratee._
+import play.api.libs.ws._
 import play.api.mvc._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{Future, blocking}
 import scala.util.Try
 
 // define Kafka Simple Consuming Actor commands
@@ -48,7 +49,7 @@ class EventBrokerController @Inject() ()
       application_name = "Nakadi Event Bus",
       kafka_servers = ConfigFactory.load().getString("kafka.host").split(','), // fast and dirty
       zookeeper_servers = ConfigFactory.load().getString("zookeeper.host").split(',') // fast and dirty
-    ) ) )
+      )))
       .as(JSON)
   }
 
@@ -74,12 +75,17 @@ class EventBrokerController @Inject() ()
                              partition: PartitionName,
                              start_from: PartitionOffset,
                              stream_limit: Option[Int] = None
-                            ) = Action.async {
+                            ) = Action.async
+  {
     val actor = actorSystem.actorOf(
       Props(classOf[KafkaConsumerActor], topic, partition, start_from, stream_limit.getOrElse(0)))
+
+    val newLiner = Enumeratee.map[String] ( _ + '\n' )
+
     implicit val timeout = akka.util.Timeout(5, TimeUnit.SECONDS)
-    akka.pattern.ask(actor, Start).mapTo[Enumerator[Event]].map(
-      evt => Results.Ok.chunked(evt.map(Json.toJson(_))))
+    akka.pattern.ask(actor, Start).mapTo[Enumerator[String]].map { events =>
+      Results.Ok.chunked(events &> newLiner)
+    }
   }
 
   private def withConsumer[A](f: KafkaConsumer[_, _] => A)(implicit w: Writes[A]): Action[AnyContent] = {
@@ -119,13 +125,18 @@ object KafkaClient {
   })
 }
 
+
 class KafkaConsumerActor(topic: String, partition: String, cursor: String, streamLimit: Int) extends Actor {
 
   val LOG = Logger("application.KafkaConsumerActor")
 
   lazy val consumer = KafkaClient()
+
   val topicPartition = new TopicPartition(topic, partition.toInt)
-  @volatile var channel: Channel[Event] = null
+
+  @volatile var channel: Channel[String] = null
+  @volatile var done: Boolean = false
+
   var remaining = streamLimit
 
   override def receive: Receive = {
@@ -135,37 +146,43 @@ class KafkaConsumerActor(topic: String, partition: String, cursor: String, strea
       LOG.debug(s"Assigned partition ${topicPartition}")
       blocking(consumer.seek(topicPartition, cursor.toLong))
       LOG.debug(s"Seeked to ${cursor} in partition ${topicPartition}")
-      sender ! Concurrent.unicast((c: Channel[Event]) => {
+      sender ! Concurrent.unicast((c: Channel[String]) => {
         this.channel = c
         self ! Next
       }).onDoneEnumerating({
         // TODO: this does not really work :(
         LOG.debug("Done enumerating")
+        done = true
         self ! Shutdown
       })
     case Next =>
       LOG.debug("Got Next signal")
-      // annoyingly, poll will block more or less forever if kafka isn't running
-      val records = blocking(consumer.poll(500).asScala)
-      LOG.debug(s"got ${records.size} event from the queue")
-      if (records.isEmpty) {
-        // TODO: schedule this event in future
-        self ! Next
+
+      if (done) {
+        LOG.debug("Done consuming from the channel")
       } else {
-        val toStream = if (streamLimit == 0) records else records.take(math.min(remaining, records.size))
-        toStream.foreach { (r: ConsumerRecord[String, String]) =>
-          Json.fromJson[Event](Json.parse(r.value())).asOpt.fold {
-            LOG.error(s"Could not parse ${r.value()}")
-          } {
-            channel.push(_)
+        // annoyingly, poll will block more or less forever if kafka isn't running
+        val records = blocking(consumer.poll(500).asScala)
+
+        LOG.debug(s"got ${records.size} event from the queue")
+
+        if (records.isEmpty) {
+          // push empty element to be able to react on connection drop
+          channel.push(Empty)
+          self ! Next
+        } else {
+          val toStream = if (streamLimit == 0) records else records.take(math.min(remaining, records.size))
+          toStream.foreach { (r: ConsumerRecord[String, String]) =>
+            val rawMessage = r.value()
+            channel.push(rawMessage)
           }
-        }
-        remaining -= toStream.size
-        assert(remaining >= 0, remaining)
-        if (streamLimit == 0 || remaining > 0) self ! Next
-        else {
-          channel.eofAndEnd()
-          self ! Shutdown
+          remaining -= toStream.size
+          assert(remaining >= 0, remaining)
+          if (streamLimit == 0 || remaining > 0) self ! Next
+          else {
+            channel.eofAndEnd()
+            // self ! Shutdown
+          }
         }
       }
     case Shutdown =>

@@ -10,10 +10,10 @@ build-kafka-docker-image: Dockerfile.kafka install-local-kafka.sh start-local-ka
 	docker build $(BUILD_ARG) --file Dockerfile.kafka -t local-kafka .
 
 run: build-kafka-docker-image
-	docker run -p 9092:9092 -p 2181:2181 -d local-kafka
+	docker run -p 9092:9092 -p 2181:2181 -d --rm local-kafka
 
 interactive: build-kafka-docker-image
-	docker run -p 9092:9092 -p 2181:2181 -it local-kafka
+	docker run -p 9092:9092 -p 2181:2181 -it --rm local-kafka
 
 DOCKER_ID=$(shell docker ps -qf "ancestor=local-kafka")
 

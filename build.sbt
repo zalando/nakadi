@@ -24,7 +24,8 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases"
 
 libraryDependencies ++= Seq(
-  "org.apache.kafka" %% "kafka" % "0.9.+", // excludeAll(ExclusionRule(organization = "org.slf4j")),
+  ws,
+  "org.apache.kafka" %% "kafka" % "0.9.+" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
   specs2 % Test
 )
 
@@ -62,7 +63,7 @@ testOptions in Test += Tests.Setup { () =>
   val kafkaContainerId = ( """docker ps -qf "ancestor=local-kafka" """ !! ).trim
   if ( kafkaContainerId.isEmpty ) {
     log.info("Starting local Kafka")
-    "make -C local-test run" #&& "sleep 5" !
+    "make -C local-test run" #&& "sleep 6" !
   } else {
     log.info(s"Local Kafka docker container runs with ID ${kafkaContainerId}")
   }
