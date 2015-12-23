@@ -67,7 +67,7 @@ public class EventStreamReadingAT {
 
         // ASSERT //
         response.then().statusCode(HttpStatus.SC_OK);
-        validateStreamResponse(response.print(), 1, EVENTS_PUSHED, DUMMY_EVENT);
+        validateStreamResponse(response.print(), 1, 155, DUMMY_EVENT);
     }
 
     @Test(timeout = 15000)
