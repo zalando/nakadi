@@ -543,6 +543,10 @@ definitions:
   Metrics:
     type: object
   Topic:
+    description: |
+      Representation of the underlying (implementation dependent) event ordering and persistence structure.
+
+      Direct operation on this is usually unnecessary.
     type: object
     required:
       - name
@@ -590,9 +594,77 @@ definitions:
     description: An event type defines the schema and its runtime properties.
     properties:
       validation-strategy:
-        type: string
+        description: |
+          Determines the validation that has to be executed upon reception of Events of this type. Events are rejects if any of the rules fail (see details of response on documentation for the write operations).
+
+          Rule evaluation order is the same as in this array.
+        type: array
+        item:
+          $ref: '#/definitions/EventValidationStrategy'
+
       partition-resolution-strategy:
-        type: string
+        description: |
+          Determines how the assignment of the event to a Partition should be handled.
+
+        type: object
+        schema:
+          $ref: '#/definitions/PartitionResolutionStrategy'
+
       enrichment-strategy:
+        description: |
+          Determines the enrichment to be performed on an Event upon reception. Enrichment is performed once upon reception (and after validation) of an Event and is only possible on fields that are not defined on the incoming Event.
+
+          See documentation for the write operation for details on behaviour in case of unsuccessful enrichment.
+        type: array
+        item:
+          $ref: '#/definitions/EventEnrichmentStrategy'
+
+
+  EventValidationStrategy:
+    description: |
+      Defines a rule for validation of an incoming Event.
+
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/rules?type=validation for a list of available rules.
+    properties:
+      name:
         type: string
-        
+        description: Name of the strategy.
+      doc:
+        type: string
+        description: Documentation for the validation.
+    required:
+      - name
+      - doc
+
+
+  PartitionResolutionStrategy:
+    description: |
+      Defines a rule for the resolution of incoming Events into partitions of a Topic.
+
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/rules?type=partition for a list of available rules.
+    properties:
+      name:
+        type: string
+        description: Name of the strategy.
+      doc:
+        type: string
+        description: Documentation for the partition resolution.
+    required:
+      - name
+      - doc
+
+  EventEnrichmentStrategy:
+    description: |
+      Defines a rule for transformation of an incoming Event. No existing fields might be modified. In practice this is used to set automatically values in the Event upon reception (i.e. set a reception timestamp on the Event).
+
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/rules?type=enrichment for a list of available rules.
+    properties:
+      name:
+        type: string
+        description: Name of the strategy.
+      doc:
+        type: string
+        description: Documentation for the enrichment.
+    required:
+      - name
+      - doc
