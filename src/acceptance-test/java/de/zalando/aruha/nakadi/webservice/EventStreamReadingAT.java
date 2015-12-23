@@ -9,7 +9,6 @@ import com.jayway.restassured.response.Response;
 import de.zalando.aruha.nakadi.webservice.utils.TestHelper;
 import org.apache.http.HttpStatus;
 import org.hamcrest.collection.IsCollectionWithSize;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -32,62 +31,62 @@ public class EventStreamReadingAT {
     private static final int PORT = 8080;
     private static final String TOPIC = "test-topic";
     private static final String PARTITION = "0";
+    private static final String DUMMY_EVENT = "Dummy";
+    private static final int EVENTS_PUSHED = 20;
     private static final String STREAM_ENDPOINT = createStreamEndpointUrl(TOPIC, PARTITION);
     private static final String SEPARATOR = "\n";
-    public static final String DUMMY_EVENT = "Dummy";
 
-    private TestHelper testHelper;
+
     private ObjectMapper jsonMapper = new ObjectMapper();
-    private List<Map<String, String>> initialOffsets;
-    private String initialPartitionOffset;
+    private static String initialPartitionOffset;
 
     @BeforeClass
-    public void setUp() {
+    public static void setUp() throws InterruptedException {
         RestAssured.port = PORT;
         RestAssured.defaultParser = Parser.JSON;
-        testHelper = new TestHelper("http://localhost:" + PORT);
+        final TestHelper testHelper = new TestHelper("http://localhost:" + PORT);
 
         // grab the offsets we had initially so that we know where to start reading from
-        initialOffsets = testHelper.getLatestOffsets(TOPIC);
+        final List<Map<String, String>> initialOffsets = testHelper.getLatestOffsets(TOPIC);
         initialPartitionOffset = testHelper.getOffsetForPartition(initialOffsets, PARTITION).orElse("0");
 
         // push some events so that we have something to stream
         final String event = format("\"{0}\"", DUMMY_EVENT);
-        testHelper.pushEventsToPartition(TOPIC, PARTITION, event, 20);
+        testHelper.pushEventsToPartition(TOPIC, PARTITION, event, EVENTS_PUSHED);
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void whenGetSingleBatchFromSinglePartitionThenOk() {
         // ACT //
         final Response response = given()
                 .param("start_from", initialPartitionOffset)
                 .param("batch_limit", "100")
-                .param("stream_timeout", "1")
+                .param("stream_timeout", "5")
                 .when()
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
         response.then().statusCode(HttpStatus.SC_OK);
-        validateStreamResponse(response.print(), 1, 20, DUMMY_EVENT);
+        validateStreamResponse(response.print(), 1, EVENTS_PUSHED, DUMMY_EVENT);
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void whenGetMultipleBatchesFromSinglePartitionThenOk() {
         // ACT //
         final Response response = given()
                 .param("start_from", initialPartitionOffset)
                 .param("batch_limit", "5")
-                .param("stream_timeout", "1")
+                .param("stream_timeout", "5")
                 .when()
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
         response.then().statusCode(HttpStatus.SC_OK);
-        validateStreamResponse(response.print(), 4, 5, DUMMY_EVENT);
+        validateStreamResponse(response.print(), EVENTS_PUSHED / 5, 5, DUMMY_EVENT);
     }
 
-    @Test(timeout = 10000)
-    public void whenGetEventsWithUknownTopicThenTopicNotFoundk() {
+    @Test(timeout = 5000)
+    public void whenGetEventsWithUknownTopicThenTopicNotFound() {
         // ACT //
         given()
                 .param("start_from", initialPartitionOffset)
@@ -100,6 +99,38 @@ public class EventStreamReadingAT {
                 .then()
                 .statusCode(HttpStatus.SC_NOT_FOUND)
                 .body("message", equalTo("topic not found"));
+    }
+
+    @Test(timeout = 5000)
+    public void whenGetEventsWithUknownPartitionThenPartitionNotFound() {
+        // ACT //
+        given()
+                .param("start_from", initialPartitionOffset)
+                .param("batch_limit", "5")
+                .param("stream_timeout", "1")
+                .when()
+                .get(createStreamEndpointUrl(TOPIC, "9999"))
+
+        // ASSERT //
+                .then()
+                .statusCode(HttpStatus.SC_NOT_FOUND)
+                .body("message", equalTo("partition not found"));
+    }
+
+    @Test(timeout = 5000)
+    public void whenGetEventsWithIncorrectOffsetThenBadRequest() {
+        // ACT //
+        given()
+                .param("start_from", "-123")
+                .param("batch_limit", "5")
+                .param("stream_timeout", "1")
+                .when()
+                .get(STREAM_ENDPOINT)
+
+        // ASSERT //
+                .then()
+                .statusCode(HttpStatus.SC_BAD_REQUEST)
+                .body("message", equalTo("start_from is invalid"));
     }
 
     private static String createStreamEndpointUrl(final String topic, final String partition) {

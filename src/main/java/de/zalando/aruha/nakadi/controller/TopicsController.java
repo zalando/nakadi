@@ -40,6 +40,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @RestController
 @RequestMapping(value = "/topics")
@@ -130,12 +133,27 @@ public class TopicsController {
                 // check if topic exists
                 final boolean topicExists = topicRepository.listTopics().stream().anyMatch(t -> topic.equals(t.getName()));
                 if (!topicExists) {
-                    response.setStatus(HttpStatus.NOT_FOUND.value());
-                    jsonMapper.writer().writeValue(outputStream, new Problem("topic not found"));
+                    writeProblemResponse(response, outputStream, HttpStatus.NOT_FOUND.value(), new Problem("topic not found"));
                 }
 
-                // check if partition exists (todo)
-                // check if offset is correct (todo)
+                // check if partition exists
+                final List<TopicPartition> topicPartitions = topicRepository.listPartitions(topic);
+                final Predicate<TopicPartition> tpPredicate = tp -> topic.equals(tp.getTopicId()) && partition.equals(tp.getPartitionId());
+                final boolean partitionExists = topicPartitions.stream().anyMatch(tpPredicate);
+                if (!partitionExists) {
+                    writeProblemResponse(response, outputStream, HttpStatus.NOT_FOUND.value(), new Problem("partition not found"));
+                }
+
+                // check if offset is correct
+                final boolean offsetCorrect = topicPartitions
+                        .stream()
+                        .filter(tpPredicate)
+                        .findFirst()
+                        .map(tp -> topicRepository.validateOffset(startFrom, tp.getNewestAvailableOffset(), tp.getOldestAvailableOffset()))
+                        .orElse(false);
+                if (!offsetCorrect) {
+                    writeProblemResponse(response, outputStream, HttpStatus.BAD_REQUEST.value(), new Problem("start_from is invalid"));
+                }
 
                 final EventStreamConfig streamConfig = EventStreamConfig.builder()
                         .withTopic(topic)
@@ -166,8 +184,7 @@ public class TopicsController {
                 }
 
             } catch (NakadiException e) {
-                response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
-                jsonMapper.writer().writeValue(outputStream, e.asProblem());
+                writeProblemResponse(response, outputStream, HttpStatus.SERVICE_UNAVAILABLE.value(), e.asProblem());
             }
             finally {
                 outputStream.flush();
@@ -175,5 +192,11 @@ public class TopicsController {
             }
         };
 	}
+
+    private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
+                                      final int statusCode, final Problem problem) throws IOException {
+        response.setStatus(statusCode);
+        jsonMapper.writer().writeValue(outputStream, problem);
+    }
 
 }

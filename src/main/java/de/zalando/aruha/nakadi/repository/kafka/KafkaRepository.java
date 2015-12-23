@@ -98,6 +98,14 @@ public class KafkaRepository implements TopicRepository {
 		}
 	}
 
+    @Override
+    public boolean validateOffset(final String offsetToCheck, final String newestOffset, final String oldestOffset) {
+        final long offset = Long.parseLong(offsetToCheck);
+        final long newest = Long.parseLong(newestOffset);
+        final long oldest = Long.parseLong(oldestOffset);
+        return offset >= oldest && offset <= newest;
+    }
+
 	private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,
 			final OffsetResponse latestPartitionData, final OffsetResponse earliestPartitionData) {
 
