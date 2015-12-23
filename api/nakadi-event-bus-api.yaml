@@ -80,6 +80,31 @@ paths:
           description: Not available
           schema:
             $ref: '#/definitions/Problem'
+  /event-types:
+    get:
+      tags:
+        - management-api
+      description: Returns a list of all registered `EventType`s
+      responses:
+        '200':
+          description: Metrics data
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/EventType'
+
+    post:
+      tags:
+        - management-api
+      description: Creates or updates an existing `EventType`.
+      responses:
+        '200':
+          description: Ok
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+
   /topics:
     get:
       description: Lists all known `Topics` of this Nakadi cluster
@@ -102,7 +127,6 @@ paths:
           description: Not available
           schema:
             $ref: '#/definitions/Problem'
-
 
     post:
       tags:
@@ -232,8 +256,7 @@ paths:
         - draft
       description: |
         Post a one or more `Event`s to a given `Topic`.
-        The partition is implicitly controlled by the partitioning_key attribute of the event. Nakadi guarantees that
-        all events with the same partitioning_key end up in the same partition.
+        The partition is implicitly controlled by the `PartitionResolutionStrategy` set to the `EventType` of the Event that is being written.
       parameters:
         - name: topic
           in: path
@@ -563,3 +586,13 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Event'
+  EventType:
+    description: An event type defines the schema and its runtime properties.
+    properties:
+      validation-strategy:
+        type: string
+      partition-resolution-strategy:
+        type: string
+      enrichment-strategy:
+        type: string
+        
