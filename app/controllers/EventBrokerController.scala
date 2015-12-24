@@ -1,34 +1,26 @@
 package controllers
 
-import javax.inject.Inject
-
-import akka.actor.{Props, ActorSystem}
-import models.CommonTypes.{PartitionOffset, PartitionName, TopicName}
-import models.Metrics
-import play.api.Logger
-import play.api.libs.iteratee.Input.Empty
-import play.api.libs.json.{Writes, Json}
-import play.api.mvc.{Results, Codec, Action, Controller}
-
-import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import java.util
+import java.util.Properties
 import java.util.concurrent.TimeUnit
-import java.util.{Properties, UUID}
+import javax.inject.Inject
 
 import akka.actor.{Actor, ActorSystem, PoisonPill, Props}
 import com.typesafe.config.ConfigFactory
-import models._
+import models.CommonTypes.{PartitionName, PartitionOffset, TopicName}
+import models.{Metrics, _}
 import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
-import org.apache.kafka.common.{PartitionInfo, TopicPartition}
-import play.api.http.Writeable
+import org.apache.kafka.common.TopicPartition
+import play.api.Logger
 import play.api.libs.iteratee.Concurrent.Channel
+import play.api.libs.iteratee.Input.Empty
 import play.api.libs.iteratee._
-import play.api.libs.ws._
-import play.api.mvc._
+import play.api.libs.json.{Json, Writes}
+import play.api.mvc.{Action, Controller, _}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, blocking}
 import scala.util.Try
 
 // define Kafka Simple Consuming Actor commands
@@ -150,7 +142,6 @@ class KafkaConsumerActor(topic: String, partition: String, cursor: String, strea
         this.channel = c
         self ! Next
       }).onDoneEnumerating({
-        // TODO: this does not really work :(
         LOG.debug("Done enumerating")
         done = true
         self ! Shutdown
@@ -172,17 +163,11 @@ class KafkaConsumerActor(topic: String, partition: String, cursor: String, strea
           self ! Next
         } else {
           val toStream = if (streamLimit == 0) records else records.take(math.min(remaining, records.size))
-          toStream.foreach { (r: ConsumerRecord[String, String]) =>
-            val rawMessage = r.value()
-            channel.push(rawMessage)
-          }
+          toStream.foreach { r => channel push r.value }
           remaining -= toStream.size
           assert(remaining >= 0, remaining)
           if (streamLimit == 0 || remaining > 0) self ! Next
-          else {
-            channel.eofAndEnd()
-            // self ! Shutdown
-          }
+          else channel.eofAndEnd()
         }
       }
     case Shutdown =>
