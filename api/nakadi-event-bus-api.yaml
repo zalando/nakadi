@@ -73,7 +73,7 @@ paths:
   /event-types:
     get:
       tags:
-        - management-api
+        - schema-registry-api
       description: Returns a list of all registered `EventType`s
       responses:
         '200':
@@ -85,11 +85,41 @@ paths:
 
     post:
       tags:
-        - management-api
+        - schema-registry-api
       description: Creates or updates an existing `EventType`.
       responses:
         '200':
           description: Ok
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+
+
+  /event-types/{name}:
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        Returns the EventType identified by its name.
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/EventType'
+        '404':
+          description: EventType not found
+
+    put:
+      tags:
+        - schema-registry-api
+      description: |
+        Updates the EventType identified by its name.
+      responses:
+        '200':
+          description: Ok
+        '404':
+          description: EventType not found
         '500':
           description: Server error
           schema:
@@ -583,6 +613,13 @@ definitions:
   EventType:
     description: An event type defines the schema and its runtime properties.
     properties:
+      name:
+        type: string
+        description: Name of this EventType. (TBD schema for name)
+      topic:
+        type: string
+        description: |
+          References the name of the low-level topic that is holding the stream of Events for this EventType. Usually is the same as the name property.
       validation-strategy:
         description: |
           Determines the validation that has to be executed upon reception of Events of this type. Events are rejects if any of the rules fail (see details of response on documentation for the write operations).
@@ -608,13 +645,28 @@ definitions:
         type: array
         item:
           $ref: '#/definitions/EventEnrichmentStrategy'
+      schema:
+        type: object
+        schema:
+          $ref: '#/definitions/EventTypeSchema'
+        description: |
+          The schema for this EventType. This is expected to be a json schema in yaml format (other formats might be added in the future).
+
+
+  EventTypeSchema:
+    properties:
+      type:
+        type: string
+        example: 'json-schema'
+      schema:
+        type: string
 
 
   EventValidationStrategy:
     description: |
       Defines a rule for validation of an incoming Event.
 
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/rules?type=validation for a list of available rules.
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/validation-rules for a list of available rules.
     properties:
       name:
         type: string
@@ -631,7 +683,7 @@ definitions:
     description: |
       Defines a rule for the resolution of incoming Events into partitions of a Topic.
 
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/rules?type=partition for a list of available rules.
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/partition-rules for a list of available rules.
     properties:
       name:
         type: string
@@ -647,7 +699,7 @@ definitions:
     description: |
       Defines a rule for transformation of an incoming Event. No existing fields might be modified. In practice this is used to set automatically values in the Event upon reception (i.e. set a reception timestamp on the Event).
 
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/rules?type=enrichment for a list of available rules.
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/enrichment-rules for a list of available rules.
     properties:
       name:
         type: string
