@@ -5,21 +5,17 @@ info:
     -----------
     Definitions
     -----------
-    Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API. By doing this, Nakadi abstracts away, as much as possible, details of the backing messaging infrastructure. The single currently supported messaging middleware is Kafka (Kinesis is planned for the future).
+    Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API. In doing this, Nakadi abstracts away, as much as possible, details of the backing messaging infrastructure. The single currently supported messaging middleware is Kafka (Kinesis is planned for the future).
 
-    Nakadi itself will impose as little as possible in the event structure and its contents. Nevertheless, Nakadi provides for extensible validation of incoming messages based on its structure and content. This means that, although Nakadi strives to act transparently as a message broker, it provides means to safeguard the content quality of the events flowing in.
 
-    Similar approach is used to support enrichment of the content of events, where certain pieces of information on the events are set upon reception on Nakadi. Besides this possibility of content enrichment, Nakadi will never manipulate the content of events.
+    The operation of Nakadi is based on the definition of an **EventType**. For an EventType known by Nakadi, a **stream** of **Events** is exposed, and given adequate definitions on EventType level, upon reception of Events sent by a **Producer**, Nakadi provides for their **validation** and eventual **enrichment** of its content (Nakadi will never manipulate the content of incoming Events if not explicitly desired). Provided that a **partitioning key** is known for an EventType, Nakadi will guarantee to **Consumers** strict ordering of all events of same partitioning key.
 
-    From the perspective of operation of Nakadi, an event and a management APIs are provided. The **event API** contains the operations related to the communication streams (i.e. sending and receiving events, in its different forms).
+    (*TODO: improve explanation of the relation of partitioning with ordering*)
 
-    The management of the communication streams is offered by Nakadi in 2 distinct levels of abstraction, named low-level and hi-level APIs. The **low-level API** delegates to the consumer the whole responsibility of tracking the pointer of consumption of a stream, as well as the partitioning. On the other hand, with this responsibility one gains the possibility of having full control of consumption and very little overhead on Nakadi's side.
+    Clients of Nakadi can be grouped in 2 categories: **Application owners** and **Clients** (clients in turn are both Producers and Consumers of Events). Application owners interact with Nakadi via the **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for submission and reception of Events. A low level **Topic API** is available, providing full control and responsibility of position tracking and partitioning (and therefore ordering) of to the Clients.
 
-    The alternative to low-level is the **high-level API**, where consumers have a "stateful stream", where Nakadi assumes the responsibility of managing the pointer tracking of the streams vis-a-vis each subscribed consumer. *Nakadi partitions the data respecting a `PartitioningStrategy` that is set per resource/topic (details TBD).*
+    The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType. Subscriptions are managed by Nakadi, freeing Consumers from any responsibility in tracking the current position on a Stream.
 
-    The **management API** in Nakadi contains methods related to registration and configuration of `Topic`s and of `EventType`s, among others. *The processes involved in the registration of `Topic`s and assignment of responsbility over `EventType`s to them, as well as the configuration of its **format validation**, are still to be defined.*
-
-    Although the APIs are semantically grouped as relevant for event and management purposes, they interact in important ways. Most important is that the steering of validation and enrichment of messages of a given EventType on a Topic are defined via the management API. Therefore understanding of the event API is not complete without the management API.
 
 
     Scope and status of this document
@@ -27,25 +23,19 @@ info:
 
     The present API specification is in **draft** state and is subject to change.
 
-    The present document's purpose is the specification of the API and behaviour of Nakadi from a client perspective, i.e. as a Producer or Consumer of events.
-
-    In this document, ready for review, are included:
-
-    * Low-level API communication API
-    * Stantardised event format (see #/definitions/Event)
-    * Partition strategy: event store will infer the partition from the `partitioning_key` in the message body
+    In this document, ready for review are included:
+    * The Schema Registry API, including configuration possibilities for the Schema, Validation, Enrichment and Partitioning of Events, and their effects on reception of Events.
+    * The Stantardised event format (see #/definitions/Event) (Note: at a later moment this will be configurable and not be inherent part of this API).
+    * Topic API (low level).
 
     Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included in this version of this specification.
 
     Notable omissions here are:
-    * The process of creating a `Topic` and definition of the related `EventType`s is not fully defined and its details will be added as it becomes more clear.
-    * Certain aspects of the validation procedures of incoming events might not be possible to finalize until the preceding point is pending.
-    * The specific ways of defining the validation and enrichment of events are unspecified at this point.
     * The contract between Nakadi and clients in the context of the high-level API.
     * Submission of events to topics in batched manner.
-    *
 
-  version: '0.4'
+
+  version: '0.5'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
