@@ -5,14 +5,26 @@ info:
     -----------
     Definitions
     -----------
-    Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API. In doing this, Nakadi abstracts away, as much as possible, details of the backing messaging infrastructure. The single currently supported messaging middleware is Kafka (Kinesis is planned for the future).
+    Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API.
+    In doing this, Nakadi abstracts away, as much as possible, details of the backing messaging
+    infrastructure. The single currently supported messaging middleware is Kafka (Kinesis is planned
+    for the future).
 
+    In Nakadi every Event has a EventType, and a **stream** of Events is exposed for each registered
+    EventType.
 
-    The operation of Nakadi is based on the definition of an **EventType**. For an EventType known by Nakadi, a **stream** of **Events** is exposed, and given adequate definitions on EventType level, upon reception of Events sent by a **Producer**, Nakadi provides for their **validation** and eventual **enrichment** of its content (Nakadi will never manipulate the content of incoming Events if not explicitly desired). Provided that a **partitioning key** is known for an EventType, Nakadi will guarantee to **Consumers** strict ordering of all events of same partitioning key.
+    An EventType defines properties relevant for the operation of its associated stream, namely:
 
-    (*TODO: improve explanation of the relation of partitioning with ordering*)
+    * The **schema** of the Event of this EventType (*TODO: define shcema*)
 
-    Clients of Nakadi can be grouped in 2 categories: **Application owners** and **Clients** (clients in turn are both Producers and Consumers of Events). Application owners interact with Nakadi via the **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for submission and reception of Events. A low level **Topic API** is available, providing full control and responsibility of position tracking and partitioning (and therefore ordering) of to the Clients.
+    * The expected **validation** and **enrichment** procedures upon reception of an Event.
+      (*TODO: define validation and enrichment*)
+
+    * The **ordering** expectations of Events in this stream. (*TODO: define ordering not in terms of partitioning*)
+
+    Except for defined enrichment rules, Nakadi will never manipulate the content of any Event.
+
+    Clients of Nakadi can be grouped in 2 categories: **Application owners** and **Clients** (clients in turn are both **Producers** and **Consumers** of Events). Application owners interact with Nakadi via the **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for submission and reception of Events. A low level **Topic API** is available, providing full control and responsibility of position tracking and partitioning (and therefore ordering) of to the Clients.
 
     The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType. Subscriptions are managed by Nakadi, freeing Consumers from any responsibility in tracking the current position on a Stream.
 
@@ -25,14 +37,19 @@ info:
 
     In this document, ready for review are included:
     * The Schema Registry API, including configuration possibilities for the Schema, Validation, Enrichment and Partitioning of Events, and their effects on reception of Events.
+
     * The Stantardised event format (see #/definitions/Event) (Note: at a later moment this will be configurable and not be inherent part of this API).
+
     * Topic API (low level).
 
     Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included in this version of this specification.
 
     Notable omissions here are:
     * The contract between Nakadi and clients in the context of the high-level API.
+
     * Submission of events to topics in batched manner.
+
+    * Validation and enrichment procedures.
 
 
   version: '0.5'
