@@ -4,7 +4,6 @@ KAFKA_VERSION=${KAFKA_VERSION:-0.9.0.0}
 SCALA_VERSION=${SCALA_VERSION:-2.11}
 KAFKA_IMG=${KAFKA_IMG:-kafka_${SCALA_VERSION}-${KAFKA_VERSION}}
 
-apt-get update
 apt-get install --yes netcat
 
 curl -O -s http://ftp.halifax.rwth-aachen.de/apache/kafka/${KAFKA_VERSION}/${KAFKA_IMG}.tgz

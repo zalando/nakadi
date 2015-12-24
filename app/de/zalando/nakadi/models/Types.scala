@@ -1,8 +1,7 @@
-package models
+package de.zalando.nakadi.models
 
 import java.util.{Date, UUID}
 
-import models.CommonTypes._
 import play.api.libs.json._
 
 object CommonTypes {
@@ -12,6 +11,7 @@ object CommonTypes {
   type EventId = UUID
   type Scope = String
 }
+import CommonTypes._
 
 case class Metrics(application_name: String,
                    kafka_servers: Seq[String],

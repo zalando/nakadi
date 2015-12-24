@@ -1,7 +1,8 @@
-GET         /metrics                                    controllers.EventBrokerController.getMetrics
-GET         /topics                                     controllers.EventBrokerController.getTopics
-GET         /topics/:topic/events                       controllers.EventBrokerController.getEventsFromTopic(topic: String)
-POST        /topics/:topic/events                       controllers.EventBrokerController.postEventsIntoTopic(topic: String)
-GET         /topics/:topic/partitions                   controllers.EventBrokerController.getPartitionsForTopic(topic: String)
-GET         /topics/:topic/partitions/:partition/events controllers.EventBrokerController.getEventsFromPartition(topic, partition, start_from, stream_limit: Option[Int])
+
+GET    /metrics                                    de.zalando.nakadi.controllers.EventBrokerController.getMetrics
+GET    /topics                                     de.zalando.nakadi.controllers.EventBrokerController.getTopics
+GET    /topics/:topic/events                       de.zalando.nakadi.controllers.EventBrokerController.getEventsFromTopic(topic: String)
+POST   /topics/:topic/events                       de.zalando.nakadi.controllers.EventBrokerController.postEventsIntoTopic(topic: String)
+GET    /topics/:topic/partitions                   de.zalando.nakadi.controllers.EventBrokerController.getPartitionsForTopic(topic: String)
+GET    /topics/:topic/partitions/:partition/events de.zalando.nakadi.controllers.EventBrokerController.getEventsFromPartition(topic, partition, start_from, stream_limit: Option[Int])
 

@@ -18,24 +18,27 @@ wait_for 9092
 sleep 1
 
 echo Creating topic
-bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 8 --topic $TEST_TOPIC_NAME
+bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 2 --topic $TEST_TOPIC_NAME
 echo '################## Topic Created'
 
 bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic $TEST_TOPIC_NAME
 
+(
 EID=0
 EVENT_TYPE="TestEvent"
-{ while true; do
+while true; do
     bin/kafka-console-producer.sh --topic $TEST_TOPIC_NAME --broker-list localhost:9092 &> /dev/null << --EVENT--
-{ "event_type": "$EVENT_TYPE", "partitioning_key":  "$EID", "metadata": { "created": "$(date)", "eid": "$EID", "root_eid": "0", "scopes": [ "${EVENT_TYPE}.read", "${EVENT_TYPE}.write" ] } }
+{"event_type": "$EVENT_TYPE", "partitioning_key":  "$EID", "metadata": {"created": "$(date)", "eid": "$EID", "root_eid": "0", "scopes": ["${EVENT_TYPE}.read", "${EVENT_TYPE}.write" ]}}
 --EVENT--
     ((EID++))
-    echo Published event $EID to topic: $TEST_TOPIC_NAME
-    sleep 1
-done } &
+    if ((EID % 10 == 0)); then
+        echo Published $((EID)) events to topic: $TEST_TOPIC_NAME
+        sleep 5
+    fi
+done
+) &
 
-
-# bash
+bash
 wait
 #echo ################ Start consuming...
 #bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topic $TEST_TOPIC_NAME 2> /dev/null

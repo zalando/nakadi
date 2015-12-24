@@ -11,7 +11,7 @@ The goal of the `nakadi` project (ნაკადი means `stream` in Georgian 
 
 *  enable convenient development of event-driven applications
 *  securely and efficiently publish and consume events as easy as possible
-*  abstract event exchange by a stanartized RESTful [API](/nakadi/swagger.yaml)
+*  abstract event exchange by a stanartized RESTful [API](/api/nakadi-event-bus-api.yaml)
 
 Some additional technical requirements that we wanted to cover by this architecture:
 
@@ -34,7 +34,7 @@ What does the prototype already have?
 * [ ] support of event filtering per Subscription
 * streaming/batching of events to/from the clients
   * [ ] creation of topics
-  * [x] low-level interface
+  * [ ] low-level interface
     * manual client side partition management is needed
     * no support of commits
   * [ ] high-level interface
@@ -45,6 +45,12 @@ Running it locally (MacOS)
 ==========================
 
 To run the project locally
+
+Ensure that `VirtualBox`, `docker-machine` and `docker` are installed on you Mac. Not to miss out on the newer versions
+of that software, install using `brew`
+
+    brew install docker-machine
+    brew install docker
 
 Install `sbt`
 
