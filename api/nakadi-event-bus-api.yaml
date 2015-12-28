@@ -20,13 +20,21 @@ info:
     * The expected **validation** and **enrichment** procedures upon reception of an Event.
       (*TODO: define validation and enrichment*)
 
-    * The **ordering** expectations of Events in this stream. (*TODO: define ordering not in terms of partitioning*)
+    * The **ordering** expectations of Events in this stream. (*TODO: define ordering not in terms of
+    partitioning*)
 
     Except for defined enrichment rules, Nakadi will never manipulate the content of any Event.
 
-    Clients of Nakadi can be grouped in 2 categories: **Application owners** and **Clients** (clients in turn are both **Producers** and **Consumers** of Events). Application owners interact with Nakadi via the **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for submission and reception of Events. A low level **Topic API** is available, providing full control and responsibility of position tracking and partitioning (and therefore ordering) of to the Clients.
+    Clients of Nakadi can be grouped in 2 categories: **Application owners** and **Clients** (clients in turn
+    are both **Producers** and **Consumers** of Events). Application owners interact with Nakadi via the
+    **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for
+    submission and reception of Events. A low level **Topic API** is available, providing full control and
+    responsibility of position tracking and partitioning (and therefore ordering) of to the Clients.
 
-    The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType. Subscriptions are persitent relationships from an Application (which might have several instances) and the stream of an EventType, whose consumption tracking is managed by Nakadi, freeing Consumers from any responsibility in tracking the current position on a Stream.
+    The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType.
+    Subscriptions are persitent relationships from an Application (which might have several instances) and the
+    stream of an EventType, whose consumption tracking is managed by Nakadi, freeing Consumers from any
+    responsibility in tracking the current position on a Stream.
 
 
 
@@ -36,13 +44,16 @@ info:
     The present API specification is in **draft** state and is subject to change.
 
     In this document, ready for review are included:
-    * The Schema Registry API, including configuration possibilities for the Schema, Validation, Enrichment and Partitioning of Events, and their effects on reception of Events.
+    * The Schema Registry API, including configuration possibilities for the Schema, Validation, Enrichment
+    and Partitioning of Events, and their effects on reception of Events.
 
-    * The Stantardised event format (see #/definitions/Event) (Note: at a later moment this will be configurable and not be inherent part of this API).
+    * The Stantardised event format (see #/definitions/Event) (Note: at a later moment this will be
+    configurable and not be inherent part of this API).
 
     * Topic API (low level).
 
-    Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included in this version of this specification.
+    Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included in
+    this version of this specification.
 
     Notable omissions here are:
     * The contract between Nakadi and clients in the context of the high-level API.
@@ -112,17 +123,28 @@ paths:
       description: |
         Creates a new `EventType`. Upon creation the name MUST be unique.
 
-        **Implementation note:** The creation of an EventType implicitly creates the structures in the backing messaging implementation needed for the reception and persistency of the Events. Considering that at this time only Kafka is used, this corresponds to the creation of a Topic. If so desired, clients can interact directly with the topic using the low level API (for existing restrictions see the corresponding methods on the topic-api).
+        **Implementation note:** The creation of an EventType implicitly creates the structures in the backing
+        messaging implementation needed for the reception and persistency of the Events. Considering that at
+        this time only Kafka is used, this corresponds to the creation of a Topic. If so desired, clients can
+        interact directly with the topic using the low level API (for existing restrictions see the
+        corresponding methods on the topic-api).
 
-        The fields validation-strategies, enrichment-strategies and partition-resolution-strategy have all an effect on the incoming Event of this EventType. For its impacts on the reception of events please consult the Event submission API methods.
+        The fields validation-strategies, enrichment-strategies and partition-resolution-strategy have all an
+        effect on the incoming Event of this EventType. For its impacts on the reception of events please
+        consult the Event submission API methods.
 
-        * Validation strategies define an array of EventValidationStrategies to be evaluated on reception of an Event of this EventType.
+        * Validation strategies define an array of EventValidationStrategies to be evaluated on reception of
+        an Event of this EventType.
 
         * TDB Enrichment strategy
 
         * TDB Partition resulution strategy
 
-        Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be followed by all EventTypes (examples include: validation rules to match the schema; enriching every Event with the reception date-type; adhering to a set of schema fields that are mandatory for all EventTypes). **The mechanism to set and inspect such rules is not defined at this time and might not be exposed in the API.**
+        Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be
+        followed by all EventTypes (examples include: validation rules to match the schema; enriching every
+        Event with the reception date-type; adhering to a set of schema fields that are mandatory for all
+        EventTypes). **The mechanism to set and inspect such rules is not defined at this time and might not
+        be exposed in the API.**
 
       parameters:
         - name: event-type
@@ -177,11 +199,13 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Updates the EventType identified by its name. Behaviour is the same as creation of EventType (POST /event-type) except where noted below.
+        Updates the EventType identified by its name. Behaviour is the same as creation of EventType (POST
+        /event-type) except where noted below.
 
         The name and the topic fields cannot be changed. Attempting to do so will result in a 422 failure.
 
-        At this moment changes in the schema are not supported and will produce a 422 failure. (TODO: define conditions for backwards compatible extensions in the schema)
+        At this moment changes in the schema are not supported and will produce a 422 failure. (TODO: define
+        conditions for backwards compatible extensions in the schema)
       parameters:
         - name: name
           in: path
@@ -286,7 +310,9 @@ paths:
           default: 0
         - name: batch_flush_timeout
           in: query
-          description: Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached before this time is reached the messages are immediately flushed to the client.
+          description: |
+            Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached
+            before this time is reached the messages are immediately flushed to the client.
           type: integer
           format: int32
           required: false
@@ -306,7 +332,9 @@ paths:
           required: false
         - name: batch_keep_alive_limit
           in: query
-          description: Maximum number of keep-alive messages to get in a row before closing the connection. Unlimited by default.
+          description: |
+            Maximum number of keep-alive messages to get in a row before closing the connection. Unlimited by
+            default.
           type: integer
           format: int32
           required: false
@@ -326,7 +354,9 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '404':
-          description: Not found. Typically in case of requesting from a non existing topic or partition. Details are provided on the returned `Problem`.
+          description: |
+            Not found. Typically in case of requesting from a non existing topic or partition. Details are
+            provided on the returned `Problem`.
           schema:
             $ref: '#/definitions/Problem'
         '500':
@@ -339,7 +369,8 @@ paths:
         - draft
       description: |
         Post a one or more `Event`s to a given `Topic`.
-        The partition is implicitly controlled by the `PartitionResolutionStrategy` set to the `EventType` of the Event that is being written.
+        The partition is implicitly controlled by the `PartitionResolutionStrategy` set to the `EventType` of
+        the Event that is being written.
       parameters:
         - name: topic
           in: path
@@ -358,7 +389,9 @@ paths:
         - name: Content-Encoding
           in: header
           required: false
-          description: '"Allow the publisher to gzip compress the payload by setting this header to "gzip". For Example "Content-Encoding: gzip"'
+          description: |
+            Allow the publisher to gzip compress the payload by setting this header to "gzip".
+            For Example "Content-Encoding: gzip"
           type: string
       responses:
         '201':
@@ -434,7 +467,9 @@ paths:
         Posts a batch of `Event`s to the specified partition of this topic.
         Note that this overwrites the evaluation of the partitioning_key.
 
-        **To be defined:** Every `Event` submitted to a topic will have its content validated and enriched, respectively, by the `EventValidationStrategy` and the `EventEnrichmentStrategy` defined for this `Topic` (see POST /topics for details).
+        **To be defined:** Every `Event` submitted to a topic will have its content validated and enriched,
+        respectively, by the `EventValidationStrategy` and the `EventEnrichmentStrategy` defined for this
+        `Topic` (see POST /topics for details).
       parameters:
         - name: topic
           in: path
@@ -449,7 +484,9 @@ paths:
         - name: Content-Encoding
           in: header
           required: false
-          description: '"Allow the publisher to gzip compress the payload by setting this header to "gzip". For Example "Content-Encoding: gzip"'
+          description: |
+            "Allow the publisher to gzip compress the payload by setting this header to "gzip". For Example
+            "Content-Encoding: gzip"
           type: string
         - name: event
           in: body
@@ -481,10 +518,10 @@ paths:
       tags:
         - low-level-api
       summary: |
-        Starts a stream delivery for the specified partition of the given topic. The events are send in `EventStreamBatch`es.
-        The tracking of the current position in the partition and of which
-        partition is being read is in the responsibility of the client.
-        No commits are needed.
+        Starts a stream delivery for the specified partition of the given topic. The events are send in
+        `EventStreamBatch`es.
+        The tracking of the current position in the partition and of which partition is being read is in the
+        responsibility of the client. No commits are needed.
       parameters:
         - name: topic
           in: path
@@ -519,7 +556,8 @@ paths:
         - name: batch_flush_timeout
           in: query
           description: |
-            Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached before this
+            Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached
+            before this
             time is reached the messages are immediately flushed to the client.
             A value of 0 will flush every batch events immediatly as soon as they come in.
           type: integer
@@ -530,7 +568,8 @@ paths:
           description: |
             Maximum time in seconds a stream will live before being interrupted. If unspecified will stream
             indefinately.
-            If this timeout is reached any pending messages (in the sense of `stream_limit`) will be flushed to the
+            If this timeout is reached any pending messages (in the sense of `stream_limit`) will be flushed
+            to the
             client.
             Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
           type: integer
@@ -548,7 +587,8 @@ paths:
         - name: Accept-Encoding
           in: header
           required: false
-          description: '"If set the client requests the body to be gzip compressed. For Example "Content-Encoding: gzip"'
+          description: |
+            "If set the client requests the body to be gzip compressed. For Example "Content-Encoding: gzip"
           type: string
       responses:
         '200':
@@ -699,7 +739,8 @@ definitions:
         type: string
   EventStreamBatch:
     description: |
-      One chunk of events in a stream. A batch consists of an array of `Event`s plus a `Cursor` pointing to the offset of the last Event in the stream.
+      One chunk of events in a stream. A batch consists of an array of `Event`s plus a `Cursor` pointing to
+      the offset of the last Event in the stream.
 
       The size of the array of Event is limited by the parameters used to initialize a Stream.
     required:
@@ -717,14 +758,17 @@ definitions:
     properties:
       name:
         type: string
-        description: Name of this EventType. The name for the EventType must follow the pattern 'organization:team:application:event-type'
+        description: Name of this EventType. The name for the EventType must follow the pattern
+        'organization:team:application:event-type'
       topic:
         type: string
         description: |
-          References the name of the low-level topic that is holding the stream of Events for this EventType. Usually is the same as the name property.
+          References the name of the low-level topic that is holding the stream of Events for this EventType.
+          Usually is the same as the name property.
       validation-strategies:
         description: |
-          Determines the validation that has to be executed upon reception of Events of this type. Events are rejected if any of the rules fail (see details of Problem response on the Event publishing methods).
+          Determines the validation that has to be executed upon reception of Events of this type. Events are
+          rejected if any of the rules fail (see details of Problem response on the Event publishing methods).
 
           Rule evaluation order is the same as in this array.
         type: array
@@ -733,9 +777,12 @@ definitions:
 
       enrichment-strategies:
         description: |
-          Determines the enrichment to be performed on an Event upon reception. Enrichment is performed once upon reception (and after validation) of an Event and is only possible on fields that are not defined on the incoming Event.
+          Determines the enrichment to be performed on an Event upon reception. Enrichment is performed once
+          upon reception (and after validation) of an Event and is only possible on fields that are not
+          defined on the incoming Event.
 
-          See documentation for the write operation for details on behaviour in case of unsuccessful enrichment.
+          See documentation for the write operation for details on behaviour in case of unsuccessful
+          enrichment.
         type: array
         items:
           $ref: '#/definitions/EventEnrichmentStrategy'
@@ -751,8 +798,8 @@ definitions:
         type: object
         $ref: '#/definitions/EventTypeSchema'
         description: |
-          The schema for this EventType. This is expected to be a json schema in yaml format (other formats might be added in the future).
-
+          The schema for this EventType. This is expected to be a json schema in yaml format (other formats
+          might be added in the future).
 
   EventTypeSchema:
     properties:
@@ -767,7 +814,8 @@ definitions:
     description: |
       Defines a rule for validation of an incoming Event.
 
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/validation-rules for a list of available rules.
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See
+      GET /registry/validation-rules for a list of available rules.
     properties:
       name:
         type: string
@@ -784,7 +832,8 @@ definitions:
     description: |
       Defines a rule for the resolution of incoming Events into partitions of a Topic.
 
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/partition-rules for a list of available rules.
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See
+      GET /registry/partition-rules for a list of available rules.
     properties:
       name:
         type: string
@@ -798,9 +847,12 @@ definitions:
 
   EventEnrichmentStrategy:
     description: |
-      Defines a rule for transformation of an incoming Event. No existing fields might be modified. In practice this is used to set automatically values in the Event upon reception (i.e. set a reception timestamp on the Event).
+      Defines a rule for transformation of an incoming Event. No existing fields might be modified. In
+      practice this is used to set automatically values in the Event upon reception (i.e. set a reception
+      timestamp on the Event).
 
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See GET /registry/enrichment-rules for a list of available rules.
+      Rules might require additional parameters; see the `doc` field of the existing rules for details. See
+      GET /registry/enrichment-rules for a list of available rules.
     properties:
       name:
         type: string
