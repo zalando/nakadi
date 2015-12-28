@@ -110,13 +110,19 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Creates a new `EventType`. Upon creation the name must be unique.
+        Creates a new `EventType`. Upon creation the name MUST be unique.
 
-        TBD Validation strategy
+        **Implementation note:** The creation of an EventType implicitly creates the structures in the backing messaging implementation needed for the reception and persistency of the Events. Considering that at this time only Kafka is used, this corresponds to the creation of a Topic. If so desired, clients can interact directly with the topic using the low level API (for existing restrictions see the corresponding methods on the topic-api).
 
-        TDB Enrichment strategy
+        The fields validation-strategies, enrichment-strategies and partition-resolution-strategy have all an effect on the incoming Event of this EventType. For its impacts on the reception of events please consult the Event submission API methods.
 
-        TDB Partition resulution strategy
+        * Validation strategies define an array of EventValidationStrategies to be evaluated on reception of an Event of this EventType.
+
+        * TDB Enrichment strategy
+
+        * TDB Partition resulution strategy
+
+        Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be followed by all EventTypes (examples include: validation rules to match the schema; enriching every Event with the reception date-type; adhering to a set of schema fields that are mandatory for all EventTypes). **The mechanism to set and inspect such rules is not defined at this time and might not be exposed in the API.**
 
       parameters:
         - name: event-type
@@ -131,6 +137,10 @@ paths:
           description: Ok
         '401':
           description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
         '500':
@@ -712,7 +722,7 @@ definitions:
         type: string
         description: |
           References the name of the low-level topic that is holding the stream of Events for this EventType. Usually is the same as the name property.
-      validation-strategy:
+      validation-strategies:
         description: |
           Determines the validation that has to be executed upon reception of Events of this type. Events are rejected if any of the rules fail (see details of Problem response on the Event publishing methods).
 
@@ -721,14 +731,7 @@ definitions:
         items:
           $ref: '#/definitions/EventValidationStrategy'
 
-      partition-resolution-strategy:
-        description: |
-          Determines how the assignment of the event to a Partition should be handled.
-
-        type: object
-        $ref: '#/definitions/PartitionResolutionStrategy'
-
-      enrichment-strategy:
+      enrichment-strategies:
         description: |
           Determines the enrichment to be performed on an Event upon reception. Enrichment is performed once upon reception (and after validation) of an Event and is only possible on fields that are not defined on the incoming Event.
 
@@ -736,6 +739,14 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/EventEnrichmentStrategy'
+
+      partition-resolution-strategy:
+        description: |
+          Determines how the assignment of the event to a Partition should be handled.
+
+        type: object
+        $ref: '#/definitions/PartitionResolutionStrategy'
+
       schema:
         type: object
         $ref: '#/definitions/EventTypeSchema'
