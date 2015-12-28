@@ -26,7 +26,7 @@ info:
 
     Clients of Nakadi can be grouped in 2 categories: **Application owners** and **Clients** (clients in turn are both **Producers** and **Consumers** of Events). Application owners interact with Nakadi via the **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for submission and reception of Events. A low level **Topic API** is available, providing full control and responsibility of position tracking and partitioning (and therefore ordering) of to the Clients.
 
-    The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType. Subscriptions are managed by Nakadi, freeing Consumers from any responsibility in tracking the current position on a Stream.
+    The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType. Subscriptions are persitent relationships from an Application (which might have several instances) and the stream of an EventType, whose consumption tracking is managed by Nakadi, freeing Consumers from any responsibility in tracking the current position on a Stream.
 
 
 
@@ -50,6 +50,8 @@ info:
     * Submission of events to topics in batched manner.
 
     * Validation and enrichment procedures.
+
+    * The process for clients to establish subscriptions.
 
 
   version: '0.5'
