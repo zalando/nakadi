@@ -226,7 +226,7 @@ paths:
           required: true
         - name: event-type
           in: body
-          description: EventType to be created
+          description: EventType to be updated.
           schema:
             type: object
             $ref: '#/definitions/EventType'
@@ -236,7 +236,7 @@ paths:
         '200':
           description: Ok
         '401':
-          description: User is not authenticated
+          description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
         '404':
@@ -273,7 +273,7 @@ paths:
         force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
         attempt will be included in the respose's Problem object.
 
-        1. The incoming Event's relative ordering it then Evaluated according to the according rule on the
+        1. The incoming Event's relative ordering is Evaluated according to the rule on the
         EventType. Failure to evaluate the rule will **reject** the Event.
         **Restriction**: POSTing Events based on its EventType requires the EventType to have a
         PartitioningStrategy defined. Violating this condition will produce a 405 Not allowed.
@@ -292,7 +292,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '401':
-          description: User is not authenticated
+          description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
         '404':
@@ -457,8 +457,6 @@ paths:
         used if this
         Topic's defining EventType defines a `PartitionResolutionStrategy`.** Doing so will produce a 405 Not
         allowed.
-
-        Upon reception
       parameters:
         - name: topic
           in: path
@@ -553,7 +551,7 @@ paths:
           schema:
             $ref: '#/definitions/Partition'
         '401':
-          description: User is not authenticated
+          description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
         '500':
@@ -778,6 +776,7 @@ definitions:
           An absolute URI that identifies the problem type.  When dereferenced,
           it SHOULD provide human-readable API documentation for the problem type
           (e.g., using HTML).
+          This Problem object is the same as provided by https://github.com/zalando/problem
         example: http://httpstatus.es/503
       title:
         type: string
@@ -910,6 +909,8 @@ definitions:
         description: |
           The schema for this EventType. This is expected to be a json schema in yaml format (other formats
           might be added in the future).
+    required:
+      - name
 
   EventTypeSchema:
     properties:
@@ -918,7 +919,9 @@ definitions:
         example: 'json-schema'
       schema:
         type: string
-
+    required:
+      - type
+      - schema
 
   EventValidationStrategy:
     description: |
