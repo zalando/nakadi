@@ -29,7 +29,7 @@ info:
     are both **Producers** and **Consumers** of Events). Application owners interact with Nakadi via the
     **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for
     submission and reception of Events. A low level **Topic API** is available, providing full control and
-    responsibility of position tracking and partitioning (and therefore ordering) of to the Clients.
+    responsibility of position tracking and partitioning (and therefore ordering) to the Clients.
 
     The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType.
     Subscriptions are persitent relationships from an Application (which might have several instances) and the
@@ -89,11 +89,15 @@ paths:
       summary: Get monitoring metrics
       responses:
         '200':
-          description: Metrics data
+          description: Ok
           schema:
             $ref: '#/definitions/Metrics'
         '401':
           description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
           schema:
             $ref: '#/definitions/Problem'
         '503':
@@ -107,7 +111,7 @@ paths:
       description: Returns a list of all registered `EventType`s
       responses:
         '200':
-          description: Metrics data
+          description: Ok
           schema:
             type: array
             items:
@@ -116,12 +120,16 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
 
     post:
       tags:
         - schema-registry-api
       description: |
-        Creates a new `EventType`. Upon creation the name MUST be unique.
+        Creates a new `EventType`. Upon creation the name MUST be unique. Failing to do so will fail the request with a 422 Unprocessable entity.
 
         **Implementation note:** The creation of an EventType implicitly creates the structures in the backing
         messaging implementation needed for the reception and persistency of the Events. Considering that at
@@ -138,7 +146,7 @@ paths:
 
         * TDB Enrichment strategy
 
-        * TDB Partition resulution strategy
+        * TDB Partition resolution strategy
 
         Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be
         followed by all EventTypes (examples include: validation rules to match the schema; enriching every
@@ -194,6 +202,10 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: EventType not found
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
 
     put:
       tags:
@@ -322,6 +334,11 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+
         '503':
           description: Not available
           schema:
@@ -485,6 +502,11 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+
         '503':
           description: Not available
           schema:
@@ -532,6 +554,10 @@ paths:
             $ref: '#/definitions/Partition'
         '401':
           description: User is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
           schema:
             $ref: '#/definitions/Problem'
 
@@ -586,6 +612,11 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+
         '503':
           description: Not available
           schema:
