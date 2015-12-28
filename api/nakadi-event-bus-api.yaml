@@ -272,7 +272,7 @@ paths:
             Starts streaming to the client.
             Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
           schema:
-            $ref: '#/definitions/EventStreamFetch'
+            $ref: '#/definitions/EventStreamBatch'
         '400':
           description: Bad syntax
           schema:
@@ -679,7 +679,7 @@ definitions:
 
           Rule evaluation order is the same as in this array.
         type: array
-        item:
+        items:
           $ref: '#/definitions/EventValidationStrategy'
 
       partition-resolution-strategy:
@@ -687,8 +687,7 @@ definitions:
           Determines how the assignment of the event to a Partition should be handled.
 
         type: object
-        schema:
-          $ref: '#/definitions/PartitionResolutionStrategy'
+        $ref: '#/definitions/PartitionResolutionStrategy'
 
       enrichment-strategy:
         description: |
@@ -696,12 +695,11 @@ definitions:
 
           See documentation for the write operation for details on behaviour in case of unsuccessful enrichment.
         type: array
-        item:
+        items:
           $ref: '#/definitions/EventEnrichmentStrategy'
       schema:
         type: object
-        schema:
-          $ref: '#/definitions/EventTypeSchema'
+        $ref: '#/definitions/EventTypeSchema'
         description: |
           The schema for this EventType. This is expected to be a json schema in yaml format (other formats might be added in the future).
 
