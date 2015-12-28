@@ -286,7 +286,7 @@ paths:
         force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
         attempt will be included in the respose's Problem object.
 
-        1. The incoming Event's relative ordering is Evaluated according to the rule on the
+        1. The incoming Event's relative ordering is evaluated according to the rule on the
         EventType. Failure to evaluate the rule will **reject** the Event.
         **Restriction**: POSTing Events based on its EventType requires the EventType to have a
         PartitioningStrategy defined. Violating this condition will produce a 405 Not allowed.
@@ -881,7 +881,7 @@ definitions:
         type: string
         description: |
           Name of this EventType. The name for the EventType must follow the pattern
-          'organization:team:application:event-type'
+          'organization:team:application:event-type-name'
       topic:
         type: string
         description: |
