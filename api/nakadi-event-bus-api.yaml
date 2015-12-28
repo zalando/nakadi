@@ -63,13 +63,14 @@ info:
     this version of this specification.
 
     Notable omissions here are:
-    * The contract between Nakadi and clients in the context of the high-level API.
+    * The contract between Nakadi and clients in the context of the high-level API (i.e. the process for
+    clients to establish subscriptions).
 
     * Submission of events to topics in batched manner.
 
     * Validation and enrichment procedures.
 
-    * The process for clients to establish subscriptions.
+    * Security scopes (OAuth) for the different operations
 
 
   version: '0.5'
