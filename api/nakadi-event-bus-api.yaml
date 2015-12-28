@@ -15,7 +15,14 @@ info:
 
     An EventType defines properties relevant for the operation of its associated stream, namely:
 
-    * The **schema** of the Event of this EventType (*TODO: define shcema*)
+    * The **schema** of the Event of this EventType. The schema defines the accepted format of Events of an
+    EventType and will be, if so desired, enforced by Nakadi. Usually Nakadi will respect the schema for the
+    EventTypes in accordance to how an owning Application defines them.
+      **Note:** *Currently the specification of the schema must be pushed into Nakadi on EventType creation;
+      in the future, assuming that Applications will expose the schema for its owned resources, Nakadi might
+      support fetching the schema directly from them.*
+      Nakadi might define globally minimal schema complience requirements (i.e. some fields that must be
+      present on schemas of all EventTypes).
 
     * The expected **validation** and **enrichment** procedures upon reception of an Event.
       (*TODO: define validation and enrichment*)
@@ -129,7 +136,8 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Creates a new `EventType`. Upon creation the name MUST be unique. Failing to do so will fail the request with a 422 Unprocessable entity.
+        Creates a new `EventType`. Upon creation the name MUST be unique. Failing to do so will fail the
+        request with a 422 Unprocessable entity.
 
         **Implementation note:** The creation of an EventType implicitly creates the structures in the backing
         messaging implementation needed for the reception and persistency of the Events. Considering that at
@@ -147,6 +155,11 @@ paths:
         * TDB Enrichment strategy
 
         * TDB Partition resolution strategy
+
+        * The schema of an EventType is defined as an `EventTypeSchema`. Currently only json-schema is
+        supported. Using EventTypeSchema.type other than json-schema or passing a EventTypeSchema.schema that
+        is invalid with respect tothe type will fail this creation with a 422 Unprocessable entity. Detailes
+        will be included in the response's Problem.
 
         Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be
         followed by all EventTypes (examples include: validation rules to match the schema; enriching every
@@ -917,8 +930,12 @@ definitions:
       type:
         type: string
         example: 'json-schema'
+        description: The type of schema definition (avro, json-schema, etc).
       schema:
         type: string
+        description: |
+          The schema as string in the syntax defined in the field type. Failure to respect the syntax will
+          fail any operation on an EventType.
     required:
       - type
       - schema
