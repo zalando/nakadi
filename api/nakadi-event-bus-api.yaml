@@ -7,7 +7,7 @@ info:
     -----------
     Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient API.
     In doing this, Nakadi abstracts away, as much as possible, details of the backing messaging
-    infrastructure. The single currently supported messaging middleware is Kafka (Kinesis is planned
+    infrastructure. The single currently supported messaging infrastructure is Kafka (Kinesis is planned
     for the future).
 
     In Nakadi every Event has an EventType, and a **stream** of Events is exposed for each registered
@@ -240,6 +240,70 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /event-types/{name}/events:
+    post:
+      description: |
+        Publishes one or more events of this EventType.
+
+        Reception of Events will always respect the configuration of its EventType w.r.t. validation,
+        enrichment and partitioning. The steps performed on reception of incoming message are:
+
+        1. Every validation rule specified in the EventType will be checked in order against the incoming
+        Events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
+        in the first case of failure with a status of 400 Bad request. If the offending validation rule
+        provides information about the violation it will be included in the Problem response.
+        If the EventType defines schema validation it will be performed at this moment.
+        **TBD behaviour in case of violation within a stream of events**)
+
+        1. Once the validation succeeded, the content of the Event is updated according to the enrichment
+        rules in the order the rules are defined in the EventType.
+        No preexisting value might be changed (even if added by an enrichment rule). Violations on this will
+        force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
+        attempt will be included in the respose's Problem object.
+
+        1. The incoming Event's relative ordering it then Evaluated according to the according rule on the
+        EventType. Failure to evaluate the rule will **reject** the Event.
+        **Restriction**: POSTing Events based on its EventType requires the EventType to have a
+        PartitioningStrategy defined. Violating this condition will produce a 405 Not allowed.
+
+      parameters:
+        - name: name
+          in: path
+          type: string
+          description: Name of the EventType
+          required: true
+      responses:
+        '200':
+          description: Ok
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Problem'
+        '401':
+          description: User is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: EventType not found.
+          schema:
+              $ref: '#/definitions/Problem'
+        '405':
+          description: Not allowed.
+          schema:
+              $ref: '#/definitions/Problem'
+        '409':
+          description: Conflict.
+          schema:
+              $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+
   /topics:
     get:
       description: Lists all known `Topics` of this Nakadi cluster
@@ -266,7 +330,7 @@ paths:
   '/topics/{topic}/events':
     get:
       tags:
-        - high-level-api
+        - topic-api
         - draft
       summary: |
         Starts a stream delivery for the specified partitions of the given topic.
@@ -365,12 +429,19 @@ paths:
             $ref: '#/definitions/Problem'
     post:
       tags:
-        - high-level-api
+        - topic-api
         - draft
       description: |
-        Post a one or more `Event`s to a given `Topic`.
-        The partition is implicitly controlled by the `PartitionResolutionStrategy` set to the `EventType` of
-        the Event that is being written.
+        Post a one or more `Event`s to a given `Topic` (of an EventType). Upon recpetion the EventType's
+        validation and enrichment rules are applied. For details on their behaviour please see POST /even
+        t-types/{name}/events.
+
+        Restriction: To avoid inconsistencies in the relative ordering of Events, **this operation cannot be
+        used if this
+        Topic's defining EventType defines a `PartitionResolutionStrategy`.** Doing so will produce a 405 Not
+        allowed.
+
+        Upon reception
       parameters:
         - name: topic
           in: path
@@ -404,6 +475,12 @@ paths:
           description: Not allowed
           schema:
             $ref: '#/definitions/Problem'
+        '405':
+          description: |
+            Method not allowed. This topic does not support direct POSTing of Events. Use equivalent POST
+            /event-types/{name}/events instead.
+          schema:
+            $ref: '#/definitions/Problem'
         '422':
           description: Unprocessable Entity
           schema:
@@ -435,8 +512,7 @@ paths:
   '/topics/{topic}/partitions/{partition}':
     get:
       tags:
-        #- low-level-api
-        - management-api
+        - topic-api
       summary: Returns the given `Partition` of this topic
       parameters:
         - name: topic
@@ -462,7 +538,7 @@ paths:
   '/topics/{topic}/partitions/{partition}/events':
     post:
       tags:
-        - low-level-api
+        - topic-api
       summary: |
         Posts a batch of `Event`s to the specified partition of this topic.
         Note that this overwrites the evaluation of the partitioning_key.
@@ -540,7 +616,9 @@ paths:
           required: true
         - name: batch_limit
           in: query
-          description: Maximum number of `EventStreamBatch`s in each chunk of the stream. If unspecified assumes default value 1 (i.e. each event is individually submitted).
+          description: |
+            Maximum number of `EventStreamBatch`s in each chunk of the stream. If unspecified assumes default
+            value 1 (i.e. each event is individually submitted).
           type: integer
           format: int32
           required: false
@@ -758,8 +836,9 @@ definitions:
     properties:
       name:
         type: string
-        description: Name of this EventType. The name for the EventType must follow the pattern
-        'organization:team:application:event-type'
+        description: |
+          Name of this EventType. The name for the EventType must follow the pattern
+          'organization:team:application:event-type'
       topic:
         type: string
         description: |
