@@ -216,6 +216,8 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: EventType not found
+          schema:
+            $ref: '#/definitions/Problem'
         '500':
           description: Server error
           schema:
@@ -363,10 +365,24 @@ paths:
       tags:
         - topic-api
         - draft
-      summary: |
+      description: |
         Starts a stream delivery for the specified partitions of the given topic.
-        The tracking of the current position in the partitions and of which
-        partitions is being read is in the responsibility of the client.
+
+        The event stream is formated as a sequence of `EventStreamBatch`es separated by `\n`. Each
+        EventStreamBatch constains a chunk of Events and a Cursor pointing to the end of the chunk (i.e. last
+        delivered Event).
+        If streaming for several distinct partitions, each one is a independent `EventStreamBatch`.
+
+        The streaming can be controlled in terms of size of each chunk, timeout for flushing each chunk,
+        total amount of delivered Events and total time for the duration of the stream.
+
+        Nakadi will keep a streming conneciton open even if there are no events to be delivered. In this case
+        the timeout for the flushing of each chunk will still apply and the EventStreamBatches will contain
+        only the Cursor pointing to the same offset. This can be treated as a keep-alive control for some
+        load balancers.
+
+        The tracking of the current position in the partitions and of which partitions is being read is in
+        the responsibility of the client.
         No commits are needed.
       parameters:
         - name: topic
@@ -376,7 +392,9 @@ paths:
           required: true
         - name: x-nakadi-cursors
           in: header
-          description: Cursors pointing to partitions/offsets to start read from
+          description: Array of cursors indicating the partitions to read from and the starting point on
+            each. Assumes the offset on each cursor is not inclusive (i.e., first delivered Event is the
+            **first one after** the one pointed to in the cursor).
           required: false
           type: array
           items:
@@ -385,8 +403,10 @@ paths:
         - name: batch_limit
           in: query
           description: |
-            Maximum number of `Event`s in each chunk of the stream. If unspecified assumes default value 1
-            (i.e. each event is individually submitted). This limit is applied per partition.
+            Maximum number of `Event`s in each chunk of the stream.
+
+            * If unspecified assumes default value 1 (i.e. Events are delivered one by one).
+              This limit is applied per partition.
           type: integer
           format: int32
           required: false
@@ -450,8 +470,11 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: |
-            Not found. Typically in case of requesting from a non existing topic or partition. Details are
-            provided on the returned `Problem`.
+            Topic not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable entity
           schema:
             $ref: '#/definitions/Problem'
         '500':
@@ -504,6 +527,11 @@ paths:
           description: Not allowed
           schema:
             $ref: '#/definitions/Problem'
+        '404':
+          description: |
+            Topic not found.
+          schema:
+            $ref: '#/definitions/Problem'
         '405':
           description: |
             Method not allowed. This topic does not support direct POSTing of Events. Use equivalent POST
@@ -526,7 +554,7 @@ paths:
   '/topics/{topic}/partitions':
     get:
       tags:
-        - monitoring
+        - topic-api
         - management-api
       summary: Lists the `Partition`s for the given topic
       parameters:
@@ -543,10 +571,20 @@ paths:
             description: An array of `Partition`s
             items:
               $ref: '#/definitions/Partition'
+        '404':
+          description: |
+            Topic not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
   '/topics/{topic}/partitions/{partition}':
     get:
       tags:
         - topic-api
+        - management-api
       summary: Returns the given `Partition` of this topic
       parameters:
         - name: topic
@@ -566,6 +604,11 @@ paths:
             $ref: '#/definitions/Partition'
         '401':
           description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: |
+            Topic not found.
           schema:
             $ref: '#/definitions/Problem'
         '500':
@@ -599,7 +642,7 @@ paths:
           in: header
           required: false
           description: |
-            "Allow the publisher to gzip compress the payload by setting this header to "gzip". For Example
+            Allow the publisher to gzip compress the payload by setting this header to "gzip". For Example
             "Content-Encoding: gzip"
           type: string
         - name: event
@@ -618,6 +661,11 @@ paths:
             $ref: '#/definitions/Problem'
         '403':
           description: Not allowed
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: |
+            Not found.
           schema:
             $ref: '#/definitions/Problem'
         '422':
@@ -727,7 +775,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '404':
-          description: Not found. Typically in case of requesting from a non existing topic of partition.
+          description: Not found.
           schema:
             $ref: '#/definitions/Problem'
         '500':
