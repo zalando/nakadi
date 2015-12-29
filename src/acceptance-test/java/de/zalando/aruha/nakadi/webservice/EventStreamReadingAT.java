@@ -3,8 +3,6 @@ package de.zalando.aruha.nakadi.webservice;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
-import com.jayway.restassured.RestAssured;
-import com.jayway.restassured.parsing.Parser;
 import com.jayway.restassured.response.Response;
 import de.zalando.aruha.nakadi.webservice.utils.TestHelper;
 import org.apache.http.HttpStatus;
@@ -26,9 +24,8 @@ import static org.hamcrest.Matchers.hasKey;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
-public class EventStreamReadingAT {
+public class EventStreamReadingAT extends BaseAT {
 
-    private static final int PORT = 8080;
     private static final String TOPIC = "test-topic";
     private static final String PARTITION = "0";
     private static final String DUMMY_EVENT = "Dummy";
@@ -36,15 +33,12 @@ public class EventStreamReadingAT {
     private static final String STREAM_ENDPOINT = createStreamEndpointUrl(TOPIC, PARTITION);
     private static final String SEPARATOR = "\n";
 
-
     private ObjectMapper jsonMapper = new ObjectMapper();
     private static String initialPartitionOffset;
 
     @BeforeClass
     public static void setUp() throws InterruptedException {
-        RestAssured.port = PORT;
-        RestAssured.defaultParser = Parser.JSON;
-        final TestHelper testHelper = new TestHelper("http://localhost:" + PORT);
+        final TestHelper testHelper = new TestHelper(URL);
 
         // grab the offsets we had initially so that we know where to start reading from
         final List<Map<String, String>> initialOffsets = testHelper.getLatestOffsets(TOPIC);
