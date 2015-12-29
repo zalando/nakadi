@@ -56,7 +56,7 @@ public class TopicsController {
     @Autowired
     private ObjectMapper jsonMapper;
 
-	@Timed
+    @Timed(name = "get_topics", absolute = true)
 	@RequestMapping(method = RequestMethod.GET)
 	@ApiOperation("Lists all known topics")
 
@@ -72,7 +72,7 @@ public class TopicsController {
 		}
 	}
 
-	@Timed
+	@Timed(name = "get_partitions", absolute = true)
 	@RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
 	@ApiOperation("Lists the partitions for the given topic")
 	@ApiResponses({ @ApiResponse(code = 200, message = "Returns list of all partitions for the given topic",
@@ -88,13 +88,13 @@ public class TopicsController {
 		}
 	}
 
-	@Timed
+    @Timed(name = "get_partition", absolute = true)
 	@RequestMapping(value = "/{topicId}/partitions/{partitionId}", method = RequestMethod.GET)
 	public TopicPartition getPartition(@PathVariable("topicId") final String topicId) {
 		throw new UnsupportedOperationException();
 	}
 
-	@Timed
+    @Timed(name = "post_event_to_partition", absolute = true)
 	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events", method = RequestMethod.POST)
 	@ApiOperation("Posts an event to the specified partition of this topic.")
 	@ApiResponses({ @ApiResponse(code = 201, message = "Event submitted"),
@@ -114,7 +114,7 @@ public class TopicsController {
 		}
 	}
 
-	@Timed
+    @Timed(name = "stream_events_from_partition", absolute = true)
 	@RequestMapping(value = "/{topic}/partitions/{partition}/events", method = RequestMethod.GET)
 	public StreamingResponseBody streamEventsFromPartition(
 			@PathVariable("topic") final String topic,
