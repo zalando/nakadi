@@ -1,16 +1,16 @@
 package de.zalando.aruha.nakadi.controller;
 
-import static java.util.Optional.ofNullable;
-import static org.springframework.http.ResponseEntity.ok;
-import static org.springframework.http.ResponseEntity.status;
-
+import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Problem;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.utils.FlushableGZIPOutputStream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,18 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.codahale.metrics.annotation.Timed;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Problem;
-import de.zalando.aruha.nakadi.domain.Topic;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import javax.servlet.http.HttpServletRequest;
@@ -42,7 +30,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
+
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.ResponseEntity.ok;
+import static org.springframework.http.ResponseEntity.status;
 
 @RestController
 @RequestMapping(value = "/topics")
@@ -58,12 +49,6 @@ public class TopicsController {
 
 	@Timed
 	@RequestMapping(method = RequestMethod.GET)
-	@ApiOperation("Lists all known topics")
-
-	// FIXME: response for 200 does not match reality
-	@ApiResponses({ @ApiResponse(code = 200, message = "Returns list of all topics", response = Topic.class),
-			@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
-			@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
 	public ResponseEntity<?> listTopics() {
 		try {
 			return ok().body(topicRepository.listTopics());
@@ -74,13 +59,7 @@ public class TopicsController {
 
 	@Timed
 	@RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
-	@ApiOperation("Lists the partitions for the given topic")
-	@ApiResponses({ @ApiResponse(code = 200, message = "Returns list of all partitions for the given topic",
-			response = TopicPartition.class),
-		@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
-		@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
-	public ResponseEntity<?> listPartitions(
-			@ApiParam(name = "topic", value = "Topic name", required = true) @PathVariable("topicId") final String topicId) {
+	public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
 		try {
 			return ok().body(topicRepository.listPartitions(topicId));
 		} catch (final NakadiException e) {
@@ -96,13 +75,9 @@ public class TopicsController {
 
 	@Timed
 	@RequestMapping(value = "/{topicId}/partitions/{partitionId}/events", method = RequestMethod.POST)
-	@ApiOperation("Posts an event to the specified partition of this topic.")
-	@ApiResponses({ @ApiResponse(code = 201, message = "Event submitted"),
-		@ApiResponse(code = 401, message = "User not authenticated", response = Problem.class),
-		@ApiResponse(code = 503, message = "Not available", response = Problem.class) })
 	public ResponseEntity<?> postEventToPartition(
-			@ApiParam(name = "topic", value = "Topic where to send events to", required = true) @PathVariable("topicId") final String topicId,
-			@ApiParam(name = "partition", value = "Partition where to send events to", required = true) @PathVariable("partitionId") final String partitionId,
+			@PathVariable("topicId") final String topicId,
+			@PathVariable("partitionId") final String partitionId,
 			@RequestBody final String messagePayload) {
 		LOG.trace("Event received: {}, {}, {}", topicId, partitionId, messagePayload);
 		try {
