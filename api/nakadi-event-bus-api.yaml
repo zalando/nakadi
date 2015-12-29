@@ -405,8 +405,7 @@ paths:
           description: |
             Maximum number of `Event`s in each chunk of the stream.
 
-            * If unspecified assumes default value 1 (i.e. Events are delivered one by one).
-              This limit is applied per partition.
+            * If 0 or unspecified will buffer Events indefinitely and flush on reaching of `batch_flush_timeout`.
           type: integer
           format: int32
           required: false
@@ -414,11 +413,11 @@ paths:
         - name: stream_limit
           in: query
           description: |
-            Maximum number of `Event`s in this stream. If 0 or undefined, will
-            stream indefinately.
+            Maximum number of `Event`s in this stream.
 
-            Stream initialization will fail if `stream_limit` is lower than
-            `batch_limit`.
+            * If 0 or undefined, will stream batches indefinately.
+
+            * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
           type: integer
           format: int32
           required: false
@@ -426,19 +425,23 @@ paths:
         - name: batch_flush_timeout
           in: query
           description: |
-            Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached
-            before this time is reached the messages are immediately flushed to the client.
+            Maximum time in seconds to wait for the flushing of each chunk.
+
+            * If the amount of buffered Events reaches `batch_limit` before this batch_flush_timeout is
+            reached, the messages are immediately flushed to the client.
+            * If 0 or undefined, will assume 30 seconds.
           type: integer
           format: int32
           required: false
+          default: 30
         - name: stream_timeout
           in: query
           description: |
             Maximum time in seconds a stream will live before being interrupted.
             If unspecified will stream indefinately.
 
-            If this timeout is reached any pending messages (in the sense of
-            `stream_limit`) will be flushed to the client.
+            If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
+            to the client.
 
             Stream initialization will fail if `stream_timeout` is lower than
             `batch_flush_timeout`.
@@ -551,12 +554,13 @@ paths:
           description: Not available
           schema:
             $ref: '#/definitions/Problem'
+
   '/topics/{topic}/partitions':
     get:
       tags:
         - topic-api
         - management-api
-      summary: Lists the `Partition`s for the given topic
+      description: Lists the `Partition`s for the given topic
       parameters:
         - name: topic
           in: path
@@ -580,12 +584,13 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
+
   '/topics/{topic}/partitions/{partition}':
     get:
       tags:
         - topic-api
         - management-api
-      summary: Returns the given `Partition` of this topic
+      description: Returns the given `Partition` of this topic
       parameters:
         - name: topic
           in: path
@@ -608,7 +613,7 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: |
-            Topic not found.
+            Not found.
           schema:
             $ref: '#/definitions/Problem'
         '500':
@@ -620,13 +625,16 @@ paths:
     post:
       tags:
         - topic-api
-      summary: |
-        Posts a batch of `Event`s to the specified partition of this topic.
-        Note that this overwrites the evaluation of the partitioning_key.
+        - draft
+      description: |
+        Post a one or more `Event`s to a given `Topic` (of an EventType). Upon recpetion the EventType's
+        validation and enrichment rules are applied. For details on their behaviour please see POST /even
+        t-types/{name}/events.
 
-        **To be defined:** Every `Event` submitted to a topic will have its content validated and enriched,
-        respectively, by the `EventValidationStrategy` and the `EventEnrichmentStrategy` defined for this
-        `Topic` (see POST /topics for details).
+        Restriction: To avoid inconsistencies in the relative ordering of Events, **this operation cannot be
+        used if this
+        Topic's defining EventType defines a `PartitionResolutionStrategy`.** Doing so will produce a 405 Not
+        allowed.
       parameters:
         - name: topic
           in: path
@@ -681,108 +689,6 @@ paths:
           description: Not available
           schema:
             $ref: '#/definitions/Problem'
-    get:
-      tags:
-        - low-level-api
-      summary: |
-        Starts a stream delivery for the specified partition of the given topic. The events are send in
-        `EventStreamBatch`es.
-        The tracking of the current position in the partition and of which partition is being read is in the
-        responsibility of the client. No commits are needed.
-      parameters:
-        - name: topic
-          in: path
-          description: Topic to consume events from
-          type: string
-          required: true
-        - name: partition
-          in: path
-          description: Id of the partition where to get events from
-          type: string
-          required: true
-        - name: start_from
-          in: query
-          description: Starting offset of the stream. Must be in the range defined by the `Partition`.
-          type: string
-          required: true
-        - name: batch_limit
-          in: query
-          description: |
-            Maximum number of `EventStreamBatch`s in each chunk of the stream. If unspecified assumes default
-            value 1 (i.e. each event is individually submitted).
-          type: integer
-          format: int32
-          required: false
-          default: 1
-        - name: stream_limit
-          in: query
-          description: |
-            Maximum number of `Event`s in this stream. If 0 or undefined, will stream indefinately.
-            Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
-          type: integer
-          format: int32
-          required: false
-        - name: batch_flush_timeout
-          in: query
-          description: |
-            Maximum time in seconds to wait for the flushing of each chunk; if the `batch_limit` is reached
-            before this
-            time is reached the messages are immediately flushed to the client.
-            A value of 0 will flush every batch events immediatly as soon as they come in.
-          type: integer
-          format: int32
-          required: false
-        - name: stream_timeout
-          in: query
-          description: |
-            Maximum time in seconds a stream will live before being interrupted. If unspecified will stream
-            indefinately.
-            If this timeout is reached any pending messages (in the sense of `stream_limit`) will be flushed
-            to the
-            client.
-            Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
-          type: integer
-          format: int32
-          required: false
-        - name: batch_keep_alive_limit
-          in: query
-          description: |
-            Maximum number of keep-alive messages to get in a row
-            before closing the connection.
-            Unlimited by default.
-          type: integer
-          format: int32
-          required: false
-        - name: Accept-Encoding
-          in: header
-          required: false
-          description: |
-            "If set the client requests the body to be gzip compressed. For Example "Content-Encoding: gzip"
-          type: string
-      responses:
-        '200':
-          description: |
-            Starts streaming to the client.
-            Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
-          schema:
-            $ref: '#/definitions/EventStreamBatch'
-        '400':
-          description: Bad syntax
-          schema:
-            $ref: '#/definitions/Problem'
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: Not found.
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error. Details are given in the response body.
-          schema:
-            $ref: '#/definitions/Problem'
-
 
 # ################################### #
 #                                     #
