@@ -1,0 +1,24 @@
+//this cas be a stream for batch size 6
+{
+  "events": {
+    "0":["Dummy","Dummy","Dummy"],
+    "1":["Dummy"],
+    "2":["Dummy","Dummy"]
+  },
+  "commit_id": "NCSLUIVWHGROQ7TY473GH347"
+}
+\n
+{
+  "events": {
+    "0":["Dummy","Dummy"],
+    "4":["Dummy","Dummy","Dummy","Dummy"]
+  },
+  "commit_id": "IOJIJQIVBN8J4JPK43M34FER"
+}
+\n
+{
+  "events": {
+    "3":["Dummy","Dummy","Dummy","Dummy","Dummy","Dummy"]
+  },
+  "commit_id": "DGKYGSDDOIH&8723824YU387"
+}
