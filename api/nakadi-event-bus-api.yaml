@@ -44,7 +44,6 @@ info:
     responsibility in tracking the current position on a Stream.
 
 
-
     Scope and status of this document
     -------------------------------
 
@@ -71,6 +70,9 @@ info:
     * Validation and enrichment procedures.
 
     * Security scopes (OAuth) for the different operations
+
+    * Validation and Enrichment Strategies available in Nakadi are out of this document an can be consulted in
+    an external document (TBD link to document).
 
 
   version: '0.5'
@@ -150,17 +152,22 @@ paths:
         effect on the incoming Event of this EventType. For its impacts on the reception of events please
         consult the Event submission API methods.
 
-        * Validation strategies define an array of EventValidationStrategies to be evaluated on reception of
-        an Event of this EventType.
+        * Validation strategies define an array of `EventValidationStrategy` to be evaluated on reception of
+        an `Event` of this `EventType`. Details of usage can be found in an external document (TBD link to
+        document).
+        **Notes**: Some EventValidationStrategies might support additional parameters. The behaviour is
+        specific to each strategy and one is suggested to consult its `doc` field for detailes of operation.
+        The default `SchemaValidationStrategy` supports passing fields to be ignored if the qualifier matches
+        the input.
 
         * TDB Enrichment strategy
 
         * TDB Partition resolution strategy
 
-        * The schema of an EventType is defined as an `EventTypeSchema`. Currently only json-schema is
-        supported. Using EventTypeSchema.type other than json-schema or passing a EventTypeSchema.schema that
-        is invalid with respect tothe type will fail this creation with a 422 Unprocessable entity. Detailes
-        will be included in the response's Problem.
+        * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only json-schema is
+        supported. Using `EventTypeSchema.type` other than json-schema or passing a EventTypeSchema.schema
+        that is invalid with respect tothe type will fail this creation with a 422 Unprocessable entity.
+        Detailes will be included in the response's Problem.
 
         Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be
         followed by all EventTypes (examples include: validation rules to match the schema; enriching every
@@ -198,7 +205,7 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Returns the EventType identified by its name.
+        Returns the `EventType` identified by its name.
       parameters:
         - name: name
           in: path
@@ -227,7 +234,7 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Updates the EventType identified by its name. Behaviour is the same as creation of EventType (POST
+        Updates the `EventType` identified by its name. Behaviour is the same as creation of `EventType` (POST
         /event-type) except where noted below.
 
         The name and the topic fields cannot be changed. Attempting to do so will result in a 422 failure.
@@ -276,23 +283,23 @@ paths:
         Reception of Events will always respect the configuration of its EventType w.r.t. validation,
         enrichment and partitioning. The steps performed on reception of incoming message are:
 
-        1. Every validation rule specified in the EventType will be checked in order against the incoming
+        1. Every validation rule specified in the `EventType` will be checked in order against the incoming
         Events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
         in the first case of failure with a status of 400 Bad request. If the offending validation rule
         provides information about the violation it will be included in the Problem response.
-        If the EventType defines schema validation it will be performed at this moment.
+        If the `EventType` defines schema validation it will be performed at this moment.
         **TBD behaviour in case of violation within a stream of events**)
 
         1. Once the validation succeeded, the content of the Event is updated according to the enrichment
-        rules in the order the rules are defined in the EventType.
+        rules in the order the rules are defined in the `EventType`.
         No preexisting value might be changed (even if added by an enrichment rule). Violations on this will
         force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
         attempt will be included in the respose's Problem object.
 
         1. The incoming Event's relative ordering is evaluated according to the rule on the
-        EventType. Failure to evaluate the rule will **reject** the Event.
-        **Restriction**: POSTing Events based on its EventType requires the EventType to have a
-        PartitioningStrategy defined. Violating this condition will produce a 405 Not allowed.
+        `EventType`. Failure to evaluate the rule will **reject** the Event.
+        **Restriction**: POSTing Events based on its `EventType` requires it to have a
+        `PartitioningStrategy` defined. Violating this condition will produce a 405 Not allowed.
 
       parameters:
         - name: name
@@ -369,15 +376,15 @@ paths:
         Starts a stream delivery for the specified partitions of the given topic.
 
         The event stream is formated as a sequence of `EventStreamBatch`es separated by `\n`. Each
-        EventStreamBatch constains a chunk of Events and a Cursor pointing to the end of the chunk (i.e. last
-        delivered Event).
+        `EventStreamBatch` constains a chunk of Events and a `Cursor` pointing to the end of the chunk (i.e.
+        last delivered Event).
         If streaming for several distinct partitions, each one is a independent `EventStreamBatch`.
 
-        The streaming can be controlled in terms of size of each chunk, timeout for flushing each chunk,
-        total amount of delivered Events and total time for the duration of the stream.
+        The initialization of a stream can be parameterized in terms of size of each chunk, timeout for
+        flushing each chunk, total amount of delivered Events and total time for the duration of the stream.
 
-        Nakadi will keep a streming conneciton open even if there are no events to be delivered. In this case
-        the timeout for the flushing of each chunk will still apply and the EventStreamBatches will contain
+        Nakadi will keep a streaming connection open even if there are no events to be delivered. In this case
+        the timeout for the flushing of each chunk will still apply and the `EventStreamBatche`s will contain
         only the Cursor pointing to the same offset. This can be treated as a keep-alive control for some
         load balancers.
 
@@ -403,9 +410,10 @@ paths:
         - name: batch_limit
           in: query
           description: |
-            Maximum number of `Event`s in each chunk of the stream.
+            Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
 
-            * If 0 or unspecified will buffer Events indefinitely and flush on reaching of `batch_flush_timeout`.
+            * If 0 or unspecified will buffer Events indefinitely and flush on reaching of
+            `batch_flush_timeout`.
           type: integer
           format: int32
           required: false
@@ -413,7 +421,7 @@ paths:
         - name: stream_limit
           in: query
           description: |
-            Maximum number of `Event`s in this stream.
+            Maximum number of `Event`s in this stream (over all partitions being streamed in this connection).
 
             * If 0 or undefined, will stream batches indefinately.
 
@@ -425,7 +433,7 @@ paths:
         - name: batch_flush_timeout
           in: query
           description: |
-            Maximum time in seconds to wait for the flushing of each chunk.
+            Maximum time in seconds to wait for the flushing of each chunk (per partition).
 
             * If the amount of buffered Events reaches `batch_limit` before this batch_flush_timeout is
             reached, the messages are immediately flushed to the client.
@@ -489,7 +497,7 @@ paths:
         - topic-api
         - draft
       description: |
-        Post a one or more `Event`s to a given `Topic` (of an EventType). Upon recpetion the EventType's
+        Post a one or more `Event`s to a given `Topic` (of an `EventType`). Upon recpetion the `EventType`'s
         validation and enrichment rules are applied. For details on their behaviour please see POST /even
         t-types/{name}/events.
 
@@ -627,9 +635,9 @@ paths:
         - topic-api
         - draft
       description: |
-        Post a one or more `Event`s to a given `Topic` (of an EventType). Upon recpetion the EventType's
-        validation and enrichment rules are applied. For details on their behaviour please see POST /even
-        t-types/{name}/events.
+        Post a one or more `Event`s to a given `Topic` (of an `EventType`). Upon recpetion the `EventType`'s
+        validation and enrichment rules are applied. For details on their behaviour please see POST
+        /event-types/{name}/events.
 
         Restriction: To avoid inconsistencies in the relative ordering of Events, **this operation cannot be
         used if this
@@ -689,6 +697,21 @@ paths:
           description: Not available
           schema:
             $ref: '#/definitions/Problem'
+
+  '/registry/validation-rule':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        asdf
+      responses:
+        '200':
+          description: Returns a list of all `EventValidationStrategy` known to Nakadi
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/EventValidationStrategy'
+
 
 # ################################### #
 #                                     #
