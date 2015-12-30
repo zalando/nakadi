@@ -13,7 +13,7 @@ before_script:
 
 # run tests
 script:
-  - gradle fullAcceptanceTest --stacktrace
+  - gradle check fullAcceptanceTest --stacktrace
 
 after_success:
   - codecov
