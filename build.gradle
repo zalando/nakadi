@@ -5,6 +5,7 @@ apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'spring-boot'
+apply plugin: "jacoco"
 // if this is applied, include scala dependencies (see below)
 // apply plugin: 'scala'
 
@@ -236,5 +237,13 @@ run {
     environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+check.dependsOn jacocoTestReport
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
