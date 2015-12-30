@@ -1,22 +1,21 @@
 package de.zalando.nakadi.controllers
 
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import de.zalando.nakadi.models.CommonTypes._
-import de.zalando.nakadi.models.{Metrics, Partition, Topic}
-import de.zalando.nakadi.utils.ActorCommands._
-import de.zalando.nakadi.utils.{KafkaClient, KafkaConsumerActor}
-import org.apache.kafka.clients.consumer.KafkaConsumer
+import de.zalando.nakadi.models.{Metrics, Partition, PartitionCursor, Topic}
+import de.zalando.nakadi.utils.{RawKafkaConsumer, RawKafkaProducer, StreamingKafkaConsumer}
+import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import play.api.Logger
-import play.api.libs.iteratee.{Enumeratee, Enumerator}
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.iteratee.Enumeratee
+import play.api.libs.json.{JsValue, Json, Writes}
 import play.api.mvc._
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.util.Try
 
 class EventBrokerController @Inject()()
@@ -46,37 +45,57 @@ class EventBrokerController @Inject()()
     consumer.partitionsFor(topic).asScala.map { partitionInfo =>
       Partition(
         name = partitionInfo.partition().toString,
+        //TODO: implemnet fetching olders and newest offsets
         oldest_available_offset = "UNKNOWN",
-        newest_available_offset = "UNKNOWN" )
-    } sortBy(_.name)
+        newest_available_offset = "UNKNOWN")
+    } sortBy (_.name)
   }
 
   def getEventsFromTopic(topic: String) = play.mvc.Results.TODO
 
-  def postEventsIntoTopic(topic: String) = play.mvc.Results.TODO
+  def postEventsIntoTopic(topic: String) = withProducer { (request, producer) =>
+    request.body.asJson.map { (body: JsValue) =>
 
-  val actorSystem = ActorSystem.create("nakadi")
+      import java.util.concurrent.{Future => JFuture}
+
+      val r: JFuture[RecordMetadata] = producer.send(new ProducerRecord[String, String](topic, "dummy"))
+      val sr: Future[RecordMetadata] = Future( blocking(r.get()) )
+      Future.successful("OK")
+    }.getOrElse {
+      Future.failed(new Exception("Could not parse the body"))
+    }
+  }
+
+  implicit val actorSystem = ActorSystem.create("nakadi")
+
+  import RawKafkaConsumer.{kafkaKeyDeserializer, kafkaValueDeserializer}
 
   def getEventsFromPartition(topic: TopicName,
                              partition: PartitionName,
                              start_from: PartitionOffset,
                              stream_limit: Option[Int] = None
-                            ) = Action.async
-  {
-    val actor = actorSystem.actorOf(
-      Props(classOf[KafkaConsumerActor], topic, partition, start_from, stream_limit.getOrElse(0)))
+                            ) = Action.async {
+    implicit val consumer = RawKafkaConsumer[String, String]
 
-    val newLiner = Enumeratee.map[String] ( _ + '\n' )
+    val rawStream = StreamingKafkaConsumer.rawStream[String, String](
+      topic,
+      Seq(PartitionCursor(partition, start_from)),
+      stream_limit
+    )
 
-    implicit val timeout = akka.util.Timeout(5, TimeUnit.SECONDS)
-    akka.pattern.ask(actor, Start).mapTo[Enumerator[String]].map { events =>
+    val newLiner = Enumeratee.map[ConsumerRecord[String, String]] { r =>
+      r.value() + '\n'
+    }
+
+    rawStream.map { events =>
       Results.Ok.chunked(events &> newLiner)
     }
   }
 
-  private def withConsumer[A](f: KafkaConsumer[_, _] => A)(implicit w: Writes[A]): Action[AnyContent] = {
+  private def withConsumer[A](f: KafkaConsumer[String, String] => A)(implicit w: Writes[A]): Action[AnyContent] = {
     Action {
-      val consumer = KafkaClient()
+      import RawKafkaConsumer._
+      val consumer = RawKafkaConsumer[String, String]
       try {
         Results.Ok {
           Json.toJson {
@@ -89,4 +108,15 @@ class EventBrokerController @Inject()()
     }
   }
 
+  private def withProducer[A](f: (Request[AnyContent], KafkaProducer[String, String]) => Future[A])(implicit w: Writes[A]): Action[AnyContent] = {
+    Action.async { result =>
+      import RawKafkaProducer._
+      val producer = RawKafkaProducer[String, String]
+      try {
+        f(result, producer).map { r => Results.Ok(Json.toJson(r)) } recover { case t: Throwable => Results.BadRequest(t.getMessage) }
+      } finally {
+        Try(producer.close())
+      }
+    }
+  }
 }

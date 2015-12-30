@@ -4,6 +4,8 @@
 *.sw?
 
 logs
+application-log*
+application.home*
 project/project
 project/target
 target

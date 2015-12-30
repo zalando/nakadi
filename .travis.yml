@@ -20,9 +20,12 @@ before_install:
 script:
   - sbt ++$TRAVIS_SCALA_VERSION clean compile test:compile
   - sbt ++$TRAVIS_SCALA_VERSION coverage test
+  - sbt ++$TRAVIS_SCALA_VERSION coverageReport
+  - sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
 
   # Trick to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm
 
 after_success:
   - pip install --user codecov && codecov
+  - CODACY_PROJECT_TOKEN=3b80c14af47147a185d106c4666d4999 sbt codacyCoverage

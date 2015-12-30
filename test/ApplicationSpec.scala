@@ -1,4 +1,4 @@
-import de.zalando.nakadi.models.Topic
+import de.zalando.nakadi.models.{Partition, Topic}
 import org.specs2.mutable._
 import org.specs2.runner._
 import org.junit.runner._
@@ -32,8 +32,14 @@ class ApplicationSpec extends Specification {
 
       status(topics) must equalTo(OK)
       contentType(topics) must beSome.which(_ == "application/json")
-      // TODO: fix this as topics is actually an array of topics
-      // contentAsJson(topics).as[Topic].name must be("test-topic")
+      contentAsJson(topics).as[Seq[Topic]] must contain( (t: Topic) => t.name must beEqualTo("test-topic") )
+    }
+
+    "get partitions" in new WithApplication{
+      val partitions = route(FakeRequest(GET, s"/topics/test-topic/partitions")).get
+      status(partitions) must equalTo(OK)
+      contentType(partitions) must beSome.which(_ == "application/json")
+      contentAsJson(partitions).as[Seq[Partition]] must have size (2)
     }
   }
 }

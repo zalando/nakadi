@@ -1,4 +1,6 @@
-[![Build Status](https://travis-ci.org/zalando/nakadi.svg)](https://travis-ci.org/zalando/nakadi) [![ReviewNinja](https://app.review.ninja/44234368/badge)](https://app.review.ninja/zalando/nakadi)
+[![Build Status](https://travis-ci.org/zalando/nakadi.svg)](https://travis-ci.org/zalando/nakadi)
+[![ReviewNinja](https://app.review.ninja/44234368/badge)](https://app.review.ninja/zalando/nakadi)
+[![codecov.io](https://codecov.io/github/zalando/nakadi/coverage.svg?branch=nakadi-on-play)](https://codecov.io/github/zalando/nakadi?branch=nakadi-on-play)
 
 [![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-on-play/api/nakadi-event-bus-api.yaml)](http://online.swagger.io/validator/debug?url=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)
 
