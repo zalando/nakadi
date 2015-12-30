@@ -35,16 +35,17 @@ public class ConsumedEvent {
         if (obj == null) {
             return false;
         }
+
         if (this == obj) {
             return true;
         }
+
         if (!(obj instanceof ConsumedEvent)) {
             return false;
         }
+
         final ConsumedEvent consumedEvent = (ConsumedEvent) obj;
-        return this.event.equals(consumedEvent.getEvent())
-                && this.partition.equals(consumedEvent.getPartition())
-                && this.nextOffset.equals(consumedEvent.getNextOffset())
-                && this.topic.equals(consumedEvent.getTopic());
+        return this.event.equals(consumedEvent.getEvent()) && this.partition.equals(consumedEvent.getPartition())
+                && this.nextOffset.equals(consumedEvent.getNextOffset()) && this.topic.equals(consumedEvent.getTopic());
     }
 }

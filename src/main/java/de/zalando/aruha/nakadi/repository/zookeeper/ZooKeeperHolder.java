@@ -1,28 +1,31 @@
 package de.zalando.aruha.nakadi.repository.zookeeper;
 
-import org.apache.zookeeper.ZooKeeper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
+import java.io.IOException;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
+
+import org.apache.zookeeper.ZooKeeper;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+
+import org.springframework.stereotype.Component;
 
 @Component
 public class ZooKeeperHolder {
 
-	@Autowired
-	@Qualifier("zookeeperBrokers")
-	private String brokers;
+    @Autowired
+    @Qualifier("zookeeperBrokers")
+    private String brokers;
 
-	private ZooKeeper zooKeeper;
+    private ZooKeeper zooKeeper;
 
-	@PostConstruct
-	public void init() throws IOException {
-		zooKeeper = new ZooKeeper(brokers, 30000, null);
-	}
+    @PostConstruct
+    public void init() throws IOException {
+        zooKeeper = new ZooKeeper(brokers, 30000, null);
+    }
 
-	public ZooKeeper get() throws IOException {
-		return zooKeeper;
-	}
+    public ZooKeeper get() throws IOException {
+        return zooKeeper;
+    }
 }
