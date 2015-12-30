@@ -1,14 +1,15 @@
 package de.zalando.aruha.nakadi.webservice.utils;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
+import static java.text.MessageFormat.format;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static java.text.MessageFormat.format;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import org.springframework.web.client.RestTemplate;
 
 public class TestHelper {
 
@@ -33,17 +34,16 @@ public class TestHelper {
         return responseEntity != null && responseEntity.getStatusCode() == HttpStatus.CREATED;
     }
 
-    public void pushEventsToPartition(final String topic, final String partition, final Object event, final int eventNum) {
+    public void pushEventsToPartition(final String topic, final String partition, final Object event,
+            final int eventNum) {
         for (int i = 0; i < eventNum; i++) {
             pushEventToPartition(topic, partition, event);
         }
     }
 
     public Optional<String> getOffsetForPartition(final List<Map<String, String>> allOffsets, final String partition) {
-        return allOffsets
-                .stream()
-                .filter(partitionInfo -> partition.equals(partitionInfo.get("partition")))
-                .findFirst()
-                .map(partitionInfo -> partitionInfo.get("newestAvailableOffset"));
+        return allOffsets.stream().filter(partitionInfo ->
+                                 partition.equals(partitionInfo.get("partition"))).findFirst().map(partitionInfo ->
+                                 partitionInfo.get("newestAvailableOffset"));
     }
 }

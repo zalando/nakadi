@@ -7,8 +7,7 @@ public class TestUtils {
 
     private static final Random random = new Random();
 
-    private TestUtils() {
-    }
+    private TestUtils() { }
 
     public static String randomString() {
         return UUID.randomUUID().toString();

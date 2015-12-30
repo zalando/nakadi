@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.webservice;
 
-
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.parsing.Parser;
 
