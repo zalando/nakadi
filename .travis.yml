@@ -8,6 +8,12 @@ jdk:
 services:
   - docker
 
+before_script:
+  - pip install --user codecov
+
 # run tests
 script:
   - gradle fullAcceptanceTest --stacktrace
+
+after_success:
+  - codecov
