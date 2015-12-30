@@ -1,54 +1,111 @@
 package de.zalando.aruha.nakadi.validation;
 
-import javax.xml.validation.SchemaFactoryLoader;
-import org.everit.json.schema.loader.SchemaLoader;
+import static org.junit.Assert.*;
+
 import org.json.JSONObject;
+
+import org.junit.After;
 import org.junit.Test;
 
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema.Type;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
-import scala.NotImplementedError;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class JSONSchemaValidationTest {
 
-	@Test
-	public void incomingMessageShouldBeValidated() {
-		throw new NotImplementedException();
-	}
+    @Test
+    public void eventValidationRegistryShouldResolveTypes() {
+        final EventType et = new EventType();
+        et.setName("some-event-type");
 
-	@Test
-	public void schemaValidationShouldRespectEventTypeDefinition() {
-		final EventType et = new EventType();
-		et.setName("some-event-type");
+        final EventType other = new EventType();
+        other.setName("some-other-event-type");
 
-		final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
-		vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
-		// vsc1.setAdditionalConfiguration(additionalConfiguration);
-		et.getValidationStrategies().add(vsc1);
+        final EventTypeValidator validator = EventValidation.forType(et);
+        assertNotNull(validator);
+        assertEquals(validator, EventValidation.lookup(et));
+        assertNull(EventValidation.lookup(other));
 
-		final ValidationStrategyConfiguration vsc2 = new ValidationStrategyConfiguration();
-		vsc2.setStrategyName(FieldNameMustBeSet.NAME);
-		et.getValidationStrategies().add(vsc2);
+    }
 
-		final EventTypeSchema ets = new EventTypeSchema();
-		ets.setType(Type.JSON_SCHEMA);
-		ets.setSchema(new JSONObject(
-				"{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
-		et.setEventTypeSchema(ets);
+    @Test(expected = IllegalStateException.class)
+    public void eventValidationRegistryShouldDenyRespecification() {
+        final EventType et = new EventType();
+        et.setName("some-event-type");
+        EventValidation.forType(et);
+        EventValidation.forType(et);
+    }
 
-		EventValidation.forType(et).withConfiguration(vsc1).withConfiguration(vsc2).init();
-		final EventTypeValidator validator = EventValidation.lookup(et);
+    @Test
+    public void eventValidationRegistryShouldAllowRespecificationIfRequestedExplicitly() {
+        final EventType et = new EventType();
+        et.setName("some-event-type");
 
-		final JSONObject event = new JSONObject("{\"fooxx\": \"bar\", \"name\": \"12345\"}");
+        final EventTypeValidator validator = EventValidation.forType(et);
+        assertNotNull(validator);
+        assertSame(validator, EventValidation.forType(et, true));
+    }
 
-		validator.validate(event);
-	}
+    @Test
+    public void schemaValidationShouldRespectEventTypeDefinition() {
+        final EventType et = buildAndRegisterEventType("some-event-type",
+                new JSONObject(
+                    "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
 
-	@Test
-	public void schemaValidationShouldRespectIgnoreConfiguration() {
+        final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
+        vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
+        et.getValidationStrategies().add(vsc1);
 
-	}
+        final ValidationStrategyConfiguration vsc2 = new ValidationStrategyConfiguration();
+        vsc2.setStrategyName(FieldNameMustBeSet.NAME);
+        et.getValidationStrategies().add(vsc2);
+        EventValidation.forType(et).withConfiguration(vsc1).withConfiguration(vsc2).init();
+
+        final EventTypeValidator validator = EventValidation.lookup(et);
+
+        final JSONObject event = new JSONObject(
+                "{\"foo\": \"bar\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+
+        validator.validate(event);
+    }
+
+    private EventType buildAndRegisterEventType(final String name, final JSONObject schema) {
+        final EventType et = new EventType();
+        et.setName(name);
+
+        final EventTypeSchema ets = new EventTypeSchema();
+        ets.setType(Type.JSON_SCHEMA);
+        ets.setSchema(schema);
+        et.setEventTypeSchema(ets);
+
+        return et;
+    }
+
+    @Test
+    public void schemaValidationShouldRespectIgnoreConfiguration() {
+        final EventType et = buildAndRegisterEventType("some-event-type",
+                new JSONObject(
+                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
+
+        final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
+        vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
+        vsc1.setAdditionalConfiguration(new JSONObject(
+                "{\"qualifier\": {\"field\": \"event-type\", \"match\" : \"D\"}, \"ignore\": [\"field-that-will-not-be-found\"]}"));
+        et.getValidationStrategies().add(vsc1);
+
+        EventValidation.forType(et).withConfiguration(vsc1).init();
+
+        final EventTypeValidator validator = EventValidation.lookup(et);
+
+        final JSONObject event = new JSONObject("{\"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+
+        validator.validate(event);
+
+    }
+
+    @After
+    public void teardown() {
+        EventValidation.reset();
+    }
 }
