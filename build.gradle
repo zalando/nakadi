@@ -237,5 +237,13 @@ run {
     environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+check.dependsOn jacocoTestReport
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
