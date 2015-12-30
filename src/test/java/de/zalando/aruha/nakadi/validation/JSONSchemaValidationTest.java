@@ -83,7 +83,7 @@ public class JSONSchemaValidationTest {
     }
 
     @Test
-    public void schemaValidationShouldRespectIgnoreConfiguration() {
+    public void schemaValidationShouldRespectIgnoreConfigurationMatchRegular() {
         final EventType et = buildAndRegisterEventType("some-event-type",
                 new JSONObject(
                     "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
@@ -91,15 +91,37 @@ public class JSONSchemaValidationTest {
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
         vsc1.setAdditionalConfiguration(new JSONObject(
-                "{\"qualifier\": {\"field\": \"event-type\", \"match\" : \"D\"}, \"ignore\": [\"field-that-will-not-be-found\"]}"));
+                "{\"overrides\": [{\"qualifier\": {\"field\": \"event-type\", \"match\" : \"D\"}, \"ignoredProperties\": [\"field-that-will-not-be-found\"]}]}"));
         et.getValidationStrategies().add(vsc1);
 
         EventValidation.forType(et).withConfiguration(vsc1).init();
 
         final EventTypeValidator validator = EventValidation.lookup(et);
 
-        final JSONObject event = new JSONObject("{\"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+        final JSONObject event = new JSONObject(
+                "{\"event-type\" : \"X\", \"extra\": \"i should be no problem\", \"name\": \"12345\", \"field-that-will-not-be-found\": {\"val\": \"i must be present since the matcher will not succeed\"}}");
+        validator.validate(event);
 
+    }
+
+    @Test
+    public void schemaValidationShouldRespectIgnoreConfigurationMatchQualified() {
+        final EventType et = buildAndRegisterEventType("some-event-type",
+                new JSONObject(
+                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
+
+        final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
+        vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
+        vsc1.setAdditionalConfiguration(new JSONObject(
+                "{\"overrides\": [{\"qualifier\": {\"field\": \"event-type\", \"match\" : \"D\"}, \"ignoredProperties\": [\"field-that-will-not-be-found\"]}]}"));
+        et.getValidationStrategies().add(vsc1);
+
+        EventValidation.forType(et).withConfiguration(vsc1).init();
+
+        final EventTypeValidator validator = EventValidation.lookup(et);
+
+        final JSONObject event = new JSONObject(
+                "{\"event-type\" : \"D\", \"field-that-will-not-be-found\": \"some useless value\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
         validator.validate(event);
 
     }

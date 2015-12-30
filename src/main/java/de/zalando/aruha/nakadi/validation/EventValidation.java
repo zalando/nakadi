@@ -57,13 +57,16 @@ class EventTypeValidator {
     }
 
     public void validate(final JSONObject event) {
-        Preconditions.checkState(!validators.stream().anyMatch(new Predicate<EventValidator>() {
+
+        // FIXME: return information on the validation place that failed
+        final boolean allItemsPass = validators.stream().anyMatch(new Predicate<EventValidator>() {
 
                     @Override
-                    public boolean test(final EventValidator t) {
-                        return !t.isValidFor(event);
+                    public boolean test(final EventValidator validator) {
+                        return !validator.accepts(event);
                     }
-                }), "Some validation failed");
+                });
+        Preconditions.checkState(!allItemsPass, "Some validation failed");
     }
 
     public EventTypeValidator withConfiguration(final ValidationStrategyConfiguration vsc) {
@@ -77,5 +80,4 @@ class EventTypeValidator {
 
         return this;
     }
-
 }

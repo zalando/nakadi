@@ -11,7 +11,7 @@ public class FieldNameMustBeSet extends ValidationStrategy {
     private final EventValidator executor = new EventValidator() {
 
         @Override
-        public boolean isValidFor(final JSONObject event) {
+        public boolean accepts(final JSONObject event) {
             return event.get("name") != null;
         }
 
