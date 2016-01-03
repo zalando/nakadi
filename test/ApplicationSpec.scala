@@ -1,7 +1,10 @@
-import de.zalando.nakadi.models.{Partition, Topic}
+import java.util.{Date, UUID}
+
+import de.zalando.nakadi.models._
 import org.specs2.mutable._
 import org.specs2.runner._
 import org.junit.runner._
+import play.api.libs.json.Json
 
 import play.api.test._
 import play.api.test.Helpers._
@@ -36,10 +39,23 @@ class ApplicationSpec extends Specification {
     }
 
     "get partitions" in new WithApplication{
-      val partitions = route(FakeRequest(GET, s"/topics/test-topic/partitions")).get
+      val partitions = route(FakeRequest(GET, "/topics/test-topic/partitions")).get
       status(partitions) must equalTo(OK)
       contentType(partitions) must beSome.which(_ == "application/json")
       contentAsJson(partitions).as[Seq[Partition]] must have size (2)
+    }
+
+    "publish into the topic" in new WithApplication{
+      val result = route(FakeRequest(PUT, "/topics/test-topic/events")
+        .withBody(Json.toJson(Seq(Event("simple_event", "1", EventMetaData(UUID.randomUUID(),new Date(),None, None))
+      )))).get
+
+      // TODO: make this thing work
+
+      // status(result) must equalTo(OK)
+      // contentType(result) must beSome.which(_ == "application/json")
+
+      // contentAsJson(result)
     }
   }
 }
