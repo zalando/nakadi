@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.validation;
 
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,18 +48,16 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
             final JSONObject schema = eventType.getEventTypeSchema().getSchema();
             final JSONObject copy = new JSONObject(schema, JSONObject.getNames(schema));
 
-            definition.getIgnoredProperties().forEach(new Consumer<String>() {
-                    @Override
-                    public void accept(final String name) {
-                        copy.getJSONObject("properties").remove(name);
+            definition.getIgnoredProperties().forEach(name -> {
+                copy.getJSONObject("properties").remove(name);
 
-                        final JSONArray array = copy.getJSONArray("required");
-                        final int idx = findElement(array, name);
-                        if (idx > -1) {
-                            array.remove(idx);
-                        }
-                    }
-                });
+                final JSONArray array = copy.getJSONArray("required");
+                final int idx = findElement(array, name);
+                if (idx > -1) {
+                    array.remove(idx);
+                }
+
+            });
             definition.setEffectiveSchema(copy);
             return definition;
         };
