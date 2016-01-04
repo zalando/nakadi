@@ -22,5 +22,4 @@ public abstract class ValidationStrategy {
         Preconditions.checkArgument(STRATEGIES.containsKey(strategyName), "No such strategy {}", strategyName);
         return STRATEGIES.get(strategyName);
     }
-
 }

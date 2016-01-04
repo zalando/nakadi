@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.validation;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.everit.json.schema.Schema;
@@ -220,12 +221,12 @@ class QualifiedJSONSchemaValidationChain implements EventValidator {
 
     @Override
     public boolean accepts(final JSONObject event) {
-        final EventValidator validator = qualifiedValidators.stream().filter(it ->
-                                                                    it.getQualifier().getMatch().equals(
-                                                                        event.getString(it.getQualifier().getField())))
+        final Predicate<QualifiedJSONSchemaValidator> matchingQualifier = it ->
+                it.getQualifier().getMatch().equals(event.getString(it.getQualifier().getField()));
+
+        final EventValidator validator = qualifiedValidators.stream().filter(matchingQualifier)
                                                             .map(EventValidator.class::cast).findFirst().orElse(
                                                                 defaultSchemaValidator);
-
         return validator.accepts(event);
     }
 }
