@@ -14,6 +14,13 @@ import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 
 public class JSONSchemaValidationTest {
 
+    // FIXME: once we are fully wired up and other validations exist, this should be removed from here and the
+    // registration should be done in a common place.
+    static {
+        ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
+        ValidationStrategy.register(FieldNameMustBeSet.NAME, new FieldNameMustBeSet());
+    }
+
     @Test
     public void eventValidationRegistryShouldResolveTypes() {
         final EventType et = new EventType();

@@ -73,7 +73,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
         return new QualifiedJSONSchemaValidationChain(qualifiedValidators, defaultSchemaValidator);
     }
 
-    public static int findElement(final JSONArray array, final String element) {
+    private static int findElement(final JSONArray array, final String element) {
 
         for (int i = 0; i < array.length(); i++) {
             if (element.equals(array.getString(i))) {
@@ -84,6 +84,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
 
         return -1;
     }
+
 }
 
 class SchemaValidationOverrides {

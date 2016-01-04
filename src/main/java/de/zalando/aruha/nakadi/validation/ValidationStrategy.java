@@ -12,14 +12,13 @@ public abstract class ValidationStrategy {
 
     private static final Map<String, ValidationStrategy> STRATEGIES = Maps.newHashMap();
 
-    static {
-        STRATEGIES.put(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
-        STRATEGIES.put(FieldNameMustBeSet.NAME, new FieldNameMustBeSet());
-    }
-
     public abstract EventValidator materialize(EventType eventType, ValidationStrategyConfiguration vsc);
 
-    public static ValidationStrategy lookup(final String strategyName) {
+    public static final void register(final String name, final ValidationStrategy strategy) {
+        STRATEGIES.put(name, strategy);
+    }
+
+    public static final ValidationStrategy lookup(final String strategyName) {
         Preconditions.checkArgument(STRATEGIES.containsKey(strategyName), "No such strategy {}", strategyName);
         return STRATEGIES.get(strategyName);
     }
