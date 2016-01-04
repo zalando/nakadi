@@ -12,13 +12,9 @@ public class EventStreamConfig {
     private Optional<Integer> streamTimeout;
     private Optional<Integer> batchKeepAliveLimit;
 
-    public EventStreamConfig(final String topic,
-                             final Map<String, String> cursors,
-                             final Integer batchLimit,
-                             final Optional<Integer> streamLimit,
-                             final Optional<Integer> batchTimeout,
-                             final Optional<Integer> streamTimeout,
-                             final Optional<Integer> batchKeepAliveLimit) {
+    public EventStreamConfig(final String topic, final Map<String, String> cursors, final Integer batchLimit,
+            final Optional<Integer> streamLimit, final Optional<Integer> batchTimeout,
+            final Optional<Integer> streamTimeout, final Optional<Integer> batchKeepAliveLimit) {
         this.topic = topic;
         this.cursors = cursors;
         this.batchLimit = batchLimit;
@@ -60,6 +56,13 @@ public class EventStreamConfig {
         return Builder.anEventStreamConfig();
     }
 
+    @Override
+    public String toString() {
+        return "EventStreamConfig{" + "topic='" + topic + '\'' + ", cursors=" + cursors + ", batchLimit=" + batchLimit
+                + ", streamLimit=" + streamLimit + ", batchTimeout=" + batchTimeout + ", streamTimeout=" + streamTimeout
+                + ", batchKeepAliveLimit=" + batchKeepAliveLimit + '}';
+    }
+
     public static class Builder {
         private String topic;
         private Map<String, String> cursors;
@@ -69,8 +72,7 @@ public class EventStreamConfig {
         private Optional<Integer> streamTimeout;
         private Optional<Integer> batchKeepAliveLimit;
 
-        private Builder() {
-        }
+        private Builder() { }
 
         public static Builder anEventStreamConfig() {
             return new Builder();
@@ -81,7 +83,7 @@ public class EventStreamConfig {
             return this;
         }
 
-        public Builder withCursors(final  Map<String, String> cursors) {
+        public Builder withCursors(final Map<String, String> cursors) {
             this.cursors = cursors;
             return this;
         }
@@ -112,7 +114,8 @@ public class EventStreamConfig {
         }
 
         public EventStreamConfig build() {
-            return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout, batchKeepAliveLimit);
+            return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout,
+                    batchKeepAliveLimit);
         }
     }
 }

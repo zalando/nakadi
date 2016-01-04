@@ -5,6 +5,7 @@ apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'spring-boot'
+apply plugin: "jacoco"
 // if this is applied, include scala dependencies (see below)
 // apply plugin: 'scala'
 
@@ -15,6 +16,8 @@ targetCompatibility = 1.8
 mainClassName = 'de.zalando.aruha.nakadi.Application'
 def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
+
+def dockerRunTimeout = 300
 
 repositories {
     mavenCentral()
@@ -66,12 +69,12 @@ configurations {
 
 
 dependencies {
+    // spring
     compile('org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE') {
         exclude module: 'logback-classic'
         exclude module: 'log4j-over-slf4j'
     }
     compile 'org.springframework:spring-context:4.2.0.RELEASE'
-    compile 'org.springframework:spring-jdbc:4.2.0.RELEASE'
     compile 'org.springframework:spring-web:4.2.0.RELEASE'
     compile 'org.springframework:spring-webmvc:4.2.0.RELEASE'
 
@@ -80,30 +83,27 @@ dependencies {
     compile ('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
+
+    // misc
     compile 'org.zalando.stups:stups-spring-oauth2-server:1.0.0'
-
-    compile 'redis.clients:jedis:2.1.0'
-    compile 'org.scala-lang:scala-library:2.11.6'
-
+    compile 'com.google.guava:guava:19.0'
     compile 'joda-time:joda-time:2.2'
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
-    compile 'io.springfox:springfox-swagger2:2.2.2'
-    compile 'io.springfox:springfox-swagger-ui:2.2.2'
-
     compile 'org.slf4j:slf4j-log4j12:1.7.12'
     compile 'io.dropwizard.metrics:metrics-core:3.1.0'
     compile 'com.ryantenney.metrics:metrics-spring:3.1.0'
     compile 'io.dropwizard.metrics:metrics-servlets:3.1.0'
 
+    // kafka & zookeeper
     compile 'org.apache.kafka:kafka-clients:0.9.0.0'
     compile 'org.apache.kafka:kafka_2.11:0.9.0.0'
     compile 'org.apache.zookeeper:zookeeper:3.4.5'
-    //compile 'redis.clients:jedis:2.1.0'
 
     // scala dependencies
     //compile 'org.scala-lang:scala-library:2.11.6'
     //testCompile 'org.scalatest:scalatest_2.11:2.2.4'
 
+    // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile ('junit:junit:4.12') {
         exclude module: "hamcrest-core"
@@ -132,7 +132,14 @@ task stopKafkaInDocker {
 
 task startKafkaInDocker() {
     doLast {
-        execAndWait("make --directory local-kafka run")
+        execAndWait("make --directory local-kafka run", dockerRunTimeout)
+    }
+    outputs.upToDateWhen { false }
+}
+
+task startKafkaInDockerBound() {
+    doLast {
+        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-kafka run", dockerRunTimeout)
     }
     outputs.upToDateWhen { false }
 }
@@ -140,16 +147,16 @@ task startKafkaInDocker() {
 task buildDockerContainer {
     dependsOn bootRepackage
     doLast {
-        execAndWait("docker build -t aruha/nakadi .", 120)
+        execAndWait("docker build -t aruha/nakadi .", dockerRunTimeout)
     }
     outputs.upToDateWhen { false }
 }
 
 task startDockerContainer(type: Exec) {
     commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=file:////envs/development.conf\" " +
-            "--link local-kafka:local_kafka -p 8080:8080 -i -t -d " +
+            "--net container:local-kafka -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
-    dependsOn buildDockerContainer, startKafkaInDocker
+    dependsOn buildDockerContainer, startKafkaInDockerBound
 }
 
 task stopDockerContainer(type: Exec) {
@@ -230,5 +237,13 @@ run {
     environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+check.dependsOn jacocoTestReport
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
