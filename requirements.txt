@@ -1,0 +1,9 @@
+connexion>=0.12.0
+kafka-python
+stups-tokens>=0.3
+prometheus
+kazoo
+gunicorn
+eventlet
+setproctitle
+cachetools
