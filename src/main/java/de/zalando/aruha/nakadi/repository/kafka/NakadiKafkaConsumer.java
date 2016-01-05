@@ -19,32 +19,44 @@ import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 
+/**
+ * Additional layer over KafkaConsumer
+ * This class is not thread safe as the KafkaConsumer it uses is also not thread safe
+ */
 public class NakadiKafkaConsumer implements EventConsumer {
 
     private final Consumer<String, String> kafkaConsumer;
 
-    private final List<TopicPartition> topicPartitions;
+    private List<TopicPartition> topicPartitions;
 
     private Queue<ConsumedEvent> eventQueue;
 
     private final long pollTimeout;
 
+    private final String topic;
+
     public NakadiKafkaConsumer(final KafkaFactory factory, final String topic, final Map<String, String> cursors,
             final long pollTimeout) {
-        eventQueue = Lists.newLinkedList();
         kafkaConsumer = factory.getConsumer();
+        this.topic = topic;
         this.pollTimeout = pollTimeout;
+        updateCursors(cursors);
+    }
 
+    @Override
+    public void updateCursors(final Map<String, String> cursors) {
         // define topic/partitions to consume from
         topicPartitions = cursors.keySet().stream().map(partition ->
-                    new TopicPartition(topic, Integer.parseInt(partition))).collect(Collectors.toList());
+                new TopicPartition(topic, Integer.parseInt(partition))).collect(Collectors.toList());
         kafkaConsumer.assign(topicPartitions);
 
         // set offsets
         topicPartitions.forEach(topicPartition -> {
             kafkaConsumer.seek(topicPartition,
-                Long.parseLong(cursors.get(Integer.toString(topicPartition.partition()))));
+                    Long.parseLong(cursors.get(Integer.toString(topicPartition.partition()))));
         });
+
+        eventQueue = Lists.newLinkedList();
     }
 
     @Override

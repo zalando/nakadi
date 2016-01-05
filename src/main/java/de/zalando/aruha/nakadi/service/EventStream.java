@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -35,11 +36,25 @@ public class EventStream {
 
     private final EventStreamConfig config;
 
+    private AtomicReference<Optional<Map<String, String>>> newDistribution = new AtomicReference<>(Optional.empty());
+
     public EventStream(final EventConsumer eventConsumer, final OutputStream outputStream,
             final EventStreamConfig config) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
+    }
+
+    public void changeDistribution(final Map<String, String> newDistribution) {
+        this.newDistribution.lazySet(Optional.of(newDistribution));
+    }
+
+    public String getSubscriptionId() {
+        return "";
+    }
+
+    public String getClientId() {
+        return "";
     }
 
     public void streamEvents() {
@@ -62,6 +77,10 @@ public class EventStream {
             long batchStartTime = start;
 
             while (true) {
+                newDistribution
+                        .getAndSet(Optional.empty())
+                        .ifPresent(eventConsumer::updateCursors);
+
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
 
                 if (eventOrEmpty.isPresent()) {

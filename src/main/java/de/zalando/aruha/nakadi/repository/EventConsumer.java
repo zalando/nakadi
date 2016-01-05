@@ -8,6 +8,8 @@ import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 
 public interface EventConsumer {
 
+    void updateCursors(Map<String, String> cursors);
+
     Optional<ConsumedEvent> readEvent() throws NakadiException;
 
     Map<String, String> fetchNextOffsets();

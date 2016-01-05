@@ -4,6 +4,9 @@ logging:
   level:
     ROOT: INFO
     org.springframework.web: INFO
+spring:
+  profiles:
+    active: kafka
 nakadi:
   stream:
     timeoutMs: 31536000000 # 1 year :-P
