@@ -157,8 +157,9 @@ task buildDockerContainer {
 }
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=file:////envs/development.conf\" " +
-            "--net container:local-kafka -i -t -d " +
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"ZK_BROKERS=127.0.0.1:2181\" " +
+            "-e \"KAFKA_BROKERS=127.0.0.1:9092\" " +
+            "--net container:local-kafka --name nakadi -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
     dependsOn buildDockerContainer, startKafkaInDockerBound
 }
