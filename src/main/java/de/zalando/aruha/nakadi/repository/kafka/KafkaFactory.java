@@ -10,6 +10,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 
 import org.springframework.stereotype.Component;
@@ -19,18 +20,11 @@ import kafka.javaapi.consumer.SimpleConsumer;
 @Component
 class KafkaFactory {
 
-    @Autowired
-    @Qualifier("kafkaBrokers")
+    @Value("${KAFKA_BROKERS}")
     private String kafkaAddress;
 
-    @Autowired
-    @Qualifier("zookeeperBrokers")
+    @Value("${ZK_BROKERS}")
     private String zookeeperAddress;
-
-    @Autowired
-    private Producer<String, String> producer;
-
-    public KafkaFactory() { }
 
     @Bean
     public Producer<String, String> createProducer() {
@@ -47,10 +41,6 @@ class KafkaFactory {
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 
         return props;
-    }
-
-    public Producer<String, String> getProducer() {
-        return producer;
     }
 
     public Consumer<String, String> getConsumer() {
