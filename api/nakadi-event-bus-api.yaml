@@ -734,8 +734,11 @@ definitions:
       **Note** The Event definition will be externalized in future versions of this document.
 
       A basic payload of an Event. The actual schema is dependent on the information configured for the
-      EventType, as is its enforcement (see POST /event-types). Setting of properties such as `metadata.eid`
-      is, in the same fashion, dependent on the configured enrichment.
+      EventType, as is its enforcement (see POST /event-types). Setting of metadata properties are
+      dependent on the configured enrichment as well.
+
+      For explanation on default configurations of validation and enrichment, see documentatin of
+      `EventType.type`.
 
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
@@ -958,23 +961,54 @@ definitions:
           Name of this EventType. The name for the EventType must follow the pattern
           'organization:team:application:event-type-name'
       type:
+        type: string
         enum:
+          - undefined
           - data
           - business
-          - undefined
         description: |
-          Defines the type of this EventType. Type
+          Defines the type of this EventType.
+
+          The value set will influence, if not set otherwise, the default set of validation-strategies,
+          enrichment-strategies, and the effective-schema in the following way:
+
+          - `undefined`: No predefined changes apply. `effective-schema` is exactly the same as the
+            `EventTypeSchema`.
+            Default validation-strategy for this `EventType` is `[{name: 'schema-validation'}]`.
+
+
+          - `data`: Events of this type will be DataChangeEvents. `effective-schema` contains `metadata`, and
+            adds fields `data-op` and `data-type`. The passed EventTypeSchema defines the schema of `data`.
+            Default validation-strategy for this `EventType` is `[{name: 'datachange-schema-validation'}]`.
+
+          - `business`: Events of this type will be BusinessEvents. `effective-schema` contains `metadata`
+            and any additionally defined properties passed in the `EventTypeSchema` directly on top level of
+            the Event. If name conflicts arise, creation of this EventType will be rejected.
+            Default validation-strategy for this `EventType` is `[{name: 'schema-validation'}]`.
       topic:
         type: string
         description: |
           References the name of the low-level topic that is holding the stream of Events for this EventType.
           Usually is the same as the name property.
+
+      effective-schema:
+        type: string
+        read-only: true
+        description: |
+          The effective schema of this `EventType`. The predefined schema validator will use the value of
+          this field as base for the validation.
+          The generation of thie value happens on creation of the `EventType` and is influenced by the
+          `EventType.type`.
+
       validation-strategies:
         description: |
           Determines the validation that has to be executed upon reception of Events of this type. Events are
-          rejected if any of the rules fail (see details of Problem response on the Event publishing methods).
+          rejected if any of the rules fail (see details of Problem response on the Event publishing
+          methods).
 
           Rule evaluation order is the same as in this array.
+
+          If not explicitly set, default value will respect the definition of the `EventType.type`.
         type: array
         items:
           $ref: '#/definitions/EventValidationStrategy'
@@ -990,6 +1024,8 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/EventEnrichmentStrategy'
+        default: [{name: 'metadata-enrichment'}]
+
 
       partition-resolution-strategy:
         description: |
@@ -1037,7 +1073,6 @@ definitions:
         description: Documentation for the validation.
     required:
       - name
-      - doc
 
 
   PartitionResolutionStrategy:
