@@ -826,7 +826,8 @@ definitions:
   DataChangeEventQualifier:
     type: object
     description: |
-      foo
+      Indicators of a `DataChangeEvent`'s referred data type and the type of operations done on them.
+
     properties:
       data-type:
         type: string
@@ -834,6 +835,12 @@ definitions:
       data-op:
         type: string
         enum: ['C', 'U', 'D', 'S']
+        description: |
+          The type of operation executed on the entity.
+          * C: Creation
+          * U: Update
+          * D: Deletion
+          * S: Snapshot
     required:
       - data-type
       - data-op
