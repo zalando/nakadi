@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.repository;
 
 import com.google.common.collect.Multimap;
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.domain.Topology;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,9 +15,15 @@ public interface SubscriptionRepository {
 
     String generateNewClientId(Subscription subscription);
 
-    void launchNewPartitionDistribution(String subscriptionId, Multimap<String, String> newDistribution);
+//    void launchNewPartitionDistribution(String subscriptionId, Multimap<String, String> newDistribution);
 
-    Optional<Multimap<String, String>> checkForNewPartitionDistribution(String subscriptionId);
+//    Optional<Multimap<String, String>> checkForNewPartitionDistribution(String subscriptionId);
 
     void clearProcessedRedistribution(String subscriptionId, List<String> clientIds);
+
+    void addNewTopology(String subscriptionId, Topology newTopology);
+
+    List<Topology> getTopologies(String subscriptionId);
+
+    Long getNextTopologyVersion(String subscriptionId);
 }

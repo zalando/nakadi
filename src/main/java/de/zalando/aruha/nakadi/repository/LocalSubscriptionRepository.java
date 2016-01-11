@@ -1,10 +1,12 @@
 package de.zalando.aruha.nakadi.repository;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.domain.Topology;
 
 import java.util.Collections;
 import java.util.List;
@@ -20,7 +22,9 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
 
     private Map<String, Subscription> subscriptions = Collections.synchronizedMap(Maps.newHashMap());
 
-    private Map<String, List<Multimap<String, String>>> newDistributions = Collections.synchronizedMap(Maps.newHashMap());
+//    private Map<String, List<Multimap<String, String>>> newDistributions = Collections.synchronizedMap(Maps.newHashMap());
+
+    private Map<String, List<Topology>> topologies = Collections.synchronizedMap(Maps.newHashMap());;
 
     public LocalSubscriptionRepository() {
         // Database bootstrap :-D
@@ -47,7 +51,7 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
         return UUID.randomUUID().toString();
     }
 
-    @Override
+    /*@Override
     public void launchNewPartitionDistribution(final String subscriptionId, final Multimap<String, String> newDistribution) {
         List<Multimap<String, String>> newDistributionsQueue = newDistributions.get(subscriptionId);
         if (newDistributionsQueue == null) {
@@ -55,9 +59,10 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
             newDistributions.put(subscriptionId, newDistributionsQueue);
         }
         newDistributionsQueue.add(Multimaps.synchronizedMultimap(newDistribution));
-    }
+    }*/
 
-    @Override
+
+/*@Override
     public Optional<Multimap<String, String>> checkForNewPartitionDistribution(final String subscriptionId) {
         final List<Multimap<String, String>> newDistributionsQueue = newDistributions.get(subscriptionId);
         if (newDistributionsQueue != null && newDistributionsQueue.size() > 0) {
@@ -66,17 +71,47 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
         else {
             return Optional.empty();
         }
-    }
+    }*/
 
     @Override
     public void clearProcessedRedistribution(final String subscriptionId, final List<String> clientIds) {
-        final List<Multimap<String, String>> redistributionQueue = newDistributions.get(subscriptionId);
+        //todo
+        /*final List<Multimap<String, String>> redistributionQueue = newDistributions.get(subscriptionId);
         if (redistributionQueue != null && redistributionQueue.size() > 0) {
             final Multimap<String, String> currentRedistribution = redistributionQueue.get(0);
             clientIds.stream().forEach(currentRedistribution::removeAll);
             if (currentRedistribution.keySet().size() == 0) {
                 redistributionQueue.remove(0);
             }
-        }
+        }*/
+    }
+
+    @Override
+    public void addNewTopology(final String subscriptionId, final Topology newTopology) {
+        Optional
+                .ofNullable(topologies.get(subscriptionId))
+                .orElseGet(() -> {
+                    final List<Topology> subscriptionTopologies = Collections.synchronizedList(Lists.newArrayList());
+                    topologies.put(subscriptionId, subscriptionTopologies);
+                    return subscriptionTopologies;
+                })
+                .add(newTopology);
+    }
+
+    @Override
+    public List<Topology> getTopologies(final String subscriptionId) {
+        return Optional
+                .ofNullable(topologies.get(subscriptionId))
+                .orElse(ImmutableList.of());
+    }
+
+    public Long getNextTopologyVersion(final String subscriptionId) {
+        return Optional
+                .ofNullable(topologies.get(subscriptionId))
+                .orElse(ImmutableList.of())
+                .stream()
+                .max((t1, t2) -> t1.getVersion().compareTo(t2.getVersion()))
+                .map(t -> t.getVersion() + 1)
+                .orElse(0L);
     }
 }

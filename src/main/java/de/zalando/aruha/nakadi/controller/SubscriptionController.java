@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.controller;
 
 import com.codahale.metrics.annotation.Timed;
+import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Problem;
@@ -78,6 +79,17 @@ public class SubscriptionController {
             try {
                 response.setStatus(HttpStatus.OK.value());
 
+                final ImmutableMap<String, String> fakeOffsets = ImmutableMap.<String, String>builder()
+                        .put("0", "0")
+                        .put("1", "0")
+                        .put("2", "0")
+                        .put("3", "0")
+                        .put("4", "0")
+                        .put("5", "0")
+                        .put("6", "0")
+                        .put("7", "0")
+                        .build();
+
                 final String acceptEncoding = request.getHeader("Accept-Encoding");
                 final boolean gzipEnabled = acceptEncoding != null && acceptEncoding.contains("gzip");
                 final OutputStream output = gzipEnabled ? new FlushableGZIPOutputStream(outputStream) : outputStream;
@@ -88,11 +100,11 @@ public class SubscriptionController {
 
                 final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer(subscription.getTopic(), subscription.getCursors());
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer(subscription.getTopic(), fakeOffsets);
 
                 final EventStreamConfig streamConfig = EventStreamConfig
                         .builder()
-                        .withCursors(subscription.getCursors())
+                        .withCursors(fakeOffsets)
                         .withBatchLimit(batchLimit)
                         .withStreamLimit(ofNullable(streamLimit))
                         .withBatchTimeout(ofNullable(batchTimeout))
@@ -114,13 +126,12 @@ public class SubscriptionController {
                 if (gzipEnabled) {
                     output.close();
                 }
-
             }
-            catch (NakadiException e) {
+            catch (Exception e) {
+                e.printStackTrace();
                 // shit
             }
             finally {
-
                 final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
                 subscription.removeClient(eventStream.getClientId());
                 subscriptionRepository.saveSubscription(subscription);

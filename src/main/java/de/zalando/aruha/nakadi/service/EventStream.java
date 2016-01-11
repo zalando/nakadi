@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import de.zalando.aruha.nakadi.domain.Cursor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +37,7 @@ public class EventStream {
 
     private final EventStreamConfig config;
 
-    private AtomicReference<Optional<Map<String, String>>> newDistribution = new AtomicReference<>(Optional.empty());
+    private AtomicReference<Optional<List<Cursor>>> newDistribution = new AtomicReference<>(Optional.empty());
 
     private String clientId;
 
@@ -49,7 +50,7 @@ public class EventStream {
         this.config = config;
     }
 
-    public void changeDistribution(final Map<String, String> newDistribution) {
+    public void changeDistribution(final List<Cursor> newDistribution) {
         this.newDistribution.lazySet(Optional.of(newDistribution));
     }
 
@@ -91,6 +92,11 @@ public class EventStream {
             while (true) {
                 newDistribution
                         .getAndSet(Optional.empty())
+                        .map(cursors ->
+                                cursors.stream()
+                                        .collect(Collectors.toMap(
+                                                Cursor::getPartition,
+                                                Cursor::getOffset)))
                         .ifPresent(eventConsumer::updateCursors);
 
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
