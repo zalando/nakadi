@@ -9,13 +9,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Predicate;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import de.zalando.aruha.nakadi.service.EventStreamManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,9 +56,6 @@ public class TopicsController {
 
     @Autowired
     private ObjectMapper jsonMapper;
-
-    @Autowired
-    private EventStreamManager eventStreamManager;
 
     @Timed(name = "get_topics", absolute = true)
     @RequestMapping(method = RequestMethod.GET)
@@ -114,8 +109,8 @@ public class TopicsController {
             @RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
             final HttpServletRequest request, final HttpServletResponse response) throws IOException {
 
-        return outputStream -> {
-            EventStream eventStream = null;
+        return
+            outputStream -> {
             try {
 
                 // check if topic exists
@@ -137,13 +132,10 @@ public class TopicsController {
                 }
 
                 // check if offset is correct
-                final boolean offsetCorrect = topicPartitions
-                        .stream().filter(tpPredicate)
-                        .findFirst()
-                        .map(tp -> topicRepository.validateOffset(startFrom,
+                final boolean offsetCorrect = topicPartitions.stream().filter(tpPredicate).findFirst().map(tp ->
+                        topicRepository.validateOffset(startFrom,
                                 tp.getNewestAvailableOffset(),
-                                tp.getOldestAvailableOffset()))
-                        .orElse(false);
+                                tp.getOldestAvailableOffset())).orElse(false);
                 if (!offsetCorrect) {
                     writeProblemResponse(response, outputStream, HttpStatus.BAD_REQUEST.value(),
                         new Problem("start_from is invalid"));
@@ -157,8 +149,7 @@ public class TopicsController {
                         .withStreamLimit(ofNullable(streamLimit))
                         .withBatchTimeout(ofNullable(batchTimeout))
                         .withStreamTimeout(ofNullable(streamTimeout))
-                        .withBatchKeepAliveLimit(ofNullable(batchKeepAliveLimit))
-                        .build();
+                        .withBatchKeepAliveLimit(ofNullable(batchKeepAliveLimit)).build();
 
                 response.setStatus(HttpStatus.OK.value());
 
@@ -172,9 +163,7 @@ public class TopicsController {
 
                 final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic,
                         streamConfig.getCursors());
-
-                eventStream = new EventStream(eventConsumer, output, streamConfig);
-                eventStreamManager.addEventStream(eventStream);
+                final EventStream eventStream = new EventStream(eventConsumer, output, streamConfig);
                 eventStream.streamEvents();
 
                 if (gzipEnabled) {
@@ -186,9 +175,6 @@ public class TopicsController {
             } finally {
                 outputStream.flush();
                 outputStream.close();
-                if (eventStream != null) {
-                    eventStreamManager.removeEventStream(eventStream);
-                }
             }
         };
     }

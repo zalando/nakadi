@@ -1,5 +1,10 @@
 package de.zalando.aruha.nakadi.domain;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 import java.util.List;
 import java.util.Map;
 
@@ -13,6 +18,13 @@ public class Subscription {
     private List<String> clientIds;
     private Map<String, String> cursors;
 
+    public Subscription(final String subscriptionId, final String topic) {
+        this.subscriptionId = subscriptionId;
+        this.topic = topic;
+        clientIds = Lists.newArrayList();
+        cursors = Maps.newHashMap();
+    }
+
     public String getSubscriptionId() {
         return subscriptionId;
     }
@@ -22,10 +34,22 @@ public class Subscription {
     }
 
     public List<String> getClientIds() {
-        return clientIds;
+        return ImmutableList.copyOf(clientIds);
+    }
+
+    public void addClient(final String newClientId) {
+        clientIds.add(newClientId);
+    }
+
+    public void removeClient(final String clientId) {
+        clientIds.remove(clientId);
     }
 
     public Map<String, String> getCursors() {
-        return cursors;
+        return ImmutableMap.copyOf(cursors);
+    }
+
+    public void updateCursor(String partition, String offset) {
+        cursors.put(partition, offset);
     }
 }

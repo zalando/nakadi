@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
+import de.zalando.aruha.nakadi.repository.LocalSubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStreamManager;
@@ -21,7 +22,6 @@ import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.servlets.MetricsServlet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
@@ -40,9 +40,6 @@ public class NakadiConfig {
 
     @Autowired
     private TopicRepository topicRepository;
-
-    @Autowired
-    private SubscriptionRepository subscriptionRepository;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -77,6 +74,11 @@ public class NakadiConfig {
 
     @Bean
     public EventStreamManager eventStreamManager() {
-        return new EventStreamManager(topicRepository, subscriptionRepository);
+        return new EventStreamManager(topicRepository, subscriptionRepository());
+    }
+
+    @Bean
+    public SubscriptionRepository subscriptionRepository() {
+        return new LocalSubscriptionRepository();
     }
 }

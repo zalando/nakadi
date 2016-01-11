@@ -57,6 +57,10 @@ public class NakadiKafkaConsumer implements EventConsumer {
         });
 
         eventQueue = Lists.newLinkedList();
+
+        System.out.println("<<<<<<<<<<<<<<< >>>>>>>>>>>>>>>>>>");
+        System.out.println("Consumer is now configured to consume from partitions: ");
+        cursors.keySet().stream().forEach(x -> System.out.println(x + " "));
     }
 
     @Override

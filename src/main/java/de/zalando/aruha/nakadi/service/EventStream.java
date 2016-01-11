@@ -38,6 +38,10 @@ public class EventStream {
 
     private AtomicReference<Optional<Map<String, String>>> newDistribution = new AtomicReference<>(Optional.empty());
 
+    private String clientId;
+
+    private String subscriptionId;
+
     public EventStream(final EventConsumer eventConsumer, final OutputStream outputStream,
             final EventStreamConfig config) {
         this.eventConsumer = eventConsumer;
@@ -49,12 +53,20 @@ public class EventStream {
         this.newDistribution.lazySet(Optional.of(newDistribution));
     }
 
-    public String getSubscriptionId() {
-        return "";
+    public String getClientId() {
+        return clientId;
     }
 
-    public String getClientId() {
-        return "";
+    public void setClientId(final String clientId) {
+        this.clientId = clientId;
+    }
+
+    public String getSubscriptionId() {
+        return subscriptionId;
+    }
+
+    public void setSubscriptionId(final String subscriptionId) {
+        this.subscriptionId = subscriptionId;
     }
 
     public void streamEvents() {

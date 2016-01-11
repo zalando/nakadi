@@ -1,8 +1,5 @@
 package de.zalando.aruha.nakadi.service;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import de.zalando.aruha.nakadi.NakadiException;
@@ -53,12 +50,25 @@ public class EventStreamManager {
                         partitionIndex -> clientIds.get(partitionIndex % clientIds.size()),
                         index -> partitions.get(index).getPartitionId()));
 
-        // todo: write new partitioning to distributed storage
+        subscriptionRepository.launchNewPartitionDistribution(subscription.getSubscriptionId(), newPartitionDistribution);
     }
 
+    /**
+     * Checks subscriptions streaming on this instance if there is rebalance required. If it is required - runs rebalance
+     */
     @Scheduled(fixedRate = 100L)
-    public void checkIfRebalanceRequired() {
+    public void rebalanceWhereRequired() {
+        eventStreams
+                .stream()
+                .map(EventStream::getSubscriptionId)
+                .forEach(this::rebalanceForSubscriptionIfRequired);
+    }
 
+    private void rebalanceForSubscriptionIfRequired(final String subscriptionId) {
+        subscriptionRepository
+                .checkForNewPartitionDistribution(subscriptionId)
+                .ifPresent(redistribution ->
+                        changeStreamsPartitionsAfterRebalance(subscriptionId, redistribution));
     }
 
     /**
@@ -67,9 +77,9 @@ public class EventStreamManager {
      *
      * @param subscriptionId the id of subscription for which partitions rebalance happened
      */
-    public void changeStreamsPartitionsAfterRebalance(final String subscriptionId) {
+    public void changeStreamsPartitionsAfterRebalance(final String subscriptionId,
+                                                      final Multimap<String, String> newDistribution) {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        final Multimap<String, String> newDistribution = ArrayListMultimap.create(); // todo: get this from distibuted storage
         final Map<String, String> committedOffsets = subscription.getCursors();
 
         final List<String> clientIdsRepartitioned = Lists.newArrayList();
@@ -88,16 +98,20 @@ public class EventStreamManager {
                     clientIdsRepartitioned.add(eventStream.getClientId());
                 });
 
-        // todo: cliendIdsRepartitioned: remove from distributed storage the rebalance info for clientIds
-        // todo: for which we now changed the partitions to stream from
+        subscriptionRepository.clearProcessedRedistribution(subscriptionId, clientIdsRepartitioned);
     }
 
-    public void addEventStream(final EventStream eventStream) {
+    public void addEventStream(final EventStream eventStream) throws NakadiException {
         eventStreams.add(eventStream);
+        final Subscription subscription = subscriptionRepository.getSubscription(eventStream.getSubscriptionId());
+        rebalancePartitions(subscription);
+        rebalanceForSubscriptionIfRequired(subscription.getSubscriptionId());
     }
 
-    public void removeEventStream(final EventStream eventStream) {
+    public void removeEventStream(final EventStream eventStream) throws NakadiException {
         eventStreams.remove(eventStream);
+        final Subscription subscription = subscriptionRepository.getSubscription(eventStream.getSubscriptionId());
+        rebalancePartitions(subscription);
     }
 
 }
