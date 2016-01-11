@@ -4,7 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Subscription;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.utils.MultimapCollector;
@@ -38,7 +38,7 @@ public class EventStreamManager {
      * @param subscription the subscription for which partitions rebalance should be performed
      */
     public void rebalancePartitions(final Subscription subscription) throws NakadiException {
-        final List<TopicPartition> partitions = topicRepository.listPartitions(subscription.getTopic());
+        final List<TopicPartitionOffsets> partitions = topicRepository.listPartitions(subscription.getTopic());
         final List<String> clientIds = subscription.getClientIds();
 
         // client1 -> p0, p2, p4 ...

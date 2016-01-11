@@ -14,6 +14,7 @@ import java.util.function.Predicate;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +39,6 @@ import com.google.common.collect.ImmutableMap;
 
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Problem;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
@@ -79,7 +79,7 @@ public class TopicsController {
 
     @Timed(name = "get_partition", absolute = true)
     @RequestMapping(value = "/{topicId}/partitions/{partitionId}", method = RequestMethod.GET)
-    public TopicPartition getPartition(@PathVariable("topicId") final String topicId) {
+    public TopicPartitionOffsets getPartition(@PathVariable("topicId") final String topicId) {
         throw new UnsupportedOperationException();
     }
 
@@ -122,8 +122,8 @@ public class TopicsController {
                 }
 
                 // check if partition exists
-                final List<TopicPartition> topicPartitions = topicRepository.listPartitions(topic);
-                final Predicate<TopicPartition> tpPredicate = tp ->
+                final List<TopicPartitionOffsets> topicPartitions = topicRepository.listPartitions(topic);
+                final Predicate<TopicPartitionOffsets> tpPredicate = tp ->
                         topic.equals(tp.getTopicId()) && partition.equals(tp.getPartitionId());
                 final boolean partitionExists = topicPartitions.stream().anyMatch(tpPredicate);
                 if (!partitionExists) {

@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.apache.zookeeper.KeeperException;
@@ -25,7 +26,6 @@ import org.springframework.stereotype.Component;
 
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Topic;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -86,7 +86,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
+    public List<TopicPartitionOffsets> listPartitions(final String topicId) throws NakadiException {
 
         final SimpleConsumer sc = factory.getSimpleConsumer();
         try {
@@ -125,10 +125,10 @@ public class KafkaRepository implements TopicRepository {
         return offset >= oldest && offset <= newest;
     }
 
-    private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,
+    private TopicPartitionOffsets processTopicPartitionMetadata(final TopicAndPartition partition,
                                                          final OffsetResponse latestPartitionData, final OffsetResponse earliestPartitionData) {
 
-        final TopicPartition tp = new TopicPartition(partition.topic(),
+        final TopicPartitionOffsets tp = new TopicPartitionOffsets(partition.topic(),
                 Integer.toString(partition.partition()));
         final long latestOffset = latestPartitionData.offsets(partition.topic(), partition.partition())[0];
         final long earliestOffset = earliestPartitionData.offsets(partition.topic(), partition.partition())[0];

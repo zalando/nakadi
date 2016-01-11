@@ -3,7 +3,7 @@ package de.zalando.aruha.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class TopicPartition {
+public class TopicPartitionOffsets {
     @JsonIgnore
     private String topicId;
     @JsonProperty("partition")
@@ -11,7 +11,7 @@ public class TopicPartition {
     private String oldestAvailableOffset;
     private String newestAvailableOffset;
 
-    public TopicPartition(final String topicId, final String partitionId) {
+    public TopicPartitionOffsets(final String topicId, final String partitionId) {
         setTopicId(topicId);
         setPartitionId(partitionId);
     }
