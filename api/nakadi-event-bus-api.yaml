@@ -713,7 +713,7 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the validation rules supported by this instalation of Nakadi.
+        Lists all of the validation rules supported by this installation of Nakadi.
 
         If the EventType creation is to have special validations (besides the default), one can consult over
         this method the available possibilities.
@@ -752,7 +752,10 @@ definitions:
   EventMetadata:
     type: object
     description: |
-      fooooog
+      Metadata for this Event.
+
+      Contains commons fields for both Business and DataChange Events. Most are enriched by Nakadi upon
+      reception, but they in general MIGHT be set by the client.
     properties:
       metadata:
         type: object
