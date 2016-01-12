@@ -51,7 +51,7 @@ public class KafkaRepository implements TopicRepository {
 
     private final ZooKeeperHolder zkFactory;
     private final Producer<String, String> kafkaProducer;
-    private KafkaFactory kafkaFactory;
+    private final KafkaFactory kafkaFactory;
 
     @Value("${nakadi.kafka.poll.timeoutMs}")
     private long kafkaPollTimeout;
