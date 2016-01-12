@@ -747,6 +747,7 @@ definitions:
 
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
+    additionalProperties: true
 
 
   EventMetadata:
