@@ -159,8 +159,8 @@ task buildDockerContainer {
 
 task removeOldDockerContainer(type: Exec) {
     commandLine "bash", "-c",
-            "docker ps -f 'name=$dockerContainerName' | grep -o nakadi-local | xargs docker stop && " +
-            "docker ps -a -f 'name=$dockerContainerName' | grep -o nakadi-local | xargs docker rm"
+            "for DC in `docker ps -f 'name=$dockerContainerName' | grep -o nakadi-local`; do docker stop \$DC; done && " +
+            "for DC in `docker ps -a -f 'name=$dockerContainerName' | grep -o nakadi-local`; do docker rm \$DC; done"
 }
 
 task startDockerContainer(type: Exec) {
