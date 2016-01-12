@@ -139,8 +139,7 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Creates a new `EventType`. Upon creation the name MUST be unique. Failing to do so will fail the
-        request with a 422 Unprocessable entity.
+        Creates a new `EventType`.
 
         **Implementation note:** The creation of an EventType implicitly creates the structures in the backing
         messaging implementation needed for the reception and persistency of the Events. Considering that at
@@ -165,9 +164,18 @@ paths:
         * TDB Partition resolution strategy
 
         * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only json-schema is
-        supported. Using `EventTypeSchema.type` other than json-schema or passing a EventTypeSchema.schema
-        that is invalid with respect tothe type will fail this creation with a 422 Unprocessable entity.
-        Detailes will be included in the response's Problem.
+        supported.
+
+        Following violations are enforced. Not meeting them will fail the request with a 422 Unprocessable
+        entity (details are provided in the Problem object):
+
+        * Event name on creation not begin unique.
+
+        * Using `EventTypeSchema.type` other than json-schema or passing a `EventTypeSchema.schema`
+        that is invalid with respect to the schema's type.
+
+        * Referring any of Validation, Enrichment or Partitioning strategies that does not exist or whose
+        parameterization is deemed invalid.
 
         Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be
         followed by all EventTypes (examples include: validation rules to match the schema; enriching every
@@ -234,8 +242,8 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Updates the `EventType` identified by its name. Behaviour is the same as creation of `EventType` (POST
-        /event-type) except where noted below.
+        Updates the `EventType` identified by its name. Behaviour is the same as creation of `EventType` (See
+        POST /event-type) except where noted below.
 
         The name and the topic fields cannot be changed. Attempting to do so will result in a 422 failure.
 
@@ -383,10 +391,10 @@ paths:
         The initialization of a stream can be parameterized in terms of size of each chunk, timeout for
         flushing each chunk, total amount of delivered Events and total time for the duration of the stream.
 
-        Nakadi will keep a streaming connection open even if there are no events to be delivered. In this case
-        the timeout for the flushing of each chunk will still apply and the `EventStreamBatche`s will contain
-        only the Cursor pointing to the same offset. This can be treated as a keep-alive control for some
-        load balancers.
+        Nakadi will keep a streaming connection open even if there are no events to be delivered. In this
+        case the timeout for the flushing of each chunk will still apply and the `EventStreamBatche`s will
+        contain only the Cursor pointing to the same offset. This can be treated as a keep-alive control for
+        some load balancers.
 
         The tracking of the current position in the partitions and of which partitions is being read is in
         the responsibility of the client.
@@ -421,7 +429,8 @@ paths:
         - name: stream_limit
           in: query
           description: |
-            Maximum number of `Event`s in this stream (over all partitions being streamed in this connection).
+            Maximum number of `Event`s in this stream (over all partitions being streamed in this
+            connection).
 
             * If 0 or undefined, will stream batches indefinately.
 
@@ -437,6 +446,7 @@ paths:
 
             * If the amount of buffered Events reaches `batch_limit` before this batch_flush_timeout is
             reached, the messages are immediately flushed to the client.
+
             * If 0 or undefined, will assume 30 seconds.
           type: integer
           format: int32
@@ -703,7 +713,10 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        asdf
+        Lists all of the validation rules supported by this installation of Nakadi.
+
+        If the EventType creation is to have special validations (besides the default), one can consult over
+        this method the available possibilities.
       responses:
         '200':
           description: Returns a list of all `EventValidationStrategy` known to Nakadi
@@ -723,39 +736,140 @@ definitions:
   Event:
     type: object
     description: |
-      **To be changed**. This is the most general representation of an event, that can be processed
-      by Nakadi.
+      **Note** The Event definition will be externalized in future versions of this document.
 
-      It should be used as a base definition for all events, that flow through
-      Nakadi by extending attributes of this object type.
-    properties:
-      event_type:
-        type: string
-        example: 'https://resource-events.zalando.com/ResourceCreated'
-      partitioning_key:
-        type: string
-        example: 'ABC123XXX-001'
-      metadata:
-        $ref: '#/definitions/EventMetaData'
-  EventMetaData:
+      A basic payload of an Event. The actual schema is dependent on the information configured for the
+      EventType, as is its enforcement (see POST /event-types). Setting of metadata properties are
+      dependent on the configured enrichment as well.
+
+      For explanation on default configurations of validation and enrichment, see documentatin of
+      `EventType.type`.
+
+      For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
+      DataChangeEvent below.
+    additionalProperties: true
+
+
+  EventMetadata:
     type: object
+    description: |
+      Metadata for this Event.
+
+      Contains commons fields for both Business and DataChange Events. Most are enriched by Nakadi upon
+      reception, but they in general MIGHT be set by the client.
     properties:
-      id:
+      metadata:
+        type: object
+        properties:
+          eid:
+            description: |
+              Identifier of this Event.
+
+              Clients are allowed to generate this and this SHOULD be guaranteed to be unique from the
+              perspective of the producer. Consumers MIGHT use this value to assert uniqueness of reception
+              of the Event.
+
+              If not present upon reception, Nakadi will generate and fill this with a unique value.
+              (TBD: enforce UUID formatif set by the client?)
+            type: string
+            format: uuid
+            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+          event_type:
+            description: |
+              The EventType of this Event. This is enriched by Nakadi on reception of the Event based on the
+              endpoint where the Producer sent the Event to.
+
+              If provided MUST match the endpoint. Failure to do so will cause rejection of the Event.
+            type: string
+            example: 'pennybags:payment-business-event'
+          ocurred_at:
+            description: |
+              Timestamp of creation of the Event generated by the producer. Presence is optional but strongly
+              recommended for producers.
+            type: string
+            format: date-time
+          received_at:
+            type: string
+            description: |
+              Timestamp of the reception of the Event by Nakadi. This is enriched upon reception of the
+              Event.
+              If set by the producer Event will be rejected.
+            format: date-time
+          parent_eid:
+            type: string
+            format: uuid
+            description: |
+              Event identifier of the Event that caused the generation of this Event.
+              Set by the procuder.
+            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+          root_eid:
+            type: string
+            format: uuid
+            description: |
+              Event identifier of the root of the tree of Events (from the relation constructed from
+              parent-eid)
+            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+          flow_id:
+            description: |
+              The flowid of the producer of this Event. As this is usually a HTTP header, this is enriched
+              from the header into the metadata by Nakadi to avoid clients having to explicitly copy this.
+            type: string
+            example: 'JAh6xH4OQhCJ9PutIV_RYw'
+
+        additionalProperties: false
+
+    required:
+      - metadata
+
+  BusinessEvent:
+    type: object
+    description: |
+      A Business Event.
+
+      Usually represents a status transition in a Business process.
+    allOf:
+      - $ref: '#/definitions/EventMetadata'
+    additionalProperties: true
+
+  DataChangeEventQualifier:
+    type: object
+    description: |
+      Indicators of a `DataChangeEvent`'s referred data type and the type of operations done on them.
+
+    properties:
+      data_type:
         type: string
-        format: uuid
-      created:
+        example: 'pennybags:order'
+      data_op:
         type: string
-        format: date-time
-      root_id:
-        type: string
-        format: uuid
-      parent_id:
-        type: string
-        format: uuid
-      scopes:
-        type: array
-        items:
-          type: string
+        enum: ['C', 'U', 'D', 'S']
+        description: |
+          The type of operation executed on the entity.
+          * C: Creation
+          * U: Update
+          * D: Deletion
+          * S: Snapshot
+    required:
+      - data_type
+      - data_op
+
+  DataChangeEvent:
+    type: object
+    description: |
+      A Data change Event.
+
+      Represents a change on a resource.
+    allOf:
+      - $ref: '#/definitions/DataChangeEventQualifier'
+      - $ref: '#/definitions/EventMetadata'
+    properties:
+      data:
+        type: object
+        description: |
+            The payload of the type
+    required:
+        - data
+    additionalProperties: false
 
   Problem:
     type: object
@@ -815,6 +929,7 @@ definitions:
         type: string
         description: Topic name
         example: article.120
+
   Partition:
     required:
       - partition
@@ -827,6 +942,7 @@ definitions:
         type: string
       newest_available_offset:
         type: string
+
   Cursor:
     required:
       - partition
@@ -836,6 +952,7 @@ definitions:
         type: string
       offset:
         type: string
+
   EventStreamBatch:
     description: |
       One chunk of events in a stream. A batch consists of an array of `Event`s plus a `Cursor` pointing to
@@ -860,22 +977,59 @@ definitions:
         description: |
           Name of this EventType. The name for the EventType must follow the pattern
           'organization:team:application:event-type-name'
+      type:
+        type: string
+        enum:
+          - undefined
+          - data
+          - business
+        description: |
+          Defines the type of this EventType.
+
+          The value set will influence, if not set otherwise, the default set of validation-strategies,
+          enrichment-strategies, and the effective_schema in the following way:
+
+          - `undefined`: No predefined changes apply. `effective_schema` is exactly the same as the
+            `EventTypeSchema`.
+            Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
+
+          - `data`: Events of this type will be DataChangeEvents. `effective_schema` contains `metadata`, and
+            adds fields `data_op` and `data_type`. The passed EventTypeSchema defines the schema of `data`.
+            Default validation_strategy for this `EventType` is `[{name: 'datachange-schema-validation'}]`.
+
+          - `business`: Events of this type will be BusinessEvents. `effective_schema` contains `metadata`
+            and any additionally defined properties passed in the `EventTypeSchema` directly on top level of
+            the Event. If name conflicts arise, creation of this EventType will be rejected.
+            Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
       topic:
         type: string
         description: |
           References the name of the low-level topic that is holding the stream of Events for this EventType.
           Usually is the same as the name property.
-      validation-strategies:
+
+      effective_schema:
+        type: string
+        #read-only: true
+        description: |
+          The effective schema of this `EventType`. The predefined schema validator will use the value of
+          this field as base for the validation.
+          The generation of thie value happens on creation of the `EventType` and is influenced by the
+          `EventType.type`.
+
+      validation_strategies:
         description: |
           Determines the validation that has to be executed upon reception of Events of this type. Events are
-          rejected if any of the rules fail (see details of Problem response on the Event publishing methods).
+          rejected if any of the rules fail (see details of Problem response on the Event publishing
+          methods).
 
           Rule evaluation order is the same as in this array.
+
+          If not explicitly set, default value will respect the definition of the `EventType.type`.
         type: array
         items:
           $ref: '#/definitions/EventValidationStrategy'
 
-      enrichment-strategies:
+      enrichment_strategies:
         description: |
           Determines the enrichment to be performed on an Event upon reception. Enrichment is performed once
           upon reception (and after validation) of an Event and is only possible on fields that are not
@@ -886,8 +1040,10 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/EventEnrichmentStrategy'
+        default: [{name: 'metadata-enrichment'}]
 
-      partition-resolution-strategy:
+
+      partition_resolution_strategy:
         description: |
           Determines how the assignment of the event to a Partition should be handled.
 
@@ -900,6 +1056,24 @@ definitions:
         description: |
           The schema for this EventType. This is expected to be a json schema in yaml format (other formats
           might be added in the future).
+
+      data_key:
+        type: array
+        items:
+          type: string
+        description: |
+          Indicators of the path of the properties that constitute the primary key (identifier) of the data
+          within this Event.
+          If set MUST be a valid required field as defined in the schema.
+          (TBD should be required? Is applicable only to both Business and DataChange Events?)
+
+      ordering_key:
+        type: string
+        description: |
+          Indicator of the field used for guaranteeing the ordering of Events of this type (used by the
+          PartitionResolutionStrategy).
+          If set MUST be a valid required field as defined in the schema.
+
     required:
       - name
 
@@ -933,7 +1107,6 @@ definitions:
         description: Documentation for the validation.
     required:
       - name
-      - doc
 
 
   PartitionResolutionStrategy:
@@ -951,7 +1124,6 @@ definitions:
         description: Documentation for the partition resolution.
     required:
       - name
-      - doc
 
   EventEnrichmentStrategy:
     description: |
@@ -970,4 +1142,3 @@ definitions:
         description: Documentation for the enrichment.
     required:
       - name
-      - doc
