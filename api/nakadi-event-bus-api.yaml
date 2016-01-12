@@ -391,10 +391,10 @@ paths:
         The initialization of a stream can be parameterized in terms of size of each chunk, timeout for
         flushing each chunk, total amount of delivered Events and total time for the duration of the stream.
 
-        Nakadi will keep a streaming connection open even if there are no events to be delivered. In this case
-        the timeout for the flushing of each chunk will still apply and the `EventStreamBatche`s will contain
-        only the Cursor pointing to the same offset. This can be treated as a keep-alive control for some
-        load balancers.
+        Nakadi will keep a streaming connection open even if there are no events to be delivered. In this
+        case the timeout for the flushing of each chunk will still apply and the `EventStreamBatche`s will
+        contain only the Cursor pointing to the same offset. This can be treated as a keep-alive control for
+        some load balancers.
 
         The tracking of the current position in the partitions and of which partitions is being read is in
         the responsibility of the client.
@@ -429,7 +429,8 @@ paths:
         - name: stream_limit
           in: query
           description: |
-            Maximum number of `Event`s in this stream (over all partitions being streamed in this connection).
+            Maximum number of `Event`s in this stream (over all partitions being streamed in this
+            connection).
 
             * If 0 or undefined, will stream batches indefinately.
 
@@ -445,6 +446,7 @@ paths:
 
             * If the amount of buffered Events reaches `batch_limit` before this batch_flush_timeout is
             reached, the messages are immediately flushed to the client.
+
             * If 0 or undefined, will assume 30 seconds.
           type: integer
           format: int32
@@ -989,7 +991,6 @@ definitions:
             `EventTypeSchema`.
             Default validation-strategy for this `EventType` is `[{name: 'schema-validation'}]`.
 
-
           - `data`: Events of this type will be DataChangeEvents. `effective-schema` contains `metadata`, and
             adds fields `data-op` and `data-type`. The passed EventTypeSchema defines the schema of `data`.
             Default validation-strategy for this `EventType` is `[{name: 'datachange-schema-validation'}]`.
@@ -1053,6 +1054,24 @@ definitions:
         description: |
           The schema for this EventType. This is expected to be a json schema in yaml format (other formats
           might be added in the future).
+
+      data-key:
+        type: array
+        items:
+          type: string
+        description: |
+          Indicators of the path of the properties that constitute the primary key (identifier) of the data
+          within this Event.
+          If set MUST be a valid required field as defined in the schema.
+          (TBD should be required? Is applicable only to both Business and DataChange Events?)
+
+      ordering-key:
+        type: string
+        description: |
+          Indicator of the field used for guaranteeing the ordering of Events of this type (used by the
+          PartitionResolutionStrategy).
+          If set MUST be a valid required field as defined in the schema.
+
     required:
       - name
 
