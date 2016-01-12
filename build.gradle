@@ -157,8 +157,7 @@ task buildDockerContainer {
 }
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"ZK_BROKERS=127.0.0.1:2181\" " +
-            "-e \"KAFKA_BROKERS=127.0.0.1:9092\" " +
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" " +
             "--net container:local-kafka --name nakadi -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
     dependsOn buildDockerContainer, startKafkaInDockerBound
@@ -176,7 +175,6 @@ task integrationTest(type: Test) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
-    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 def execAndWait(command, timeoutInSeconds = 15) {
@@ -235,11 +233,9 @@ bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
     environment 'NAKADI_OAUTH2_ENABLED', 'false'
-    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 run {
-    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 jacocoTestReport {
