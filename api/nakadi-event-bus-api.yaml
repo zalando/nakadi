@@ -757,10 +757,13 @@ definitions:
         properties:
           eid:
             description: |
-              Unique id for this Event instance.
+              Identifier of this Event.
 
-              Clients are allowed to generate this. If not, Nakadi will fill this with a unique value in case
-              the producer does not set this.
+              Clients are allowed to generate this and this SHOULD be guaranteed to be unique from the
+              perspective of the producer. Consumers MIGHT use this value to assert uniqueness of reception
+              of the Event.
+
+              If not present upon reception, Nakadi will generate and fill this with a unique value.
               (TBD: enforce UUID formatif set by the client?)
             type: string
             format: uuid
