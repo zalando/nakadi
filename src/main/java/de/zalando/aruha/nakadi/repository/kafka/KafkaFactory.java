@@ -20,10 +20,10 @@ import kafka.javaapi.consumer.SimpleConsumer;
 @Component
 class KafkaFactory {
 
-    @Value("${KAFKA_BROKERS}")
+    @Value("${KAFKA_BROKERS:'127.0.0.1:9092'}")
     private String kafkaAddress;
 
-    @Value("${ZK_BROKERS}")
+    @Value("${ZK_BROKERS:'ZK_BROKERS=127.0.0.1:2181'}")
     private String zookeeperAddress;
 
     @Bean

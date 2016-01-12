@@ -18,7 +18,7 @@ public class ZooKeeperHolder {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHolder.class);
 
-    @Value("${ZK_BROKERS}")
+    @Value("${ZK_BROKERS:'ZK_BROKERS=127.0.0.1:2181'}")
     private String brokers;
 
     private ZooKeeper zooKeeper;
