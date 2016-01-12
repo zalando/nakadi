@@ -88,9 +88,8 @@ public class EventStreamManager {
                 .filter(topology ->
                         currentTopologies.get(subscriptionId) == null ||
                                 currentTopologies.get(subscriptionId).getVersion() < topology.getVersion())
-                .sorted((topology1, topology2) ->
-                        topology1.getVersion().compareTo(topology2.getVersion()))
-                .forEach(topology -> applyNewTopology(subscriptionId, topology));
+                .max((t1, t2) -> t1.getVersion().compareTo(t2.getVersion()))
+                .ifPresent(topology -> applyNewTopology(subscriptionId, topology));
     }
 
     /**
@@ -116,6 +115,7 @@ public class EventStreamManager {
                 .stream()
                 .filter(eventStream -> subscriptionId.equals(eventStream.getSubscriptionId()))
                 .forEach(eventStream -> {
+                    System.out.println("Event stream client id: " + eventStream.getClientId());
                     final List<Cursor> clientCursors = newTopology
                             .getDistribution()
                             .stream()
