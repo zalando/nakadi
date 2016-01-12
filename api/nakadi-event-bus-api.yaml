@@ -711,7 +711,10 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        asdf
+        Lists all of the validation rules supported by this instalation of Nakadi.
+
+        If the EventType creation is to have special validations (besides the default), one can consult over
+        this method the available possibilities.
       responses:
         '200':
           description: Returns a list of all `EventValidationStrategy` known to Nakadi
@@ -818,7 +821,9 @@ definitions:
   BusinessEvent:
     type: object
     description: |
-      asdf
+      A Business Event.
+
+      Usually represents a status transition in a Business process.
     allOf:
       - $ref: '#/definitions/EventMetadata'
     additionalProperties: true
@@ -848,7 +853,9 @@ definitions:
   DataChangeEvent:
     type: object
     description: |
-      fooxxxxx
+      A Data change Event.
+
+      Represents a change on a resource.
     allOf:
       - $ref: '#/definitions/DataChangeEventQualifier'
       - $ref: '#/definitions/EventMetadata'
