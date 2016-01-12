@@ -1,14 +1,18 @@
 package de.zalando.aruha.nakadi.config;
 
+import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import org.springframework.core.env.Environment;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 
@@ -29,6 +33,11 @@ public class NakadiConfig {
 
     public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
     public static final HealthCheckRegistry HEALTH_CHECK_REGISTRY = new HealthCheckRegistry();
+    public static final String ZK_BROKERS_DEFAULT = "127.0.0.1:2181";
+    public static final String KAFKA_BROKERS_DEFAULT = "127.0.0.1:9092";
+
+    @Autowired
+    private Environment environment;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -62,4 +71,15 @@ public class NakadiConfig {
             new ObjectMapper().setPropertyNamingStrategy(
                 PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
     }
+
+    @Bean
+    public ZooKeeperHolder zooKeeperHolder() {
+        return new ZooKeeperHolder(environment.getProperty("ZK_BROKERS", ZK_BROKERS_DEFAULT));
+    }
+
+    @Bean
+    public KafkaFactory kafkaFactory() {
+        return new KafkaFactory(environment.getProperty("KAFKA_BROKERS", KAFKA_BROKERS_DEFAULT));
+    }
+
 }

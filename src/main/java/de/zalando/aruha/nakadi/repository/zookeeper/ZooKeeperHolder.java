@@ -5,23 +5,22 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 
-@Component
 public class ZooKeeperHolder {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHolder.class);
 
-    @Value("${ZK_BROKERS:'ZK_BROKERS=127.0.0.1:2181'}")
-    private String brokers;
+    private final String brokers;
 
     private ZooKeeper zooKeeper;
+
+    public ZooKeeperHolder(final String brokers) {
+        this.brokers = brokers;
+    }
 
     @PostConstruct
     public void init() throws IOException {

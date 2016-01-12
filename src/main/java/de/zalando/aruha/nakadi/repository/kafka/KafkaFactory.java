@@ -7,24 +7,17 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-
-import org.springframework.stereotype.Component;
 
 import kafka.javaapi.consumer.SimpleConsumer;
 
-@Component
-class KafkaFactory {
+public class KafkaFactory {
 
-    @Value("${KAFKA_BROKERS:'127.0.0.1:9092'}")
-    private String kafkaAddress;
+    private final String kafkaAddress;
 
-    @Value("${ZK_BROKERS:'ZK_BROKERS=127.0.0.1:2181'}")
-    private String zookeeperAddress;
+    public KafkaFactory(final String kafkaAddress) {
+        this.kafkaAddress = kafkaAddress;
+    }
 
     @Bean
     public Producer<String, String> createProducer() {
