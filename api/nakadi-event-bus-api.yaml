@@ -788,7 +788,6 @@ definitions:
               recommended for producers.
             type: string
             format: date-time
-            #required: false
           received_at:
             type: string
             description: |
@@ -803,7 +802,6 @@ definitions:
               Event identifier of the Event that caused the generation of this Event.
               Set by the procuder.
             example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
-            #required: false
           root_eid:
             type: string
             format: uuid
@@ -811,10 +809,10 @@ definitions:
               Event identifier of the root of the tree of Events (from the relation constructed from
               parent-eid)
             example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
-            #required: false
           flow_id:
             description: |
-              'required, enriched from header,'
+              The flowid of the producer of this Event. As this is usually a HTTP header, this is enriched
+              from the header into the metadata by Nakadi to avoid clients having to explicitly copy this.
             type: string
             example: 'JAh6xH4OQhCJ9PutIV_RYw'
 
