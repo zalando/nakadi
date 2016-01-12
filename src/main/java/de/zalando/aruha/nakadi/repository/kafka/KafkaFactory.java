@@ -14,17 +14,17 @@ import kafka.javaapi.consumer.SimpleConsumer;
 public class KafkaFactory {
 
     private final String kafkaAddress;
+    private KafkaProducer<String, String> kafkaProducer;
 
     public KafkaFactory(final String kafkaAddress) {
         this.kafkaAddress = kafkaAddress;
+        kafkaProducer = new KafkaProducer<>(getProps());
     }
 
-    @Bean
     public Producer<String, String> createProducer() {
-        return new KafkaProducer<>(getProps());
+        return kafkaProducer;
     }
 
-    @Bean(name = "kafkaProperties")
     private Properties getProps() {
         final Properties props = new Properties();
         props.put("bootstrap.servers", kafkaAddress);

@@ -57,9 +57,9 @@ public class KafkaRepository implements TopicRepository {
     private long kafkaPollTimeout;
 
     @Autowired
-    public KafkaRepository(final ZooKeeperHolder zkFactory, final Producer<String, String> kafkaProducer, final KafkaFactory kafkaFactory) {
+    public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory) {
         this.zkFactory = zkFactory;
-        this.kafkaProducer = kafkaProducer;
+        this.kafkaProducer = kafkaFactory.createProducer();
         this.kafkaFactory = kafkaFactory;
     }
 
