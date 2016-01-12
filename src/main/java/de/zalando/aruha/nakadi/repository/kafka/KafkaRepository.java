@@ -1,7 +1,5 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
-import java.io.IOException;
-
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -12,8 +10,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
-
-import org.apache.zookeeper.KeeperException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,9 +56,9 @@ public class KafkaRepository implements TopicRepository {
     @Override
     public List<Topic> listTopics() throws NakadiException {
         try {
-            return zkFactory.get().getChildren("/brokers/topics", false).stream().map(s -> new Topic(s)).collect(
-                    Collectors.toList());
-        } catch (KeeperException | InterruptedException | IOException e) {
+            return zkFactory.get().getChildren().forPath("/brokers/topics").stream().map(s ->
+                    new Topic(s)).collect(Collectors.toList());
+        } catch (Exception e) {
             throw new NakadiException("Failed to get partitions", e);
         }
     }

@@ -1,0 +1,129 @@
+package de.zalando.aruha.nakadi.repository.kafka;
+
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Properties;
+
+import javax.annotation.PostConstruct;
+
+import org.apache.curator.framework.CuratorFramework;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+
+public class KafkaLocationManager {
+
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaLocationManager.class);
+
+    private final String _BROKERS_IDS_PATH = "/brokers/ids";
+
+    @Autowired
+    private ZooKeeperHolder zkFactory;
+
+    private Brokers kafkaBrokerList;
+
+    private Properties kafkaProperties;
+
+    class Broker implements Comparable<Broker> {
+        final String host;
+        final Integer port;
+
+        public Broker(final String host, final Integer port) {
+            this.host = host;
+            this.port = port;
+        }
+
+        @Override
+        public int compareTo(Broker other) {
+            final int result = host.compareTo(other.host);
+            return result == 0 ? port.compareTo(other.port) : result;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other == this)
+                return true;
+            if (!(other instanceof Broker))
+                return false;
+            return this.compareTo((Broker)other) == 0;
+        }
+
+        public String toString() {
+            return this.host + ":" + this.port;
+        }
+    }
+
+    class Brokers extends ArrayList<Broker> {
+        private static final long serialVersionUID = 1156654378364243836L;
+    }
+
+    private Broker getBroker(final byte[] data) throws JSONException, UnsupportedEncodingException {
+        final JSONObject json = new JSONObject(new String(data, "UTF-8"));
+        final String host = json.getString("host");
+        final Integer port = json.getInt("port");
+        return new Broker(host, port);
+    }
+
+    private Brokers fetchBrokers() {
+        final Brokers brokers = new Brokers();
+        try {
+            final CuratorFramework curator = zkFactory.get();
+            for (final String brokerId : curator.getChildren().forPath(_BROKERS_IDS_PATH)) {
+                try {
+                    final byte[] brokerData = curator.getData().forPath(_BROKERS_IDS_PATH + "/" + brokerId);
+                    brokers.add(getBroker(brokerData));
+                } catch (Exception e) {
+                    LOG.info("Failed to fetch connection string for broker {}: {}", brokerId, e);
+                }
+            }
+        } catch (Exception e) {
+            LOG.error("Failed to fetch list of brokers from ZooKeeper: {}", e);
+        }
+
+        brokers.sort(null);
+        return brokers;
+    }
+
+    private static String buildBootstrapServers(Brokers brokers) {
+        final StringBuilder builder = new StringBuilder();
+        brokers.stream().forEach(broker -> builder.append(broker).append(","));
+        return builder.deleteCharAt(builder.length() - 1).toString();
+    }
+
+    private Properties buildKafkaProperties() {
+        final Properties props = new Properties();
+        props.put("bootstrap.servers", buildBootstrapServers(kafkaBrokerList));
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        return props;
+    }
+
+    @PostConstruct
+    private void init() {
+        kafkaBrokerList = fetchBrokers();
+        kafkaProperties = buildKafkaProperties();
+    }
+
+    @Scheduled(fixedDelay = 30000)
+    private void updateBrokers() {
+        if (kafkaProperties != null) {
+            kafkaBrokerList = fetchBrokers();
+            kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(kafkaBrokerList));
+        }
+    }
+
+    public Brokers getKafkaBrokers() {
+        return kafkaBrokerList;
+    }
+
+    public Properties getKafkaProperties() {
+        return kafkaProperties;
+    }
+}

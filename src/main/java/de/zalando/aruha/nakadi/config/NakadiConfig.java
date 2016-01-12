@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Primary;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheckRegistry;
@@ -24,6 +25,7 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 
 @Configuration
 @EnableMetrics
+@EnableScheduling
 public class NakadiConfig {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiConfig.class);
 
