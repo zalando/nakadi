@@ -75,11 +75,11 @@ public class KafkaLocationManager {
                     final byte[] brokerData = curator.getData().forPath(_BROKERS_IDS_PATH + "/" + brokerId);
                     brokers.add(getBroker(brokerData));
                 } catch (Exception e) {
-                    LOG.info("Failed to fetch connection string for broker {}: {}", brokerId, e);
+                    LOG.info(String.format("Failed to fetch connection string for broker %s", brokerId), e);
                 }
             }
         } catch (Exception e) {
-            LOG.error("Failed to fetch list of brokers from ZooKeeper: {}", e);
+            LOG.error("Failed to fetch list of brokers from ZooKeeper", e);
         }
 
         brokers.sort(null);
@@ -111,8 +111,11 @@ public class KafkaLocationManager {
     @Scheduled(fixedDelay = 30000)
     private void updateBrokers() {
         if (kafkaProperties != null) {
-            kafkaBrokerList = fetchBrokers();
-            kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(kafkaBrokerList));
+            List<Broker> brokers = fetchBrokers();
+            if (!brokers.isEmpty()) {
+                kafkaBrokerList = brokers;
+                kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
+            }
         }
     }
 
