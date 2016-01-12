@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import javax.annotation.PostConstruct;
@@ -25,7 +26,7 @@ public class KafkaLocationManager {
     @Autowired
     private ZooKeeperHolder zkFactory;
 
-    private Brokers kafkaBrokerList;
+    private List<Broker> kafkaBrokerList;
 
     private Properties kafkaProperties;
 
@@ -58,10 +59,6 @@ public class KafkaLocationManager {
         }
     }
 
-    class Brokers extends ArrayList<Broker> {
-        private static final long serialVersionUID = 1156654378364243836L;
-    }
-
     private Broker getBroker(final byte[] data) throws JSONException, UnsupportedEncodingException {
         final JSONObject json = new JSONObject(new String(data, "UTF-8"));
         final String host = json.getString("host");
@@ -69,8 +66,8 @@ public class KafkaLocationManager {
         return new Broker(host, port);
     }
 
-    private Brokers fetchBrokers() {
-        final Brokers brokers = new Brokers();
+    private List<Broker> fetchBrokers() {
+        final List<Broker> brokers = new ArrayList<Broker>();
         try {
             final CuratorFramework curator = zkFactory.get();
             for (final String brokerId : curator.getChildren().forPath(_BROKERS_IDS_PATH)) {
@@ -89,7 +86,7 @@ public class KafkaLocationManager {
         return brokers;
     }
 
-    private static String buildBootstrapServers(Brokers brokers) {
+    private static String buildBootstrapServers(List<Broker> brokers) {
         final StringBuilder builder = new StringBuilder();
         brokers.stream().forEach(broker -> builder.append(broker).append(","));
         return builder.deleteCharAt(builder.length() - 1).toString();
@@ -119,7 +116,7 @@ public class KafkaLocationManager {
         }
     }
 
-    public Brokers getKafkaBrokers() {
+    public List<Broker> getKafkaBrokers() {
         return kafkaBrokerList;
     }
 
