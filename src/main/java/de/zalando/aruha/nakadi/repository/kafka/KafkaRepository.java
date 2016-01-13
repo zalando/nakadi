@@ -8,11 +8,13 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.zookeeper.KeeperException;
 
 import org.slf4j.Logger;
@@ -85,8 +87,17 @@ public class KafkaRepository implements TopicRepository {
         }
     }
 
+    public List<String> listPartitions(final String topic) {
+        return factory
+                .getProducer()
+                .partitionsFor(topic)
+                .stream()
+                .map(partitionInfo -> Integer.toString(partitionInfo.partition()))
+                .collect(Collectors.toList());
+    }
+
     @Override
-    public List<TopicPartitionOffsets> listPartitions(final String topicId) throws NakadiException {
+    public List<TopicPartitionOffsets> listPartitionsOffsets(final String topicId) throws NakadiException {
 
         final SimpleConsumer sc = factory.getSimpleConsumer();
         try {
@@ -144,18 +155,6 @@ public class KafkaRepository implements TopicRepository {
         final OffsetRequest request = new OffsetRequest(partitionRequests,
                 kafka.api.OffsetRequest.CurrentVersion(), "offsetlookup_" + UUID.randomUUID());
         return sc.getOffsetsBefore(request);
-    }
-
-    @Override
-    public void readEvent(final String topicId, final String partitionId) {
-        final org.apache.kafka.common.TopicPartition tp = new org.apache.kafka.common.TopicPartition(topicId,
-                Integer.parseInt(partitionId));
-        // final Consumer<String, String> consumerForPartition =
-        // factory.getConsumerFor(tp);
-        // FIXME: read from kafka
-        // consumerForPartition.poll(KAFKA_READ_TIMEOUT_MS);
-        // consumerForPartition.close();
-
     }
 
     @Override

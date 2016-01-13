@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.domain;
 
-public class TopicPartition {
+public class TopicPartition implements Comparable<TopicPartition> {
 
     private final String topic;
 
@@ -17,5 +17,16 @@ public class TopicPartition {
 
     public String getPartition() {
         return partition;
+    }
+
+    @Override
+    public int compareTo(final TopicPartition tp) {
+        final int topicCompare = this.topic.compareTo(tp.getTopic());
+        if (topicCompare != 0) {
+            return topicCompare;
+        }
+        else {
+            return partition.compareTo(tp.getPartition());
+        }
     }
 }

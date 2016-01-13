@@ -6,6 +6,7 @@ import java.util.Map;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
+import org.apache.kafka.common.PartitionInfo;
 
 /**
  * Manages access to topic information.
@@ -18,11 +19,11 @@ public interface TopicRepository {
 
     void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
 
-    List<TopicPartitionOffsets> listPartitions(String topicId) throws NakadiException;
+    List<String> listPartitions(String topic);
+
+    List<TopicPartitionOffsets> listPartitionsOffsets(String topicId) throws NakadiException;
 
     boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
-
-    void readEvent(String topicId, String partitionId);
 
     EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
 }

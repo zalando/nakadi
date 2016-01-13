@@ -55,7 +55,8 @@ public class SubscriptionController {
                                         @RequestBody final List<Cursor> cursors) throws InterruptedException, NakadiException {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            cursors.stream().forEach(cursor -> subscription.updateCursor(cursor.getPartition(), cursor.getOffset()));
+            cursors.stream().forEach(cursor ->
+                    subscription.updateCursor(cursor.getTopic(), cursor.getPartition(), cursor.getOffset()));
             subscriptionRepository.saveSubscription(subscription);
         } catch (Exception e) {
             LOG.error("Error during offsets commit", e.getCause());
@@ -100,7 +101,7 @@ public class SubscriptionController {
 
                 final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer(subscription.getTopic(), fakeOffsets);
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer(subscription.getTopics().get(0) /*todo*/, fakeOffsets);
 
                 final EventStreamConfig streamConfig = EventStreamConfig
                         .builder()
@@ -117,9 +118,6 @@ public class SubscriptionController {
 
                 final String newClientId = subscriptionRepository.generateNewClientId(subscription);
                 eventStream.setClientId(newClientId);
-                subscription.addClient(newClientId);
-                subscriptionRepository.saveSubscription(subscription);
-
                 eventStreamManager.addEventStream(eventStream);
                 eventStream.streamEvents();
 
@@ -132,10 +130,6 @@ public class SubscriptionController {
                 // shit
             }
             finally {
-                final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-                subscription.removeClient(eventStream.getClientId());
-                subscriptionRepository.saveSubscription(subscription);
-
                 try {
                     eventStreamManager.removeEventStream(eventStream);
                 } catch (NakadiException e) {

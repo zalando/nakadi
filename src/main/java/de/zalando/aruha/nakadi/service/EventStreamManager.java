@@ -1,15 +1,14 @@
 package de.zalando.aruha.nakadi.service;
 
-import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.ClientTopology;
+import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.Topology;
 import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
-import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
-import de.zalando.aruha.nakadi.domain.Topology;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +16,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -38,58 +38,25 @@ public class EventStreamManager {
     }
 
     /**
-     * This should be invoked when client new client starts / old client ends
-     *
-     * @param subscription the subscription for which partitions rebalance should be performed
-     */
-    public void rebalancePartitions(final Subscription subscription) throws NakadiException {
-        final List<TopicPartitionOffsets> partitions = topicRepository.listPartitions(subscription.getTopic());
-        final List<String> clientIds = subscription.getClientIds();
-
-        final ImmutableMultimap.Builder<String, TopicPartition> builder = ImmutableMultimap.<String, TopicPartition>builder();
-        IntStream
-                .range(0, partitions.size())
-                .boxed()
-                .forEach(partitionIndex -> {
-                    if (clientIds.size() > 0) {
-                        builder.put(clientIds.get(partitionIndex % clientIds.size()),
-                                new TopicPartition(subscription.getTopic(), partitions.get(partitionIndex).getPartitionId()));
-                    }
-                });
-        final List<ClientTopology> clientTopologies = builder
-                .build()
-                .asMap()
-                .entrySet()
-                .stream()
-                .map(entry -> new ClientTopology(entry.getKey(), Lists.newArrayList(entry.getValue()), false))
-                .collect(Collectors.toList());
-
-        final Long newVersion = subscriptionRepository.getNextTopologyVersion(subscription.getSubscriptionId());
-        final Topology topology = new Topology(newVersion, clientTopologies);
-
-        subscriptionRepository.addNewTopology(subscription.getSubscriptionId(), topology);
-    }
-
-    /**
      * Checks subscriptions streaming on this instance if there is rebalance required. If it is required - runs rebalance
      */
     @Scheduled(fixedRate = 100L)
-    public void rebalanceWhereRequired() {
+    public void rebalanceSubscriptions() {
         eventStreams
                 .stream()
                 .map(EventStream::getSubscriptionId)
-                .forEach(this::rebalanceForSubscriptionIfRequired);
+                .forEach(this::rebalanceSubscriptionIfNeeded);
     }
 
-    private void rebalanceForSubscriptionIfRequired(final String subscriptionId) {
+    private void rebalanceSubscriptionIfNeeded(final String subscriptionId) {
         subscriptionRepository
-                .getTopologies(subscriptionId)
-                .stream()
-                .filter(topology ->
-                        currentTopologies.get(subscriptionId) == null ||
-                                currentTopologies.get(subscriptionId).getVersion() < topology.getVersion())
-                .max((t1, t2) -> t1.getVersion().compareTo(t2.getVersion()))
-                .ifPresent(topology -> applyNewTopology(subscriptionId, topology));
+                .getTopology(subscriptionId)
+                .ifPresent(topology -> {
+                    if (currentTopologies.get(subscriptionId) == null ||
+                            (!currentTopologies.get(subscriptionId).equals(topology))) {
+                        applyNewTopology(subscriptionId, topology);
+                    }
+                });
     }
 
     /**
@@ -101,81 +68,101 @@ public class EventStreamManager {
     public void applyNewTopology(final String subscriptionId, final Topology newTopology) {
 
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        final List<Cursor> subscriptionCursors = subscription.getCursors();
 
-        final List<String> clientIdsRepartitioned = Lists.newArrayList();
+        final List<Integer> clientsIndexes = eventStreams
+                .stream()
+                .filter(eventStream -> subscriptionId.equals(eventStream.getSubscriptionId()))
+                .map((Function<EventStream, Integer>) eventStream -> newTopology
+                        .getClientIndex(eventStream.getClientId())
+                        .orElseThrow(() -> new NakadiRuntimeException("client is not part of topology")))
+                .collect(Collectors.toList());
 
-        System.out.println("New topology");
-        System.out.println(newTopology.getVersion());
-        newTopology.getDistribution().stream().forEach(x -> {
-            System.out.println(x.getClientId());
-        });
+        final Map<Integer, List<TopicPartition>> newPartitionsForClients = getPartitionsForClients(subscriptionId,
+                clientsIndexes,
+                newTopology.getClientIds().size());
 
         eventStreams
                 .stream()
                 .filter(eventStream -> subscriptionId.equals(eventStream.getSubscriptionId()))
                 .forEach(eventStream -> {
-                    System.out.println("Event stream client id: " + eventStream.getClientId());
-                    final List<Cursor> clientCursors = newTopology
-                            .getDistribution()
+                    final int clientIndex = newTopology
+                            .getClientIndex(eventStream.getClientId())
+                            .orElseThrow(() -> new NakadiRuntimeException("client is not part of topology"));
+
+                    final List<Cursor> cursorsForClient = newPartitionsForClients
+                            .get(clientIndex)
                             .stream()
-                            .filter(clientTopology -> clientTopology.getClientId().equals(eventStream.getClientId()))
-                            .findFirst()
-                            .get()
-                            .getPartitions()
-                            .stream()
-                            .map(tp ->
-                                    subscriptionCursors
-                                            .stream()
-                                            .filter(c -> c.getTopic().equals(tp.getTopic())
-                                                    && c.getPartition().equals(tp.getPartition()))
-                                            .findFirst()
-                                            .get())
+                            .map((Function<TopicPartition, Cursor>) tp -> subscription
+                                    .getCursor(tp)
+                                    .orElseThrow(() -> new NakadiRuntimeException("Cursor not found for topic/partition")))
                             .collect(Collectors.toList());
 
-                    eventStream.changeDistribution(clientCursors);
-                    clientIdsRepartitioned.add(eventStream.getClientId());
+                    eventStream.changeDistribution(cursorsForClient);
                 });
 
-        subscriptionRepository.clearProcessedRedistribution(subscriptionId, clientIdsRepartitioned);
         currentTopologies.put(subscriptionId, newTopology);
     }
 
-    /*public void changeStreamsPartitionsAfterRebalance(final String subscriptionId,
-                                                      final Multimap<String, String> newDistribution) {
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        final Map<String, String> committedOffsets = subscription.getCursors();
-
-        final List<String> clientIdsRepartitioned = Lists.newArrayList();
-
-        eventStreams
+    private Map<Integer, List<TopicPartition>> getPartitionsForClients(final String subscriptionId,
+                                                                       final List<Integer> clientIndexes,
+                                                                       final int clientsNum) {
+        final List<TopicPartition> allPartitionsSorted = subscriptionRepository
+                .getSubscription(subscriptionId)
+                .getTopics()
                 .stream()
-                .filter(eventStream -> subscriptionId.equals(eventStream.getSubscriptionId()))
-                .forEach(eventStream -> {
-                    final Map<String, String> distributionWithOffsets = newDistribution.get(eventStream.getClientId())
-                            .stream()
-                            .collect(Collectors.toMap(
-                                    identity(),
-                                    committedOffsets::get
-                            ));
-                    eventStream.changeDistribution(distributionWithOffsets);
-                    clientIdsRepartitioned.add(eventStream.getClientId());
-                });
+                .flatMap(topic -> topicRepository
+                        .listPartitions(topic)
+                        .stream()
+                        .map(partition -> new TopicPartition(topic, partition)))
+                .sorted()
+                .collect(Collectors.toList());
 
-        subscriptionRepository.clearProcessedRedistribution(subscriptionId, clientIdsRepartitioned);
-    }*/
+        return clientIndexes
+                .stream()
+                .collect(Collectors.toMap(
+                        Function.identity(),
+                        clientIndex -> IntStream
+                                .range(0, allPartitionsSorted.size())
+                                .boxed()
+                                .filter(tpIndex -> (tpIndex % clientsNum == clientIndex))
+                                .map(allPartitionsSorted::get)
+                                .collect(Collectors.toList())));
+    }
 
     public void addEventStream(final EventStream eventStream) throws NakadiException {
         eventStreams.add(eventStream);
-        final Subscription subscription = subscriptionRepository.getSubscription(eventStream.getSubscriptionId());
-        rebalancePartitions(subscription);
-        rebalanceForSubscriptionIfRequired(subscription.getSubscriptionId());
+
+        final List<String> currentClientIds = subscriptionRepository
+                .getTopology(eventStream.getSubscriptionId())
+                .map(Topology::getClientIds)
+                .orElse(Lists.newArrayList());
+
+        final List<String> newClientIds = ImmutableList.<String>builder()
+                .addAll(currentClientIds)
+                .add(eventStream.getClientId())
+                .build();
+
+        final Topology newTopology = new Topology(newClientIds);
+        subscriptionRepository.setNewTopology(eventStream.getSubscriptionId(), newTopology);
+
+        rebalanceSubscriptionIfNeeded(eventStream.getSubscriptionId());
     }
 
     public void removeEventStream(final EventStream eventStream) throws NakadiException {
         eventStreams.remove(eventStream);
-        final Subscription subscription = subscriptionRepository.getSubscription(eventStream.getSubscriptionId());
-        rebalancePartitions(subscription);
+
+        final List<String> newClientIds = subscriptionRepository
+                .getTopology(eventStream.getSubscriptionId())
+                .map(Topology::getClientIds)
+                .orElse(Lists.newArrayList())
+                .stream()
+                .filter(clientId -> !clientId.equals(eventStream.getClientId()))
+                .collect(Collectors.toList());
+
+        final Topology newTopology = new Topology(newClientIds);
+        subscriptionRepository.setNewTopology(eventStream.getSubscriptionId(), newTopology);
+
+        rebalanceSubscriptionIfNeeded(eventStream.getSubscriptionId());
     }
 
 }

@@ -1,9 +1,11 @@
 package de.zalando.aruha.nakadi.domain;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * This is just a dummy that will be replaced when we finalize the high level consuming architecture
@@ -11,14 +13,20 @@ import java.util.List;
 public class Subscription {
 
     private String subscriptionId;
-    private String topic;
-    private List<String> clientIds;
+
+    /**
+     * topics to consume from
+     */
+    private List<String> topics;
+
+    /**
+     * this keeps the committed offsets
+     */
     private List<Cursor> cursors;
 
-    public Subscription(final String subscriptionId, final String topic) {
+    public Subscription(final String subscriptionId, final List<String> topics) {
         this.subscriptionId = subscriptionId;
-        this.topic = topic;
-        clientIds = Lists.newArrayList();
+        this.topics = ImmutableList.copyOf(topics);
         cursors = Lists.newArrayList();
     }
 
@@ -26,30 +34,26 @@ public class Subscription {
         return subscriptionId;
     }
 
-    public String getTopic() {
-        return topic;
-    }
-
-    public List<String> getClientIds() {
-        return Collections.unmodifiableList(clientIds);
-    }
-
-    public void addClient(final String newClientId) {
-        clientIds.add(newClientId);
-    }
-
-    public void removeClient(final String clientId) {
-        clientIds.remove(clientId);
+    public List<String> getTopics() {
+        return topics;
     }
 
     public List<Cursor> getCursors() {
         return Collections.unmodifiableList(cursors);
     }
 
-    public void updateCursor(String partition, String offset) {
+    public Optional<Cursor> getCursor(final TopicPartition tp) {
+        return cursors
+                .stream()
+                .filter(cursor ->
+                        cursor.getTopic().equals(tp.getTopic()) && cursor.getPartition().equals(tp.getPartition()))
+                .findFirst();
+    }
+
+    public void updateCursor(String topic, String partition, String offset) {
         cursors
                 .stream()
-                .filter(cursor -> cursor.getPartition().equals(partition))
+                .filter(cursor -> cursor.getPartition().equals(partition) && cursor.getTopic().equals(topic))
                 .findFirst()
                 .orElseGet(() -> {
                     final Cursor newCursor = new Cursor(topic, partition, offset);

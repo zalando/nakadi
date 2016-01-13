@@ -71,7 +71,7 @@ public class TopicsController {
     @RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
     public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
         try {
-            return ok().body(topicRepository.listPartitions(topicId));
+            return ok().body(topicRepository.listPartitionsOffsets(topicId));
         } catch (final NakadiException e) {
             return status(503).body(e.getProblemMessage());
         }
@@ -122,7 +122,7 @@ public class TopicsController {
                 }
 
                 // check if partition exists
-                final List<TopicPartitionOffsets> topicPartitions = topicRepository.listPartitions(topic);
+                final List<TopicPartitionOffsets> topicPartitions = topicRepository.listPartitionsOffsets(topic);
                 final Predicate<TopicPartitionOffsets> tpPredicate = tp ->
                         topic.equals(tp.getTopicId()) && partition.equals(tp.getPartitionId());
                 final boolean partitionExists = topicPartitions.stream().anyMatch(tpPredicate);
