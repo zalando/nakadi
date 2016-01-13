@@ -12,7 +12,7 @@ import kafka.javaapi.consumer.SimpleConsumer;
 public class KafkaFactory {
 
     private final String kafkaAddress;
-    private KafkaProducer<String, String> kafkaProducer;
+    private final KafkaProducer<String, String> kafkaProducer;
 
     public KafkaFactory(final String kafkaAddress) {
         this.kafkaAddress = kafkaAddress;
