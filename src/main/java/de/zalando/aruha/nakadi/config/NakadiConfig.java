@@ -33,8 +33,6 @@ public class NakadiConfig {
 
     public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
     public static final HealthCheckRegistry HEALTH_CHECK_REGISTRY = new HealthCheckRegistry();
-    public static final String ZK_BROKERS_DEFAULT = "127.0.0.1:2181";
-    public static final String KAFKA_BROKERS_DEFAULT = "127.0.0.1:9092";
 
     @Autowired
     private Environment environment;
@@ -74,12 +72,12 @@ public class NakadiConfig {
 
     @Bean
     public ZooKeeperHolder zooKeeperHolder() {
-        return new ZooKeeperHolder(environment.getProperty("ZK_BROKERS", ZK_BROKERS_DEFAULT));
+        return new ZooKeeperHolder(environment.getProperty("nakadi.zookeeper.connectionString"));
     }
 
     @Bean
     public KafkaFactory kafkaFactory() {
-        return new KafkaFactory(environment.getProperty("KAFKA_BROKERS", KAFKA_BROKERS_DEFAULT));
+        return new KafkaFactory(environment.getProperty("nakadi.kafka.connectionString"));
     }
 
 }
