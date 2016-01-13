@@ -30,25 +30,25 @@ public class KafkaLocationManager {
 
     private Properties kafkaProperties;
 
-    class Broker {
+    static class Broker {
         final String host;
         final Integer port;
 
-        public Broker(final String host, final Integer port) {
+        private Broker(final String host, final Integer port) {
             this.host = host;
             this.port = port;
+        }
+
+        static Broker fromByteJson(final byte[] data) throws JSONException, UnsupportedEncodingException {
+            final JSONObject json = new JSONObject(new String(data, "UTF-8"));
+            final String host = json.getString("host");
+            final Integer port = json.getInt("port");
+            return new Broker(host, port);
         }
 
         public String toString() {
             return this.host + ":" + this.port;
         }
-    }
-
-    private Broker getBroker(final byte[] data) throws JSONException, UnsupportedEncodingException {
-        final JSONObject json = new JSONObject(new String(data, "UTF-8"));
-        final String host = json.getString("host");
-        final Integer port = json.getInt("port");
-        return new Broker(host, port);
     }
 
     private List<Broker> fetchBrokers() {
@@ -58,7 +58,7 @@ public class KafkaLocationManager {
             for (final String brokerId : curator.getChildren().forPath(_BROKERS_IDS_PATH)) {
                 try {
                     final byte[] brokerData = curator.getData().forPath(_BROKERS_IDS_PATH + "/" + brokerId);
-                    brokers.add(getBroker(brokerData));
+                    brokers.add(Broker.fromByteJson(brokerData));
                 } catch (Exception e) {
                     LOG.info(String.format("Failed to fetch connection string for broker %s", brokerId), e);
                 }
