@@ -7,8 +7,6 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 
-import org.springframework.context.annotation.Bean;
-
 import kafka.javaapi.consumer.SimpleConsumer;
 
 public class KafkaFactory {
