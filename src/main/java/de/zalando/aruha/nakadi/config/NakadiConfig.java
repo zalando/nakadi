@@ -2,13 +2,13 @@ package de.zalando.aruha.nakadi.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-
+import org.springframework.core.env.Environment;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -23,6 +23,9 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 
+import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+
 @Configuration
 @EnableMetrics
 @EnableScheduling
@@ -31,6 +34,9 @@ public class NakadiConfig {
 
     public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
     public static final HealthCheckRegistry HEALTH_CHECK_REGISTRY = new HealthCheckRegistry();
+
+    @Autowired
+    private Environment environment;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -63,5 +69,20 @@ public class NakadiConfig {
         return
             new ObjectMapper().setPropertyNamingStrategy(
                 PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+    }
+
+    @Bean
+    public ZooKeeperHolder zooKeeperHolder() {
+        return new ZooKeeperHolder(
+                environment.getProperty("ZK_BROKERS"),
+                environment.getProperty("ZK_KAFKA_NAMESPACE", ""),
+                environment.getProperty("ZK_EXHIBITOR_ADDRESSES"),
+                Integer.parseInt(environment.getProperty("ZK_EXHIBITOR_PORT", "0"))
+        );
+    }
+
+    @Bean
+    public KafkaLocationManager getKafkaLocationManager() {
+        return new KafkaLocationManager();
     }
 }

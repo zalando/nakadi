@@ -7,47 +7,43 @@ import java.util.Collection;
 import javax.annotation.PostConstruct;
 
 import org.apache.curator.RetryPolicy;
+import org.apache.curator.ensemble.EnsembleProvider;
 import org.apache.curator.ensemble.exhibitor.DefaultExhibitorRestClient;
 import org.apache.curator.ensemble.exhibitor.ExhibitorRestClient;
 import org.apache.curator.ensemble.exhibitor.Exhibitors;
 import org.apache.curator.ensemble.exhibitor.Exhibitors.BackupConnectionStringProvider;
+import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ZooKeeperHolder {
 
-    @Autowired
-    @Qualifier("zookeeperBrokers")
-    private String zookeeperBrokers;
+    private final String zookeeperBrokers;
 
-    @Autowired
-    @Qualifier("zookeeperKafkaNamespace")
-    private String zookeeperKafkaNamespace;
+    private final String zookeeperKafkaNamespace;
 
-    @Autowired
-    @Qualifier("exhibitorAddress")
-    private String exhibitorAddress;
+    private final String exhibitorAddresses;
 
-    @Autowired
-    @Qualifier("exhibitorPort")
-    private Integer exhibitorPort;
+    private final Integer exhibitorPort;
 
     private CuratorFramework zooKeeper;
 
+    public ZooKeeperHolder(String zookeeperBrokers, String zookeeperKafkaNamespace, String exhibitorAddresses, Integer exhibitorPort) {
+        this.zookeeperBrokers = zookeeperBrokers;
+        this.zookeeperKafkaNamespace = zookeeperKafkaNamespace;
+        this.exhibitorAddresses = exhibitorAddresses;
+        this.exhibitorPort = exhibitorPort;
+    }
+
     class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
 
-        private final String zookeeperKafkaNamespace;
-
         public ExhibitorEnsembleProvider(Exhibitors exhibitors, ExhibitorRestClient restClient, String restUriPath,
-                int pollingMs, RetryPolicy retryPolicy, String zookeeperKafkaNamespace) {
+                int pollingMs, RetryPolicy retryPolicy) {
             super(exhibitors, restClient, restUriPath, pollingMs, retryPolicy);
-            this.zookeeperKafkaNamespace = zookeeperKafkaNamespace;
         }
 
         @Override
@@ -59,18 +55,24 @@ public class ZooKeeperHolder {
 
     @PostConstruct
     public void init() throws Exception {
-        final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddress.split("\\s*,\\s*"));
         final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort, new BackupConnectionStringProvider() {
-            @Override
-            public String getBackupConnectionString() throws Exception {
-                return zookeeperBrokers + zookeeperKafkaNamespace;
-            }
-        });
-        final ExhibitorRestClient exhibitorRestClient = new DefaultExhibitorRestClient();
-        final ExhibitorEnsembleProvider ensembleProvider = new ExhibitorEnsembleProvider(exhibitors, exhibitorRestClient,
-                "/exhibitor/v1/cluster/list", 300000, retryPolicy, zookeeperKafkaNamespace);
-        ensembleProvider.pollForInitialEnsemble();
+        EnsembleProvider ensembleProvider;
+        if (exhibitorAddresses != null) {
+            final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddresses.split("\\s*,\\s*"));
+            final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort,
+                    new BackupConnectionStringProvider() {
+                        @Override
+                        public String getBackupConnectionString() throws Exception {
+                            return zookeeperBrokers + zookeeperKafkaNamespace;
+                        }
+                    });
+            final ExhibitorRestClient exhibitorRestClient = new DefaultExhibitorRestClient();
+            ensembleProvider = new ExhibitorEnsembleProvider(exhibitors,
+                    exhibitorRestClient, "/exhibitor/v1/cluster/list", 300000, retryPolicy);
+            ((ExhibitorEnsembleProvider)ensembleProvider).pollForInitialEnsemble();
+        } else {
+            ensembleProvider = new FixedEnsembleProvider(zookeeperBrokers + zookeeperKafkaNamespace);
+        }
         zooKeeper = CuratorFrameworkFactory.builder().ensembleProvider(ensembleProvider).retryPolicy(retryPolicy).build();
         zooKeeper.start();
     }

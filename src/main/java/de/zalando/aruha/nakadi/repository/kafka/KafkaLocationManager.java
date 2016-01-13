@@ -30,28 +30,13 @@ public class KafkaLocationManager {
 
     private Properties kafkaProperties;
 
-    class Broker implements Comparable<Broker> {
+    class Broker {
         final String host;
         final Integer port;
 
         public Broker(final String host, final Integer port) {
             this.host = host;
             this.port = port;
-        }
-
-        @Override
-        public int compareTo(Broker other) {
-            final int result = host.compareTo(other.host);
-            return result == 0 ? port.compareTo(other.port) : result;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            if (other == this)
-                return true;
-            if (!(other instanceof Broker))
-                return false;
-            return this.compareTo((Broker)other) == 0;
         }
 
         public String toString() {
@@ -82,7 +67,6 @@ public class KafkaLocationManager {
             LOG.error("Failed to fetch list of brokers from ZooKeeper", e);
         }
 
-        brokers.sort(null);
         return brokers;
     }
 
