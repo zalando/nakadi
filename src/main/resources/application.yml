@@ -10,6 +10,9 @@ nakadi:
   kafka:
     poll:
       timeoutMs: 100
+    connectionString: 127.0.0.1:9092
+  zookeeper:
+    connectionString: 127.0.0.1:2181
   oauth2:
     enabled: true
     tokenInfoUri: https://auth.zalando.com/oauth2/tokeninfo
