@@ -17,9 +17,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 
-import org.springframework.stereotype.Component;
-
-@Component
 public class ZooKeeperHolder {
 
     private final String zookeeperBrokers;

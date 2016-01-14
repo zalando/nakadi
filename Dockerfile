@@ -4,7 +4,7 @@ MAINTAINER Team Aruha, team-aruha@zalando.de
 
 WORKDIR /
 ADD build/libs/nakadi.jar nakadi.jar
-ADD envs envs
+
 EXPOSE 8080
 
 # run the server when a container based on this image is being run

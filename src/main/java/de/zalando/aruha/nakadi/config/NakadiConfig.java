@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -16,13 +15,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.servlets.MetricsServlet;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 
+import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 
@@ -74,10 +72,10 @@ public class NakadiConfig {
     @Bean
     public ZooKeeperHolder zooKeeperHolder() {
         return new ZooKeeperHolder(
-                environment.getProperty("ZK_BROKERS"),
-                environment.getProperty("ZK_KAFKA_NAMESPACE", ""),
-                environment.getProperty("ZK_EXHIBITOR_ADDRESSES"),
-                Integer.parseInt(environment.getProperty("ZK_EXHIBITOR_PORT", "0"))
+                environment.getProperty("nakadi.zookeeper.brokers"),
+                environment.getProperty("nakadi.zookeeper.kafkaNamespace", ""),
+                environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
+                Integer.parseInt(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0"))
         );
     }
 
@@ -85,4 +83,10 @@ public class NakadiConfig {
     public KafkaLocationManager getKafkaLocationManager() {
         return new KafkaLocationManager();
     }
+
+    @Bean
+    public KafkaFactory kafkaFactory() {
+        return new KafkaFactory(getKafkaLocationManager());
+    }
+
 }
