@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -97,7 +98,7 @@ public class KafkaLocationManager {
         if (kafkaProperties != null) {
             List<Broker> brokers = fetchBrokers();
             if (!brokers.isEmpty()) {
-                kafkaBrokerList = brokers;
+                kafkaBrokerList = Collections.unmodifiableList(brokers);
                 kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
             }
         }
@@ -108,6 +109,6 @@ public class KafkaLocationManager {
     }
 
     public Properties getKafkaProperties() {
-        return kafkaProperties;
+        return (Properties) kafkaProperties.clone();
     }
 }
