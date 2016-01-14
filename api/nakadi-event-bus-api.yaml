@@ -120,9 +120,11 @@ paths:
         - schema-registry-api
       description: Returns a list of all registered `EventType`s
       parameters:
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
       responses:
@@ -197,11 +199,6 @@ paths:
             type: object
             $ref: '#/definitions/EventType'
           required: true
-        - name: X-flowid
-          in: header
-          description: foo
-          type: string
-          required: true
       responses:
         '200':
           description: Ok
@@ -231,9 +228,11 @@ paths:
           description: Name of the EventType to load.
           type: string
           required: true
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
       responses:
@@ -278,12 +277,13 @@ paths:
             type: object
             $ref: '#/definitions/EventType'
           required: true
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
-
       responses:
         '200':
           description: Ok
@@ -336,9 +336,11 @@ paths:
           type: string
           description: Name of the EventType
           required: true
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
 
@@ -381,9 +383,11 @@ paths:
         - monitoring
         - management-api
       parameters:
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
 
@@ -508,9 +512,11 @@ paths:
           type: integer
           format: int32
           required: false
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
 
@@ -578,9 +584,11 @@ paths:
             Allow the publisher to gzip compress the payload by setting this header to "gzip".
             For Example "Content-Encoding: gzip"
           type: string
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
 
@@ -632,12 +640,13 @@ paths:
           description: Topic name
           type: string
           required: true
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
-
       responses:
         '200':
           description: OK
@@ -673,9 +682,11 @@ paths:
           description: Partition id.
           type: string
           required: true
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
 
@@ -737,9 +748,11 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Event'
-        - name: X-flowid
+        - name: X-Flow-Id
           in: header
-          description: foo
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
           required: true
 
