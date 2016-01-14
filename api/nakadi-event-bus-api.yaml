@@ -119,6 +119,12 @@ paths:
       tags:
         - schema-registry-api
       description: Returns a list of all registered `EventType`s
+      parameters:
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
       responses:
         '200':
           description: Ok
@@ -191,6 +197,11 @@ paths:
             type: object
             $ref: '#/definitions/EventType'
           required: true
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
       responses:
         '200':
           description: Ok
@@ -218,6 +229,11 @@ paths:
         - name: name
           in: path
           description: Name of the EventType to load.
+          type: string
+          required: true
+        - name: X-flowid
+          in: header
+          description: foo
           type: string
           required: true
       responses:
@@ -261,6 +277,11 @@ paths:
           schema:
             type: object
             $ref: '#/definitions/EventType'
+          required: true
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
           required: true
 
       responses:
@@ -315,6 +336,12 @@ paths:
           type: string
           description: Name of the EventType
           required: true
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
+
       responses:
         '200':
           description: Ok
@@ -353,6 +380,13 @@ paths:
       tags:
         - monitoring
         - management-api
+      parameters:
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
+
       responses:
         '200':
           description: The request was successful. Returns a list `Topic`s in the response body.
@@ -474,6 +508,12 @@ paths:
           type: integer
           format: int32
           required: false
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
+
       responses:
         '200':
           description: |
@@ -538,6 +578,12 @@ paths:
             Allow the publisher to gzip compress the payload by setting this header to "gzip".
             For Example "Content-Encoding: gzip"
           type: string
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
+
       responses:
         '201':
           description: All events are submitted successfully.
@@ -586,6 +632,12 @@ paths:
           description: Topic name
           type: string
           required: true
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
+
       responses:
         '200':
           description: OK
@@ -621,6 +673,12 @@ paths:
           description: Partition id.
           type: string
           required: true
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
+
       responses:
         '200':
           description: OK
@@ -679,6 +737,12 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Event'
+        - name: X-flowid
+          in: header
+          description: foo
+          type: string
+          required: true
+
       responses:
         '201':
           description: Event submitted.
@@ -978,6 +1042,10 @@ definitions:
         description: |
           Name of this EventType. The name for the EventType must follow the pattern
           'organization:team:application:event-type-name'
+      owning_application:
+        type: string
+        description: |
+          Indicator of the Application owning this `EventType`.
       type:
         type: string
         enum:
