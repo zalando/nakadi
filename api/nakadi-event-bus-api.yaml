@@ -126,6 +126,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
       responses:
         '200':
@@ -234,6 +235,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
       responses:
         '200':
@@ -283,6 +285,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
       responses:
         '200':
@@ -342,6 +345,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
 
       responses:
@@ -518,6 +522,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
 
       responses:
@@ -590,6 +595,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
 
       responses:
@@ -646,6 +652,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
       responses:
         '200':
@@ -688,6 +695,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
 
       responses:
@@ -754,6 +762,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+          format: flow-id
           required: true
 
       responses:
@@ -889,7 +898,7 @@ definitions:
             example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
           flow_id:
             description: |
-              The flowid of the producer of this Event. As this is usually a HTTP header, this is enriched
+              The flow-id of the producer of this Event. As this is usually a HTTP header, this is enriched
               from the header into the metadata by Nakadi to avoid clients having to explicitly copy this.
             type: string
             example: 'JAh6xH4OQhCJ9PutIV_RYw'
