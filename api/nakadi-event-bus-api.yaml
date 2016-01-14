@@ -16,16 +16,16 @@ info:
     An EventType defines properties relevant for the operation of its associated stream, namely:
 
     * The **schema** of the Event of this EventType. The schema defines the accepted format of Events of an
-    EventType and will be, if so desired, enforced by Nakadi. Usually Nakadi will respect the schema for the
-    EventTypes in accordance to how an owning Application defines them.
-      **Note:** *Currently the specification of the schema must be pushed into Nakadi on EventType creation;
-      in the future, assuming that Applications will expose the schema for its owned resources, Nakadi might
-      support fetching the schema directly from them.*
-      Nakadi might define globally minimal schema complience requirements (i.e. some fields that must be
-      present on schemas of all EventTypes).
+    EventType and will be, if so desired, enforced by Nakadi. Usually Nakadi will respect the schema for
+    the EventTypes in accordance to how an owning Application defines them.
+    **Note:** *Currently the specification of the schema must be pushed into Nakadi on EventType creation;
+    in the future, assuming that Applications will expose the schema for its owned resources, Nakadi might
+    support fetching the schema directly from them.*
+    Nakadi might define globally minimal schema compliance requirements (i.e. some fields that must be
+    present on schemas of all EventTypes).
 
     * The expected **validation** and **enrichment** procedures upon reception of an Event.
-      (*TODO: define validation and enrichment*)
+    (*TODO: define validation and enrichment*)
 
     * The **ordering** expectations of Events in this stream. (*TODO: define ordering not in terms of
     partitioning*)
@@ -39,8 +39,8 @@ info:
     responsibility of position tracking and partitioning (and therefore ordering) to the Clients.
 
     The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType.
-    Subscriptions are persitent relationships from an Application (which might have several instances) and the
-    stream of an EventType, whose consumption tracking is managed by Nakadi, freeing Consumers from any
+    Subscriptions are persistent relationships from an Application (which might have several instances) and
+    the stream of an EventType, whose consumption tracking is managed by Nakadi, freeing Consumers from any
     responsibility in tracking the current position on a Stream.
 
 
@@ -58,8 +58,8 @@ info:
 
     * Topic API (low level).
 
-    Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included in
-    this version of this specification.
+    Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included
+    in this version of this specification.
 
     Notable omissions here are:
     * The contract between Nakadi and clients in the context of the high-level API (i.e. the process for
@@ -71,8 +71,8 @@ info:
 
     * Security scopes (OAuth) for the different operations
 
-    * Validation and Enrichment Strategies available in Nakadi are out of this document an can be consulted in
-    an external document (TBD link to document).
+    * Validation and Enrichment Strategies available in Nakadi are out of this document an can be consulted
+    in an external document (TBD link to document).
 
 
   version: '0.5'
@@ -141,11 +141,11 @@ paths:
       description: |
         Creates a new `EventType`.
 
-        **Implementation note:** The creation of an EventType implicitly creates the structures in the backing
-        messaging implementation needed for the reception and persistency of the Events. Considering that at
-        this time only Kafka is used, this corresponds to the creation of a Topic. If so desired, clients can
-        interact directly with the topic using the low level API (for existing restrictions see the
-        corresponding methods on the topic-api).
+        **Implementation note:** The creation of an EventType implicitly creates the structures in the
+        backing messaging implementation needed for the reception and persistency of the Events. Considering
+        that at this time only Kafka is used, this corresponds to the creation of a Topic. If so desired,
+        clients can interact directly with the topic using the low level API (for existing restrictions see
+        the corresponding methods on the topic-api).
 
         The fields validation-strategies, enrichment-strategies and partition-resolution-strategy have all an
         effect on the incoming Event of this EventType. For its impacts on the reception of events please
@@ -507,14 +507,15 @@ paths:
         - topic-api
         - draft
       description: |
-        Post a one or more `Event`s to a given `Topic` (of an `EventType`). Upon recpetion the `EventType`'s
+        Post one `Event`s to a given `Topic` (of an `EventType`). Upon reception the `EventType`'s
         validation and enrichment rules are applied. For details on their behaviour please see POST /even
         t-types/{name}/events.
 
+        (TBD: submission of batches of events)
+
         Restriction: To avoid inconsistencies in the relative ordering of Events, **this operation cannot be
-        used if this
-        Topic's defining EventType defines a `PartitionResolutionStrategy`.** Doing so will produce a 405 Not
-        allowed.
+        used if this Topic's defining EventType defines a `PartitionResolutionStrategy`.** Doing so will
+        produce a 405 Not allowed.
       parameters:
         - name: topic
           in: path
