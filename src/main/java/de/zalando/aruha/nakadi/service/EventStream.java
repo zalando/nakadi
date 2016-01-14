@@ -1,30 +1,30 @@
 package de.zalando.aruha.nakadi.service;
 
-import static java.lang.System.currentTimeMillis;
-
-import static java.util.function.Function.identity;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.NakadiRuntimeException;
+import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import de.zalando.aruha.nakadi.domain.Cursor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static java.lang.System.currentTimeMillis;
+import static java.util.function.Function.identity;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.ConsumedEvent;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
-
+/**
+ * todo: this class doesn't yet support streaming from multiple topics
+ */
 public class EventStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
@@ -36,6 +36,8 @@ public class EventStream {
     private final EventConsumer eventConsumer;
 
     private final EventStreamConfig config;
+
+    private List<String> partitions;
 
     private AtomicReference<Optional<List<Cursor>>> newDistribution = new AtomicReference<>(Optional.empty());
 
@@ -50,7 +52,7 @@ public class EventStream {
         this.config = config;
     }
 
-    public void changeDistribution(final List<Cursor> newDistribution) {
+    public void setOffsets(final List<Cursor> newDistribution) {
         this.newDistribution.lazySet(Optional.of(newDistribution));
     }
 
@@ -72,6 +74,9 @@ public class EventStream {
 
     public void streamEvents() {
 
+        if (!newDistribution.get().isPresent()) {
+            throw new NakadiRuntimeException("Not possible to start the stream without cursors set");
+        }
         // todo: currently if:
         // - stream limit and timeout are not set AND
         // - the keep-alive is not set AND
@@ -83,21 +88,33 @@ public class EventStream {
             int messagesRead = 0;
             int messagesReadInBatch = 0;
 
-            Map<String, List<String>> currentBatch = emptyBatch();
-            final Map<String, String> latestOffsets = Maps.newHashMap(config.getCursors());
+            Map<String, List<String>> currentBatch = ImmutableMap.of();
+            Map<String, String> latestOffsets = ImmutableMap.of();
 
             long start = currentTimeMillis();
             long batchStartTime = start;
 
             while (true) {
-                newDistribution
-                        .getAndSet(Optional.empty())
-                        .map(cursors ->
-                                cursors.stream()
-                                        .collect(Collectors.toMap(
-                                                Cursor::getPartition,
-                                                Cursor::getOffset)))
-                        .ifPresent(eventConsumer::updateCursors);
+
+                // check if rebalance is onvoked
+                final Optional<List<Cursor>> newCursorsOrNone = newDistribution.getAndSet(Optional.empty());
+                if (newCursorsOrNone.isPresent()) {
+                    final List<Cursor> newCursors = newCursorsOrNone.get();
+                    eventConsumer.setCursors(newCursors);
+                    partitions = newCursors
+                            .stream()
+                            .map(Cursor::getPartition)
+                            .collect(Collectors.toList());
+                    latestOffsets = newCursors
+                            .stream()
+                            .collect(Collectors.toMap(
+                                    Cursor::getPartition,
+                                    Cursor::getOffset));
+                    // forget about all messages not flushed
+                    messagesReadInBatch = 0;
+                    currentBatch = emptyBatch();
+                    batchStartTime = currentTimeMillis();
+                }
 
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
 
@@ -164,8 +181,7 @@ public class EventStream {
     }
 
     private Map<String, List<String>> emptyBatch() {
-        return config.getCursors().keySet().stream().collect(Collectors.toMap(identity(),
-                    partition -> Lists.newArrayList()));
+        return partitions.stream().collect(Collectors.toMap(identity(), partition -> Lists.newArrayList()));
     }
 
     private String createStreamEvent(final String partition, final String offset, final List<String> events,
@@ -186,7 +202,7 @@ public class EventStream {
         throws IOException {
 
         // iterate through all partitions we stream for
-        for (String partition : config.getCursors().keySet()) {
+        for (String partition : partitions) {
             List<String> events = ImmutableList.of();
 
             // if there are some events read for current partition - grab them

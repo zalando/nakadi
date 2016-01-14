@@ -1,22 +1,19 @@
 package de.zalando.aruha.nakadi.service;
 
-import java.util.Map;
 import java.util.Optional;
 
 public class EventStreamConfig {
     private String topic;
-    private Map<String, String> cursors;
     private Integer batchLimit;
     private Optional<Integer> streamLimit;
     private Optional<Integer> batchTimeout;
     private Optional<Integer> streamTimeout;
     private Optional<Integer> batchKeepAliveLimit;
 
-    public EventStreamConfig(final String topic, final Map<String, String> cursors, final Integer batchLimit,
+    public EventStreamConfig(final String topic, final Integer batchLimit,
             final Optional<Integer> streamLimit, final Optional<Integer> batchTimeout,
             final Optional<Integer> streamTimeout, final Optional<Integer> batchKeepAliveLimit) {
         this.topic = topic;
-        this.cursors = cursors;
         this.batchLimit = batchLimit;
         this.streamLimit = streamLimit;
         this.batchTimeout = batchTimeout;
@@ -26,10 +23,6 @@ public class EventStreamConfig {
 
     public String getTopic() {
         return topic;
-    }
-
-    public Map<String, String> getCursors() {
-        return cursors;
     }
 
     public Integer getBatchLimit() {
@@ -58,14 +51,13 @@ public class EventStreamConfig {
 
     @Override
     public String toString() {
-        return "EventStreamConfig{" + "topic='" + topic + '\'' + ", cursors=" + cursors + ", batchLimit=" + batchLimit
+        return "EventStreamConfig{" + "topic='" + topic + '\'' + ", batchLimit=" + batchLimit
                 + ", streamLimit=" + streamLimit + ", batchTimeout=" + batchTimeout + ", streamTimeout=" + streamTimeout
                 + ", batchKeepAliveLimit=" + batchKeepAliveLimit + '}';
     }
 
     public static class Builder {
         private String topic;
-        private Map<String, String> cursors;
         private Integer batchLimit;
         private Optional<Integer> streamLimit;
         private Optional<Integer> batchTimeout;
@@ -80,11 +72,6 @@ public class EventStreamConfig {
 
         public Builder withTopic(final String topic) {
             this.topic = topic;
-            return this;
-        }
-
-        public Builder withCursors(final Map<String, String> cursors) {
-            this.cursors = cursors;
             return this;
         }
 
@@ -114,7 +101,7 @@ public class EventStreamConfig {
         }
 
         public EventStreamConfig build() {
-            return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout,
+            return new EventStreamConfig(topic, batchLimit, streamLimit, batchTimeout, streamTimeout,
                     batchKeepAliveLimit);
         }
     }

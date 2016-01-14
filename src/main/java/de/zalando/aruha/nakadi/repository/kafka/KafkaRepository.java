@@ -158,7 +158,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) {
-        return new NakadiKafkaConsumer(factory, topic, cursors, kafkaPollTimeout);
+    public EventConsumer createEventConsumer() {
+        return new NakadiKafkaConsumer(factory, kafkaPollTimeout);
     }
 }

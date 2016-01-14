@@ -25,5 +25,5 @@ public interface TopicRepository {
 
     boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
 
-    EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
+    EventConsumer createEventConsumer();
 }

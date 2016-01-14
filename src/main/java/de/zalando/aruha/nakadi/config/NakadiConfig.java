@@ -4,6 +4,8 @@ import de.zalando.aruha.nakadi.repository.LocalSubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStreamManager;
+import de.zalando.aruha.nakadi.service.PartitionDistributor;
+import de.zalando.aruha.nakadi.service.RegularPartitionDistributor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,11 +76,16 @@ public class NakadiConfig {
 
     @Bean
     public EventStreamManager eventStreamManager() {
-        return new EventStreamManager(topicRepository, subscriptionRepository());
+        return new EventStreamManager(subscriptionRepository(), partitionDistributor());
     }
 
     @Bean
     public SubscriptionRepository subscriptionRepository() {
         return new LocalSubscriptionRepository();
+    }
+
+    @Bean
+    public PartitionDistributor partitionDistributor() {
+        return new RegularPartitionDistributor(topicRepository, subscriptionRepository());
     }
 }

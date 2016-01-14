@@ -38,4 +38,13 @@ public class Cursor {
     public void setOffset(final String offset) {
         this.offset = offset;
     }
+
+    @Override
+    public String toString() {
+        return "Cursor{" +
+                "topic='" + topic + '\'' +
+                ", partition='" + partition + '\'' +
+                ", offset='" + offset + '\'' +
+                '}';
+    }
 }

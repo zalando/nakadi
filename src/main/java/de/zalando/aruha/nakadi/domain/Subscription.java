@@ -62,4 +62,13 @@ public class Subscription {
                 })
                 .setOffset(offset);
     }
+
+    @Override
+    public String toString() {
+        return "Subscription{" +
+                "subscriptionId='" + subscriptionId + '\'' +
+                ", topics=" + topics +
+                ", cursors=" + cursors +
+                '}';
+    }
 }

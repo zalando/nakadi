@@ -7,6 +7,7 @@ import java.util.Queue;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import de.zalando.aruha.nakadi.domain.Cursor;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.InvalidOffsetException;
@@ -33,34 +34,50 @@ public class NakadiKafkaConsumer implements EventConsumer {
 
     private final long pollTimeout;
 
-    private final String topic;
-
-    public NakadiKafkaConsumer(final KafkaFactory factory, final String topic, final Map<String, String> cursors,
-            final long pollTimeout) {
+    public NakadiKafkaConsumer(final KafkaFactory factory, final long pollTimeout) {
         kafkaConsumer = factory.getConsumer();
-        this.topic = topic;
         this.pollTimeout = pollTimeout;
-        updateCursors(cursors);
     }
 
+//    @Override
+//    public void setCursors(final Map<String, String> cursors) {
+//        // define topic/partitions to consume from
+//        topicPartitions = cursors.keySet().stream().map(partition ->
+//                new TopicPartition(topic, Integer.parseInt(partition))).collect(Collectors.toList());
+//        kafkaConsumer.assign(topicPartitions);
+//
+//        // set offsets
+//        topicPartitions.forEach(topicPartition -> {
+//            kafkaConsumer.seek(topicPartition,
+//                    Long.parseLong(cursors.get(Integer.toString(topicPartition.partition()))));
+//        });
+//
+//        eventQueue = Lists.newLinkedList();
+//
+//        System.out.println("<<<<<<<<<<<<<<< >>>>>>>>>>>>>>>>>>");
+//        System.out.println("Consumer is now configured to consume from partitions: ");
+//        cursors.keySet().stream().forEach(x -> System.out.println(x + " "));
+//    }
+
     @Override
-    public void updateCursors(final Map<String, String> cursors) {
+    public void setCursors(final List<Cursor> cursors) {
         // define topic/partitions to consume from
-        topicPartitions = cursors.keySet().stream().map(partition ->
-                new TopicPartition(topic, Integer.parseInt(partition))).collect(Collectors.toList());
+        topicPartitions = cursors
+                .stream()
+                .map(cursor -> new TopicPartition(cursor.getTopic(), Integer.parseInt(cursor.getPartition())))
+                .collect(Collectors.toList());
         kafkaConsumer.assign(topicPartitions);
 
         // set offsets
-        topicPartitions.forEach(topicPartition -> {
-            kafkaConsumer.seek(topicPartition,
-                    Long.parseLong(cursors.get(Integer.toString(topicPartition.partition()))));
-        });
+        cursors.forEach(cursor ->
+                kafkaConsumer.seek(new TopicPartition(cursor.getTopic(), Integer.parseInt(cursor.getPartition())),
+                        Long.parseLong(cursor.getOffset())));
 
         eventQueue = Lists.newLinkedList();
 
         System.out.println("<<<<<<<<<<<<<<< >>>>>>>>>>>>>>>>>>");
-        System.out.println("Consumer is now configured to consume from partitions: ");
-        cursors.keySet().stream().forEach(x -> System.out.println(x + " "));
+        System.out.println("Consumer is now configured with cursors: ");
+        System.out.println(cursors);
     }
 
     @Override

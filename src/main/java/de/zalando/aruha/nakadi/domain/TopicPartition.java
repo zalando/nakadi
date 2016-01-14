@@ -29,4 +29,12 @@ public class TopicPartition implements Comparable<TopicPartition> {
             return partition.compareTo(tp.getPartition());
         }
     }
+
+    @Override
+    public String toString() {
+        return "TopicPartition{" +
+                "topic='" + topic + '\'' +
+                ", partition='" + partition + '\'' +
+                '}';
+    }
 }

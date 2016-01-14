@@ -1,11 +1,13 @@
 package de.zalando.aruha.nakadi.repository;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import de.zalando.aruha.nakadi.domain.Topology;
 import de.zalando.aruha.nakadi.domain.Subscription;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,7 +20,7 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
 
     private Map<String, Subscription> subscriptions = Collections.synchronizedMap(Maps.newHashMap());
 
-    private Map<String, Topology> simpleTopologies = Collections.synchronizedMap(Maps.newHashMap());
+    private Map<String, List<String>> topologies = Collections.synchronizedMap(Maps.newHashMap());
 
     public LocalSubscriptionRepository() {
         // Database bootstrap :-D
@@ -46,12 +48,28 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
     }
 
     @Override
-    public void setNewTopology(final String subscriptionId, final Topology newTopology) {
-        simpleTopologies.put(subscriptionId, newTopology);
+    public void addClient(final String subcriptionId, final String clientId) {
+        Optional
+                .ofNullable(topologies.get(subcriptionId))
+                .orElseGet(() -> {
+                    final List<String> clientIds = Collections.synchronizedList(Lists.newArrayList());
+                    topologies.put(subcriptionId, clientIds);
+                    return clientIds;
+                })
+                .add(clientId);
+    }
+
+    @Override
+    public void removeClient(final String subcriptionId, final String clientId) {
+        Optional
+                .ofNullable(topologies.get(subcriptionId))
+                .ifPresent(clientIds -> clientIds.remove(clientId));
     }
 
     @Override
     public Optional<Topology> getTopology(final String subscriptionId) {
-        return Optional.ofNullable(simpleTopologies.get(subscriptionId));
+        return Optional
+                .ofNullable(topologies.get(subscriptionId))
+                .map(Topology::new);
     }
 }

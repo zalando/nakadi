@@ -13,7 +13,9 @@ public interface SubscriptionRepository {
 
     String generateNewClientId(Subscription subscription);
 
-    void setNewTopology(String subscriptionId, Topology newTopology);
+    void addClient(String subcriptionId, String clientId);
+
+    void removeClient(String subcriptionId, String clientId);
 
     Optional<Topology> getTopology(String subscriptionId);
 }

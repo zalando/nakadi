@@ -70,7 +70,8 @@ public class NakadiKafkaConsumerTest {
                 randomUIntAsString(), randomULongAsString(), randomUIntAsString(), randomULongAsString());
 
         // ACT //
-        new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, cursors, POLL_TIMEOUT);
+//        new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, cursors, POLL_TIMEOUT);
+        new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
 
         // ASSERT //
         final List<TopicPartition> assignedPartitions = partitionsCaptor.getValue();
@@ -117,7 +118,7 @@ public class NakadiKafkaConsumerTest {
         final ImmutableMap<String, String> cursors = ImmutableMap.of(Integer.toString(PARTITION), "0");
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, cursors, POLL_TIMEOUT);
+        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
         final Optional<ConsumedEvent> consumedEvent1 = consumer.readEvent();
         final Optional<ConsumedEvent> consumedEvent2 = consumer.readEvent();
         final Optional<ConsumedEvent> consumedEvent3 = consumer.readEvent();
@@ -156,8 +157,7 @@ public class NakadiKafkaConsumerTest {
             try {
 
                 // ACT //
-                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, ImmutableMap.of(),
-                        POLL_TIMEOUT);
+                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
                 consumer.readEvent();
 
                 // ASSERT //
@@ -193,7 +193,7 @@ public class NakadiKafkaConsumerTest {
         final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, cursors, POLL_TIMEOUT);
+        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
         final Map<String, String> offsets = consumer.fetchNextOffsets();
 
         // ASSERT //

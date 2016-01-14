@@ -14,6 +14,8 @@ import java.util.function.Predicate;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.google.common.collect.ImmutableList;
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,7 +146,6 @@ public class TopicsController {
                 final EventStreamConfig streamConfig = EventStreamConfig
                         .builder()
                         .withTopic(topic)
-                        .withCursors(ImmutableMap.of(partition, startFrom))
                         .withBatchLimit(batchLimit)
                         .withStreamLimit(ofNullable(streamLimit))
                         .withBatchTimeout(ofNullable(batchTimeout))
@@ -161,9 +162,9 @@ public class TopicsController {
                     response.addHeader("Content-Encoding", "gzip");
                 }
 
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic,
-                        streamConfig.getCursors());
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer();
                 final EventStream eventStream = new EventStream(eventConsumer, output, streamConfig);
+                eventStream.setOffsets(ImmutableList.of(new Cursor(topic, partition, startFrom)));
                 eventStream.streamEvents();
 
                 if (gzipEnabled) {
