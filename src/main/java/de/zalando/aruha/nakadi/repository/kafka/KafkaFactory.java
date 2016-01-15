@@ -1,7 +1,10 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import java.util.Map;
 import java.util.Properties;
 
+import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableCollection;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
