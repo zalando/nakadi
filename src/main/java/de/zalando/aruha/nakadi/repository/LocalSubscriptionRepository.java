@@ -3,6 +3,8 @@ package de.zalando.aruha.nakadi.repository;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.domain.Topology;
 import de.zalando.aruha.nakadi.domain.Subscription;
 
@@ -33,17 +35,29 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
     }
 
     @Override
-    public Subscription getSubscription(final String subscriptionId) {
-        return subscriptions.get(subscriptionId);
+    public void createSubscription(final String subscriptionId, final List<String> topics, final List<Cursor> cursors) {
+        final Subscription subscription = new Subscription(subscriptionId, topics);
+        cursors.forEach(cursor -> subscription.updateCursor(cursor.getTopic(), cursor.getPartition(), cursor.getOffset()));
+        subscriptions.put(subscriptionId, subscription);
     }
 
     @Override
-    public void saveSubscription(final Subscription subscription) {
-        subscriptions.put(subscription.getSubscriptionId(), subscription);
+    public List<String> getSubscriptionTopics(final String subscriptionId) {
+        return subscriptions.get(subscriptionId).getTopics();
     }
 
     @Override
-    public String generateNewClientId(final Subscription subscription) {
+    public Cursor getCursor(final String subscriptionId, final String topic, final String partition) {
+        return subscriptions.get(subscriptionId).getCursor(new TopicPartition(topic, partition)).get();
+    }
+
+    @Override
+    public void saveCursor(final String subscriptionId, final Cursor cursor) {
+        subscriptions.get(subscriptionId).updateCursor(cursor.getTopic(), cursor.getPartition(), cursor.getOffset());
+    }
+
+    @Override
+    public String generateNewClientId() {
         return UUID.randomUUID().toString();
     }
 
@@ -67,9 +81,10 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
     }
 
     @Override
-    public Optional<Topology> getTopology(final String subscriptionId) {
-        return Optional
+    public Topology getTopology(final String subscriptionId) {
+        final List<String> clientIds = Optional
                 .ofNullable(topologies.get(subscriptionId))
-                .map(Topology::new);
+                .orElse(Lists.newArrayList());
+        return new Topology(clientIds);
     }
 }

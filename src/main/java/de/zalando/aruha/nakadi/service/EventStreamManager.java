@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.domain.Topology;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
@@ -74,14 +73,10 @@ public class EventStreamManager {
      * @param subscriptionId id of subscription to check for rebalance
      */
     private void rebalanceSubscriptionIfNeeded(final String subscriptionId) {
-        subscriptionRepository
-                .getTopology(subscriptionId)
-                .ifPresent(topology -> {
-                    if (currentTopologies.get(subscriptionId) == null ||
-                            (!currentTopologies.get(subscriptionId).equals(topology))) {
-                        applyNewTopology(subscriptionId, topology);
-                    }
-                });
+        final Topology topology = subscriptionRepository.getTopology(subscriptionId);
+        if (currentTopologies.get(subscriptionId) == null || !currentTopologies.get(subscriptionId).equals(topology)) {
+            applyNewTopology(subscriptionId, topology);
+        }
     }
 
     /**
@@ -91,8 +86,6 @@ public class EventStreamManager {
      * @param newTopology the topology to apply
      */
     private void applyNewTopology(final String subscriptionId, final Topology newTopology) {
-
-        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 
         // collect indexes of clients running on this Nakadi instance for this subscription
         final List<Integer> clientsIndexes = eventStreams
@@ -119,10 +112,8 @@ public class EventStreamManager {
                     final List<Cursor> cursorsForClient = newPartitionsForClients
                             .get(clientIndex)
                             .stream()
-                            .map((Function<TopicPartition, Cursor>) tp -> subscription
-                                    .getCursor(tp)
-                                    .orElseThrow(() ->
-                                            new NakadiRuntimeException("Cursor not found for topic/partition")))
+                            .map(tp ->
+                                    subscriptionRepository.getCursor(subscriptionId, tp.getTopic(), tp.getPartition()))
                             .collect(Collectors.toList());
 
                     eventStream.setOffsets(cursorsForClient);

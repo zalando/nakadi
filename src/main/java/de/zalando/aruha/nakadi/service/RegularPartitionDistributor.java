@@ -10,7 +10,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class RegularPartitionDistributor implements PartitionDistributor{
+public class RegularPartitionDistributor implements PartitionDistributor {
 
     private final TopicRepository topicRepository;
 
@@ -27,8 +27,7 @@ public class RegularPartitionDistributor implements PartitionDistributor{
                                                                       final List<Integer> clientIndexes,
                                                                       final int clientsNum) {
         final List<TopicPartition> allPartitionsSorted = subscriptionRepository
-                .getSubscription(subscriptionId)
-                .getTopics()
+                .getSubscriptionTopics(subscriptionId)
                 .stream()
                 .flatMap(topic -> topicRepository
                         .listPartitions(topic)

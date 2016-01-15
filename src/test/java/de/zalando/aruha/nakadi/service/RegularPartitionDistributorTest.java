@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -43,8 +42,8 @@ public class RegularPartitionDistributorTest {
 
         // ARRANGE //
         final String subscriptionId = "sub1";
-        final SubscriptionRepository subscriptionRepository =
-                subscriptionRepositoryMock(subscriptionId, ImmutableList.of("c", "a", "b"));
+        final SubscriptionRepository subscriptionRepository = mock(SubscriptionRepository.class);
+        when(subscriptionRepository.getSubscriptionTopics(subscriptionId)).thenReturn(ImmutableList.of("c", "a", "b"));
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(topicRepository.listPartitions("a")).thenReturn(ImmutableList.of("3", "4", "0", "1", "5", "2", "6", "7"));
@@ -91,8 +90,8 @@ public class RegularPartitionDistributorTest {
 
         // ARRANGE //
         final String subscriptionId = "sub1";
-        final SubscriptionRepository subscriptionRepository =
-                subscriptionRepositoryMock(subscriptionId, ImmutableList.of("a"));
+        final SubscriptionRepository subscriptionRepository = mock(SubscriptionRepository.class);
+        when(subscriptionRepository.getSubscriptionTopics(subscriptionId)).thenReturn(ImmutableList.of("a"));
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(topicRepository.listPartitions("a")).thenReturn(ImmutableList.of("0", "1"));
@@ -109,14 +108,6 @@ public class RegularPartitionDistributorTest {
                 1, ImmutableList.of(new TopicPartition("a", "1")),
                 2, ImmutableList.of()
         )));
-    }
-
-    private SubscriptionRepository subscriptionRepositoryMock(final String subscriptionId,
-                                                              final ImmutableList<String> subscriptionTopic) {
-        final SubscriptionRepository subscriptionRepository = mock(SubscriptionRepository.class);
-        final Subscription subscription = new Subscription(subscriptionId, subscriptionTopic);
-        when(subscriptionRepository.getSubscription(subscriptionId)).thenReturn(subscription);
-        return subscriptionRepository;
     }
 
 }

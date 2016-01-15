@@ -33,11 +33,11 @@ public class EventStream {
 
     private final OutputStream outputStream;
 
-    private final EventConsumer eventConsumer;
+    protected final EventConsumer eventConsumer;
 
     private final EventStreamConfig config;
 
-    private List<String> partitions;
+    protected List<String> partitions;
 
     private AtomicReference<Optional<List<Cursor>>> newDistribution = new AtomicReference<>(Optional.empty());
 
@@ -96,7 +96,7 @@ public class EventStream {
 
             while (true) {
 
-                // check if rebalance is onvoked
+                // check if rebalance is invoked
                 final Optional<List<Cursor>> newCursorsOrNone = newDistribution.getAndSet(Optional.empty());
                 if (newCursorsOrNone.isPresent()) {
                     final List<Cursor> newCursors = newCursorsOrNone.get();

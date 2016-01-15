@@ -11,6 +11,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
@@ -69,7 +70,7 @@ public class KafkaRepository implements TopicRepository {
         try {
             return zkFactory.get().getChildren("/brokers/topics", false).stream().map(Topic::new).collect(
                     Collectors.toList());
-        } catch (KeeperException | InterruptedException | IOException e) {
+        } catch (KeeperException | InterruptedException  e) {
             throw new NakadiException("Failed to get partitions", e);
         }
     }
@@ -97,7 +98,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartitionOffsets> listPartitionsOffsets(final String topicId) throws NakadiException {
+    public List<TopicPartitionOffsets> listPartitionsOffsets(final String topicId) {
 
         final SimpleConsumer sc = factory.getSimpleConsumer();
         try {
@@ -122,7 +123,11 @@ public class KafkaRepository implements TopicRepository {
             return partitions.stream().map(r ->
                     processTopicPartitionMetadata(r, latestPartitionData,
                             earliestPartitionData)).collect(Collectors.toList());
-        } finally {
+        }
+        catch (Exception e) {
+            throw new NakadiRuntimeException("Error when getting topics offsets", e);
+        }
+        finally {
             sc.close();
         }
     }

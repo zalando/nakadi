@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.common.collect.ImmutableList;
+import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import org.slf4j.Logger;
@@ -36,8 +37,6 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import com.codahale.metrics.annotation.Timed;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import com.google.common.collect.ImmutableMap;
 
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Problem;
@@ -65,7 +64,7 @@ public class TopicsController {
         try {
             return ok().body(topicRepository.listTopics());
         } catch (final NakadiException e) {
-            return status(503).body(e.getProblemMessage());
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getProblemMessage());
         }
     }
 
@@ -74,8 +73,8 @@ public class TopicsController {
     public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
         try {
             return ok().body(topicRepository.listPartitionsOffsets(topicId));
-        } catch (final NakadiException e) {
-            return status(503).body(e.getProblemMessage());
+        } catch (final NakadiRuntimeException e) {
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.asProblem());
         }
     }
 
@@ -95,7 +94,7 @@ public class TopicsController {
             return status(HttpStatus.CREATED).build();
         } catch (final NakadiException e) {
             LOG.error("error posting to partition", e);
-            return status(500).body(e.getProblemMessage());
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getProblemMessage());
         }
     }
 

@@ -25,7 +25,7 @@ public class ZooKeeperHolder {
         zooKeeper = new ZooKeeper(brokers, 30000, null);
     }
 
-    public ZooKeeper get() throws IOException {
+    public ZooKeeper get() {
         return zooKeeper;
     }
 }

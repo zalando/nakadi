@@ -1,8 +1,9 @@
 package de.zalando.aruha.nakadi.config;
 
-import de.zalando.aruha.nakadi.repository.LocalSubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.repository.ZkSubscriptionRepository;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.service.EventStreamManager;
 import de.zalando.aruha.nakadi.service.PartitionDistributor;
 import de.zalando.aruha.nakadi.service.RegularPartitionDistributor;
@@ -43,6 +44,9 @@ public class NakadiConfig {
     @Autowired
     private TopicRepository topicRepository;
 
+    @Autowired
+    private ZooKeeperHolder zooKeeperHolder;
+
     @Bean
     public TaskExecutor taskExecutor() {
         return new SimpleAsyncTaskExecutor();
@@ -81,7 +85,7 @@ public class NakadiConfig {
 
     @Bean
     public SubscriptionRepository subscriptionRepository() {
-        return new LocalSubscriptionRepository();
+        return new ZkSubscriptionRepository(zooKeeperHolder);
     }
 
     @Bean

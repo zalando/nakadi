@@ -1,21 +1,25 @@
 package de.zalando.aruha.nakadi.repository;
 
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topology;
-import de.zalando.aruha.nakadi.domain.Subscription;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface SubscriptionRepository {
 
-    Subscription getSubscription(String subscriptionId);
+    void createSubscription(String subscriptionId, List<String> topics, List<Cursor> cursors);
 
-    void saveSubscription(Subscription subscription);
+    List<String> getSubscriptionTopics(String subscriptionId);
 
-    String generateNewClientId(Subscription subscription);
+    Cursor getCursor(String subscriptionId, String topic, String partition);
+
+    void saveCursor(String subscriptionId, Cursor cursor);
+
+    String generateNewClientId();
 
     void addClient(String subcriptionId, String clientId);
 
     void removeClient(String subcriptionId, String clientId);
 
-    Optional<Topology> getTopology(String subscriptionId);
+    Topology getTopology(String subscriptionId);
 }

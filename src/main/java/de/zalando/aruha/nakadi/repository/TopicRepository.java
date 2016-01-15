@@ -21,7 +21,7 @@ public interface TopicRepository {
 
     List<String> listPartitions(String topic);
 
-    List<TopicPartitionOffsets> listPartitionsOffsets(String topicId) throws NakadiException;
+    List<TopicPartitionOffsets> listPartitionsOffsets(String topicId);
 
     boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
 

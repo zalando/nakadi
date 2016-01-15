@@ -2,9 +2,8 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.domain.Problem;
-import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -30,6 +29,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.util.Optional.ofNullable;
 
@@ -48,18 +48,39 @@ public class SubscriptionController {
     @Autowired
     private EventStreamManager eventStreamManager;
 
+    @Timed(name = "create_subscription", absolute = true)
+    @RequestMapping(value = "/{subscription}", method = RequestMethod.POST)
+    public ResponseEntity createSubscription(@PathVariable("subscription") final String subscriptionId,
+                                             @RequestBody final List<String> topics) {
+        try {
+            final List<Cursor> initialCursors = topics
+                    .stream()
+                    .flatMap(topic -> topicRepository.listPartitionsOffsets(topic).stream())
+                    .map(offsets -> new Cursor(offsets.getTopicId(), offsets.getPartitionId(),
+                            offsets.getNewestAvailableOffset()))
+                    .collect(Collectors.toList());
+            subscriptionRepository.createSubscription(subscriptionId, topics, initialCursors);
+            LOG.info("Created subscription");
+        }
+        catch (NakadiRuntimeException e) {
+            LOG.error("Error during subscription creation", e.getCause());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
     @Timed(name = "commit_offsets", absolute = true)
     @RequestMapping(value = "/{subscription}/cursors", method = RequestMethod.POST)
     public ResponseEntity commitOffsets(@PathVariable("subscription") final String subscriptionId,
-                                        @RequestBody final List<Cursor> cursors) throws InterruptedException, NakadiException {
+                                        @RequestBody final List<Cursor> cursors)
+            throws InterruptedException, NakadiException {
+
         try {
-            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            cursors.stream().forEach(cursor ->
-                    subscription.updateCursor(cursor.getTopic(), cursor.getPartition(), cursor.getOffset()));
-            subscriptionRepository.saveSubscription(subscription);
-        } catch (Exception e) {
+            cursors.stream().forEach(cursor -> subscriptionRepository.saveCursor(subscriptionId, cursor));
+        }
+        catch (NakadiRuntimeException e) {
             LOG.error("Error during offsets commit", e.getCause());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new Problem("Commit error"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
         return ResponseEntity.ok().build();
     }
@@ -87,8 +108,6 @@ public class SubscriptionController {
                     response.addHeader("Content-Encoding", "gzip");
                 }
 
-                final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-
                 final EventConsumer eventConsumer = topicRepository.createEventConsumer();
 
                 final EventStreamConfig streamConfig = EventStreamConfig
@@ -103,7 +122,7 @@ public class SubscriptionController {
                 eventStream = new EventStream(eventConsumer, output, streamConfig);
                 eventStream.setSubscriptionId(subscriptionId);
 
-                final String newClientId = subscriptionRepository.generateNewClientId(subscription);
+                final String newClientId = subscriptionRepository.generateNewClientId();
                 eventStream.setClientId(newClientId);
                 eventStreamManager.addEventStream(eventStream);
                 eventStream.streamEvents();
