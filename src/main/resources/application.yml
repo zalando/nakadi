@@ -10,7 +10,6 @@ nakadi:
   kafka:
     poll:
       timeoutMs: 100
-    connectionString: 127.0.0.1:9092
   zookeeper:
     kafkaNamespace:
     brokers: 127.0.0.1:2181
