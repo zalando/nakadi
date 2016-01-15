@@ -127,7 +127,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
       responses:
         '200':
           description: Ok
@@ -236,7 +235,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
       responses:
         '200':
           description: Ok
@@ -286,7 +284,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
       responses:
         '200':
           description: Ok
@@ -346,8 +343,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
-
       responses:
         '200':
           description: Ok
@@ -393,8 +388,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          required: true
-
       responses:
         '200':
           description: The request was successful. Returns a list `Topic`s in the response body.
@@ -523,8 +516,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
-
       responses:
         '200':
           description: |
@@ -596,8 +587,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
-
       responses:
         '201':
           description: All events are submitted successfully.
@@ -653,7 +642,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
       responses:
         '200':
           description: OK
@@ -696,8 +684,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
-
       responses:
         '200':
           description: OK
@@ -763,8 +749,6 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
-          required: true
-
       responses:
         '201':
           description: Event submitted.
