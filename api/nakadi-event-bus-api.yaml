@@ -709,7 +709,7 @@ paths:
         - topic-api
         - draft
       description: |
-        Post a one or more `Event`s to a given `Topic` (of an `EventType`). Upon recpetion the `EventType`'s
+        Post a one or more `Event`s to a given `Topic` (of an `EventType`). Upon reception the `EventType`'s
         validation and enrichment rules are applied. For details on their behaviour please see POST
         /event-types/{name}/events.
 
