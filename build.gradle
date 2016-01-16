@@ -1,21 +1,48 @@
 import java.util.concurrent.TimeUnit
 
-apply plugin: 'java'
-apply plugin: 'groovy'
-apply plugin: 'eclipse'
-apply plugin: 'application'
-apply plugin: 'spring-boot'
-apply plugin: "jacoco"
-apply plugin: 'checkstyle'
-checkstyle {
-    toolVersion '6.14.1'
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+        jcenter()
+    }
+
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
+    }
 }
+
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'eclipse'
+    id 'application'
+    id 'jacoco'
+    id 'checkstyle'
+    id "com.github.sherter.google-java-format" version "0.1"
+}
+
+apply plugin: 'spring-boot' // because spring-boot team does not want to use gradle to publish gradle plugin :D
+
 task checkstyle(type: Checkstyle) {
     source 'src'
     include '**/*.java'
     exclude '**/gen/**'
+    configFile file("${project.rootDir}/config/checkstyle/google_checks.xml")
     classpath = files()
 }
+
+checkstyle {
+    toolVersion = "6.14.1"
+}
+
+repositories {
+    repositories {
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+        jcenter()
+    }
+}
+
 
 // if this is applied, include scala dependencies (see below)
 // apply plugin: 'scala'
@@ -29,10 +56,6 @@ def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
 
 def dockerRunTimeout = 300
-
-repositories {
-    mavenCentral()
-}
 
 sourceSets {
     integrationTest {
@@ -54,18 +77,6 @@ sourceSets {
     }
 }
 
-buildscript {
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-
-    dependencies {
-        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
-    }
-}
 
 jar {
     baseName = 'nakadi'

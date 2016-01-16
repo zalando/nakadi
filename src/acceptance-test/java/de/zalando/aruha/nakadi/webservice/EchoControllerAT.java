@@ -10,12 +10,18 @@ import org.junit.Test;
 
 public class EchoControllerAT extends BaseAT {
 
-    private static final String ECHO_RESOURCE = "/api/echo";
+  private static final String ECHO_RESOURCE = "/api/echo";
 
-    @Test
-    public void echoServiceShouldEchoInput() {
+  @Test
+  public void echoServiceShouldEchoInput() {
 
-        final String echo = "helloooo";
-        given().param("toEcho", echo).when().get(ECHO_RESOURCE).then().statusCode(HttpStatus.SC_OK).body(is(echo));
-    }
+    final String echo = "helloooo";
+    given()
+        .param("toEcho", echo)
+        .when()
+        .get(ECHO_RESOURCE)
+        .then()
+        .statusCode(HttpStatus.SC_OK)
+        .body(is(echo));
+  }
 }

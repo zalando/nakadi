@@ -8,8 +8,7 @@ import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 
 public interface EventConsumer {
 
-    Optional<ConsumedEvent> readEvent() throws NakadiException;
+  Optional<ConsumedEvent> readEvent() throws NakadiException;
 
-    Map<String, String> fetchNextOffsets();
-
+  Map<String, String> fetchNextOffsets();
 }

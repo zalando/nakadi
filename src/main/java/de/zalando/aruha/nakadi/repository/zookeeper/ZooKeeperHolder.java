@@ -14,18 +14,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class ZooKeeperHolder {
 
-    @Autowired
-    @Qualifier("zookeeperBrokers")
-    private String brokers;
+  @Autowired
+  @Qualifier("zookeeperBrokers")
+  private String brokers;
 
-    private ZooKeeper zooKeeper;
+  private ZooKeeper zooKeeper;
 
-    @PostConstruct
-    public void init() throws IOException {
-        zooKeeper = new ZooKeeper(brokers, 30000, null);
-    }
+  @PostConstruct
+  public void init() throws IOException {
+    zooKeeper = new ZooKeeper(brokers, 30000, null);
+  }
 
-    public ZooKeeper get() throws IOException {
-        return zooKeeper;
-    }
+  public ZooKeeper get() throws IOException {
+    return zooKeeper;
+  }
 }

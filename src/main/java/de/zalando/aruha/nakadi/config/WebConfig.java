@@ -12,17 +12,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
 @Configuration
 public class WebConfig extends WebMvcConfigurationSupport {
 
-    @Value("${nakadi.stream.timeoutMs}")
-    private long nakadiStreamTimeout;
+  @Value("${nakadi.stream.timeoutMs}")
+  private long nakadiStreamTimeout;
 
-    @Override
-    public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
-        configurer.setDefaultTimeout(nakadiStreamTimeout);
-        configurer.registerCallableInterceptors(timeoutInterceptor());
-    }
+  @Override
+  public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
+    configurer.setDefaultTimeout(nakadiStreamTimeout);
+    configurer.registerCallableInterceptors(timeoutInterceptor());
+  }
 
-    @Bean
-    public TimeoutCallableProcessingInterceptor timeoutInterceptor() {
-        return new TimeoutCallableProcessingInterceptor();
-    }
+  @Bean
+  public TimeoutCallableProcessingInterceptor timeoutInterceptor() {
+    return new TimeoutCallableProcessingInterceptor();
+  }
 }

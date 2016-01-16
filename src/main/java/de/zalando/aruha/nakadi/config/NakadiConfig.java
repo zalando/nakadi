@@ -25,41 +25,41 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 @Configuration
 @EnableMetrics
 public class NakadiConfig {
-    private static final Logger LOG = LoggerFactory.getLogger(NakadiConfig.class);
+  private static final Logger LOG = LoggerFactory.getLogger(NakadiConfig.class);
 
-    public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
-    public static final HealthCheckRegistry HEALTH_CHECK_REGISTRY = new HealthCheckRegistry();
+  public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
+  public static final HealthCheckRegistry HEALTH_CHECK_REGISTRY = new HealthCheckRegistry();
 
-    @Bean
-    public TaskExecutor taskExecutor() {
-        return new SimpleAsyncTaskExecutor();
-    }
+  @Bean
+  public TaskExecutor taskExecutor() {
+    return new SimpleAsyncTaskExecutor();
+  }
 
-    @Bean
-    public ServletRegistrationBean servletRegistrationBean() {
-        return new ServletRegistrationBean(new MetricsServlet(METRIC_REGISTRY), "/metrics/*");
-    }
+  @Bean
+  public ServletRegistrationBean servletRegistrationBean() {
+    return new ServletRegistrationBean(new MetricsServlet(METRIC_REGISTRY), "/metrics/*");
+  }
 
-    @Bean
-    public MetricsConfigurerAdapter metricsConfigurerAdapter() {
-        return new MetricsConfigurerAdapter() {
-            @Override
-            public void configureReporters(final MetricRegistry metricRegistry) {
-                // ConsoleReporter.forRegistry(metricRegistry).build().start(15, TimeUnit.SECONDS);
-            }
+  @Bean
+  public MetricsConfigurerAdapter metricsConfigurerAdapter() {
+    return new MetricsConfigurerAdapter() {
+      @Override
+      public void configureReporters(final MetricRegistry metricRegistry) {
+        // ConsoleReporter.forRegistry(metricRegistry).build().start(15, TimeUnit.SECONDS);
+      }
 
-            @Override
-            public MetricRegistry getMetricRegistry() {
-                return METRIC_REGISTRY;
-            }
-        };
-    }
+      @Override
+      public MetricRegistry getMetricRegistry() {
+        return METRIC_REGISTRY;
+      }
+    };
+  }
 
-    @Bean
-    @Primary
-    public ObjectMapper jacksonObjectMapper() {
-        return
-            new ObjectMapper().setPropertyNamingStrategy(
-                PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
-    }
+  @Bean
+  @Primary
+  public ObjectMapper jacksonObjectMapper() {
+    return new ObjectMapper()
+        .setPropertyNamingStrategy(
+            PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+  }
 }

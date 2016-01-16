@@ -10,20 +10,19 @@ import org.springframework.context.annotation.PropertySource;
 @PropertySource("${nakadi.config}")
 public class KafkaLocationConfig {
 
-    @Value("${nakadi.kafka.broker}")
-    private String kafkaAddress;
+  @Value("${nakadi.kafka.broker}")
+  private String kafkaAddress;
 
-    @Value("${nakadi.zookeeper.brokers}")
-    private String zookeeperAddress;
+  @Value("${nakadi.zookeeper.brokers}")
+  private String zookeeperAddress;
 
-    @Bean(name = "kafkaBrokers")
-    public String kafkaBrokers() {
-        return kafkaAddress;
-    }
+  @Bean(name = "kafkaBrokers")
+  public String kafkaBrokers() {
+    return kafkaAddress;
+  }
 
-    @Bean(name = "zookeeperBrokers")
-    public String zookeeperBrokers() {
-        return zookeeperAddress;
-    }
-
+  @Bean(name = "zookeeperBrokers")
+  public String zookeeperBrokers() {
+    return zookeeperAddress;
+  }
 }
