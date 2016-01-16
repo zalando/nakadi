@@ -1,0 +1,16 @@
+server:
+  port: 8080
+logging:
+  level:
+    ROOT: INFO
+    org.springframework.web: INFO
+nakadi:
+  stream:
+    timeoutMs: 31536000000 # 1 year :-P
+  kafka:
+    poll:
+      timeoutMs: 100
+  oauth2:
+    enabled: true
+    tokenInfoUri: https://auth.zalando.com/oauth2/tokeninfo
+    clientId: stups_aruha-event-store-poc

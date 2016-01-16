@@ -1,6 +1,8 @@
-[![Build Status](https://travis-ci.org/zalando/nakadi.svg)](https://travis-ci.org/zalando/nakadi) [![ReviewNinja](https://app.review.ninja/44234368/badge)](https://app.review.ninja/zalando/nakadi)
+[![Build Status](https://travis-ci.org/zalando/nakadi.svg)](https://travis-ci.org/zalando/nakadi)
+[![ReviewNinja](https://app.review.ninja/44234368/badge)](https://app.review.ninja/zalando/nakadi)
+[![codecov.io](https://codecov.io/github/zalando/nakadi/coverage.svg?branch=nakadi-jvm)](https://codecov.io/github/zalando/nakadi?branch=nakadi-jvm)
 
-[![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)](http://online.swagger.io/validator/debug?url=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)
+[![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-jvm/api/nakadi-event-bus-api.yaml)](http://online.swagger.io/validator/debug?url=https://raw.githubusercontent.com/zalando/nakadi/master/nakadi/swagger.yaml)
 
 Nakadi Event Bus
 =====================
@@ -11,7 +13,7 @@ The goal of the `nakadi` project (ნაკადი means `stream` in Georgian 
 
 *  enable convenient development of event-driven applications
 *  securely and efficiently publish and consume events as easy as possible
-*  abstract event exchange by a stanartized RESTful [API](/nakadi/swagger.yaml)
+*  abstract event exchange by a stanartized RESTful [API](/api/nakadi-event-bus-api.yaml)
 
 Some additional technical requirements that we wanted to cover by this architecture:
 
@@ -20,7 +22,7 @@ Some additional technical requirements that we wanted to cover by this architect
 * scalable and highly available architecture
 * [STUPS](https://stups.io/) compatible
 
-Additional topics, that we plan to cover in the near future are: 
+Additional topics, that we plan to cover in the near future are:
 
 * discoverability of the resource structures flowing into the event bus
 * centralized discovery service, that will use these capabilities to collect resource schema information for easy lookup by developers
@@ -46,14 +48,12 @@ Running it locally
 
 To run the project locally
 
-Install python requirements
+Simple Nakadi startup:
 
-    pip3 install -r requirements.txt
+    gradle run
 
-Run ZooKeeper and Kafka docker images
+Full development pipeline:
 
-    make --directory local-test run
-    
-Run the local service
+    build -> ut/it tests (depends on access to a kafka backend) -> docker (builds docker image) -> api-tests (runs tests against the docker image)
 
-    python3 run_local.py
+

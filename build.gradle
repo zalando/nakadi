@@ -1,0 +1,275 @@
+import java.util.concurrent.TimeUnit
+
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+        jcenter()
+    }
+
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
+    }
+}
+
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'eclipse'
+    id 'application'
+    id 'jacoco'
+    id 'checkstyle'
+    id "com.github.sherter.google-java-format" version "0.1"
+}
+
+apply plugin: 'spring-boot' // because spring-boot team does not want to use gradle to publish gradle plugin :D
+
+task checkstyle(type: Checkstyle) {
+    source 'src'
+    include '**/*.java'
+    exclude '**/gen/**'
+    configFile file("${project.rootDir}/config/checkstyle/google_checks.xml")
+    classpath = files()
+}
+
+checkstyle {
+    toolVersion = "6.14.1"
+}
+
+repositories {
+    repositories {
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+        jcenter()
+    }
+}
+
+
+// if this is applied, include scala dependencies (see below)
+// apply plugin: 'scala'
+
+group 'de.zalando.aruha'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+mainClassName = 'de.zalando.aruha.nakadi.Application'
+def dockerGroup = "aruha"
+def dockerApplicationName = "nakadi"
+
+def dockerRunTimeout = 300
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration-test/java')
+        }
+        resources.srcDir file('src/integration-test/resources')
+    }
+
+    acceptanceTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/acceptance-test/java')
+        }
+        resources.srcDir file('src/acceptance-test/resources')
+    }
+}
+
+
+jar {
+    baseName = 'nakadi'
+}
+
+configurations {
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+    acceptanceTestCompile.extendsFrom testCompile
+    acceptanceTestRuntime.extendsFrom testRuntime
+}
+
+
+dependencies {
+    // spring
+    compile('org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE') {
+        exclude module: 'logback-classic'
+        exclude module: 'log4j-over-slf4j'
+    }
+    compile 'org.springframework:spring-context:4.2.0.RELEASE'
+    compile 'org.springframework:spring-web:4.2.0.RELEASE'
+    compile 'org.springframework:spring-webmvc:4.2.0.RELEASE'
+
+    // oauth
+    compile 'org.springframework.security.oauth:spring-security-oauth2:2.0.8.RELEASE'
+    compile('org.springframework.boot:spring-boot-starter-security') {
+        exclude module: "logback-classic"
+    }
+
+    // misc
+    compile 'org.zalando.stups:stups-spring-oauth2-server:1.0.0'
+    compile 'com.google.guava:guava:19.0'
+    compile 'joda-time:joda-time:2.2'
+    compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
+    compile 'org.slf4j:slf4j-log4j12:1.7.12'
+    compile 'io.dropwizard.metrics:metrics-core:3.1.0'
+    compile 'com.ryantenney.metrics:metrics-spring:3.1.0'
+    compile 'io.dropwizard.metrics:metrics-servlets:3.1.0'
+
+    // kafka & zookeeper
+    compile 'org.apache.kafka:kafka-clients:0.9.0.0'
+    compile 'org.apache.kafka:kafka_2.11:0.9.0.0'
+    compile 'org.apache.zookeeper:zookeeper:3.4.5'
+
+    // json
+    compile 'org.everit.json:org.everit.json.schema:1.1.0'
+    compile 'com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.4.0'
+
+    // scala dependencies
+    //compile 'org.scala-lang:scala-library:2.11.6'
+    //testCompile 'org.scalatest:scalatest_2.11:2.2.4'
+
+    // tests
+    testCompile 'org.hamcrest:hamcrest-all:1.3'
+    testCompile('junit:junit:4.12') {
+        exclude module: "hamcrest-core"
+    }
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile 'org.mockito:mockito-all:1.10.19'
+    testCompile('com.jayway.restassured:rest-assured:2.5.0') {
+        exclude module: "hamcrest-core"
+        exclude module: "hamcrest-library"
+    }
+    testRuntime 'org.pegdown:pegdown:1.1.0'
+}
+// end::dependencies[]
+
+// tag::wrapper[]
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
+}
+
+task stopKafkaInDocker {
+    doLast {
+        execAndWait("docker ps | awk '/local-kafka/ {print \$1}' | xargs -n 1 docker stop")
+    }
+    outputs.upToDateWhen { false }
+}
+
+task startKafkaInDocker() {
+    doLast {
+        execAndWait("make --directory local-kafka run", dockerRunTimeout)
+    }
+    outputs.upToDateWhen { false }
+}
+
+task startKafkaInDockerBound() {
+    doLast {
+        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-kafka run", dockerRunTimeout)
+    }
+    outputs.upToDateWhen { false }
+}
+
+task buildDockerContainer {
+    dependsOn bootRepackage
+    doLast {
+        execAndWait("docker build -t aruha/nakadi .", dockerRunTimeout)
+    }
+    outputs.upToDateWhen { false }
+}
+
+task startDockerContainer(type: Exec) {
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=file:////envs/development.conf\" " +
+            "--net container:local-kafka -i -t -d " +
+            "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+    dependsOn buildDockerContainer, startKafkaInDockerBound
+}
+
+task stopDockerContainer(type: Exec) {
+    commandLine "bash", "-c", "docker stop \$(docker ps | grep \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk '{print \$3}') | awk '{print \$1}')"
+}
+
+task integrationTest(type: Test) {
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+task acceptanceTest(type: Test) {
+    testClassesDir = sourceSets.acceptanceTest.output.classesDir
+    classpath = sourceSets.acceptanceTest.runtimeClasspath
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
+}
+
+def execAndWait(command, timeoutInSeconds = 15) {
+    println "Running command: " + command
+    ProcessBuilder pb = new ProcessBuilder(["bash", "-c", command]).inheritIO();
+    Process proc = pb.start();
+    proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS);
+    return proc.exitValue()
+}
+
+task startDockerContainerAndWait() {
+    // start app with docker
+    dependsOn startDockerContainer
+
+    doLast {
+        // wait till application is up (health check is successful)
+        int result = 1
+        while (result != 0) {
+            result = execAndWait('curl http://localhost:8080/health')
+            sleep(1000L)
+        }
+    }
+    outputs.upToDateWhen { false }
+}
+
+task fullAcceptanceTest(type: GradleBuild) {
+    dependsOn startDockerContainerAndWait
+    tasks = ['acceptanceTest']
+    finalizedBy stopKafkaInDocker, stopDockerContainer
+}
+
+test {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+integrationTest {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+acceptanceTest {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+task development << {
+    jvmArgs = ["-Dnakadi.config=envs/development.conf"]
+    //bootRun.systemProperty 'nakadi.config', 'envs/development.conf'
+}
+
+bootRun {
+    addResources = false
+    main = 'de.zalando.aruha.nakadi.Application'
+    environment 'NAKADI_OAUTH2_ENABLED', 'false'
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
+}
+
+run {
+    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+check.dependsOn jacocoTestReport
+check.dependsOn integrationTest
+integrationTest.mustRunAfter test
