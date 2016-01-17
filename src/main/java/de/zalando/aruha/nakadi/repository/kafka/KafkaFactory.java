@@ -7,36 +7,22 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-
-import org.springframework.context.annotation.Bean;
-
-import org.springframework.stereotype.Component;
-
 import kafka.javaapi.consumer.SimpleConsumer;
 
-@Component
-class KafkaFactory {
+public class KafkaFactory {
 
-  @Autowired
-  @Qualifier("kafkaBrokers")
-  private String kafkaAddress;
+  private final String kafkaAddress;
+  private final KafkaProducer<String, String> kafkaProducer;
 
-  @Autowired
-  @Qualifier("zookeeperBrokers")
-  private String zookeeperAddress;
-
-  @Autowired private Producer<String, String> producer;
-
-  public KafkaFactory() {}
-
-  @Bean
-  public Producer<String, String> createProducer() {
-    return new KafkaProducer<>(getProps());
+  public KafkaFactory(final String kafkaAddress) {
+    this.kafkaAddress = kafkaAddress;
+    kafkaProducer = new KafkaProducer<>(getProps());
   }
 
-  @Bean(name = "kafkaProperties")
+  public Producer<String, String> createProducer() {
+    return kafkaProducer;
+  }
+
   private Properties getProps() {
     final Properties props = new Properties();
     props.put("bootstrap.servers", kafkaAddress);
@@ -46,10 +32,6 @@ class KafkaFactory {
     props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 
     return props;
-  }
-
-  public Producer<String, String> getProducer() {
-    return producer;
   }
 
   public Consumer<String, String> getConsumer() {

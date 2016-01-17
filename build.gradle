@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:1.3.1.RELEASE"
     }
 }
 
@@ -54,6 +54,7 @@ targetCompatibility = 1.8
 mainClassName = 'de.zalando.aruha.nakadi.Application'
 def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
+def dockerContainerName = "nakadi-local"
 
 def dockerRunTimeout = 300
 
@@ -92,7 +93,7 @@ configurations {
 
 dependencies {
     // spring
-    compile('org.springframework.boot:spring-boot-starter-web:1.2.5.RELEASE') {
+    compile('org.springframework.boot:spring-boot-starter-web:1.3.1.RELEASE') {
         exclude module: 'logback-classic'
         exclude module: 'log4j-over-slf4j'
     }
@@ -178,11 +179,17 @@ task buildDockerContainer {
     outputs.upToDateWhen { false }
 }
 
+task removeOldDockerContainer(type: Exec) {
+    commandLine "bash", "-c",
+            "for DC in `docker ps -f 'name=$dockerContainerName' | grep -o $dockerContainerName`; do docker stop \$DC; done && " +
+            "for DC in `docker ps -a -f 'name=$dockerContainerName' | grep -o $dockerContainerName`; do docker rm \$DC; done"
+}
+
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" -e \"NAKADI_CONFIG=file:////envs/development.conf\" " +
-            "--net container:local-kafka -i -t -d " +
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" " +
+            "--net container:local-kafka --name $dockerContainerName -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
-    dependsOn buildDockerContainer, startKafkaInDockerBound
+    dependsOn buildDockerContainer, removeOldDockerContainer, startKafkaInDockerBound
 }
 
 task stopDockerContainer(type: Exec) {
@@ -197,7 +204,6 @@ task integrationTest(type: Test) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
-    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 def execAndWait(command, timeoutInSeconds = 15) {
@@ -256,11 +262,9 @@ bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
     environment 'NAKADI_OAUTH2_ENABLED', 'false'
-    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 run {
-    environment 'NAKADI_CONFIG', 'file:///' + projectDir + '/envs/development.conf'
 }
 
 jacocoTestReport {

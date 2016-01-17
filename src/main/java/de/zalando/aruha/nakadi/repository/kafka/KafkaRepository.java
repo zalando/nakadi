@@ -11,6 +11,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.apache.zookeeper.KeeperException;
@@ -47,11 +48,20 @@ public class KafkaRepository implements TopicRepository {
   private static final long KAFKA_SEND_TIMEOUT_MS = 10000;
 
   private static final long KAFKA_READ_TIMEOUT_MS = 0;
-  @Autowired private KafkaFactory factory;
-  @Autowired private ZooKeeperHolder zkFactory;
+
+  private final ZooKeeperHolder zkFactory;
+  private final Producer<String, String> kafkaProducer;
+  private final KafkaFactory kafkaFactory;
 
   @Value("${nakadi.kafka.poll.timeoutMs}")
   private long kafkaPollTimeout;
+
+  @Autowired
+  public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory) {
+    this.zkFactory = zkFactory;
+    this.kafkaProducer = kafkaFactory.createProducer();
+    this.kafkaFactory = kafkaFactory;
+  }
 
   @Override
   public List<Topic> listTopics() throws NakadiException {
@@ -75,7 +85,7 @@ public class KafkaRepository implements TopicRepository {
     final ProducerRecord<String, String> record =
         new ProducerRecord<>(topicId, Integer.parseInt(partitionId), partitionId, payload);
     try {
-      factory.getProducer().send(record).get(KAFKA_SEND_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      kafkaProducer.send(record).get(KAFKA_SEND_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       throw new NakadiException("Failed to send event", e);
     }
@@ -84,10 +94,10 @@ public class KafkaRepository implements TopicRepository {
   @Override
   public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
 
-    final SimpleConsumer sc = factory.getSimpleConsumer();
+    final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
     try {
       final List<TopicAndPartition> partitions =
-          factory
+          kafkaFactory
               .getConsumer()
               .partitionsFor(topicId)
               .stream()
@@ -178,6 +188,6 @@ public class KafkaRepository implements TopicRepository {
 
   @Override
   public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) {
-    return new NakadiKafkaConsumer(factory, topic, cursors, kafkaPollTimeout);
+    return new NakadiKafkaConsumer(kafkaFactory, topic, cursors, kafkaPollTimeout);
   }
 }
