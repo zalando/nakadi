@@ -1,3 +1,7 @@
+link-google-style: google-style
+	@ln -s google_checks.xml checkstyle.xml
+
+
 google-style: google_checks.xml
 	@curl -sO https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml
 
