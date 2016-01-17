@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(value = "/health", produces = MediaType.TEXT_PLAIN)
 public class HealthCheckController {
 
-    @RequestMapping(method = GET)
-    public ResponseEntity<String> healthCheck() {
-        return ok().body("OK");
-    }
+  @RequestMapping(method = GET)
+  public ResponseEntity<String> healthCheck() {
+    return ok().body("OK");
+  }
 }

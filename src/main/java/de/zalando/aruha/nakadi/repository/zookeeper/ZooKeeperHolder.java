@@ -11,28 +11,32 @@ import java.io.IOException;
 
 public class ZooKeeperHolder {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHolder.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHolder.class);
 
-    private final String brokers;
+  private final String brokers;
 
-    private ZooKeeper zooKeeper;
+  private ZooKeeper zooKeeper;
 
-    public ZooKeeperHolder(final String brokers) {
-        this.brokers = brokers;
-    }
+  public ZooKeeperHolder(final String brokers) {
+    this.brokers = brokers;
+  }
 
-    @PostConstruct
-    public void init() throws IOException {
-        LOG.info("Start ZooKeeper client for brokers: {}", brokers);
-        zooKeeper = new ZooKeeper(brokers, 30000, new Watcher() {
-            @Override
-            public void process(final WatchedEvent event) {
+  @PostConstruct
+  public void init() throws IOException {
+    LOG.info("Start ZooKeeper client for brokers: {}", brokers);
+    zooKeeper =
+        new ZooKeeper(
+            brokers,
+            30000,
+            new Watcher() {
+              @Override
+              public void process(final WatchedEvent event) {
                 LOG.info("connection state event: {}", event);
-            }
-        });
-    }
+              }
+            });
+  }
 
-    public ZooKeeper get() throws IOException {
-        return zooKeeper;
-    }
+  public ZooKeeper get() throws IOException {
+    return zooKeeper;
+  }
 }

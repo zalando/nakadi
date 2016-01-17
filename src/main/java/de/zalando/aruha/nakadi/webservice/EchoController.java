@@ -15,11 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(value = "/api", produces = MediaType.TEXT_PLAIN)
 public class EchoController {
 
-    private static final Logger LOG = LoggerFactory.getLogger(EchoController.class);
+  private static final Logger LOG = LoggerFactory.getLogger(EchoController.class);
 
-    @RequestMapping(value = "/echo", method = GET)
-    public String echo(@RequestParam(value = "toEcho") final String toEcho) {
-        LOG.info("Echo is called");
-        return toEcho;
-    }
+  @RequestMapping(value = "/echo", method = GET)
+  public String echo(@RequestParam(value = "toEcho") final String toEcho) {
+    LOG.info("Echo is called");
+    return toEcho;
+  }
 }

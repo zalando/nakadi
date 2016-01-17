@@ -22,39 +22,43 @@ import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServic
 @Configuration
 public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SecurityConfiguration.class);
-    public static final String UID = "uid";
+  private static final Logger LOG = LoggerFactory.getLogger(SecurityConfiguration.class);
+  public static final String UID = "uid";
 
-    @Value("${nakadi.oauth2.tokenInfoUri}")
-    private String tokenInfoUri;
+  @Value("${nakadi.oauth2.tokenInfoUri}")
+  private String tokenInfoUri;
 
-    @Value("${nakadi.oauth2.clientId}")
-    private String clientId;
+  @Value("${nakadi.oauth2.clientId}")
+  private String clientId;
 
-    @Value("${nakadi.oauth2.enabled:true}")
-    private boolean oauthEnabled;
+  @Value("${nakadi.oauth2.enabled:true}")
+  private boolean oauthEnabled;
 
-    @Override
-    public void configure(final HttpSecurity http) throws Exception {
-        LOG.info("Security: OAuth2 is " + (oauthEnabled ? "enabled" : "disabled"));
-        if (oauthEnabled) {
-            http.authorizeRequests().antMatchers("/health").permitAll().anyRequest().access(hasScope(UID));
-        } else {
-            http.authorizeRequests().anyRequest().permitAll();
-        }
+  @Override
+  public void configure(final HttpSecurity http) throws Exception {
+    LOG.info("Security: OAuth2 is " + (oauthEnabled ? "enabled" : "disabled"));
+    if (oauthEnabled) {
+      http.authorizeRequests()
+          .antMatchers("/health")
+          .permitAll()
+          .anyRequest()
+          .access(hasScope(UID));
+    } else {
+      http.authorizeRequests().anyRequest().permitAll();
     }
+  }
 
-    public static String hasScope(final String scope) {
-        return MessageFormat.format("#oauth2.hasScope(''{0}'')", scope);
-    }
+  public static String hasScope(final String scope) {
+    return MessageFormat.format("#oauth2.hasScope(''{0}'')", scope);
+  }
 
-    @Override
-    public void configure(final ResourceServerSecurityConfigurer resources) throws Exception {
-        resources.tokenServices(zalandoResourceTokenServices());
-    }
+  @Override
+  public void configure(final ResourceServerSecurityConfigurer resources) throws Exception {
+    resources.tokenServices(zalandoResourceTokenServices());
+  }
 
-    @Bean
-    public ResourceServerTokenServices zalandoResourceTokenServices() {
-        return new TokenInfoResourceServerTokenServices(tokenInfoUri, clientId);
-    }
+  @Bean
+  public ResourceServerTokenServices zalandoResourceTokenServices() {
+    return new TokenInfoResourceServerTokenServices(tokenInfoUri, clientId);
+  }
 }

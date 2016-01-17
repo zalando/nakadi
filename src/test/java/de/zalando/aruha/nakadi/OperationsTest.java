@@ -6,16 +6,16 @@ import org.junit.Test;
 
 public class OperationsTest {
 
-    private Operations operations = new Operations();
+  private Operations operations = new Operations();
 
-    @Test
-    public void addTwoNumbers() throws Exception {
-        // given
+  @Test
+  public void addTwoNumbers() throws Exception {
+    // given
 
-        // that
-        final int result = operations.add(1, 2);
+    // that
+    final int result = operations.add(1, 2);
 
-        // when
-        assertEquals(3, result);
-    }
+    // when
+    assertEquals(3, result);
+  }
 }

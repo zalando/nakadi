@@ -14,15 +14,15 @@ import de.zalando.aruha.nakadi.domain.TopicPartition;
  */
 public interface TopicRepository {
 
-    List<Topic> listTopics() throws NakadiException;
+  List<Topic> listTopics() throws NakadiException;
 
-    void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
+  void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
 
-    List<TopicPartition> listPartitions(String topicId) throws NakadiException;
+  List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
-    boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
+  boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
 
-    void readEvent(String topicId, String partitionId);
+  void readEvent(String topicId, String partitionId);
 
-    EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
+  EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
 }

@@ -10,9 +10,8 @@ import org.junit.Test;
 
 public class HealthCheckAT extends BaseAT {
 
-    @Test(timeout = 5000)
-    public void whenHealthCheckThenOk() {
-        given().when().get("/health").then().statusCode(HttpStatus.SC_OK).body(equalTo("OK"));
-    }
-
+  @Test(timeout = 5000)
+  public void whenHealthCheckThenOk() {
+    given().when().get("/health").then().statusCode(HttpStatus.SC_OK).body(equalTo("OK"));
+  }
 }
