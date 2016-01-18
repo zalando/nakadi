@@ -307,9 +307,9 @@ paths:
   /event-types/{name}/events:
     post:
       description: |
-        Publishes one or more events of this EventType.
+        Publishes one `Event` of this `EventType`. (TBD format for publishing of batches of Events)
 
-        Reception of Events will always respect the configuration of its EventType w.r.t. validation,
+        Reception of Events will always respect the configuration of its `EventType` w.r.t. validation,
         enrichment and partitioning. The steps performed on reception of incoming message are:
 
         1. Every validation rule specified in the `EventType` will be checked in order against the incoming
@@ -343,6 +343,13 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
+        - name: event
+          in: body
+          description: The Event being published
+          schema:
+            type: object
+            $ref: '#/definitions/Event'
+          required: true
       responses:
         '200':
           description: Ok
@@ -374,43 +381,6 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
-
-  /topics:
-    get:
-      description: Lists all known `Topics` of this Nakadi cluster
-      tags:
-        - monitoring
-        - management-api
-      parameters:
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-      responses:
-        '200':
-          description: The request was successful. Returns a list `Topic`s in the response body.
-          schema:
-            type: array
-            description: An array of topics
-            items:
-              $ref: '#/definitions/Topic'
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-
-        '503':
-          description: Not available
-          schema:
-            $ref: '#/definitions/Problem'
-
-  '/topics/{topic}/events':
     get:
       tags:
         - topic-api
@@ -427,7 +397,7 @@ paths:
         flushing each chunk, total amount of delivered Events and total time for the duration of the stream.
 
         Nakadi will keep a streaming connection open even if there are no events to be delivered. In this
-        case the timeout for the flushing of each chunk will still apply and the `EventStreamBatche`s will
+        case the timeout for the flushing of each chunk will still apply and the `EventStreamBatch` will
         contain only the Cursor pointing to the same offset. This can be treated as a keep-alive control for
         some load balancers.
 
@@ -435,12 +405,12 @@ paths:
         the responsibility of the client.
         No commits are needed.
       parameters:
-        - name: topic
+        - name: name
           in: path
           description: Topic where to get events from
           type: string
           required: true
-        - name: x-nakadi-cursors
+        - name: X-nakadi-cursors
           in: header
           description: Array of cursors indicating the partitions to read from and the starting point on
             each. Assumes the offset on each cursor is not inclusive (i.e., first delivered Event is the
@@ -544,73 +514,30 @@ paths:
           description: Internal Server Error. Details are provided on the returned `Problem`.
           schema:
             $ref: '#/definitions/Problem'
-    post:
+
+  /topics:
+    get:
+      description: Lists all known `Topics` of this Nakadi cluster
       tags:
-        - topic-api
-        - draft
-      description: |
-        Post one `Event`s to a given `Topic` (of an `EventType`). Upon reception the `EventType`'s
-        validation and enrichment rules are applied. For details on their behaviour please see POST /even
-        t-types/{name}/events.
-
-        (TBD: submission of batches of events)
-
-        Restriction: To avoid inconsistencies in the relative ordering of Events, **this operation cannot be
-        used if this Topic's defining EventType defines a `PartitionResolutionStrategy`.** Doing so will
-        produce a 405 Not allowed.
+        - monitoring
+        - management-api
       parameters:
-        - name: topic
-          in: path
-          description: Topic name where to send events to
-          type: string
-          required: true
-        - name: event
-          in: body
-          description: The body contains an array of events being sent.
-          required: true
-          schema:
-            type: array
-            description: An array of events to be pushed to Nakadi
-            items:
-              $ref: '#/definitions/Event'
-        - name: Content-Encoding
-          in: header
-          required: false
-          description: |
-            Allow the publisher to gzip compress the payload by setting this header to "gzip".
-            For Example "Content-Encoding: gzip"
-          type: string
         - name: X-Flow-Id
           in: header
           description: |
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
-        '201':
-          description: All events are submitted successfully.
+        '200':
+          description: The request was successful. Returns a list `Topic`s in the response body.
+          schema:
+            type: array
+            description: An array of topics
+            items:
+              $ref: '#/definitions/Topic'
         '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Not allowed
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: |
-            Topic not found.
-          schema:
-            $ref: '#/definitions/Problem'
-        '405':
-          description: |
-            Method not allowed. This topic does not support direct POSTing of Events. Use equivalent POST
-            /event-types/{name}/events instead.
-          schema:
-            $ref: '#/definitions/Problem'
-        '422':
-          description: Unprocessable Entity
+          description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
         '500':
