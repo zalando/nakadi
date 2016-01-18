@@ -1045,12 +1045,26 @@ definitions:
       name:
         type: string
         description: |
-          Name of this EventType. The name for the EventType must follow the pattern
-          'organization:team:application:event-type-name'
+          Name of this EventType. Encodes the owner/responsible for this EventType.
+
+          The name for the EventType SHOULD follow the pattern, but is not enforced
+          'organization:team:owning_application:event-type', for example
+          'zalando:bazaar:price-service:price-change'.
+
+          The components of the name are:
+          * Organization: the organizational unit where the team is located; can be omitted.
+          * Team name: name of the team responsible for owning application; can be omitted.
+          * Owning application: SHOULD match the field owning_application; indicates
+          * EventType name: name of this EventType; SHOULD end in ChangeEvent for DataChangeEvents; MUST be
+          in the past tense for BusinessEvents.
+
+          (TBD: how to deal with organizational changes? Should be reflected on the name of the EventType?
+          Isn t it better to omit [organization:team] completely?)
       owning_application:
         type: string
         description: |
           Indicator of the Application owning this `EventType`.
+        example: price-service
       type:
         type: string
         enum:
@@ -1087,7 +1101,7 @@ definitions:
         description: |
           The effective schema of this `EventType`. The predefined schema validator will use the value of
           this field as base for the validation.
-          The generation of thie value happens on creation of the `EventType` and is influenced by the
+          The generation of this value happens on creation of the `EventType` and is influenced by the
           `EventType.type`.
 
       validation_strategies:
