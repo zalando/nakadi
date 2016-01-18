@@ -20,6 +20,7 @@ import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
@@ -64,12 +65,6 @@ public class NakadiConfig {
     }
 
     @Bean
-    public TopicRepository kafkaRepository() {
-        return new KafkaRepository(zooKeeperHolder(), kafkaFactory(),
-                Long.parseLong(environment.getProperty("nakadi.kafka.poll.timeoutMs")));
-    }
-
-    @Bean
     public EventStreamManager eventStreamManager() {
         return new EventStreamManager(subscriptionRepository(), partitionDistributor());
     }
@@ -81,7 +76,7 @@ public class NakadiConfig {
 
     @Bean
     public PartitionDistributor partitionDistributor() {
-        return new RegularPartitionDistributor(kafkaRepository(), subscriptionRepository());
+        return new RegularPartitionDistributor(topicRepository(), subscriptionRepository());
     }
 
     @Bean
@@ -102,6 +97,18 @@ public class NakadiConfig {
     }
 
     @Bean
+    public TopicRepository topicRepository() {
+        if (environment.acceptsProfiles("kafka")) {
+            return new KafkaRepository(zooKeeperHolder(), kafkaFactory(),
+                    Long.parseLong(environment.getProperty("nakadi.kafka.poll.timeoutMs")));
+        }
+        else {
+            throw new IllegalStateException("No TopicRepository implementation found for current spring profile");
+        }
+    }
+
+    @Bean
+    @Profile("kafka")
     public KafkaFactory kafkaFactory() {
         return new KafkaFactory(getKafkaLocationManager());
     }
