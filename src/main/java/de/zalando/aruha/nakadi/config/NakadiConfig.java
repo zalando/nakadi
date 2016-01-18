@@ -30,11 +30,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import static com.fasterxml.jackson.databind.PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES;
 

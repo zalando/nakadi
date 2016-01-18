@@ -10,12 +10,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.producer.Producer;
-import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import org.apache.kafka.clients.producer.ProducerRecord;
-
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.zookeeper.KeeperException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,10 +37,6 @@ import kafka.javaapi.OffsetResponse;
 
 import kafka.javaapi.consumer.SimpleConsumer;
 
-import static java.util.function.Function.identity;
-import static kafka.api.OffsetRequest.EarliestTime;
-import static kafka.api.OffsetRequest.LatestTime;
-
 @Component
 @Profile("kafka")
 public class KafkaRepository implements TopicRepository {
@@ -52,8 +44,6 @@ public class KafkaRepository implements TopicRepository {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRepository.class);
 
     private static final long KAFKA_SEND_TIMEOUT_MS = 10000;
-
-    private static final long KAFKA_READ_TIMEOUT_MS = 0;
 
     private final ZooKeeperHolder zkFactory;
     private final Producer<String, String> kafkaProducer;
@@ -72,8 +62,7 @@ public class KafkaRepository implements TopicRepository {
     @Override
     public List<Topic> listTopics() throws NakadiException {
         try {
-            return zkFactory.get().getChildren().forPath("/brokers/topics").stream().map(s ->
-                    new Topic(s)).collect(Collectors.toList());
+            return zkFactory.get().getChildren().forPath("/brokers/topics").stream().map(Topic::new).collect(Collectors.toList());
         } catch (Exception e) {
             throw new NakadiException("Failed to get partitions", e);
         }
@@ -93,8 +82,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     public List<String> listPartitions(final String topic) {
-        return factory
-                .getProducer()
+        return kafkaProducer
                 .partitionsFor(topic)
                 .stream()
                 .map(partitionInfo -> Integer.toString(partitionInfo.partition()))
@@ -102,7 +90,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
+    public List<TopicPartitionOffsets> listPartitionsOffsets(final String topicId) {
 
         final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
         try {
@@ -156,10 +144,10 @@ public class KafkaRepository implements TopicRepository {
                 return offset >= oldest && offset <= newest;
             }
 
-            private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,
+            private TopicPartitionOffsets processTopicPartitionMetadata(final TopicAndPartition partition,
                     final OffsetResponse latestPartitionData, final OffsetResponse earliestPartitionData) {
 
-                final TopicPartition tp = new TopicPartition(partition.topic(),
+                final TopicPartitionOffsets tp = new TopicPartitionOffsets(partition.topic(),
                         Integer.toString(partition.partition()));
                 final long latestOffset = latestPartitionData.offsets(partition.topic(), partition.partition())[0];
                 final long earliestOffset = earliestPartitionData.offsets(partition.topic(), partition.partition())[0];
