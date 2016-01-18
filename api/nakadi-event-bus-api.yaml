@@ -1185,7 +1185,7 @@ definitions:
       Defines a rule for validation of an incoming Event.
 
       Rules might require additional parameters; see the `doc` field of the existing rules for details. See
-      GET /registry/validation-rules for a list of available rules.
+      GET /registry/validation-strategies for a list of available rules.
     properties:
       name:
         type: string
@@ -1202,7 +1202,7 @@ definitions:
       Defines a rule for the resolution of incoming Events into partitions of a Topic.
 
       Rules might require additional parameters; see the `doc` field of the existing rules for details. See
-      GET /registry/partition-rules for a list of available rules.
+      GET /registry/partition-strategies for a list of available rules.
     properties:
       name:
         type: string
@@ -1220,7 +1220,7 @@ definitions:
       timestamp on the Event).
 
       Rules might require additional parameters; see the `doc` field of the existing rules for details. See
-      GET /registry/enrichment-rules for a list of available rules.
+      GET /registry/enrichment-strategies for a list of available rules.
     properties:
       name:
         type: string
