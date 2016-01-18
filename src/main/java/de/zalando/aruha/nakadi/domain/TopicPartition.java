@@ -19,6 +19,10 @@ public class TopicPartition implements Comparable<TopicPartition> {
         return partition;
     }
 
+    public static TopicPartition topicPartition(final String topic, final String partition) {
+        return new TopicPartition(topic, partition);
+    }
+
     @Override
     public int compareTo(final TopicPartition tp) {
         final int topicCompare = this.topic.compareTo(tp.getTopic());

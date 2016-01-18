@@ -20,6 +20,8 @@ import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 
+import static de.zalando.aruha.nakadi.domain.TopicPartition.topicPartition;
+
 /**
  * Additional layer over KafkaConsumer
  * This class is not thread safe as the KafkaConsumer it uses is also not thread safe
@@ -38,26 +40,6 @@ public class NakadiKafkaConsumer implements EventConsumer {
         kafkaConsumer = factory.getConsumer();
         this.pollTimeout = pollTimeout;
     }
-
-//    @Override
-//    public void setCursors(final Map<String, String> cursors) {
-//        // define topic/partitions to consume from
-//        topicPartitions = cursors.keySet().stream().map(partition ->
-//                new TopicPartition(topic, Integer.parseInt(partition))).collect(Collectors.toList());
-//        kafkaConsumer.assign(topicPartitions);
-//
-//        // set offsets
-//        topicPartitions.forEach(topicPartition -> {
-//            kafkaConsumer.seek(topicPartition,
-//                    Long.parseLong(cursors.get(Integer.toString(topicPartition.partition()))));
-//        });
-//
-//        eventQueue = Lists.newLinkedList();
-//
-//        System.out.println("<<<<<<<<<<<<<<< >>>>>>>>>>>>>>>>>>");
-//        System.out.println("Consumer is now configured to consume from partitions: ");
-//        cursors.keySet().stream().forEach(x -> System.out.println(x + " "));
-//    }
 
     @Override
     public void setCursors(final List<Cursor> cursors) {
@@ -99,11 +81,12 @@ public class NakadiKafkaConsumer implements EventConsumer {
     private void pollFromKafka() throws NakadiException {
         try {
             final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
-            eventQueue = StreamSupport.stream(records.spliterator(), false).map(record ->
-                                              new ConsumedEvent(record.value(), record.topic(),
-                                                  Integer.toString(record.partition()),
-                                                  Long.toString(record.offset() + 1))).collect(Collectors.toCollection(
-                                              Lists::newLinkedList));
+            eventQueue = StreamSupport
+                    .stream(records.spliterator(), false)
+                    .map(record -> new ConsumedEvent(record.value(),
+                                    topicPartition(record.topic(), Integer.toString(record.partition())),
+                                    Long.toString(record.offset() + 1)))
+                    .collect(Collectors.toCollection(Lists::newLinkedList));
         } catch (InvalidOffsetException e) {
             throw new NakadiException("Wrong offset provided", e);
         } catch (KafkaException e) {

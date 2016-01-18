@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import static de.zalando.aruha.nakadi.domain.TopicPartition.topicPartition;
 import static java.util.function.Function.identity;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -127,12 +128,12 @@ public class NakadiKafkaConsumerTest {
         assertThat("The event we read first should not be empty", consumedEvent1.isPresent(), equalTo(true));
         assertThat("The event we read first should have the same data as first mocked ConsumerRecord",
             consumedEvent1.get(),
-            equalTo(new ConsumedEvent(event1, TOPIC, Integer.toString(PARTITION), Integer.toString(event1Offset + 1))));
+            equalTo(new ConsumedEvent(event1, topicPartition(TOPIC, Integer.toString(PARTITION)), Integer.toString(event1Offset + 1))));
 
         assertThat("The event we read second should not be empty", consumedEvent2.isPresent(), equalTo(true));
         assertThat("The event we read second should have the same data as second mocked ConsumerRecord",
             consumedEvent2.get(),
-            equalTo(new ConsumedEvent(event2, TOPIC, Integer.toString(PARTITION), Integer.toString(event2Offset + 1))));
+            equalTo(new ConsumedEvent(event2, topicPartition(TOPIC, Integer.toString(PARTITION)), Integer.toString(event2Offset + 1))));
 
         assertThat("The event we read third should be empty", consumedEvent3.isPresent(), equalTo(false));
 
