@@ -10,6 +10,9 @@ services:
 
 before_script:
   - pip install --user codecov
+  - curl http://www.jpm4j.org/install/script | sudo sh
+  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
+  
 
 # run tests
 script:
@@ -17,3 +20,5 @@ script:
 
 after_success:
   - codecov
+  - CODACY_PROJECT_TOKEN=3b80c14af47147a185d106c4666d4999 codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
+

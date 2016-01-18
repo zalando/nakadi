@@ -1,65 +1,34 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
-import java.util.Properties;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-
-import org.springframework.context.annotation.Bean;
-
-import org.springframework.stereotype.Component;
-
+import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager.Broker;
 import kafka.javaapi.consumer.SimpleConsumer;
 
-@Component
-class KafkaFactory {
+public class KafkaFactory {
+    private final KafkaLocationManager kafkaLocationManager;
+    private final KafkaProducer<String, String> kafkaProducer;
 
-    @Autowired
-    @Qualifier("kafkaBrokers")
-    private String kafkaAddress;
+    public KafkaFactory(final KafkaLocationManager kafkaLocationManager) {
+        this.kafkaLocationManager = kafkaLocationManager;
+        kafkaProducer = new KafkaProducer<>(kafkaLocationManager.getKafkaProperties());
+    }
 
-    @Autowired
-    @Qualifier("zookeeperBrokers")
-    private String zookeeperAddress;
-
-    @Autowired
-    private Producer<String, String> producer;
-
-    public KafkaFactory() { }
-
-    @Bean
     public Producer<String, String> createProducer() {
-        return new KafkaProducer<>(getProps());
-    }
-
-    @Bean(name = "kafkaProperties")
-    private Properties getProps() {
-        final Properties props = new Properties();
-        props.put("bootstrap.servers", kafkaAddress);
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-
-        return props;
-    }
-
-    public Producer<String, String> getProducer() {
-        return producer;
+        return kafkaProducer;
     }
 
     public Consumer<String, String> getConsumer() {
-        return new KafkaConsumer<>(getProps());
+        return new KafkaConsumer<>(kafkaLocationManager.getKafkaProperties());
     }
 
     public SimpleConsumer getSimpleConsumer() {
-        final String[] split = kafkaAddress.split(":");
-        return new SimpleConsumer(split[0], Integer.parseInt(split[1]), 1000, 64 * 1024, "leaderlookup");
+        for (Broker kafkaBroker : kafkaLocationManager.getKafkaBrokers()) {
+            return new SimpleConsumer(kafkaBroker.host, kafkaBroker.port, 1000, 64 * 1024, "leaderlookup");
+        }
+        return null;
     }
-
 }

@@ -13,6 +13,12 @@ nakadi:
   kafka:
     poll:
       timeoutMs: 100
+  zookeeper:
+    kafkaNamespace:
+    brokers: 127.0.0.1:2181
+#    exhibitor:
+#      brokers: 127.0.0.1,127.0.0.2
+#      port: 8181
   oauth2:
     enabled: true
     tokenInfoUri: https://auth.zalando.com/oauth2/tokeninfo
