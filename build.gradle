@@ -198,18 +198,9 @@ task startDockerContainerAndWait() {
 
     doLast {
         // wait till application is up (health check is successful)
-        def process = "docker inspect --format '{{ .NetworkSettings.IPAddress }}' local-kafka".execute()
-        process.waitFor(30, TimeUnit.SECONDS)
-        if (process.exitValue() != 0) {
-            throw new StopExecutionException("Could not determine the kafka docker container's ip address (Exit code: " +
-                    process.exitValue() + "). Stop.")
-        }
-        def dockerContainerIp = process.text
-        println("dockerContainerIp: $dockerContainerIp");
-
         int result = 1
         while (result != 0) {
-            result = execAndWait("curl http://$dockerContainerIp:8080/health")
+            result = execAndWait('curl http://localhost:8080/health')
             sleep(1000L)
         }
     }
