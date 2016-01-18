@@ -1,13 +1,10 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import static de.zalando.aruha.nakadi.domain.TopicPartition.topicPartition;
-import static java.util.function.Function.identity;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
 
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -26,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import de.zalando.aruha.nakadi.domain.Cursor;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -52,7 +50,7 @@ public class NakadiKafkaConsumerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void whenCreateConsumerThenKafkaConsumerConfiguredCorrectly() {
+    public void whenSetCursorsThenKafkaConsumerConfiguredCorrectly() {
 
         // ARRANGE //
         final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
@@ -67,31 +65,32 @@ public class NakadiKafkaConsumerTest {
 
         final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
 
-        final ImmutableMap<String, String> cursors = ImmutableMap.of(randomUIntAsString(), randomULongAsString(),
-                randomUIntAsString(), randomULongAsString(), randomUIntAsString(), randomULongAsString());
+        final List<Cursor> cursors = ImmutableList.of(
+                new Cursor(randomString(), randomUIntAsString(), randomULongAsString()),
+                new Cursor(randomString(), randomUIntAsString(), randomULongAsString()),
+                new Cursor(randomString(), randomUIntAsString(), randomULongAsString()));
 
         // ACT //
-//        new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, cursors, POLL_TIMEOUT);
-        new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
+        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
+        consumer.setCursors(cursors);
 
         // ASSERT //
+        final List<TopicPartition> expectedTPs = cursors
+                .stream()
+                .map(cursor -> new TopicPartition(cursor.getTopic(), Integer.parseInt(cursor.getPartition())))
+                .collect(Collectors.toList());
+
         final List<TopicPartition> assignedPartitions = partitionsCaptor.getValue();
-        assertThat(assignedPartitions, hasSize(cursors.size()));
-        assignedPartitions.forEach(partition -> {
-            assertThat(partition.topic(), equalTo(TOPIC));
-            assertThat(cursors.keySet().contains((Integer.toString(partition.partition()))), is(true));
-        });
+        assertThat(assignedPartitions, equalTo(expectedTPs));
 
         final List<TopicPartition> topicPartitions = tpCaptor.getAllValues();
+        assertThat(topicPartitions, equalTo(expectedTPs));
+
         final List<Long> offsets = offsetCaptor.getAllValues();
-        assertThat(topicPartitions, hasSize(cursors.size()));
-        assertThat(offsets, hasSize(cursors.size()));
-        cursors
-            .entrySet().stream().forEach(cursor -> {
-                assertThat(topicPartitions.contains(new TopicPartition(TOPIC, Integer.parseInt(cursor.getKey()))),
-                    is(true));
-                assertThat(offsets.contains(Long.parseLong(cursor.getValue())), is(true));
-            });
+        assertThat(offsets, equalTo(cursors
+                .stream()
+                .map(x -> Long.parseLong(x.getOffset()))
+                .collect(Collectors.toList())));
     }
 
     @Test
@@ -116,10 +115,12 @@ public class NakadiKafkaConsumerTest {
         final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
 
         // we mock KafkaConsumer anyway, so the cursors we pass are not really important
-        final ImmutableMap<String, String> cursors = ImmutableMap.of(Integer.toString(PARTITION), "0");
+        final ImmutableList<Cursor> cursors = ImmutableList.of(new Cursor(TOPIC, Integer.toString(PARTITION), "0"));
 
         // ACT //
         final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
+        consumer.setCursors(cursors);
+
         final Optional<ConsumedEvent> consumedEvent1 = consumer.readEvent();
         final Optional<ConsumedEvent> consumedEvent2 = consumer.readEvent();
         final Optional<ConsumedEvent> consumedEvent3 = consumer.readEvent();
@@ -159,6 +160,7 @@ public class NakadiKafkaConsumerTest {
 
                 // ACT //
                 final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
+                consumer.setCursors(ImmutableList.of(new Cursor(TOPIC, Integer.toString(PARTITION), "0")));
                 consumer.readEvent();
 
                 // ASSERT //
@@ -177,25 +179,30 @@ public class NakadiKafkaConsumerTest {
     public void whenFetchNextOffsetsThenOk() throws NakadiException {
 
         // ARRANGE //
-        final List<String> partitions = ImmutableList.of(randomUIntAsString(), randomUIntAsString(),
-                randomUIntAsString());
-        final Map<String, String> cursors = partitions.stream().collect(Collectors.toMap(identity(),
-                    p -> randomULongAsString()));
+        final List<de.zalando.aruha.nakadi.domain.TopicPartition> partitions = ImmutableList.of(
+                topicPartition(TOPIC, randomUIntAsString()),
+                topicPartition(TOPIC, randomUIntAsString()),
+                topicPartition(TOPIC, randomUIntAsString()));
+        final List<Cursor> cursors = partitions
+                .stream()
+                .map(tp -> new Cursor(tp.getTopic(), tp.getPartition(), randomULongAsString()))
+                .collect(Collectors.toList());
 
         final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
-        final Map<String, String> expectedOffsets = Maps.newHashMap();
-        partitions.forEach(partition -> {
+        final Map<de.zalando.aruha.nakadi.domain.TopicPartition, String> expectedOffsets = Maps.newHashMap();
+        partitions.forEach(tp -> {
             final Long nextOffset = randomULong();
-            when(kafkaConsumerMock.position(new TopicPartition(TOPIC, Integer.valueOf(partition)))).thenReturn(
-                nextOffset);
-            expectedOffsets.put(partition, Long.toString(nextOffset));
+            when(kafkaConsumerMock.position(new TopicPartition(tp.getTopic(), Integer.valueOf(tp.getPartition()))))
+                    .thenReturn(nextOffset);
+            expectedOffsets.put(tp, Long.toString(nextOffset));
         });
 
         final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
 
         // ACT //
         final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
-        final Map<String, String> offsets = consumer.fetchNextOffsets();
+        consumer.setCursors(cursors);
+        final Map<de.zalando.aruha.nakadi.domain.TopicPartition, String> offsets = consumer.fetchNextOffsets();
 
         // ASSERT //
         assertThat("We should get offsets according to what we provided in kafkaConsumerMock", offsets,

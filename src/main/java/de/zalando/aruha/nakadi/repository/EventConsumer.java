@@ -7,6 +7,7 @@ import java.util.Optional;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
 
 public interface EventConsumer {
 
@@ -14,6 +15,6 @@ public interface EventConsumer {
 
     Optional<ConsumedEvent> readEvent() throws NakadiException;
 
-    Map<String, String> fetchNextOffsets();
+    Map<TopicPartition, String> fetchNextOffsets();
 
 }

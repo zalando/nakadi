@@ -72,10 +72,12 @@ public class NakadiKafkaConsumer implements EventConsumer {
     }
 
     @Override
-    public Map<String, String> fetchNextOffsets() {
-        return topicPartitions.stream().collect(Collectors.toMap(topicPartition ->
-                        Integer.toString(topicPartition.partition()),
-                    topicPartition -> Long.toString(kafkaConsumer.position(topicPartition))));
+    public Map<de.zalando.aruha.nakadi.domain.TopicPartition, String> fetchNextOffsets() {
+        return topicPartitions
+                .stream()
+                .collect(Collectors.toMap(
+                        tp -> topicPartition(tp.topic(), Integer.toString(tp.partition())),
+                        tp -> Long.toString(kafkaConsumer.position(tp))));
     }
 
     private void pollFromKafka() throws NakadiException {
