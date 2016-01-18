@@ -706,12 +706,12 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  '/registry/validation-rule':
+  '/registry/validation-strategies':
     get:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the validation rules supported by this installation of Nakadi.
+        Lists all of the validation strategies supported by this installation of Nakadi.
 
         If the EventType creation is to have special validations (besides the default), one can consult over
         this method the available possibilities.
@@ -722,6 +722,41 @@ paths:
             type: array
             items:
               $ref: '#/definitions/EventValidationStrategy'
+
+  '/registry/enrichment-strategies':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        Lists all of the enrichment strategies supported by this installation of Nakadi.
+
+        If the EventType creation is to have special enrichments (besides the default), one can consult over
+        this method the available possibilities.
+      responses:
+        '200':
+          description: Returns a list of all `EventEnrichmentStrategy` known to Nakadi
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/EventEnrichmentStrategy'
+
+
+  '/registry/partitioning-strategies':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        Lists all of the partitioning strategies supported by this installation of Nakadi.
+
+        If the EventType creation is to have a specific partitioning (besides the default), one can
+        consult over this method the available possibilities.
+      responses:
+        '200':
+          description: Returns a list of all `EventPartitioningStrategy` known to Nakadi
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/EventPartitioningStrategy'
 
 
 # ################################### #
