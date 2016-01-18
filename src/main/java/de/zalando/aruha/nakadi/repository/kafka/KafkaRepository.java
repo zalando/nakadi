@@ -1,5 +1,21 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Topic;
+import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import kafka.api.PartitionOffsetRequestInfo;
+import kafka.common.TopicAndPartition;
+import kafka.javaapi.OffsetRequest;
+import kafka.javaapi.OffsetResponse;
+import kafka.javaapi.consumer.SimpleConsumer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -9,36 +25,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.clients.producer.Producer;
-import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
-import org.apache.kafka.clients.producer.ProducerRecord;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Component;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Topic;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-
-import kafka.api.PartitionOffsetRequestInfo;
-
-import kafka.common.TopicAndPartition;
-
-import kafka.javaapi.OffsetRequest;
-import kafka.javaapi.OffsetResponse;
-
-import kafka.javaapi.consumer.SimpleConsumer;
-
-@Component
-@Profile("kafka")
 public class KafkaRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRepository.class);
@@ -48,15 +34,14 @@ public class KafkaRepository implements TopicRepository {
     private final ZooKeeperHolder zkFactory;
     private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
-
-    @Value("${nakadi.kafka.poll.timeoutMs}")
     private long kafkaPollTimeout;
 
-    @Autowired
-    public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory) {
+    public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
+                           final long kafkaPollTimeout) {
         this.zkFactory = zkFactory;
         this.kafkaProducer = kafkaFactory.createProducer();
         this.kafkaFactory = kafkaFactory;
+        this.kafkaPollTimeout = kafkaPollTimeout;
     }
 
     @Override

@@ -24,12 +24,15 @@ public class KafkaLocationManager {
 
     private final String _BROKERS_IDS_PATH = "/brokers/ids";
 
-    @Autowired
     private ZooKeeperHolder zkFactory;
 
     private List<Broker> kafkaBrokerList;
 
     private Properties kafkaProperties;
+
+    public KafkaLocationManager(final ZooKeeperHolder zkFactory) {
+        this.zkFactory = zkFactory;
+    }
 
     static class Broker {
         final String host;

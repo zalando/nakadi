@@ -1,38 +1,29 @@
 package de.zalando.aruha.nakadi.config;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.servlets.MetricsServlet;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
+import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.ZkSubscriptionRepository;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.service.EventStreamManager;
 import de.zalando.aruha.nakadi.service.PartitionDistributor;
 import de.zalando.aruha.nakadi.service.RegularPartitionDistributor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-
 import org.springframework.core.env.Environment;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
-
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.health.HealthCheckRegistry;
-import com.codahale.metrics.servlets.MetricsServlet;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
-import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
-
-import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
-import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 
 import static com.fasterxml.jackson.databind.PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES;
 
@@ -40,16 +31,8 @@ import static com.fasterxml.jackson.databind.PropertyNamingStrategy.CAMEL_CASE_T
 @EnableMetrics
 @EnableScheduling
 public class NakadiConfig {
-    private static final Logger LOG = LoggerFactory.getLogger(NakadiConfig.class);
 
     public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
-    public static final HealthCheckRegistry HEALTH_CHECK_REGISTRY = new HealthCheckRegistry();
-
-    @Autowired
-    private TopicRepository topicRepository;
-
-    @Autowired
-    private ZooKeeperHolder zooKeeperHolder;
 
     @Autowired
     private Environment environment;
@@ -68,11 +51,6 @@ public class NakadiConfig {
     public MetricsConfigurerAdapter metricsConfigurerAdapter() {
         return new MetricsConfigurerAdapter() {
             @Override
-            public void configureReporters(final MetricRegistry metricRegistry) {
-                // ConsoleReporter.forRegistry(metricRegistry).build().start(15, TimeUnit.SECONDS);
-            }
-
-            @Override
             public MetricRegistry getMetricRegistry() {
                 return METRIC_REGISTRY;
             }
@@ -86,22 +64,30 @@ public class NakadiConfig {
     }
 
     @Bean
+    public TopicRepository kafkaRepository() {
+        return new KafkaRepository(zooKeeperHolder(), kafkaFactory(),
+                Long.parseLong(environment.getProperty("nakadi.kafka.poll.timeoutMs")));
+    }
+
+    @Bean
     public EventStreamManager eventStreamManager() {
         return new EventStreamManager(subscriptionRepository(), partitionDistributor());
     }
 
     @Bean
     public SubscriptionRepository subscriptionRepository() {
-        return new ZkSubscriptionRepository(zooKeeperHolder);
+        return new ZkSubscriptionRepository(zooKeeperHolder());
     }
 
     @Bean
     public PartitionDistributor partitionDistributor() {
-        return new RegularPartitionDistributor(topicRepository, subscriptionRepository());
+        return new RegularPartitionDistributor(kafkaRepository(), subscriptionRepository());
     }
 
     @Bean
     public ZooKeeperHolder zooKeeperHolder() {
+        System.out.println("creating zookeeper holder...");
+        System.out.println("environment: " + environment);
         return new ZooKeeperHolder(
                 environment.getProperty("nakadi.zookeeper.brokers"),
                 environment.getProperty("nakadi.zookeeper.kafkaNamespace", ""),
@@ -112,7 +98,7 @@ public class NakadiConfig {
 
     @Bean
     public KafkaLocationManager getKafkaLocationManager() {
-        return new KafkaLocationManager();
+        return new KafkaLocationManager(zooKeeperHolder());
     }
 
     @Bean
