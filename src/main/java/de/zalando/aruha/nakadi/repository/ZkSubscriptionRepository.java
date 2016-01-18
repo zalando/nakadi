@@ -116,7 +116,7 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
         }
     }
 
-    private void createPersistentEmptyNode(final String pathTemplate, final String... params) throws Exception {
+    private void createPersistentEmptyNode(final String pathTemplate, final Object... params) throws Exception {
         final String pathToCreate = params.length == 0 ? pathTemplate : String.format(pathTemplate, params);
         zooKeeperHolder.get().create().forPath(pathToCreate);
     }
