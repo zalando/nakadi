@@ -44,7 +44,7 @@ public class EventStreamCoordinator {
         this.partitionDistributor = partitionDistributor;
         this.topicRepository = topicRepository;
         eventStreams = Collections.synchronizedList(Lists.newArrayList());
-        currentTopologies = Maps.newHashMap();
+        currentTopologies = Collections.synchronizedMap(Maps.newHashMap()); // todo: we need somehow to lock it between reading and writing
     }
 
     /**
