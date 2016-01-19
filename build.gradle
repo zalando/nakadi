@@ -170,6 +170,14 @@ task buildDockerImage {
     outputs.upToDateWhen { false }
 }
 
+task pushDockerImage {
+    dependsOn buildDockerImage
+    doLast {
+        println "Pushing docker image with tag: $dockerImageTag"
+        execAndWait("docker push " + dockerImageTag, dockerBuildTimeout)
+    }
+}
+
 task removeOldDockerContainer(type: Exec) {
     commandLine "bash", "-c",
             "for DC in `docker ps -f 'name=$dockerContainerName' | grep -o $dockerContainerName`; do docker stop \$DC; done && " +
