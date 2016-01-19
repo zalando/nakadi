@@ -81,8 +81,6 @@ public class NakadiConfig {
 
     @Bean
     public ZooKeeperHolder zooKeeperHolder() {
-        System.out.println("creating zookeeper holder...");
-        System.out.println("environment: " + environment);
         return new ZooKeeperHolder(
                 environment.getProperty("nakadi.zookeeper.brokers"),
                 environment.getProperty("nakadi.zookeeper.kafkaNamespace", ""),
