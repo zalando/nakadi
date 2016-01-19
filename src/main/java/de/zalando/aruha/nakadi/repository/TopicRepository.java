@@ -1,12 +1,11 @@
 package de.zalando.aruha.nakadi.repository;
 
 import java.util.List;
-import java.util.Map;
 
 import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
-import org.apache.kafka.common.PartitionInfo;
 
 /**
  * Manages access to topic information.
@@ -25,5 +24,5 @@ public interface TopicRepository {
 
     boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
 
-    EventConsumer createEventConsumer();
+    EventConsumer createEventConsumer(List<Cursor> cursors);
 }

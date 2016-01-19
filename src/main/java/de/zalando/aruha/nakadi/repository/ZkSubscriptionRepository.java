@@ -21,12 +21,8 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
     @Override
     public void createSubscription(final String subscriptionId, final List<String> topics, final List<Cursor> cursors) {
         try {
-            zooKeeperHolder.get()
-                    .create()
-                    .creatingParentsIfNeeded()
-                    .forPath(String.format("/nakadi/subscriptions/%s", subscriptionId));
+            createPersistentEmptyNode("/nakadi/subscriptions/%s", subscriptionId);
             createPersistentEmptyNode("/nakadi/subscriptions/%s/topology", subscriptionId);
-            createPersistentEmptyNode("/nakadi/subscriptions/%s/topics", subscriptionId);
             for (final String topic : topics) {
                 createPersistentEmptyNode("/nakadi/subscriptions/%s/topics/%s", subscriptionId, topic);
                 createPersistentEmptyNode("/nakadi/subscriptions/%s/topics/%s/partitions", subscriptionId, topic);
@@ -34,7 +30,10 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
             for (final Cursor cursor: cursors) {
                 final String path = String.format("/nakadi/subscriptions/%s/topics/%s/partitions/%s", subscriptionId,
                         cursor.getTopic(), cursor.getPartition());
-                zooKeeperHolder.get().create().forPath(path, cursor.getOffset().getBytes());
+                zooKeeperHolder
+                        .get()
+                        .create()
+                        .forPath(path, cursor.getOffset().getBytes());
             }
         }
         catch (Exception e) {
@@ -46,7 +45,10 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
     public List<String> getSubscriptionTopics(final String subscriptionId) {
         try {
             final String path = String.format("/nakadi/subscriptions/%s/topics", subscriptionId);
-            return zooKeeperHolder.get().getChildren().forPath(path);
+            return zooKeeperHolder
+                    .get()
+                    .getChildren()
+                    .forPath(path);
         }
         catch (Exception e) {
             throw new NakadiRuntimeException("Error when tried to get topics of subscription in ZooKeeper", e);
@@ -58,7 +60,10 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
         try {
             final String path = String.format("/nakadi/subscriptions/%s/topics/%s/partitions/%s", subscriptionId,
                     topic, partition);
-            final byte[] data = zooKeeperHolder.get().getData().forPath(path);
+            final byte[] data = zooKeeperHolder
+                    .get()
+                    .getData()
+                    .forPath(path);
             return new Cursor(topic, partition, new String(data));
         }
         catch (Exception e) {
@@ -71,7 +76,10 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
         try {
             final String path = String.format("/nakadi/subscriptions/%s/topics/%s/partitions/%s", subscriptionId,
                     cursor.getTopic(), cursor.getPartition());
-            zooKeeperHolder.get().setData().forPath(path, cursor.getOffset().getBytes());
+            zooKeeperHolder
+                    .get()
+                    .setData()
+                    .forPath(path, cursor.getOffset().getBytes());
         }
         catch (Exception e) {
             throw new NakadiRuntimeException("Error when tried to save cursor of subscription in ZooKeeper", e);
@@ -87,7 +95,11 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
     public void addClient(final String subscriptionId, final String clientId) {
         try {
             final String pathToCreate = String.format("/nakadi/subscriptions/%s/topology/%s", subscriptionId, clientId);
-            zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL).forPath(pathToCreate);
+            zooKeeperHolder
+                    .get()
+                    .create()
+                    .withMode(CreateMode.EPHEMERAL)
+                    .forPath(pathToCreate);
         }
         catch (Exception e) {
             throw new NakadiRuntimeException("Error when tried to add client to subscription in ZooKeeper", e);
@@ -108,7 +120,10 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
     public Topology getTopology(final String subscriptionId) {
         try {
             final String topologyPath = String.format("/nakadi/subscriptions/%s/topology", subscriptionId);
-            final List<String> clientIds = zooKeeperHolder.get().getChildren().forPath(topologyPath);
+            final List<String> clientIds = zooKeeperHolder
+                    .get()
+                    .getChildren()
+                    .forPath(topologyPath);
             return new Topology(clientIds);
         }
         catch (Exception e) {
@@ -118,6 +133,10 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
 
     private void createPersistentEmptyNode(final String pathTemplate, final Object... params) throws Exception {
         final String pathToCreate = params.length == 0 ? pathTemplate : String.format(pathTemplate, params);
-        zooKeeperHolder.get().create().forPath(pathToCreate);
+        zooKeeperHolder
+                .get()
+                .create()
+                .creatingParentsIfNeeded()
+                .forPath(pathToCreate);
     }
 }

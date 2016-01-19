@@ -12,7 +12,7 @@ import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import de.zalando.aruha.nakadi.service.EventStreamManager;
+import de.zalando.aruha.nakadi.service.EventStreamCoordinator;
 import de.zalando.aruha.nakadi.service.PartitionDistributor;
 import de.zalando.aruha.nakadi.service.RegularPartitionDistributor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,8 +65,8 @@ public class NakadiConfig {
     }
 
     @Bean
-    public EventStreamManager eventStreamManager() {
-        return new EventStreamManager(subscriptionRepository(), partitionDistributor());
+    public EventStreamCoordinator eventStreamManager() {
+        return new EventStreamCoordinator(subscriptionRepository(), partitionDistributor(), topicRepository());
     }
 
     @Bean

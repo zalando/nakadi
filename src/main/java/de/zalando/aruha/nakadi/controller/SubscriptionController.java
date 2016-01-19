@@ -4,12 +4,11 @@ import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
-import de.zalando.aruha.nakadi.service.EventStreamManager;
+import de.zalando.aruha.nakadi.service.EventStreamCoordinator;
 import de.zalando.aruha.nakadi.utils.FlushableGZIPOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,21 +45,23 @@ public class SubscriptionController {
     private SubscriptionRepository subscriptionRepository;
 
     @Autowired
-    private EventStreamManager eventStreamManager;
+    private EventStreamCoordinator eventStreamCoordinator;
 
     @Timed(name = "create_subscription", absolute = true)
     @RequestMapping(value = "/{subscription}", method = RequestMethod.POST)
     public ResponseEntity createSubscription(@PathVariable("subscription") final String subscriptionId,
                                              @RequestBody final List<String> topics) {
         try {
+            // the newly created subscription will read from latest offset
             final List<Cursor> initialCursors = topics
                     .stream()
                     .flatMap(topic -> topicRepository.listPartitionsOffsets(topic).stream())
                     .map(offsets -> new Cursor(offsets.getTopicId(), offsets.getPartitionId(),
                             offsets.getNewestAvailableOffset()))
                     .collect(Collectors.toList());
+
             subscriptionRepository.createSubscription(subscriptionId, topics, initialCursors);
-            LOG.info("Created subscription");
+            LOG.info("Created subscription {0} to topics: {1}", subscriptionId, topics);
         }
         catch (NakadiRuntimeException e) {
             LOG.error("Error during subscription creation", e.getCause());
@@ -108,8 +109,6 @@ public class SubscriptionController {
                     response.addHeader("Content-Encoding", "gzip");
                 }
 
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer();
-
                 final EventStreamConfig streamConfig = EventStreamConfig
                         .builder()
                         .withBatchLimit(batchLimit)
@@ -119,24 +118,21 @@ public class SubscriptionController {
                         .withBatchKeepAliveLimit(ofNullable(batchKeepAliveLimit))
                         .build();
 
-                eventStream = new EventStream(eventConsumer, output, streamConfig);
-                eventStream.setSubscriptionId(subscriptionId);
-
-                final String newClientId = subscriptionRepository.generateNewClientId();
-                eventStream.setClientId(newClientId);
-                eventStreamManager.addEventStream(eventStream);
+                eventStream = eventStreamCoordinator.createEventStream(subscriptionId, outputStream, streamConfig);
                 eventStream.streamEvents();
 
                 if (gzipEnabled) {
                     output.close();
                 }
             }
-            catch (Exception e) {
-                e.printStackTrace();
-                // shit
+            catch (NakadiRuntimeException e) {
+                LOG.error("Error occurred when trying to create a stream", e);
+                response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
             }
             finally {
-                eventStreamManager.removeEventStream(eventStream);
+                if (eventStream != null) {
+                    eventStreamCoordinator.removeEventStream(eventStream);
+                }
                 outputStream.flush();
                 outputStream.close();
             }

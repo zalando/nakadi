@@ -1,10 +1,8 @@
 package de.zalando.aruha.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
@@ -44,11 +42,14 @@ public class EventStream {
 
     private String subscriptionId;
 
-    public EventStream(final EventConsumer eventConsumer, final OutputStream outputStream,
-            final EventStreamConfig config) {
+    public EventStream(final EventConsumer eventConsumer,
+                       final OutputStream outputStream,
+                       final EventStreamConfig config,
+                       final List<TopicPartition> partitions) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
+        this.partitions = partitions;
     }
 
     public void setOffsets(final List<Cursor> newDistribution) {
@@ -72,10 +73,6 @@ public class EventStream {
     }
 
     public void streamEvents() {
-
-        if (!newDistribution.get().isPresent()) {
-            throw new NakadiRuntimeException("Not possible to start the stream without cursors set");
-        }
         // todo: currently if:
         // - stream limit and timeout are not set AND
         // - the keep-alive is not set AND
@@ -87,8 +84,8 @@ public class EventStream {
             int messagesRead = 0;
             int messagesReadInBatch = 0;
 
-            Map<TopicPartition, List<String>> currentBatch = ImmutableMap.of();
-            Map<TopicPartition, String> latestOffsets = ImmutableMap.of();
+            Map<TopicPartition, List<String>> currentBatch = emptyBatch();
+            Map<TopicPartition, String> latestOffsets = eventConsumer.fetchNextOffsets();
 
             long start = currentTimeMillis();
             long batchStartTime = start;
@@ -103,7 +100,7 @@ public class EventStream {
                     partitions = newCursors
                             .stream()
                             .map(cursor -> topicPartition(cursor.getTopic(), cursor.getPartition()))
-                                    .collect(Collectors.toList());
+                            .collect(Collectors.toList());
                     latestOffsets = newCursors
                             .stream()
                             .collect(Collectors.toMap(

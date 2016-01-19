@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.controller;
 
+import static de.zalando.aruha.nakadi.domain.TopicPartition.topicPartition;
 import static java.util.Optional.ofNullable;
 
 import static org.springframework.http.ResponseEntity.ok;
@@ -161,9 +162,11 @@ public class TopicsController {
                     response.addHeader("Content-Encoding", "gzip");
                 }
 
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer();
-                final EventStream eventStream = new EventStream(eventConsumer, output, streamConfig);
-                eventStream.setOffsets(ImmutableList.of(new Cursor(topic, partition, startFrom)));
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer(
+                        ImmutableList.of(new Cursor(topic, partition, startFrom)));
+
+                final EventStream eventStream = new EventStream(eventConsumer, output, streamConfig,
+                        ImmutableList.of(topicPartition(topic, partition)));
                 eventStream.streamEvents();
 
                 if (gzipEnabled) {

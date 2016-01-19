@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
@@ -152,7 +153,7 @@ public class KafkaRepository implements TopicRepository {
 
 
     @Override
-    public EventConsumer createEventConsumer() {
-        return new NakadiKafkaConsumer(kafkaFactory, kafkaPollTimeout);
+    public EventConsumer createEventConsumer(final List<Cursor> cursors) {
+        return new NakadiKafkaConsumer(kafkaFactory, cursors, kafkaPollTimeout);
     }
 }

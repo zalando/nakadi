@@ -1,47 +1,87 @@
 package de.zalando.aruha.nakadi.service;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import de.zalando.aruha.nakadi.NakadiRuntimeException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.domain.Topology;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import java.io.OutputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class EventStreamManager {
+public class EventStreamCoordinator {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EventStreamCoordinator.class);
+
+    private static final long SUBSCRIPTION_REBALANCE_CHECK_PERIOD_IN_MS = 100;
 
     private final SubscriptionRepository subscriptionRepository;
 
     private final PartitionDistributor partitionDistributor;
 
+    private final TopicRepository topicRepository;
+
     private final List<EventStream> eventStreams;
 
     private final Map<String, Topology> currentTopologies;
 
-    public EventStreamManager(final SubscriptionRepository subscriptionRepository,
-                              final PartitionDistributor partitionDistributor) {
+    public EventStreamCoordinator(final SubscriptionRepository subscriptionRepository,
+                                  final PartitionDistributor partitionDistributor,
+                                  final TopicRepository topicRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.partitionDistributor = partitionDistributor;
+        this.topicRepository = topicRepository;
         eventStreams = Collections.synchronizedList(Lists.newArrayList());
         currentTopologies = Maps.newHashMap();
     }
 
     /**
-     * Adds new stream and invokes rebalance of this stream subscription
+     * Creates new event stream and invokes clients rebalancing
      *
-     * @param eventStream the stream to add
+     * @param subscriptionId the id of subscription
+     * @param outputStream the output stream where to stream data
+     * @param config the configuration of stream
+     * @return event stream created
      */
-    public void addEventStream(final EventStream eventStream) {
+    public EventStream createEventStream(final String subscriptionId, final OutputStream outputStream,
+                                         final EventStreamConfig config) {
+        // add new client to topology and invoke rebalance
+        final String newClientId = subscriptionRepository.generateNewClientId();
+        subscriptionRepository.addClient(subscriptionId, newClientId);
+        rebalanceSubscriptionIfNeeded(subscriptionId);
+
+        // get partitions and cursors for this new client
+        final Topology topology = subscriptionRepository.getTopology(subscriptionId);
+        final int newClientIndex = topology.getClientIndex(newClientId).get();
+        final int clientsNum = topology.getClientIds().size();
+
+        final List<TopicPartition> partitionsForClient = partitionDistributor.getPartitionsForClients(subscriptionId,
+                ImmutableList.of(newClientIndex), clientsNum).get(newClientIndex);
+
+        final List<Cursor> cursors = partitionsForClient
+                .stream()
+                .map(tp -> subscriptionRepository.getCursor(subscriptionId, tp.getTopic(), tp.getPartition()))
+                .collect(Collectors.toList());
+
+        // create the event stream itself
+        final EventConsumer eventConsumer = topicRepository.createEventConsumer(cursors);
+        final EventStream eventStream = new EventStream(eventConsumer, outputStream, config, partitionsForClient);
+        eventStream.setClientId(newClientId);
+        eventStream.setSubscriptionId(subscriptionId);
         eventStreams.add(eventStream);
-        subscriptionRepository.addClient(eventStream.getSubscriptionId(), eventStream.getClientId());
-        rebalanceSubscriptionIfNeeded(eventStream.getSubscriptionId());
+        return eventStream;
     }
 
     /**
@@ -57,14 +97,20 @@ public class EventStreamManager {
 
     /**
      * Checks if rebalance is needed for subscriptions running on this Nakadi instance
+     * todo: in general this scheduled task should be probably replaced with watching appropriate zookeeper nodes
      */
-    @Scheduled(fixedRate = 100L)
+    @Scheduled(fixedRate = SUBSCRIPTION_REBALANCE_CHECK_PERIOD_IN_MS)
     private void rebalanceSubscriptions() {
-        eventStreams
-                .stream()
-                .map(EventStream::getSubscriptionId)
-                .distinct()
-                .forEach(this::rebalanceSubscriptionIfNeeded);
+        try {
+            eventStreams
+                    .stream()
+                    .map(EventStream::getSubscriptionId)
+                    .distinct()
+                    .forEach(this::rebalanceSubscriptionIfNeeded);
+        }
+        catch (Exception e) {
+            LOG.error("Error occurred during subscriptions rebalance", e);
+        }
     }
 
     /**

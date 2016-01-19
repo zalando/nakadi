@@ -71,8 +71,7 @@ public class NakadiKafkaConsumerTest {
                 new Cursor(randomString(), randomUIntAsString(), randomULongAsString()));
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
-        consumer.setCursors(cursors);
+        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, cursors, POLL_TIMEOUT);
 
         // ASSERT //
         final List<TopicPartition> expectedTPs = cursors
@@ -118,8 +117,7 @@ public class NakadiKafkaConsumerTest {
         final ImmutableList<Cursor> cursors = ImmutableList.of(new Cursor(TOPIC, Integer.toString(PARTITION), "0"));
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
-        consumer.setCursors(cursors);
+        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, cursors, POLL_TIMEOUT);
 
         final Optional<ConsumedEvent> consumedEvent1 = consumer.readEvent();
         final Optional<ConsumedEvent> consumedEvent2 = consumer.readEvent();
@@ -159,8 +157,8 @@ public class NakadiKafkaConsumerTest {
             try {
 
                 // ACT //
-                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
-                consumer.setCursors(ImmutableList.of(new Cursor(TOPIC, Integer.toString(PARTITION), "0")));
+                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock,
+                        ImmutableList.of(new Cursor(TOPIC, Integer.toString(PARTITION), "0")), POLL_TIMEOUT);
                 consumer.readEvent();
 
                 // ASSERT //
@@ -200,8 +198,7 @@ public class NakadiKafkaConsumerTest {
         final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, POLL_TIMEOUT);
-        consumer.setCursors(cursors);
+        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, cursors, POLL_TIMEOUT);
         final Map<de.zalando.aruha.nakadi.domain.TopicPartition, String> offsets = consumer.fetchNextOffsets();
 
         // ASSERT //

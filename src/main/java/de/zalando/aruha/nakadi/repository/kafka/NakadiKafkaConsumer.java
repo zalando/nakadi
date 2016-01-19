@@ -19,6 +19,8 @@ import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static de.zalando.aruha.nakadi.domain.TopicPartition.topicPartition;
 
@@ -28,6 +30,8 @@ import static de.zalando.aruha.nakadi.domain.TopicPartition.topicPartition;
  */
 public class NakadiKafkaConsumer implements EventConsumer {
 
+    private static final Logger LOG = LoggerFactory.getLogger(NakadiKafkaConsumer.class);
+
     private final Consumer<String, String> kafkaConsumer;
 
     private List<TopicPartition> topicPartitions;
@@ -36,9 +40,10 @@ public class NakadiKafkaConsumer implements EventConsumer {
 
     private final long pollTimeout;
 
-    public NakadiKafkaConsumer(final KafkaFactory factory, final long pollTimeout) {
+    public NakadiKafkaConsumer(final KafkaFactory factory, final List<Cursor> cursors, final long pollTimeout) {
         kafkaConsumer = factory.getConsumer();
         this.pollTimeout = pollTimeout;
+        setCursors(cursors);
     }
 
     @Override
@@ -57,9 +62,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
 
         eventQueue = Lists.newLinkedList();
 
-        System.out.println("<<<<<<<<<<<<<<< >>>>>>>>>>>>>>>>>>");
-        System.out.println("Consumer is now configured with cursors: ");
-        System.out.println(cursors);
+        LOG.info("Consumer is now configured with cursors: " + cursors);
     }
 
     @Override
