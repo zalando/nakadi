@@ -61,7 +61,7 @@ public class SubscriptionController {
                     .collect(Collectors.toList());
 
             subscriptionRepository.createSubscription(subscriptionId, topics, initialCursors);
-            LOG.info("Created subscription {0} to topics: {1}", subscriptionId, topics);
+            LOG.info("Created subscription {} to topics: {}", subscriptionId, topics);
         }
         catch (NakadiRuntimeException e) {
             LOG.error("Error during subscription creation", e.getCause());
