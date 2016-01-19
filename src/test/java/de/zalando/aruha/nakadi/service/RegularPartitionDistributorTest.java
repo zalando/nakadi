@@ -5,13 +5,13 @@ import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.SubscriptionRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
-import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -57,7 +57,7 @@ public class RegularPartitionDistributorTest {
                 distributor.getPartitionsForClients(subscriptionId, ImmutableList.of(0, 1, 2), 3);
 
         // ASSERT //
-        assertThat(partitionsForClients, Matchers.equalTo(ImmutableMap.of(
+        assertThat(partitionsForClients, equalTo(ImmutableMap.of(
                 0, ImmutableList.of(
                         new TopicPartition("a", "0"),
                         new TopicPartition("a", "3"),
@@ -103,7 +103,7 @@ public class RegularPartitionDistributorTest {
                 distributor.getPartitionsForClients(subscriptionId, ImmutableList.of(0, 1, 2), 3);
 
         // ASSERT //
-        assertThat(partitionsForClients, Matchers.equalTo(ImmutableMap.of(
+        assertThat(partitionsForClients, equalTo(ImmutableMap.of(
                 0, ImmutableList.of(new TopicPartition("a", "0")),
                 1, ImmutableList.of(new TopicPartition("a", "1")),
                 2, ImmutableList.of()

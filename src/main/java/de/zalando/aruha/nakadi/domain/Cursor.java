@@ -47,4 +47,20 @@ public class Cursor {
                 ", offset='" + offset + '\'' +
                 '}';
     }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final Cursor cursor = (Cursor) o;
+        return topic.equals(cursor.topic) && partition.equals(cursor.partition) && offset.equals(cursor.offset);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = topic.hashCode();
+        result = 31 * result + partition.hashCode();
+        result = 31 * result + offset.hashCode();
+        return result;
+    }
 }
