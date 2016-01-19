@@ -6,14 +6,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
-import javax.annotation.PostConstruct;
-
 import org.apache.curator.framework.CuratorFramework;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -24,7 +21,7 @@ public class KafkaLocationManager {
 
     private final String _BROKERS_IDS_PATH = "/brokers/ids";
 
-    private ZooKeeperHolder zkFactory;
+    private final ZooKeeperHolder zkFactory;
 
     private List<Broker> kafkaBrokerList;
 
@@ -32,6 +29,8 @@ public class KafkaLocationManager {
 
     public KafkaLocationManager(final ZooKeeperHolder zkFactory) {
         this.zkFactory = zkFactory;
+        kafkaBrokerList = fetchBrokers();
+        kafkaProperties = buildKafkaProperties();
     }
 
     static class Broker {
@@ -56,7 +55,7 @@ public class KafkaLocationManager {
     }
 
     private List<Broker> fetchBrokers() {
-        final List<Broker> brokers = new ArrayList<Broker>();
+        final List<Broker> brokers = new ArrayList<>();
         try {
             final CuratorFramework curator = zkFactory.get();
             for (final String brokerId : curator.getChildren().forPath(_BROKERS_IDS_PATH)) {
@@ -88,12 +87,6 @@ public class KafkaLocationManager {
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         return props;
-    }
-
-    @PostConstruct
-    private void init() {
-        kafkaBrokerList = fetchBrokers();
-        kafkaProperties = buildKafkaProperties();
     }
 
     @Scheduled(fixedDelay = 30000)

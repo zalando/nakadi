@@ -21,18 +21,14 @@ public class ZkSubscriptionRepository implements SubscriptionRepository {
     @Override
     public void createSubscription(final String subscriptionId, final List<String> topics, final List<Cursor> cursors) {
         try {
-            createPersistentEmptyNode("/nakadi/subscriptions/%s", subscriptionId);
             createPersistentEmptyNode("/nakadi/subscriptions/%s/topology", subscriptionId);
-            for (final String topic : topics) {
-                createPersistentEmptyNode("/nakadi/subscriptions/%s/topics/%s", subscriptionId, topic);
-                createPersistentEmptyNode("/nakadi/subscriptions/%s/topics/%s/partitions", subscriptionId, topic);
-            }
             for (final Cursor cursor: cursors) {
                 final String path = String.format("/nakadi/subscriptions/%s/topics/%s/partitions/%s", subscriptionId,
                         cursor.getTopic(), cursor.getPartition());
                 zooKeeperHolder
                         .get()
                         .create()
+                        .creatingParentsIfNeeded()
                         .forPath(path, cursor.getOffset().getBytes());
             }
         }
