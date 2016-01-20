@@ -77,7 +77,7 @@ public class EventStreamCoordinator {
 
         // create the event stream itself
         final EventConsumer eventConsumer = topicRepository.createEventConsumer(cursors);
-        final EventStream eventStream = new EventStream(eventConsumer, outputStream, config, partitionsForClient);
+        final EventStream eventStream = new EventStream(eventConsumer, outputStream, config, cursors);
         eventStream.setClientId(newClientId);
         eventStream.setSubscriptionId(subscriptionId);
         eventStreams.add(eventStream);

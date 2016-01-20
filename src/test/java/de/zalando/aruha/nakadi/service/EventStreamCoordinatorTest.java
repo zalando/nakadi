@@ -92,7 +92,8 @@ public class EventStreamCoordinatorTest {
         subscriptionRepository.addClient(SUBSCRIPTION_ID, "client1Id");
         subscriptionRepository.addClient(SUBSCRIPTION_ID, "client2Id");
 
-        final EventStream eventStream = new EventStream(null, null, null, null);
+        final EventStream eventStream = new EventStream(mock(EventConsumer.class), mock(OutputStream.class),
+                EventStreamConfig.builder().build(), ImmutableList.of());
         eventStream.setSubscriptionId(SUBSCRIPTION_ID);
         eventStream.setClientId("client1Id");
 

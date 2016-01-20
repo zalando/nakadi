@@ -34,7 +34,9 @@ public class EventStream {
 
     private final EventStreamConfig config;
 
-    protected List<TopicPartition> partitions;
+    private List<TopicPartition> partitions;
+
+    private final List<Cursor> initialCursors;
 
     private AtomicReference<Optional<List<Cursor>>> newDistribution = new AtomicReference<>(Optional.empty());
 
@@ -45,11 +47,12 @@ public class EventStream {
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
-                       final List<TopicPartition> partitions) {
+                       final List<Cursor> cursors) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
-        this.partitions = partitions;
+        initialCursors = cursors;
+        partitions = cursorsToPartitions(cursors);
     }
 
     public void setOffsets(final List<Cursor> newDistribution) {
@@ -85,7 +88,7 @@ public class EventStream {
             int messagesReadInBatch = 0;
 
             Map<TopicPartition, List<String>> currentBatch = emptyBatch();
-            Map<TopicPartition, String> latestOffsets = eventConsumer.fetchNextOffsets();
+            Map<TopicPartition, String> latestOffsets = cursorsToOffsetMap(initialCursors);
 
             long start = currentTimeMillis();
             long batchStartTime = start;
@@ -97,15 +100,8 @@ public class EventStream {
                 if (newCursorsOrNone.isPresent()) {
                     final List<Cursor> newCursors = newCursorsOrNone.get();
                     eventConsumer.setCursors(newCursors);
-                    partitions = newCursors
-                            .stream()
-                            .map(cursor -> topicPartition(cursor.getTopic(), cursor.getPartition()))
-                            .collect(Collectors.toList());
-                    latestOffsets = newCursors
-                            .stream()
-                            .collect(Collectors.toMap(
-                                    cursor -> topicPartition(cursor.getTopic(), cursor.getPartition()),
-                                    Cursor::getOffset));
+                    partitions = cursorsToPartitions(newCursors);
+                    latestOffsets = cursorsToOffsetMap(newCursors);
                     // forget about all messages not flushed
                     messagesReadInBatch = 0;
                     currentBatch = emptyBatch();
@@ -215,6 +211,22 @@ public class EventStream {
                     Optional.empty());
             outputStream.write(streamEvent.getBytes());
         }
+    }
+
+    private Map<TopicPartition, String> cursorsToOffsetMap(final List<Cursor> cursors) {
+        return cursors
+                .stream()
+                .collect(Collectors.toMap(
+                        c -> topicPartition(c.getTopic(), c.getPartition()),
+                        Cursor::getOffset
+                ));
+    }
+
+    private List<TopicPartition> cursorsToPartitions(final List<Cursor> cursors) {
+        return cursors
+                .stream()
+                .map(c -> topicPartition(c.getTopic(), c.getPartition()))
+                .collect(Collectors.toList());
     }
 
 }
