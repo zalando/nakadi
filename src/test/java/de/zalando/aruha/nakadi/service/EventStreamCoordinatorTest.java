@@ -65,17 +65,16 @@ public class EventStreamCoordinatorTest {
                 EventStreamConfig.builder().build());
 
         // ASSERT //
-        // check that eventStream was created with correct subscription id
-        assertThat(eventStream.getSubscriptionId(), equalTo(SUBSCRIPTION_ID));
+        assertThat("Correct subscriptionId should be set for new event stream",
+                eventStream.getSubscriptionId(), equalTo(SUBSCRIPTION_ID));
 
-        // check that new client was added to topology
         final String newClientId = eventStream.getClientId();
         final Topology topology = subscriptionRepository.getTopology(SUBSCRIPTION_ID);
-        assertThat(topology.getClientIds(), equalTo(ImmutableList.of(client1Id, newClientId)));
+        assertThat("New client should be added to topology", topology.getClientIds(),
+                equalTo(ImmutableList.of(client1Id, newClientId)));
 
-        // check that correct partitions/offsets are set for streaming for new stream
         final List<Cursor> cursors = cursorsCaptor.getValue();
-        assertThat(cursors, equalTo(ImmutableList.of(
+        assertThat("Correct cursors should be set for new stream", cursors, equalTo(ImmutableList.of(
                 new Cursor("topic1", "1", "offset-t1-p1"),
                 new Cursor("topic2", "1", "offset-t2-p1"),
                 new Cursor("topic2", "3", "offset-t2-p3")
@@ -102,6 +101,7 @@ public class EventStreamCoordinatorTest {
 
         // ASSERT //
         final Topology topology = subscriptionRepository.getTopology(SUBSCRIPTION_ID);
-        assertThat(topology.getClientIds(), equalTo(ImmutableList.of("client2Id")));
+        assertThat("Removed client should be removed from topology", topology.getClientIds(),
+                equalTo(ImmutableList.of("client2Id")));
     }
 }

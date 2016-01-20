@@ -21,6 +21,12 @@ public class TestHelper {
         restTemplate = new RestTemplate();
     }
 
+    public boolean createSubscription(final String subscription, final List<String> topics) {
+        String url = format("{0}/subscriptions/{1}", baseUrl, subscription);
+        final ResponseEntity<Object> response = restTemplate.postForEntity(url, topics, Object.class);
+        return response != null && response.getStatusCode() == HttpStatus.CREATED;
+    }
+
     @SuppressWarnings("unchecked")
     public List<Map<String, String>> getLatestOffsets(final String topic) {
         final String url = format("{0}/topics/{1}/partitions", baseUrl, topic);
