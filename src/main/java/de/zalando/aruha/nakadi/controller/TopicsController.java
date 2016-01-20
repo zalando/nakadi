@@ -1,7 +1,5 @@
 package de.zalando.aruha.nakadi.controller;
 
-import static java.util.Optional.ofNullable;
-
 import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
 
@@ -11,6 +9,7 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.function.Predicate;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -103,11 +102,11 @@ public class TopicsController {
     public StreamingResponseBody streamEventsFromPartition(@PathVariable("topic") final String topic,
             @PathVariable("partition") final String partition,
             @RequestParam("start_from") final String startFrom,
-            @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final Integer batchLimit,
-            @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
-            @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
-            @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
-            @RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
+            @Nullable @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final Integer batchLimit,
+            @Nullable @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
+            @Nullable @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
+            @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
+            @Nullable @RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
             final HttpServletRequest request, final HttpServletResponse response) throws IOException {
 
         return
@@ -146,10 +145,11 @@ public class TopicsController {
                         .builder()
                         .withTopic(topic)
                         .withBatchLimit(batchLimit)
-                        .withStreamLimit(ofNullable(streamLimit))
-                        .withBatchTimeout(ofNullable(batchTimeout))
-                        .withStreamTimeout(ofNullable(streamTimeout))
-                        .withBatchKeepAliveLimit(ofNullable(batchKeepAliveLimit)).build();
+                        .withStreamLimit(streamLimit)
+                        .withBatchTimeout(batchTimeout)
+                        .withStreamTimeout(streamTimeout)
+                        .withBatchKeepAliveLimit(batchKeepAliveLimit)
+                        .build();
 
                 response.setStatus(HttpStatus.OK.value());
 

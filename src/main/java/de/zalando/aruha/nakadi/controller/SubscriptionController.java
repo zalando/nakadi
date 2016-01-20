@@ -23,14 +23,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static java.util.Optional.ofNullable;
 
 @RestController
 @RequestMapping(value = "/subscriptions")
@@ -48,8 +47,8 @@ public class SubscriptionController {
     private EventStreamCoordinator eventStreamCoordinator;
 
     @Timed(name = "create_subscription", absolute = true)
-    @RequestMapping(value = "/{subscription}", method = RequestMethod.POST)
-    public ResponseEntity createSubscription(@PathVariable("subscription") final String subscriptionId,
+    @RequestMapping(value = "/{subscriptionId}", method = RequestMethod.POST)
+    public ResponseEntity createSubscription(@PathVariable("subscriptionId") final String subscriptionId,
                                              @RequestBody final List<String> topics) {
         try {
             // the newly created subscription will read from latest offset
@@ -71,8 +70,8 @@ public class SubscriptionController {
     }
 
     @Timed(name = "commit_offsets", absolute = true)
-    @RequestMapping(value = "/{subscription}/cursors", method = RequestMethod.POST)
-    public ResponseEntity commitOffsets(@PathVariable("subscription") final String subscriptionId,
+    @RequestMapping(value = "/{subscriptionId}/cursors", method = RequestMethod.POST)
+    public ResponseEntity commitOffsets(@PathVariable("subscriptionId") final String subscriptionId,
                                         @RequestBody final List<Cursor> cursors)
             throws InterruptedException, NakadiException {
 
@@ -87,13 +86,14 @@ public class SubscriptionController {
     }
 
     @Timed(name = "stream_events_for_subscription", absolute = true)
-    @RequestMapping(value = "/{subscription}/events", method = RequestMethod.GET)
-    public StreamingResponseBody streamEventsForSubscription(@PathVariable("subscription") final String subscriptionId,
-            @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final Integer batchLimit,
-            @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
-            @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
-            @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
-            @RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
+    @RequestMapping(value = "/{subscriptionId}/events", method = RequestMethod.GET)
+    public StreamingResponseBody streamEventsForSubscription(
+            @PathVariable("subscriptionId") final String subscriptionId,
+            @Nullable @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final Integer batchLimit,
+            @Nullable @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
+            @Nullable @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
+            @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
+            @Nullable @RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
             final HttpServletRequest request, final HttpServletResponse response) throws IOException {
 
         return outputStream -> {
@@ -112,10 +112,10 @@ public class SubscriptionController {
                 final EventStreamConfig streamConfig = EventStreamConfig
                         .builder()
                         .withBatchLimit(batchLimit)
-                        .withStreamLimit(ofNullable(streamLimit))
-                        .withBatchTimeout(ofNullable(batchTimeout))
-                        .withStreamTimeout(ofNullable(streamTimeout))
-                        .withBatchKeepAliveLimit(ofNullable(batchKeepAliveLimit))
+                        .withStreamLimit(streamLimit)
+                        .withBatchTimeout(batchTimeout)
+                        .withStreamTimeout(streamTimeout)
+                        .withBatchKeepAliveLimit(batchKeepAliveLimit)
                         .build();
 
                 eventStream = eventStreamCoordinator.createEventStream(subscriptionId, outputStream, streamConfig);

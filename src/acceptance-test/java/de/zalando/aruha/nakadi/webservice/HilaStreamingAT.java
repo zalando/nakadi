@@ -3,28 +3,22 @@ package de.zalando.aruha.nakadi.webservice;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import de.zalando.aruha.nakadi.webservice.utils.TestHelper;
+import de.zalando.aruha.nakadi.webservice.utils.TestStreamingClient;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static java.text.MessageFormat.format;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -33,8 +27,6 @@ import static org.junit.Assert.fail;
 
 public class HilaStreamingAT extends BaseAT {
 
-    private static final String TOPIC = "test-topic";
-    private static final int PARTITION_NUM = 8;
     private static final int PARTITION_HALF_NUM = PARTITION_NUM / 2;
 
     private static final Set<String> ALL_PARTITIONS = IntStream
@@ -50,6 +42,10 @@ public class HilaStreamingAT extends BaseAT {
     public void setup() {
         testHelper = new TestHelper(URL);
         jsonMapper = new ObjectMapper();
+    }
+
+    @Test
+    public void whenCommitOffsetsThenStreamFromNewOffsets() {
     }
 
     /**
@@ -69,10 +65,10 @@ public class HilaStreamingAT extends BaseAT {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withBatchLimit(10)
-                .withBatchTimeout(Optional.of(5))
+                .withBatchTimeout(5)
                 .build();
 
-        final StreamingClient firstClient = StreamingClient.of(subscriptionId, config).start();
+        final TestStreamingClient firstClient = TestStreamingClient.of(URL, subscriptionId, config).start();
 
         Thread.sleep(6000);
 
@@ -82,7 +78,7 @@ public class HilaStreamingAT extends BaseAT {
         assertThat("As we currently have only one client, it should read from all partitions", singleClientPartitions,
                 equalTo(ALL_PARTITIONS));
 
-        final StreamingClient secondClient = StreamingClient.of(subscriptionId, config).start();
+        final TestStreamingClient secondClient = TestStreamingClient.of(URL, subscriptionId, config).start();
 
         Thread.sleep(6000);
 
@@ -125,62 +121,4 @@ public class HilaStreamingAT extends BaseAT {
                 .collect(Collectors.toSet());
     }
 
-    private static class StreamingClient implements Runnable {
-
-        private final String subscriptionId;
-        private final EventStreamConfig config;
-        private final List<List<String>> data;
-
-        public StreamingClient(final String subscriptionId, final EventStreamConfig config) {
-            this.subscriptionId = subscriptionId;
-            this.config = config;
-            data = Lists.newArrayList();
-        }
-
-        public static StreamingClient of(final String subscriptionId, final EventStreamConfig config) {
-            return new StreamingClient(subscriptionId, config);
-        }
-
-        @Override
-        public void run() {
-            try {
-                String url = format("{0}/subscriptions/{1}/events?batch_limit={2}&batch_flush_timeout={3}",
-                        URL, subscriptionId, config.getBatchLimit(), config.getBatchTimeout().get());
-                final InputStream inputStream = new URL(url).openStream();
-                final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-
-                int metaBatchIndex = 0;
-                while (true) {
-                    final String line = reader.readLine();
-                    if (line != null) {
-                        if (data.size() <= metaBatchIndex) {
-                            data.add(Lists.newArrayList());
-                        }
-                        if (line.length() == 0) {
-                            metaBatchIndex++;
-                        }
-                        else {
-                            data.get(metaBatchIndex).add(line);
-                        }
-                        System.out.println(line);
-                        System.out.println(line.length());
-                    } else {
-                        break;
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        public StreamingClient start() {
-            final Thread thread = new Thread(this);
-            thread.start();
-            return this;
-        }
-
-        public List<List<String>> getData() {
-            return data;
-        }
-    }
 }

@@ -1,6 +1,9 @@
 package de.zalando.aruha.nakadi.service;
 
+import javax.annotation.Nullable;
 import java.util.Optional;
+
+import static java.util.Optional.ofNullable;
 
 public class EventStreamConfig {
     private String topic;
@@ -59,10 +62,10 @@ public class EventStreamConfig {
     public static class Builder {
         private String topic;
         private Integer batchLimit;
-        private Optional<Integer> streamLimit;
-        private Optional<Integer> batchTimeout;
-        private Optional<Integer> streamTimeout;
-        private Optional<Integer> batchKeepAliveLimit;
+        private Optional<Integer> streamLimit = Optional.empty();
+        private Optional<Integer> batchTimeout = Optional.empty();
+        private Optional<Integer> streamTimeout = Optional.empty();
+        private Optional<Integer> batchKeepAliveLimit = Optional.empty();
 
         private Builder() { }
 
@@ -80,23 +83,23 @@ public class EventStreamConfig {
             return this;
         }
 
-        public Builder withStreamLimit(final Optional<Integer> streamLimit) {
-            this.streamLimit = streamLimit;
+        public Builder withStreamLimit(@Nullable final Integer streamLimit) {
+            this.streamLimit = ofNullable(streamLimit);
             return this;
         }
 
-        public Builder withBatchTimeout(final Optional<Integer> batchTimeout) {
-            this.batchTimeout = batchTimeout;
+        public Builder withBatchTimeout(@Nullable final Integer batchTimeout) {
+            this.batchTimeout = ofNullable(batchTimeout);
             return this;
         }
 
-        public Builder withStreamTimeout(final Optional<Integer> streamTimeout) {
-            this.streamTimeout = streamTimeout;
+        public Builder withStreamTimeout(@Nullable final Integer streamTimeout) {
+            this.streamTimeout = ofNullable(streamTimeout);
             return this;
         }
 
-        public Builder withBatchKeepAliveLimit(final Optional<Integer> batchKeepAliveLimit) {
-            this.batchKeepAliveLimit = batchKeepAliveLimit;
+        public Builder withBatchKeepAliveLimit(@Nullable final Integer batchKeepAliveLimit) {
+            this.batchKeepAliveLimit = ofNullable(batchKeepAliveLimit);
             return this;
         }
 
