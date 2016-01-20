@@ -29,7 +29,7 @@ public class TestHelper {
     }
 
     public boolean commitOffsets(final String subscriptionId, final List<Cursor> cursors) {
-        String url = format("{0}/subscriptions/{1}/offsets", baseUrl, subscriptionId);
+        String url = format("{0}/subscriptions/{1}/cursors", baseUrl, subscriptionId);
         final ResponseEntity<Object> response = restTemplate.postForEntity(url, cursors, Object.class);
         return response != null && response.getStatusCode() == HttpStatus.OK;
     }

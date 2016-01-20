@@ -25,12 +25,14 @@ public class TestStreamingClient implements Runnable {
         data = Lists.newArrayList();
     }
 
-    public static TestStreamingClient of(final String baseUrl, final String subscriptionId, final EventStreamConfig config) {
+    public static TestStreamingClient of(final String baseUrl, final String subscriptionId,
+                                         final EventStreamConfig config) {
         return new TestStreamingClient(baseUrl, subscriptionId, config);
     }
 
     @Override
     public void run() {
+        data.clear();
         try {
             String url = MessageFormat.format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId,
                     configToUrlParams());
