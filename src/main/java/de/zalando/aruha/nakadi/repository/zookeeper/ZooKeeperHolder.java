@@ -1,38 +1,80 @@
 package de.zalando.aruha.nakadi.repository.zookeeper;
 
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
+
+import org.apache.curator.RetryPolicy;
+import org.apache.curator.ensemble.EnsembleProvider;
+import org.apache.curator.ensemble.exhibitor.DefaultExhibitorRestClient;
+import org.apache.curator.ensemble.exhibitor.ExhibitorRestClient;
+import org.apache.curator.ensemble.exhibitor.Exhibitors;
+import org.apache.curator.ensemble.exhibitor.Exhibitors.BackupConnectionStringProvider;
+import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
 
 public class ZooKeeperHolder {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperHolder.class);
+    private final String zookeeperBrokers;
 
-    private final String brokers;
+    private final String zookeeperKafkaNamespace;
 
-    private ZooKeeper zooKeeper;
+    private final String exhibitorAddresses;
 
-    public ZooKeeperHolder(final String brokers) {
-        this.brokers = brokers;
+    private final Integer exhibitorPort;
+
+    private CuratorFramework zooKeeper;
+
+    public ZooKeeperHolder(String zookeeperBrokers, String zookeeperKafkaNamespace, String exhibitorAddresses, Integer exhibitorPort) {
+        this.zookeeperBrokers = zookeeperBrokers;
+        this.zookeeperKafkaNamespace = zookeeperKafkaNamespace;
+        this.exhibitorAddresses = exhibitorAddresses;
+        this.exhibitorPort = exhibitorPort;
+    }
+
+    class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
+
+        public ExhibitorEnsembleProvider(Exhibitors exhibitors, ExhibitorRestClient restClient, String restUriPath,
+                int pollingMs, RetryPolicy retryPolicy) {
+            super(exhibitors, restClient, restUriPath, pollingMs, retryPolicy);
+        }
+
+        @Override
+        public String getConnectionString()
+        {
+            return super.getConnectionString() + zookeeperKafkaNamespace;
+        }
     }
 
     @PostConstruct
-    public void init() throws IOException {
-        LOG.info("Start ZooKeeper client for brokers: {}", brokers);
-        zooKeeper = new ZooKeeper(brokers, 30000, new Watcher() {
-            @Override
-            public void process(final WatchedEvent event) {
-                LOG.info("connection state event: {}", event);
-            }
-        });
+    public void init() throws Exception {
+        final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
+        EnsembleProvider ensembleProvider;
+        if (exhibitorAddresses != null) {
+            final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddresses.split("\\s*,\\s*"));
+            final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort,
+                    new BackupConnectionStringProvider() {
+                        @Override
+                        public String getBackupConnectionString() throws Exception {
+                            return zookeeperBrokers + zookeeperKafkaNamespace;
+                        }
+                    });
+            final ExhibitorRestClient exhibitorRestClient = new DefaultExhibitorRestClient();
+            ensembleProvider = new ExhibitorEnsembleProvider(exhibitors,
+                    exhibitorRestClient, "/exhibitor/v1/cluster/list", 300000, retryPolicy);
+            ((ExhibitorEnsembleProvider)ensembleProvider).pollForInitialEnsemble();
+        } else {
+            ensembleProvider = new FixedEnsembleProvider(zookeeperBrokers + zookeeperKafkaNamespace);
+        }
+        zooKeeper = CuratorFrameworkFactory.builder().ensembleProvider(ensembleProvider).retryPolicy(retryPolicy).build();
+        zooKeeper.start();
     }
 
-    public ZooKeeper get() throws IOException {
+    public CuratorFramework get() throws IOException {
         return zooKeeper;
     }
 }
