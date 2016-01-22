@@ -17,6 +17,9 @@ SenzaInfo:
     - ScalyrAccountKey:
         Description: "Key for Skalyr logging (optional)"
         Default: ""
+    - InstanceType:
+        Description: "The EC2 Instance type that is used for the Nakadi instances (optional, default: t2.micro)"
+        Default: "t2.micro"
     - InstancesMinumum:
         Description: "The minimum number of instances of the AutoScalingGroup (optional, default: 2)"
         Default: 2
@@ -42,7 +45,7 @@ SenzaComponents:
 
   - AppServer:
       Type: Senza::TaupageAutoScalingGroup
-      InstanceType: t2.micro
+      InstanceType: "{{Arguments.InstanceType}}"
       SecurityGroups:
         - "Fn::GetAtt":
           - "NakadiSecurityGroup"
