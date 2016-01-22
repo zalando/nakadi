@@ -107,7 +107,7 @@ public class HilaStreamingAT extends BaseAT {
      * @throws InterruptedException
      */
     @Test(timeout = 20000)
-    public void whenAddSecondClientPartitionsAreRedistributed() throws IOException, InterruptedException {
+    public void whenAddSecondClientThenPartitionsAreRedistributed() throws IOException, InterruptedException {
 
         final String subscriptionId = TestUtils.randomString();
         final boolean created = testHelper.createSubscription(subscriptionId, ImmutableList.of(TOPIC));
