@@ -21,14 +21,23 @@ info:
     **Note:** *Currently the specification of the schema must be pushed into Nakadi on EventType creation;
     in the future, assuming that Applications will expose the schema for its owned resources, Nakadi might
     support fetching the schema directly from them.*
-    Nakadi might define globally minimal schema compliance requirements (i.e. some fields that must be
-    present on schemas of all EventTypes).
 
     * The expected **validation** and **enrichment** procedures upon reception of an Event.
-    (*TODO: define validation and enrichment*)
+    Validation define conditions for the acceptance of the incoming Event and are strictly enforced by
+    Nakadi. Usually the validation will enforce compliance of the payload (or part of it) with the defined
+    schema of its EventType. Enrichment specify properties that are added to the payload (body) of the Event
+    before persisting it. Usually enrichment affects the metadata of an Event but is not limited to.
 
-    * The **ordering** expectations of Events in this stream. (*TODO: define ordering not in terms of
-    partitioning*)
+    * The **ordering** expectations of Events in this stream. Each EventType will have its Events stored in
+    an underlying logical stream (the Topic) that is phisically organized in disjoints collections of
+    strictly ordered Events (the Partition). The EventType defines the field that acts as evaluator of the
+    ordering (that is, its partitioning key); this ordering is guaranteed by making Events whose partition
+    key resolves to the same Partition (usually a hash function on its value) be persisted strictly ordered
+    in a Partition.
+    In practice this means that all Events within a Partition have their relative order guaranteed: Events
+    (of a same EventType) that are *about* a same data entity (that is, have the same value on its Partition
+    key) reach always the same Partition, the relative ordering of them is secured. This mechanism implies
+    that no statements can be made about the relative ordering of Events that are in different partitions.
 
     Except for defined enrichment rules, Nakadi will never manipulate the content of any Event.
 
@@ -45,7 +54,7 @@ info:
 
 
     Scope and status of this document
-    -------------------------------
+    ---------------------------------
 
     The present API specification is in **draft** state and is subject to change.
 
@@ -1194,4 +1203,3 @@ definitions:
         description: Documentation for the enrichment.
     required:
       - name
-
