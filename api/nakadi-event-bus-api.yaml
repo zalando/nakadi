@@ -41,16 +41,18 @@ info:
 
     Except for defined enrichment rules, Nakadi will never manipulate the content of any Event.
 
-    Clients of Nakadi can be grouped in 2 categories: **Application owners** and **Clients** (clients in turn
+    Clients of Nakadi can be grouped in 2 categories: **EventType owners** and **Clients** (clients in turn
     are both **Producers** and **Consumers** of Events). Application owners interact with Nakadi via the
     **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for
     submission and reception of Events. A low level **Topic API** is available, providing full control and
     responsibility of position tracking and partitioning (and therefore ordering) to the Clients.
 
-    The consumption of Events proceeds via the establishment of a named **Subscription** to an EventType.
-    Subscriptions are persistent relationships from an Application (which might have several instances) and
-    the stream of an EventType, whose consumption tracking is managed by Nakadi, freeing Consumers from any
-    responsibility in tracking the current position on a Stream.
+    In the high level **Managed API** the consumption of Events proceeds via the establishment of a named
+    **Subscription** to an EventType. Subscriptions are persistent relationships from an Application (which
+    might have several instances) and the stream of an EventType, whose consumption tracking is managed by
+    Nakadi, freeing Consumers from any responsibility in tracking the current position on a Stream. **Note**
+    *Currently the high level API is out of scope in this specification. It is in the short term plan to be
+    included.*
 
 
     Scope and status of this document
