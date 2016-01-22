@@ -1,50 +1,59 @@
 package de.zalando.aruha.nakadi.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
+public class TopicPartition implements Comparable<TopicPartition> {
 
-public class TopicPartition {
-    @JsonIgnore
-    private String topicId;
-    @JsonProperty("partition")
-    private String partitionId;
-    private String oldestAvailableOffset;
-    private String newestAvailableOffset;
+    private final String topic;
 
-    public TopicPartition(final String topicId, final String partitionId) {
-        setTopicId(topicId);
-        setPartitionId(partitionId);
+    private final String partition;
+
+    public TopicPartition(final String topic, final String partition) {
+        this.topic = topic;
+        this.partition = partition;
     }
 
-    public String getTopicId() {
-        return topicId;
+    public String getTopic() {
+        return topic;
     }
 
-    public void setTopicId(final String topicId) {
-        this.topicId = topicId;
+    public String getPartition() {
+        return partition;
     }
 
-    public String getPartitionId() {
-        return partitionId;
+    public static TopicPartition topicPartition(final String topic, final String partition) {
+        return new TopicPartition(topic, partition);
     }
 
-    public void setPartitionId(final String partitionId) {
-        this.partitionId = partitionId;
+    @Override
+    public int compareTo(final TopicPartition tp) {
+        final int topicCompare = this.topic.compareTo(tp.getTopic());
+        if (topicCompare != 0) {
+            return topicCompare;
+        }
+        else {
+            return partition.compareTo(tp.getPartition());
+        }
     }
 
-    public String getOldestAvailableOffset() {
-        return oldestAvailableOffset;
+    @Override
+    public String toString() {
+        return "TopicPartition{" +
+                "topic='" + topic + '\'' +
+                ", partition='" + partition + '\'' +
+                '}';
     }
 
-    public void setOldestAvailableOffset(final String oldestAvailableOffset) {
-        this.oldestAvailableOffset = oldestAvailableOffset;
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final TopicPartition that = (TopicPartition) o;
+        return topic.equals(that.topic) && partition.equals(that.partition);
     }
 
-    public String getNewestAvailableOffset() {
-        return newestAvailableOffset;
-    }
-
-    public void setNewestAvailableOffset(final String newestAvailableOffset) {
-        this.newestAvailableOffset = newestAvailableOffset;
+    @Override
+    public int hashCode() {
+        int result = topic.hashCode();
+        result = 31 * result + partition.hashCode();
+        return result;
     }
 }

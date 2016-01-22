@@ -36,7 +36,6 @@ import de.zalando.aruha.nakadi.webservice.utils.TestHelper;
 
 public class EventStreamReadingAT extends BaseAT {
 
-    private static final String TOPIC = "test-topic";
     private static final String PARTITION = "0";
     private static final String DUMMY_EVENT = "Dummy";
     private static final int EVENTS_PUSHED = 20;

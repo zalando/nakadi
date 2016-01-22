@@ -1,5 +1,22 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.Topic;
+import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import kafka.api.PartitionOffsetRequestInfo;
+import kafka.common.TopicAndPartition;
+import kafka.javaapi.OffsetRequest;
+import kafka.javaapi.OffsetResponse;
+import kafka.javaapi.consumer.SimpleConsumer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -9,61 +26,29 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-
-import org.springframework.stereotype.Component;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Topic;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-
-import kafka.api.PartitionOffsetRequestInfo;
-
-import kafka.common.TopicAndPartition;
-
-import kafka.javaapi.OffsetRequest;
-import kafka.javaapi.OffsetResponse;
-
-import kafka.javaapi.consumer.SimpleConsumer;
-
-@Component
 public class KafkaRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRepository.class);
 
     private static final long KAFKA_SEND_TIMEOUT_MS = 10000;
 
-    private static final long KAFKA_READ_TIMEOUT_MS = 0;
-
     private final ZooKeeperHolder zkFactory;
     private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
+    private final long kafkaPollTimeout;
 
-    @Value("${nakadi.kafka.poll.timeoutMs}")
-    private long kafkaPollTimeout;
-
-    @Autowired
-    public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory) {
+    public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
+                           final long kafkaPollTimeout) {
         this.zkFactory = zkFactory;
         this.kafkaProducer = kafkaFactory.createProducer();
         this.kafkaFactory = kafkaFactory;
+        this.kafkaPollTimeout = kafkaPollTimeout;
     }
 
     @Override
     public List<Topic> listTopics() throws NakadiException {
         try {
-            return zkFactory.get().getChildren().forPath("/brokers/topics").stream().map(s ->
-                    new Topic(s)).collect(Collectors.toList());
+            return zkFactory.get().getChildren().forPath("/brokers/topics").stream().map(Topic::new).collect(Collectors.toList());
         } catch (Exception e) {
             throw new NakadiException("Failed to get partitions", e);
         }
@@ -82,8 +67,16 @@ public class KafkaRepository implements TopicRepository {
         }
     }
 
+    public List<String> listPartitions(final String topic) {
+        return kafkaProducer
+                .partitionsFor(topic)
+                .stream()
+                .map(partitionInfo -> Integer.toString(partitionInfo.partition()))
+                .collect(Collectors.toList());
+    }
+
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
+    public List<TopicPartitionOffsets> listPartitionsOffsets(final String topicId) {
 
         final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
         try {
@@ -137,10 +130,10 @@ public class KafkaRepository implements TopicRepository {
                 return offset >= oldest && offset <= newest;
             }
 
-            private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,
+            private TopicPartitionOffsets processTopicPartitionMetadata(final TopicAndPartition partition,
                     final OffsetResponse latestPartitionData, final OffsetResponse earliestPartitionData) {
 
-                final TopicPartition tp = new TopicPartition(partition.topic(),
+                final TopicPartitionOffsets tp = new TopicPartitionOffsets(partition.topic(),
                         Integer.toString(partition.partition()));
                 final long latestOffset = latestPartitionData.offsets(partition.topic(), partition.partition())[0];
                 final long earliestOffset = earliestPartitionData.offsets(partition.topic(), partition.partition())[0];
@@ -158,20 +151,9 @@ public class KafkaRepository implements TopicRepository {
                 return sc.getOffsetsBefore(request);
             }
 
-            @Override
-            public void readEvent(final String topicId, final String partitionId) {
-                final org.apache.kafka.common.TopicPartition tp = new org.apache.kafka.common.TopicPartition(topicId,
-                        Integer.parseInt(partitionId));
-                // final Consumer<String, String> consumerForPartition =
-                // factory.getConsumerFor(tp);
-                // FIXME: read from kafka
-                // consumerForPartition.poll(KAFKA_READ_TIMEOUT_MS);
-                // consumerForPartition.close();
 
-            }
-
-            @Override
-            public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) {
-                return new NakadiKafkaConsumer(kafkaFactory, topic, cursors, kafkaPollTimeout);
-            }
-        }
+    @Override
+    public EventConsumer createEventConsumer(final List<Cursor> cursors) {
+        return new NakadiKafkaConsumer(kafkaFactory, cursors, kafkaPollTimeout);
+    }
+}

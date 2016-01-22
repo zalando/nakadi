@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import de.zalando.aruha.nakadi.domain.Cursor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -19,6 +20,18 @@ public class TestHelper {
     public TestHelper(final String baseUrl) {
         this.baseUrl = baseUrl;
         restTemplate = new RestTemplate();
+    }
+
+    public boolean createSubscription(final String subscriptionId, final List<String> topics) {
+        String url = format("{0}/subscriptions/{1}", baseUrl, subscriptionId);
+        final ResponseEntity<Object> response = restTemplate.postForEntity(url, topics, Object.class);
+        return response != null && response.getStatusCode() == HttpStatus.CREATED;
+    }
+
+    public boolean commitOffsets(final String subscriptionId, final List<Cursor> cursors) {
+        String url = format("{0}/subscriptions/{1}/cursors", baseUrl, subscriptionId);
+        final ResponseEntity<Object> response = restTemplate.postForEntity(url, cursors, Object.class);
+        return response != null && response.getStatusCode() == HttpStatus.OK;
     }
 
     @SuppressWarnings("unchecked")

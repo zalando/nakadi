@@ -1,27 +1,26 @@
 package de.zalando.aruha.nakadi.service;
 
-import static java.lang.System.currentTimeMillis;
-
-import static java.util.function.Function.identity;
-
-import java.io.IOException;
-import java.io.OutputStream;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.ConsumedEvent;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
+import static de.zalando.aruha.nakadi.domain.TopicPartition.topicPartition;
+import static java.lang.System.currentTimeMillis;
+import static java.util.function.Function.identity;
 
 public class EventStream {
 
@@ -31,19 +30,53 @@ public class EventStream {
 
     private final OutputStream outputStream;
 
-    private final EventConsumer eventConsumer;
+    protected final EventConsumer eventConsumer;
 
     private final EventStreamConfig config;
 
-    public EventStream(final EventConsumer eventConsumer, final OutputStream outputStream,
-            final EventStreamConfig config) {
+    private List<TopicPartition> partitions;
+
+    private final List<Cursor> initialCursors;
+
+    private final AtomicReference<Optional<List<Cursor>>> newDistribution;
+
+    private String clientId;
+
+    private String subscriptionId;
+
+    public EventStream(final EventConsumer eventConsumer,
+                       final OutputStream outputStream,
+                       final EventStreamConfig config,
+                       final List<Cursor> cursors) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
+        initialCursors = cursors;
+        partitions = cursorsToPartitions(cursors);
+        newDistribution = new AtomicReference<>(Optional.empty());
+    }
+
+    public void setOffsets(final List<Cursor> newDistribution) {
+        this.newDistribution.lazySet(Optional.of(newDistribution));
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(final String clientId) {
+        this.clientId = clientId;
+    }
+
+    public String getSubscriptionId() {
+        return subscriptionId;
+    }
+
+    public void setSubscriptionId(final String subscriptionId) {
+        this.subscriptionId = subscriptionId;
     }
 
     public void streamEvents() {
-
         // todo: currently if:
         // - stream limit and timeout are not set AND
         // - the keep-alive is not set AND
@@ -55,23 +88,37 @@ public class EventStream {
             int messagesRead = 0;
             int messagesReadInBatch = 0;
 
-            Map<String, List<String>> currentBatch = emptyBatch();
-            final Map<String, String> latestOffsets = Maps.newHashMap(config.getCursors());
+            Map<TopicPartition, List<String>> currentBatch = emptyBatch();
+            Map<TopicPartition, String> latestOffsets = cursorsToOffsetMap(initialCursors);
 
             long start = currentTimeMillis();
             long batchStartTime = start;
 
             while (true) {
+
+                // check if rebalance is invoked
+                final Optional<List<Cursor>> newCursorsOrNone = newDistribution.getAndSet(Optional.empty());
+                if (newCursorsOrNone.isPresent()) {
+                    final List<Cursor> newCursors = newCursorsOrNone.get();
+                    eventConsumer.setCursors(newCursors);
+                    partitions = cursorsToPartitions(newCursors);
+                    latestOffsets = cursorsToOffsetMap(newCursors);
+                    // forget about all messages not flushed
+                    messagesReadInBatch = 0;
+                    currentBatch = emptyBatch();
+                    batchStartTime = currentTimeMillis();
+                }
+
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
 
                 if (eventOrEmpty.isPresent()) {
                     final ConsumedEvent event = eventOrEmpty.get();
 
                     // update offset for the partition of event that was read
-                    latestOffsets.put(event.getPartition(), event.getNextOffset());
+                    latestOffsets.put(event.getTopicPartition(), event.getNextOffset());
 
                     // put message to batch
-                    currentBatch.get(event.getPartition()).add(event.getEvent());
+                    currentBatch.get(event.getTopicPartition()).add(event.getEvent());
                     messagesRead++;
                     messagesReadInBatch++;
 
@@ -126,15 +173,17 @@ public class EventStream {
         }
     }
 
-    private Map<String, List<String>> emptyBatch() {
-        return config.getCursors().keySet().stream().collect(Collectors.toMap(identity(),
-                    partition -> Lists.newArrayList()));
+    private Map<TopicPartition, List<String>> emptyBatch() {
+        return partitions.stream().collect(Collectors.toMap(identity(), partition -> Lists.newArrayList()));
     }
 
-    private String createStreamEvent(final String partition, final String offset, final List<String> events,
+    private String createStreamEvent(final TopicPartition partition, final String offset, final List<String> events,
             final Optional<String> topology) {
-        final StringBuilder builder = new StringBuilder().append("{\"cursor\":{\"partition\":\"").append(partition)
-                                                         .append("\",\"offset\":\"").append(offset).append("\"}");
+        final StringBuilder builder = new StringBuilder()
+                .append("{\"cursor\":{")
+                .append("\"topic\":\"").append(partition.getTopic()).append("\",")
+                .append("\"partition\":\"").append(partition.getPartition()).append("\",")
+                .append("\"offset\":\"").append(offset).append("\"}");
         if (!events.isEmpty()) {
             builder.append(",\"events\":[");
             events.stream().forEach(event -> builder.append(event).append(","));
@@ -145,11 +194,11 @@ public class EventStream {
         return builder.toString();
     }
 
-    private void sendBatch(final Map<String, String> latestOffsets, final Map<String, List<String>> currentBatch)
+    private void sendBatch(final Map<TopicPartition, String> latestOffsets, final Map<TopicPartition, List<String>> currentBatch)
         throws IOException {
 
         // iterate through all partitions we stream for
-        for (String partition : config.getCursors().keySet()) {
+        for (TopicPartition partition : partitions) {
             List<String> events = ImmutableList.of();
 
             // if there are some events read for current partition - grab them
@@ -163,6 +212,22 @@ public class EventStream {
                     Optional.empty());
             outputStream.write(streamEvent.getBytes());
         }
+    }
+
+    private Map<TopicPartition, String> cursorsToOffsetMap(final List<Cursor> cursors) {
+        return cursors
+                .stream()
+                .collect(Collectors.toMap(
+                        c -> topicPartition(c.getTopic(), c.getPartition()),
+                        Cursor::getOffset
+                ));
+    }
+
+    private List<TopicPartition> cursorsToPartitions(final List<Cursor> cursors) {
+        return cursors
+                .stream()
+                .map(c -> topicPartition(c.getTopic(), c.getPartition()))
+                .collect(Collectors.toList());
     }
 
 }

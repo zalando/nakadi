@@ -1,7 +1,5 @@
 package de.zalando.aruha.nakadi.controller;
 
-import static java.util.Optional.ofNullable;
-
 import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
 
@@ -11,9 +9,14 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.function.Predicate;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.google.common.collect.ImmutableList;
+import de.zalando.aruha.nakadi.NakadiRuntimeException;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.TopicPartitionOffsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +37,8 @@ import com.codahale.metrics.annotation.Timed;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import com.google.common.collect.ImmutableMap;
-
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Problem;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
@@ -63,7 +63,7 @@ public class TopicsController {
         try {
             return ok().body(topicRepository.listTopics());
         } catch (final NakadiException e) {
-            return status(503).body(e.getProblemMessage());
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getProblemMessage());
         }
     }
 
@@ -71,15 +71,15 @@ public class TopicsController {
     @RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
     public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
         try {
-            return ok().body(topicRepository.listPartitions(topicId));
-        } catch (final NakadiException e) {
-            return status(503).body(e.getProblemMessage());
+            return ok().body(topicRepository.listPartitionsOffsets(topicId));
+        } catch (final NakadiRuntimeException e) {
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.asProblem());
         }
     }
 
     @Timed(name = "get_partition", absolute = true)
     @RequestMapping(value = "/{topicId}/partitions/{partitionId}", method = RequestMethod.GET)
-    public TopicPartition getPartition(@PathVariable("topicId") final String topicId) {
+    public TopicPartitionOffsets getPartition(@PathVariable("topicId") final String topicId) {
         throw new UnsupportedOperationException();
     }
 
@@ -93,7 +93,7 @@ public class TopicsController {
             return status(HttpStatus.CREATED).build();
         } catch (final NakadiException e) {
             LOG.error("error posting to partition", e);
-            return status(500).body(e.getProblemMessage());
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getProblemMessage());
         }
     }
 
@@ -102,11 +102,11 @@ public class TopicsController {
     public StreamingResponseBody streamEventsFromPartition(@PathVariable("topic") final String topic,
             @PathVariable("partition") final String partition,
             @RequestParam("start_from") final String startFrom,
-            @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final Integer batchLimit,
-            @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
-            @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
-            @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
-            @RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
+            @Nullable @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final Integer batchLimit,
+            @Nullable @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
+            @Nullable @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
+            @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
+            @Nullable @RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
             final HttpServletRequest request, final HttpServletResponse response) throws IOException {
 
         return
@@ -122,8 +122,8 @@ public class TopicsController {
                 }
 
                 // check if partition exists
-                final List<TopicPartition> topicPartitions = topicRepository.listPartitions(topic);
-                final Predicate<TopicPartition> tpPredicate = tp ->
+                final List<TopicPartitionOffsets> topicPartitions = topicRepository.listPartitionsOffsets(topic);
+                final Predicate<TopicPartitionOffsets> tpPredicate = tp ->
                         topic.equals(tp.getTopicId()) && partition.equals(tp.getPartitionId());
                 final boolean partitionExists = topicPartitions.stream().anyMatch(tpPredicate);
                 if (!partitionExists) {
@@ -133,22 +133,23 @@ public class TopicsController {
 
                 // check if offset is correct
                 final boolean offsetCorrect = topicPartitions.stream().filter(tpPredicate).findFirst().map(tp ->
-                                                                     topicRepository.validateOffset(startFrom,
-                                                                         tp.getNewestAvailableOffset(),
-                                                                         tp.getOldestAvailableOffset())).orElse(false);
+                        topicRepository.validateOffset(startFrom,
+                                tp.getNewestAvailableOffset(),
+                                tp.getOldestAvailableOffset())).orElse(false);
                 if (!offsetCorrect) {
                     writeProblemResponse(response, outputStream, HttpStatus.BAD_REQUEST.value(),
                         new Problem("start_from is invalid"));
                 }
 
-                final EventStreamConfig streamConfig = EventStreamConfig.builder().withTopic(topic)
-                                                                        .withCursors(ImmutableMap.of(partition,
-                                                                                startFrom)).withBatchLimit(batchLimit)
-                                                                        .withStreamLimit(ofNullable(streamLimit))
-                                                                        .withBatchTimeout(ofNullable(batchTimeout))
-                                                                        .withStreamTimeout(ofNullable(streamTimeout))
-                                                                        .withBatchKeepAliveLimit(ofNullable(
-                            batchKeepAliveLimit)).build();
+                final EventStreamConfig streamConfig = EventStreamConfig
+                        .builder()
+                        .withTopic(topic)
+                        .withBatchLimit(batchLimit)
+                        .withStreamLimit(streamLimit)
+                        .withBatchTimeout(batchTimeout)
+                        .withStreamTimeout(streamTimeout)
+                        .withBatchKeepAliveLimit(batchKeepAliveLimit)
+                        .build();
 
                 response.setStatus(HttpStatus.OK.value());
 
@@ -160,9 +161,9 @@ public class TopicsController {
                     response.addHeader("Content-Encoding", "gzip");
                 }
 
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic,
-                        streamConfig.getCursors());
-                final EventStream eventStream = new EventStream(eventConsumer, output, streamConfig);
+                final ImmutableList<Cursor> cursors = ImmutableList.of(new Cursor(topic, partition, startFrom));
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer(cursors);
+                final EventStream eventStream = new EventStream(eventConsumer, output, streamConfig, cursors);
                 eventStream.streamEvents();
 
                 if (gzipEnabled) {
