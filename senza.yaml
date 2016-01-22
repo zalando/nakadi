@@ -1,0 +1,159 @@
+SenzaInfo:
+  StackName: "nakadi-{{Arguments.Environment}}"
+  Parameters:
+    - DockerImage:
+        Description: "Name of the Docker image providing Nakadi."
+    - Environment:
+        Description: "Environment where we deploy to"
+    - AccessTokenUrl:
+        Description: "Url to the access token validation service"
+    - TokeninfoUrl:
+        Description: "TokeninfoUrl"
+    - ApplicationId:
+        Description: "Application id"
+        Default: "nakadi"
+    - MintBucket:
+        Description: "Name of the mint bucket to use for this application"
+    - ScalyrAccountKey:
+        Description: "Key for Skalyr logging (optional)"
+        Default: ""
+    - InstancesMinumum:
+        Description: "The minimum number of instances of the AutoScalingGroup (optional, default: 2)"
+        Default: 2
+    - InstancesMaximum:
+        Description: "The maximum number of instances of the AutoScalingGroup (optional, default: 5)"
+        Default: 5
+    - ZookeeperKafkaNamespace:
+        Description: "Namespace in Zookeeper used by Buku (Kafka) (optional)"
+        Default: ""
+    - ExhibitorBrokers:
+        Description: "List of exhibitor brokers (comma separated)"
+    - ExhibitorPort:
+        Description: "Exhibitor port (ptional, default 8181)"
+        Default: "8181"
+    - LimitTrafficToCidr:
+        Description: "Allows request to the loadbalancer of Nakadi to only this ip address range given in cidr notation (optional, default: 0.0.0.0/0)"
+        Default: "0.0.0.0/0"
+
+SenzaComponents:
+
+  - Configuration:
+      Type: Senza::StupsAutoConfiguration # auto-detect network setup
+
+  - AppServer:
+      Type: Senza::TaupageAutoScalingGroup
+      InstanceType: t2.micro
+      SecurityGroups:
+        - "Fn::GetAtt":
+          - "NakadiSecurityGroup"
+          - "GroupId"
+      IamInstanceProfile:
+        Ref: NakadiIamInstanceProfile
+      ElasticLoadBalancer: AppLoadBalancer
+      AssociatePublicIpAddress: false
+      TaupageConfig:
+        application_id: "{{Arguments.ApplicationId}}"
+        application_version: "{{SenzaInfo.StackVersion}}"
+        mint_bucket: "{{Arguments.MintBucket}}"
+        runtime: Docker
+        source: "{{Arguments.DockerImage}}"
+        health_check_path: /health
+        ports:
+          8080: 8080
+        scalyr_account_key: "{{Arguments.ScalyrAccountKey}}"
+        environment:
+          HTTP_TOKENINFO_URL: "{{Arguments.TokeninfoUrl}}"
+          OAUTH2_ACCESS_TOKEN_URL: "{{Arguments.AccessTokenUrl}}"
+          ARUHA_PUSH_OAUTH_ACTIVE: "true"
+          ARUHA_PULL_OAUTH_ACTIVE: "true"
+          ARUHA_SUBSCRIPTION_MODE: "zookeeper"
+          STREAM_HEARTBEAT_PERIOD_MS: "5000"
+          KAFKA_CLIENTS_INIT_POOL_SIZE: "4"
+          KAFKA_CLIENTS_MAX_POOL_SIZE: "16"
+          NAKADI_ZOOKEEPER_KAFKANAMESPACE:    "{{Arguments.ZookeeperKafkaNamespace}}"
+          NAKADI_ZOOKEEPER_EXHIBITOR_BROKERS: "{{Arguments.ExhibitorBrokers}}"
+          NAKADI_ZOOKEEPER_EXHIBITOR_PORT:    "{{Arguments.ExhibitorPort}}"
+      AutoScaling:
+        Minimum: "{{Arguments.InstancesMinumum}}"
+        Maximum: "{{Arguments.InstancesMaximum}}"
+        MetricType: CPU
+        ScaleUpThreshold: 70
+        ScaleDownThreshold: 40
+
+  # creates an ELB entry and Route53 domains to this ELB
+  - AppLoadBalancer:
+      Type: Senza::WeightedDnsElasticLoadBalancer
+      HTTPPort: 8080
+      HealthCheckPath: /health
+      SecurityGroups:
+        - "Fn::GetAtt":
+          - "NakadiLBSecurityGroup"
+          - "GroupId"
+      ConnectionSettings:
+        IdleTimeout: 3600
+      Scheme: internet-facing
+
+Resources:
+  NakadiIamInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Roles:
+        - Ref: "NakadiIamRole"
+
+  NakadiIamRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - "sts:AssumeRole"
+      Policies:
+      - PolicyName: NakadiAllowMintRead
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Sid: "AllowMintRead"
+            Action:
+            - "s3:GetObject"
+            - "s3:ListBucket"
+            Effect: Allow
+            Resource:
+            - "arn:aws:s3:::{{Arguments.MintBucket}}"
+            - "arn:aws:s3:::{{Arguments.MintBucket}}/{{Arguments.ApplicationId}}/*"
+
+  NakadiSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: nakadi security group
+      SecurityGroupIngress:
+      # ssh
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      # http(s)
+      - IpProtocol: tcp
+        FromPort: 8080
+        ToPort: 8080
+        CidrIp: 0.0.0.0/0
+      # for monitoring
+      - IpProtocol: tcp
+        FromPort: 9100
+        ToPort: 9100
+        CidrIp: 0.0.0.0/0
+
+  NakadiLBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: nakadi loadbalancer security group
+      SecurityGroupIngress:
+      # https
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 8080
+        CidrIp: "{{Arguments.LimitTrafficToCidr}}"
