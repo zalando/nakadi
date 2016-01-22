@@ -38,7 +38,7 @@ public class EventStream {
 
     private final List<Cursor> initialCursors;
 
-    private AtomicReference<Optional<List<Cursor>>> newDistribution = new AtomicReference<>(Optional.empty());
+    private final AtomicReference<Optional<List<Cursor>>> newDistribution;
 
     private String clientId;
 
@@ -53,6 +53,7 @@ public class EventStream {
         this.config = config;
         initialCursors = cursors;
         partitions = cursorsToPartitions(cursors);
+        newDistribution = new AtomicReference<>(Optional.empty());
     }
 
     public void setOffsets(final List<Cursor> newDistribution) {

@@ -35,7 +35,7 @@ public class KafkaRepository implements TopicRepository {
     private final ZooKeeperHolder zkFactory;
     private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
-    private long kafkaPollTimeout;
+    private final long kafkaPollTimeout;
 
     public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
                            final long kafkaPollTimeout) {

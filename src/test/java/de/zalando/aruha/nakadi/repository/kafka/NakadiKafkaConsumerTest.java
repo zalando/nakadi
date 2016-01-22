@@ -50,7 +50,7 @@ public class NakadiKafkaConsumerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void whenSetCursorsThenKafkaConsumerConfiguredCorrectly() {
+    public void whenCreateNakadiConsumerThenKafkaConsumerConfiguredCorrectly() {
 
         // ARRANGE //
         final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
@@ -71,7 +71,7 @@ public class NakadiKafkaConsumerTest {
                 new Cursor(randomString(), randomUIntAsString(), randomULongAsString()));
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, cursors, POLL_TIMEOUT);
+        new NakadiKafkaConsumer(kafkaFactoryMock, cursors, POLL_TIMEOUT);
 
         // ASSERT //
         final List<TopicPartition> expectedTPs = cursors

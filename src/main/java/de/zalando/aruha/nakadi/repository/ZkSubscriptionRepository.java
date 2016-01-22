@@ -12,7 +12,7 @@ import java.util.UUID;
 
 public class ZkSubscriptionRepository implements SubscriptionRepository {
 
-    private ZooKeeperHolder zooKeeperHolder;
+    private final ZooKeeperHolder zooKeeperHolder;
 
     public ZkSubscriptionRepository(final ZooKeeperHolder zooKeeperHolder) {
         this.zooKeeperHolder = zooKeeperHolder;

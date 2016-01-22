@@ -48,8 +48,8 @@ public class HilaStreamingAT extends BaseAT {
     }
 
     /**
-     * This test create a subscription, starts a short stream for it, pushes 5 messages to appropriate topic, checks if
-     * they were consumed; after that commits the consumed offset, pushes new 3 messages, creates a short stream for
+     * This test creates a subscription, pushes 5 messages to appropriate topic, starts a short stream for it, checks if
+     * messages were consumed; after that commits the consumed offset, pushes new 3 messages, creates a short stream for
      * that subscription and checks that only 3 new messages were consumed by new stream.
      *
      * @throws InterruptedException

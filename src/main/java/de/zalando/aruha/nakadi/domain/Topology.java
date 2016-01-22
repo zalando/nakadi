@@ -12,7 +12,7 @@ public class Topology {
 
     private static final Logger LOG = LoggerFactory.getLogger(Topology.class);
 
-    private List<String> clientIds;
+    private final List<String> clientIds;
 
     public Topology(final List<String> clientIds) {
         this.clientIds = clientIds

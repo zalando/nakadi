@@ -19,9 +19,9 @@ import java.util.UUID;
  */
 public class LocalSubscriptionRepository implements SubscriptionRepository {
 
-    private Map<String, Subscription> subscriptions = Collections.synchronizedMap(Maps.newHashMap());
+    private final Map<String, Subscription> subscriptions = Collections.synchronizedMap(Maps.newHashMap());
 
-    private Map<String, List<String>> topologies = Collections.synchronizedMap(Maps.newHashMap());
+    private final Map<String, List<String>> topologies = Collections.synchronizedMap(Maps.newHashMap());
 
     @Override
     public void createSubscription(final String subscriptionId, final List<String> topics, final List<Cursor> cursors) {
@@ -79,17 +79,17 @@ public class LocalSubscriptionRepository implements SubscriptionRepository {
 
     public static class Subscription {
 
-        private String subscriptionId;
+        private final String subscriptionId;
 
         /**
          * topics to consume from
          */
-        private List<String> topics;
+        private final List<String> topics;
 
         /**
          * this keeps the committed offsets
          */
-        private List<Cursor> cursors;
+        private final List<Cursor> cursors;
 
         public Subscription(final String subscriptionId, final List<String> topics) {
             this.subscriptionId = subscriptionId;
