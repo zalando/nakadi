@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
-import de.zalando.aruha.nakadi.repository.KafkaRepositorySettings;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaRepositorySettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

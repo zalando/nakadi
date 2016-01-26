@@ -1,4 +1,4 @@
-package de.zalando.aruha.nakadi.repository;
+package de.zalando.aruha.nakadi.repository.kafka;
 
 import org.springframework.beans.factory.annotation.Value;
 

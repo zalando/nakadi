@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
-import de.zalando.aruha.nakadi.repository.KafkaRepositorySettings;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.apache.curator.CuratorZookeeperClient;

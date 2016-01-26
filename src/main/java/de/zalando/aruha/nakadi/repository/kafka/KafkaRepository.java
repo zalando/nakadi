@@ -10,7 +10,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import de.zalando.aruha.nakadi.repository.KafkaRepositorySettings;
 import kafka.admin.AdminUtils;
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
