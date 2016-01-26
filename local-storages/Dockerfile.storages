@@ -10,14 +10,14 @@ ENV KAFKA_IMG="kafka_${SCALA_VERSION}-${KAFKA_VERSION}"
 ENV KAFKA_DIR="/opt/${KAFKA_IMG}"
 
 # the script is used here to make it possible to use the same script in travis-ci.org
-ADD install-local-kafka.sh /
-RUN bash /install-local-kafka.sh
-RUN rm /install-local-kafka.sh
+ADD install-local-storages.sh /
+RUN bash /install-local-storages.sh
+RUN rm /install-local-storages.sh
 
 WORKDIR ${KAFKA_DIR}
 
-ADD start-local-kafka.sh ${KAFKA_DIR}/
+ADD start-local-storages.sh ${KAFKA_DIR}/
 
-ENTRYPOINT bash start-local-kafka.sh
+ENTRYPOINT bash start-local-storages.sh
 
 EXPOSE 2181 5432 9092
