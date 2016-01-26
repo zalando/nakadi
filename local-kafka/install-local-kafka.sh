@@ -1,11 +1,15 @@
 #!/bin/bash
 
-#KAFKA_VERSION="0.9.0.0"
-#SCALA_VERSION="2.11"
-#KAFKA_IMG="kafka_${SCALA_VERSION}-${KAFKA_VERSION}"
+localedef -i ${LNG} -c -f ${ENCODING} -A /usr/share/locale/locale.alias ${LANG}
 
-apt-get update
-apt-get install --yes netcat
+source /etc/lsb-release
+
+echo "deb http://apt.postgresql.org/pub/repos/apt/ ${DISTRIB_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+
+apt-get update --yes
+apt-get upgrade --yes
+apt-get install --yes netcat sudo postgresql-${PGVERSION}
 
 curl -O -s http://ftp.halifax.rwth-aachen.de/apache/kafka/${KAFKA_VERSION}/${KAFKA_IMG}.tgz
 mkdir -p opt && echo "Created opt directory"
@@ -17,3 +21,11 @@ advertised.host.name=localhost
 advertised.host.port=9092
 auto.create.topics.enable = false
 --
+
+# drop and create main cluster, because it was created with locale=C...
+pg_dropcluster --stop ${PGVERSION} main
+pg_createcluster ${PGVERSION} main
+
+CONFIG_DIR="/etc/postgresql/${PGVERSION}/main"
+echo "listen_addresses = '*'" >> ${CONFIG_DIR}/postgresql.conf
+echo "host all all 0.0.0.0/0 md5" >> ${CONFIG_DIR}/pg_hba.conf
