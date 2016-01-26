@@ -14,6 +14,7 @@ import java.util.function.Predicate;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import de.zalando.aruha.nakadi.domain.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -59,28 +61,61 @@ public class TopicsController {
 
     @Timed(name = "get_topics", absolute = true)
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> listTopics() {
+    public ResponseEntity<?> listTopics(@RequestHeader("X-Flow-Id") String flowId) {
+        LOG.trace("Get topics endpoint is called for flow id: {}", flowId);
         try {
             return ok().body(topicRepository.listTopics());
-        } catch (final NakadiException e) {
-            return status(503).body(e.getProblemMessage());
+        }
+        catch (final NakadiException e) {
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getProblemMessage());
         }
     }
 
     @Timed(name = "get_partitions", absolute = true)
-    @RequestMapping(value = "/{topicId}/partitions", method = RequestMethod.GET)
-    public ResponseEntity<?> listPartitions(@PathVariable("topicId") final String topicId) {
+    @RequestMapping(value = "/{topic}/partitions", method = RequestMethod.GET)
+    public ResponseEntity<?> listPartitions(@PathVariable("topic") final String topic,
+                                            @RequestHeader("X-Flow-Id") final String flowId) {
+        LOG.trace("Get partitions endpoint for topic '{}' is called for flow id: {}", topic, flowId);
         try {
-            return ok().body(topicRepository.listPartitions(topicId));
-        } catch (final NakadiException e) {
-            return status(503).body(e.getProblemMessage());
+            if (topicRepository.topicExists(topic)) {
+                return ok().body(topicRepository.listPartitions(topic));
+            }
+            else {
+                return status(HttpStatus.NOT_FOUND).body(new Problem("Topic not found"));
+            }
+        }
+        catch (final NakadiException e) {
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getProblemMessage());
+        }
+        catch (final Exception e) {
+            return status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 
     @Timed(name = "get_partition", absolute = true)
-    @RequestMapping(value = "/{topicId}/partitions/{partitionId}", method = RequestMethod.GET)
-    public TopicPartition getPartition(@PathVariable("topicId") final String topicId) {
-        throw new UnsupportedOperationException();
+    @RequestMapping(value = "/{topic}/partitions/{partition}", method = RequestMethod.GET)
+    public ResponseEntity<?> getPartition(@PathVariable("topic") final String topic,
+                                          @PathVariable("partition") final String partition,
+                                          @RequestHeader("X-Flow-Id") String flowId) {
+        LOG.trace("Get partition endpoint for topic '{}', partition '{}' is called for flow id: {}", topic, partition,
+                flowId);
+        try {
+            if (!topicRepository.topicExists(topic)) {
+                return status(HttpStatus.NOT_FOUND).body(new Problem("Topic not found"));
+            }
+            else if (!topicRepository.partitionExists(topic, partition)) {
+                return status(HttpStatus.NOT_FOUND).body(new Problem("Partition not found"));
+            }
+            else {
+                return ok().body(topicRepository.getPartition(topic, partition));
+            }
+        }
+        catch (final NakadiException e) {
+            return status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getProblemMessage());
+        }
+        catch (final Exception e) {
+            return status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
     }
 
     @Timed(name = "post_event_to_partition", absolute = true)
