@@ -18,8 +18,10 @@ def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
 def dockerContainerName = "nakadi-local"
 
+def storagesContainerName = "local-storages"
+
 /* config parameters */
-def dockerImageName = "nakadi"
+def dockerImageName = "$dockerGroup/$dockerApplicationName"
 if (project.hasProperty("dockerImageName")) {
     dockerImageName = project.property("dockerImageName")
 }
@@ -142,7 +144,7 @@ task wrapper(type: Wrapper) {
 
 task stopStoragesInDocker {
     doLast {
-        execAndWait("docker ps | awk '/local-storages/ {print \$1}' | xargs -n 1 docker stop")
+        execAndWait("docker ps -qf name=" + storagesContainerName + " | xargs -r docker rm -f")
     }
     outputs.upToDateWhen { false }
 }
@@ -180,19 +182,17 @@ task pushDockerImage {
 
 task removeOldDockerContainer(type: Exec) {
     commandLine "bash", "-c",
-            "for DC in `docker ps -f 'name=$dockerContainerName' | grep -o $dockerContainerName`; do docker stop \$DC; done && " +
-            "for DC in `docker ps -a -f 'name=$dockerContainerName' | grep -o $dockerContainerName`; do docker rm \$DC; done"
+            "docker ps -aqf name=$dockerContainerName | xargs -r docker rm -f"
 }
 
 task startDockerContainer(type: Exec) {
     commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" " +
-            "--net container:local-storages --name $dockerContainerName -i -t -d " +
-            "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
+            "--net container:$storagesContainerName --name $dockerContainerName -i -t -d $dockerImageTag"
     dependsOn buildDockerImage, removeOldDockerContainer, startStoragesInDockerBound
 }
 
 task stopDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker stop \$(docker ps | grep \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk '{print \$3}') | awk '{print \$1}')"
+    commandLine "bash", "-c", "docker ps -qf name=$dockerContainerName | xargs -r docker rm -f"
 }
 
 task integrationTest(type: Test) {
