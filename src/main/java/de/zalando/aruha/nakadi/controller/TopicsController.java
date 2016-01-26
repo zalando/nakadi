@@ -61,7 +61,7 @@ public class TopicsController {
 
     @Timed(name = "get_topics", absolute = true)
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> listTopics(@RequestHeader("X-Flow-Id") String flowId) {
+    public ResponseEntity<?> listTopics(@RequestHeader(name = "X-Flow-Id", required = false) String flowId) {
         LOG.trace("Get topics endpoint is called for flow id: {}", flowId);
         try {
             return ok().body(topicRepository.listTopics());
@@ -74,14 +74,14 @@ public class TopicsController {
     @Timed(name = "get_partitions", absolute = true)
     @RequestMapping(value = "/{topic}/partitions", method = RequestMethod.GET)
     public ResponseEntity<?> listPartitions(@PathVariable("topic") final String topic,
-                                            @RequestHeader("X-Flow-Id") final String flowId) {
+                                            @RequestHeader(name = "X-Flow-Id", required = false) final String flowId) {
         LOG.trace("Get partitions endpoint for topic '{}' is called for flow id: {}", topic, flowId);
         try {
             if (topicRepository.topicExists(topic)) {
                 return ok().body(topicRepository.listPartitions(topic));
             }
             else {
-                return status(HttpStatus.NOT_FOUND).body(new Problem("Topic not found"));
+                return status(HttpStatus.NOT_FOUND).body(new Problem("topic not found"));
             }
         }
         catch (final NakadiException e) {
@@ -96,15 +96,15 @@ public class TopicsController {
     @RequestMapping(value = "/{topic}/partitions/{partition}", method = RequestMethod.GET)
     public ResponseEntity<?> getPartition(@PathVariable("topic") final String topic,
                                           @PathVariable("partition") final String partition,
-                                          @RequestHeader("X-Flow-Id") String flowId) {
+                                          @RequestHeader(name = "X-Flow-Id", required = false) String flowId) {
         LOG.trace("Get partition endpoint for topic '{}', partition '{}' is called for flow id: {}", topic, partition,
                 flowId);
         try {
             if (!topicRepository.topicExists(topic)) {
-                return status(HttpStatus.NOT_FOUND).body(new Problem("Topic not found"));
+                return status(HttpStatus.NOT_FOUND).body(new Problem("topic not found"));
             }
             else if (!topicRepository.partitionExists(topic, partition)) {
-                return status(HttpStatus.NOT_FOUND).body(new Problem("Partition not found"));
+                return status(HttpStatus.NOT_FOUND).body(new Problem("partition not found"));
             }
             else {
                 return ok().body(topicRepository.getPartition(topic, partition));
