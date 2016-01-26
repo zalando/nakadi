@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
+import de.zalando.aruha.nakadi.repository.KafkaRepositorySettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +93,11 @@ public class NakadiConfig {
     @Bean
     public KafkaFactory kafkaFactory() {
         return new KafkaFactory(getKafkaLocationManager());
+    }
+
+    @Bean
+    public KafkaRepositorySettings topicRepositorySettings() {
+        return new KafkaRepositorySettings();
     }
 
 }
