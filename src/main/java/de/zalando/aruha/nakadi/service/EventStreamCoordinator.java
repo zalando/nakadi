@@ -100,7 +100,7 @@ public class EventStreamCoordinator {
      * todo: in general this scheduled task should be probably replaced with watching appropriate zookeeper nodes
      */
     @Scheduled(fixedRate = SUBSCRIPTION_REBALANCE_CHECK_PERIOD_IN_MS)
-    private void rebalanceSubscriptions() {
+    private void rebalanceNeededSubscriptions() {
         try {
             eventStreams
                     .stream()
