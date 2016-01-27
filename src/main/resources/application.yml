@@ -4,6 +4,12 @@ logging:
   level:
     ROOT: INFO
     org.springframework.web: INFO
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/local_schemaregistry_db
+    username: schemaregistry
+    password: schemaregistry
+    driverClassName: org.postgresql.Driver
 nakadi:
   stream:
     timeoutMs: 31536000000 # 1 year :-P

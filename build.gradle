@@ -76,6 +76,7 @@ jar {
 }
 
 configurations {
+    all*.exclude module : 'spring-boot-starter-logging'
     integrationTestCompile.extendsFrom testCompile
     integrationTestRuntime.extendsFrom testRuntime
     acceptanceTestCompile.extendsFrom testCompile
@@ -98,6 +99,10 @@ dependencies {
     compile('org.springframework.boot:spring-boot-starter-security') {
         exclude module: "logback-classic"
     }
+
+    // storage
+    compile 'org.springframework.boot:spring-boot-starter-jdbc:1.3.1.RELEASE'
+    compile 'org.postgresql:postgresql:9.4.1207.jre7'
 
     // misc
     compile 'org.zalando.stups:stups-spring-oauth2-server:1.0.0'
