@@ -20,9 +20,15 @@ public interface TopicRepository {
 
     void createTopic(String topic, int partitionsNum, int replicaFactor, long retentionMs, long rotationMs);
 
+    boolean topicExists(String topic) throws NakadiException;
+
+    boolean partitionExists(String topic, String partition) throws NakadiException;
+
     void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
+
+    TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 
     boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
 
