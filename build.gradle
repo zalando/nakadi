@@ -144,14 +144,7 @@ task wrapper(type: Wrapper) {
 
 task stopStoragesInDocker {
     doLast {
-        execAndWait("docker ps -qf name=" + storagesContainerName + " | xargs -r docker rm -f")
-    }
-    outputs.upToDateWhen { false }
-}
-
-task startStoragesInDocker() {
-    doLast {
-        execAndWait("make --directory local-storages run", dockerBuildTimeout)
+        execAndWait("make --directory local-storages stop-and-remove", dockerBuildTimeout)
     }
     outputs.upToDateWhen { false }
 }
@@ -191,7 +184,7 @@ task startDockerContainer(type: Exec) {
     dependsOn buildDockerImage, removeOldDockerContainer, startStoragesInDockerBound
 }
 
-task stopDockerContainer(type: Exec) {
+task stopAndRemoveDockerContainer(type: Exec) {
     commandLine "bash", "-c", "docker ps -qf name=$dockerContainerName | xargs -r docker rm -f"
 }
 
@@ -231,7 +224,7 @@ task startDockerContainerAndWait() {
 task fullAcceptanceTest(type: GradleBuild) {
     dependsOn startDockerContainerAndWait
     tasks = ['acceptanceTest']
-    finalizedBy stopStoragesInDocker, stopDockerContainer
+    finalizedBy stopStoragesInDocker, stopAndRemoveDockerContainer
 }
 
 test {
