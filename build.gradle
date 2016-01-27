@@ -131,6 +131,7 @@ dependencies {
         exclude module: "hamcrest-core"
         exclude module: "hamcrest-library"
     }
+    testCompile 'org.echocat.jomon:runtime:1.6.2'
     testRuntime 'org.pegdown:pegdown:1.1.0'
 }
 // end::dependencies[]

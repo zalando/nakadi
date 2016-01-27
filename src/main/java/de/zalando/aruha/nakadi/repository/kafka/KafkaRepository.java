@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -9,6 +10,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import kafka.admin.AdminUtils;
+import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
@@ -16,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.stereotype.Component;
 
@@ -41,31 +43,59 @@ public class KafkaRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRepository.class);
 
-    private static final long KAFKA_SEND_TIMEOUT_MS = 10000;
-
-    private static final long KAFKA_READ_TIMEOUT_MS = 0;
-
     private final ZooKeeperHolder zkFactory;
     private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
-
-    @Value("${nakadi.kafka.poll.timeoutMs}")
-    private long kafkaPollTimeout;
+    private final KafkaRepositorySettings settings;
 
     @Autowired
-    public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory) {
+    public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
+                           final KafkaRepositorySettings settings) {
         this.zkFactory = zkFactory;
         this.kafkaProducer = kafkaFactory.createProducer();
         this.kafkaFactory = kafkaFactory;
+        this.settings = settings;
     }
 
     @Override
     public List<Topic> listTopics() throws NakadiException {
         try {
-            return zkFactory.get().getChildren().forPath("/brokers/topics").stream().map(s ->
-                    new Topic(s)).collect(Collectors.toList());
+            return zkFactory.get()
+                    .getChildren()
+                    .forPath("/brokers/topics")
+                    .stream()
+                    .map(Topic::new)
+                    .collect(Collectors.toList());
         } catch (Exception e) {
             throw new NakadiException("Failed to get partitions", e);
+        }
+    }
+
+    @Override
+    public void createTopic(final String topic) {
+        createTopic(topic,
+                settings.getDefaultTopicPartitionNum(),
+                settings.getDefaultTopicReplicaFactor(),
+                settings.getDefaultTopicRetentionMs(),
+                settings.getDefaultTopicRotationMs());
+    }
+
+    @Override
+    public void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
+                            final long retentionMs, final long rotationMs) {
+
+        final String connectionString = zkFactory.get().getZookeeperClient().getCurrentConnectionString();
+        final ZkUtils zkUtils = ZkUtils.apply(connectionString, settings.getZkSessionTimeoutMs(),
+                settings.getZkConnectionTimeoutMs(), false);
+        try {
+            final Properties topicConfig = new Properties();
+            topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
+            topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
+
+            AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
+        }
+        finally {
+            zkUtils.close();
         }
     }
 
@@ -76,7 +106,7 @@ public class KafkaRepository implements TopicRepository {
         final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, Integer.parseInt(partitionId),
                 partitionId, payload);
         try {
-            kafkaProducer.send(record).get(KAFKA_SEND_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            kafkaProducer.send(record).get(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             throw new NakadiException("Failed to send event", e);
         }
@@ -87,91 +117,70 @@ public class KafkaRepository implements TopicRepository {
 
         final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
         try {
-            final List<TopicAndPartition> partitions = kafkaFactory.getConsumer().partitionsFor(topicId).stream().map(p ->
-                        new TopicAndPartition(p.topic(), p.partition())).collect(Collectors.toList());
+            final List<TopicAndPartition> partitions = kafkaFactory
+                    .getConsumer()
+                    .partitionsFor(topicId)
+                    .stream()
+                    .map(p -> new TopicAndPartition(p.topic(), p.partition()))
+                    .collect(Collectors.toList());
 
-            final Map<TopicAndPartition, PartitionOffsetRequestInfo> latestPartitionRequests = partitions.stream()
-                                                                                                         .collect(
-                                                                                                             Collectors
-                                                                                                                     .toMap(
-                                                                                                                         Function
-                                                                                                                             .identity(),
-                                                                                                                         t ->
-                                                                                                                             new PartitionOffsetRequestInfo(
-                                                                                                                                 kafka
-                                                                                                                                     .api
-                                                                                                                                     .OffsetRequest
-                                                                                                                                     .LatestTime(),
-                                                                                                                                 1)));
-                final Map<TopicAndPartition, PartitionOffsetRequestInfo> earliestPartitionRequests = partitions.stream()
-                                                                                                               .collect(
-                                                                                                                   Collectors
-                                                                                                                           .toMap(
-                                                                                                                               Function
-                                                                                                                                   .identity(),
-                                                                                                                               t ->
-                                                                                                                                   new PartitionOffsetRequestInfo(
-                                                                                                                                       kafka
-                                                                                                                                           .api
-                                                                                                                                           .OffsetRequest
-                                                                                                                                           .EarliestTime(),
-                                                                                                                                       1)));
+            final Map<TopicAndPartition, PartitionOffsetRequestInfo> latestPartitionRequests = partitions
+                    .stream()
+                    .collect(Collectors.toMap(
+                            Function.identity(),
+                            t -> new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), 1)));
+            final Map<TopicAndPartition, PartitionOffsetRequestInfo> earliestPartitionRequests = partitions
+                    .stream()
+                    .collect(Collectors.toMap(
+                            Function.identity(),
+                            t -> new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.EarliestTime(), 1)));
 
-                    final OffsetResponse latestPartitionData = fetchPartitionData(sc, latestPartitionRequests);
-                    final OffsetResponse earliestPartitionData = fetchPartitionData(sc, earliestPartitionRequests);
+            final OffsetResponse latestPartitionData = fetchPartitionData(sc, latestPartitionRequests);
+            final OffsetResponse earliestPartitionData = fetchPartitionData(sc, earliestPartitionRequests);
 
-                    return partitions.stream().map(r ->
-                                             processTopicPartitionMetadata(r, latestPartitionData,
-                                                 earliestPartitionData)).collect(Collectors.toList());
-                } finally {
-                    sc.close();
-                }
-            }
-
-            @Override
-            public boolean validateOffset(final String offsetToCheck, final String newestOffset,
-                    final String oldestOffset) {
-                final long offset = Long.parseLong(offsetToCheck);
-                final long newest = Long.parseLong(newestOffset);
-                final long oldest = Long.parseLong(oldestOffset);
-                return offset >= oldest && offset <= newest;
-            }
-
-            private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,
-                    final OffsetResponse latestPartitionData, final OffsetResponse earliestPartitionData) {
-
-                final TopicPartition tp = new TopicPartition(partition.topic(),
-                        Integer.toString(partition.partition()));
-                final long latestOffset = latestPartitionData.offsets(partition.topic(), partition.partition())[0];
-                final long earliestOffset = earliestPartitionData.offsets(partition.topic(), partition.partition())[0];
-
-                tp.setNewestAvailableOffset(Long.toString(latestOffset));
-                tp.setOldestAvailableOffset(Long.toString(earliestOffset));
-
-                return tp;
-            }
-
-            private OffsetResponse fetchPartitionData(final SimpleConsumer sc,
-                    final Map<TopicAndPartition, PartitionOffsetRequestInfo> partitionRequests) {
-                final OffsetRequest request = new OffsetRequest(partitionRequests,
-                        kafka.api.OffsetRequest.CurrentVersion(), "offsetlookup_" + UUID.randomUUID());
-                return sc.getOffsetsBefore(request);
-            }
-
-            @Override
-            public void readEvent(final String topicId, final String partitionId) {
-                final org.apache.kafka.common.TopicPartition tp = new org.apache.kafka.common.TopicPartition(topicId,
-                        Integer.parseInt(partitionId));
-                // final Consumer<String, String> consumerForPartition =
-                // factory.getConsumerFor(tp);
-                // FIXME: read from kafka
-                // consumerForPartition.poll(KAFKA_READ_TIMEOUT_MS);
-                // consumerForPartition.close();
-
-            }
-
-            @Override
-            public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) {
-                return new NakadiKafkaConsumer(kafkaFactory, topic, cursors, kafkaPollTimeout);
-            }
+            return partitions
+                    .stream()
+                    .map(r -> processTopicPartitionMetadata(r, latestPartitionData, earliestPartitionData))
+                    .collect(Collectors.toList());
+        } finally {
+            sc.close();
         }
+    }
+
+    @Override
+    public boolean validateOffset(final String offsetToCheck, final String newestOffset,
+                                  final String oldestOffset) {
+        final long offset = Long.parseLong(offsetToCheck);
+        final long newest = Long.parseLong(newestOffset);
+        final long oldest = Long.parseLong(oldestOffset);
+        return offset >= oldest && offset <= newest;
+    }
+
+    private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,
+                                                         final OffsetResponse latestPartitionData,
+                                                         final OffsetResponse earliestPartitionData) {
+
+        final TopicPartition tp = new TopicPartition(partition.topic(),
+                Integer.toString(partition.partition()));
+        final long latestOffset = latestPartitionData.offsets(partition.topic(), partition.partition())[0];
+        final long earliestOffset = earliestPartitionData.offsets(partition.topic(), partition.partition())[0];
+
+        tp.setNewestAvailableOffset(Long.toString(latestOffset));
+        tp.setOldestAvailableOffset(Long.toString(earliestOffset));
+
+        return tp;
+    }
+
+    private OffsetResponse fetchPartitionData(final SimpleConsumer sc,
+                                              final Map<TopicAndPartition,
+                                                      PartitionOffsetRequestInfo> partitionRequests) {
+        final OffsetRequest request = new OffsetRequest(partitionRequests,
+                kafka.api.OffsetRequest.CurrentVersion(), "offsetlookup_" + UUID.randomUUID());
+        return sc.getOffsetsBefore(request);
+    }
+
+    @Override
+    public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) {
+        return new NakadiKafkaConsumer(kafkaFactory, topic, cursors, settings.getKafkaPollTimeoutMs());
+    }
+}
