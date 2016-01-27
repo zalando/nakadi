@@ -11,9 +11,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import kafka.admin.AdminUtils;
-import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
-import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
