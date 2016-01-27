@@ -87,11 +87,9 @@ public class KafkaRepository implements TopicRepository {
                             final long retentionMs, final long rotationMs) {
 
         final String connectionString = zkFactory.get().getZookeeperClient().getCurrentConnectionString();
-        final ZkClient zkClient = new ZkClient(connectionString, settings.getZkSessionTimeoutMs(),
-                settings.getZkConnectionTimeoutMs(), ZKStringSerializer$.MODULE$);
+        final ZkUtils zkUtils = ZkUtils.apply(connectionString, settings.getZkSessionTimeoutMs(),
+                settings.getZkConnectionTimeoutMs(), false);
         try {
-            final ZkUtils zkUtils = ZkUtils.apply(zkClient, false);
-
             final Properties topicConfig = new Properties();
             topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
             topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
@@ -99,7 +97,7 @@ public class KafkaRepository implements TopicRepository {
             AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
         }
         finally {
-            zkClient.close();
+            zkUtils.close();
         }
     }
 
