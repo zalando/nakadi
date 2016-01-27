@@ -12,9 +12,7 @@ import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
 import kafka.admin.AdminUtils;
-import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
-import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
@@ -91,16 +89,18 @@ public class KafkaRepository implements TopicRepository {
                             final long retentionMs, final long rotationMs) {
 
         final String connectionString = zkFactory.get().getZookeeperClient().getCurrentConnectionString();
-        final ZkClient zkClient = new ZkClient(connectionString, settings.getZkSessionTimeoutMs(),
-                settings.getZkConnectionTimeoutMs(), ZKStringSerializer$.MODULE$);
-        final ZkUtils zkUtils = ZkUtils.apply(zkClient, false);
+        final ZkUtils zkUtils = ZkUtils.apply(connectionString, settings.getZkSessionTimeoutMs(),
+                settings.getZkConnectionTimeoutMs(), false);
+        try {
+            final Properties topicConfig = new Properties();
+            topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
+            topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
 
-        final Properties topicConfig = new Properties();
-        topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
-        topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
-
-        AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
-        zkClient.close();
+            AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
+        }
+        finally {
+            zkUtils.close();
+        }
     }
 
     public boolean topicExists(final String topic) throws NakadiException {

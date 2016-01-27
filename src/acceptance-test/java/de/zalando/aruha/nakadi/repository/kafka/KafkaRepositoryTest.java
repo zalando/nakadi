@@ -8,12 +8,14 @@ import org.apache.curator.CuratorZookeeperClient;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
 import java.util.Map;
 
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.hasItem;
@@ -36,6 +38,7 @@ public class KafkaRepositoryTest extends BaseAT {
     }
 
     @Test(timeout = 10000)
+    @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() throws InterruptedException {
 
         // ARRANGE //
@@ -57,19 +60,22 @@ public class KafkaRepositoryTest extends BaseAT {
         kafkaRepository.createTopic(topicName);
 
         // ASSERT //
-        Thread.sleep(2000);
+        executeWithRetry(() -> {
+                    final KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(kafkaProperties);
+                    final Map<String, List<PartitionInfo>> topics = kafkaConsumer.listTopics();
 
-        final KafkaConsumer<String, String> kafkaConsumer = kafkaHelper.createConsumer();
-        final Map<String, List<PartitionInfo>> topics = kafkaConsumer.listTopics();
+                    assertThat(topics.keySet(), hasItem(topicName));
 
-        assertThat(topics.keySet(), hasItem(topicName));
+                    final List<PartitionInfo> partitionInfos = topics.get(topicName);
+                    assertThat(partitionInfos, hasSize(defaultPartitionNum));
 
-        final List<PartitionInfo> partitionInfos = topics.get(topicName);
-        assertThat(partitionInfos, hasSize(defaultPartitionNum));
-
-        partitionInfos
-                .stream()
-                .forEach(pInfo -> assertThat(pInfo.replicas(), arrayWithSize(defaultReplicaFactor)));
+                    partitionInfos
+                            .stream()
+                            .forEach(pInfo -> assertThat(pInfo.replicas(), arrayWithSize(defaultReplicaFactor)));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000)
+                        .withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
     }
 
     private KafkaRepositorySettings createRepositorySettings() {
