@@ -175,7 +175,7 @@ task pushDockerImage {
     dependsOn buildDockerImage
     doLast {
         println "Pushing docker image with tag: $dockerImageTag"
-        //execAndWait("docker push " + dockerImageTag, dockerBuildTimeout)
+        execAndWait("docker push " + dockerImageTag, dockerBuildTimeout)
     }
 }
 
