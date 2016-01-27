@@ -5,17 +5,27 @@ logging:
     ROOT: INFO
     org.springframework.web: INFO
 nakadi:
+  topic:
+    default:
+      partitionNum: 8
+      replicaFactor: 1
+      retentionMs: 172800000 # 2 days
+      rotationMs: 86400000 # 1 day
   stream:
     timeoutMs: 31536000000 # 1 year :-P
   kafka:
     poll:
       timeoutMs: 100
+    send:
+      timeoutMs: 10000
   zookeeper:
     kafkaNamespace:
     brokers: 127.0.0.1:2181
 #    exhibitor:
 #      brokers: 127.0.0.1,127.0.0.2
 #      port: 8181
+    sessionTimeoutMs: 30000
+    connectionTimeoutMs: 10000
   oauth2:
     enabled: true
     tokenInfoUri: https://auth.zalando.com/oauth2/tokeninfo
