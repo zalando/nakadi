@@ -18,7 +18,19 @@ def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
 def dockerContainerName = "nakadi-local"
 
-def dockerRunTimeout = 300
+/* config parameters */
+def dockerImageName = "nakadi"
+if (project.hasProperty("dockerImageName")) {
+    dockerImageName = project.property("dockerImageName")
+}
+def dockerImageVersion = "AUTOBUILD"
+if (project.hasProperty("dockerImageVersion")) {
+    dockerImageName = project.property("dockerImageVersion")
+}
+def dockerImageTag = "$dockerImageName:$dockerImageVersion"
+
+
+def dockerBuildTimeout = 300
 
 repositories {
     mavenCentral()
@@ -138,24 +150,33 @@ task stopKafkaInDocker {
 
 task startKafkaInDocker() {
     doLast {
-        execAndWait("make --directory local-kafka run", dockerRunTimeout)
+        execAndWait("make --directory local-kafka run", dockerBuildTimeout)
     }
     outputs.upToDateWhen { false }
 }
 
 task startKafkaInDockerBound() {
     doLast {
-        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-kafka run", dockerRunTimeout)
+        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-kafka run", dockerBuildTimeout)
     }
     outputs.upToDateWhen { false }
 }
 
-task buildDockerContainer {
+task buildDockerImage {
     dependsOn bootRepackage
     doLast {
-        execAndWait("docker build -t aruha/nakadi .", dockerRunTimeout)
+        println "Building docker image with tag: $dockerImageTag"
+        execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout)
     }
     outputs.upToDateWhen { false }
+}
+
+task pushDockerImage {
+    dependsOn buildDockerImage
+    doLast {
+        println "Pushing docker image with tag: $dockerImageTag"
+        execAndWait("docker push " + dockerImageTag, dockerBuildTimeout)
+    }
 }
 
 task removeOldDockerContainer(type: Exec) {
@@ -168,7 +189,7 @@ task startDockerContainer(type: Exec) {
     commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" " +
             "--net container:local-kafka --name $dockerContainerName -i -t -d " +
             "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
-    dependsOn buildDockerContainer, removeOldDockerContainer, startKafkaInDockerBound
+    dependsOn buildDockerImage, removeOldDockerContainer, startKafkaInDockerBound
 }
 
 task stopDockerContainer(type: Exec) {
