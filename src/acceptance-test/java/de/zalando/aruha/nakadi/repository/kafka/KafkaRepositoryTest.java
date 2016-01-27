@@ -61,8 +61,8 @@ public class KafkaRepositoryTest extends BaseAT {
 
         // ASSERT //
         executeWithRetry(() -> {
-                    final KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(kafkaProperties);
-                    final Map<String, List<PartitionInfo>> topics = kafkaConsumer.listTopics();
+                    final KafkaConsumer<String, String> consumer = kafkaHelper.createConsumer();
+                    final Map<String, List<PartitionInfo>> topics = consumer.listTopics();
 
                     assertThat(topics.keySet(), hasItem(topicName));
 
