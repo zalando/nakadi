@@ -1,10 +1,10 @@
 SenzaInfo:
-  StackName: "nakadi-{{Arguments.Environment}}"
+  StackName: "{{Arguments.StackName}}"
   Parameters:
     - DockerImage:
         Description: "Name of the Docker image providing Nakadi."
-    - Environment:
-        Description: "Environment where we deploy to"
+    - StackName:
+        Description: "Name of the Cloud Formation Stack"
     - AccessTokenUrl:
         Description: "Url to the access token validation service"
     - TokeninfoUrl:
