@@ -90,6 +90,16 @@ public class TopicsControllerAT extends BaseAT {
     }
 
     @Test
+    public void whenListPartitionsThenTopicNotFound() throws IOException {
+        when()
+                .get("/topics/not-existing-topic/partitions")
+                .then()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .and()
+                .body("message", equalTo("topic not found"));
+    }
+
+    @Test
     public void whenListPartitionsAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
         // ACT //
@@ -113,6 +123,26 @@ public class TopicsControllerAT extends BaseAT {
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
         validatePartitionStructure(asMap(response.print()));
+    }
+
+    @Test
+    public void whenGetPartitionThenTopicNotFound() throws IOException {
+        when()
+                .get("/topics/not-existing-topic/partitions/0")
+                .then()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .and()
+                .body("message", equalTo("topic not found"));
+    }
+
+    @Test
+    public void whenGetPartitionThenPartitionNotFound() throws IOException {
+        when()
+                .get(String.format("/topics/%s/partitions/43766", TOPIC))
+                .then()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .and()
+                .body("message", equalTo("partition not found"));
     }
 
     @Test
