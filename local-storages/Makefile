@@ -1,5 +1,5 @@
 stop-and-remove:
-	docker ps -qaf name=local-storages | xargs -r docker rm -f
+	for c in `docker ps -qaf name=local-storages`; do docker rm -f $$c; done
 
 build-storages-docker-image: Dockerfile.storages install-local-storages.sh start-local-storages.sh stop-and-remove
 	docker build --file Dockerfile.storages -t local-storages .
