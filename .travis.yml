@@ -9,6 +9,7 @@ services:
   - docker
 
 before_script:
+  - sudo /etc/init.d/postgresql stop
   - pip install --user codecov
   - curl http://www.jpm4j.org/install/script | sudo sh
   - sudo jpm install com.codacy:codacy-coverage-reporter:assembly

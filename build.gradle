@@ -18,8 +18,10 @@ def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
 def dockerContainerName = "nakadi-local"
 
+def storagesContainerName = "local-storages"
+
 /* config parameters */
-def dockerImageName = "nakadi"
+def dockerImageName = "$dockerGroup/$dockerApplicationName"
 if (project.hasProperty("dockerImageName")) {
     dockerImageName = project.property("dockerImageName")
 }
@@ -141,23 +143,16 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
 }
 
-task stopKafkaInDocker {
+task stopAndRemoveStoragesInDocker {
     doLast {
-        execAndWait("docker ps | awk '/local-kafka/ {print \$1}' | xargs -n 1 docker stop")
+        execAndWait("make --directory local-storages stop-and-remove", dockerBuildTimeout)
     }
     outputs.upToDateWhen { false }
 }
 
-task startKafkaInDocker() {
+task startStoragesInDockerBound() {
     doLast {
-        execAndWait("make --directory local-kafka run", dockerBuildTimeout)
-    }
-    outputs.upToDateWhen { false }
-}
-
-task startKafkaInDockerBound() {
-    doLast {
-        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-kafka run", dockerBuildTimeout)
+        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-storages run", dockerBuildTimeout)
     }
     outputs.upToDateWhen { false }
 }
@@ -181,19 +176,18 @@ task pushDockerImage {
 
 task removeOldDockerContainer(type: Exec) {
     commandLine "bash", "-c",
-            "for DC in `docker ps -f 'name=$dockerContainerName' | grep -o $dockerContainerName`; do docker stop \$DC; done && " +
-            "for DC in `docker ps -a -f 'name=$dockerContainerName' | grep -o $dockerContainerName`; do docker rm \$DC; done"
+            "for c in `docker ps -qaf name=$dockerContainerName`; do docker rm -f \$c; done"
 }
 
 task startDockerContainer(type: Exec) {
     commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_ENABLED=false\" " +
-            "--net container:local-kafka --name $dockerContainerName -i -t -d " +
-            "\$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk \'{print \$3}\')"
-    dependsOn buildDockerImage, removeOldDockerContainer, startKafkaInDockerBound
+            "--net container:$storagesContainerName --name $dockerContainerName -i -t -d $dockerImageTag"
+    dependsOn buildDockerImage, removeOldDockerContainer, startStoragesInDockerBound
 }
 
-task stopDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker stop \$(docker ps | grep \$(docker images | grep -m 1 \"^$dockerGroup/$dockerApplicationName\" | awk '{print \$3}') | awk '{print \$1}')"
+task stopAndRemoveDockerContainer(type: Exec) {
+    commandLine "bash", "-c",
+            "for c in `docker ps -qaf name=$dockerContainerName`; do docker rm -f \$c; done"
 }
 
 task integrationTest(type: Test) {
@@ -232,7 +226,7 @@ task startDockerContainerAndWait() {
 task fullAcceptanceTest(type: GradleBuild) {
     dependsOn startDockerContainerAndWait
     tasks = ['acceptanceTest']
-    finalizedBy stopKafkaInDocker, stopDockerContainer
+    finalizedBy stopAndRemoveStoragesInDocker, stopAndRemoveDockerContainer
 }
 
 test {
