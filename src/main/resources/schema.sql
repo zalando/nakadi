@@ -1,5 +1,4 @@
 CREATE TABLE IF NOT EXISTS event_type (
-  id SERIAL PRIMARY KEY,
-  name varchar(255) NOT NULL CHECK (name <> ''),
-  data json
+  et_name varchar(255) NOT NULL primary key CHECK (et_name <> ''),
+  et_event_type_object jsonb NOT NULL
 );

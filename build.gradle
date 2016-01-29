@@ -106,6 +106,8 @@ dependencies {
 
     // misc
     compile 'org.zalando.stups:stups-spring-oauth2-server:1.0.0'
+    compile 'org.zalando:jackson-datatype-problem:0.5.0'
+    compile 'org.zalando:problem:0.5.0'
     compile 'com.google.guava:guava:19.0'
     compile 'joda-time:joda-time:2.2'
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
