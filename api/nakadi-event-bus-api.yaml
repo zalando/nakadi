@@ -546,7 +546,11 @@ paths:
         - unmanaged-api
         - monitoring
         - management-api
-      description: Lists the `Partition`s for the given event-type
+      description: | 
+        Lists the `Partition`s for the given event-type.
+        
+        This endpoint is mostly interesting for monitoring purposes or in cases when consumer wants to start
+        consuming older messages. 
       parameters:
         - name: name
           in: path
