@@ -325,11 +325,11 @@ paths:
       description: |
         Publishes one `Event` of this `EventType`. (TBD format for publishing of batches of Events)
 
-        Reception of Events will always respect the configuration of its `EventType` w.r.t. validation,
+        Reception of events will always respect the configuration of its `EventType` w.r.t. validation,
         enrichment and partitioning. The steps performed on reception of incoming message are:
 
         1. Every validation rule specified in the `EventType` will be checked in order against the incoming
-        Events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
+        events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
         in the first case of failure with a status of 400 Bad request. If the offending validation rule
         provides information about the violation it will be included in the Problem response.
         If the `EventType` defines schema validation it will be performed at this moment.
@@ -341,10 +341,8 @@ paths:
         force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
         attempt will be included in the respose's Problem object.
 
-        1. The incoming Event's relative ordering is evaluated according to the rule on the
+        1. The incoming Event's partition is evaluated according to the `PartitioningStrategy` rule on the
         `EventType`. Failure to evaluate the rule will **reject** the Event.
-        **Restriction**: POSTing Events based on its `EventType` requires it to have a
-        `PartitioningStrategy` defined. Violating this condition will produce a 405 Not allowed.
 
       parameters:
         - name: name
@@ -439,12 +437,13 @@ paths:
             Assumes the offset on each cursor is not inclusive (i.e., first delivered Event is the
             **first one after** the one pointed to in the cursor).
 
-            If the header is not present, the stream will start from the newest event available in the
-            system at the moment of making this call.
+            If the header is not present, the stream for all partitions defined for the EventType will start 
+            from the newest event available in the system at the moment of making this call. 
 
             **Note:** we are not using query parameters for passing the cursors only because of the length
             limitations on the HTTP query. Another way to initiate this call would be the POST method with
             cursors passed in the method body. This aproach can implemented in the future versions of this API
+            
           required: false
           type: array
           items:
