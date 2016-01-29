@@ -20,7 +20,7 @@ SenzaInfo:
     - InstanceType:
         Description: "The EC2 Instance type that is used for the Nakadi instances (optional, default: t2.micro)"
         Default: "t2.micro"
-    - InstancesMinumum:
+    - InstancesMinimum:
         Description: "The minimum number of instances of the AutoScalingGroup (optional, default: 2)"
         Default: 2
     - InstancesMaximum:
@@ -77,7 +77,7 @@ SenzaComponents:
           NAKADI_ZOOKEEPER_EXHIBITOR_BROKERS: "{{Arguments.ExhibitorBrokers}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_PORT:    "{{Arguments.ExhibitorPort}}"
       AutoScaling:
-        Minimum: "{{Arguments.InstancesMinumum}}"
+        Minimum: "{{Arguments.InstancesMinimum}}"
         Maximum: "{{Arguments.InstancesMaximum}}"
         MetricType: CPU
         ScaleUpThreshold: 70
