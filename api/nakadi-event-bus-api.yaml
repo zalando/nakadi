@@ -478,8 +478,8 @@ paths:
           description: |
             Maximum time in seconds to wait for the flushing of each chunk (per partition).
 
-            * If the amount of buffered Events reaches `batch_limit` before this batch_flush_timeout is
-            reached, the messages are immediately flushed to the client and batch flush timer reset.
+            * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout` 
+            is reached, the messages are immediately flushed to the client and batch flush timer is reset.
 
             * If 0 or undefined, will assume 30 seconds.
           type: number
