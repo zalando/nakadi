@@ -10,6 +10,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import de.zalando.aruha.nakadi.domain.Cursor;
 import kafka.admin.AdminUtils;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.producer.Producer;
@@ -38,7 +39,6 @@ import kafka.javaapi.OffsetResponse;
 
 import kafka.javaapi.consumer.SimpleConsumer;
 
-@Component
 public class KafkaRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRepository.class);
@@ -48,7 +48,6 @@ public class KafkaRepository implements TopicRepository {
     private final KafkaFactory kafkaFactory;
     private final KafkaRepositorySettings settings;
 
-    @Autowired
     public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
                            final KafkaRepositorySettings settings) {
         this.zkFactory = zkFactory;
@@ -99,6 +98,30 @@ public class KafkaRepository implements TopicRepository {
         }
     }
 
+    public boolean topicExists(final String topic) throws NakadiException {
+        return listTopics()
+                .stream()
+                .map(Topic::getName)
+                .anyMatch(t -> t.equals(topic));
+    }
+
+    public boolean areCursorsCorrect(final String topic, final List<Cursor> cursors) {
+        final List<TopicPartition> partitions = listPartitions(topic);
+        return cursors
+                .stream()
+                .allMatch(cursor -> partitions
+                        .stream()
+                        .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
+                        .findFirst()
+                        .map(pInfo -> {
+                            final long newestOffset = Long.parseLong(pInfo.getNewestAvailableOffset());
+                            final long oldestOffset = Long.parseLong(pInfo.getOldestAvailableOffset());
+                            final long offset = Long.parseLong(cursor.getOffset());
+                            return offset >= oldestOffset && offset <= newestOffset;
+                        })
+                        .orElse(false));
+    }
+
     @Override
     public void postEvent(final String topicId, final String partitionId, final String payload) throws NakadiException {
         LOG.info("Posting {} {} {}", topicId, partitionId, payload);
@@ -113,7 +136,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
+    public List<TopicPartition> listPartitions(final String topicId) {
 
         final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
         try {

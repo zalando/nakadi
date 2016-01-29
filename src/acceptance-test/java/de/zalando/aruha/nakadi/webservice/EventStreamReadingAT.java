@@ -40,7 +40,7 @@ public class EventStreamReadingAT extends BaseAT {
     private static final String PARTITION = "0";
     private static final String DUMMY_EVENT = "Dummy";
     private static final int EVENTS_PUSHED = 20;
-    private static final String STREAM_ENDPOINT = createStreamEndpointUrl(TOPIC, PARTITION);
+    private static final String STREAM_ENDPOINT = createStreamEndpointUrl(TOPIC);
     private static final String SEPARATOR = "\n";
 
     private ObjectMapper jsonMapper = new ObjectMapper();
@@ -60,38 +60,35 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 15000)
-    public void whenGetSingleBatchFromSinglePartitionThenOk() {
+    public void whenGetSeveralEventsWhenReadingFromLatestOffsetsThenOk() {
 
         // ACT //
-        final Response response = given().param("start_from", initialPartitionOffset).param("batch_limit", "100")
-                                         .param("stream_timeout", "5").when().get(STREAM_ENDPOINT);
+        final Response response = given()
+                .param("batch_limit", "5")
+                .param("stream_timeout", "2")
+                .when()
+                .get(STREAM_ENDPOINT);
 
         // ASSERT //
         response.then().statusCode(HttpStatus.SC_OK);
+
         validateStreamResponse(response.print(), 1, EVENTS_PUSHED, DUMMY_EVENT);
-    }
-
-    @Test(timeout = 15000)
-    public void whenGetMultipleBatchesFromSinglePartitionThenOk() {
-
-        // ACT //
-        final Response response = given().param("start_from", initialPartitionOffset).param("batch_limit", "5")
-                                         .param("stream_timeout", "5").when().get(STREAM_ENDPOINT);
-
-        // ASSERT //
-        response.then().statusCode(HttpStatus.SC_OK);
-        validateStreamResponse(response.print(), EVENTS_PUSHED / 5, 5, DUMMY_EVENT);
     }
 
     @Test(timeout = 5000)
     public void whenGetEventsWithUknownTopicThenTopicNotFound() {
 
         // ACT //
-        given().param("start_from", initialPartitionOffset).param("batch_limit", "5").param("stream_timeout", "1")
-               .when().get(createStreamEndpointUrl("blah-topic", PARTITION))
-
-               // ASSERT //
-               .then().statusCode(HttpStatus.SC_NOT_FOUND).body("message", equalTo("topic not found"));
+        given()
+                .param("batch_limit", "5")
+                .param("stream_timeout", "1")
+                .when()
+                .get(createStreamEndpointUrl("blah-topic"))
+        // ASSERT //
+                .then()
+                .statusCode(HttpStatus.SC_NOT_FOUND)
+                .and()
+                .body("message", equalTo("topic not found"));
     }
 
     @Test(timeout = 5000)
@@ -116,8 +113,8 @@ public class EventStreamReadingAT extends BaseAT {
                .then().statusCode(HttpStatus.SC_BAD_REQUEST).body("message", equalTo("start_from is invalid"));
     }
 
-    private static String createStreamEndpointUrl(final String topic, final String partition) {
-        return format("/topics/{0}/partitions/{1}/events", topic, partition);
+    private static String createStreamEndpointUrl(final String eventType) {
+        return format("/event-types/{0}/events", eventType);
     }
 
     private void validateStreamResponse(final String body, final int batchesCount, final int eventsInBatch,

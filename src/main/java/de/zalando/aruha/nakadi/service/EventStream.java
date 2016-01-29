@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -43,23 +42,27 @@ public class EventStream {
     }
 
     public void streamEvents() {
-
-        // todo: currently if:
-        // - stream limit and timeout are not set AND
-        // - the keep-alive is not set AND
-        // - client closed the connection
-        // => this thread can stuck till it tries to write to responseEmitter (which can be quite long).
-        // So we should check somehow the status of connection in such cases, or forbid polling without keep-alive
         try {
-            int keepAliveInARow = 0;
+//            int keepAliveInARow = 0;
             int messagesRead = 0;
-            int messagesReadInBatch = 0;
 
-            Map<String, List<String>> currentBatch = emptyBatch();
+            Map<String, List<String>> currentBatches = config
+                    .getCursors()
+                    .keySet()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            identity(),
+                            partition -> Lists.newArrayList()));
             final Map<String, String> latestOffsets = Maps.newHashMap(config.getCursors());
 
             long start = currentTimeMillis();
-            long batchStartTime = start;
+            Map<String, Long> batchStartTimes = config
+                    .getCursors()
+                    .keySet()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            identity(),
+                            partition -> start));
 
             while (true) {
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
@@ -71,38 +74,35 @@ public class EventStream {
                     latestOffsets.put(event.getPartition(), event.getNextOffset());
 
                     // put message to batch
-                    currentBatch.get(event.getPartition()).add(event.getEvent());
+                    currentBatches.get(event.getPartition()).add(event.getEvent());
                     messagesRead++;
-                    messagesReadInBatch++;
 
                     // if we read the message - reset keep alive counter
-                    keepAliveInARow = 0;
+                    //keepAliveInARow = 0;
                 }
 
-                // check if it's time to send the batch
-                long timeSinceBatchStart = currentTimeMillis() - batchStartTime;
-                if (config.getBatchTimeout().isPresent() && config.getBatchTimeout().get() * 1000 <= timeSinceBatchStart
-                        || messagesReadInBatch >= config.getBatchLimit()) {
+                // for each partition check if it's time to send the batch
+                for (final String partition: config.getCursors().keySet()) {
+                    long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
+                    if (config.getBatchTimeout() * 1000 <= timeSinceBatchStart
+                            || currentBatches.get(partition).size() >= config.getBatchLimit()) {
 
-                    sendBatch(latestOffsets, currentBatch);
+                        sendBatch(partition, latestOffsets.get(partition), currentBatches.get(partition));
 
-                    // if we hit keep alive count limit - close the stream
-                    if (messagesReadInBatch == 0) {
-                        if (config.getBatchKeepAliveLimit().isPresent()
-                                && keepAliveInARow >= config.getBatchKeepAliveLimit().get()) {
-                            break;
-                        }
+                        // if we hit keep alive count limit - close the stream
+//                        if (messagesReadInBatch == 0) {
+//                            if (config.getBatchKeepAliveLimit().isPresent()
+//                                    && keepAliveInARow >= config.getBatchKeepAliveLimit().get()) {
+//                                break;
+//                            }
+//
+//                            keepAliveInARow++;
+//                        }
 
-                        keepAliveInARow++;
+                        // init new batch for partition
+                        currentBatches.get(partition).clear();;
+                        batchStartTimes.put(partition,currentTimeMillis());
                     }
-
-                    // init new batch
-                    messagesReadInBatch = 0;
-                    currentBatch = emptyBatch();
-                    batchStartTime = currentTimeMillis();
-
-                    outputStream.write(BATCH_SEPARATOR.getBytes());
-                    outputStream.flush();
                 }
 
                 // check if we reached the stream timeout or message count limit
@@ -110,8 +110,10 @@ public class EventStream {
                 if (config.getStreamTimeout().isPresent() && timeSinceStart >= config.getStreamTimeout().get() * 1000
                         || config.getStreamLimit().isPresent() && messagesRead >= config.getStreamLimit().get()) {
 
-                    if (messagesReadInBatch > 0) {
-                        sendBatch(latestOffsets, currentBatch);
+                    for (final String partition: config.getCursors().keySet()) {
+                        if (currentBatches.get(partition).size() > 0) {
+                            sendBatch(partition, latestOffsets.get(partition), currentBatches.get(partition));
+                        }
                     }
 
                     break;
@@ -124,11 +126,6 @@ public class EventStream {
         } catch (NakadiException e) {
             LOG.error("Error occurred when polling events from kafka", e);
         }
-    }
-
-    private Map<String, List<String>> emptyBatch() {
-        return config.getCursors().keySet().stream().collect(Collectors.toMap(identity(),
-                    partition -> Lists.newArrayList()));
     }
 
     private String createStreamEvent(final String partition, final String offset, final List<String> events,
@@ -145,7 +142,16 @@ public class EventStream {
         return builder.toString();
     }
 
-    private void sendBatch(final Map<String, String> latestOffsets, final Map<String, List<String>> currentBatch)
+    private void sendBatch(final String partition, final String offset, final List<String> currentBatch)
+            throws IOException {
+        // create stream event batch for current partition and send it; if there were
+        // no events, it will be just a keep-alive
+        final String streamEvent = createStreamEvent(partition, offset, currentBatch, Optional.empty());
+        outputStream.write(streamEvent.getBytes());
+        outputStream.flush();
+    }
+
+    /*private void sendBatch(final Map<String, String> latestOffsets, final Map<String, List<String>> currentBatch)
         throws IOException {
 
         // iterate through all partitions we stream for
@@ -163,6 +169,6 @@ public class EventStream {
                     Optional.empty());
             outputStream.write(streamEvent.getBytes());
         }
-    }
+    }*/
 
 }

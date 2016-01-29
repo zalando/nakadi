@@ -1,19 +1,22 @@
 package de.zalando.aruha.nakadi.service;
 
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
+
+import static java.util.Optional.ofNullable;
 
 public class EventStreamConfig {
     private String topic;
     private Map<String, String> cursors;
     private Integer batchLimit;
     private Optional<Integer> streamLimit;
-    private Optional<Integer> batchTimeout;
+    private Integer batchTimeout;
     private Optional<Integer> streamTimeout;
     private Optional<Integer> batchKeepAliveLimit;
 
     public EventStreamConfig(final String topic, final Map<String, String> cursors, final Integer batchLimit,
-            final Optional<Integer> streamLimit, final Optional<Integer> batchTimeout,
+            final Optional<Integer> streamLimit, final Integer batchTimeout,
             final Optional<Integer> streamTimeout, final Optional<Integer> batchKeepAliveLimit) {
         this.topic = topic;
         this.cursors = cursors;
@@ -40,7 +43,7 @@ public class EventStreamConfig {
         return streamLimit;
     }
 
-    public Optional<Integer> getBatchTimeout() {
+    public Integer getBatchTimeout() {
         return batchTimeout;
     }
 
@@ -68,7 +71,7 @@ public class EventStreamConfig {
         private Map<String, String> cursors;
         private Integer batchLimit;
         private Optional<Integer> streamLimit;
-        private Optional<Integer> batchTimeout;
+        private Integer batchTimeout;
         private Optional<Integer> streamTimeout;
         private Optional<Integer> batchKeepAliveLimit;
 
@@ -93,23 +96,23 @@ public class EventStreamConfig {
             return this;
         }
 
-        public Builder withStreamLimit(final Optional<Integer> streamLimit) {
-            this.streamLimit = streamLimit;
+        public Builder withStreamLimit(@Nullable final Integer streamLimit) {
+            this.streamLimit = ofNullable(streamLimit);
             return this;
         }
 
-        public Builder withBatchTimeout(final Optional<Integer> batchTimeout) {
+        public Builder withBatchTimeout(final Integer batchTimeout) {
             this.batchTimeout = batchTimeout;
             return this;
         }
 
-        public Builder withStreamTimeout(final Optional<Integer> streamTimeout) {
-            this.streamTimeout = streamTimeout;
+        public Builder withStreamTimeout(@Nullable final Integer streamTimeout) {
+            this.streamTimeout = ofNullable(streamTimeout);
             return this;
         }
 
-        public Builder withBatchKeepAliveLimit(final Optional<Integer> batchKeepAliveLimit) {
-            this.batchKeepAliveLimit = batchKeepAliveLimit;
+        public Builder withBatchKeepAliveLimit(@Nullable final Integer batchKeepAliveLimit) {
+            this.batchKeepAliveLimit = ofNullable(batchKeepAliveLimit);
             return this;
         }
 
