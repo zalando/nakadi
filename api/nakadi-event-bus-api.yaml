@@ -29,11 +29,12 @@ info:
     before persisting it. Usually enrichment affects the metadata of an Event but is not limited to.
 
     * The **ordering** expectations of Events in this stream. Each EventType will have its Events stored in
-    an underlying logical stream (the Topic) that is phisically organized in disjoints collections of
+    an underlying logical stream that is phisically organized in disjoint collections of
     strictly ordered Events (the Partition). The EventType defines the field that acts as evaluator of the
     ordering (that is, its partitioning key); this ordering is guaranteed by making Events whose partition
     key resolves to the same Partition (usually a hash function on its value) be persisted strictly ordered
     in a Partition.
+
     In practice this means that all Events within a Partition have their relative order guaranteed: Events
     (of a same EventType) that are *about* a same data entity (that is, have the same value on its Partition
     key) reach always the same Partition, the relative ordering of them is secured. This mechanism implies
@@ -43,16 +44,20 @@ info:
 
     Clients of Nakadi can be grouped in 2 categories: **EventType owners** and **Clients** (clients in turn
     are both **Producers** and **Consumers** of Events). Application owners interact with Nakadi via the
-    **Schema Registry API** for the definition of EventTypes, while Clients via the **Stream API** for
-    submission and reception of Events. A low level **Topic API** is available, providing full control and
-    responsibility of position tracking and partitioning (and therefore ordering) to the Clients.
+    **Schema Registry API** for the definition of EventTypes, while Clients via the streaming API for
+    submission and reception of Events.
 
-    In the high level **Managed API** the consumption of Events proceeds via the establishment of a named
+    A low level **Unmanaged API** is available, providing full control and responsibility of position
+    tracking and partitioning (and therefore ordering) to the Clients.
+
+    In the high level **Subscriptoin API** the consumption of Events proceeds via the establishment of a named
     **Subscription** to an EventType. Subscriptions are persistent relationships from an Application (which
-    might have several instances) and the stream of an EventType, whose consumption tracking is managed by
-    Nakadi, freeing Consumers from any responsibility in tracking the current position on a Stream. **Note**
-    *Currently the high level API is out of scope in this specification. It is in the short term plan to be
-    included.*
+    might have several instances) and the stream of one or more EventType's, whose consumption tracking is
+    managed by Nakadi, freeing Consumers from any responsibility in tracking of the current position on
+    a Stream.
+
+    **Note** *Currently the high level API is out of scope in this specification.
+    It is in the short term plan to be included.*
 
 
     Scope and status of this document
@@ -67,16 +72,17 @@ info:
     *  The stantardised event format (see definition of Event, BusinessEvent and DataChangeEvent) (Note: at a
     later moment this will be configurable and not be inherent part of this API).
 
-    * Topic API (low level).
+    * Unmanaged API (low level).
 
     Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included
     in this version of this specification.
 
     Notable omissions here are:
+
+    * Submission of events in batched manner.
+
     * The contract between Nakadi and clients in the context of the high-level API (i.e. the process for
     clients to establish subscriptions).
-
-    * Submission of events to topics in batched manner.
 
     * Validation and enrichment procedures.
 
@@ -86,7 +92,7 @@ info:
     in an external document (TBD link to document).
 
 
-  version: '0.5'
+  version: '0.5.1'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
@@ -161,10 +167,7 @@ paths:
         Creates a new `EventType`.
 
         **Implementation note:** The creation of an EventType implicitly creates the structures in the
-        backing messaging implementation needed for the reception and persistency of the Events. Considering
-        that at this time only Kafka is used, this corresponds to the creation of a Topic. If so desired,
-        clients can interact directly with the topic using the low level API (for existing restrictions see
-        the corresponding methods on the topic-api).
+        backing messaging implementation needed for the reception and persistency of the Events.
 
         The fields validation-strategies, enrichment-strategies and partition-resolution-strategy have all an
         effect on the incoming Event of this EventType. For its impacts on the reception of events please
@@ -269,7 +272,7 @@ paths:
         - schema-registry-api
       description: |
         Updates the `EventType` identified by its name. Behaviour is the same as creation of `EventType` (See
-        POST /event-type) except where noted below.
+        `POST /event-type`) except where noted below.
 
         The name and the topic fields cannot be changed. Attempting to do so will result in a 422 failure.
 
@@ -322,11 +325,11 @@ paths:
       description: |
         Publishes one `Event` of this `EventType`. (TBD format for publishing of batches of Events)
 
-        Reception of Events will always respect the configuration of its `EventType` w.r.t. validation,
+        Reception of events will always respect the configuration of its `EventType` w.r.t. validation,
         enrichment and partitioning. The steps performed on reception of incoming message are:
 
         1. Every validation rule specified in the `EventType` will be checked in order against the incoming
-        Events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
+        events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
         in the first case of failure with a status of 400 Bad request. If the offending validation rule
         provides information about the violation it will be included in the Problem response.
         If the `EventType` defines schema validation it will be performed at this moment.
@@ -338,10 +341,8 @@ paths:
         force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
         attempt will be included in the respose's Problem object.
 
-        1. The incoming Event's relative ordering is evaluated according to the rule on the
+        1. The incoming Event's partition is evaluated according to the `PartitioningStrategy` rule on the
         `EventType`. Failure to evaluate the rule will **reject** the Event.
-        **Restriction**: POSTing Events based on its `EventType` requires it to have a
-        `PartitioningStrategy` defined. Violating this condition will produce a 405 Not allowed.
 
       parameters:
         - name: name
@@ -396,15 +397,18 @@ paths:
             $ref: '#/definitions/Problem'
     get:
       tags:
-        - topic-api
+        - stream-api
+        - unmanaged-api
         - draft
       description: |
-        Starts a stream delivery for the specified partitions of the given topic.
+        Starts a stream delivery for the specified partitions of the given EventType.
 
         The event stream is formated as a sequence of `EventStreamBatch`es separated by `\n`. Each
-        `EventStreamBatch` constains a chunk of Events and a `Cursor` pointing to the end of the chunk (i.e.
-        last delivered Event).
-        If streaming for several distinct partitions, each one is a independent `EventStreamBatch`.
+        `EventStreamBatch` constains a chunk of Events and a `Cursor` pointing to the **end** of the
+        chunk (i.e. last delivered Event). Currently this format is the only one supported by the system,
+        but in the future other MIME types will be suported (like `application/event-stream`)
+
+        If streaming for several distinct partitions, each one is an independent `EventStreamBatch`.
 
         The initialization of a stream can be parameterized in terms of size of each chunk, timeout for
         flushing each chunk, total amount of delivered Events and total time for the duration of the stream.
@@ -414,20 +418,32 @@ paths:
         contain only the Cursor pointing to the same offset. This can be treated as a keep-alive control for
         some load balancers.
 
-        The tracking of the current position in the partitions and of which partitions is being read is in
-        the responsibility of the client.
-        No commits are needed.
+        The tracking of the current offset in the partitions and of which partitions is being read is in
+        the responsibility of the client. No commits are needed.
+      produces:
+        - application/x-json-stream
       parameters:
         - name: name
           in: path
-          description: Topic where to get events from
+          description: EventType name to get events about
           type: string
           required: true
         - name: X-nakadi-cursors
           in: header
-          description: Array of cursors indicating the partitions to read from and the starting point on
-            each. Assumes the offset on each cursor is not inclusive (i.e., first delivered Event is the
+          description: |
+            Array of cursors indicating the partitions to read from and the starting offset on each such a
+            partition.
+
+            Assumes the offset on each cursor is not inclusive (i.e., first delivered Event is the
             **first one after** the one pointed to in the cursor).
+
+            If the header is not present, the stream for all partitions defined for the EventType will start 
+            from the newest event available in the system at the moment of making this call. 
+
+            **Note:** we are not using query parameters for passing the cursors only because of the length
+            limitations on the HTTP query. Another way to initiate this call would be the POST method with
+            cursors passed in the method body. This aproach can implemented in the future versions of this API
+            
           required: false
           type: array
           items:
@@ -462,12 +478,11 @@ paths:
           description: |
             Maximum time in seconds to wait for the flushing of each chunk (per partition).
 
-            * If the amount of buffered Events reaches `batch_limit` before this batch_flush_timeout is
-            reached, the messages are immediately flushed to the client.
+            * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout` 
+            is reached, the messages are immediately flushed to the client and batch flush timer is reset.
 
             * If 0 or undefined, will assume 30 seconds.
-          type: integer
-          format: int32
+          type: number
           required: false
           default: 30
         - name: stream_timeout
@@ -479,10 +494,8 @@ paths:
             If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
             to the client.
 
-            Stream initialization will fail if `stream_timeout` is lower than
-            `batch_flush_timeout`.
-          type: integer
-          format: int32
+            Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+          type: number
           required: false
         - name: batch_keep_alive_limit
           in: query
@@ -515,8 +528,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '404':
-          description: |
-            Topic not found.
+          description: EventType not found
           schema:
             $ref: '#/definitions/Problem'
         '422':
@@ -528,51 +540,21 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /topics:
+  /event-types/{name}/partitions':
     get:
-      description: Lists all known `Topics` of this Nakadi cluster
       tags:
+        - unmanaged-api
         - monitoring
         - management-api
+      description: | 
+        Lists the `Partition`s for the given event-type.
+        
+        This endpoint is mostly interesting for monitoring purposes or in cases when consumer wants to start
+        consuming older messages. 
       parameters:
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-      responses:
-        '200':
-          description: The request was successful. Returns a list `Topic`s in the response body.
-          schema:
-            type: array
-            description: An array of topics
-            items:
-              $ref: '#/definitions/Topic'
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-
-        '503':
-          description: Not available
-          schema:
-            $ref: '#/definitions/Problem'
-
-  '/topics/{topic}/partitions':
-    get:
-      tags:
-        - topic-api
-        - management-api
-      description: Lists the `Partition`s for the given topic
-      parameters:
-        - name: topic
+        - name: name
           in: path
-          description: Topic name
+          description: EventType name
           type: string
           required: true
         - name: X-Flow-Id
@@ -591,8 +573,7 @@ paths:
             items:
               $ref: '#/definitions/Partition'
         '404':
-          description: |
-            Topic not found.
+          description: EventType not found
           schema:
             $ref: '#/definitions/Problem'
         '500':
@@ -600,21 +581,21 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  '/topics/{topic}/partitions/{partition}':
+  /event-types/{name}/partitions/{partition}:
     get:
       tags:
-        - topic-api
+        - unmanaged-api
         - management-api
-      description: Returns the given `Partition` of this topic
+      description: Returns the given `Partition` of this EventType
       parameters:
-        - name: topic
+        - name: name
           in: path
-          description: Topic name
+          description: EventType name
           type: string
           required: true
         - name: partition
           in: path
-          description: Partition id.
+          description: Partition id
           type: string
           required: true
         - name: X-Flow-Id
@@ -634,88 +615,11 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '404':
-          description: |
-            Not found.
+          description: Not found
           schema:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-
-  '/topics/{topic}/partitions/{partition}/events':
-    post:
-      tags:
-        - topic-api
-        - draft
-      description: |
-        Post a one or more `Event`s to a given `Topic` (of an `EventType`). Upon reception the `EventType`'s
-        validation and enrichment rules are applied. For details on their behaviour please see POST
-        /event-types/{name}/events.
-
-        Restriction: To avoid inconsistencies in the relative ordering of Events, **this operation cannot be
-        used if this
-        Topic's defining EventType defines a `PartitionResolutionStrategy`.** Doing so will produce a 405 Not
-        allowed.
-      parameters:
-        - name: topic
-          in: path
-          description: Topic where to send events to.
-          type: string
-          required: true
-        - name: partition
-          in: path
-          description: Partition where which the events are stored.
-          type: string
-          required: true
-        - name: Content-Encoding
-          in: header
-          required: false
-          description: |
-            Allow the publisher to gzip compress the payload by setting this header to "gzip". For Example
-            "Content-Encoding: gzip"
-          type: string
-        - name: event
-          in: body
-          description: Array of `Event`s being sent.
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Event'
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
-      responses:
-        '201':
-          description: Event submitted.
-        '401':
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Not allowed
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: |
-            Not found.
-          schema:
-            $ref: '#/definitions/Problem'
-        '422':
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-
-        '503':
-          description: Not available
           schema:
             $ref: '#/definitions/Problem'
 
@@ -923,29 +827,26 @@ definitions:
         type: string
         format: uri
         description: |
-          An absolute URI that identifies the problem type.  When dereferenced,
-          it SHOULD provide human-readable API documentation for the problem type
-          (e.g., using HTML).
+          An absolute URI that identifies the problem type.  When dereferenced, it SHOULD provide
+          human-readable API documentation for the problem type (e.g., using HTML).
           This Problem object is the same as provided by https://github.com/zalando/problem
         example: http://httpstatus.es/503
       title:
         type: string
         description: |
-          A short, summary of the problem type. Written in english and readable
-          for engineers (usually not suited for non technical stakeholders and
-          not localized); example: Service Unavailable
+          A short, summary of the problem type. Written in english and readable for engineers (usually not
+          suited for non technical stakeholders and not localized)
+        example: Service Unavailable
       status:
         type: integer
         format: int32
         description: |
-          The HTTP status code generated by the origin server for this occurrence
-          of the problem.
+          The HTTP status code generated by the origin server for this occurrence of the problem.
         example: 503
       detail:
         type: string
         description: |
-          A human readable explanation specific to this occurrence of the
-          problem.
+          A human readable explanation specific to this occurrence of the problem.
         example: Connection to database timed out
       instance:
         type: string
@@ -961,21 +862,11 @@ definitions:
   Metrics:
     type: object
 
-  Topic:
-    description: |
-      Representation of the underlying (implementation dependent) event ordering and persistence structure.
-
-      Direct operation on this is usually unnecessary.
-    type: object
-    required:
-      - name
-    properties:
-      name:
-        type: string
-        description: Topic name
-        example: article.120
-
   Partition:
+    description: |
+      Partition information. Can be helpful when trying to start a stream using an unmanaged API.
+
+      This information is not related to the state of the consumer clients.
     required:
       - partition
       - oldest_available_offset
@@ -984,8 +875,14 @@ definitions:
       partition:
         type: string
       oldest_available_offset:
+        description: |
+          An offset of the oldest available Event in that partition. This value will be changing upon
+          removal of Events from the partition by the background archiving/cleanup mechanizms.
         type: string
       newest_available_offset:
+        description: |
+          An offset of the newes available Event in that partition. This value will be changing upon
+          reception of new events for this partition by nakadi
         type: string
 
   Cursor:
@@ -1067,9 +964,10 @@ definitions:
       topic:
         type: string
         description: |
-          References the name of the low-level topic that is holding the stream of Events for this EventType.
-          Usually is the same as the name property.
+          References the name of the underlying topic (implementation dependent) that is holding the stream
+          of Events for this EventType.
 
+          Usually is the same as the name property. This field is exposed mostly for monitoring purposes.
       effective_schema:
         type: string
         #read-only: true
@@ -1174,10 +1072,10 @@ definitions:
 
   PartitionResolutionStrategy:
     description: |
-      Defines a rule for the resolution of incoming Events into partitions of a Topic.
+      Defines a rule for the resolution of incoming Events into partitions.
 
       Rules might require additional parameters; see the `doc` field of the existing rules for details. See
-      GET /registry/partition-strategies for a list of available rules.
+      `GET /registry/partition-strategies` for a list of available rules.
     properties:
       name:
         type: string
