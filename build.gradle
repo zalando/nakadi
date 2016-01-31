@@ -161,7 +161,9 @@ task buildDockerImage {
     dependsOn bootRepackage
     doLast {
         println "Building docker image with tag: $dockerImageTag"
-        execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout)
+        if (execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout) != 0) {
+            throw new GradleException("docker build failed.")
+        }
     }
     outputs.upToDateWhen { false }
 }
@@ -170,7 +172,9 @@ task pushDockerImage {
     dependsOn buildDockerImage
     doLast {
         println "Pushing docker image with tag: $dockerImageTag"
-        execAndWait("docker push " + dockerImageTag, dockerBuildTimeout)
+        if (execAndWait("docker push " + dockerImageTag, dockerBuildTimeout) != 0) {
+            throw new GradleException("docker push failed.")
+        }
     }
 }
 
