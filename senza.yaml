@@ -5,10 +5,6 @@ SenzaInfo:
         Description: "Name of the Docker image providing Nakadi."
     - StackName:
         Description: "Name of the Cloud Formation Stack"
-    - AccessTokenUrl:
-        Description: "Url to the access token validation service"
-    - TokeninfoUrl:
-        Description: "TokeninfoUrl"
     - ApplicationId:
         Description: "Application id"
         Default: "nakadi"
@@ -65,14 +61,6 @@ SenzaComponents:
           8080: 8080
         scalyr_account_key: "{{Arguments.ScalyrAccountKey}}"
         environment:
-          HTTP_TOKENINFO_URL: "{{Arguments.TokeninfoUrl}}"
-          OAUTH2_ACCESS_TOKEN_URL: "{{Arguments.AccessTokenUrl}}"
-          ARUHA_PUSH_OAUTH_ACTIVE: "true"
-          ARUHA_PULL_OAUTH_ACTIVE: "true"
-          ARUHA_SUBSCRIPTION_MODE: "zookeeper"
-          STREAM_HEARTBEAT_PERIOD_MS: "5000"
-          KAFKA_CLIENTS_INIT_POOL_SIZE: "4"
-          KAFKA_CLIENTS_MAX_POOL_SIZE: "16"
           NAKADI_ZOOKEEPER_KAFKANAMESPACE:    "{{Arguments.ZookeeperKafkaNamespace}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_BROKERS: "{{Arguments.ExhibitorBrokers}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_PORT:    "{{Arguments.ExhibitorPort}}"
