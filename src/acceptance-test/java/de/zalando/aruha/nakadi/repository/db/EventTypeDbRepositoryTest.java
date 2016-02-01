@@ -67,7 +67,7 @@ public class EventTypeDbRepositoryTest {
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
-        assertThat("Schema is persisted", rs.getString(2), equalTo("{\"name\": \"event-name\", \"type\": null, \"schema\": {\"type\": null, \"schema\": {\"price\": 1000}}, \"owning_application\": null}"));
+        assertThat("Schema is persisted", rs.getString(2), equalTo("{\"name\": \"event-name\", \"type\": null, \"topic\": null, \"schema\": {\"type\": null, \"schema\": {\"price\": 1000}}, \"owning_application\": null}"));
     }
 
     @Test(expected = DuplicateKeyException.class)
