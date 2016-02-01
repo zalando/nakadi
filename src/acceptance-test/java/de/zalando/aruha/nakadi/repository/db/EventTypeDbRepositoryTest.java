@@ -1,6 +1,8 @@
 package de.zalando.aruha.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
@@ -37,9 +39,11 @@ public class EventTypeDbRepositoryTest {
     @Before
     public void setUp() {
         try {
+            ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+
             datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
             template = new JdbcTemplate(datasource);
-            repository = new EventTypeDbRepository(template, new ObjectMapper());
+            repository = new EventTypeDbRepository(template, mapper);
             connection = datasource.getConnection();
 
             ResourceDatabasePopulator rdp = new ResourceDatabasePopulator();

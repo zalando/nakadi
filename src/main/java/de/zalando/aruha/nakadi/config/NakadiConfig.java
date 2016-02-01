@@ -1,5 +1,10 @@
 package de.zalando.aruha.nakadi.config;
 
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.datatype.jsonorg.JSONObjectDeserializer;
+import com.fasterxml.jackson.datatype.jsonorg.JSONObjectSerializer;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +33,7 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.problem.ProblemModule;
 
 @Configuration
 @EnableMetrics
@@ -69,9 +75,18 @@ public class NakadiConfig {
     @Bean
     @Primary
     public ObjectMapper jacksonObjectMapper() {
-        return
-            new ObjectMapper().setPropertyNamingStrategy(
-                PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+        ObjectMapper jsonMapper = new ObjectMapper().setPropertyNamingStrategy(
+            PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+
+        SimpleModule jsonObjectModule = new SimpleModule();
+        jsonObjectModule.addSerializer(JSONObject.class, new JSONObjectSerializer());
+        jsonObjectModule.addDeserializer(JSONObject.class, new JSONObjectDeserializer());
+
+        jsonMapper.registerModule(jsonObjectModule);
+        jsonMapper.registerModule(new Jdk8Module());
+        jsonMapper.registerModule(new ProblemModule());
+
+        return jsonMapper;
     }
 
     @Bean

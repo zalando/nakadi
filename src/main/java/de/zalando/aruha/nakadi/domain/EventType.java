@@ -10,7 +10,6 @@ public class EventType {
 
     private String name;
 
-    @JsonProperty("owning_application")
     private String owningApplication;
 
     private String type;

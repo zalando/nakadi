@@ -46,11 +46,10 @@ public class EventTypeController {
     private Schema schema;
 
     @Autowired
-    public EventTypeController(EventTypeRepository repository, ObjectMapper jsonMapper) {
+    public EventTypeController(EventTypeRepository repository, ObjectMapper objectMapper) {
         this.repository = repository;
-        this.jsonMapper = jsonMapper;
+        this.jsonMapper = objectMapper;
 
-        setupJsonMapper();
         loadEventTypeJsonSchema();
     }
 
@@ -90,14 +89,5 @@ public class EventTypeController {
         InputStream inputStream = getClass().getResourceAsStream("/event_type_request.json");
         JSONObject rawSchema = new JSONObject(new JSONTokener(inputStream));
         schema = SchemaLoader.load(rawSchema);
-    }
-
-    private void setupJsonMapper() {
-        SimpleModule testModule = new SimpleModule();
-        testModule.addSerializer(JSONObject.class, new JSONObjectSerializer());
-        testModule.addDeserializer(JSONObject.class, new JSONObjectDeserializer());
-        this.jsonMapper.registerModule(testModule);
-        this.jsonMapper.registerModule(new Jdk8Module());
-        this.jsonMapper.registerModule(new ProblemModule());
     }
 }

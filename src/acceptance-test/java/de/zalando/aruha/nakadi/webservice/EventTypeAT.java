@@ -1,44 +1,61 @@
 package de.zalando.aruha.nakadi.webservice;
 
-import com.jayway.restassured.response.Response;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import org.apache.http.HttpStatus;
 import org.json.JSONObject;
 import org.junit.Test;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static com.jayway.restassured.RestAssured.given;
-import static java.text.MessageFormat.format;
+import static com.jayway.restassured.http.ContentType.JSON;
 import static org.hamcrest.core.IsEqual.equalTo;
 
+
 public class EventTypeAT extends BaseAT {
+
+    static private final String ENDPOINT = "/event_types";
+
     @Test
-    public void whenPOSTValidEventTypeThenOk() {
-        Map body = buildEventTypeBody("event-name");
+    public void whenPOSTValidEventTypeThenOk() throws JsonProcessingException {
+        String body = buildEventTypeBody("event-name");
 
-        final Response response = given().body(body).post("http://localhost:8080/event_types");
-
-        response.then().body(equalTo(""));
-        response.then().statusCode(HttpStatus.SC_CREATED);
+        given().
+                body(body).
+                when().
+                post(ENDPOINT).
+                then().
+                body(equalTo("")).
+                statusCode(HttpStatus.SC_CREATED);
     }
 
     @Test
-    public void whenPOSTInvalidEventTypeThenUnprocessableEntity() {
-        Map body = buildEventTypeBody(null);
+    public void whenPOSTInvalidEventTypeThenUnprocessableEntity() throws JsonProcessingException {
+        String body = buildEventTypeBody(null);
 
-        final Response response = given().body(body).post("http://localhost:8080/event_types");
-
-        response.then().body(equalTo(
-                "{\"detail\":\"#/event-type/name: expected type: String, found: Null\",\"title\":\"Invalid EventType object\",\"status\":422,\"type\":\"https://httpstatuses.com/422\"}"));
-        response.then().statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+        given().
+                body(body).
+                header("accept", "application/json").
+                when().
+                post(ENDPOINT).
+                then().
+                statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY).
+                contentType(JSON).
+                body("detail", equalTo("#/event-type/name: expected type: String, found: Null")).
+                body("title", equalTo("Invalid EventType object")).
+                body("status", equalTo(422)).
+                body("type", equalTo("https://httpstatuses.com/422"));
     }
 
-    private Map buildEventTypeBody(String name) {
+    private String buildEventTypeBody(String name) throws JsonProcessingException {
+        ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+
         final EventTypeSchema schema = new EventTypeSchema();
         final EventType eventType = new EventType();
 
@@ -51,6 +68,6 @@ public class EventTypeAT extends BaseAT {
         Map body = new HashMap<String, Object>();
         body.put("event-type", eventType);
 
-        return body;
+        return mapper.writer().writeValueAsString(body);
     }
 }
