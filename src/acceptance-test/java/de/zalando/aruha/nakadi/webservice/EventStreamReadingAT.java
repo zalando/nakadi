@@ -180,6 +180,29 @@ public class EventStreamReadingAT extends BaseAT {
         assertThat(offsets, equalTo(Sets.newHashSet(initialCursors)));
     }
 
+    @Test(timeout = 10000)
+    @SuppressWarnings("unchecked")
+    public void whenReachKeepAliveLimitThenStreamIsClosed()
+            throws ExecutionException, InterruptedException, JsonProcessingException {
+        // ACT //
+        final int keepAliveLimit = 3;
+        final Response response = given()
+                .param("batch_flush_timeout", "1")
+                .param("batch_keep_alive_limit", keepAliveLimit)
+                .when()
+                .get(STREAM_ENDPOINT);
+
+        // ASSERT //
+        response.then().statusCode(HttpStatus.OK.value());
+
+        final String body = response.print();
+        final List<Map<String, Object>> batches = deserializeBatches(body);
+
+        // validate amount of batches and structure of each batch
+        assertThat(batches, hasSize(PARTITIONS_NUM * keepAliveLimit));
+        batches.forEach(batch -> validateBatchStructure(batch, null));
+    }
+
     @Test(timeout = 5000)
     public void whenGetEventsWithUknownTopicThenTopicNotFound() {
         given()

@@ -1,26 +1,23 @@
 package de.zalando.aruha.nakadi.service;
 
-import static java.lang.System.currentTimeMillis;
-
-import static java.util.function.Function.identity;
-
-import java.io.IOException;
-import java.io.OutputStream;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static java.lang.System.currentTimeMillis;
+import static java.util.function.Function.identity;
 
 public class EventStream {
 
@@ -43,26 +40,15 @@ public class EventStream {
 
     public void streamEvents() {
         try {
-//            int keepAliveInARow = 0;
             int messagesRead = 0;
+            final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
 
-            Map<String, List<String>> currentBatches = config
-                    .getCursors()
-                    .keySet()
-                    .stream()
-                    .collect(Collectors.toMap(
-                            identity(),
-                            partition -> Lists.newArrayList()));
+            final Map<String, List<String>> currentBatches =
+                    createMapWithPartitionKeys(partition -> Lists.newArrayList());
             final Map<String, String> latestOffsets = Maps.newHashMap(config.getCursors());
 
             long start = currentTimeMillis();
-            Map<String, Long> batchStartTimes = config
-                    .getCursors()
-                    .keySet()
-                    .stream()
-                    .collect(Collectors.toMap(
-                            identity(),
-                            partition -> start));
+            Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
 
             while (true) {
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
@@ -77,8 +63,8 @@ public class EventStream {
                     currentBatches.get(event.getPartition()).add(event.getEvent());
                     messagesRead++;
 
-                    // if we read the message - reset keep alive counter
-                    //keepAliveInARow = 0;
+                    // if we read the message - reset keep alive counter for this partition
+                    keepAliveInARow.put(event.getPartition(), 0);
                 }
 
                 // for each partition check if it's time to send the batch
@@ -90,18 +76,25 @@ public class EventStream {
                         sendBatch(partition, latestOffsets.get(partition), currentBatches.get(partition));
 
                         // if we hit keep alive count limit - close the stream
-//                        if (messagesReadInBatch == 0) {
-//                            if (config.getBatchKeepAliveLimit().isPresent()
-//                                    && keepAliveInARow >= config.getBatchKeepAliveLimit().get()) {
-//                                break;
-//                            }
-//
-//                            keepAliveInARow++;
-//                        }
+                        if (currentBatches.get(partition).size() == 0) {
+                            keepAliveInARow.put(partition, keepAliveInARow.get(partition) + 1);
+                        }
 
                         // init new batch for partition
                         currentBatches.get(partition).clear();;
                         batchStartTimes.put(partition,currentTimeMillis());
+                    }
+                }
+
+                // check if we reached keepAliveInARow for all the partitions; if yes - then close stream
+                if (config.getBatchKeepAliveLimit().isPresent()) {
+                    final boolean keepAliveLimitReachedForAllPartitions = keepAliveInARow
+                            .values()
+                            .stream()
+                            .allMatch(keepAlives -> keepAlives >= config.getBatchKeepAliveLimit().get());
+
+                    if (keepAliveLimitReachedForAllPartitions) {
+                        break;
                     }
                 }
 
@@ -128,6 +121,14 @@ public class EventStream {
         }
     }
 
+    private <T> Map<String, T> createMapWithPartitionKeys(final Function<String, T> valueFunction) {
+        return config
+                .getCursors()
+                .keySet()
+                .stream()
+                .collect(Collectors.toMap(identity(), valueFunction));
+    }
+
     private String createStreamEvent(final String partition, final String offset, final List<String> events,
             final Optional<String> topology) {
         final StringBuilder builder = new StringBuilder().append("{\"cursor\":{\"partition\":\"").append(partition)
@@ -150,25 +151,5 @@ public class EventStream {
         outputStream.write(streamEvent.getBytes());
         outputStream.flush();
     }
-
-    /*private void sendBatch(final Map<String, String> latestOffsets, final Map<String, List<String>> currentBatch)
-        throws IOException {
-
-        // iterate through all partitions we stream for
-        for (String partition : config.getCursors().keySet()) {
-            List<String> events = ImmutableList.of();
-
-            // if there are some events read for current partition - grab them
-            if (currentBatch.get(partition) != null && !currentBatch.get(partition).isEmpty()) {
-                events = currentBatch.get(partition);
-            }
-
-            // create stream event for current partition and send it; if there were no events, it will be just a
-            // keep-alive
-            final String streamEvent = createStreamEvent(partition, latestOffsets.get(partition), events,
-                    Optional.empty());
-            outputStream.write(streamEvent.getBytes());
-        }
-    }*/
 
 }
