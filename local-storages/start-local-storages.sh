@@ -10,7 +10,7 @@ echo Starting PostgreSQL
 pg_ctlcluster ${PGVERSION} main start
 
 echo "Creating database and user"
-echo "create role schemaregistry with login password 'schemaregistry';create database local_schemaregistry_db owner schemaregistry;" \
+echo "CREATE ROLE schemaregistry WITH LOGIN CREATEROLE PASSWORD 'schemaregistry'; CREATE DATABASE local_schemaregistry_db OWNER schemaregistry;" \
     | sudo -u postgres psql -U postgres
 
 echo Starting ZooKeeper
