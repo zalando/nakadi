@@ -65,7 +65,7 @@ SenzaComponents:
           NAKADI_ZOOKEEPER_EXHIBITOR_BROKERS: "{{Arguments.ExhibitorBrokers}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_PORT:    "{{Arguments.ExhibitorPort}}"
       AutoScaling:
-        Minimum: "{{Arguments.InstancesMinimum}}"
+        Minimum: 2
         Maximum: "{{Arguments.InstancesMaximum}}"
         MetricType: CPU
         ScaleUpThreshold: 70
