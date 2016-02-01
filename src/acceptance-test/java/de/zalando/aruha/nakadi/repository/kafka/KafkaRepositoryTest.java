@@ -2,6 +2,8 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.utils.TestUtils;
+import de.zalando.aruha.nakadi.webservice.BaseAT;
+import de.zalando.aruha.nakadi.webservice.utils.KafkaHelper;
 import org.apache.curator.CuratorZookeeperClient;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -12,7 +14,6 @@ import org.junit.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,20 +23,18 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class KafkaRepositoryTest {
+public class KafkaRepositoryTest extends BaseAT {
 
-    private static final String zookeeperURL = "localhost:2181";
-    private static final String kafkaURL = "localhost:9092";
     private static final int defaultPartitionNum = 8;
     private static final int defaultReplicaFactor = 1;
 
     private KafkaRepositorySettings repositorySettings;
-    private Properties kafkaProperties;
+    private KafkaHelper kafkaHelper;
 
     @Before
     public void setup() {
         repositorySettings = createRepositorySettings();
-        kafkaProperties = createKafkaProperties();
+        kafkaHelper = new KafkaHelper(kafkaUrl);
     }
 
     @Test(timeout = 10000)
@@ -46,7 +45,7 @@ public class KafkaRepositoryTest {
         final String topicName = TestUtils.randomString();
 
         final CuratorZookeeperClient zookeeperClient = mock(CuratorZookeeperClient.class);
-        when(zookeeperClient.getCurrentConnectionString()).thenReturn(zookeeperURL);
+        when(zookeeperClient.getCurrentConnectionString()).thenReturn(zookeeperUrl);
 
         final CuratorFramework curatorFramework = mock(CuratorFramework.class);
         when(curatorFramework.getZookeeperClient()).thenReturn(zookeeperClient);
@@ -62,7 +61,7 @@ public class KafkaRepositoryTest {
 
         // ASSERT //
         executeWithRetry(() -> {
-                    final KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(kafkaProperties);
+                    final KafkaConsumer<String, String> kafkaConsumer = kafkaHelper.createConsumer();
                     final Map<String, List<PartitionInfo>> topics = kafkaConsumer.listTopics();
 
                     assertThat(topics.keySet(), hasItem(topicName));
@@ -90,13 +89,4 @@ public class KafkaRepositoryTest {
         return settings;
     }
 
-    private Properties createKafkaProperties() {
-        final Properties props = new Properties();
-        props.put("bootstrap.servers", kafkaURL);
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        return props;
-    }
 }
