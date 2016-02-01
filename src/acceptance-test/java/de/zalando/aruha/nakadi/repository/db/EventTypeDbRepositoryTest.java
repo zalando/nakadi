@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
@@ -15,11 +14,10 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -65,13 +63,11 @@ public class EventTypeDbRepositoryTest {
         final int rows = template.queryForObject("SELECT count(*) FROM event_type", Integer.class);
         assertThat("Number of rows should encrease", rows, equalTo(1));
 
-        final PreparedStatement ps = connection.prepareStatement("SELECT et_name, et_event_type_object FROM event_type");
-        ps.setMaxRows(1);
-        final ResultSet rs = ps.executeQuery();
+        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM event_type");
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
-        assertThat("Schema is persisted", rs.getString(2), equalTo("{\"name\": \"event-name\", \"type\": null, \"schema\": {\"type\": null, \"schema\": {\"price\": 1000}}, \"owning_application\": null}"));
+        assertThat("Schema is persisted", rs.getString(2), equalTo("{\"name\": \"event-name\", \"type\": null, \"topic\": null, \"schema\": {\"type\": null, \"schema\": {\"price\": 1000}}, \"owning_application\": null}"));
     }
 
     @Test(expected = DuplicateKeyException.class)
