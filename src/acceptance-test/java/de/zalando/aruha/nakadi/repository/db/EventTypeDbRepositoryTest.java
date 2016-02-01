@@ -48,7 +48,7 @@ public class EventTypeDbRepositoryTest {
             rdp.addScript(new ClassPathResource("schema.sql"));
             rdp.populate(connection);
 
-            template.execute("TRUNCATE TABLE event_type");
+            template.execute("TRUNCATE TABLE zsr_data.event_type");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -60,10 +60,10 @@ public class EventTypeDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        final int rows = template.queryForObject("SELECT count(*) FROM event_type", Integer.class);
+        final int rows = template.queryForObject("SELECT count(*) FROM zsr_data.event_type", Integer.class);
         assertThat("Number of rows should encrease", rows, equalTo(1));
 
-        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM event_type");
+        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zsr_data.event_type");
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
@@ -90,7 +90,7 @@ public class EventTypeDbRepositoryTest {
 
     @After
     public void tearDown() throws SQLException {
-        template.execute("TRUNCATE TABLE event_type");
+        template.execute("TRUNCATE TABLE zsr_data.event_type");
 
         connection.close();
     }
