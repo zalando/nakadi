@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.repository.zookeeper;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -74,7 +73,7 @@ public class ZooKeeperHolder {
         zooKeeper.start();
     }
 
-    public CuratorFramework get() throws IOException {
+    public CuratorFramework get() {
         return zooKeeper;
     }
 }

@@ -16,13 +16,15 @@ public interface TopicRepository {
 
     List<Topic> listTopics() throws NakadiException;
 
+    void createTopic(String topic);
+
+    void createTopic(String topic, int partitionsNum, int replicaFactor, long retentionMs, long rotationMs);
+
     void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
     boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
-
-    void readEvent(String topicId, String partitionId);
 
     EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
 }

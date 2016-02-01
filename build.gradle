@@ -27,7 +27,7 @@ if (project.hasProperty("dockerImageName")) {
 }
 def dockerImageVersion = "AUTOBUILD"
 if (project.hasProperty("dockerImageVersion")) {
-    dockerImageName = project.property("dockerImageVersion")
+    dockerImageVersion = project.property("dockerImageVersion")
 }
 def dockerImageTag = "$dockerImageName:$dockerImageVersion"
 
@@ -140,6 +140,7 @@ dependencies {
         exclude module: "hamcrest-core"
         exclude module: "hamcrest-library"
     }
+    testCompile 'org.echocat.jomon:runtime:1.6.2'
     testRuntime 'org.pegdown:pegdown:1.1.0'
 }
 // end::dependencies[]
@@ -167,7 +168,9 @@ task buildDockerImage {
     dependsOn bootRepackage
     doLast {
         println "Building docker image with tag: $dockerImageTag"
-        execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout)
+        if (execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout) != 0) {
+            throw new GradleException("docker build failed.")
+        }
     }
     outputs.upToDateWhen { false }
 }
@@ -176,7 +179,9 @@ task pushDockerImage {
     dependsOn buildDockerImage
     doLast {
         println "Pushing docker image with tag: $dockerImageTag"
-        execAndWait("docker push " + dockerImageTag, dockerBuildTimeout)
+        if (execAndWait("docker push " + dockerImageTag, dockerBuildTimeout) != 0) {
+            throw new GradleException("docker push failed.")
+        }
     }
 }
 
