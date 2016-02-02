@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.domain.Problem;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,19 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import com.google.common.collect.ImmutableMap;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Problem;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.service.EventStream;
-import de.zalando.aruha.nakadi.service.EventStreamConfig;
-import de.zalando.aruha.nakadi.utils.FlushableGZIPOutputStream;
 
 @RestController
 @RequestMapping(value = "/topics")

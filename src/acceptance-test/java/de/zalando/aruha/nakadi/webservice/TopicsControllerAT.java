@@ -69,7 +69,7 @@ public class TopicsControllerAT extends BaseAT {
     @Test
     public void whenListPartitionsThenOk() throws IOException {
         // ACT //
-        final Response response = when().get(String.format("/topics/%s/partitions", TOPIC));
+        final Response response = when().get(String.format("/topics/%s/partitions", TEST_TOPIC));
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
@@ -82,7 +82,7 @@ public class TopicsControllerAT extends BaseAT {
                 .map(map -> map.get("partition"))
                 .collect(Collectors.toSet());
         final Set<String> actualPartitions = actualTopics
-                .get(TOPIC)
+                .get(TEST_TOPIC)
                 .stream()
                 .map(pInfo -> Integer.toString(pInfo.partition()))
                 .collect(Collectors.toSet());
@@ -103,7 +103,7 @@ public class TopicsControllerAT extends BaseAT {
     public void whenListPartitionsAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
         // ACT //
-        final String url = String.format("/topics/%s/partitions", TOPIC);
+        final String url = String.format("/topics/%s/partitions", TEST_TOPIC);
         final List<Map<String, String>> partitionsInfoBefore = asMapsList(get(url).print());
 
         writeMessageToPartition(0);
@@ -118,7 +118,7 @@ public class TopicsControllerAT extends BaseAT {
     @Test
     public void whenGetPartitionThenOk() throws IOException {
         // ACT //
-        final Response response = when().get(String.format("/topics/%s/partitions/0", TOPIC));
+        final Response response = when().get(String.format("/topics/%s/partitions/0", TEST_TOPIC));
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
@@ -138,7 +138,7 @@ public class TopicsControllerAT extends BaseAT {
     @Test
     public void whenGetPartitionThenPartitionNotFound() throws IOException {
         when()
-                .get(String.format("/topics/%s/partitions/43766", TOPIC))
+                .get(String.format("/topics/%s/partitions/43766", TEST_TOPIC))
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
@@ -149,7 +149,7 @@ public class TopicsControllerAT extends BaseAT {
     public void whenGetPartitionAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
         // ACT //
-        final String url = String.format("/topics/%s/partitions/0", TOPIC);
+        final String url = String.format("/topics/%s/partitions/0", TEST_TOPIC);
         final Map<String, String> partitionInfoBefore = asMap(get(url).print());
 
         writeMessageToPartition(0);
@@ -177,7 +177,7 @@ public class TopicsControllerAT extends BaseAT {
 
     private void writeMessageToPartition(final int partition) throws InterruptedException, ExecutionException {
         final KafkaProducer<String, String> producer = kafkaHelper.createProducer();
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(TOPIC, partition, "blahKey",
+        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(TEST_TOPIC, partition, "blahKey",
                 "blahValue");
         producer.send(producerRecord).get();
     }
