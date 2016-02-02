@@ -155,7 +155,7 @@ task wrapper(type: Wrapper) {
 task cleanDb << {
     def sql = getSqlInstance()
 
-    sql.execute('TRUNCATE zsr_data.event_type')
+    sql.execute('TRUNCATE zn_data.event_type')
 
     sql.close()
 }

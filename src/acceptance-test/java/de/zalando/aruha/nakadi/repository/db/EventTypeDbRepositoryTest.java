@@ -44,7 +44,7 @@ public class EventTypeDbRepositoryTest {
             repository = new EventTypeDbRepository(template, mapper);
             connection = datasource.getConnection();
 
-            template.execute("DELETE FROM zsr_data.event_type");
+            template.execute("DELETE FROM zn_data.event_type");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -56,10 +56,10 @@ public class EventTypeDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zsr_data.event_type", Integer.class);
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
         assertThat("Number of rows should encrease", rows, equalTo(1));
 
-        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zsr_data.event_type");
+        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
@@ -86,7 +86,7 @@ public class EventTypeDbRepositoryTest {
 
     @After
     public void tearDown() throws SQLException {
-        template.execute("DELETE FROM zsr_data.event_type");
+        template.execute("DELETE FROM zn_data.event_type");
 
         connection.close();
     }

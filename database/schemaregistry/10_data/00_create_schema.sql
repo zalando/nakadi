@@ -12,7 +12,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE zalando_nakadi_data_owner GRANT USAGE ON SEQUE
 ALTER DEFAULT PRIVILEGES FOR ROLE zalando_nakadi_data_owner GRANT EXECUTE ON FUNCTIONS TO zalando_nakadi_data_writer;
 ALTER DEFAULT PRIVILEGES FOR ROLE zalando_nakadi_data_owner GRANT INSERT, DELETE, UPDATE ON TABLES TO zalando_nakadi_data_writer;
 
-CREATE SCHEMA zsr_data AUTHORIZATION zalando_nakadi_data_owner;
-GRANT USAGE ON SCHEMA zsr_data TO zalando_nakadi_data_reader;
+CREATE SCHEMA zn_data AUTHORIZATION zalando_nakadi_data_owner;
+GRANT USAGE ON SCHEMA zn_data TO zalando_nakadi_data_reader;
 
 SET ROLE TO zalando_nakadi_data_owner;
