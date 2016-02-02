@@ -29,12 +29,11 @@ info:
     before persisting it. Usually enrichment affects the metadata of an Event but is not limited to.
 
     * The **ordering** expectations of Events in this stream. Each EventType will have its Events stored in
-    an underlying logical stream that is phisically organized in disjoint collections of
+    an underlying logical stream (the Topic) that is phisically organized in disjoint collections of
     strictly ordered Events (the Partition). The EventType defines the field that acts as evaluator of the
     ordering (that is, its partitioning key); this ordering is guaranteed by making Events whose partition
     key resolves to the same Partition (usually a hash function on its value) be persisted strictly ordered
     in a Partition.
-
     In practice this means that all Events within a Partition have their relative order guaranteed: Events
     (of a same EventType) that are *about* a same data entity (that is, have the same value on its Partition
     key) reach always the same Partition, the relative ordering of them is secured. This mechanism implies
@@ -167,7 +166,10 @@ paths:
         Creates a new `EventType`.
 
         **Implementation note:** The creation of an EventType implicitly creates the structures in the
-        backing messaging implementation needed for the reception and persistency of the Events.
+        backing messaging implementation needed for the reception and persistency of the Events. Considering
+        that at this time only Kafka is used, this corresponds to the creation of a Topic. If so desired,
+        clients can interact directly with the topic using the low level API (for existing restrictions see
+        the corresponding methods on the topic-api).
 
         The fields validation-strategies, enrichment-strategies and partition-resolution-strategy have all an
         effect on the incoming Event of this EventType. For its impacts on the reception of events please
@@ -188,16 +190,17 @@ paths:
         * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only json-schema is
         supported.
 
-        Following violations are enforced. Not meeting them will fail the request with a 422 Unprocessable
-        entity (details are provided in the Problem object):
+        Following conditions are enforced. Not meeting them will fail the request with the indicated status
+        (details are provided in the Problem object):
 
-        * Event name on creation not begin unique.
+        * Event name on creation not begin unique (or attempting to update an `EventType` with this method).
+        Requestis rejected with status 409 Conflict.
 
         * Using `EventTypeSchema.type` other than json-schema or passing a `EventTypeSchema.schema`
-        that is invalid with respect to the schema's type.
+        that is invalid with respect to the schema's type. Rejects with 422 Unprocessable entity.
 
         * Referring any of Validation, Enrichment or Partitioning strategies that does not exist or whose
-        parameterization is deemed invalid.
+        parameterization is deemed invalid. Rejects with 422 Unprocessable entity.
 
         Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be
         followed by all EventTypes (examples include: validation rules to match the schema; enriching every
@@ -210,7 +213,6 @@ paths:
           in: body
           description: EventType to be created
           schema:
-            type: object
             $ref: '#/definitions/EventType'
           required: true
       responses:
@@ -218,6 +220,10 @@ paths:
           description: Ok
         '401':
           description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: Conflict
           schema:
             $ref: '#/definitions/Problem'
         '422':
@@ -272,7 +278,7 @@ paths:
         - schema-registry-api
       description: |
         Updates the `EventType` identified by its name. Behaviour is the same as creation of `EventType` (See
-        `POST /event-type`) except where noted below.
+        POST /event-type) except where noted below.
 
         The name and the topic fields cannot be changed. Attempting to do so will result in a 422 failure.
 
@@ -288,7 +294,6 @@ paths:
           in: body
           description: EventType to be updated.
           schema:
-            type: object
             $ref: '#/definitions/EventType'
           required: true
         - name: X-Flow-Id
@@ -323,17 +328,17 @@ paths:
       tags:
         - stream-api
       description: |
-        Publishes one `Event` of this `EventType`. (TBD format for publishing of batches of Events)
+        Publishes one `Event` of this `EventType`. (**Note** *Format and response semantics of publishing of
+        batches of Events will be added in the short term.*)
 
-        Reception of events will always respect the configuration of its `EventType` w.r.t. validation,
+        Reception of Events will always respect the configuration of its `EventType` w.r.t. validation,
         enrichment and partitioning. The steps performed on reception of incoming message are:
 
         1. Every validation rule specified in the `EventType` will be checked in order against the incoming
-        events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
+        Events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
         in the first case of failure with a status of 400 Bad request. If the offending validation rule
         provides information about the violation it will be included in the Problem response.
         If the `EventType` defines schema validation it will be performed at this moment.
-        **TBD behaviour in case of violation within a stream of events**)
 
         1. Once the validation succeeded, the content of the Event is updated according to the enrichment
         rules in the order the rules are defined in the `EventType`.
@@ -341,8 +346,10 @@ paths:
         force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
         attempt will be included in the respose's Problem object.
 
-        1. The incoming Event's partition is evaluated according to the `PartitioningStrategy` rule on the
+        1. The incoming Event's relative ordering is evaluated according to the rule on the
         `EventType`. Failure to evaluate the rule will **reject** the Event.
+        **Restriction**: POSTing Events based on its `EventType` requires it to have a
+        `PartitioningStrategy` defined. Violating this condition will produce a 405 Not allowed.
 
       parameters:
         - name: name
@@ -361,7 +368,6 @@ paths:
           in: body
           description: The Event being published
           schema:
-            type: object
             $ref: '#/definitions/Event'
           required: true
       responses:
@@ -437,13 +443,13 @@ paths:
             Assumes the offset on each cursor is not inclusive (i.e., first delivered Event is the
             **first one after** the one pointed to in the cursor).
 
-            If the header is not present, the stream for all partitions defined for the EventType will start 
-            from the newest event available in the system at the moment of making this call. 
+            If the header is not present, the stream for all partitions defined for the EventType will start
+            from the newest event available in the system at the moment of making this call.
 
             **Note:** we are not using query parameters for passing the cursors only because of the length
             limitations on the HTTP query. Another way to initiate this call would be the POST method with
             cursors passed in the method body. This aproach can implemented in the future versions of this API
-            
+
           required: false
           type: array
           items:
@@ -478,11 +484,12 @@ paths:
           description: |
             Maximum time in seconds to wait for the flushing of each chunk (per partition).
 
-            * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout` 
+            * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout`
             is reached, the messages are immediately flushed to the client and batch flush timer is reset.
 
             * If 0 or undefined, will assume 30 seconds.
           type: number
+          format: int32
           required: false
           default: 30
         - name: stream_timeout
@@ -496,6 +503,7 @@ paths:
 
             Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
           type: number
+          format: int32
           required: false
         - name: batch_keep_alive_limit
           in: query
@@ -546,11 +554,11 @@ paths:
         - unmanaged-api
         - monitoring
         - management-api
-      description: | 
+      description: |
         Lists the `Partition`s for the given event-type.
-        
+
         This endpoint is mostly interesting for monitoring purposes or in cases when consumer wants to start
-        consuming older messages. 
+        consuming older messages.
       parameters:
         - name: name
           in: path
@@ -1002,7 +1010,6 @@ definitions:
         items:
           $ref: '#/definitions/EventEnrichmentStrategy'
         default: [{name: 'metadata-enrichment'}]
-
 
       partition_resolution_strategy:
         description: |
