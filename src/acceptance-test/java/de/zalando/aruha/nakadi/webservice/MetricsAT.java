@@ -31,9 +31,9 @@ public class MetricsAT extends BaseAT {
     public void whenCallEndpointThenCountInMetricsIncreased() {
 
         final String body = get("/metrics").andReturn().body().asString();
-        final int getTopicsCount = from(body).getInt("timers.get_topics.count");
+        final int getPartitionsCount = from(body).getInt("timers.get_partitions.count");
 
-        get("/topics");
+        get("/event-types/blah/partitions");
 
         given()
                 .when()
@@ -41,7 +41,7 @@ public class MetricsAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .and()
-                .body("timers.get_topics.count", equalTo(getTopicsCount + 1));
+                .body("timers.get_partitions.count", equalTo(getPartitionsCount + 1));
     }
 
 }
