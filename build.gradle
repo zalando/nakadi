@@ -173,9 +173,9 @@ task dbBootstrap << {
 
     sql.execute("RESET ROLE")
 
-    sql.execute("CREATE ROLE schemaregistry_app with login password 'schemaregistry'")
+    sql.execute("CREATE ROLE nakadi_app with login password 'nakadi'")
 
-    sql.execute("GRANT zalando_schemaregistry_data_writer TO schemaregistry_app")
+    sql.execute("GRANT zalando_nakadi_data_writer TO nakadi_app")
 
     sql.close()
 }
@@ -200,9 +200,9 @@ def getSqlInstance() {
 
     def db = [
         driver: 'org.postgresql.Driver',
-        jdbcUrl: 'jdbc:postgresql://localhost/local_schemaregistry_db',
-        user: 'schemaregistry',
-        password: 'schemaregistry'
+        jdbcUrl: 'jdbc:postgresql://localhost/local_nakadi_db',
+        user: 'nakadi',
+        password: 'nakadi'
     ]
 
     groovy.sql.Sql.newInstance(db.jdbcUrl, db.user, db.password, db.driver)

@@ -30,9 +30,9 @@ public class EventTypeDbRepositoryTest {
     private EventTypeRepository repository;
     private Connection connection;
 
-    private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_schemaregistry_db";
-    private static final String username = "schemaregistry_app";
-    private static final String password = "schemaregistry";
+    private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
+    private static final String username = "nakadi_app";
+    private static final String password = "nakadi";
 
     @Before
     public void setUp() {

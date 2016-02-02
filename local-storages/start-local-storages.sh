@@ -10,7 +10,7 @@ echo Starting PostgreSQL
 pg_ctlcluster ${PGVERSION} main start
 
 echo "Creating database and user"
-echo "CREATE ROLE schemaregistry WITH LOGIN CREATEROLE PASSWORD 'schemaregistry'; CREATE DATABASE local_schemaregistry_db OWNER schemaregistry;" \
+echo "CREATE ROLE nakadi WITH LOGIN CREATEROLE PASSWORD 'nakadi'; CREATE DATABASE local_nakadi_db OWNER nakadi;" \
     | sudo -u postgres psql -U postgres
 
 touch /tmp/pg_ready
