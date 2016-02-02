@@ -1,10 +1,11 @@
 package de.zalando.aruha.nakadi.config;
 
+import de.zalando.aruha.nakadi.controller.EventPublishingController;
+import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
+import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
 import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
@@ -24,5 +25,10 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public TimeoutCallableProcessingInterceptor timeoutInterceptor() {
         return new TimeoutCallableProcessingInterceptor();
+    }
+
+    @Bean
+    public EventPublishingController eventPublishingController() {
+        return new EventPublishingController(new InMemoryTopicRepository(), new InMemoryEventTypeRepository());
     }
 }

@@ -6,6 +6,10 @@ public class NakadiException extends Exception {
 
     private String problemMessage;
 
+    public NakadiException(final String message) {
+        super(message);
+    }
+
     public NakadiException(final String msg, final Exception cause) {
         super(msg, cause);
     }

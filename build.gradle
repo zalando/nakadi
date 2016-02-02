@@ -41,7 +41,7 @@ repositories {
 sourceSets {
     integrationTest {
         java {
-            compileClasspath += main.output + test.output
+            compileClasspath += main.output + test.outputsearc
             runtimeClasspath += main.output + test.output
             srcDir file('src/integration-test/java')
         }

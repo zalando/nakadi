@@ -70,9 +70,12 @@ public class NakadiConfig {
     @Bean
     @Primary
     public ObjectMapper jacksonObjectMapper() {
-        return
-            new ObjectMapper().setPropertyNamingStrategy(
+        final ObjectMapper objectMapper = new ObjectMapper().setPropertyNamingStrategy(
                 PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+
+        //objectMapper.registerModule()
+
+        return objectMapper;
     }
 
     @Bean
