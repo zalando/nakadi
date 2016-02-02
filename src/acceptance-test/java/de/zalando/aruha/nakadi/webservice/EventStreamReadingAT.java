@@ -188,7 +188,7 @@ public class EventStreamReadingAT extends BaseAT {
         final int keepAliveLimit = 3;
         final Response response = given()
                 .param("batch_flush_timeout", "1")
-                .param("batch_keep_alive_limit", keepAliveLimit)
+                .param("stream_keep_alive_limit", keepAliveLimit)
                 .when()
                 .get(STREAM_ENDPOINT);
 
