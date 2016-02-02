@@ -31,7 +31,7 @@ public class EventTypeDbRepositoryTest {
     private Connection connection;
 
     private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_schemaregistry_db";
-    private static final String username = "schemaregistry";
+    private static final String username = "schemaregistry_app";
     private static final String password = "schemaregistry";
 
     @Before
@@ -44,11 +44,7 @@ public class EventTypeDbRepositoryTest {
             repository = new EventTypeDbRepository(template, mapper);
             connection = datasource.getConnection();
 
-            ResourceDatabasePopulator rdp = new ResourceDatabasePopulator();
-            rdp.addScript(new ClassPathResource("schema.sql"));
-            rdp.populate(connection);
-
-            template.execute("TRUNCATE TABLE zsr_data.event_type");
+            template.execute("DELETE FROM zsr_data.event_type");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -90,7 +86,7 @@ public class EventTypeDbRepositoryTest {
 
     @After
     public void tearDown() throws SQLException {
-        template.execute("TRUNCATE TABLE zsr_data.event_type");
+        template.execute("DELETE FROM zsr_data.event_type");
 
         connection.close();
     }
