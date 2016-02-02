@@ -500,7 +500,7 @@ paths:
           in: query
           description: |
             Maximum time in seconds a stream will live before being interrupted.
-            If unspecified will stream indefinately.
+            If 0 or unspecified will stream indefinately.
 
             If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
             to the client.
@@ -509,14 +509,17 @@ paths:
           type: number
           format: int32
           required: false
-        - name: batch_keep_alive_limit
+          default: 0
+        - name: stream_keep_alive_limit
           in: query
           description: |
-            Maximum number of keep-alive messages to get in a row before closing the connection. Unlimited by
-            default.
+            Maximum number of keep-alive messages to get in a row before closing the connection.
+
+            If 0 or undefined will send keep alive messages indefinitely.
           type: integer
           format: int32
           required: false
+          default: 0
         - name: X-Flow-Id
           in: header
           description: |
