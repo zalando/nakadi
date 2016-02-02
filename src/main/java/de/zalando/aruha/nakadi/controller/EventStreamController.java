@@ -38,9 +38,9 @@ public class EventStreamController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
 
-    private TopicRepository topicRepository;
+    private final TopicRepository topicRepository;
 
-    private ObjectMapper jsonMapper;
+    private final ObjectMapper jsonMapper;
 
     public EventStreamController(final TopicRepository topicRepository, final ObjectMapper jsonMapper) {
         this.topicRepository = topicRepository;
@@ -99,12 +99,10 @@ public class EventStreamController {
                 }
 
                 // check that offsets are not out of bounds
-                if (cursors.isPresent()) {
-                    if (!topicRepository.areCursorsCorrect(topic, cursors.get())) {
-                        writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
-                                new Problem("cursors are not valid"));
-                        return;
-                    }
+                if (cursors.isPresent() && !topicRepository.areCursorsCorrect(topic, cursors.get())) {
+                    writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                            new Problem("cursors are not valid"));
+                    return;
                 }
 
                 // convert cursors to map; if no cursors provided - read from the newest available events

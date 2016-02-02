@@ -7,13 +7,13 @@ import java.util.Optional;
 import static java.util.Optional.ofNullable;
 
 public class EventStreamConfig {
-    private String topic;
-    private Map<String, String> cursors;
-    private Integer batchLimit;
-    private Optional<Integer> streamLimit;
-    private Integer batchTimeout;
-    private Optional<Integer> streamTimeout;
-    private Optional<Integer> batchKeepAliveLimit;
+    private final String topic;
+    private final Map<String, String> cursors;
+    private final Integer batchLimit;
+    private final Optional<Integer> streamLimit;
+    private final Integer batchTimeout;
+    private final Optional<Integer> streamTimeout;
+    private final Optional<Integer> batchKeepAliveLimit;
 
     public EventStreamConfig(final String topic, final Map<String, String> cursors, final Integer batchLimit,
             final Optional<Integer> streamLimit, final Integer batchTimeout,

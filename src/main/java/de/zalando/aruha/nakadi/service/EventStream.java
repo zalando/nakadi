@@ -81,7 +81,7 @@ public class EventStream {
                         }
 
                         // init new batch for partition
-                        currentBatches.get(partition).clear();;
+                        currentBatches.get(partition).clear();
                         batchStartTimes.put(partition,currentTimeMillis());
                     }
                 }

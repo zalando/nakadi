@@ -71,12 +71,8 @@ public class NakadiKafkaConsumer implements EventConsumer {
             final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
             eventQueue = StreamSupport
                     .stream(records.spliterator(), false)
-                    .map(record -> {
-                        System.out.println("Read record with offset:" + record.offset());
-                        return new ConsumedEvent(record.value(), record.topic(),
-                                Integer.toString(record.partition()), Long.toString(record.offset() + 1));
-
-                    })
+                    .map(record -> new ConsumedEvent(record.value(), record.topic(),
+                            Integer.toString(record.partition()), Long.toString(record.offset() + 1)))
                     .collect(Collectors.toCollection(Lists::newLinkedList));
         } catch (InvalidOffsetException e) {
             throw new NakadiException("Wrong offset provided", e);
