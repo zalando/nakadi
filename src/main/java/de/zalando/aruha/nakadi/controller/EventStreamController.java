@@ -30,7 +30,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -86,11 +85,12 @@ public class EventStreamController {
                 }
 
                 // deserialize cursors
-                Optional<List<Cursor>> cursors = Optional.empty();
+                List<Cursor> cursors = null;
                 if (cursorsStr != null) {
                     try {
-                        cursors = Optional.of(jsonMapper.<List<Cursor>>readValue(cursorsStr,
-                                new TypeReference<ArrayList<Cursor>>() {}));
+                        cursors = jsonMapper.<List<Cursor>>readValue(cursorsStr,
+                                new TypeReference<ArrayList<Cursor>>() {
+                                });
                     } catch (IOException e) {
                         writeProblemResponse(response, outputStream, HttpStatus.BAD_REQUEST.value(),
                                 new Problem("incorrect syntax of X-nakadi-cursors header"));
@@ -99,19 +99,22 @@ public class EventStreamController {
                 }
 
                 // check that offsets are not out of bounds
-                if (cursors.isPresent() && !topicRepository.areCursorsCorrect(topic, cursors.get())) {
+                if (cursors != null && !topicRepository.areCursorsCorrect(topic, cursors)) {
                     writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
                             new Problem("cursors are not valid"));
                     return;
                 }
 
-                // convert cursors to map; if no cursors provided - read from the newest available events
+                // if no cursors provided - read from the newest available events
+                if (cursors == null) {
+                    cursors = topicRepository
+                            .listPartitions(topic)
+                            .stream()
+                            .map(pInfo -> new Cursor(pInfo.getPartitionId(), pInfo.getNewestAvailableOffset()))
+                            .collect(Collectors.toList());
+                }
+
                 final Map<String, String> streamCursors = cursors
-                        .orElseGet(() -> topicRepository
-                                .listPartitions(topic)
-                                .stream()
-                                .map(pInfo -> new Cursor(pInfo.getPartitionId(), pInfo.getNewestAvailableOffset()))
-                                .collect(Collectors.toList()))
                         .stream()
                         .collect(Collectors.toMap(
                                 Cursor::getPartition,

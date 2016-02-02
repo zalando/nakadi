@@ -7,7 +7,7 @@ import com.google.common.collect.Sets;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.webservice.utils.KafkaHelper;
+import de.zalando.aruha.nakadi.webservice.utils.KafkaTestHelper;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
@@ -38,13 +38,13 @@ public class EventStreamReadingAT extends BaseAT {
     private static final String SEPARATOR = "\n";
 
     private ObjectMapper jsonMapper = new ObjectMapper();
-    private KafkaHelper kafkaHelper;
+    private KafkaTestHelper kafkaHelper;
     private String xNakadiCursors;
     private List<Cursor> initialCursors;
 
     @Before
     public void setUp() throws InterruptedException, JsonProcessingException {
-        kafkaHelper = new KafkaHelper(kafkaUrl);
+        kafkaHelper = new KafkaTestHelper(kafkaUrl);
         initialCursors = kafkaHelper.getNextOffsets(TEST_TOPIC);
         xNakadiCursors = jsonMapper.writeValueAsString(initialCursors);
     }

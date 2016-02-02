@@ -114,7 +114,7 @@ public class KafkaRepository implements TopicRepository {
                 .anyMatch(t -> t.equals(topic));
     }
 
-    public boolean areCursorsCorrect(final String topic, final List<Cursor> cursors) {
+    public boolean areCursorsCorrect(final String topic, final List<Cursor> cursors) throws NakadiException {
         final List<TopicPartition> partitions = listPartitions(topic);
         return cursors
                 .stream()
@@ -145,7 +145,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) {
+    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
 
         final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
         try {
@@ -174,7 +174,11 @@ public class KafkaRepository implements TopicRepository {
                     .stream()
                     .map(r -> processTopicPartitionMetadata(r, latestPartitionData, earliestPartitionData))
                     .collect(Collectors.toList());
-        } finally {
+        }
+        catch (Exception e) {
+            throw new NakadiException("Error occurred when fetching partitions offsets", e);
+        }
+        finally {
             sc.close();
         }
     }
@@ -199,15 +203,6 @@ public class KafkaRepository implements TopicRepository {
         finally {
             consumer.close();
         }
-    }
-    
-    @Override
-    public boolean validateOffset(final String offsetToCheck, final String newestOffset,
-                                  final String oldestOffset) {
-        final long offset = Long.parseLong(offsetToCheck);
-        final long newest = Long.parseLong(newestOffset);
-        final long oldest = Long.parseLong(oldestOffset);
-        return offset >= oldest && offset <= newest;
     }
 
     private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,

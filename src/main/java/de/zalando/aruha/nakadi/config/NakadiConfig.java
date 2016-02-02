@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.controller.EventStreamController;
+import de.zalando.aruha.nakadi.controller.PartitionsController;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepositorySettings;
@@ -104,6 +105,11 @@ public class NakadiConfig {
         else {
             throw new IllegalStateException("No TopicRepository implementation found for current spring profile");
         }
+    }
+
+    @Bean
+    public PartitionsController partitionsController() {
+        return new PartitionsController(topicRepository());
     }
 
     @Bean
