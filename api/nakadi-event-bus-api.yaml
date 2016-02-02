@@ -90,6 +90,9 @@ info:
     * Validation and Enrichment Strategies available in Nakadi are out of this document an can be consulted
     in an external document (TBD link to document).
 
+    * Explicit control of (in case of Kafka as underying messaging infrastructure) topic's creation
+    parameters (number of partitions, retention times, etc), as well as their modification.
+
 
   version: '0.5.1'
   contact:
@@ -193,8 +196,8 @@ paths:
         Following conditions are enforced. Not meeting them will fail the request with the indicated status
         (details are provided in the Problem object):
 
-        * Event name on creation not begin unique (or attempting to update an `EventType` with this method).
-        Requestis rejected with status 409 Conflict.
+        * EventType name on creation must be unique (or attempting to update an `EventType` with this
+          method), otherwise the request is rejected with status 409 Conflict.
 
         * Using `EventTypeSchema.type` other than json-schema or passing a `EventTypeSchema.schema`
         that is invalid with respect to the schema's type. Rejects with 422 Unprocessable entity.
@@ -448,7 +451,8 @@ paths:
 
             **Note:** we are not using query parameters for passing the cursors only because of the length
             limitations on the HTTP query. Another way to initiate this call would be the POST method with
-            cursors passed in the method body. This aproach can implemented in the future versions of this API
+            cursors passed in the method body. This aproach can implemented in the future versions of this
+            API.
 
           required: false
           type: array
@@ -928,8 +932,8 @@ definitions:
           Name of this EventType. Encodes the owner/responsible for this EventType.
 
           The name for the EventType SHOULD follow the pattern, but is not enforced
-          'organization:team:owning_application:event-type', for example
-          'zalando:bazaar:price-service:price-change'.
+          'stups_owning_application.event-type', for example
+          'gizig.price-change'.
 
           The components of the name are:
           * Organization: the organizational unit where the team is located; can be omitted.
@@ -943,16 +947,16 @@ definitions:
       owning_application:
         type: string
         description: |
-          Indicator of the Application owning this `EventType`.
+          Indicator of the (Stups) Application owning this `EventType`.
         example: price-service
-      type:
+      category:
         type: string
         enum:
           - undefined
           - data
           - business
         description: |
-          Defines the type of this EventType.
+          Defines the category of this EventType.
 
           The value set will influence, if not set otherwise, the default set of validation-strategies,
           enrichment-strategies, and the effective_schema in the following way:
@@ -961,29 +965,27 @@ definitions:
             `EventTypeSchema`.
             Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
 
-          - `data`: Events of this type will be DataChangeEvents. `effective_schema` contains `metadata`, and
-            adds fields `data_op` and `data_type`. The passed EventTypeSchema defines the schema of `data`.
+          - `data`: Events of this category will be DataChangeEvents. `effective_schema` contains `metadata`,
+            and adds fields `data_op` and `data_type`. The passed EventTypeSchema defines the schema of
+            `data`.
             Default validation_strategy for this `EventType` is `[{name: 'datachange-schema-validation'}]`.
 
-          - `business`: Events of this type will be BusinessEvents. `effective_schema` contains `metadata`
-            and any additionally defined properties passed in the `EventTypeSchema` directly on top level of
-            the Event. If name conflicts arise, creation of this EventType will be rejected.
+          - `business`: Events of this category will be BusinessEvents. `effective_schema` contains
+            `metadata` and any additionally defined properties passed in the `EventTypeSchema` directly on
+            top level of the Event. If name conflicts arise, creation of this EventType will be rejected.
             Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
-      topic:
-        type: string
-        description: |
-          References the name of the underlying topic (implementation dependent) that is holding the stream
-          of Events for this EventType.
-
-          Usually is the same as the name property. This field is exposed mostly for monitoring purposes.
       effective_schema:
         type: string
         #read-only: true
         description: |
           The effective schema of this `EventType`. The predefined schema validator will use the value of
           this field as base for the validation.
-          The generation of this value happens on creation of the `EventType` and is influenced by the
-          `EventType.type`.
+
+          The createion of EventTypes of different categories implies a distinct general structure for the
+          payload of events of this each type. This ultimate format the payload must adhere to is reflected
+          the `effective_schema`. See description of field `category` for more details of its generation.
+
+          This field is informative and its contents cannot be manipulated directly.
 
       validation_strategies:
         description: |
@@ -993,7 +995,7 @@ definitions:
 
           Rule evaluation order is the same as in this array.
 
-          If not explicitly set, default value will respect the definition of the `EventType.type`.
+          If not explicitly set, default value will respect the definition of the `EventType.category`.
         type: array
         items:
           $ref: '#/definitions/EventValidationStrategy'
@@ -1044,6 +1046,7 @@ definitions:
 
     required:
       - name
+      - category
 
   EventTypeSchema:
     properties:
