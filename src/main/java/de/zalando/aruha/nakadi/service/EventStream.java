@@ -87,11 +87,11 @@ public class EventStream {
                 }
 
                 // check if we reached keepAliveInARow for all the partitions; if yes - then close stream
-                if (config.getBatchKeepAliveLimit().isPresent()) {
+                if (config.getStreamKeepAliveLimit() != 0) {
                     final boolean keepAliveLimitReachedForAllPartitions = keepAliveInARow
                             .values()
                             .stream()
-                            .allMatch(keepAlives -> keepAlives >= config.getBatchKeepAliveLimit().get());
+                            .allMatch(keepAlives -> keepAlives >= config.getStreamKeepAliveLimit());
 
                     if (keepAliveLimitReachedForAllPartitions) {
                         break;
@@ -100,8 +100,8 @@ public class EventStream {
 
                 // check if we reached the stream timeout or message count limit
                 long timeSinceStart = currentTimeMillis() - start;
-                if (config.getStreamTimeout().isPresent() && timeSinceStart >= config.getStreamTimeout().get() * 1000
-                        || config.getStreamLimit().isPresent() && messagesRead >= config.getStreamLimit().get()) {
+                if (config.getStreamTimeout() != 0 && timeSinceStart >= config.getStreamTimeout() * 1000
+                        || config.getStreamLimit() != 0 && messagesRead >= config.getStreamLimit()) {
 
                     for (final String partition: config.getCursors().keySet()) {
                         if (currentBatches.get(partition).size() > 0) {

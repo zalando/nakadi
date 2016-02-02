@@ -50,11 +50,11 @@ public class EventStreamController {
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEventsFromPartition(
             @PathVariable("name") final String eventTypeName,
-            @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final Integer batchLimit,
-            @Nullable @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
-            @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final Integer batchTimeout,
-            @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
-            @Nullable @RequestParam(value = "batch_keep_alive_limit", required = false) final Integer batchKeepAliveLimit,
+            @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
+            @RequestParam(value = "stream_limit", required = false, defaultValue = "0") final int streamLimit,
+            @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
+            @RequestParam(value = "stream_timeout", required = false, defaultValue = "0") final int streamTimeout,
+            @RequestParam(value = "stream_keep_alive_limit", required = false, defaultValue = "0") final int streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-Flow-Id", required = false) final String flowId,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
             final HttpServletRequest request, final HttpServletResponse response) throws IOException {
@@ -73,12 +73,12 @@ public class EventStreamController {
                             new Problem("topic not found"));
                     return;
                 }
-                if (streamLimit != null && streamLimit < batchLimit) {
+                if (streamLimit != 0 && streamLimit < batchLimit) {
                     writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
                             new Problem("stream_limit can't be lower than batch_limit"));
                     return;
                 }
-                if (streamTimeout != null && streamTimeout < batchTimeout) {
+                if (streamTimeout != 0 && streamTimeout < batchTimeout) {
                     writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
                             new Problem("stream_timeout can't be lower than batch_flush_timeout"));
                     return;
@@ -120,16 +120,8 @@ public class EventStreamController {
                                 Cursor::getPartition,
                                 Cursor::getOffset));
 
-                final EventStreamConfig streamConfig = EventStreamConfig
-                        .builder()
-                        .withTopic(topic)
-                        .withCursors(streamCursors)
-                        .withBatchLimit(batchLimit)
-                        .withStreamLimit(streamLimit)
-                        .withBatchTimeout(batchTimeout)
-                        .withStreamTimeout(streamTimeout)
-                        .withBatchKeepAliveLimit(batchKeepAliveLimit)
-                        .build();
+                final EventStreamConfig streamConfig = new EventStreamConfig(topic, streamCursors, batchLimit,
+                        streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
 
                 response.setStatus(HttpStatus.OK.value());
 
