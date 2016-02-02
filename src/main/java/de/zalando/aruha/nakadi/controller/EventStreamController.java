@@ -68,7 +68,7 @@ public class EventStreamController {
                 @SuppressWarnings("UnnecessaryLocalVariable")
                 final String topic = eventTypeName;
 
-                // valudate parameters
+                // validate parameters
                 if (!topicRepository.topicExists(topic)) {
                     writeProblemResponse(response, outputStream, HttpStatus.NOT_FOUND.value(),
                             new Problem("topic not found"));
