@@ -1027,7 +1027,7 @@ definitions:
           The schema for this EventType. This is expected to be a json schema in yaml format (other formats
           might be added in the future).
 
-      data_key:
+      data_key_fields:
         type: array
         items:
           type: string
@@ -1037,7 +1037,7 @@ definitions:
           If set MUST be a valid required field as defined in the schema.
           (TBD should be required? Is applicable only to both Business and DataChange Events?)
 
-      ordering_key:
+      ordering_key_field:
         type: string
         description: |
           Indicator of the field used for guaranteeing the ordering of Events of this type (used by the
