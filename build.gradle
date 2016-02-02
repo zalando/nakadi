@@ -34,6 +34,17 @@ def dockerImageTag = "$dockerImageName:$dockerImageVersion"
 
 def dockerBuildTimeout = 300
 
+def loadYaml() {
+    org.yaml.snakeyaml.DumperOptions options = new org.yaml.snakeyaml.DumperOptions();
+    options.setDefaultFlowStyle(org.yaml.snakeyaml.DumperOptions.FlowStyle.BLOCK);
+    def yaml = new org.yaml.snakeyaml.Yaml(options)
+    def file = new File("src/main/resources/application.yml").text
+    def cfg = (Map) yaml.load(file)
+    return cfg
+}
+
+def application_config = loadYaml()
+
 repositories {
     mavenCentral()
 }
@@ -68,6 +79,7 @@ buildscript {
 
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
+        classpath 'org.yaml:snakeyaml:1.14'
     }
 }
 
@@ -153,7 +165,7 @@ task wrapper(type: Wrapper) {
 }
 
 task cleanDb << {
-    def sql = getSqlInstance()
+    def sql = getSqlInstance(application_config["spring"]["datasource"])
 
     sql.execute('TRUNCATE zn_data.event_type')
 
@@ -161,7 +173,9 @@ task cleanDb << {
 }
 
 task dbBootstrap << {
-    def sql = getSqlInstance()
+    def db = application_config["spring"]["datasource"]
+
+    def sql = getSqlInstance(db)
 
     def sqlFileList = getSortedSqlFiles()
 
@@ -173,9 +187,9 @@ task dbBootstrap << {
 
     sql.execute("RESET ROLE")
 
-    sql.execute("CREATE ROLE nakadi_app with login password 'nakadi'")
+    sql.execute("CREATE ROLE " + db['username'] + " WITH LOGIN PASSWORD '" + db['password'] + "'")
 
-    sql.execute("GRANT zalando_nakadi_data_writer TO nakadi_app")
+    sql.execute("GRANT zalando_nakadi_data_writer TO " + db['username'])
 
     sql.close()
 }
@@ -191,21 +205,14 @@ def getSortedSqlFiles() {
     sqlFileList.sort()
 }
 
-def getSqlInstance() {
+def getSqlInstance(db) {
     // This is needed to get postgreSQL driver onto the Groovy/Gradle classpath
     configurations.pgsql.each { file ->
         println "Adding URL: $file"
         gradle.class.classLoader.addURL(file.toURI().toURL())
     }
 
-    def db = [
-        driver: 'org.postgresql.Driver',
-        jdbcUrl: 'jdbc:postgresql://localhost/local_nakadi_db',
-        user: 'nakadi',
-        password: 'nakadi'
-    ]
-
-    groovy.sql.Sql.newInstance(db.jdbcUrl, db.user, db.password, db.driver)
+    groovy.sql.Sql.newInstance(db.url, 'nakadi', db.password, db.driverClassName)
 }
 
 task stopAndRemoveStoragesInDocker {
