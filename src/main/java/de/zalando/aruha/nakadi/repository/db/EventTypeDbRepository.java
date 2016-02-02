@@ -39,7 +39,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     @Override
     public void saveEventType(EventType eventType) throws Exception {
         try {
-            jdbcTemplate.update("INSERT INTO zsr_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))",
+            jdbcTemplate.update("INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))",
                     eventType.getName(),
                     jsonMapper.writer().writeValueAsString(eventType));
         } catch (JsonProcessingException e) {

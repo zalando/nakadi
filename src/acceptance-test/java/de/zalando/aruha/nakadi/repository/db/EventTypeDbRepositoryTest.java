@@ -30,9 +30,9 @@ public class EventTypeDbRepositoryTest {
     private EventTypeRepository repository;
     private Connection connection;
 
-    private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_schemaregistry_db";
-    private static final String username = "schemaregistry";
-    private static final String password = "schemaregistry";
+    private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
+    private static final String username = "nakadi_app";
+    private static final String password = "nakadi";
 
     @Before
     public void setUp() {
@@ -44,11 +44,7 @@ public class EventTypeDbRepositoryTest {
             repository = new EventTypeDbRepository(template, mapper);
             connection = datasource.getConnection();
 
-            ResourceDatabasePopulator rdp = new ResourceDatabasePopulator();
-            rdp.addScript(new ClassPathResource("schema.sql"));
-            rdp.populate(connection);
-
-            template.execute("TRUNCATE TABLE zsr_data.event_type");
+            template.execute("DELETE FROM zn_data.event_type");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -60,10 +56,10 @@ public class EventTypeDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zsr_data.event_type", Integer.class);
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
         assertThat("Number of rows should encrease", rows, equalTo(1));
 
-        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zsr_data.event_type");
+        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
@@ -90,7 +86,7 @@ public class EventTypeDbRepositoryTest {
 
     @After
     public void tearDown() throws SQLException {
-        template.execute("TRUNCATE TABLE zsr_data.event_type");
+        template.execute("DELETE FROM zn_data.event_type");
 
         connection.close();
     }
