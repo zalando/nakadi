@@ -4,6 +4,9 @@ logging:
   level:
     ROOT: INFO
     org.springframework.web: INFO
+spring:
+  profiles:
+    active: kafka
 nakadi:
   topic:
     default:

@@ -22,7 +22,7 @@ public class KafkaLocationManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaLocationManager.class);
 
-    private final String _BROKERS_IDS_PATH = "/brokers/ids";
+    private static final String _BROKERS_IDS_PATH = "/brokers/ids";
 
     @Autowired
     private ZooKeeperHolder zkFactory;

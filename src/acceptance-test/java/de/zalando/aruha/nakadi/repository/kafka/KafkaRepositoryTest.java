@@ -61,8 +61,8 @@ public class KafkaRepositoryTest extends BaseAT {
 
         // ASSERT //
         executeWithRetry(() -> {
-                    final KafkaConsumer<String, String> consumer = kafkaHelper.createConsumer();
-                    final Map<String, List<PartitionInfo>> topics = consumer.listTopics();
+                    final KafkaConsumer<String, String> kafkaConsumer = kafkaHelper.createConsumer();
+                    final Map<String, List<PartitionInfo>> topics = kafkaConsumer.listTopics();
 
                     assertThat(topics.keySet(), hasItem(topicName));
 
@@ -88,6 +88,5 @@ public class KafkaRepositoryTest extends BaseAT {
         settings.setZkConnectionTimeoutMs(10000);
         return settings;
     }
-
 
 }

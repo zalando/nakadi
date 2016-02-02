@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 
@@ -22,11 +23,13 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws NakadiException;
 
+    boolean areCursorsCorrect(String topic, List<Cursor> cursors);
+
     boolean partitionExists(String topic, String partition) throws NakadiException;
 
     void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
 
-    List<TopicPartition> listPartitions(String topicId) throws NakadiException;
+    List<TopicPartition> listPartitions(String topicId);
 
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 

@@ -94,6 +94,7 @@ dependencies {
     compile 'io.dropwizard.metrics:metrics-core:3.1.0'
     compile 'com.ryantenney.metrics:metrics-spring:3.1.0'
     compile 'io.dropwizard.metrics:metrics-servlets:3.1.0'
+    compile 'com.google.code.findbugs:jsr305:3.0.0'
 
     // kafka & zookeeper
     compile 'org.apache.kafka:kafka-clients:0.9.0.0'

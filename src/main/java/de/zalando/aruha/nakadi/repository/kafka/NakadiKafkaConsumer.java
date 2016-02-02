@@ -36,15 +36,17 @@ public class NakadiKafkaConsumer implements EventConsumer {
         this.pollTimeout = pollTimeout;
 
         // define topic/partitions to consume from
-        topicPartitions = cursors.keySet().stream().map(partition ->
-                    new TopicPartition(topic, Integer.parseInt(partition))).collect(Collectors.toList());
+        topicPartitions = cursors
+                .keySet()
+                .stream()
+                .map(partition -> new TopicPartition(topic, Integer.parseInt(partition)))
+                .collect(Collectors.toList());
         kafkaConsumer.assign(topicPartitions);
 
         // set offsets
-        topicPartitions.forEach(topicPartition -> {
-            kafkaConsumer.seek(topicPartition,
-                Long.parseLong(cursors.get(Integer.toString(topicPartition.partition()))));
-        });
+        topicPartitions.forEach(topicPartition ->
+                kafkaConsumer.seek(topicPartition,
+                        Long.parseLong(cursors.get(Integer.toString(topicPartition.partition())))));
     }
 
     @Override
@@ -52,25 +54,26 @@ public class NakadiKafkaConsumer implements EventConsumer {
         if (eventQueue.isEmpty()) {
             pollFromKafka();
         }
-
         return Optional.ofNullable(eventQueue.poll());
     }
 
     @Override
     public Map<String, String> fetchNextOffsets() {
-        return topicPartitions.stream().collect(Collectors.toMap(topicPartition ->
-                        Integer.toString(topicPartition.partition()),
-                    topicPartition -> Long.toString(kafkaConsumer.position(topicPartition))));
+        return topicPartitions
+                .stream()
+                .collect(Collectors.toMap(
+                        topicPartition -> Integer.toString(topicPartition.partition()),
+                        topicPartition -> Long.toString(kafkaConsumer.position(topicPartition))));
     }
 
     private void pollFromKafka() throws NakadiException {
         try {
             final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
-            eventQueue = StreamSupport.stream(records.spliterator(), false).map(record ->
-                                              new ConsumedEvent(record.value(), record.topic(),
-                                                  Integer.toString(record.partition()),
-                                                  Long.toString(record.offset() + 1))).collect(Collectors.toCollection(
-                                              Lists::newLinkedList));
+            eventQueue = StreamSupport
+                    .stream(records.spliterator(), false)
+                    .map(record -> new ConsumedEvent(record.value(), record.topic(),
+                            Integer.toString(record.partition()), Long.toString(record.offset() + 1)))
+                    .collect(Collectors.toCollection(Lists::newLinkedList));
         } catch (InvalidOffsetException e) {
             throw new NakadiException("Wrong offset provided", e);
         } catch (KafkaException e) {
