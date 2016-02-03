@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import org.json.JSONObject;
 import org.junit.After;
@@ -63,10 +64,17 @@ public class EventTypeDbRepositoryTest {
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
-        assertThat("Schema is persisted", rs.getString(2), equalTo("{\"name\": \"event-name\", \"type\": null, \"topic\": null, \"schema\": {\"type\": null, \"schema\": {\"price\": 1000}}, \"owning_application\": null}"));
+
+        ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+        EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
+
+        assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
+        assertThat(persisted.getName(), equalTo(eventType.getName()));
+        assertThat(persisted.getEventTypeSchema().getType(), equalTo(eventType.getEventTypeSchema().getType()));
+        assertThat(persisted.getEventTypeSchema().getSchema(), equalTo(eventType.getEventTypeSchema().getSchema()));
     }
 
-    @Test(expected = DuplicateKeyException.class)
+    @Test(expected = DuplicatedEventTypeNameException.class)
     public void whenCreateDuplicatedNamesThrowAnError() throws Exception {
         EventType eventType = buildEventType();
 
@@ -77,8 +85,12 @@ public class EventTypeDbRepositoryTest {
     private EventType buildEventType() {
         final EventTypeSchema schema = new EventTypeSchema();
         final EventType eventType = new EventType();
-        schema.setSchema(new JSONObject("{ \"price\": 1000 }"));
+
+        schema.setSchema("{ \"price\": 1000 }");
+        schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
+
         eventType.setName("event-name");
+        eventType.setCategory("event-category");
         eventType.setEventTypeSchema(schema);
 
         return eventType;

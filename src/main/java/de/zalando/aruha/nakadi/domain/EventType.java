@@ -4,20 +4,29 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Lists;
 
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import java.util.List;
 
 public class EventType {
 
+    @NotNull
+    @Size(min = 1, message = "may not be empty")
     private String name;
 
     private String owningApplication;
 
-    private String type;
+    @NotNull
+    @Size(min = 1, message = "may not be empty")
+    private String category;
 
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
     @JsonProperty("schema")
+    @NotNull
+    @Valid
     private EventTypeSchema eventTypeSchema;
 
     public String getName() { return name; }
@@ -32,12 +41,12 @@ public class EventType {
         this.owningApplication = owningApplication;
     }
 
-    public String getType() {
-        return type;
+    public String getCategory() {
+        return category;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public List<ValidationStrategyConfiguration> getValidationStrategies() {

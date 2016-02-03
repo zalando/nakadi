@@ -1,25 +1,18 @@
 package de.zalando.aruha.nakadi.repository.db;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsonorg.JSONObjectSerializer;
+import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.map.SerializerProvider;
-import org.codehaus.jackson.map.ser.std.SerializerBase;
 import org.json.JSONObject;
-import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
 @Component
 public class EventTypeDbRepository implements EventTypeRepository {
@@ -29,32 +22,25 @@ public class EventTypeDbRepository implements EventTypeRepository {
     private ObjectMapper jsonMapper;
 
     @Autowired
-    public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, ObjectMapper jsonMapper) {
+    public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
-        this.jsonMapper = jsonMapper;
-
-        setupSerializer();
+        this.jsonMapper = objectMapper;
     }
 
     @Override
-    public void saveEventType(EventType eventType) throws Exception {
+    public void saveEventType(EventType eventType) throws DuplicatedEventTypeNameException, NakadiException {
         try {
             jdbcTemplate.update("INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))",
                     eventType.getName(),
                     jsonMapper.writer().writeValueAsString(eventType));
         } catch (JsonProcessingException e) {
-            // TODO handle errors properly
-            throw new Exception(e.getMessage());
+            throw new NakadiException("Serialization problem during persistence of event type", e);
+        } catch (DuplicateKeyException e) {
+            throw new DuplicatedEventTypeNameException(e, eventType.getName());
         }
     }
 
     // TODO create update feature
 
     // TODO create listing
-
-    private void setupSerializer() {
-        SimpleModule testModule = new SimpleModule();
-        testModule.addSerializer(JSONObject.class, new JSONObjectSerializer());
-        this.jsonMapper.registerModule(testModule);
-    }
 }
