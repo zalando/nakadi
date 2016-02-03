@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
@@ -18,9 +19,13 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 
 import javax.sql.DataSource;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Optional;
 
+import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
+import static de.zalando.aruha.nakadi.utils.IsOptional.isPresent;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsEqual.equalTo;
 
@@ -80,6 +85,24 @@ public class EventTypeDbRepositoryTest {
 
         repository.saveEventType(eventType);
         repository.saveEventType(eventType);
+    }
+
+    @Test
+    public void whenEventExistsFindByNameReturnsSomething() throws NakadiException, DuplicatedEventTypeNameException {
+        EventType eventType = buildEventType();
+
+        repository.saveEventType(eventType);
+
+        Optional<EventType> eventTypeOptional = repository.findByName(eventType.getName());
+
+        assertThat(eventTypeOptional, isPresent());
+    }
+
+    @Test
+    public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException {
+        Optional<EventType> eventTypeOptional = repository.findByName("inexisting-name");
+
+        assertThat(eventTypeOptional, isAbsent());
     }
 
     private EventType buildEventType() {
