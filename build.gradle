@@ -34,6 +34,17 @@ def dockerImageTag = "$dockerImageName:$dockerImageVersion"
 
 def dockerBuildTimeout = 300
 
+def loadYaml() {
+    org.yaml.snakeyaml.DumperOptions options = new org.yaml.snakeyaml.DumperOptions();
+    options.setDefaultFlowStyle(org.yaml.snakeyaml.DumperOptions.FlowStyle.BLOCK);
+    def yaml = new org.yaml.snakeyaml.Yaml(options)
+    def file = new File("src/main/resources/application.yml").text
+    def cfg = (Map) yaml.load(file)
+    return cfg
+}
+
+def application_config = loadYaml()
+
 repositories {
     mavenCentral()
 }
@@ -68,6 +79,7 @@ buildscript {
 
     dependencies {
         classpath "org.springframework.boot:spring-boot-gradle-plugin:1.2.5.RELEASE"
+        classpath 'org.yaml:snakeyaml:1.14'
     }
 }
 
@@ -76,14 +88,17 @@ jar {
 }
 
 configurations {
+    all*.exclude module : 'spring-boot-starter-logging'
     integrationTestCompile.extendsFrom testCompile
     integrationTestRuntime.extendsFrom testRuntime
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
+    pgsql
 }
 
 
 dependencies {
+    pgsql 'org.postgresql:postgresql:9.4.1207'
     // spring
     compile('org.springframework.boot:spring-boot-starter-web:1.3.1.RELEASE') {
         exclude module: 'logback-classic'
@@ -99,8 +114,15 @@ dependencies {
         exclude module: "logback-classic"
     }
 
+    // storage
+    compile 'org.springframework.boot:spring-boot-starter-jdbc:1.3.1.RELEASE'
+    compile 'org.postgresql:postgresql:9.4.1207'
+
     // misc
     compile 'org.zalando.stups:stups-spring-oauth2-server:1.0.0'
+    compile 'org.zalando:jackson-datatype-problem:0.5.0'
+    compile 'org.zalando:problem:0.5.0'
+    compile 'org.zalando:problem-spring-web:0.5.0'
     compile 'com.google.guava:guava:19.0'
     compile 'joda-time:joda-time:2.2'
     compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
@@ -143,6 +165,57 @@ task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
 }
 
+task cleanDb << {
+    def sql = getSqlInstance(application_config["spring"]["datasource"])
+
+    sql.execute('TRUNCATE zn_data.event_type')
+
+    sql.close()
+}
+
+task dbBootstrap << {
+    def db = application_config["spring"]["datasource"]
+
+    def sql = getSqlInstance(db)
+
+    def sqlFileList = getSortedSqlFiles()
+
+    sqlFileList.each {
+        println 'Running script: ' + it
+        String sqlString = it.text
+        sql.execute(sqlString)
+    }
+
+    sql.execute("RESET ROLE")
+
+    sql.execute("CREATE ROLE " + db['username'] + " WITH LOGIN PASSWORD '" + db['password'] + "'")
+
+    sql.execute("GRANT zalando_nakadi_data_writer TO " + db['username'])
+
+    sql.close()
+}
+
+def getSortedSqlFiles() {
+    def sqlFileList = []
+    new File('database').eachFileRecurse(groovy.io.FileType.FILES) {
+        if (it.name.endsWith('.sql')) {
+            sqlFileList << it
+        }
+    }
+
+    sqlFileList.sort()
+}
+
+def getSqlInstance(db) {
+    // This is needed to get postgreSQL driver onto the Groovy/Gradle classpath
+    configurations.pgsql.each { file ->
+        println "Adding URL: $file"
+        gradle.class.classLoader.addURL(file.toURI().toURL())
+    }
+
+    groovy.sql.Sql.newInstance(db.url, 'nakadi', db.password, db.driverClassName)
+}
+
 task stopAndRemoveStoragesInDocker {
     doLast {
         execAndWait("make --directory local-storages stop-and-remove", dockerBuildTimeout)
@@ -151,6 +224,7 @@ task stopAndRemoveStoragesInDocker {
 }
 
 task startStoragesInDockerBound() {
+    finalizedBy dbBootstrap
     doLast {
         execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-storages run", dockerBuildTimeout)
     }
@@ -230,7 +304,7 @@ task startDockerContainerAndWait() {
 task fullAcceptanceTest(type: GradleBuild) {
     dependsOn startDockerContainerAndWait
     tasks = ['acceptanceTest']
-    finalizedBy stopAndRemoveStoragesInDocker, stopAndRemoveDockerContainer
+    finalizedBy cleanDb, stopAndRemoveStoragesInDocker, stopAndRemoveDockerContainer
 }
 
 test {
