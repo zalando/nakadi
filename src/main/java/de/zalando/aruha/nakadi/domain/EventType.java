@@ -14,8 +14,6 @@ public class EventType {
 
     private String type;
 
-    private String topic;
-
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
@@ -41,10 +39,6 @@ public class EventType {
     public void setType(String type) {
         this.type = type;
     }
-
-    public String getTopic() { return topic; }
-
-    public void setTopic(String topic) { this.topic = topic; }
 
     public List<ValidationStrategyConfiguration> getValidationStrategies() {
         return validationStrategies;

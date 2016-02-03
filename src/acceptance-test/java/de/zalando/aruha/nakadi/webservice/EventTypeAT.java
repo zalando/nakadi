@@ -63,7 +63,6 @@ public class EventTypeAT extends BaseAT {
         schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
 
         eventType.setName(name);
-        eventType.setTopic(name + "-topic");
         eventType.setEventTypeSchema(schema);
 
         Map body = new HashMap<String, Object>();
