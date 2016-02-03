@@ -1,11 +1,12 @@
 package de.zalando.aruha.nakadi.repository;
 
-import com.sun.istack.internal.Nullable;
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.EventType;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.annotation.Nullable;
+
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.EventType;
 
 public class InMemoryEventTypeRepository implements EventTypeRepository {
     private final Map<String, EventType> eventTypes = new HashMap<>();
@@ -22,6 +23,7 @@ public class InMemoryEventTypeRepository implements EventTypeRepository {
         if (eventType == null) {
             throw new NoSuchEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
         }
+
         return eventType;
     }
 }

@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository;
 
-import com.sun.istack.internal.Nullable;
+import javax.annotation.Nullable;
+
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
 
