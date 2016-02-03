@@ -121,13 +121,13 @@ public class EventTypeAT extends BaseAT {
 
     @After
     public void tearDown() {
-        final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_schemaregistry_db";
-        final String username = "schemaregistry";
-        final String password = "schemaregistry";
+        final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
+        final String username = "nakadi_app";
+        final String password = "nakadi";
 
         DriverManagerDataSource datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
         JdbcTemplate template = new JdbcTemplate(datasource);
 
-        template.execute("DELETE FROM zsr_data.event_type");
+        template.execute("DELETE FROM zn_data.event_type");
     }
 }
