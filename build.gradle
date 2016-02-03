@@ -108,6 +108,8 @@ dependencies {
     compile 'io.dropwizard.metrics:metrics-core:3.1.0'
     compile 'com.ryantenney.metrics:metrics-spring:3.1.0'
     compile 'io.dropwizard.metrics:metrics-servlets:3.1.0'
+    compile 'org.zalando:problem-spring-web:0.5.0'
+    compile 'org.zalando:jackson-datatype-problem:0.5.0'
 
     // kafka & zookeeper
     compile 'org.apache.kafka:kafka-clients:0.9.0.0'
@@ -128,6 +130,8 @@ dependencies {
         exclude module: "hamcrest-core"
     }
     testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile 'org.skyscreamer:jsonassert:1.3.0'
+    testCompile 'uk.co.datumedge:hamcrest-json:0.2'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile('com.jayway.restassured:rest-assured:2.5.0') {
         exclude module: "hamcrest-core"

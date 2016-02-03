@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi;
 
-import de.zalando.aruha.nakadi.domain.Problem;
 
 public class NakadiException extends Exception {
 
@@ -25,10 +24,6 @@ public class NakadiException extends Exception {
 
     public void setProblemMessage(final String problemMessage) {
         this.problemMessage = problemMessage;
-    }
-
-    public Problem asProblem() {
-        return new Problem(problemMessage == null ? getMessage() : problemMessage);
     }
 
 }

@@ -1,27 +1,20 @@
 package de.zalando.aruha.nakadi.controller;
 
-import static java.util.Optional.ofNullable;
-
-import static org.springframework.http.ResponseEntity.ok;
-import static org.springframework.http.ResponseEntity.status;
-
-import java.io.IOException;
-import java.io.OutputStream;
-
-import java.util.List;
-import java.util.function.Predicate;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import com.codahale.metrics.annotation.Timed;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.service.EventStream;
+import de.zalando.aruha.nakadi.service.EventStreamConfig;
+import de.zalando.aruha.nakadi.utils.FlushableGZIPOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,21 +22,19 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.zalando.problem.Problem;
 
-import com.codahale.metrics.annotation.Timed;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.List;
+import java.util.function.Predicate;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import com.google.common.collect.ImmutableMap;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Problem;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.service.EventStream;
-import de.zalando.aruha.nakadi.service.EventStreamConfig;
-import de.zalando.aruha.nakadi.utils.FlushableGZIPOutputStream;
+import static java.util.Optional.ofNullable;
+import static org.springframework.http.ResponseEntity.ok;
+import static org.springframework.http.ResponseEntity.status;
 
 @RestController
 @RequestMapping(value = "/topics")
@@ -117,8 +108,8 @@ public class TopicsController {
                 final boolean topicExists = topicRepository.listTopics().stream().anyMatch(t ->
                             topic.equals(t.getName()));
                 if (!topicExists) {
-                    writeProblemResponse(response, outputStream, HttpStatus.NOT_FOUND.value(),
-                        new Problem("topic not found"));
+                    writeProblemResponse(response, outputStream,
+                            Problem.valueOf(Response.Status.NOT_FOUND, "topic not found"));
                 }
 
                 // check if partition exists
@@ -127,8 +118,8 @@ public class TopicsController {
                         topic.equals(tp.getTopicId()) && partition.equals(tp.getPartitionId());
                 final boolean partitionExists = topicPartitions.stream().anyMatch(tpPredicate);
                 if (!partitionExists) {
-                    writeProblemResponse(response, outputStream, HttpStatus.NOT_FOUND.value(),
-                        new Problem("partition not found"));
+                    writeProblemResponse(response, outputStream,
+                            Problem.valueOf(Response.Status.NOT_FOUND, "partition not found"));
                 }
 
                 // check if offset is correct
@@ -137,8 +128,8 @@ public class TopicsController {
                                                                          tp.getNewestAvailableOffset(),
                                                                          tp.getOldestAvailableOffset())).orElse(false);
                 if (!offsetCorrect) {
-                    writeProblemResponse(response, outputStream, HttpStatus.BAD_REQUEST.value(),
-                        new Problem("start_from is invalid"));
+                    writeProblemResponse(response, outputStream,
+                            Problem.valueOf(Response.Status.BAD_REQUEST, "start_from is invalid"));
                 }
 
                 final EventStreamConfig streamConfig = EventStreamConfig.builder().withTopic(topic)
@@ -170,7 +161,7 @@ public class TopicsController {
                 }
 
             } catch (NakadiException e) {
-                writeProblemResponse(response, outputStream, HttpStatus.SERVICE_UNAVAILABLE.value(), e.asProblem());
+                writeProblemResponse(response, outputStream, Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE));
             } finally {
                 outputStream.flush();
                 outputStream.close();
@@ -179,8 +170,8 @@ public class TopicsController {
     }
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
-            final int statusCode, final Problem problem) throws IOException {
-        response.setStatus(statusCode);
+                                      final Problem problem) throws IOException {
+        response.setStatus(problem.getStatus().getStatusCode());
         jsonMapper.writer().writeValue(outputStream, problem);
     }
 
