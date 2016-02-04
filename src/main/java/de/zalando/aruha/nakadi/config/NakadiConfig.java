@@ -79,31 +79,23 @@ public class NakadiConfig {
     }
 
     @Bean
-    @Profile("kafka")
     public KafkaLocationManager getKafkaLocationManager() {
         return new KafkaLocationManager();
     }
 
     @Bean
-    @Profile("kafka")
     public KafkaFactory kafkaFactory() {
         return new KafkaFactory(getKafkaLocationManager());
     }
 
     @Bean
-    @Profile("kafka")
     public KafkaRepositorySettings kafkaRepositorySettings() {
         return new KafkaRepositorySettings();
     }
 
     @Bean
     public TopicRepository topicRepository() {
-        if (environment.acceptsProfiles("kafka")) {
-            return new KafkaRepository(zooKeeperHolder(), kafkaFactory(), kafkaRepositorySettings());
-        }
-        else {
-            throw new IllegalStateException("No TopicRepository implementation found for current spring profile");
-        }
+        return new KafkaRepository(zooKeeperHolder(), kafkaFactory(), kafkaRepositorySettings());
     }
 
     @Bean
