@@ -101,7 +101,7 @@ public class KafkaRepository implements TopicRepository {
                 .anyMatch(t -> t.equals(topic));
     }
 
-    public boolean areCursorsCorrect(final String topic, final List<Cursor> cursors) {
+    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) {
         final List<TopicPartition> partitions = listPartitions(topic);
         return cursors
                 .stream()

@@ -23,7 +23,7 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws NakadiException;
 
-    boolean areCursorsCorrect(String topic, List<Cursor> cursors);
+    boolean areCursorsValid(String topic, List<Cursor> cursors);
 
     void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
 

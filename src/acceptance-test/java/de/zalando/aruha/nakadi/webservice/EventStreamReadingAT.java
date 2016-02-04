@@ -255,13 +255,13 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 5000)
-    public void whenInvalidCursorsThenUnprocessableEntity() {
+    public void whenInvalidCursorsThenPreconditionFailed() {
         given()
                 .header(new Header("X-nakadi-cursors", "[{\"partition\":\"very_wrong_partition\",\"offset\":\"3\"}]"))
                 .when()
                 .get(STREAM_ENDPOINT)
                 .then()
-                .statusCode(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .statusCode(HttpStatus.PRECONDITION_FAILED.value())
                 .and()
                 .body("message", equalTo("cursors are not valid"));
     }

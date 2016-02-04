@@ -99,8 +99,8 @@ public class EventStreamController {
                 }
 
                 // check that offsets are not out of bounds
-                if (cursors.isPresent() && !topicRepository.areCursorsCorrect(topic, cursors.get())) {
-                    writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                if (cursors.isPresent() && !topicRepository.areCursorsValid(topic, cursors.get())) {
+                    writeProblemResponse(response, outputStream, HttpStatus.PRECONDITION_FAILED.value(),
                             new Problem("cursors are not valid"));
                     return;
                 }
