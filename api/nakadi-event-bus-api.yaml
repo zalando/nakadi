@@ -109,6 +109,15 @@ securityDefinitions:
     type: oauth2
     flow: implicit
     authorizationUrl: 'https://auth.example.com/oauth2/tokeninfo'
+    scopes:
+      nakadi.read: |
+        Generic read scope for operations that do not require more specific restrictions.
+      nakadi.event.type.write: |
+        Grants access for applications to define and update EventTypes.
+      nakadi.event.stream.write: |
+        Grants access for applications to submit Events.
+      nakadi.event.stream.read: |
+        Grants access for consuming Event streams.
 
 paths:
   /metrics:
@@ -414,7 +423,7 @@ paths:
 
         The event stream is formated as a sequence of `EventStreamBatch`es separated by `\n`. Each
         `EventStreamBatch` constains a chunk of Events and a `Cursor` pointing to the **end** of the
-        chunk (i.e. last delivered Event). The cursor might specify the offset with the simbolic value
+        chunk (i.e. last delivered Event). The cursor might specify the offset with the symbolic value
         `OLDEST`, which will open the stream starting from the oldest available offset in the partition.
         Currently this format is the only one supported by the system, but in the future other MIME types
         will be suported (like `application/event-stream`).
