@@ -1,14 +1,14 @@
 package de.zalando.aruha.nakadi.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class Cursor {
 
-    private String partition;
-    private String offset;
+    private final String partition;
 
-    public Cursor() {
-    }
+    private final String offset;
 
-    public Cursor(final String partition, final String offset) {
+    public Cursor(@JsonProperty("partition") final String partition, @JsonProperty("offset") final String offset) {
         this.partition = partition;
         this.offset = offset;
     }
@@ -17,16 +17,8 @@ public class Cursor {
         return partition;
     }
 
-    public void setPartition(final String partition) {
-        this.partition = partition;
-    }
-
     public String getOffset() {
         return offset;
-    }
-
-    public void setOffset(final String offset) {
-        this.offset = offset;
     }
 
     @Override
