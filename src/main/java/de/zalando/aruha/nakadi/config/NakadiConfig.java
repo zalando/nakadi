@@ -1,34 +1,29 @@
 package de.zalando.aruha.nakadi.config;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.health.HealthCheckRegistry;
+import com.codahale.metrics.servlets.MetricsServlet;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
+import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepositorySettings;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-
 import org.springframework.core.env.Environment;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
-
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.health.HealthCheckRegistry;
-import com.codahale.metrics.servlets.MetricsServlet;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-
-import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
-import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
-
-import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
-import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.problem.ProblemModule;
 
 @Configuration
 @EnableMetrics
@@ -70,9 +65,13 @@ public class NakadiConfig {
     @Bean
     @Primary
     public ObjectMapper jacksonObjectMapper() {
-        return
-            new ObjectMapper().setPropertyNamingStrategy(
+        final ObjectMapper objectMapper = new ObjectMapper().setPropertyNamingStrategy(
                 PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+
+        objectMapper.registerModule(new Jdk8Module());
+        objectMapper.registerModule(new ProblemModule());
+
+        return objectMapper;
     }
 
     @Bean
