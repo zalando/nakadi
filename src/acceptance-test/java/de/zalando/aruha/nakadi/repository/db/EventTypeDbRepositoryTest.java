@@ -46,8 +46,6 @@ public class EventTypeDbRepositoryTest {
             template = new JdbcTemplate(datasource);
             repository = new EventTypeDbRepository(template, mapper);
             connection = datasource.getConnection();
-
-            template.execute("DELETE FROM zn_data.event_type");
         } catch (SQLException e) {
             e.printStackTrace();
         }
