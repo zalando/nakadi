@@ -48,4 +48,13 @@ public class ConsumedEvent {
         return this.event.equals(consumedEvent.getEvent()) && this.partition.equals(consumedEvent.getPartition())
                 && this.nextOffset.equals(consumedEvent.getNextOffset()) && this.topic.equals(consumedEvent.getTopic());
     }
+
+    @Override
+    public int hashCode() {
+        int result = event.hashCode();
+        result = 31 * result + topic.hashCode();
+        result = 31 * result + partition.hashCode();
+        result = 31 * result + nextOffset.hashCode();
+        return result;
+    }
 }

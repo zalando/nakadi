@@ -1,33 +1,31 @@
 package de.zalando.aruha.nakadi.service;
 
-import static java.lang.System.currentTimeMillis;
-
-import static java.util.function.Function.identity;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
-
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.ConsumedEvent;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
+import static java.lang.System.currentTimeMillis;
+import static java.util.function.Function.identity;
 
 public class EventStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
 
     private static final String BATCH_SEPARATOR = "\n";
+    private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private final OutputStream outputStream;
 
@@ -101,7 +99,7 @@ public class EventStream {
                     currentBatch = emptyBatch();
                     batchStartTime = currentTimeMillis();
 
-                    outputStream.write(BATCH_SEPARATOR.getBytes());
+                    outputStream.write(BATCH_SEPARATOR.getBytes(UTF8));
                     outputStream.flush();
                 }
 
@@ -161,7 +159,7 @@ public class EventStream {
             // keep-alive
             final String streamEvent = createStreamEvent(partition, latestOffsets.get(partition), events,
                     Optional.empty());
-            outputStream.write(streamEvent.getBytes());
+            outputStream.write(streamEvent.getBytes(UTF8));
         }
     }
 
