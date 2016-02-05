@@ -206,8 +206,6 @@ public class EventStreamReadingAT extends BaseAT {
     @Test(timeout = 5000)
     public void whenGetEventsWithUknownTopicThenTopicNotFound() {
         given()
-                .param("batch_limit", "5")
-                .param("stream_timeout", "1")
                 .when()
                 .get(createStreamEndpointUrl("blah-topic"))
                 .then()
