@@ -1,16 +1,17 @@
 package de.zalando.aruha.nakadi.validation;
 
-import static org.junit.Assert.*;
-
-import org.json.JSONObject;
-
-import org.junit.After;
-import org.junit.Test;
-
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema.Type;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
+import org.json.JSONObject;
+import org.junit.After;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 public class JSONSchemaValidationTest {
 
@@ -67,7 +68,7 @@ public class JSONSchemaValidationTest {
         final ValidationStrategyConfiguration vsc2 = new ValidationStrategyConfiguration();
         vsc2.setStrategyName(FieldNameMustBeSet.NAME);
         et.getValidationStrategies().add(vsc2);
-        EventValidation.forType(et).withConfiguration(vsc1).withConfiguration(vsc2).init();
+        EventValidation.forType(et).withConfiguration(vsc1).withConfiguration(vsc2);
 
         final EventTypeValidator validator = EventValidation.lookup(et);
 
@@ -101,7 +102,7 @@ public class JSONSchemaValidationTest {
                 "{\"overrides\": [{\"qualifier\": {\"field\": \"event-type\", \"match\" : \"D\"}, \"ignoredProperties\": [\"field-that-will-not-be-found\"]}]}"));
         et.getValidationStrategies().add(vsc1);
 
-        EventValidation.forType(et).withConfiguration(vsc1).init();
+        EventValidation.forType(et).withConfiguration(vsc1);
 
         final EventTypeValidator validator = EventValidation.lookup(et);
 
@@ -123,7 +124,7 @@ public class JSONSchemaValidationTest {
                 "{\"overrides\": [{\"qualifier\": {\"field\": \"event-type\", \"match\" : \"D\"}, \"ignoredProperties\": [\"field-that-will-not-be-found\"]}]}"));
         et.getValidationStrategies().add(vsc1);
 
-        EventValidation.forType(et).withConfiguration(vsc1).init();
+        EventValidation.forType(et).withConfiguration(vsc1);
 
         final EventTypeValidator validator = EventValidation.lookup(et);
 
