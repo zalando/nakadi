@@ -1,27 +1,23 @@
 package de.zalando.aruha.nakadi.controller;
 
-import com.google.common.base.CaseFormat;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.problem.DuplicatedEventTypeNameProblem;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import org.everit.json.schema.Schema;
+import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
-import org.springframework.validation.FieldError;
-import org.springframework.validation.ObjectError;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
+import javax.ws.rs.core.Response;
+
 import java.net.URI;
 
 import static org.springframework.http.ResponseEntity.status;
@@ -48,6 +44,71 @@ public class EventTypeController {
         }
     }
 
+    @RequestMapping(value = "/{name}", method = RequestMethod.PUT)
+    public ResponseEntity<?> update(
+            @PathVariable("name") final String name,
+            @RequestBody @Valid final EventType eventType,
+            Errors errors) {
+        if (errors.hasErrors()) {
+            Problem problem = new ValidationProblem(errors);
+
+            return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
+        }
+
+        try {
+            EventType existingEventType = repository.findByName(name);
+
+            validateName(name, eventType, errors);
+            validateSchema(eventType, existingEventType, errors);
+
+            if (!errors.hasErrors()) {
+                repository.update(eventType);
+
+                return status(HttpStatus.OK).build();
+            } else {
+                Problem problem = new ValidationProblem(errors);
+
+                return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
+            }
+        } catch (NoSuchEventTypeException e) {
+            Problem problem = Problem.
+                    builder().
+                    withType(URI.create("https://httpstatuses.com/404")).
+                    withTitle("Resource not found").
+                    withDetail("No such event type named \"" + eventType.getName() + "\"").
+                    withStatus(Response.Status.NOT_FOUND).
+                    build();
+
+            return status(HttpStatus.NOT_FOUND).body(problem);
+        } catch (NakadiException e) {
+            Problem problem = Problem.
+                    builder().
+                    withType(URI.create("https://httpstatuses.com/422")).
+                    withTitle("Could not update event type").
+                    withDetail(e.getMessage()).
+                    withStatus(MoreStatus.UNPROCESSABLE_ENTITY).
+                    build();
+
+            return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
+        }
+    }
+
+    private void validateName(String name, EventType eventType, Errors errors) {
+        if (!eventType.getName().equals(name)) {
+            errors.rejectValue("name",
+                    "The submitted event type name \"" +
+                            eventType.getName() +
+                            "\" should match the parameter name \"" +
+                            name + "\"");
+        }
+    }
+
+    private void validateSchema(EventType eventType, EventType existingEventType, Errors errors) {
+        if (!existingEventType.getEventTypeSchema().equals(eventType.getEventTypeSchema())) {
+            errors.rejectValue("schema", "The schema you've just submitted is different from the one in our system.");
+        }
+    }
+
     private ResponseEntity<?> persist(EventType eventType) {
         try {
             repository.saveEventType(eventType);
@@ -61,8 +122,6 @@ public class EventTypeController {
             return status(500).body(e.getMessage()); // TODO build proper Problem
         }
     }
-
-    // TODO implement PUT
 
     // TODO implement GET list
 }

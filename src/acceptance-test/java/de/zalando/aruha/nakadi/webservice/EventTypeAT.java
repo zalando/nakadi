@@ -6,17 +6,10 @@ import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import org.apache.http.HttpStatus;
-import org.apache.tomcat.jdbc.pool.DataSource;
-import org.hamcrest.CoreMatchers;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.zalando.problem.MoreStatus;
-
-import javax.ws.rs.core.Response;
-
-import java.sql.SQLException;
 
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
@@ -32,7 +25,7 @@ public class EventTypeAT extends BaseAT {
 
     @Test
     public void whenPOSTValidEventTypeThenOk() throws JsonProcessingException {
-        EventType eventType = buildEventTypeBody();
+        EventType eventType = buildEventType();
 
         String body = mapper.writer().writeValueAsString(eventType);
 
@@ -49,7 +42,7 @@ public class EventTypeAT extends BaseAT {
 
     @Test
     public void whenPOSTDuplicatedEventTypeNameThenConflict() throws JsonProcessingException {
-        EventType eventType = buildEventTypeBody();
+        EventType eventType = buildEventType();
 
         String body = mapper.writer().writeValueAsString(eventType);
 
@@ -78,7 +71,7 @@ public class EventTypeAT extends BaseAT {
 
     @Test
     public void whenPOSTInvalidEventTypeThenUnprocessableEntity() throws JsonProcessingException {
-        EventType eventType = buildEventTypeBody();
+        EventType eventType = buildEventType();
         eventType.setName("");
         eventType.setCategory("");
         eventType.getEventTypeSchema().setType(null);
@@ -103,7 +96,30 @@ public class EventTypeAT extends BaseAT {
                 statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
-    private EventType buildEventTypeBody() throws JsonProcessingException {
+    @Test
+    public void whenPUTValidEventTypeThenOK() throws JsonProcessingException {
+        EventType eventType = buildEventType();
+
+        String body = mapper.writer().writeValueAsString(eventType);
+
+        given().
+                body(body).
+                header("accept", "application/json").
+                contentType(JSON).
+                post(ENDPOINT);
+
+        given().
+                body(body).
+                header("accept", "application/json").
+                contentType(JSON).
+                when().
+                put(ENDPOINT + "/" + eventType.getName()).
+                then().
+                body(equalTo("")).
+                statusCode(HttpStatus.SC_OK);
+    }
+
+    private EventType buildEventType() throws JsonProcessingException {
         final String name = "event-name";
 
         final EventTypeSchema schema = new EventTypeSchema();
