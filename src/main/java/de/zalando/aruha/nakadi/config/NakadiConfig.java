@@ -69,18 +69,18 @@ public class NakadiConfig {
     @Bean
     @Primary
     public ObjectMapper jacksonObjectMapper() {
-        ObjectMapper jsonMapper = new ObjectMapper().setPropertyNamingStrategy(
+        ObjectMapper objectMapper = new ObjectMapper().setPropertyNamingStrategy(
             PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
 
         SimpleModule jsonObjectModule = new SimpleModule();
         jsonObjectModule.addSerializer(JSONObject.class, new JSONObjectSerializer());
         jsonObjectModule.addDeserializer(JSONObject.class, new JSONObjectDeserializer());
 
-        jsonMapper.registerModule(jsonObjectModule);
-        jsonMapper.registerModule(new Jdk8Module());
-        jsonMapper.registerModule(new ProblemModule());
+        objectMapper.registerModule(jsonObjectModule);
+        objectMapper.registerModule(new Jdk8Module());
+        objectMapper.registerModule(new ProblemModule());
 
-        return jsonMapper;
+        return objectMapper;
     }
 
     @Bean
