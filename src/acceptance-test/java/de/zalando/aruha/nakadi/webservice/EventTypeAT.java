@@ -14,7 +14,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
 
 
@@ -22,6 +21,28 @@ public class EventTypeAT extends BaseAT {
 
     static private final String ENDPOINT = "/event_types";
     private final ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+
+    @Test
+    public void whenGETThenListsEventTypes() throws JsonProcessingException {
+        EventType eventType = buildEventType();
+        String body = mapper.writer().writeValueAsString(eventType);
+
+        given().
+                body(body).
+                header("accept", "application/json").
+                contentType(JSON).
+                post(ENDPOINT);
+
+        given().
+                header("accept", "application/json").
+                contentType(JSON).
+                when().
+                get(ENDPOINT).
+                then().
+                statusCode(HttpStatus.SC_OK).
+                body("size()", equalTo(1)).
+                body("name[0]", equalTo("event-name"));
+    }
 
     @Test
     public void whenPOSTValidEventTypeThenOk() throws JsonProcessingException {

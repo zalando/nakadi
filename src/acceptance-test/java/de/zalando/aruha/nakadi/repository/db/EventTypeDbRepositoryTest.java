@@ -8,26 +8,21 @@ import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
-import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Optional;
+import java.util.List;
 
-import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
-import static de.zalando.aruha.nakadi.utils.IsOptional.isPresent;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNull.notNullValue;
 
@@ -127,6 +122,20 @@ public class EventTypeDbRepositoryTest {
         assertThat(persisted.getName(), equalTo(eventType.getName()));
         assertThat(persisted.getEventTypeSchema().getType(), equalTo(eventType.getEventTypeSchema().getType()));
         assertThat(persisted.getEventTypeSchema().getSchema(), equalTo(eventType.getEventTypeSchema().getSchema()));
+    }
+
+    @Test
+    public void whenListExistingEventTypesAreListed() throws NakadiException, DuplicatedEventTypeNameException {
+        EventType eventType1 = buildEventType();
+        EventType eventType2 = buildEventType();
+        eventType2.setName("event-name-2");
+
+        repository.saveEventType(eventType1);
+        repository.saveEventType(eventType2);
+
+        List<EventType> eventTypes = repository.list();
+
+        assertThat(eventTypes, hasSize(2));
     }
 
     private EventType buildEventType() {

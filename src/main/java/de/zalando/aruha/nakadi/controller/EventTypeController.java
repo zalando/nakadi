@@ -19,6 +19,7 @@ import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 
 import java.net.URI;
+import java.util.List;
 
 import static org.springframework.http.ResponseEntity.status;
 
@@ -31,6 +32,13 @@ public class EventTypeController {
     @Autowired
     public EventTypeController(EventTypeRepository repository) {
         this.repository = repository;
+    }
+
+    @RequestMapping(method = RequestMethod.GET)
+    public ResponseEntity<?> list() {
+        List<EventType> eventTypes = repository.list();
+
+        return status(HttpStatus.OK).body(eventTypes);
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -122,6 +130,4 @@ public class EventTypeController {
             return status(500).body(e.getMessage()); // TODO build proper Problem
         }
     }
-
-    // TODO implement GET list
 }

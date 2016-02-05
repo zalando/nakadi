@@ -10,11 +10,15 @@ import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Component;
 
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -71,5 +75,21 @@ public class EventTypeDbRepository implements EventTypeRepository {
         }
     }
 
-    // TODO create listing
+    private class EventTypeMapper implements RowMapper<EventType> {
+        @Override
+        public EventType mapRow(ResultSet rs, int rowNum) throws SQLException {
+            try {
+                return jsonMapper.readValue(rs.getString(2), EventType.class);
+            } catch (IOException e) {
+                return null;
+            }
+        }
+    }
+
+    @Override
+    public List<EventType> list() {
+        return jdbcTemplate.query(
+                "SELECT et_name, et_event_type_object FROM zn_data.event_type;",
+                new EventTypeMapper());
+    }
 }
