@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,9 +33,8 @@ public class PartitionsController {
     @Timed(name = "get_partitions", absolute = true)
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
     public ResponseEntity<?> listPartitions(@PathVariable("name") final String eventTypeName,
-                                            @RequestHeader(name = "X-Flow-Id", required = false) final String flowId,
                                             final NativeWebRequest request) {
-        LOG.trace("Get partitions endpoint for event-type '{}' is called for flow id: {}", eventTypeName, flowId);
+        LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         try {
             // todo: we should get topic from EventType after persistence of EventType is implemented
             @SuppressWarnings("UnnecessaryLocalVariable")
@@ -61,10 +59,8 @@ public class PartitionsController {
     @RequestMapping(value = "/event-types/{name}/partitions/{partition}", method = RequestMethod.GET)
     public ResponseEntity<?> getPartition(@PathVariable("name") final String eventTypeName,
                                           @PathVariable("partition") final String partition,
-                                          @RequestHeader(name = "X-Flow-Id", required = false) String flowId,
                                           final NativeWebRequest request) {
-        LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called for flow id: {}", eventTypeName,
-                partition, flowId);
+        LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         try {
             // todo: we should get topic from EventType after persistence of EventType is implemented
             @SuppressWarnings("UnnecessaryLocalVariable")
