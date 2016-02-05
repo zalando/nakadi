@@ -7,6 +7,7 @@ import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
+import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -28,6 +29,7 @@ import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
 import static de.zalando.aruha.nakadi.utils.IsOptional.isPresent;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.hamcrest.core.IsNull.notNullValue;
 
 public class EventTypeDbRepositoryTest {
 
@@ -88,21 +90,43 @@ public class EventTypeDbRepositoryTest {
     }
 
     @Test
-    public void whenEventExistsFindByNameReturnsSomething() throws NakadiException, DuplicatedEventTypeNameException {
+    public void whenEventExistsFindByNameReturnsSomething() throws NakadiException, DuplicatedEventTypeNameException, NoSuchEventTypeException {
         EventType eventType = buildEventType();
 
         repository.saveEventType(eventType);
 
-        Optional<EventType> eventTypeOptional = repository.findByName(eventType.getName());
+        EventType persistedEventType = repository.findByName(eventType.getName());
 
-        assertThat(eventTypeOptional, isPresent());
+        assertThat(persistedEventType, notNullValue());
+    }
+
+    @Test(expected = NoSuchEventTypeException.class)
+    public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException, NoSuchEventTypeException {
+        EventType eventType = repository.findByName("inexisting-name");
     }
 
     @Test
-    public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException {
-        Optional<EventType> eventTypeOptional = repository.findByName("inexisting-name");
+    public void whenUpdateExistingEventTypeItUpdates() throws NakadiException, DuplicatedEventTypeNameException, IOException, NoSuchEventTypeException {
+        EventType eventType = buildEventType();
 
-        assertThat(eventTypeOptional, isAbsent());
+        repository.saveEventType(eventType);
+
+        eventType.setCategory("new-category");
+
+        repository.update(eventType);
+
+        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
+        rs.next();
+
+        assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
+
+        ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+        EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
+
+        assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
+        assertThat(persisted.getName(), equalTo(eventType.getName()));
+        assertThat(persisted.getEventTypeSchema().getType(), equalTo(eventType.getEventTypeSchema().getType()));
+        assertThat(persisted.getEventTypeSchema().getSchema(), equalTo(eventType.getEventTypeSchema().getSchema()));
     }
 
     private EventType buildEventType() {
