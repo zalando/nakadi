@@ -6,6 +6,13 @@ function wait_for() {
     while ! nc -z localhost $1 ; do sleep 1 ; done
 }
 
+echo Starting PostgreSQL
+pg_ctlcluster ${PGVERSION} main start
+
+echo "Creating database and user"
+echo "create role schemaregistry with login password 'schemaregistry';create database local_schemaregistry_db owner schemaregistry;" \
+    | sudo -u postgres psql -U postgres
+
 echo Starting ZooKeeper
 bin/zookeeper-server-start.sh config/zookeeper.properties > /dev/null &
 echo '################## Waiting for ZooKeeper to start'

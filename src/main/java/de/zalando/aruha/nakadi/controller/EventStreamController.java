@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.domain.Problem;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
@@ -20,17 +19,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class EventStreamController {
@@ -57,7 +65,7 @@ public class EventStreamController {
             @RequestParam(value = "stream_keep_alive_limit", required = false, defaultValue = "0") final int streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-Flow-Id", required = false) final String flowId,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
-            final HttpServletRequest request, final HttpServletResponse response) throws IOException {
+            final NativeWebRequest request, final HttpServletResponse response) throws IOException {
 
         LOG.trace("starting event stream for flow id: {}", flowId);
 
@@ -69,18 +77,17 @@ public class EventStreamController {
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
-                    writeProblemResponse(response, outputStream, HttpStatus.NOT_FOUND.value(),
-                            new Problem("topic not found"));
+                    writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
                     return;
                 }
                 if (streamLimit != 0 && streamLimit < batchLimit) {
-                    writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
-                            new Problem("stream_limit can't be lower than batch_limit"));
+                    writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY,
+                            "stream_limit can't be lower than batch_limit");
                     return;
                 }
                 if (streamTimeout != 0 && streamTimeout < batchTimeout) {
-                    writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
-                            new Problem("stream_timeout can't be lower than batch_flush_timeout"));
+                    writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY,
+                            "stream_timeout can't be lower than batch_flush_timeout");
                     return;
                 }
 
@@ -92,16 +99,15 @@ public class EventStreamController {
                                 new TypeReference<ArrayList<Cursor>>() {
                                 });
                     } catch (IOException e) {
-                        writeProblemResponse(response, outputStream, HttpStatus.BAD_REQUEST.value(),
-                                new Problem("incorrect syntax of X-nakadi-cursors header"));
+                        writeProblemResponse(response, outputStream, BAD_REQUEST,
+                                "incorrect syntax of X-nakadi-cursors header");
                         return;
                     }
                 }
 
-                // check that offsets are not out of bounds
-                if (cursors != null && !topicRepository.areCursorsCorrect(topic, cursors)) {
-                    writeProblemResponse(response, outputStream, HttpStatus.UNPROCESSABLE_ENTITY.value(),
-                            new Problem("cursors are not valid"));
+                // check that offsets are not out of bounds and partitions exist
+                if (cursors != null && !topicRepository.areCursorsValid(topic, cursors)) {
+                    writeProblemResponse(response, outputStream, PRECONDITION_FAILED, "cursors are not valid");
                     return;
                 }
 
@@ -144,11 +150,10 @@ public class EventStreamController {
 
             }
             catch (final NakadiException e) {
-                writeProblemResponse(response, outputStream, HttpStatus.SERVICE_UNAVAILABLE.value(), e.asProblem());
+                writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getProblemMessage());
             }
             catch (final Exception e) {
-                writeProblemResponse(response, outputStream, HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                        new Problem(e.getMessage()));
+                writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             }
             finally {
                 outputStream.flush();
@@ -158,8 +163,8 @@ public class EventStreamController {
     }
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
-                                      final int statusCode, final Problem problem) throws IOException {
-        response.setStatus(statusCode);
-        jsonMapper.writer().writeValue(outputStream, problem);
+                                      final Response.StatusType statusCode, final String message) throws IOException {
+        response.setStatus(statusCode.getStatusCode());
+        jsonMapper.writer().writeValue(outputStream, Problem.valueOf(statusCode, message));
     }
 }
