@@ -81,11 +81,6 @@ public class InMemoryTopicRepository implements TopicRepository {
     }
 
     @Override
-    public boolean validateOffset(final String offsetToCheck, final String newestOffset, final String oldestOffset) {
-        throw new UnsupportedOperationException("Implement this method if needed");
-    }
-
-    @Override
     public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) {
         throw new UnsupportedOperationException("Implement this method if needed");
     }

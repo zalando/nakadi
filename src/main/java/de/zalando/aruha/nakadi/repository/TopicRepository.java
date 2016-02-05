@@ -29,7 +29,5 @@ public interface TopicRepository {
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
-    boolean validateOffset(String offsetToCheck, String newestOffset, String oldestOffset);
-
     EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
 }
