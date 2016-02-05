@@ -213,7 +213,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
-                .body("message", equalTo("topic not found"));
+                .body("detail", equalTo("topic not found"));
     }
 
     @Test(timeout = 5000)
@@ -226,7 +226,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.UNPROCESSABLE_ENTITY.value())
                 .and()
-                .body("message", equalTo("stream_limit can't be lower than batch_limit"));
+                .body("detail", equalTo("stream_limit can't be lower than batch_limit"));
     }
 
     @Test(timeout = 5000)
@@ -239,7 +239,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.UNPROCESSABLE_ENTITY.value())
                 .and()
-                .body("message", equalTo("stream_timeout can't be lower than batch_flush_timeout"));
+                .body("detail", equalTo("stream_timeout can't be lower than batch_flush_timeout"));
     }
 
     @Test(timeout = 5000)
@@ -251,7 +251,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
                 .and()
-                .body("message", equalTo("incorrect syntax of X-nakadi-cursors header"));
+                .body("detail", equalTo("incorrect syntax of X-nakadi-cursors header"));
     }
 
     @Test(timeout = 5000)
@@ -263,7 +263,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.PRECONDITION_FAILED.value())
                 .and()
-                .body("message", equalTo("cursors are not valid"));
+                .body("detail", equalTo("cursors are not valid"));
     }
 
     private static String createStreamEndpointUrl(final String eventType) {

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 
@@ -38,6 +39,16 @@ public class InMemoryTopicRepository implements TopicRepository {
     public void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
             final long retentionMs, final long rotationMs) {
         topics.put(topic, new MockTopic(topic, partitionsNum));
+    }
+
+    @Override
+    public boolean topicExists(final String topic) throws NakadiException {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    @Override
+    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) {
+        throw new UnsupportedOperationException("not implemented");
     }
 
     @Override
