@@ -67,7 +67,7 @@ public class PartitionsControllerAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
-                .body("message", equalTo("topic not found"));
+                .body("detail", equalTo("topic not found"));
     }
 
     @Test
@@ -103,7 +103,7 @@ public class PartitionsControllerAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
-                .body("message", equalTo("topic not found"));
+                .body("detail", equalTo("topic not found"));
     }
 
     @Test
@@ -113,7 +113,7 @@ public class PartitionsControllerAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
-                .body("message", equalTo("partition not found"));
+                .body("detail", equalTo("partition not found"));
     }
 
     @Test

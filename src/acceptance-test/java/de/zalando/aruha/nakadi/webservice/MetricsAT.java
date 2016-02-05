@@ -9,7 +9,6 @@ import static com.jayway.restassured.path.json.JsonPath.from;
 
 import org.apache.http.HttpStatus;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class MetricsAT extends BaseAT {
@@ -48,7 +47,6 @@ public class MetricsAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK)
                 .and()
                 .body("timers.get_partitions.count", equalTo(getPartitionsCount + 1));
-                .body("timers.get_topics.count", equalTo(getTopicsCount + 1));
 //J+
     }
 

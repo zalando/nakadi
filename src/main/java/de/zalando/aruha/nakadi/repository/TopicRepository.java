@@ -23,7 +23,7 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws NakadiException;
 
-    boolean areCursorsCorrect(String topic, List<Cursor> cursors) throws NakadiException;
+    boolean areCursorsValid(String topic, List<Cursor> cursors) throws NakadiException;
 
     boolean partitionExists(String topic, String partition) throws NakadiException;
 
