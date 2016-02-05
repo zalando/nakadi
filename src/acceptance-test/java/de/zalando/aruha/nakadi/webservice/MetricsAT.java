@@ -9,7 +9,6 @@ import static com.jayway.restassured.path.json.JsonPath.from;
 
 import org.apache.http.HttpStatus;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class MetricsAT extends BaseAT {
@@ -32,14 +31,13 @@ public class MetricsAT extends BaseAT {
 //J+
     }
 
-    @Ignore("Ignore until the new partion resource in the /event-types endpoint is available")
     @Test(timeout = 10000)
     public void whenCallEndpointThenCountInMetricsIncreased() {
 
         final String body = get("/metrics").andReturn().body().asString();
-        final int getTopicsCount = from(body).getInt("timers.get_topics.count");
+        final int getPartitionsCount = from(body).getInt("timers.get_partitions.count");
 
-        get("/topics");
+        get("/event-types/blah/partitions");
 
 //J-
         given()
@@ -48,7 +46,7 @@ public class MetricsAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .and()
-                .body("timers.get_topics.count", equalTo(getTopicsCount + 1));
+                .body("timers.get_partitions.count", equalTo(getPartitionsCount + 1));
 //J+
     }
 

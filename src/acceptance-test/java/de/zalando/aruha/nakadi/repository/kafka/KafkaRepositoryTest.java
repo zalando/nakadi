@@ -3,7 +3,7 @@ package de.zalando.aruha.nakadi.repository.kafka;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import de.zalando.aruha.nakadi.webservice.BaseAT;
-import de.zalando.aruha.nakadi.webservice.utils.KafkaHelper;
+import de.zalando.aruha.nakadi.webservice.utils.KafkaTestHelper;
 import org.apache.curator.CuratorZookeeperClient;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -29,12 +29,12 @@ public class KafkaRepositoryTest extends BaseAT {
     private static final int defaultReplicaFactor = 1;
 
     private KafkaRepositorySettings repositorySettings;
-    private KafkaHelper kafkaHelper;
+    private KafkaTestHelper kafkaHelper;
 
     @Before
     public void setup() {
         repositorySettings = createRepositorySettings();
-        kafkaHelper = new KafkaHelper(kafkaUrl);
+        kafkaHelper = new KafkaTestHelper(kafkaUrl);
     }
 
     @Test(timeout = 10000)

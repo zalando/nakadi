@@ -10,6 +10,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import kafka.admin.AdminUtils;
 import kafka.utils.ZkUtils;
@@ -34,6 +35,9 @@ import kafka.javaapi.OffsetRequest;
 import kafka.javaapi.OffsetResponse;
 
 import kafka.javaapi.consumer.SimpleConsumer;
+
+import static kafka.api.OffsetRequest.EarliestTime;
+import static kafka.api.OffsetRequest.LatestTime;
 
 public class KafkaRepository implements TopicRepository {
 
@@ -93,6 +97,15 @@ public class KafkaRepository implements TopicRepository {
             zkUtils.close();
         }
     }
+    
+    public boolean partitionExists(final String topic, final String partition) throws NakadiException {
+        return kafkaFactory
+                .getConsumer()
+                .partitionsFor(topic)
+                .stream()
+                .map(pInfo -> Integer.toString(pInfo.partition()))
+                .anyMatch(partition::equals);
+    }
 
     public boolean topicExists(final String topic) throws NakadiException {
         return listTopics()
@@ -101,7 +114,7 @@ public class KafkaRepository implements TopicRepository {
                 .anyMatch(t -> t.equals(topic));
     }
 
-    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) {
+    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) throws NakadiException {
         final List<TopicPartition> partitions = listPartitions(topic);
         return cursors
                 .stream()
@@ -132,7 +145,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) {
+    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
 
         final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
         try {
@@ -161,18 +174,35 @@ public class KafkaRepository implements TopicRepository {
                     .stream()
                     .map(r -> processTopicPartitionMetadata(r, latestPartitionData, earliestPartitionData))
                     .collect(Collectors.toList());
-        } finally {
+        }
+        catch (Exception e) {
+            throw new NakadiException("Error occurred when fetching partitions offsets", e);
+        }
+        finally {
             sc.close();
         }
     }
 
     @Override
-    public boolean validateOffset(final String offsetToCheck, final String newestOffset,
-                                  final String oldestOffset) {
-        final long offset = Long.parseLong(offsetToCheck);
-        final long newest = Long.parseLong(newestOffset);
-        final long oldest = Long.parseLong(oldestOffset);
-        return offset >= oldest && offset <= newest;
+    public TopicPartition getPartition(final String topicId, final String partition) throws NakadiException {
+        final SimpleConsumer consumer = kafkaFactory.getSimpleConsumer();
+        try {
+            final TopicAndPartition topicAndPartition = new TopicAndPartition(topicId, Integer.parseInt(partition));
+
+            final OffsetResponse latestPartitionData = fetchPartitionData(consumer, ImmutableMap.of(
+                    topicAndPartition, new PartitionOffsetRequestInfo(LatestTime(), 1)));
+
+            final OffsetResponse earliestPartitionData = fetchPartitionData(consumer, ImmutableMap.of(
+                    topicAndPartition, new PartitionOffsetRequestInfo(EarliestTime(), 1)));
+
+            return processTopicPartitionMetadata(topicAndPartition, latestPartitionData, earliestPartitionData);
+        }
+        catch (Exception e) {
+            throw new NakadiException("Error occurred when fetching partition offsets", e);
+        }
+        finally {
+            consumer.close();
+        }
     }
 
     private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,

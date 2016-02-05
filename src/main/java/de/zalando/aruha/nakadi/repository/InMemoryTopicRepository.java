@@ -52,11 +52,16 @@ public class InMemoryTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void postEvent(final String topicId, final String partitionId, final String payload) throws NakadiException {
-        getPartition(topicId, partitionId).postEvent(payload);
+    public boolean partitionExists(final String topic, final String partition) throws NakadiException {
+        throw new UnsupportedOperationException("not implemented");
     }
 
-    private MockPartition getPartition(final String topicId, final String partitionId) throws NakadiException {
+    @Override
+    public void postEvent(final String topicId, final String partitionId, final String payload) throws NakadiException {
+        getPartitionStorage(topicId, partitionId).postEvent(payload);
+    }
+
+    private MockPartition getPartitionStorage(final String topicId, final String partitionId) throws NakadiException {
         final MockTopic topic = topics.get(topicId);
         if (topic == null) {
             throw new NakadiException("No such topic");
@@ -81,8 +86,8 @@ public class InMemoryTopicRepository implements TopicRepository {
     }
 
     @Override
-    public boolean validateOffset(final String offsetToCheck, final String newestOffset, final String oldestOffset) {
-        throw new UnsupportedOperationException("Implement this method if needed");
+    public TopicPartition getPartition(final String topicId, final String partition) throws NakadiException {
+        throw new UnsupportedOperationException("not implemented");
     }
 
     @Override
@@ -91,7 +96,7 @@ public class InMemoryTopicRepository implements TopicRepository {
     }
 
     public LinkedList<String> getEvents(final String topicId, final String partitionId) throws NakadiException {
-        return getPartition(topicId, partitionId).events;
+        return getPartitionStorage(topicId, partitionId).events;
     }
 
     private static class MockTopic {

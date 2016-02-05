@@ -4,11 +4,15 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class TopicPartition {
+
     @JsonIgnore
     private String topicId;
+
     @JsonProperty("partition")
     private String partitionId;
+
     private String oldestAvailableOffset;
+
     private String newestAvailableOffset;
 
     public TopicPartition(final String topicId, final String partitionId) {

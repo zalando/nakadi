@@ -8,6 +8,7 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
+import de.zalando.aruha.nakadi.controller.PartitionsController;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
@@ -99,6 +100,11 @@ public class NakadiConfig {
     @Bean
     public EventStreamController eventStreamController() {
         return new EventStreamController(kafkaRepository(), jacksonObjectMapper());
+    }
+
+    @Bean
+    public PartitionsController partitionsController() {
+        return new PartitionsController(kafkaRepository());
     }
 
 }
