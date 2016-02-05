@@ -112,8 +112,13 @@ public class KafkaRepository implements TopicRepository {
                         .map(pInfo -> {
                             final long newestOffset = Long.parseLong(pInfo.getNewestAvailableOffset());
                             final long oldestOffset = Long.parseLong(pInfo.getOldestAvailableOffset());
-                            final long offset = Long.parseLong(cursor.getOffset());
-                            return offset >= oldestOffset && offset <= newestOffset;
+                            try {
+                                final long offset = Long.parseLong(cursor.getOffset());
+                                return offset >= oldestOffset && offset <= newestOffset;
+                            }
+                            catch (NumberFormatException e) {
+                                return false;
+                            }
                         })
                         .orElse(false));
     }
