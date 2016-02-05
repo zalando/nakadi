@@ -7,8 +7,10 @@ import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
-import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,11 +21,15 @@ import org.zalando.problem.ThrowableProblem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
-import java.util.LinkedList;
 
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.core.Every.everyItem;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentCaptor.forClass;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -39,7 +45,7 @@ public class EventPublishingControllerTest {
     public static final String EVENT2 = "{\"payload\": \"My Event 2 Payload\"}";
     public static final String EVENT3 = "{\"payload\": \"My Event 3 Payload\"}";
 
-    private final InMemoryTopicRepository topicRepository = new InMemoryTopicRepository();
+    private final TopicRepository topicRepository;
     private final EventTypeRepository eventTypeRepository = new InMemoryEventTypeRepository();
     private final EventPublishingController controller;
     private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
@@ -47,17 +53,17 @@ public class EventPublishingControllerTest {
     private final MockMvc mockMvc;
 
     public EventPublishingControllerTest() throws NakadiException {
-        topicRepository.createTopic(EVENT_TYPE_WITH_TOPIC);
+        topicRepository = Mockito.mock(TopicRepository.class);
 
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITH_TOPIC));
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITHOUT_TOPIC));
 
         controller = new EventPublishingController(topicRepository, eventTypeRepository);
 
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
-        mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .build();
+        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
+            new MappingJackson2HttpMessageConverter(objectMapper);
+        mockMvc = standaloneSetup(controller).setMessageConverters(new StringHttpMessageConverter(),
+                jackson2HttpMessageConverter).build();
     }
 
     @Test
@@ -66,13 +72,18 @@ public class EventPublishingControllerTest {
         postEvent(EVENT_TYPE_WITH_TOPIC, EVENT2);
         postEvent(EVENT_TYPE_WITH_TOPIC, EVENT3);
 
-        final LinkedList<String> events = topicRepository.getEvents(EVENT_TYPE_WITH_TOPIC, "1");
+        final ArgumentCaptor<String> topicIdCaptor = forClass(String.class);
+        final ArgumentCaptor<String> partitionIdCaptor = forClass(String.class);
+        final ArgumentCaptor<String> payloadCaptor = forClass(String.class);
+        verify(topicRepository, times(3)).postEvent(topicIdCaptor.capture(), partitionIdCaptor.capture(),
+            payloadCaptor.capture());
 
-        assertThat(events, hasSize(3));
+        assertThat(topicIdCaptor.getAllValues(), everyItem(equalTo(EVENT_TYPE_WITH_TOPIC)));
+        assertThat(partitionIdCaptor.getAllValues(), everyItem(equalTo("1")));
 
-        assertThat(events.removeFirst(), equalTo(EVENT1));
-        assertThat(events.removeFirst(), equalTo(EVENT2));
-        assertThat(events.removeFirst(), equalTo(EVENT3));
+        assertThat(payloadCaptor.getAllValues().get(0), equalTo(EVENT1));
+        assertThat(payloadCaptor.getAllValues().get(1), equalTo(EVENT2));
+        assertThat(payloadCaptor.getAllValues().get(2), equalTo(EVENT3));
     }
 
     @Test
@@ -81,30 +92,29 @@ public class EventPublishingControllerTest {
     }
 
     @Test
-    public void returns5xxProblemIfTopicDoesNotExistForEventType() throws Exception  {
+    public void returns5xxProblemIfTopicDoesNotExistForEventType() throws Exception {
+        doThrow(new NakadiException("bla")).when(topicRepository).postEvent(anyString(), anyString(), anyString());
+
         final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
 
-        postEvent(EVENT_TYPE_WITHOUT_TOPIC, EVENT1)
-                .andExpect(status().is5xxServerError())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEvent(EVENT_TYPE_WITHOUT_TOPIC, EVENT1).andExpect(status().is5xxServerError())
+                                                   .andExpect(content().contentType("application/problem+json"))
+                                                   .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
-    public void returns404ProblemIfEventTypeIsNotRegistered() throws Exception  {
-        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "EventType 'does-not-exist' does not exist.");
+    public void returns404ProblemIfEventTypeIsNotRegistered() throws Exception {
+        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND,
+                "EventType 'does-not-exist' does not exist.");
 
-        postEvent("does-not-exist", EVENT1)
-                .andExpect(status().is4xxClientError())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEvent("does-not-exist", EVENT1).andExpect(status().is4xxClientError())
+                                           .andExpect(content().contentType("application/problem+json")).andExpect(
+                                               content().string(matchesProblem(expectedProblem)));
     }
 
     private ResultActions postEvent(final String eventType, final String event) throws Exception {
         final String url = "/event-types/" + eventType + "/events";
-        final MockHttpServletRequestBuilder requestBuilder = post(url)
-                .contentType(APPLICATION_JSON)
-                .content(event);
+        final MockHttpServletRequestBuilder requestBuilder = post(url).contentType(APPLICATION_JSON).content(event);
 
         return mockMvc.perform(requestBuilder);
     }
@@ -115,7 +125,8 @@ public class EventPublishingControllerTest {
         return eventType;
     }
 
-    private SameJSONAs<? super String> matchesProblem(final ThrowableProblem expectedProblem) throws JsonProcessingException {
+    private SameJSONAs<? super String> matchesProblem(final ThrowableProblem expectedProblem)
+        throws JsonProcessingException {
         return sameJSONAs(asJsonString(expectedProblem));
     }
 
