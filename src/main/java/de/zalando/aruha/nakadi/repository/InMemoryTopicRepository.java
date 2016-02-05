@@ -1,15 +1,15 @@
 package de.zalando.aruha.nakadi.repository;
 
-import static java.util.stream.Collectors.toList;
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Topic;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Topic;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
+import static java.util.stream.Collectors.toList;
 
 public class InMemoryTopicRepository implements TopicRepository {
 
