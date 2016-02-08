@@ -1,7 +1,11 @@
 package de.zalando.aruha.nakadi.service;
 
+import com.google.common.collect.ImmutableMap;
+
+import javax.annotation.concurrent.Immutable;
 import java.util.Map;
 
+@Immutable
 public class EventStreamConfig {
     private final String topic;
     private final Map<String, String> cursors;
@@ -56,6 +60,66 @@ public class EventStreamConfig {
         return "EventStreamConfig{" + "topic='" + topic + '\'' + ", cursors=" + cursors + ", batchLimit=" + batchLimit
                 + ", streamLimit=" + streamLimit + ", batchTimeout=" + batchTimeout + ", streamTimeout=" + streamTimeout
                 + ", streamKeepAliveLimit=" + streamKeepAliveLimit + '}';
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String topic = null;
+        private Map<String, String> cursors = ImmutableMap.of();
+        private int batchLimit = 0;
+        private int streamLimit = 0;
+        private int batchTimeout = 0;
+        private int streamTimeout = 0;
+        private int streamKeepAliveLimit = 0;
+
+        public Builder withTopic(final String topic) {
+            this.topic = topic;
+            return this;
+        }
+
+        public Builder withCursors(final Map<String, String> cursors) {
+            this.cursors = cursors;
+            return this;
+        }
+
+        public Builder withBatchLimit(final int batchLimit) {
+            this.batchLimit = batchLimit;
+            return this;
+        }
+
+        public Builder withStreamLimit(final int streamLimit) {
+            this.streamLimit = streamLimit;
+            return this;
+        }
+
+        public Builder withBatchTimeout(final int batchTimeout) {
+            this.batchTimeout = batchTimeout;
+            return this;
+        }
+
+        public Builder withStreamTimeout(final int streamTimeout) {
+            this.streamTimeout = streamTimeout;
+            return this;
+        }
+
+        public Builder withStreamKeepAliveLimit(final int streamKeepAliveLimit) {
+            this.streamKeepAliveLimit = streamKeepAliveLimit;
+            return this;
+        }
+
+        public EventStreamConfig build() {
+            if (topic == null) {
+                throw new IllegalStateException("Topic should be specified");
+            }
+            if (batchLimit == 0) {
+                throw new IllegalStateException("Batch limit should be specified");
+            }
+            return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
+        }
     }
 
 }
