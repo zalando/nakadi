@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.kafka.NakadiKafkaConsumer;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -24,6 +23,7 @@ import static java.util.Optional.empty;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.core.Is.is;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
@@ -33,28 +33,35 @@ public class EventStreamTest {
     private static final String TOPIC = randomString();
     private static final String DUMMY = "DUMMY";
 
-    @Before
-    public void setup() throws NakadiException {
-
-    }
-
-    @Test(timeout = 5000)
-    public void whenNoExitConditionsThenStreamIsNotClosed() throws NakadiException, IOException, InterruptedException {
+    @Test(timeout = 10000)
+    public void whenNoExitConditionsThenStreamIsNotClosed() throws NakadiException, InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
+                .withCursors(ImmutableMap.of("0", "0"))
                 .withTopic(TOPIC)
                 .withBatchLimit(1)
+                .withBatchTimeout(1)
                 .build();
-        final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
+        final OutputStream outputStreamMock = mock(OutputStream.class);
+        final EventStream eventStream = new EventStream(emptyConsumer(), outputStreamMock, config);
 
         final Thread thread = new Thread(eventStream::streamEvents);
         thread.start();
-        Thread.sleep(2000);
 
-        assertThat("The stream should be still alive as we didn't set any exit conditions", thread.isAlive(), is(true));
+        Thread.sleep(3000);
+        assertThat("As there are no exit conditions in config - the thread should be running",
+                thread.isAlive(), is(true));
+
+        // simulation of client closing the connection: this will end the eventStream
+        doThrow(new IOException()).when(outputStreamMock).flush();
+
+        Thread.sleep(3000);
+        assertThat("The thread should be dead now, as we simulated that client closed connection",
+                thread.isAlive(), is(false));
+        thread.join();
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 3000)
     public void whenStreamTimeoutIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -63,15 +70,11 @@ public class EventStreamTest {
                 .withStreamTimeout(1)
                 .build();
         final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
-
-        final Thread thread = new Thread(eventStream::streamEvents);
-        thread.start();
-        Thread.sleep(2000);
-
-        assertThat("The stream should be closed as we set stream timeout to 1 second", thread.isAlive(), is(false));
+        eventStream.streamEvents();
+        // if something goes wrong - the test should fail with a timeout
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 3000)
     public void whenStreamLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -81,15 +84,11 @@ public class EventStreamTest {
                 .withStreamLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config);
-
-        final Thread thread = new Thread(eventStream::streamEvents);
-        thread.start();
-        Thread.sleep(3000);
-
-        assertThat("The stream should be closed as we set stream limit to 1 event", thread.isAlive(), is(false));
+        eventStream.streamEvents();
+        // if something goes wrong - the test should fail with a timeout
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 3000)
     public void whenKeepAliveLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -99,12 +98,8 @@ public class EventStreamTest {
                 .withStreamKeepAliveLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
-
-        final Thread thread = new Thread(eventStream::streamEvents);
-        thread.start();
-        Thread.sleep(2000);
-
-        assertThat("The stream should be closed as we set keep alive limit to 1", thread.isAlive(), is(false));
+        eventStream.streamEvents();
+        // if something goes wrong - the test should fail with a timeout
     }
 
     @Test(timeout = 5000)
