@@ -14,7 +14,7 @@ public class DuplicatedEventTypeNameProblem implements Problem {
 
     private final String name;
 
-    public DuplicatedEventTypeNameProblem(String name) {
+    public DuplicatedEventTypeNameProblem(final String name) {
         this.name = name;
     }
 
@@ -26,7 +26,7 @@ public class DuplicatedEventTypeNameProblem implements Problem {
 
     @Override
     public Optional<String> getDetail() {
-        String message = "The name \"" + name + "\" has already been taken.";
+        final String message = "The name \"" + name + "\" has already been taken.";
         return Optional.of(message); }
 
     @Override
