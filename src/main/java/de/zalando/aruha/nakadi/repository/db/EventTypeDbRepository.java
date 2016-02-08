@@ -77,7 +77,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
             try {
                 return jsonMapper.readValue(rs.getString(2), EventType.class);
             } catch (IOException e) {
-                return null;
+                throw new SQLException(e);
             }
         }
     }
