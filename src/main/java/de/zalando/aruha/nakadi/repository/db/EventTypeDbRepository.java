@@ -82,7 +82,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     @Override
     public List<EventType> list() {
         return jdbcTemplate.query(
-                "SELECT et_name, et_event_type_object FROM zn_data.event_type;",
+                "SELECT et_event_type_object FROM zn_data.event_type",
                 new EventTypeMapper());
     }
 }
