@@ -57,13 +57,13 @@ public class EventPublishingController {
             final String partitionId = "1";
             topicRepository.postEvent(eventTypeName, partitionId, event);
             return status(HttpStatus.CREATED).build();
-        } catch (final NakadiException e) {
-            LOG.error("error posting to partition", e);
-            return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getProblemMessage()), nativeWebRequest);
         } catch (NoSuchEventTypeException e) {
             LOG.debug("Could not process event.", e);
             return create(Problem.valueOf(NOT_FOUND, "EventType '" + eventTypeName + "' does not exist."),
                     nativeWebRequest);
+        } catch (final NakadiException e) {
+            LOG.error("error posting to partition", e);
+            return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getProblemMessage()), nativeWebRequest);
         }
     }
 

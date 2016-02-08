@@ -42,7 +42,6 @@ public class EventPublishingControllerTest {
 
     private final InMemoryTopicRepository topicRepository = new InMemoryTopicRepository();
     private final EventTypeRepository eventTypeRepository = new InMemoryEventTypeRepository();
-    private final EventPublishingController controller;
     private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
 
     private final MockMvc mockMvc;
@@ -53,7 +52,7 @@ public class EventPublishingControllerTest {
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITH_TOPIC));
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITHOUT_TOPIC));
 
-        controller = new EventPublishingController(topicRepository, eventTypeRepository);
+        EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)

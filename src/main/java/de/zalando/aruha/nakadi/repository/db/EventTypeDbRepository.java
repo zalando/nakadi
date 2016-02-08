@@ -12,7 +12,6 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -52,7 +51,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
         try {
             return jdbcTemplate.queryForObject(sql, new Object[] { name }, new EventTypeMapper());
         } catch (EmptyResultDataAccessException e) {
-            throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.");
+            throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.", e);
         }
     }
 
