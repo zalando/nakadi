@@ -6,33 +6,23 @@ import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.kafka.NakadiKafkaConsumer;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-import sun.java2d.xr.MutableInteger;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static de.zalando.aruha.nakadi.service.EventStream.BATCH_SEPARATOR;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomUInt;
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -42,14 +32,13 @@ public class EventStreamTest {
 
     private static final String TOPIC = randomString();
     private static final String DUMMY = "DUMMY";
-    private static final int PARTITION = randomUInt();
 
     @Before
     public void setup() throws NakadiException {
 
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void whenNoExitConditionsThenStreamIsNotClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -65,7 +54,7 @@ public class EventStreamTest {
         assertThat("The stream should be still alive as we didn't set any exit conditions", thread.isAlive(), is(true));
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void whenStreamTimeoutIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -82,7 +71,7 @@ public class EventStreamTest {
         assertThat("The stream should be closed as we set stream timeout to 1 second", thread.isAlive(), is(false));
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void whenStreamLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -100,7 +89,7 @@ public class EventStreamTest {
         assertThat("The stream should be closed as we set stream limit to 1 event", thread.isAlive(), is(false));
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void whenKeepAliveLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -118,7 +107,7 @@ public class EventStreamTest {
         assertThat("The stream should be closed as we set keep alive limit to 1", thread.isAlive(), is(false));
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void whenNoEventsToReadThenKeepAliveIsSent() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -141,14 +130,14 @@ public class EventStreamTest {
                         assertThat(batch, sameJSONAs(jsonBatch("0", "0", empty()))));
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void whenBatchSizeIsSetThenGetEventsInBatches() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withTopic(TOPIC)
                 .withCursors(ImmutableMap.of("0", "0"))
                 .withBatchLimit(5)
-                .withBatchTimeout(2)
+                .withBatchTimeout(30)
                 .withStreamTimeout(1)
                 .build();
 
@@ -163,6 +152,43 @@ public class EventStreamTest {
         assertThat(batches[0], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(5, DUMMY)))));
         assertThat(batches[1], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(5, DUMMY)))));
         assertThat(batches[2], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(2, DUMMY)))));
+    }
+
+    @Test(timeout = 5000)
+    public void whenReadFromMultiplePartitionsThenGroupedInBatchesAccordingToPartition()
+            throws NakadiException, IOException, InterruptedException {
+
+        final EventStreamConfig config = EventStreamConfig
+                .builder()
+                .withTopic(TOPIC)
+                .withCursors(ImmutableMap.of(
+                        "0", "0",
+                        "1", "0",
+                        "2", "0"))
+                .withBatchLimit(2)
+                .withBatchTimeout(30)
+                .withStreamTimeout(1)
+                .build();
+
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        final LinkedList<ConsumedEvent> events = new LinkedList<>();
+        events.add(new ConsumedEvent(DUMMY, TOPIC, "0", "0"));
+        events.add(new ConsumedEvent(DUMMY, TOPIC, "1", "0"));
+        events.add(new ConsumedEvent(DUMMY, TOPIC, "2", "0"));
+        events.add(new ConsumedEvent(DUMMY, TOPIC, "0", "0"));
+        events.add(new ConsumedEvent(DUMMY, TOPIC, "1", "0"));
+        events.add(new ConsumedEvent(DUMMY, TOPIC, "2", "0"));
+
+        final EventStream eventStream = new EventStream(predefinedConsumer(events), out, config);
+        eventStream.streamEvents();
+
+        final String[] batches = out.toString().split(BATCH_SEPARATOR);
+
+        assertThat(batches, arrayWithSize(3));
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(2, DUMMY)))));
+        assertThat(batches[1], sameJSONAs(jsonBatch("1", "0", Optional.of(nCopies(2, DUMMY)))));
+        assertThat(batches[2], sameJSONAs(jsonBatch("2", "0", Optional.of(nCopies(2, DUMMY)))));
     }
 
     private static NakadiKafkaConsumer emptyConsumer() throws NakadiException {
@@ -190,6 +216,13 @@ public class EventStreamTest {
                 return empty();
             }
         });
+        return nakadiKafkaConsumer;
+    }
+
+    private static NakadiKafkaConsumer predefinedConsumer(final Queue<ConsumedEvent> events)
+            throws NakadiException {
+        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+        when(nakadiKafkaConsumer.readEvent()).thenAnswer(invocation -> Optional.ofNullable(events.poll()));
         return nakadiKafkaConsumer;
     }
 
