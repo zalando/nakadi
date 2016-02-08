@@ -23,7 +23,7 @@ public class EventStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
 
-    private static final String BATCH_SEPARATOR = "\n";
+    public static final String BATCH_SEPARATOR = "\n";
 
     private final OutputStream outputStream;
 
