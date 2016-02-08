@@ -23,7 +23,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class KafkaRepositoryTest extends BaseAT {
+public class KafkaRepositoryAT extends BaseAT {
 
     private static final int defaultPartitionNum = 8;
     private static final int defaultReplicaFactor = 1;
