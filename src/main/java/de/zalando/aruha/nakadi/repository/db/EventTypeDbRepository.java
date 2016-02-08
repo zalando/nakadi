@@ -9,6 +9,7 @@ import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -47,15 +48,10 @@ public class EventTypeDbRepository implements EventTypeRepository {
     @Override
     public EventType findByName(final String name) throws NakadiException, NoSuchEventTypeException {
         final String sql = "SELECT et_event_type_object FROM zn_data.event_type WHERE et_name = ?";
-        final SqlRowSet rs = jdbcTemplate.queryForRowSet(sql, name);
 
-        if(rs.next()) {
-            try {
-                return jsonMapper.readValue(rs.getString(2), EventType.class);
-            } catch (IOException e) {
-                throw new NakadiException("Problem deserializing event type", e);
-            }
-        } else {
+        try {
+            return jdbcTemplate.queryForObject(sql, new Object[] { name }, new EventTypeMapper());
+        } catch (EmptyResultDataAccessException e) {
             throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.");
         }
     }
@@ -76,7 +72,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
         @Override
         public EventType mapRow(ResultSet rs, int rowNum) throws SQLException {
             try {
-                return jsonMapper.readValue(rs.getString(2), EventType.class);
+                return jsonMapper.readValue(rs.getString("et_event_type_object"), EventType.class);
             } catch (IOException e) {
                 throw new SQLException(e);
             }
