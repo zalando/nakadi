@@ -84,7 +84,7 @@ public class EventStreamTest {
 
         final Thread thread = new Thread(eventStream::streamEvents);
         thread.start();
-        Thread.sleep(1000);
+        Thread.sleep(3000);
 
         assertThat("The stream should be closed as we set stream limit to 1 event", thread.isAlive(), is(false));
     }
