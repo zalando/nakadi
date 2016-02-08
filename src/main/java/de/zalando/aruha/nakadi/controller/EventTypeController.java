@@ -16,6 +16,7 @@ import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response;
 import java.net.URI;
 import java.util.List;
@@ -43,9 +44,7 @@ public class EventTypeController {
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> createEventType(@Valid @RequestBody final EventType eventType, final Errors errors) throws Exception {
         if (errors.hasErrors()) {
-            final Problem problem = new ValidationProblem(errors);
-
-            return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
+            return unprocessableEntity(errors);
         } else {
             return persist(eventType);
         }
@@ -57,45 +56,25 @@ public class EventTypeController {
             @RequestBody @Valid final EventType eventType,
             final Errors errors) {
         if (errors.hasErrors()) {
-            final Problem problem = new ValidationProblem(errors);
-
-            return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
+            return unprocessableEntity(errors);
         }
 
         try {
             final EventType existingEventType = repository.findByName(name);
-
             validateName(name, eventType, errors);
             validateSchema(eventType, existingEventType, errors);
 
             if (!errors.hasErrors()) {
                 repository.update(eventType);
-
                 return status(HttpStatus.OK).build();
             } else {
-                final Problem problem = new ValidationProblem(errors);
-
-                return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
+                return unprocessableEntity(errors);
             }
         } catch (NoSuchEventTypeException e) {
-            final Problem problem = Problem.
-                    builder().
-                    withType(URI.create("https://httpstatuses.com/404")).
-                    withTitle("Resource not found").
-                    withDetail("No such event type named \"" + eventType.getName() + "\"").
-                    withStatus(Response.Status.NOT_FOUND).
-                    build();
-
+            final Problem problem = Problem.valueOf(Response.Status.NOT_FOUND);
             return status(HttpStatus.NOT_FOUND).body(problem);
         } catch (NakadiException e) {
-            final Problem problem = Problem.
-                    builder().
-                    withType(URI.create("https://httpstatuses.com/422")).
-                    withTitle("Could not update event type").
-                    withDetail(e.getMessage()).
-                    withStatus(MoreStatus.UNPROCESSABLE_ENTITY).
-                    build();
-
+            final Problem problem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, e.getMessage());
             return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
         }
     }
@@ -119,7 +98,6 @@ public class EventTypeController {
     private ResponseEntity<?> persist(final EventType eventType) {
         try {
             repository.saveEventType(eventType);
-
             return status(HttpStatus.CREATED).build();
         } catch (DuplicatedEventTypeNameException e) {
             final Problem problem = new DuplicatedEventTypeNameProblem(e.getName());
@@ -128,5 +106,10 @@ public class EventTypeController {
         } catch (NakadiException e) {
             return status(500).body(e.getMessage()); // TODO build proper Problem
         }
+    }
+
+    private ResponseEntity<?> unprocessableEntity(Errors errors) {
+        final Problem problem = new ValidationProblem(errors);
+        return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
     }
 }
