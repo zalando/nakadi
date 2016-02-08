@@ -221,9 +221,13 @@ def getSqlInstance(db) {
     groovy.sql.Sql.newInstance(db.url, 'nakadi', db.password, db.driverClassName)
 }
 
+def runMakeStorages(target, options="", timeout=15) {
+    execAndWait("make " + options + " --directory local-storages " + target, timeout)
+}
+
 task stopAndRemoveStoragesInDocker {
     doLast {
-        execAndWait("make --directory local-storages stop-and-remove", dockerBuildTimeout)
+        runMakeStorages("stop-and-remove", "", dockerBuildTimeout)
     }
     outputs.upToDateWhen { false }
 }
@@ -231,7 +235,15 @@ task stopAndRemoveStoragesInDocker {
 task startStoragesInDockerBound() {
     finalizedBy dbBootstrap
     doLast {
-        execAndWait("make PUBLISH_NAKADI_PORT=\"-p 8080:8080\" --directory local-storages run", dockerBuildTimeout)
+        runMakeStorages("run", "PUBLISH_NAKADI_PORT=\"-p 8080:8080\"", dockerBuildTimeout)
+    }
+    outputs.upToDateWhen { false }
+}
+
+task startStoragesInDocker() {
+    finalizedBy dbBootstrap
+    doLast {
+        runMakeStorages("run", "", dockerBuildTimeout)
     }
     outputs.upToDateWhen { false }
 }
