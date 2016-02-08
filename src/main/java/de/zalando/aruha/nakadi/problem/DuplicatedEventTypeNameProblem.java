@@ -8,9 +8,9 @@ import java.util.Optional;
 
 public class DuplicatedEventTypeNameProblem implements Problem {
 
-    static final String TYPE_VALUE = "https://httpstatuses.com/409";
-    static final URI TYPE = URI.create(TYPE_VALUE);
-    static final String TITLE = "Duplicated event type name";
+    static private final String TYPE_VALUE = "https://httpstatuses.com/409";
+    static private final URI TYPE = URI.create(TYPE_VALUE);
+    static private final String TITLE = "Duplicated event type name";
 
     private final String name;
 

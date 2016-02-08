@@ -28,7 +28,6 @@ import static org.hamcrest.core.IsNull.notNullValue;
 
 public class EventTypeDbRepositoryTest {
 
-    private DataSource datasource;
     private JdbcTemplate template;
     private EventTypeRepository repository;
     private Connection connection;
@@ -42,7 +41,7 @@ public class EventTypeDbRepositoryTest {
         try {
             ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
 
-            datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
+            DataSource datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
             template = new JdbcTemplate(datasource);
             repository = new EventTypeDbRepository(template, mapper);
             connection = datasource.getConnection();
@@ -95,7 +94,7 @@ public class EventTypeDbRepositoryTest {
 
     @Test(expected = NoSuchEventTypeException.class)
     public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException, NoSuchEventTypeException {
-        EventType eventType = repository.findByName("inexisting-name");
+        repository.findByName("inexisting-name");
     }
 
     @Test
