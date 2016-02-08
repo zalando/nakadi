@@ -1,19 +1,13 @@
 package de.zalando.aruha.nakadi.repository;
 
-public class NoSuchEventTypeException extends Exception {
-    public NoSuchEventTypeException() {
-        super();
-    }
+import de.zalando.aruha.nakadi.NakadiException;
 
+public class NoSuchEventTypeException extends NakadiException {
     public NoSuchEventTypeException(final String message) {
         super(message);
     }
 
-    public NoSuchEventTypeException(final String message, final Throwable cause) {
-        super(message, cause);
-    }
-
-    public NoSuchEventTypeException(final Throwable cause) {
-        super(cause);
+    public NoSuchEventTypeException(String msg, Exception cause) {
+        super(msg, cause);
     }
 }
