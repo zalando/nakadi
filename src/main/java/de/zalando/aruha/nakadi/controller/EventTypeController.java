@@ -17,7 +17,6 @@ import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
 import javax.ws.rs.core.Response;
-
 import java.net.URI;
 import java.util.List;
 
@@ -27,7 +26,7 @@ import static org.springframework.http.ResponseEntity.status;
 @RequestMapping(value = "/event_types")
 public class EventTypeController {
 
-    private EventTypeRepository repository;
+    final private EventTypeRepository repository;
 
     @Autowired
     public EventTypeController(EventTypeRepository repository) {
@@ -42,9 +41,9 @@ public class EventTypeController {
     }
 
     @RequestMapping(method = RequestMethod.POST)
-    public ResponseEntity<?> createEventType(@Valid @RequestBody final EventType eventType, Errors errors) throws Exception {
+    public ResponseEntity<?> createEventType(@Valid @RequestBody final EventType eventType, final Errors errors) throws Exception {
         if (errors.hasErrors()) {
-            Problem problem = new ValidationProblem(errors);
+            final Problem problem = new ValidationProblem(errors);
 
             return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
         } else {
@@ -56,15 +55,15 @@ public class EventTypeController {
     public ResponseEntity<?> update(
             @PathVariable("name") final String name,
             @RequestBody @Valid final EventType eventType,
-            Errors errors) {
+            final Errors errors) {
         if (errors.hasErrors()) {
-            Problem problem = new ValidationProblem(errors);
+            final Problem problem = new ValidationProblem(errors);
 
             return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
         }
 
         try {
-            EventType existingEventType = repository.findByName(name);
+            final EventType existingEventType = repository.findByName(name);
 
             validateName(name, eventType, errors);
             validateSchema(eventType, existingEventType, errors);
@@ -74,12 +73,12 @@ public class EventTypeController {
 
                 return status(HttpStatus.OK).build();
             } else {
-                Problem problem = new ValidationProblem(errors);
+                final Problem problem = new ValidationProblem(errors);
 
                 return status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
             }
         } catch (NoSuchEventTypeException e) {
-            Problem problem = Problem.
+            final Problem problem = Problem.
                     builder().
                     withType(URI.create("https://httpstatuses.com/404")).
                     withTitle("Resource not found").
@@ -89,7 +88,7 @@ public class EventTypeController {
 
             return status(HttpStatus.NOT_FOUND).body(problem);
         } catch (NakadiException e) {
-            Problem problem = Problem.
+            final Problem problem = Problem.
                     builder().
                     withType(URI.create("https://httpstatuses.com/422")).
                     withTitle("Could not update event type").
@@ -101,7 +100,7 @@ public class EventTypeController {
         }
     }
 
-    private void validateName(String name, EventType eventType, Errors errors) {
+    private void validateName(final String name, final EventType eventType, final Errors errors) {
         if (!eventType.getName().equals(name)) {
             errors.rejectValue("name",
                     "The submitted event type name \"" +
@@ -111,19 +110,19 @@ public class EventTypeController {
         }
     }
 
-    private void validateSchema(EventType eventType, EventType existingEventType, Errors errors) {
+    private void validateSchema(final EventType eventType, final EventType existingEventType, final Errors errors) {
         if (!existingEventType.getEventTypeSchema().equals(eventType.getEventTypeSchema())) {
             errors.rejectValue("schema", "The schema you've just submitted is different from the one in our system.");
         }
     }
 
-    private ResponseEntity<?> persist(EventType eventType) {
+    private ResponseEntity<?> persist(final EventType eventType) {
         try {
             repository.saveEventType(eventType);
 
             return status(HttpStatus.CREATED).build();
         } catch (DuplicatedEventTypeNameException e) {
-            Problem problem = new DuplicatedEventTypeNameProblem(e.getName());
+            final Problem problem = new DuplicatedEventTypeNameProblem(e.getName());
 
             return status(HttpStatus.CONFLICT).body(problem);
         } catch (NakadiException e) {

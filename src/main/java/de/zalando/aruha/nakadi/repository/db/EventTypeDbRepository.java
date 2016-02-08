@@ -14,28 +14,25 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Component;
 
-import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
 
 @Component
 public class EventTypeDbRepository implements EventTypeRepository {
 
     private final JdbcTemplate jdbcTemplate;
-
-    private ObjectMapper jsonMapper;
+    private final ObjectMapper jsonMapper;
 
     @Autowired
-    public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+    public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.jsonMapper = objectMapper;
     }
 
     @Override
-    public void saveEventType(EventType eventType) throws DuplicatedEventTypeNameException, NakadiException {
+    public void saveEventType(final EventType eventType) throws DuplicatedEventTypeNameException, NakadiException {
         try {
             jdbcTemplate.update("INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))",
                     eventType.getName(),
@@ -48,11 +45,10 @@ public class EventTypeDbRepository implements EventTypeRepository {
     }
 
     @Override
-    public EventType findByName(@NotNull String name) throws NakadiException, NoSuchEventTypeException {
-        SqlRowSet rs = jdbcTemplate.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
+    public EventType findByName(final String name) throws NakadiException, NoSuchEventTypeException {
+        final SqlRowSet rs = jdbcTemplate.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
 
         if(rs.next()) {
-            EventType eventType = null;
             try {
                 return jsonMapper.readValue(rs.getString(2), EventType.class);
             } catch (IOException e) {
@@ -64,7 +60,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     }
 
     @Override
-    public void update(EventType eventType) throws NakadiException {
+    public void update(final EventType eventType) throws NakadiException {
         try {
             jdbcTemplate.update(
                     "UPDATE zn_data.event_type SET et_event_type_object = to_json(?::json) WHERE et_name = ?",
