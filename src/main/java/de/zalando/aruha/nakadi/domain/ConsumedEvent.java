@@ -1,11 +1,14 @@
 package de.zalando.aruha.nakadi.domain;
 
+import javax.annotation.concurrent.Immutable;
+
+@Immutable
 public class ConsumedEvent {
 
-    private String event;
-    private String topic;
-    private String partition;
-    private String nextOffset;
+    private final String event;
+    private final String topic;
+    private final String partition;
+    private final String nextOffset;
 
     public ConsumedEvent(final String event, final String topic, final String partition, final String nextOffset) {
         this.event = event;
@@ -47,5 +50,14 @@ public class ConsumedEvent {
         final ConsumedEvent consumedEvent = (ConsumedEvent) obj;
         return this.event.equals(consumedEvent.getEvent()) && this.partition.equals(consumedEvent.getPartition())
                 && this.nextOffset.equals(consumedEvent.getNextOffset()) && this.topic.equals(consumedEvent.getTopic());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = event.hashCode();
+        result = 31 * result + topic.hashCode();
+        result = 31 * result + partition.hashCode();
+        result = 31 * result + nextOffset.hashCode();
+        return result;
     }
 }

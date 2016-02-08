@@ -7,6 +7,7 @@ import java.util.Queue;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import de.zalando.aruha.nakadi.domain.Cursor;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.KafkaException;
@@ -17,6 +18,8 @@ import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 
 public class NakadiKafkaConsumer implements EventConsumer {
 
@@ -34,18 +37,30 @@ public class NakadiKafkaConsumer implements EventConsumer {
         kafkaConsumer = factory.getConsumer();
         this.pollTimeout = pollTimeout;
 
-        // define topic/partitions to consume from
-        topicPartitions = cursors
-                .keySet()
+        final List<KafkaCursor> kafkaCursors = cursors
+                .entrySet()
                 .stream()
-                .map(partition -> new TopicPartition(topic, Integer.parseInt(partition)))
+                .map(entry -> kafkaCursor(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
+
+        // define topic/partitions to consume from
+        topicPartitions = kafkaCursors
+                .stream()
+                .map(cursor -> new TopicPartition(topic, cursor.getPartition()))
                 .collect(Collectors.toList());
         kafkaConsumer.assign(topicPartitions);
 
         // set offsets
         topicPartitions.forEach(topicPartition ->
-                kafkaConsumer.seek(topicPartition,
-                        Long.parseLong(cursors.get(Integer.toString(topicPartition.partition())))));
+                kafkaConsumer.seek(
+                        topicPartition,
+                        kafkaCursors
+                                .stream()
+                                .filter(cursor -> cursor.getPartition() == topicPartition.partition())
+                                .findFirst()
+                                .get()
+                                .getOffset()
+                ));
     }
 
     @Override
@@ -60,9 +75,10 @@ public class NakadiKafkaConsumer implements EventConsumer {
     public Map<String, String> fetchNextOffsets() {
         return topicPartitions
                 .stream()
+                .map(tp -> kafkaCursor(tp.partition(), kafkaConsumer.position(tp)).asNakadiCursor())
                 .collect(Collectors.toMap(
-                        topicPartition -> Integer.toString(topicPartition.partition()),
-                        topicPartition -> Long.toString(kafkaConsumer.position(topicPartition))));
+                        Cursor::getPartition,
+                        Cursor::getOffset));
     }
 
     private void pollFromKafka() throws NakadiException {
@@ -70,8 +86,11 @@ public class NakadiKafkaConsumer implements EventConsumer {
             final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
             eventQueue = StreamSupport
                     .stream(records.spliterator(), false)
-                    .map(record -> new ConsumedEvent(record.value(), record.topic(),
-                            Integer.toString(record.partition()), Long.toString(record.offset() + 1)))
+                    .map(record -> {
+                        final Cursor cursor = kafkaCursor(record.partition(), record.offset() + 1).asNakadiCursor();
+                        return new ConsumedEvent(record.value(), record.topic(), cursor.getPartition(),
+                                cursor.getOffset());
+                    })
                     .collect(Collectors.toCollection(Lists::newLinkedList));
         } catch (KafkaException e) {
             throw new NakadiException("Error occurred when polling from kafka", e);

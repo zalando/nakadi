@@ -35,6 +35,12 @@ import kafka.javaapi.OffsetResponse;
 
 import kafka.javaapi.consumer.SimpleConsumer;
 
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
+
 public class KafkaRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRepository.class);
@@ -110,13 +116,12 @@ public class KafkaRepository implements TopicRepository {
                         .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
                         .findFirst()
                         .map(pInfo -> {
-                            final long newestOffset = Long.parseLong(pInfo.getNewestAvailableOffset());
-                            final long oldestOffset = Long.parseLong(pInfo.getOldestAvailableOffset());
+                            final long newestOffset = toKafkaOffset(pInfo.getNewestAvailableOffset());
+                            final long oldestOffset = toKafkaOffset(pInfo.getOldestAvailableOffset());
                             try {
-                                final long offset = Long.parseLong(cursor.getOffset());
+                                final long offset = fromNakadiCursor(cursor).getOffset();
                                 return offset >= oldestOffset && offset <= newestOffset;
-                            }
-                            catch (NumberFormatException e) {
+                            } catch (NumberFormatException e) {
                                 return false;
                             }
                         })
@@ -127,7 +132,7 @@ public class KafkaRepository implements TopicRepository {
     public void postEvent(final String topicId, final String partitionId, final String payload) throws NakadiException {
         LOG.info("Posting {} {} {}", topicId, partitionId, payload);
 
-        final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, Integer.parseInt(partitionId),
+        final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, toKafkaPartition(partitionId),
                 partitionId, payload);
         try {
             kafkaProducer.send(record).get(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
@@ -175,13 +180,12 @@ public class KafkaRepository implements TopicRepository {
                                                          final OffsetResponse latestPartitionData,
                                                          final OffsetResponse earliestPartitionData) {
 
-        final TopicPartition tp = new TopicPartition(partition.topic(),
-                Integer.toString(partition.partition()));
+        final TopicPartition tp = new TopicPartition(partition.topic(), toNakadiPartition(partition.partition()));
         final long latestOffset = latestPartitionData.offsets(partition.topic(), partition.partition())[0];
         final long earliestOffset = earliestPartitionData.offsets(partition.topic(), partition.partition())[0];
 
-        tp.setNewestAvailableOffset(Long.toString(latestOffset));
-        tp.setOldestAvailableOffset(Long.toString(earliestOffset));
+        tp.setNewestAvailableOffset(toNakadiOffset(latestOffset));
+        tp.setOldestAvailableOffset(toNakadiOffset(earliestOffset));
 
         return tp;
     }

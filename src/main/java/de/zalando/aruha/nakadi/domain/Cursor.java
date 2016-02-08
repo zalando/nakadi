@@ -2,6 +2,9 @@ package de.zalando.aruha.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import javax.annotation.concurrent.Immutable;
+
+@Immutable
 public class Cursor {
 
     private final String partition;
