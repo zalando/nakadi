@@ -46,7 +46,8 @@ public class EventTypeDbRepository implements EventTypeRepository {
 
     @Override
     public EventType findByName(final String name) throws NakadiException, NoSuchEventTypeException {
-        final SqlRowSet rs = jdbcTemplate.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
+        final String sql = "SELECT et_event_type_object FROM zn_data.event_type WHERE et_name = ?";
+        final SqlRowSet rs = jdbcTemplate.queryForRowSet(sql, name);
 
         if(rs.next()) {
             try {
