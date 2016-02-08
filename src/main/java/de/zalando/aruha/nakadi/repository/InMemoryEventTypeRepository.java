@@ -30,7 +30,7 @@ public class InMemoryEventTypeRepository implements EventTypeRepository {
 
     @Override
     public void update(EventType eventType) throws NakadiException {
-
+        // TODO
     }
 
     @Override

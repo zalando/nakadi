@@ -5,6 +5,8 @@ public class DuplicatedEventTypeNameException extends Exception {
     private final String name;
 
     public DuplicatedEventTypeNameException(Exception e, String name) {
+        super();
+
         this.exception = e;
         this.name = name;
     }

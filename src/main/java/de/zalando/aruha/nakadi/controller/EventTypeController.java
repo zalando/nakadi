@@ -16,9 +16,7 @@ import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response;
-import java.net.URI;
 import java.util.List;
 
 import static org.springframework.http.ResponseEntity.status;

@@ -14,9 +14,9 @@ import java.util.Optional;
 public class ValidationProblem implements Problem {
     private final Errors errors;
 
-    static final String TYPE_VALUE = "https://httpstatuses.com/422";
-    static final URI TYPE = URI.create(TYPE_VALUE);
-    static final String TITLE = "Invalid event type";
+    static private final String TYPE_VALUE = "https://httpstatuses.com/422";
+    static private final URI TYPE = URI.create(TYPE_VALUE);
+    static private final String TITLE = "Invalid event type";
 
     public ValidationProblem(Errors errors) {
         this.errors = errors;
@@ -39,11 +39,11 @@ public class ValidationProblem implements Problem {
     }
 
     private String buildErrorMessage() {
-        StringBuilder detailBuilder = new StringBuilder();
+        final StringBuilder detailBuilder = new StringBuilder();
 
-        for (ObjectError error : errors.getAllErrors()) {
+        for (final ObjectError error : errors.getAllErrors()) {
             if (error instanceof FieldError) {
-                String fieldName = CaseFormat.UPPER_CAMEL.
+                final String fieldName = CaseFormat.UPPER_CAMEL.
                         to(CaseFormat.LOWER_UNDERSCORE, ((FieldError) error).getField());
 
                 detailBuilder.
