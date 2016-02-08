@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static de.zalando.aruha.nakadi.service.EventStream.BATCH_SEPARATOR;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
@@ -126,7 +128,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 5000)
-    public void whenBatchSizeIsSetThenGetEventsInBatches() throws NakadiException, IOException, InterruptedException {
+    public void whenReadingEventsTheOrderIsCorrect() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withTopic(TOPIC)
@@ -147,6 +149,42 @@ public class EventStreamTest {
         assertThat(batches[0], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(5, DUMMY)))));
         assertThat(batches[1], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(5, DUMMY)))));
         assertThat(batches[2], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(2, DUMMY)))));
+    }
+
+    @Test(timeout = 5000)
+    public void whenBatchSizeIsSetThenGetEventsInBatches() throws NakadiException, IOException, InterruptedException {
+        final EventStreamConfig config = EventStreamConfig
+                .builder()
+                .withTopic(TOPIC)
+                .withCursors(ImmutableMap.of("0", "0"))
+                .withBatchLimit(1)
+                .withBatchTimeout(30)
+                .withStreamTimeout(1)
+                .build();
+
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int eventNum = 4;
+        final LinkedList<ConsumedEvent> events = new LinkedList<>(IntStream
+                .range(0, eventNum)
+                .boxed()
+                .map(index ->
+                        new ConsumedEvent("event" + index, TOPIC, "0", String.valueOf(index)))
+                .collect(Collectors.toList()));
+
+        final EventStream eventStream = new EventStream(predefinedConsumer(events), out, config);
+        eventStream.streamEvents();
+
+        final String[] batches = out.toString().split(BATCH_SEPARATOR);
+
+        assertThat(batches, arrayWithSize(eventNum));
+        IntStream
+                .range(0, eventNum)
+                .boxed()
+                .forEach(index -> assertThat(
+                        batches[index],
+                        sameJSONAs(jsonBatch("0", String.valueOf(index), Optional.of(nCopies(1, "event" + index))))
+                ));
     }
 
     @Test(timeout = 5000)
