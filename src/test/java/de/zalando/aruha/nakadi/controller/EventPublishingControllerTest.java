@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
@@ -41,18 +42,17 @@ public class EventPublishingControllerTest {
 
     private final InMemoryTopicRepository topicRepository = new InMemoryTopicRepository();
     private final EventTypeRepository eventTypeRepository = new InMemoryEventTypeRepository();
-    private final EventPublishingController controller;
     private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
 
     private final MockMvc mockMvc;
 
-    public EventPublishingControllerTest() throws NakadiException {
+    public EventPublishingControllerTest() throws NakadiException, DuplicatedEventTypeNameException {
         topicRepository.createTopic(EVENT_TYPE_WITH_TOPIC);
 
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITH_TOPIC));
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITHOUT_TOPIC));
 
-        controller = new EventPublishingController(topicRepository, eventTypeRepository);
+        EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)

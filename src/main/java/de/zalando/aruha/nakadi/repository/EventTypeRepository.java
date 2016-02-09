@@ -1,15 +1,17 @@
 package de.zalando.aruha.nakadi.repository;
 
-import javax.annotation.Nullable;
-
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
 
+import java.util.List;
+
 public interface EventTypeRepository {
 
-    void saveEventType(EventType eventType) throws NakadiException;
+    void saveEventType(EventType eventType) throws NakadiException, DuplicatedEventTypeNameException;
 
-    @Nullable
-    EventType findByName(final String eventTypeName) throws NoSuchEventTypeException;
+    EventType findByName(String name) throws NakadiException, NoSuchEventTypeException;
 
+    void update(EventType eventType) throws NakadiException;
+
+    List<EventType> list();
 }
