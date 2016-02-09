@@ -9,7 +9,6 @@ import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
-import de.zalando.aruha.nakadi.utils.FlushableGZIPOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -127,24 +126,12 @@ public class EventStreamController {
                         streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
 
                 response.setStatus(HttpStatus.OK.value());
-
-                final String acceptEncoding = request.getHeader("Accept-Encoding");
-                final boolean gzipEnabled = acceptEncoding != null && acceptEncoding.contains("gzip");
-                final OutputStream output = gzipEnabled ? new FlushableGZIPOutputStream(outputStream) : outputStream;
-
-                if (gzipEnabled) {
-                    response.addHeader("Content-Encoding", "gzip");
-                }
+                response.setContentType("text/plain"); // TODO: must be aligned with API
 
                 final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic,
                         streamConfig.getCursors());
-                final EventStream eventStream = new EventStream(eventConsumer, output, streamConfig);
+                final EventStream eventStream = new EventStream(eventConsumer, outputStream, streamConfig);
                 eventStream.streamEvents();
-
-                if (gzipEnabled) {
-                    output.close();
-                }
-
             }
             catch (final NakadiException e) {
                 writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getProblemMessage());
