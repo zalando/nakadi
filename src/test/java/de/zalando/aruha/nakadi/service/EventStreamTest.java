@@ -128,7 +128,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 5000)
-    public void whenReadingEventsTheOrderIsCorrect() throws NakadiException, IOException, InterruptedException {
+    public void whenBatchSizeIsSetThenGetEventsInBatches() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withTopic(TOPIC)
@@ -152,7 +152,7 @@ public class EventStreamTest {
     }
 
     @Test(timeout = 5000)
-    public void whenBatchSizeIsSetThenGetEventsInBatches() throws NakadiException, IOException, InterruptedException {
+    public void whenReadingEventsTheOrderIsCorrect() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withTopic(TOPIC)
