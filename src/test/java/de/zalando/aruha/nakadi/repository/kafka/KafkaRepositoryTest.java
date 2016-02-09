@@ -46,6 +46,10 @@ public class KafkaRepositoryTest {
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 9, 99, 222));
     }
 
+    public static final List<Cursor> MY_TOPIC_VALID_CURSORS = asList(cursor("0", "41"), cursor("1", "100"), cursor("1", "200"), cursor("1", "101"));
+    public static final List<Cursor> ANOTHER_TOPIC_CURSORS = asList(cursor("1", "0"), cursor("1", "100"), cursor("5", "12"), cursor("9", "100"));
+    public static final List<Cursor> MY_TOPIC_INVALID_CURSORS = asList(cursor("0", "39"), cursor("1", "0"), cursor("1", "99"), cursor("1", "201"));
+
 
     @Test
     public void canListAllPartitions() {
@@ -71,20 +75,35 @@ public class KafkaRepositoryTest {
 
     @Test
     public void validateValidCursors() {
-        final List<Cursor> topic1Cursors = asList(cursor("0", "41"), cursor("1", "100"), cursor("1", "200"), cursor("1", "101"));
-        for (final Cursor topic1Cursor : topic1Cursors) {
-            assertThat(topic1Cursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(topic1Cursor)), is(true));
+        // validate each individual valid cursor
+        for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
+            assertThat(cursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(cursor)), is(true));
         }
-        assertThat(kafkaRepository.areCursorsValid(MY_TOPIC, topic1Cursors), is(true));
+        // validate all valid cursors
+        assertThat(kafkaRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_VALID_CURSORS), is(true));
 
-        final List<Cursor> topic2Cursors = asList(cursor("1", "0"), cursor("1", "100"), cursor("5", "12"), cursor("9", "100"));
-        for (final Cursor topic2Cursor : topic2Cursors) {
-            assertThat(topic2Cursor.toString(), kafkaRepository.areCursorsValid(ANOTHER_TOPIC, asList(topic2Cursor)), is(true));
+        // validate each individual valid cursor
+        for (final Cursor cursor : ANOTHER_TOPIC_CURSORS) {
+            assertThat(cursor.toString(), kafkaRepository.areCursorsValid(ANOTHER_TOPIC, asList(cursor)), is(true));
         }
-        assertThat(kafkaRepository.areCursorsValid(ANOTHER_TOPIC, topic2Cursors), is(true));
+        // validate all valid cursors
+        assertThat(kafkaRepository.areCursorsValid(ANOTHER_TOPIC, ANOTHER_TOPIC_CURSORS), is(true));
     }
 
-    private Cursor cursor(final String partition, final String offset) {
+    @Test
+    public void invalidateInvalidCursors() {
+        for (final Cursor invalidCursor : MY_TOPIC_INVALID_CURSORS) {
+            assertThat(invalidCursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(invalidCursor)), is(false));
+
+            // check combination with valid cursor
+            for (Cursor validCursor : MY_TOPIC_VALID_CURSORS) {
+                assertThat(invalidCursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(validCursor, invalidCursor)), is(false));
+            }
+        }
+        assertThat(kafkaRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_INVALID_CURSORS), is(false));
+    }
+
+    private static Cursor cursor(final String partition, final String offset) {
         return new Cursor(partition, offset);
     }
 
@@ -113,7 +132,7 @@ public class KafkaRepositoryTest {
                 .collect(toList());
     }
 
-    private org.apache.kafka.common.PartitionInfo partitionInfo(final String topic, final int partition) {
+    private static org.apache.kafka.common.PartitionInfo partitionInfo(final String topic, final int partition) {
         return new org.apache.kafka.common.PartitionInfo(topic, partition, null, null, null);
     }
 
