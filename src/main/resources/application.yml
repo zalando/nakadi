@@ -1,5 +1,8 @@
 server:
   port: 8080
+  compression:
+    enabled: true
+#    mime-types: custom/mime-type,text/html,text/xml,text/plain
 logging:
   level:
     ROOT: INFO
