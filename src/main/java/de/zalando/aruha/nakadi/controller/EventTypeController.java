@@ -66,14 +66,8 @@ public class EventTypeController {
             @RequestBody @Valid final EventType eventType,
             final Errors errors,
             final NativeWebRequest nativeWebRequest) {
-        if (errors.hasErrors()) {
-            return create(new ValidationProblem(errors), nativeWebRequest);
-        }
-
         try {
-            final EventType existingEventType = repository.findByName(name);
-            validateName(name, eventType, errors);
-            validateSchema(eventType, existingEventType, errors);
+            validateUpdate(name, eventType, errors);
 
             if (!errors.hasErrors()) {
                 repository.update(eventType);
@@ -89,6 +83,15 @@ public class EventTypeController {
 
             final Problem problem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, e.getMessage());
             return create(problem, nativeWebRequest);
+        }
+    }
+
+    private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NakadiException {
+        if (!errors.hasErrors()) {
+            final EventType existingEventType = repository.findByName(name);
+
+            validateName(name, eventType, errors);
+            validateSchema(eventType, existingEventType, errors);
         }
     }
 
