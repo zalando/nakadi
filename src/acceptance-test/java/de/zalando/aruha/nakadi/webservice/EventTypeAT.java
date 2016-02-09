@@ -62,62 +62,6 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenPOSTDuplicatedEventTypeNameThenConflict() throws JsonProcessingException {
-        EventType eventType = buildEventType();
-
-        String body = mapper.writer().writeValueAsString(eventType);
-
-        given().
-                body(body).
-                header("accept", "application/json").
-                contentType(JSON).
-                post(ENDPOINT);
-
-
-        given().
-                body(body).
-                header("accept", "application/json").
-                contentType(JSON).
-                when().
-                post(ENDPOINT).
-                then().
-                body("detail", equalTo("The name \"event-name\" has already been taken.")).
-                body("status", equalTo("CONFLICT")).
-                body("title", equalTo("Duplicated event type name")).
-                body("type", equalTo("https://httpstatuses.com/409")).
-                statusCode(HttpStatus.SC_CONFLICT);
-    }
-
-
-
-    @Test
-    public void whenPOSTInvalidEventTypeThenUnprocessableEntity() throws JsonProcessingException {
-        EventType eventType = buildEventType();
-        eventType.setName("");
-        eventType.setCategory("");
-        eventType.getEventTypeSchema().setType(null);
-        eventType.getEventTypeSchema().setSchema(null);
-
-        String body = mapper.writer().writeValueAsString(eventType);
-
-        given().
-                body(body).
-                header("accept", "application/json").
-                contentType(JSON).
-                when().
-                post(ENDPOINT).
-                then().
-                body("detail", containsString("Field \"name\" may not be empty")).
-                body("detail", containsString("Field \"category\" may not be empty")).
-                body("detail", containsString("Field \"event_type_schema.type\" may not be null")).
-                body("detail", containsString("Field \"event_type_schema.schema\" may not be null")).
-                body("title", equalTo("Invalid event type")).
-                body("status", equalTo("UNPROCESSABLE_ENTITY")).
-                body("type", equalTo("https://httpstatuses.com/422")).
-                statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
-    }
-
-    @Test
     public void whenPUTValidEventTypeThenOK() throws JsonProcessingException {
         EventType eventType = buildEventType();
 

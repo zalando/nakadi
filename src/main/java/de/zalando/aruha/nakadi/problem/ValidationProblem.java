@@ -14,9 +14,9 @@ import java.util.Optional;
 public class ValidationProblem implements Problem {
     private final Errors errors;
 
-    static private final String TYPE_VALUE = "https://httpstatuses.com/422";
+    static private final String TYPE_VALUE = "http://httpstatus.es/422";
     static private final URI TYPE = URI.create(TYPE_VALUE);
-    static private final String TITLE = "Invalid event type";
+    static private final String TITLE = "Unprocessable Entity";
 
     public ValidationProblem(Errors errors) {
         this.errors = errors;
