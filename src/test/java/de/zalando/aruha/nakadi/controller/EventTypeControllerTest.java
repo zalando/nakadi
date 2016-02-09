@@ -42,8 +42,7 @@ public class EventTypeControllerTest {
 
     private final EventTypeRepository repo = mock(EventTypeRepository.class);
     private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
-
-    private MockMvc mockMvc;
+    private final MockMvc mockMvc;
 
     public EventTypeControllerTest() {
         EventTypeController controller = new EventTypeController(repo);
