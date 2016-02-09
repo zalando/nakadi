@@ -52,11 +52,19 @@ public class EventTypeController {
                                              final NativeWebRequest nativeWebRequest) {
         if (errors.hasErrors()) {
             return create(new ValidationProblem(errors), nativeWebRequest);
-        } else {
-            return persist(eventType)
-                    .map(problem -> (ResponseEntity) create(problem, nativeWebRequest))
-                    .orElse(status(HttpStatus.CREATED).build());
+        }
 
+        try {
+            repository.saveEventType(eventType);
+            return status(HttpStatus.CREATED).build();
+        } catch (DuplicatedEventTypeNameException e) {
+            final Problem problem = new DuplicatedEventTypeNameProblem(e.getName());
+            return create(problem, nativeWebRequest);
+        } catch (NakadiException e) {
+            LOG.error("Error creating event type", e);
+
+            Problem problem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
+            return create(problem, nativeWebRequest);
         }
     }
 
@@ -108,20 +116,6 @@ public class EventTypeController {
     private void validateSchema(final EventType eventType, final EventType existingEventType, final Errors errors) {
         if (!existingEventType.getEventTypeSchema().equals(eventType.getEventTypeSchema())) {
             errors.rejectValue("eventTypeSchema", "", "The schema you've just submitted is different from the one in our system.");
-        }
-    }
-
-    private Optional<Problem> persist(final EventType eventType) {
-        try {
-            repository.saveEventType(eventType);
-            return Optional.empty();
-        } catch (DuplicatedEventTypeNameException e) {
-            final Problem p = new DuplicatedEventTypeNameProblem(e.getName());
-            return Optional.of(p);
-        } catch (NakadiException e) {
-            LOG.error("Error creating event type", e);
-
-            return Optional.of(Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR));
         }
     }
 }
