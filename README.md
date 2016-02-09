@@ -13,7 +13,7 @@ The goal of the `nakadi` project (ნაკადი means `stream` in Georgian 
 
 *  enable convenient development of event-driven applications
 *  securely and efficiently publish and consume events as easy as possible
-*  abstract event exchange by a stanartized RESTful [API](/api/nakadi-event-bus-api.yaml)
+*  abstract event exchange by a stanartized RESTful [API](/src/main/resources/swagger.yaml)
 
 Some additional technical requirements that we wanted to cover by this architecture:
 
