@@ -1,5 +1,24 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.Topic;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import kafka.admin.AdminUtils;
+import kafka.api.PartitionOffsetRequestInfo;
+import kafka.common.TopicAndPartition;
+import kafka.javaapi.OffsetRequest;
+import kafka.javaapi.OffsetResponse;
+import kafka.javaapi.consumer.SimpleConsumer;
+import kafka.utils.ZkUtils;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -9,31 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import de.zalando.aruha.nakadi.domain.Cursor;
-import kafka.admin.AdminUtils;
-import kafka.utils.ZkUtils;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Topic;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-
-import kafka.api.PartitionOffsetRequestInfo;
-
-import kafka.common.TopicAndPartition;
-
-import kafka.javaapi.OffsetRequest;
-import kafka.javaapi.OffsetResponse;
-
-import kafka.javaapi.consumer.SimpleConsumer;
 
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
@@ -100,6 +94,7 @@ public class KafkaRepository implements TopicRepository {
         }
     }
 
+    @Override
     public boolean topicExists(final String topic) throws NakadiException {
         return listTopics()
                 .stream()
@@ -107,6 +102,7 @@ public class KafkaRepository implements TopicRepository {
                 .anyMatch(t -> t.equals(topic));
     }
 
+    @Override
     public boolean areCursorsValid(final String topic, final List<Cursor> cursors) {
         final List<TopicPartition> partitions = listPartitions(topic);
         return cursors
