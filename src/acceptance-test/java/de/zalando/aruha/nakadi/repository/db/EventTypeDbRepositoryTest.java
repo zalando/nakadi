@@ -31,6 +31,7 @@ public class EventTypeDbRepositoryTest {
     private JdbcTemplate template;
     private EventTypeRepository repository;
     private Connection connection;
+    private ObjectMapper mapper;
 
     private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
     private static final String username = "nakadi_app";
@@ -39,7 +40,7 @@ public class EventTypeDbRepositoryTest {
     @Before
     public void setUp() {
         try {
-            ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+            mapper = (new NakadiConfig()).jacksonObjectMapper();
 
             DataSource datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
             template = new JdbcTemplate(datasource);
@@ -82,12 +83,22 @@ public class EventTypeDbRepositoryTest {
     }
 
     @Test
-    public void whenEventExistsFindByNameReturnsSomething() throws NakadiException, DuplicatedEventTypeNameException, NoSuchEventTypeException {
-        EventType eventType = buildEventType();
+    public void whenEventExistsFindByNameReturnsSomething() throws Exception {
+        EventType eventType1 = buildEventType();
+        EventType eventType2 = buildEventType();
+        eventType2.setName("event-name-2");
 
-        repository.saveEventType(eventType);
+        String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))";
 
-        EventType persistedEventType = repository.findByName(eventType.getName());
+        template.update(insertSQL,
+                eventType1.getName(),
+                mapper.writer().writeValueAsString(eventType1));
+
+        template.update(insertSQL,
+                eventType2.getName(),
+                mapper.writer().writeValueAsString(eventType2));
+
+        EventType persistedEventType = repository.findByName(eventType2.getName());
 
         assertThat(persistedEventType, notNullValue());
     }
