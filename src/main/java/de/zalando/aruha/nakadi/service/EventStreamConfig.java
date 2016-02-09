@@ -62,6 +62,35 @@ public class EventStreamConfig {
                 + ", streamKeepAliveLimit=" + streamKeepAliveLimit + '}';
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final EventStreamConfig that = (EventStreamConfig) o;
+
+        if (batchLimit != that.batchLimit) return false;
+        if (streamLimit != that.streamLimit) return false;
+        if (batchTimeout != that.batchTimeout) return false;
+        if (streamTimeout != that.streamTimeout) return false;
+        if (streamKeepAliveLimit != that.streamKeepAliveLimit) return false;
+        if (!topic.equals(that.topic)) return false;
+        return cursors.equals(that.cursors);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = topic.hashCode();
+        result = 31 * result + cursors.hashCode();
+        result = 31 * result + batchLimit;
+        result = 31 * result + streamLimit;
+        result = 31 * result + batchTimeout;
+        result = 31 * result + streamTimeout;
+        result = 31 * result + streamKeepAliveLimit;
+        return result;
+    }
+
     public static Builder builder() {
         return new Builder();
     }

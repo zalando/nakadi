@@ -9,8 +9,7 @@ import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -42,20 +41,22 @@ import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 @RestController
 public class EventStreamController {
 
-    private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
-
     private final TopicRepository topicRepository;
 
     private final ObjectMapper jsonMapper;
 
-    public EventStreamController(final TopicRepository topicRepository, final ObjectMapper jsonMapper) {
+    private final EventStreamFactory eventStreamFactory;
+
+    public EventStreamController(final TopicRepository topicRepository, final ObjectMapper jsonMapper,
+                                 final EventStreamFactory eventStreamFactory) {
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
+        this.eventStreamFactory = eventStreamFactory;
     }
 
     @Timed(name = "stream_events_for_event_type", absolute = true)
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
-    public StreamingResponseBody streamEventsFromPartition(
+    public StreamingResponseBody streamEvents(
             @PathVariable("name") final String eventTypeName,
             @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
             @RequestParam(value = "stream_limit", required = false, defaultValue = "0") final int streamLimit,
@@ -130,7 +131,8 @@ public class EventStreamController {
 
                 final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic,
                         streamConfig.getCursors());
-                final EventStream eventStream = new EventStream(eventConsumer, outputStream, streamConfig);
+                final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
+                        streamConfig);
                 eventStream.streamEvents();
             }
             catch (final NakadiException e) {
