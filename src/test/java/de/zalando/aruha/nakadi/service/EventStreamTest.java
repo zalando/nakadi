@@ -104,7 +104,7 @@ public class EventStreamTest {
         // if something goes wrong - the test should fail with a timeout
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 10000)
     public void whenNoEventsToReadThenKeepAliveIsSent() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
