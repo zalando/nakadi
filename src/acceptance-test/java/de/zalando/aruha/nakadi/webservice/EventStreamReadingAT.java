@@ -97,6 +97,30 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
+    public void whenAcceptEncodingGzipReceiveCompressedStream()
+            throws ExecutionException, InterruptedException, JsonProcessingException {
+
+        // ARRANGE //
+        // push events to one of the partitions
+        final int eventsPushed = 2;
+        kafkaHelper.writeMultipleMessageToPartition(TEST_PARTITION, TEST_TOPIC, DUMMY_EVENT, eventsPushed);
+
+        // ACT //
+        final Response response = given()
+                .header(new Header("X-nakadi-cursors", xNakadiCursors))
+                .header(new Header("Accept-Encoding", "gzip"))
+                .param("batch_limit", "5")
+                .param("stream_timeout", "2")
+                .param("batch_flush_timeout", "2")
+                .when()
+                .get(STREAM_ENDPOINT);
+
+        // ASSERT //
+        response.then().statusCode(HttpStatus.OK.value());
+        response.then().header("Content-Encoding", "gzip");
+    }
+
+    @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
     public void whenPushedAmountOfEventsMoreThanBatchSizeAndReadThenGetEventsInMultipleBatches()
             throws ExecutionException, InterruptedException, JsonProcessingException {
