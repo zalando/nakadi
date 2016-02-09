@@ -62,7 +62,7 @@ public class KafkaRepository implements TopicRepository {
                     .map(Topic::new)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            throw new NakadiException("Failed to get partitions", e);
+            throw new NakadiException("Failed to list topics", e);
         }
     }
 
