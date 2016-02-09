@@ -140,12 +140,6 @@ dependencies {
     }
     testCompile 'org.echocat.jomon:runtime:1.6.2'
     testRuntime 'org.pegdown:pegdown:1.1.0'
-    testCompile('org.powermock:powermock-module-junit4:1.6.2') {
-//        exclude module: "javassist"
-    }
-    testCompile('org.powermock:powermock-api-mockito:1.6.2') {
-//        exclude module: "javassist"
-    }
 }
 // end::dependencies[]
 
