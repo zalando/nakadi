@@ -1,7 +1,5 @@
 package de.zalando.aruha.nakadi.domain;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-
 import javax.validation.constraints.NotNull;
 
 public class EventTypeSchema {
@@ -32,7 +30,22 @@ public class EventTypeSchema {
         this.schema = schema;
     }
 
-    public boolean equals(Object obj) {
-        return EqualsBuilder.reflectionEquals(this, obj);
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final EventTypeSchema that = (EventTypeSchema) o;
+
+        if (type != that.type) return false;
+        return schema != null ? schema.equals(that.schema) : that.schema == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = type != null ? type.hashCode() : 0;
+        result = 31 * result + (schema != null ? schema.hashCode() : 0);
+        return result;
     }
 }
