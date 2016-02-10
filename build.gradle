@@ -83,6 +83,10 @@ configurations {
     acceptanceTestRuntime.extendsFrom testRuntime
 }
 
+findbugs {
+    reportLevel = "high"
+    sourceSets = []
+}
 
 dependencies {
     // spring
