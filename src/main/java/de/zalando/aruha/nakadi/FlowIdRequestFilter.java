@@ -14,7 +14,7 @@ public class FlowIdRequestFilter implements Filter {
 
     @Override
     public void init(final FilterConfig filterConfig) throws ServletException {
-
+        // This constructor is intentionally empty, because something something
     }
 
     @Override
@@ -42,6 +42,6 @@ public class FlowIdRequestFilter implements Filter {
 
     @Override
     public void destroy() {
-
+        // This constructor is intentionally empty, because something something
     }
 }
