@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nullable;
@@ -25,5 +26,15 @@ public class InMemoryEventTypeRepository implements EventTypeRepository {
         }
 
         return eventType;
+    }
+
+    @Override
+    public void update(EventType eventType) throws NakadiException {
+        // TODO
+    }
+
+    @Override
+    public List<EventType> list() {
+        return null;
     }
 }
