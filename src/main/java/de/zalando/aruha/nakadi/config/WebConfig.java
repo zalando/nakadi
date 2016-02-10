@@ -1,18 +1,18 @@
 package de.zalando.aruha.nakadi.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
-import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
-
+import de.zalando.aruha.nakadi.FlowIdRequestFilter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.embedded.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
+import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 
 @Configuration
 public class WebConfig extends WebMvcConfigurationSupport {
@@ -37,5 +37,13 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public EventPublishingController eventPublishingController() {
         return new EventPublishingController(kafkaRepository, new InMemoryEventTypeRepository());
+    }
+
+    @Bean
+    public FilterRegistrationBean flowIdRequestFilter() {
+        final FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean();
+        filterRegistrationBean.setFilter(new FlowIdRequestFilter());
+        filterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return filterRegistrationBean;
     }
 }
