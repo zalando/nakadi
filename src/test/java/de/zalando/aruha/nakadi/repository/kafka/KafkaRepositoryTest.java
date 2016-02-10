@@ -36,6 +36,7 @@ public class KafkaRepositoryTest {
     public static final String MY_TOPIC = "my-topic";
     public static final String ANOTHER_TOPIC = "another-topic";
 
+    @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");
 
     private static final Set<PartitionState> PARTITIONS;
@@ -83,6 +84,7 @@ public class KafkaRepositoryTest {
     }
 
     @Test
+    @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
     public void validateValidCursors() {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
@@ -100,6 +102,7 @@ public class KafkaRepositoryTest {
     }
 
     @Test
+    @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
     public void invalidateInvalidCursors() {
         for (final Cursor invalidCursor : MY_TOPIC_INVALID_CURSORS) {
             assertThat(invalidCursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(invalidCursor)), is(false));
@@ -113,6 +116,7 @@ public class KafkaRepositoryTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void canPostAnEvent() throws Exception {
         kafkaRepository.postEvent(
                 EXPECTED_PRODUCER_RECORD.topic(),
@@ -156,7 +160,9 @@ public class KafkaRepositoryTest {
         }
     }
 
+
     private KafkaRepositorySettings createKafkaRepositorySettings() {
+        @SuppressWarnings("UnnecessaryLocalVariable")
         final KafkaRepositorySettings settings = mock(KafkaRepositorySettings.class);
         return settings;
     }
@@ -181,6 +187,7 @@ public class KafkaRepositoryTest {
         return PARTITIONS.stream().map(p -> p.topic).distinct().collect(toList());
     }
 
+    @SuppressWarnings("unchecked")
     private KafkaFactory createKafkaFactory() {
         // Consumer
         final Consumer consumer = mock(Consumer.class);
