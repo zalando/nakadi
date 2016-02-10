@@ -16,7 +16,6 @@ import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -244,8 +243,8 @@ public class EventStreamControllerTest {
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
                 eq(streamConfig));
         verify(eventStreamMock, times(1)).streamEvents();
-        verify(outputStream, Mockito.times(1)).flush();
-        verify(outputStream, Mockito.times(1)).close();
+        verify(outputStream, times(1)).flush();
+        verify(outputStream, times(1)).close();
     }
 
     @Test

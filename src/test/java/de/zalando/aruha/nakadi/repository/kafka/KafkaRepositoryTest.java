@@ -220,8 +220,8 @@ public class KafkaRepositoryTest {
                 .collect(toList());
     }
 
-    private static org.apache.kafka.common.PartitionInfo partitionInfo(final String topic, final int partition) {
-        return new org.apache.kafka.common.PartitionInfo(topic, partition, null, null, null);
+    private static PartitionInfo partitionInfo(final String topic, final int partition) {
+        return new PartitionInfo(topic, partition, null, null, null);
     }
 
 }

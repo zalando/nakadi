@@ -38,21 +38,21 @@ public class EventPublishingControllerTest {
     public static final String EVENT3 = "{\"payload\": \"My Event 3 Payload\"}";
 
     private final InMemoryTopicRepository topicRepository = new InMemoryTopicRepository();
-    private final EventTypeRepository eventTypeRepository = new InMemoryEventTypeRepository();
-    private final EventPublishingController controller;
-    private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
-    private JsonTestHelper jsonHelper;
+    private final JsonTestHelper jsonHelper;
 
     private final MockMvc mockMvc;
 
     public EventPublishingControllerTest() throws NakadiException {
+        final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
+
         jsonHelper = new JsonTestHelper(objectMapper);
         topicRepository.createTopic(EVENT_TYPE_WITH_TOPIC);
 
+        final EventTypeRepository eventTypeRepository = new InMemoryEventTypeRepository();
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITH_TOPIC));
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITHOUT_TOPIC));
 
-        controller = new EventPublishingController(topicRepository, eventTypeRepository);
+        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
