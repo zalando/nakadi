@@ -16,6 +16,14 @@ public class TopicPartition {
         setPartitionId(partitionId);
     }
 
+    public TopicPartition(final String topicId, final String partitionId, final String oldestAvailableOffset,
+                          final String newestAvailableOffset) {
+        this.topicId = topicId;
+        this.partitionId = partitionId;
+        this.oldestAvailableOffset = oldestAvailableOffset;
+        this.newestAvailableOffset = newestAvailableOffset;
+    }
+
     public String getTopicId() {
         return topicId;
     }

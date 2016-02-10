@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
@@ -8,6 +7,7 @@ import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
+import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.junit.Test;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -16,7 +16,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
-import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
 import java.util.LinkedList;
@@ -29,7 +28,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventPublishingControllerTest {
 
@@ -43,10 +41,12 @@ public class EventPublishingControllerTest {
     private final EventTypeRepository eventTypeRepository = new InMemoryEventTypeRepository();
     private final EventPublishingController controller;
     private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
+    private JsonTestHelper jsonHelper;
 
     private final MockMvc mockMvc;
 
     public EventPublishingControllerTest() throws NakadiException {
+        jsonHelper = new JsonTestHelper(objectMapper);
         topicRepository.createTopic(EVENT_TYPE_WITH_TOPIC);
 
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITH_TOPIC));
@@ -87,7 +87,7 @@ public class EventPublishingControllerTest {
         postEvent(EVENT_TYPE_WITHOUT_TOPIC, EVENT1)
                 .andExpect(status().is5xxServerError())
                 .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+                .andExpect(content().string(jsonHelper.matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -97,7 +97,7 @@ public class EventPublishingControllerTest {
         postEvent("does-not-exist", EVENT1)
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+                .andExpect(content().string(jsonHelper.matchesProblem(expectedProblem)));
     }
 
     private ResultActions postEvent(final String eventType, final String event) throws Exception {
@@ -115,11 +115,4 @@ public class EventPublishingControllerTest {
         return eventType;
     }
 
-    private SameJSONAs<? super String> matchesProblem(final ThrowableProblem expectedProblem) throws JsonProcessingException {
-        return sameJSONAs(asJsonString(expectedProblem));
-    }
-
-    private String asJsonString(final ThrowableProblem expectedProblem) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(expectedProblem);
-    }
 }
