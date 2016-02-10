@@ -66,8 +66,4 @@ class EventTypeValidator {
         return this;
     }
 
-    public EventTypeValidator init() {
-
-        return this;
-    }
 }
