@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 
 public class FlowIdRequestFilter implements Filter {
-    public static final String X_FLOW_ID_HEADER = "x-flow-id";
+    public static final String X_FLOW_ID_HEADER = "X-Flow-Id";
 
     @Override
     public void init(final FilterConfig filterConfig) throws ServletException {
