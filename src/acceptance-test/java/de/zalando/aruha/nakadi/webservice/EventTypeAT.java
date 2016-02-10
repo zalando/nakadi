@@ -18,7 +18,7 @@ import static org.hamcrest.core.IsEqual.equalTo;
 
 public class EventTypeAT extends BaseAT {
 
-    static private final String ENDPOINT = "/event_types";
+    static private final String ENDPOINT = "/event-types";
     private final ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
 
     @Test
