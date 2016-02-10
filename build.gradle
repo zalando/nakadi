@@ -6,6 +6,7 @@ apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'spring-boot'
 apply plugin: "jacoco"
+apply plugin: 'findbugs'
 // if this is applied, include scala dependencies (see below)
 // apply plugin: 'scala'
 
@@ -96,6 +97,10 @@ configurations {
     pgsql
 }
 
+findbugs {
+    reportLevel = "high"
+    sourceSets = []
+}
 
 dependencies {
     pgsql 'org.postgresql:postgresql:9.4.1207'
@@ -168,6 +173,13 @@ dependencies {
 // tag::wrapper[]
 task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
+}
+
+tasks.withType(FindBugs) {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
 }
 
 task cleanDb << {
