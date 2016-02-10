@@ -40,7 +40,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean flowIfRequestFilter() {
+    public FilterRegistrationBean flowIdRequestFilter() {
         final FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean();
         filterRegistrationBean.setFilter(new FlowIdRequestFilter());
         filterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
