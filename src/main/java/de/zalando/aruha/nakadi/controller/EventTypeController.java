@@ -27,7 +27,7 @@ import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
-@RequestMapping(value = "/event_types")
+@RequestMapping(value = "/event-types")
 public class EventTypeController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);

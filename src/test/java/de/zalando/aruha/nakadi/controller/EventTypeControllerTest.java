@@ -202,7 +202,7 @@ public class EventTypeControllerTest {
     private ResultActions postEventType(EventType eventType) throws Exception {
         String content = objectMapper.writeValueAsString(eventType);
 
-        final MockHttpServletRequestBuilder requestBuilder = post("/event_types")
+        final MockHttpServletRequestBuilder requestBuilder = post("/event-types")
                 .contentType(APPLICATION_JSON)
                 .content(content);
 
@@ -212,7 +212,7 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(EventType eventType, String name) throws Exception {
         String content = objectMapper.writeValueAsString(eventType);
 
-        final MockHttpServletRequestBuilder requestBuilder = put("/event_types/" + name)
+        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
                 .contentType(APPLICATION_JSON)
                 .content(content);
 
