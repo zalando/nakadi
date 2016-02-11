@@ -13,9 +13,11 @@ import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.exceptions.base.MockitoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -34,6 +36,7 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
@@ -77,6 +80,7 @@ public class EventStreamControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void whenNoParamsThenDefaultsAreUsed() throws Exception {
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
@@ -96,9 +100,6 @@ public class EventStreamControllerTest {
                         .header("X-nakadi-cursors", "[{\"partition\":\"0\",\"offset\":\"0\"}]"))
                 .andExpect(status().isOk());
 
-        // we have to sleep here as mockMvc exits at the very beginning, before the body starts streaming
-        Thread.sleep(2000);
-
         final EventStreamConfig expectedConfig = EventStreamConfig
                 .builder()
                 .withTopic(TEST_EVENT_TYPE)
@@ -109,7 +110,11 @@ public class EventStreamControllerTest {
                 .withStreamLimit(0)
                 .withStreamTimeout(0)
                 .build();
-        assertThat(configCaptor.getValue(), equalTo(expectedConfig));
+        // we have to retry here as mockMvc exits at the very beginning, before the body starts streaming
+        executeWithRetry(() -> assertThat(configCaptor.getValue(), equalTo(expectedConfig)),
+                new RetryForSpecifiedTimeStrategy<Void>(2000)
+                        .withExceptionsThatForceRetry(MockitoException.class)
+                        .withWaitBetweenEachTry(50));
     }
 
     @Test
