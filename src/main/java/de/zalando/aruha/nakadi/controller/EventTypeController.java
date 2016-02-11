@@ -38,7 +38,7 @@ public class EventTypeController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);
 
-    final private EventTypeRepository eventTypeRepository;
+    private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
 
     @Autowired
