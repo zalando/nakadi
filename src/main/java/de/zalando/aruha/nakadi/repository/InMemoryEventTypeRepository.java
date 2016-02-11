@@ -37,4 +37,9 @@ public class InMemoryEventTypeRepository implements EventTypeRepository {
     public List<EventType> list() {
         return null;
     }
+
+    @Override
+    public void removeEventType(String name) {
+        // TODO
+    }
 }

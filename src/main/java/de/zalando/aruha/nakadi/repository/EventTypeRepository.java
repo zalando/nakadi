@@ -14,4 +14,6 @@ public interface EventTypeRepository {
     void update(EventType eventType) throws NakadiException;
 
     List<EventType> list();
+
+    void removeEventType(String name);
 }

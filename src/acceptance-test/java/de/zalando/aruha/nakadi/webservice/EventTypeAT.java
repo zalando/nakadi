@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.apache.http.HttpStatus;
 import org.junit.After;
 import org.junit.Test;
@@ -40,7 +41,7 @@ public class EventTypeAT extends BaseAT {
                 then().
                 statusCode(HttpStatus.SC_OK).
                 body("size()", equalTo(1)).
-                body("name[0]", equalTo("event-name"));
+                body("name[0]", equalTo(eventType.getName()));
     }
 
     @Test
@@ -84,7 +85,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     private EventType buildEventType() throws JsonProcessingException {
-        final String name = "event-name";
+        final String name = TestUtils.randomString();
 
         final EventTypeSchema schema = new EventTypeSchema();
         final EventType eventType = new EventType();

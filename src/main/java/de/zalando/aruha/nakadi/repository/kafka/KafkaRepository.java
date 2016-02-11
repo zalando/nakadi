@@ -6,6 +6,7 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import kafka.admin.AdminUtils;
@@ -70,7 +71,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public void createTopic(final String topic) {
+    public void createTopic(final String topic) throws TopicCreationException {
         createTopic(topic,
                 settings.getDefaultTopicPartitionNum(),
                 settings.getDefaultTopicReplicaFactor(),
@@ -80,20 +81,25 @@ public class KafkaRepository implements TopicRepository {
 
     @Override
     public void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
-                            final long retentionMs, final long rotationMs) {
-
-        final String connectionString = zkFactory.get().getZookeeperClient().getCurrentConnectionString();
-        final ZkUtils zkUtils = ZkUtils.apply(connectionString, settings.getZkSessionTimeoutMs(),
-                settings.getZkConnectionTimeoutMs(), false);
+                            final long retentionMs, final long rotationMs) throws TopicCreationException {
+        ZkUtils zkUtils = null;
         try {
+            final String connectionString = zkFactory.get().getZookeeperClient().getCurrentConnectionString();
+            zkUtils = ZkUtils.apply(connectionString, settings.getZkSessionTimeoutMs(),
+                    settings.getZkConnectionTimeoutMs(), false);
+
             final Properties topicConfig = new Properties();
             topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
             topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
 
             AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
+        } catch (Exception e) {
+            throw new TopicCreationException("unable to create topic", e);
         }
         finally {
-            zkUtils.close();
+            if (zkUtils != null) {
+                zkUtils.close();
+            }
         }
     }
 

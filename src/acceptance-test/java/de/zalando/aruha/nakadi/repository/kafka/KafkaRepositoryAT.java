@@ -46,7 +46,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
-    public void whenCreateTopicThenTopicIsCreated() throws InterruptedException {
+    public void whenCreateTopicThenTopicIsCreated() throws Exception {
 
         // ARRANGE //
         final String topicName = TestUtils.randomString();

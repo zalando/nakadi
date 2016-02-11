@@ -88,15 +88,8 @@ public class EventTypeDbRepositoryTest {
         EventType eventType2 = buildEventType();
         eventType2.setName("event-name-2");
 
-        String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))";
-
-        template.update(insertSQL,
-                eventType1.getName(),
-                mapper.writer().writeValueAsString(eventType1));
-
-        template.update(insertSQL,
-                eventType2.getName(),
-                mapper.writer().writeValueAsString(eventType2));
+        insertEventType(eventType1);
+        insertEventType(eventType2);
 
         EventType persistedEventType = repository.findByName(eventType2.getName());
 
@@ -144,6 +137,24 @@ public class EventTypeDbRepositoryTest {
         List<EventType> eventTypes = repository.list();
 
         assertThat(eventTypes, hasSize(2));
+    }
+
+    @Test
+    public void whenRemoveThenDeleteFromDatabase() throws Exception {
+        EventType eventType = buildEventType();
+        insertEventType(eventType);
+
+        repository.removeEventType(eventType.getName());
+
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
+        assertThat("Number of rows should encrease", rows, equalTo(0));
+    }
+
+    private void insertEventType(EventType eventType) throws Exception {
+        String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))";
+        template.update(insertSQL,
+                eventType.getName(),
+                mapper.writer().writeValueAsString(eventType));
     }
 
     private EventType buildEventType() {
