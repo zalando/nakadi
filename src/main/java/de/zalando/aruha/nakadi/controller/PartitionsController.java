@@ -36,7 +36,6 @@ public class PartitionsController {
                                             final NativeWebRequest request) {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         try {
-            // todo: we should get topic from EventType after persistence of EventType is implemented
             @SuppressWarnings("UnnecessaryLocalVariable")
             final String topic = eventTypeName;
 
@@ -62,7 +61,6 @@ public class PartitionsController {
                                           final NativeWebRequest request) {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         try {
-            // todo: we should get topic from EventType after persistence of EventType is implemented
             @SuppressWarnings("UnnecessaryLocalVariable")
             final String topic = eventTypeName;
 
