@@ -15,12 +15,12 @@ public class JsonTestHelper {
         this.objectMapper = objectMapper;
     }
 
-    public SameJSONAs<? super String> matchesProblem(final Problem expectedProblem)
+    public SameJSONAs<? super String> matchesObject(final Object expectedObject)
             throws JsonProcessingException {
-        return sameJSONAs(asJsonString(expectedProblem));
+        return sameJSONAs(asJsonString(expectedObject));
     }
 
-    public String asJsonString(final Problem expectedProblem) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(expectedProblem);
+    public String asJsonString(final Object object) throws JsonProcessingException {
+        return objectMapper.writeValueAsString(object);
     }
 }

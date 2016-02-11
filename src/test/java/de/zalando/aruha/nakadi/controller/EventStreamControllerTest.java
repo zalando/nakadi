@@ -125,7 +125,7 @@ public class EventStreamControllerTest {
                 requestMock, responseMock);
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
-        assertThat(responseToString(responseBody), jsonHelper.matchesProblem(expectedProblem));
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
     @Test
@@ -137,7 +137,7 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "stream_limit can't be lower than batch_limit");
-        assertThat(responseToString(responseBody), jsonHelper.matchesProblem(expectedProblem));
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
     @Test
@@ -149,7 +149,7 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "stream_timeout can't be lower than batch_flush_timeout");
-        assertThat(responseToString(responseBody), jsonHelper.matchesProblem(expectedProblem));
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
     @Test
@@ -160,7 +160,7 @@ public class EventStreamControllerTest {
                 "cursors_with_wrong_format", requestMock, responseMock);
 
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "incorrect syntax of X-nakadi-cursors header");
-        assertThat(responseToString(responseBody), jsonHelper.matchesProblem(expectedProblem));
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
     @Test
@@ -173,7 +173,7 @@ public class EventStreamControllerTest {
                 "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock);
 
         final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED, "cursors are not valid");
-        assertThat(responseToString(responseBody), jsonHelper.matchesProblem(expectedProblem));
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
     @Test
@@ -261,7 +261,7 @@ public class EventStreamControllerTest {
                 requestMock, responseMock);
 
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
-        assertThat(responseToString(responseBody), jsonHelper.matchesProblem(expectedProblem));
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
     @Test
@@ -273,7 +273,7 @@ public class EventStreamControllerTest {
                 requestMock, responseMock);
 
         final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, "dummy message");
-        assertThat(responseToString(responseBody), jsonHelper.matchesProblem(expectedProblem));
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
     private String responseToString(final StreamingResponseBody responseBody) throws IOException {

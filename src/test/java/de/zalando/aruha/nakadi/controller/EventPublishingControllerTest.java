@@ -88,7 +88,7 @@ public class EventPublishingControllerTest {
         postEvent(EVENT_TYPE_WITHOUT_TOPIC, EVENT1)
                 .andExpect(status().is5xxServerError())
                 .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(jsonHelper.matchesProblem(expectedProblem)));
+                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
     @Test
@@ -98,7 +98,7 @@ public class EventPublishingControllerTest {
         postEvent("does-not-exist", EVENT1)
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(jsonHelper.matchesProblem(expectedProblem)));
+                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
     private ResultActions postEvent(final String eventType, final String event) throws Exception {
