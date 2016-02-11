@@ -10,8 +10,10 @@ echo Starting PostgreSQL
 pg_ctlcluster ${PGVERSION} main start
 
 echo "Creating database and user"
-echo "create role schemaregistry with login password 'schemaregistry';create database local_schemaregistry_db owner schemaregistry;" \
+echo "CREATE ROLE nakadi WITH LOGIN CREATEROLE PASSWORD 'nakadi'; CREATE DATABASE local_nakadi_db OWNER nakadi;" \
     | sudo -u postgres psql -U postgres
+
+touch /tmp/pg_ready
 
 echo Starting ZooKeeper
 bin/zookeeper-server-start.sh config/zookeeper.properties > /dev/null &

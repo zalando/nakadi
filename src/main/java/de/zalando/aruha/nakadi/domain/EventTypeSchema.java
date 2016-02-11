@@ -1,6 +1,8 @@
 package de.zalando.aruha.nakadi.domain;
 
-import org.json.JSONObject;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+
+import javax.validation.constraints.NotNull;
 
 public class EventTypeSchema {
 
@@ -8,8 +10,11 @@ public class EventTypeSchema {
         JSON_SCHEMA
     }
 
+    @NotNull
     private Type type;
-    private JSONObject schema;
+
+    @NotNull
+    private String schema;
 
     public Type getType() {
         return type;
@@ -19,12 +24,15 @@ public class EventTypeSchema {
         this.type = type;
     }
 
-    public JSONObject getSchema() {
+    public String getSchema() {
         return schema;
     }
 
-    public void setSchema(final JSONObject schema) {
+    public void setSchema(final String schema) {
         this.schema = schema;
     }
 
+    public boolean equals(Object obj) {
+        return EqualsBuilder.reflectionEquals(this, obj);
+    }
 }

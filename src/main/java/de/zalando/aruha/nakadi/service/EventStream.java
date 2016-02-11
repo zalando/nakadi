@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,6 +25,7 @@ public class EventStream {
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
 
     public static final String BATCH_SEPARATOR = "\n";
+    private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private final OutputStream outputStream;
 
@@ -148,7 +150,7 @@ public class EventStream {
         // create stream event batch for current partition and send it; if there were
         // no events, it will be just a keep-alive
         final String streamEvent = createStreamEvent(partition, offset, currentBatch, Optional.empty());
-        outputStream.write(streamEvent.getBytes());
+        outputStream.write(streamEvent.getBytes(UTF8));
         outputStream.flush();
     }
 

@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public class TestUtils {
 
-    private static final Random random = new Random();
+    private static final Random RANDOM = new Random();
 
     private TestUtils() { }
 
@@ -14,7 +14,7 @@ public class TestUtils {
     }
 
     public static int randomUInt() {
-        return Math.abs(random.nextInt());
+        return RANDOM.nextInt(Integer.MAX_VALUE);
     }
 
     public static String randomUIntAsString() {
@@ -22,7 +22,7 @@ public class TestUtils {
     }
 
     public static long randomULong() {
-        return Math.abs(random.nextLong());
+        return randomUInt() * randomUInt();
     }
 
     public static String randomULongAsString() {

@@ -7,6 +7,12 @@ logging:
   level:
     ROOT: INFO
     org.springframework.web: INFO
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/local_nakadi_db
+    username: nakadi_app
+    password: nakadi
+    driverClassName: org.postgresql.Driver
 nakadi:
   topic:
     default:

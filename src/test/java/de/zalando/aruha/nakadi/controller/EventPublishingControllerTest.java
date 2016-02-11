@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
@@ -42,7 +43,7 @@ public class EventPublishingControllerTest {
 
     private final MockMvc mockMvc;
 
-    public EventPublishingControllerTest() throws NakadiException {
+    public EventPublishingControllerTest() throws NakadiException, DuplicatedEventTypeNameException {
         final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
 
         jsonHelper = new JsonTestHelper(objectMapper);
