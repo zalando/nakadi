@@ -14,17 +14,21 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.junit.Test;
+import org.parboiled.common.ImmutableList;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.function.Function;
 
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -56,9 +60,18 @@ public class KafkaRepositoryTest {
     public static final List<Cursor> ANOTHER_TOPIC_CURSORS = asList(cursor("1", "0"), cursor("1", "100"), cursor("5", "12"), cursor("9", "100"));
     public static final List<Cursor> MY_TOPIC_INVALID_CURSORS = asList(cursor("0", "39"), cursor("1", "0"), cursor("1", "99"), cursor("1", "201"));
 
+    private static final List<String> MY_TOPIC_VALID_PARTITIONS = ImmutableList.of("0", "1");
+    private static final List<String> MY_TOPIC_INVALID_PARTITIONS = ImmutableList.of("2", "-1", "abc");
+
+    private static final Function<PartitionState, TopicPartition> PARTITION_STATE_TO_TOPIC_PARTITION = p -> {
+        final TopicPartition topicPartition = new TopicPartition(p.topic, String.valueOf(p.partition));
+        topicPartition.setOldestAvailableOffset(String.valueOf(p.earliestOffset));
+        topicPartition.setNewestAvailableOffset(String.valueOf(p.latestOffset));
+        return topicPartition;
+    };
+
     public static final long LATEST_TIME = kafka.api.OffsetRequest.LatestTime();
     public static final long EARLIEST_TIME = kafka.api.OffsetRequest.EarliestTime();
-
 
     private final KafkaRepository kafkaRepository;
     private final KafkaProducer kafkaProducer;
@@ -81,6 +94,16 @@ public class KafkaRepositoryTest {
         assertThat(kafkaRepository.topicExists(ANOTHER_TOPIC), is(true));
 
         assertThat(kafkaRepository.topicExists("doesnt-exist"), is(false));
+    }
+
+    @Test
+    public void canDetermineIfPartitionExists() throws NakadiException {
+        for (final String validPartition : MY_TOPIC_VALID_PARTITIONS) {
+            assertThat(kafkaRepository.partitionExists(MY_TOPIC, validPartition), is(true));
+        }
+        for (final String validPartition : MY_TOPIC_INVALID_PARTITIONS) {
+            assertThat(kafkaRepository.partitionExists(MY_TOPIC, validPartition), is(false));
+        }
     }
 
     @Test
@@ -132,15 +155,26 @@ public class KafkaRepositoryTest {
         canListAllPartitionsOfTopic(ANOTHER_TOPIC);
     }
 
+    @Test
+    public void canGetPartition() throws NakadiException {
+        PARTITIONS
+                .stream()
+                .map(PARTITION_STATE_TO_TOPIC_PARTITION)
+                .forEach(tp -> {
+                    try {
+                        final TopicPartition actual = kafkaRepository.getPartition(tp.getTopicId(), tp.getPartitionId());
+                        assertThat(actual, equalTo(tp));
+                    } catch (NakadiException e) {
+                        fail("Should not get NakadiException for this call");
+                    }
+                });
+    }
+
     private void canListAllPartitionsOfTopic(final String topic) throws NakadiException {
-        final List<TopicPartition> expected = PARTITIONS.stream().filter(p -> p.topic.equals(topic))
-                .map(p -> {
-                    final TopicPartition topicPartition = new TopicPartition(p.topic,
-                            String.valueOf(p.partition));
-                    topicPartition.setOldestAvailableOffset(String.valueOf(p.earliestOffset));
-                    topicPartition.setNewestAvailableOffset(String.valueOf(p.latestOffset));
-                    return topicPartition;
-                })
+        final List<TopicPartition> expected = PARTITIONS
+                .stream()
+                .filter(p -> p.topic.equals(topic))
+                .map(PARTITION_STATE_TO_TOPIC_PARTITION)
                 .collect(toList());
 
         final List<TopicPartition> actual = kafkaRepository.listPartitions(topic);
