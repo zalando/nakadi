@@ -45,7 +45,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     }
 
     @Override
-    public EventType findByName(final String name) throws NakadiException, NoSuchEventTypeException {
+    public EventType findByName(final String name) throws NoSuchEventTypeException {
         final String sql = "SELECT et_event_type_object FROM zn_data.event_type WHERE et_name = ?";
 
         try {
