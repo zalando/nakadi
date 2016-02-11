@@ -33,6 +33,15 @@ SenzaInfo:
     - LimitTrafficToCidr:
         Description: "Allows request to the loadbalancer of Nakadi to only this ip address range given in cidr notation (optional, default: 0.0.0.0/0)"
         Default: "0.0.0.0/0"
+    - DatabaseUrl:
+        Description: "Jdbc url, value can be encrypted with KMS"
+        Default: "jdbc:postgresql://localhost:5432/local_nakadi_db"
+    - DatabasePassword:
+        Description: "value can be encrypted with KMS"
+        Default: "nakadi"
+    - KmsKeyId:
+        Description: "Identifier of your KMS key"
+        Default: ""
 
 SenzaComponents:
 
@@ -64,6 +73,8 @@ SenzaComponents:
           NAKADI_ZOOKEEPER_KAFKANAMESPACE:    "{{Arguments.ZookeeperKafkaNamespace}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_BROKERS: "{{Arguments.ExhibitorBrokers}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_PORT:    "{{Arguments.ExhibitorPort}}"
+          SPRING_DATASOURCE_URL: "{{Arguments.DatabaseUrl}}"
+          SPRING_DATASOURCE_PASSWORD: "{{Arguments.DatabasePassword}}"
       AutoScaling:
         Minimum: 2
         Maximum: "{{Arguments.InstancesMaximum}}"
@@ -104,7 +115,7 @@ Resources:
           Action:
           - "sts:AssumeRole"
       Policies:
-      - PolicyName: NakadiAllowMintRead
+      - PolicyName: NakadiMintKMSAccess
         PolicyDocument:
           Version: "2012-10-17"
           Statement:
@@ -116,6 +127,12 @@ Resources:
             Resource:
             - "arn:aws:s3:::{{Arguments.MintBucket}}"
             - "arn:aws:s3:::{{Arguments.MintBucket}}/{{Arguments.ApplicationId}}/*"
+          - Effect: Allow
+            Action:
+            - "kms:Decrypt"
+            - "kms:Encrypt"
+            Resource:
+            - "{{Arguments.KmsKeyId}}"
 
   NakadiSecurityGroup:
     Type: AWS::EC2::SecurityGroup
