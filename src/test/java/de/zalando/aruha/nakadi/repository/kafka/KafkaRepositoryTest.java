@@ -85,7 +85,7 @@ public class KafkaRepositoryTest {
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void validateValidCursors() {
+    public void validateValidCursors() throws NakadiException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
             assertThat(cursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(cursor)), is(true));
@@ -103,7 +103,7 @@ public class KafkaRepositoryTest {
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-    public void invalidateInvalidCursors() {
+    public void invalidateInvalidCursors() throws NakadiException {
         for (final Cursor invalidCursor : MY_TOPIC_INVALID_CURSORS) {
             assertThat(invalidCursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(invalidCursor)), is(false));
 
@@ -127,12 +127,12 @@ public class KafkaRepositoryTest {
     }
 
     @Test
-    public void canListAllPartitions() {
+    public void canListAllPartitions() throws NakadiException {
         canListAllPartitionsOfTopic(MY_TOPIC);
         canListAllPartitionsOfTopic(ANOTHER_TOPIC);
     }
 
-    private void canListAllPartitionsOfTopic(final String topic) {
+    private void canListAllPartitionsOfTopic(final String topic) throws NakadiException {
         final List<TopicPartition> expected = PARTITIONS.stream().filter(p -> p.topic.equals(topic))
                 .map(p -> {
                     final TopicPartition topicPartition = new TopicPartition(p.topic,

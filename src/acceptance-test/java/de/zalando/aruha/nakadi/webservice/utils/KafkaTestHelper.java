@@ -11,11 +11,11 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-public class KafkaHelper {
+public class KafkaTestHelper {
 
     private final String kafkaUrl;
 
-    public KafkaHelper(final String kafkaUrl) {
+    public KafkaTestHelper(final String kafkaUrl) {
         this.kafkaUrl = kafkaUrl;
     }
 

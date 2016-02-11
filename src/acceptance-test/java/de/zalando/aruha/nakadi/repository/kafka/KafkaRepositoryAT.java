@@ -28,7 +28,7 @@ import org.junit.Test;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import de.zalando.aruha.nakadi.webservice.BaseAT;
-import de.zalando.aruha.nakadi.webservice.utils.KafkaHelper;
+import de.zalando.aruha.nakadi.webservice.utils.KafkaTestHelper;
 
 public class KafkaRepositoryAT extends BaseAT {
 
@@ -36,12 +36,12 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int defaultReplicaFactor = 1;
 
     private KafkaRepositorySettings repositorySettings;
-    private KafkaHelper kafkaHelper;
+    private KafkaTestHelper kafkaHelper;
 
     @Before
     public void setup() {
         repositorySettings = createRepositorySettings();
-        kafkaHelper = new KafkaHelper(kafkaUrl);
+        kafkaHelper = new KafkaTestHelper(kafkaUrl);
     }
 
     @Test(timeout = 10000)
