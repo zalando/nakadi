@@ -243,7 +243,7 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(EventType eventType, String name) throws Exception {
         String content = objectMapper.writeValueAsString(eventType);
 
-        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + EVENT_TYPE_NAME)
+        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
                 .contentType(APPLICATION_JSON)
                 .content(content);
 
