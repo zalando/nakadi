@@ -88,7 +88,7 @@ public class EventTypeController {
                 return create(new ValidationProblem(errors), nativeWebRequest);
             }
         } catch (NoSuchEventTypeException e) {
-            final Problem problem = Problem.valueOf(Response.Status.NOT_FOUND);
+            final Problem problem = Problem.valueOf(NOT_FOUND);
             return create(problem, nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Unable to update event type", e);
