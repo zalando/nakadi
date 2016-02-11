@@ -1,5 +1,24 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.Topic;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import kafka.admin.AdminUtils;
+import kafka.api.PartitionOffsetRequestInfo;
+import kafka.common.TopicAndPartition;
+import kafka.javaapi.OffsetRequest;
+import kafka.javaapi.OffsetResponse;
+import kafka.javaapi.consumer.SimpleConsumer;
+import kafka.utils.ZkUtils;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -10,35 +29,12 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import kafka.admin.AdminUtils;
-import kafka.utils.ZkUtils;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-
-import org.springframework.stereotype.Component;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Topic;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-
-import kafka.api.PartitionOffsetRequestInfo;
-
-import kafka.common.TopicAndPartition;
-
-import kafka.javaapi.OffsetRequest;
-import kafka.javaapi.OffsetResponse;
-
-import kafka.javaapi.consumer.SimpleConsumer;
-
-@Component
 public class KafkaRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaRepository.class);
@@ -48,7 +44,6 @@ public class KafkaRepository implements TopicRepository {
     private final KafkaFactory kafkaFactory;
     private final KafkaRepositorySettings settings;
 
-    @Autowired
     public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
                            final KafkaRepositorySettings settings) {
         this.zkFactory = zkFactory;
@@ -67,7 +62,7 @@ public class KafkaRepository implements TopicRepository {
                     .map(Topic::new)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            throw new NakadiException("Failed to get partitions", e);
+            throw new NakadiException("Failed to list topics", e);
         }
     }
 
@@ -100,10 +95,40 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
+    public boolean topicExists(final String topic) throws NakadiException {
+        return listTopics()
+                .stream()
+                .map(Topic::getName)
+                .anyMatch(t -> t.equals(topic));
+    }
+
+    @Override
+    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) {
+        final List<TopicPartition> partitions = listPartitions(topic);
+        return cursors
+                .stream()
+                .allMatch(cursor -> partitions
+                        .stream()
+                        .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
+                        .findFirst()
+                        .map(pInfo -> {
+                            final long newestOffset = toKafkaOffset(pInfo.getNewestAvailableOffset());
+                            final long oldestOffset = toKafkaOffset(pInfo.getOldestAvailableOffset());
+                            try {
+                                final long offset = fromNakadiCursor(cursor).getOffset();
+                                return offset >= oldestOffset && offset <= newestOffset;
+                            } catch (NumberFormatException e) {
+                                return false;
+                            }
+                        })
+                        .orElse(false));
+    }
+
+    @Override
     public void postEvent(final String topicId, final String partitionId, final String payload) throws NakadiException {
         LOG.info("Posting {} {} {}", topicId, partitionId, payload);
 
-        final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, Integer.parseInt(partitionId),
+        final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, toKafkaPartition(partitionId),
                 partitionId, payload);
         try {
             kafkaProducer.send(record).get(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
@@ -113,7 +138,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
+    public List<TopicPartition> listPartitions(final String topicId) {
 
         final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
         try {
@@ -147,26 +172,16 @@ public class KafkaRepository implements TopicRepository {
         }
     }
 
-    @Override
-    public boolean validateOffset(final String offsetToCheck, final String newestOffset,
-                                  final String oldestOffset) {
-        final long offset = Long.parseLong(offsetToCheck);
-        final long newest = Long.parseLong(newestOffset);
-        final long oldest = Long.parseLong(oldestOffset);
-        return offset >= oldest && offset <= newest;
-    }
-
     private TopicPartition processTopicPartitionMetadata(final TopicAndPartition partition,
                                                          final OffsetResponse latestPartitionData,
                                                          final OffsetResponse earliestPartitionData) {
 
-        final TopicPartition tp = new TopicPartition(partition.topic(),
-                Integer.toString(partition.partition()));
+        final TopicPartition tp = new TopicPartition(partition.topic(), toNakadiPartition(partition.partition()));
         final long latestOffset = latestPartitionData.offsets(partition.topic(), partition.partition())[0];
         final long earliestOffset = earliestPartitionData.offsets(partition.topic(), partition.partition())[0];
 
-        tp.setNewestAvailableOffset(Long.toString(latestOffset));
-        tp.setOldestAvailableOffset(Long.toString(earliestOffset));
+        tp.setNewestAvailableOffset(toNakadiOffset(latestOffset));
+        tp.setOldestAvailableOffset(toNakadiOffset(earliestOffset));
 
         return tp;
     }

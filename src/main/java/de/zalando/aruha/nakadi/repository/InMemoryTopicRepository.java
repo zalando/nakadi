@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 
@@ -41,6 +42,16 @@ public class InMemoryTopicRepository implements TopicRepository {
     }
 
     @Override
+    public boolean topicExists(final String topic) throws NakadiException {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    @Override
+    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    @Override
     public void postEvent(final String topicId, final String partitionId, final String payload) throws NakadiException {
         getPartition(topicId, partitionId).postEvent(payload);
     }
@@ -67,11 +78,6 @@ public class InMemoryTopicRepository implements TopicRepository {
         }
 
         return mockTopic.partitions.values().stream().map(p -> new TopicPartition(topicId, p.id)).collect(toList());
-    }
-
-    @Override
-    public boolean validateOffset(final String offsetToCheck, final String newestOffset, final String oldestOffset) {
-        throw new UnsupportedOperationException("Implement this method if needed");
     }
 
     @Override

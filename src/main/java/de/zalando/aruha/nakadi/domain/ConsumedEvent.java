@@ -1,11 +1,14 @@
 package de.zalando.aruha.nakadi.domain;
 
+import javax.annotation.concurrent.Immutable;
+
+@Immutable
 public class ConsumedEvent {
 
-    private String event;
-    private String topic;
-    private String partition;
-    private String nextOffset;
+    private final String event;
+    private final String topic;
+    private final String partition;
+    private final String nextOffset;
 
     public ConsumedEvent(final String event, final String topic, final String partition, final String nextOffset) {
         this.event = event;

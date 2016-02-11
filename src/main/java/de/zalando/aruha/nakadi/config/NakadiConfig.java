@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
@@ -11,13 +10,14 @@ import com.fasterxml.jackson.datatype.jsonorg.JSONObjectDeserializer;
 import com.fasterxml.jackson.datatype.jsonorg.JSONObjectSerializer;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
+import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepositorySettings;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -33,10 +33,8 @@ import org.zalando.problem.ProblemModule;
 @EnableMetrics
 @EnableScheduling
 public class NakadiConfig {
-    private static final Logger LOG = LoggerFactory.getLogger(NakadiConfig.class);
 
     public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
-    public static final HealthCheckRegistry HEALTH_CHECK_REGISTRY = new HealthCheckRegistry();
 
     @Autowired
     private Environment environment;
@@ -54,11 +52,6 @@ public class NakadiConfig {
     @Bean
     public MetricsConfigurerAdapter metricsConfigurerAdapter() {
         return new MetricsConfigurerAdapter() {
-            @Override
-            public void configureReporters(final MetricRegistry metricRegistry) {
-                // ConsoleReporter.forRegistry(metricRegistry).build().start(15, TimeUnit.SECONDS);
-            }
-
             @Override
             public MetricRegistry getMetricRegistry() {
                 return METRIC_REGISTRY;
@@ -104,8 +97,23 @@ public class NakadiConfig {
     }
 
     @Bean
-    public KafkaRepositorySettings topicRepositorySettings() {
+    public KafkaRepositorySettings kafkaRepositorySettings() {
         return new KafkaRepositorySettings();
+    }
+
+    @Bean
+    public KafkaRepository kafkaRepository() {
+        return new KafkaRepository(zooKeeperHolder(), kafkaFactory(), kafkaRepositorySettings());
+    }
+
+    @Bean
+    public EventStreamController eventStreamController() {
+        return new EventStreamController(kafkaRepository(), jacksonObjectMapper(), eventStreamFactory());
+    }
+
+    @Bean
+    public EventStreamFactory eventStreamFactory() {
+        return new EventStreamFactory();
     }
 
 }
