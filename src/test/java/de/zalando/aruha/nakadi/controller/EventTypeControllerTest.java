@@ -28,9 +28,11 @@ import javax.ws.rs.core.Response;
 import java.util.Arrays;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -40,6 +42,7 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventTypeControllerTest {
 
+    public static final String EVENT_TYPE_NAME = "event-name";
     private final EventTypeRepository repo = mock(EventTypeRepository.class);
     private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
@@ -137,9 +140,9 @@ public class EventTypeControllerTest {
         Mockito
                 .doReturn(eventType)
                 .when(repo)
-                .findByName("event-name");
+                .findByName(EVENT_TYPE_NAME);
 
-        putEventType(eventType, "event-name")
+        putEventType(eventType, EVENT_TYPE_NAME)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -157,9 +160,9 @@ public class EventTypeControllerTest {
         Mockito
                 .doReturn(persistedEventType)
                 .when(repo)
-                .findByName("event-name");
+                .findByName(EVENT_TYPE_NAME);
 
-        putEventType(eventType, "event-name")
+        putEventType(eventType, EVENT_TYPE_NAME)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -174,9 +177,9 @@ public class EventTypeControllerTest {
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
                 .when(repo)
-                .findByName("event-name");
+                .findByName(EVENT_TYPE_NAME);
 
-        putEventType(eventType, "event-name")
+        putEventType(eventType, EVENT_TYPE_NAME)
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -191,12 +194,40 @@ public class EventTypeControllerTest {
         Mockito
                 .doThrow(NakadiException.class)
                 .when(repo)
-                .findByName("event-name");
+                .findByName(EVENT_TYPE_NAME);
 
-        putEventType(eventType, "event-name")
+        putEventType(eventType, EVENT_TYPE_NAME)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+    
+    @Test
+    public void canExposeASingleEventType() throws Exception {
+        final EventType expectedEventType = buildEventType();
+
+        when(repo.findByName(EVENT_TYPE_NAME)).thenReturn(expectedEventType);
+
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + EVENT_TYPE_NAME)
+                .accept(APPLICATION_JSON);
+
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().is2xxSuccessful())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(content().json(asJsonString(expectedEventType)));
+
+    }
+
+    @Test
+    public void askingForANonExistingEventTypeResultsIn404() throws Exception {
+        when(repo.findByName(anyString())).thenThrow(new NoSuchEventTypeException("no such event type"));
+
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + EVENT_TYPE_NAME)
+                .accept(APPLICATION_JSON);
+
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().is(404));
+
     }
 
     private ResultActions postEventType(EventType eventType) throws Exception {
@@ -212,7 +243,7 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(EventType eventType, String name) throws Exception {
         String content = objectMapper.writeValueAsString(eventType);
 
-        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
+        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + EVENT_TYPE_NAME)
                 .contentType(APPLICATION_JSON)
                 .content(content);
 
@@ -220,7 +251,6 @@ public class EventTypeControllerTest {
     }
 
     private EventType buildEventType() throws JsonProcessingException {
-        final String name = "event-name";
 
         final EventTypeSchema schema = new EventTypeSchema();
         final EventType eventType = new EventType();
@@ -228,8 +258,8 @@ public class EventTypeControllerTest {
         schema.setSchema("{ \"price\": 1000 }");
         schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
 
-        eventType.setName(name);
-        eventType.setCategory(name + "-category");
+        eventType.setName(EVENT_TYPE_NAME);
+        eventType.setCategory(EVENT_TYPE_NAME + "-category");
         eventType.setEventTypeSchema(schema);
 
         return eventType;
@@ -247,7 +277,7 @@ public class EventTypeControllerTest {
         return sameJSONAs(asJsonString(expectedProblem));
     }
 
-    private String asJsonString(final Problem expectedProblem) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(expectedProblem);
+    private String asJsonString(final Object object) throws JsonProcessingException {
+        return objectMapper.writeValueAsString(object);
     }
 }
