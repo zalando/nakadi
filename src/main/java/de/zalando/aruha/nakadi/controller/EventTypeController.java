@@ -28,6 +28,7 @@ import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 import java.util.List;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -98,13 +99,24 @@ public class EventTypeController {
                 return create(new ValidationProblem(errors), nativeWebRequest);
             }
         } catch (NoSuchEventTypeException e) {
-            final Problem problem = Problem.valueOf(Response.Status.NOT_FOUND);
+            final Problem problem = Problem.valueOf(NOT_FOUND);
             return create(problem, nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Unable to update event type", e);
 
             final Problem problem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, e.getMessage());
             return create(problem, nativeWebRequest);
+        }
+    }
+
+    @RequestMapping(value = "/{name}", method = RequestMethod.GET)
+    public ResponseEntity<?> exposeSingleEventType(@PathVariable final String name, final NativeWebRequest nativeWebRequest) {
+        try {
+            final EventType eventType = eventTypeRepository.findByName(name);
+            return status(HttpStatus.OK).body(eventType);
+        } catch (NoSuchEventTypeException e) {
+            LOG.debug("Could not find EventType: {}", name);
+            return create(Problem.valueOf(NOT_FOUND, "EventType '" + name + "' does not exist."), nativeWebRequest);
         }
     }
 
