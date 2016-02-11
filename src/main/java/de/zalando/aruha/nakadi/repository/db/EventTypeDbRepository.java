@@ -84,4 +84,9 @@ public class EventTypeDbRepository implements EventTypeRepository {
                 "SELECT et_event_type_object FROM zn_data.event_type",
                 new EventTypeMapper());
     }
+
+    @Override
+    public void removeEventType(String name) {
+        jdbcTemplate.update("DELETE FROM zn_data.event_type WHERE et_name = ?", name);
+    }
 }

@@ -17,9 +17,9 @@ public interface TopicRepository {
 
     List<Topic> listTopics() throws NakadiException;
 
-    void createTopic(String topic);
+    void createTopic(String topic) throws TopicCreationException;
 
-    void createTopic(String topic, int partitionsNum, int replicaFactor, long retentionMs, long rotationMs);
+    void createTopic(String topic, int partitionsNum, int replicaFactor, long retentionMs, long rotationMs) throws TopicCreationException;
 
     boolean topicExists(String topic) throws NakadiException;
 

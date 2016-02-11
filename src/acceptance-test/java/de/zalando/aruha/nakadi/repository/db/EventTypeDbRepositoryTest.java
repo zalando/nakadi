@@ -146,6 +146,20 @@ public class EventTypeDbRepositoryTest {
         assertThat(eventTypes, hasSize(2));
     }
 
+    @Test
+    public void whenRemoveThenDeleteFromDatabase() throws Exception {
+        EventType eventType = buildEventType();
+        String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))";
+        template.update(insertSQL,
+                eventType.getName(),
+                mapper.writer().writeValueAsString(eventType));
+
+        repository.removeEventType(eventType.getName());
+
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
+        assertThat("Number of rows should encrease", rows, equalTo(0));
+    }
+
     private EventType buildEventType() {
         final EventTypeSchema schema = new EventTypeSchema();
         final EventType eventType = new EventType();

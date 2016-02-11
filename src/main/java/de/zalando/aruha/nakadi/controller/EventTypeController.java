@@ -4,9 +4,7 @@ import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.problem.DuplicatedEventTypeNameProblem;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +19,6 @@ import org.zalando.problem.Problem;
 import javax.validation.Valid;
 import javax.ws.rs.core.Response;
 import java.util.List;
-import java.util.Optional;
 
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -32,16 +29,18 @@ public class EventTypeController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);
 
-    final private EventTypeRepository repository;
+    final private EventTypeRepository eventTypeRepository;
+    private final TopicRepository topicRepository;
 
     @Autowired
-    public EventTypeController(EventTypeRepository repository) {
-        this.repository = repository;
+    public EventTypeController(EventTypeRepository eventTypeRepository, TopicRepository topicRepository) {
+        this.eventTypeRepository = eventTypeRepository;
+        this.topicRepository = topicRepository;
     }
 
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity<?> list() {
-        List<EventType> eventTypes = repository.list();
+        List<EventType> eventTypes = eventTypeRepository.list();
 
         return status(HttpStatus.OK).body(eventTypes);
     }
@@ -55,10 +54,17 @@ public class EventTypeController {
         }
 
         try {
-            repository.saveEventType(eventType);
+            eventTypeRepository.saveEventType(eventType);
+            topicRepository.createTopic(eventType.getName());
             return status(HttpStatus.CREATED).build();
         } catch (DuplicatedEventTypeNameException e) {
             final Problem problem = new DuplicatedEventTypeNameProblem(e.getName());
+            return create(problem, nativeWebRequest);
+        } catch (TopicCreationException e) {
+            LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
+
+            eventTypeRepository.removeEventType(eventType.getName());
+            Problem problem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
             return create(problem, nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Error creating event type", e);
@@ -78,7 +84,7 @@ public class EventTypeController {
             validateUpdate(name, eventType, errors);
 
             if (!errors.hasErrors()) {
-                repository.update(eventType);
+                eventTypeRepository.update(eventType);
                 return status(HttpStatus.OK).build();
             } else {
                 return create(new ValidationProblem(errors), nativeWebRequest);
@@ -96,7 +102,7 @@ public class EventTypeController {
 
     private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NakadiException {
         if (!errors.hasErrors()) {
-            final EventType existingEventType = repository.findByName(name);
+            final EventType existingEventType = eventTypeRepository.findByName(name);
 
             validateName(name, eventType, errors);
             validateSchema(eventType, existingEventType, errors);

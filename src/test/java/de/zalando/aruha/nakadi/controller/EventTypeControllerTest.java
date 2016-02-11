@@ -8,9 +8,7 @@ import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.problem.DuplicatedEventTypeNameProblem;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.repository.*;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -28,8 +26,7 @@ import javax.ws.rs.core.Response;
 import java.util.Arrays;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -40,12 +37,13 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventTypeControllerTest {
 
-    private final EventTypeRepository repo = mock(EventTypeRepository.class);
+    private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
+    private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
 
     public EventTypeControllerTest() {
-        EventTypeController controller = new EventTypeController(repo);
+        EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
@@ -77,7 +75,7 @@ public class EventTypeControllerTest {
 
         Mockito.
                 doThrow(e).
-                when(repo).
+                when(eventTypeRepository).
                 saveEventType(any(EventType.class));
 
         postEventType(buildEventType())
@@ -92,7 +90,7 @@ public class EventTypeControllerTest {
 
         Mockito
                 .doThrow(NakadiException.class)
-                .when(repo)
+                .when(eventTypeRepository)
                 .saveEventType(any(EventType.class));
 
         postEventType(buildEventType())
@@ -102,15 +100,52 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPersistSuccessfullyThen201() throws Exception {
+    public void whenCreateSuccessfullyThen201() throws Exception {
         Mockito
                 .doNothing()
-                .when(repo)
+                .when(eventTypeRepository)
                 .saveEventType(any(EventType.class));
+
+        Mockito
+                .doNothing()
+                .when(topicRepository)
+                .createTopic("event-name");
 
         postEventType(buildEventType())
                 .andExpect(status().isCreated())
                 .andExpect(content().string(""));
+
+        verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
+        verify(topicRepository, times(1)).createTopic("event-name");
+    }
+
+    @Test
+    public void whenTopicCreationFailsRemoveEventTypeFromRepositoryAnd500() throws Exception {
+        Mockito
+                .doNothing()
+                .when(eventTypeRepository)
+                .saveEventType(any(EventType.class));
+
+        Mockito
+                .doThrow(TopicCreationException.class)
+                .when(topicRepository)
+                .createTopic("event-name");
+
+        Mockito
+                .doNothing()
+                .when(eventTypeRepository)
+                .removeEventType("event-name");
+
+        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
+
+        postEventType(buildEventType())
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+
+        verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
+        verify(topicRepository, times(1)).createTopic("event-name");
+        verify(eventTypeRepository, times(1)).removeEventType("event-name");
     }
 
     @Test
@@ -136,7 +171,7 @@ public class EventTypeControllerTest {
 
         Mockito
                 .doReturn(eventType)
-                .when(repo)
+                .when(eventTypeRepository)
                 .findByName("event-name");
 
         putEventType(eventType, "event-name")
@@ -156,7 +191,7 @@ public class EventTypeControllerTest {
 
         Mockito
                 .doReturn(persistedEventType)
-                .when(repo)
+                .when(eventTypeRepository)
                 .findByName("event-name");
 
         putEventType(eventType, "event-name")
@@ -173,7 +208,7 @@ public class EventTypeControllerTest {
 
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
-                .when(repo)
+                .when(eventTypeRepository)
                 .findByName("event-name");
 
         putEventType(eventType, "event-name")
@@ -190,7 +225,7 @@ public class EventTypeControllerTest {
 
         Mockito
                 .doThrow(NakadiException.class)
-                .when(repo)
+                .when(eventTypeRepository)
                 .findByName("event-name");
 
         putEventType(eventType, "event-name")
