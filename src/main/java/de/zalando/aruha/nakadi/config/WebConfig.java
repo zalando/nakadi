@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.FlowIdRequestFilter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
-import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
+import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +22,8 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Autowired
     private KafkaRepository kafkaRepository;
+    @Autowired
+    private EventTypeDbRepository eventTypeDbRepository;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -36,7 +38,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(kafkaRepository, new InMemoryEventTypeRepository());
+        return new EventPublishingController(kafkaRepository, eventTypeDbRepository);
     }
 
     @Bean
