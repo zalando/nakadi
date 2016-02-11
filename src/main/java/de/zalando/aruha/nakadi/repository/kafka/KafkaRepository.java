@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
@@ -34,6 +35,8 @@ import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
+import static kafka.api.OffsetRequest.EarliestTime;
+import static kafka.api.OffsetRequest.LatestTime;
 
 public class KafkaRepository implements TopicRepository {
 
@@ -103,7 +106,16 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) {
+    public boolean partitionExists(final String topic, final String partition) throws NakadiException {
+        return kafkaFactory
+                .getConsumer()
+                .partitionsFor(topic)
+                .stream()
+                .anyMatch(pInfo -> toNakadiPartition(pInfo.partition()).equals(partition));
+    }
+
+    @Override
+    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) throws NakadiException {
         final List<TopicPartition> partitions = listPartitions(topic);
         return cursors
                 .stream()
@@ -138,7 +150,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) {
+    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
 
         final SimpleConsumer sc = kafkaFactory.getSimpleConsumer();
         try {
@@ -153,12 +165,12 @@ public class KafkaRepository implements TopicRepository {
                     .stream()
                     .collect(Collectors.toMap(
                             Function.identity(),
-                            t -> new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), 1)));
+                            t -> new PartitionOffsetRequestInfo(LatestTime(), 1)));
             final Map<TopicAndPartition, PartitionOffsetRequestInfo> earliestPartitionRequests = partitions
                     .stream()
                     .collect(Collectors.toMap(
                             Function.identity(),
-                            t -> new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.EarliestTime(), 1)));
+                            t -> new PartitionOffsetRequestInfo(EarliestTime(), 1)));
 
             final OffsetResponse latestPartitionData = fetchPartitionData(sc, latestPartitionRequests);
             final OffsetResponse earliestPartitionData = fetchPartitionData(sc, earliestPartitionRequests);
@@ -167,8 +179,34 @@ public class KafkaRepository implements TopicRepository {
                     .stream()
                     .map(r -> processTopicPartitionMetadata(r, latestPartitionData, earliestPartitionData))
                     .collect(Collectors.toList());
-        } finally {
+        }
+        catch (Exception e) {
+            throw new NakadiException("Error occurred when fetching partitions offsets", e);
+        }
+        finally {
             sc.close();
+        }
+    }
+
+    @Override
+    public TopicPartition getPartition(final String topicId, final String partition) throws NakadiException {
+        final SimpleConsumer consumer = kafkaFactory.getSimpleConsumer();
+        try {
+            final TopicAndPartition topicAndPartition = new TopicAndPartition(topicId, Integer.parseInt(partition));
+
+            final OffsetResponse latestPartitionData = fetchPartitionData(consumer, ImmutableMap.of(
+                    topicAndPartition, new PartitionOffsetRequestInfo(LatestTime(), 1)));
+
+            final OffsetResponse earliestPartitionData = fetchPartitionData(consumer, ImmutableMap.of(
+                    topicAndPartition, new PartitionOffsetRequestInfo(EarliestTime(), 1)));
+
+            return processTopicPartitionMetadata(topicAndPartition, latestPartitionData, earliestPartitionData);
+        }
+        catch (Exception e) {
+            throw new NakadiException("Error occurred when fetching partition offsets", e);
+        }
+        finally {
+            consumer.close();
         }
     }
 

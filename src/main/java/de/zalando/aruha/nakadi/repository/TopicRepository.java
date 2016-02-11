@@ -23,11 +23,15 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws NakadiException;
 
-    boolean areCursorsValid(String topic, List<Cursor> cursors);
+    boolean partitionExists(String topic, String partition) throws NakadiException;
+
+    boolean areCursorsValid(String topic, List<Cursor> cursors) throws NakadiException;
 
     void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
+
+    TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 
     EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
 }
