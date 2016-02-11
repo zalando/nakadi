@@ -52,7 +52,7 @@ public class PartitionsControllerTest {
     private MockMvc mockMvc;
 
     @Before
-    public void setup() {
+    public void before() {
         final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
         jsonHelper = new JsonTestHelper(objectMapper);
 

@@ -32,7 +32,7 @@ public class PartitionsControllerAT extends BaseAT {
     private Map<String, List<PartitionInfo>> actualTopics;
 
     @Before
-    public void setup() {
+    public void before() {
         kafkaHelper = new KafkaTestHelper(kafkaUrl);
         actualTopics = kafkaHelper.createConsumer().listTopics();
     }
