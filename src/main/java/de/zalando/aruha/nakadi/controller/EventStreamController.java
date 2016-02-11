@@ -68,7 +68,6 @@ public class EventStreamController {
 
         return outputStream -> {
             try {
-                // todo: we should get topic from EventType after persistence of EventType is implemented
                 @SuppressWarnings("UnnecessaryLocalVariable")
                 final String topic = eventTypeName;
 

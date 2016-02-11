@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
@@ -15,12 +14,12 @@ public class JsonTestHelper {
         this.objectMapper = objectMapper;
     }
 
-    public SameJSONAs<? super String> matchesProblem(final Problem expectedProblem)
+    public SameJSONAs<? super String> matchesObject(final Object expectedObject)
             throws JsonProcessingException {
-        return sameJSONAs(asJsonString(expectedProblem));
+        return sameJSONAs(asJsonString(expectedObject));
     }
 
-    public String asJsonString(final Problem expectedProblem) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(expectedProblem);
+    public String asJsonString(final Object object) throws JsonProcessingException {
+        return objectMapper.writeValueAsString(object);
     }
 }

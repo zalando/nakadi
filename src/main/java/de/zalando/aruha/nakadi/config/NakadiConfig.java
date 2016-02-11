@@ -12,6 +12,7 @@ import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
+import de.zalando.aruha.nakadi.controller.PartitionsController;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
@@ -40,9 +41,9 @@ public class NakadiConfig {
 
     @Autowired
     private Environment environment;
+    
     @Autowired
     private EventTypeDbRepository eventTypeDbRepository;
-
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -119,6 +120,11 @@ public class NakadiConfig {
     @Bean
     public EventStreamFactory eventStreamFactory() {
         return new EventStreamFactory();
+    }
+
+    @Bean
+    public PartitionsController partitionsController() {
+        return new PartitionsController(kafkaRepository());
     }
 
     @Bean
