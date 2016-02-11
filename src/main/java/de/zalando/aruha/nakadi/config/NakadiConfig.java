@@ -10,8 +10,10 @@ import com.fasterxml.jackson.datatype.jsonorg.JSONObjectDeserializer;
 import com.fasterxml.jackson.datatype.jsonorg.JSONObjectSerializer;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
+import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
+import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
@@ -39,6 +41,9 @@ public class NakadiConfig {
 
     @Autowired
     private Environment environment;
+    
+    @Autowired
+    private EventTypeDbRepository eventTypeDbRepository;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -120,6 +125,11 @@ public class NakadiConfig {
     @Bean
     public PartitionsController partitionsController() {
         return new PartitionsController(kafkaRepository());
+    }
+
+    @Bean
+    public EventPublishingController eventPublishingController() {
+        return new EventPublishingController(kafkaRepository(), eventTypeDbRepository);
     }
 
 }
