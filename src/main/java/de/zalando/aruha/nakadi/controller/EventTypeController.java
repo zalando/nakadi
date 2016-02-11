@@ -104,7 +104,7 @@ public class EventTypeController {
             final EventType eventType = repository.findByName(name);
             return status(HttpStatus.OK).body(eventType);
         } catch (NoSuchEventTypeException e) {
-            LOG.debug("Could not find EventType: " + name);
+            LOG.debug("Could not find EventType: {}", name);
             return create(Problem.valueOf(NOT_FOUND, "EventType '" + name + "' does not exist."),
                     nativeWebRequest);
         }
