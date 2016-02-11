@@ -86,7 +86,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     }
 
     @Override
-    public void removeEventType(String name) {
+    public void removeEventType(final String name) {
         jdbcTemplate.update("DELETE FROM zn_data.event_type WHERE et_name = ?", name);
     }
 }
