@@ -24,7 +24,7 @@ public class PartitionsController {
 
     private static final Logger LOG = LoggerFactory.getLogger(PartitionsController.class);
 
-    private TopicRepository topicRepository;
+    private final TopicRepository topicRepository;
 
     public PartitionsController(final TopicRepository topicRepository) {
         this.topicRepository = topicRepository;

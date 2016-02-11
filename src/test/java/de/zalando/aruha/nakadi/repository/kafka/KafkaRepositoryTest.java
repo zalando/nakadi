@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import com.google.common.collect.ImmutableList;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
@@ -14,7 +15,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.junit.Test;
-import org.parboiled.common.ImmutableList;
 
 import java.util.HashSet;
 import java.util.List;

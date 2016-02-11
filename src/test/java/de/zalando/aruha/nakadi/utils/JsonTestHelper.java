@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.problem.Problem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;

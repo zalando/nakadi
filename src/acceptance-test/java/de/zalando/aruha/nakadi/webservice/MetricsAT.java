@@ -9,7 +9,6 @@ import static com.jayway.restassured.path.json.JsonPath.from;
 
 import org.apache.http.HttpStatus;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class MetricsAT extends BaseAT {
