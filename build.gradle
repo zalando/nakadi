@@ -293,6 +293,7 @@ task startDockerContainer(type: Exec) {
 }
 
 task stopAndRemoveDockerContainer(type: Exec) {
+    dependsOn stopAndRemoveStoragesInDocker
     commandLine "bash", "-c",
             "for c in `docker ps -qaf name=$dockerContainerName`; do docker rm -f \$c; done"
 }

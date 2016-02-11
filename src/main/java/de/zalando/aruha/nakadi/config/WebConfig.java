@@ -1,10 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.FlowIdRequestFilter;
-import de.zalando.aruha.nakadi.controller.EventPublishingController;
-import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
-import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -20,9 +16,6 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Value("${nakadi.stream.timeoutMs}")
     private long nakadiStreamTimeout;
 
-    @Autowired
-    private KafkaRepository kafkaRepository;
-
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
         configurer.setDefaultTimeout(nakadiStreamTimeout);
@@ -32,11 +25,6 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public TimeoutCallableProcessingInterceptor timeoutInterceptor() {
         return new TimeoutCallableProcessingInterceptor();
-    }
-
-    @Bean
-    public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(kafkaRepository, new InMemoryEventTypeRepository());
     }
 
     @Bean
