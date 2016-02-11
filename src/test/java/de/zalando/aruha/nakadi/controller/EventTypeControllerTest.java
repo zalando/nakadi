@@ -22,11 +22,13 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -172,7 +174,7 @@ public class EventTypeControllerTest {
     public void whenPUTInexistingEventTypeThen404() throws Exception {
         EventType eventType = buildEventType();
 
-        Problem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND);
+        Problem expectedProblem = Problem.valueOf(NOT_FOUND);
 
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
@@ -212,7 +214,7 @@ public class EventTypeControllerTest {
                 .accept(APPLICATION_JSON);
 
         mockMvc.perform(requestBuilder)
-                .andExpect(status().is2xxSuccessful())
+                .andExpect(status().is(200))
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(content().json(asJsonString(expectedEventType)));
 
@@ -225,8 +227,13 @@ public class EventTypeControllerTest {
         final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + EVENT_TYPE_NAME)
                 .accept(APPLICATION_JSON);
 
+        final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND,
+                "EventType '" + EVENT_TYPE_NAME + "' does not exist.");
+
         mockMvc.perform(requestBuilder)
-                .andExpect(status().is(404));
+                .andExpect(status().is(404))
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
 
     }
 
