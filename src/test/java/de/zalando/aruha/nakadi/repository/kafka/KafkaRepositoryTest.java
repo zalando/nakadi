@@ -229,18 +229,12 @@ public class KafkaRepositoryTest {
         allTopics().stream().forEach(
                 topic -> when(consumer.partitionsFor(topic)).thenReturn(partitionsOfTopic(topic)));
 
-        // SimpleConsumer
-        final SimpleConsumer simpleConsumer = mock(SimpleConsumer.class);
-        when(simpleConsumer.getOffsetsBefore(any(OffsetRequest.class)))
-                .thenAnswer(new OffsetResponseAnswer(PARTITIONS));
-
         // KafkaProducer
         when(kafkaProducer.send(EXPECTED_PRODUCER_RECORD)).thenReturn(mock(Future.class));
 
         // KafkaFactory
         final KafkaFactory kafkaFactory = mock(KafkaFactory.class);
 
-        when(kafkaFactory.getSimpleConsumer()).thenReturn(simpleConsumer);
         when(kafkaFactory.getConsumer()).thenReturn(consumer);
         when(kafkaFactory.createProducer()).thenReturn(kafkaProducer);
 
@@ -258,4 +252,10 @@ public class KafkaRepositoryTest {
         return new PartitionInfo(topic, partition, null, null, null);
     }
 
+    private ConsumerOffsetMode offsetMode = ConsumerOffsetMode.EARLIEST;
+
+    private enum ConsumerOffsetMode {
+        EARLIEST,
+        LATEST
+    }
 }
