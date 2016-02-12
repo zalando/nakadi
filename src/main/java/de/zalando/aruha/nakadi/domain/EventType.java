@@ -15,6 +15,7 @@ public class EventType {
     @Size(min = 1, message = "may not be empty")
     private String name;
 
+    @JsonProperty("owning_application")
     private String owningApplication;
 
     @NotNull
