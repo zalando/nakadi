@@ -34,7 +34,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     @Override
     public void saveEventType(final EventType eventType) throws DuplicatedEventTypeNameException, NakadiException {
         try {
-            jdbcTemplate.update("INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))",
+            jdbcTemplate.update("INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, ?::jsonb)",
                     eventType.getName(),
                     jsonMapper.writer().writeValueAsString(eventType));
         } catch (JsonProcessingException e) {
@@ -59,7 +59,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     public void update(final EventType eventType) throws NakadiException {
         try {
             jdbcTemplate.update(
-                    "UPDATE zn_data.event_type SET et_event_type_object = to_json(?::json) WHERE et_name = ?",
+                    "UPDATE zn_data.event_type SET et_event_type_object = ?::jsonb WHERE et_name = ?",
                     jsonMapper.writer().writeValueAsString(eventType),
                     eventType.getName());
         } catch (JsonProcessingException e) {
