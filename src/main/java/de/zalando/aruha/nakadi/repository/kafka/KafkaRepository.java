@@ -163,7 +163,7 @@ public class KafkaRepository implements TopicRepository {
     @Override
     public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
 
-        try (Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+        try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
 
             final List<org.apache.kafka.common.TopicPartition> kafkaTPs = consumer
                     .partitionsFor(topicId)
@@ -211,7 +211,7 @@ public class KafkaRepository implements TopicRepository {
     @Override
     public TopicPartition getPartition(final String topicId, final String partition) throws NakadiException {
 
-        try (Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+        try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
 
             final org.apache.kafka.common.TopicPartition tp =
                     new org.apache.kafka.common.TopicPartition(topicId, toKafkaPartition(partition));
