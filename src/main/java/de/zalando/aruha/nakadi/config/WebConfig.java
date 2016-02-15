@@ -1,20 +1,32 @@
 package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.FlowIdRequestFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.ResourceHttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.xml.SourceHttpMessageConverter;
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
+
+import java.util.List;
 
 @Configuration
 public class WebConfig extends WebMvcConfigurationSupport {
 
     @Value("${nakadi.stream.timeoutMs}")
     private long nakadiStreamTimeout;
+
+    @Autowired
+    private NakadiConfig nakadiConfig;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -33,5 +45,26 @@ public class WebConfig extends WebMvcConfigurationSupport {
         filterRegistrationBean.setFilter(new FlowIdRequestFilter());
         filterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return filterRegistrationBean;
+    }
+
+    @Bean
+    public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
+        final MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setObjectMapper(nakadiConfig.jacksonObjectMapper());
+        return converter;
+    }
+
+    @Override
+    protected void configureMessageConverters(final List<HttpMessageConverter<?>> converters) {
+        final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter();
+        stringConverter.setWriteAcceptCharset(false);
+
+        converters.add(new ByteArrayHttpMessageConverter());
+        converters.add(stringConverter);
+        converters.add(new ResourceHttpMessageConverter());
+        converters.add(new SourceHttpMessageConverter<>());
+
+        converters.add(mappingJackson2HttpMessageConverter());
+        super.configureMessageConverters(converters);
     }
 }

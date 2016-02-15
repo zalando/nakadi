@@ -141,8 +141,8 @@ public class PartitionsControllerAT extends BaseAT {
 
     private void validateOffsetIncreasedBy(final Map<String, String> partitionInfoBefore,
                                            final Map<String, String> partitionInfoAfter, final long delta) {
-        final long offsetBefore = Long.parseLong(partitionInfoBefore.get("newestAvailableOffset"));
-        final long offsetAfter = Long.parseLong(partitionInfoAfter.get("newestAvailableOffset"));
+        final long offsetBefore = Long.parseLong(partitionInfoBefore.get("newest_available_offset"));
+        final long offsetAfter = Long.parseLong(partitionInfoAfter.get("newest_available_offset"));
         assertThat(offsetAfter, is(offsetBefore + delta));
     }
 
@@ -155,8 +155,8 @@ public class PartitionsControllerAT extends BaseAT {
 
     private void validatePartitionStructure(final Map<String, String> pMap) {
         assertThat(pMap.get("partition"), Matchers.notNullValue());
-        assertThat(pMap.get("newestAvailableOffset"), Matchers.notNullValue());
-        assertThat(pMap.get("oldestAvailableOffset"), Matchers.notNullValue());
+        assertThat(pMap.get("newest_available_offset"), Matchers.notNullValue());
+        assertThat(pMap.get("oldest_available_offset"), Matchers.notNullValue());
     }
 
 }
