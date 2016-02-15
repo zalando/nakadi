@@ -10,6 +10,8 @@ import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -40,6 +42,8 @@ import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class EventStreamController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
 
     private final TopicRepository topicRepository;
 
@@ -95,6 +99,9 @@ public class EventStreamController {
                                 new TypeReference<ArrayList<Cursor>>() {
                                 });
                     } catch (IOException e) {
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr + ". Respond with BAD_REQUEST.", e);
+                        }
                         writeProblemResponse(response, outputStream, BAD_REQUEST,
                                 "incorrect syntax of X-nakadi-cursors header");
                         return;
@@ -135,9 +142,11 @@ public class EventStreamController {
                 eventStream.streamEvents();
             }
             catch (final NakadiException e) {
+                LOG.error("Error while trying to stream events. Respond with SERVICE_UNAVAILABLE.", e);
                 writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getProblemMessage());
             }
             catch (final Exception e) {
+                LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             }
             finally {

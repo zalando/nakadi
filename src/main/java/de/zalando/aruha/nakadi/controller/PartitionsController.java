@@ -47,9 +47,11 @@ public class PartitionsController {
             }
         }
         catch (final NakadiException e) {
+            LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
             return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getProblemMessage()), request);
         }
         catch (final Exception e) {
+            LOG.error("Could not list partitions. Respond with INTERNAL_SERVER_ERROR.", e);
             return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), request);
         }
     }
@@ -75,9 +77,11 @@ public class PartitionsController {
             }
         }
         catch (final NakadiException e) {
+            LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
             return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getProblemMessage()), request);
         }
         catch (final Exception e) {
+            LOG.error("Could not get partition. Respond with INTERNAL_SERVER_ERROR.", e);
             return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), request);
         }
     }
