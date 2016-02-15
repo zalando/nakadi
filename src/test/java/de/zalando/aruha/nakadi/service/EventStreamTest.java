@@ -151,7 +151,7 @@ public class EventStreamTest {
         assertThat(batches[2], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(2, DUMMY)))));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 10000)
     public void whenReadingEventsTheOrderIsCorrect() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
