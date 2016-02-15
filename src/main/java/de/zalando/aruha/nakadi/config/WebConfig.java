@@ -56,7 +56,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Override
     protected void configureMessageConverters(final List<HttpMessageConverter<?>> converters) {
-        StringHttpMessageConverter stringConverter = new StringHttpMessageConverter();
+        final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter();
         stringConverter.setWriteAcceptCharset(false);
 
         converters.add(new ByteArrayHttpMessageConverter());
