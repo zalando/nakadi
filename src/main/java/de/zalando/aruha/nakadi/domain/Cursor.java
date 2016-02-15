@@ -7,6 +7,8 @@ import javax.annotation.concurrent.Immutable;
 @Immutable
 public class Cursor {
 
+    public static final String BEFORE_OLDEST_OFFSET = "OLDEST";
+
     private final String partition;
 
     private final String offset;

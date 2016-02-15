@@ -130,6 +130,9 @@ public class KafkaRepository implements TopicRepository {
                         .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
                         .findFirst()
                         .map(pInfo -> {
+                            if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
+                                return true;
+                            }
                             final long newestOffset = toKafkaOffset(pInfo.getNewestAvailableOffset());
                             final long oldestOffset = toKafkaOffset(pInfo.getOldestAvailableOffset());
                             try {
