@@ -6,13 +6,12 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import kafka.javaapi.OffsetRequest;
-import kafka.javaapi.consumer.SimpleConsumer;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.junit.Test;
 
@@ -30,6 +29,8 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyVararg;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -54,6 +55,12 @@ public class KafkaRepositoryTest {
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 1, 0, 100));
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 5, 12, 60));
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 9, 99, 222));
+    }
+
+    private ConsumerOffsetMode offsetMode = ConsumerOffsetMode.EARLIEST;
+    private enum ConsumerOffsetMode {
+        EARLIEST,
+        LATEST
     }
 
     public static final List<Cursor> MY_TOPIC_VALID_CURSORS = asList(cursor("0", "41"), cursor("1", "100"), cursor("1", "200"), cursor("1", "101"));
@@ -229,6 +236,27 @@ public class KafkaRepositoryTest {
         allTopics().stream().forEach(
                 topic -> when(consumer.partitionsFor(topic)).thenReturn(partitionsOfTopic(topic)));
 
+        doAnswer(invocation -> {
+            offsetMode = ConsumerOffsetMode.EARLIEST;
+            return null;
+        }).when(consumer).seekToBeginning(anyVararg());
+
+        doAnswer(invocation -> {
+            offsetMode = ConsumerOffsetMode.LATEST;
+            return null;
+        }).when(consumer).seekToEnd(anyVararg());
+
+        when(consumer.position(any())).thenAnswer(invocation -> {
+            final org.apache.kafka.common.TopicPartition tp =
+                    (org.apache.kafka.common.TopicPartition) invocation.getArguments()[0];
+            return PARTITIONS
+                    .stream()
+                    .filter(ps -> ps.topic.equals(tp.topic()) && ps.partition == tp.partition())
+                    .findFirst()
+                    .map(ps -> offsetMode == ConsumerOffsetMode.LATEST ? ps.latestOffset : ps.earliestOffset)
+                    .orElseThrow(KafkaException::new);
+        });
+
         // KafkaProducer
         when(kafkaProducer.send(EXPECTED_PRODUCER_RECORD)).thenReturn(mock(Future.class));
 
@@ -252,10 +280,4 @@ public class KafkaRepositoryTest {
         return new PartitionInfo(topic, partition, null, null, null);
     }
 
-    private ConsumerOffsetMode offsetMode = ConsumerOffsetMode.EARLIEST;
-
-    private enum ConsumerOffsetMode {
-        EARLIEST,
-        LATEST
-    }
 }
