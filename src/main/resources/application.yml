@@ -13,6 +13,10 @@ spring:
     username: nakadi_app
     password: nakadi
     driverClassName: org.postgresql.Driver
+    initialSize: 2
+    maxActive: 20
+    testOnBorrow: true
+    validationQuery: SELECT 1
 nakadi:
   topic:
     default:
