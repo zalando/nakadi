@@ -148,8 +148,8 @@ public class PartitionsControllerAT extends BaseAT {
 
     private void writeMessageToPartition(final int partition) throws InterruptedException, ExecutionException {
         final KafkaProducer<String, String> producer = kafkaHelper.createProducer();
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(TEST_TOPIC, partition, "blah_key",
-                "blah_value");
+        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(TEST_TOPIC, partition, "blahKey",
+                "blahValue");
         producer.send(producerRecord).get();
     }
 
