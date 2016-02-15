@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -26,8 +25,6 @@ public class KafkaLocationManager {
 
     @Autowired
     private ZooKeeperHolder zkFactory;
-
-    private List<Broker> kafkaBrokerList;
 
     private Properties kafkaProperties;
 
@@ -77,9 +74,9 @@ public class KafkaLocationManager {
         return builder.deleteCharAt(builder.length() - 1).toString();
     }
 
-    private Properties buildKafkaProperties() {
+    private Properties buildKafkaProperties(final List<Broker> brokers) {
         final Properties props = new Properties();
-        props.put("bootstrap.servers", buildBootstrapServers(kafkaBrokerList));
+        props.put("bootstrap.servers", buildBootstrapServers(brokers));
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
@@ -89,23 +86,17 @@ public class KafkaLocationManager {
 
     @PostConstruct
     private void init() {
-        kafkaBrokerList = fetchBrokers();
-        kafkaProperties = buildKafkaProperties();
+        kafkaProperties = buildKafkaProperties(fetchBrokers());
     }
 
     @Scheduled(fixedDelay = 30000)
     private void updateBrokers() {
         if (kafkaProperties != null) {
-            List<Broker> brokers = fetchBrokers();
+            final List<Broker> brokers = fetchBrokers();
             if (!brokers.isEmpty()) {
-                kafkaBrokerList = Collections.unmodifiableList(brokers);
                 kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
             }
         }
-    }
-
-    public List<Broker> getKafkaBrokers() {
-        return kafkaBrokerList;
     }
 
     public Properties getKafkaProperties() {

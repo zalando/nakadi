@@ -8,7 +8,7 @@ do
         curl -v -X POST -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             -d '"Dummy"' \
-            "http://localhost:8080/topics/test-topic/partitions/${p}/events" &
+            "http://localhost:8080/event-types/test-topic/events" &
     done
     wait
 done
