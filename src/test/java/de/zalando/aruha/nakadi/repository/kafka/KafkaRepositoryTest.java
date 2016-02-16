@@ -63,9 +63,23 @@ public class KafkaRepositoryTest {
         LATEST
     }
 
-    public static final List<Cursor> MY_TOPIC_VALID_CURSORS = asList(cursor("0", "41"), cursor("1", "100"), cursor("1", "200"), cursor("1", "101"));
-    public static final List<Cursor> ANOTHER_TOPIC_CURSORS = asList(cursor("1", "0"), cursor("1", "100"), cursor("5", "12"), cursor("9", "100"));
-    public static final List<Cursor> MY_TOPIC_INVALID_CURSORS = asList(cursor("0", "39"), cursor("1", "0"), cursor("1", "99"), cursor("1", "201"));
+    public static final List<Cursor> MY_TOPIC_VALID_CURSORS = asList(
+            cursor("0", "39"), // the first one possible
+            cursor("0", "40"), // something in the middle
+            cursor("0", "41"), // the last one possible
+            cursor("1", "150"), // something in the middle
+            cursor("1", Cursor.BEFORE_OLDEST_OFFSET)); // consume from the very beginning
+
+    public static final List<Cursor> ANOTHER_TOPIC_VALID_CURSORS = asList(cursor("1", "0"), cursor("1", "99"),
+            cursor("5", "30"), cursor("9", "100"));
+
+    public static final List<Cursor> MY_TOPIC_INVALID_CURSORS = asList(
+            cursor("0", "38"),   // out of bounds
+            cursor("0", "42"),   // out of bounds
+            cursor("0", "blah"), // wrong offset
+            cursor("1", "98"),   // out of bounds
+            cursor("1", "200"),  // out of bounds
+            cursor("2", "100")); // none existing partition
 
     private static final List<String> MY_TOPIC_VALID_PARTITIONS = ImmutableList.of("0", "1");
     private static final List<String> MY_TOPIC_INVALID_PARTITIONS = ImmutableList.of("2", "-1", "abc");
@@ -73,12 +87,9 @@ public class KafkaRepositoryTest {
     private static final Function<PartitionState, TopicPartition> PARTITION_STATE_TO_TOPIC_PARTITION = p -> {
         final TopicPartition topicPartition = new TopicPartition(p.topic, String.valueOf(p.partition));
         topicPartition.setOldestAvailableOffset(String.valueOf(p.earliestOffset));
-        topicPartition.setNewestAvailableOffset(String.valueOf(p.latestOffset));
+        topicPartition.setNewestAvailableOffset(String.valueOf(p.latestOffset - 1));
         return topicPartition;
     };
-
-    public static final long LATEST_TIME = kafka.api.OffsetRequest.LatestTime();
-    public static final long EARLIEST_TIME = kafka.api.OffsetRequest.EarliestTime();
 
     private final KafkaRepository kafkaRepository;
     private final KafkaProducer kafkaProducer;
@@ -124,11 +135,11 @@ public class KafkaRepositoryTest {
         assertThat(kafkaRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_VALID_CURSORS), is(true));
 
         // validate each individual valid cursor
-        for (final Cursor cursor : ANOTHER_TOPIC_CURSORS) {
+        for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
             assertThat(cursor.toString(), kafkaRepository.areCursorsValid(ANOTHER_TOPIC, asList(cursor)), is(true));
         }
         // validate all valid cursors
-        assertThat(kafkaRepository.areCursorsValid(ANOTHER_TOPIC, ANOTHER_TOPIC_CURSORS), is(true));
+        assertThat(kafkaRepository.areCursorsValid(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS), is(true));
     }
 
     @Test

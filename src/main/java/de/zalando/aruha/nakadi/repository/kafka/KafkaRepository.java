@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
@@ -122,14 +124,18 @@ public class KafkaRepository implements TopicRepository {
                         .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
                         .findFirst()
                         .map(pInfo -> {
+                            Cursor blah = cursor;
                             if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
                                 return true;
+                            }
+                            else if (Cursor.BEFORE_OLDEST_OFFSET.equals(pInfo.getNewestAvailableOffset())) {
+                                return false;
                             }
                             final long newestOffset = toKafkaOffset(pInfo.getNewestAvailableOffset());
                             final long oldestOffset = toKafkaOffset(pInfo.getOldestAvailableOffset());
                             try {
                                 final long offset = fromNakadiCursor(cursor).getOffset();
-                                return offset >= oldestOffset && offset <= newestOffset;
+                                return offset >= oldestOffset - 1 && offset <= newestOffset;
                             } catch (NumberFormatException e) {
                                 return false;
                             }
@@ -177,7 +183,10 @@ public class KafkaRepository implements TopicRepository {
                     .map(tp -> {
                         final int partition = tp.partition();
                         final TopicPartition topicPartition = new TopicPartition(topicId, toNakadiPartition(partition));
-                        topicPartition.setNewestAvailableOffset(toNakadiOffset(latestOffsets.get(partition)));
+
+                        final Long latestOffset = latestOffsets.get(partition);
+                        topicPartition.setNewestAvailableOffset(transformNewestOffset(latestOffset));
+
                         topicPartition.setOldestAvailableOffset(toNakadiOffset(earliestOffsets.get(partition)));
                         return topicPartition;
                     })
@@ -186,6 +195,10 @@ public class KafkaRepository implements TopicRepository {
         catch (Exception e) {
             throw new NakadiException("Error occurred when fetching partition offsets", e);
         }
+    }
+
+    private String transformNewestOffset(final Long newestOffset) {
+        return newestOffset == 0 ? Cursor.BEFORE_OLDEST_OFFSET : toNakadiOffset(newestOffset - 1);
     }
 
     private Map<Integer, Long> getPositions(final Consumer<String, String> consumer,
@@ -214,7 +227,8 @@ public class KafkaRepository implements TopicRepository {
             topicPartition.setOldestAvailableOffset(toNakadiOffset(consumer.position(tp)));
 
             consumer.seekToEnd(tp);
-            topicPartition.setNewestAvailableOffset(toNakadiOffset(consumer.position(tp)));
+            final Long latestOffset = consumer.position(tp);
+            topicPartition.setNewestAvailableOffset(transformNewestOffset(latestOffset));
 
             return topicPartition;
         }
@@ -224,7 +238,28 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) {
-        return new NakadiKafkaConsumer(kafkaFactory, topic, cursors, settings.getKafkaPollTimeoutMs());
+    public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) throws NakadiException {
+
+        final List<KafkaCursor> kafkaCursors = Lists.newArrayListWithCapacity(cursors.size());
+
+        for (Map.Entry<String, String> entry : cursors.entrySet()) {
+            final String offset = entry.getValue();
+            final String partition = entry.getKey();
+
+            final long kafkaOffset;
+            if (Cursor.BEFORE_OLDEST_OFFSET.equals(offset)) {
+                final TopicPartition tp = getPartition(topic, partition);
+                kafkaOffset = toKafkaOffset(tp.getOldestAvailableOffset());
+
+            }
+            else {
+                kafkaOffset = toKafkaOffset(offset) + 1L;
+            }
+
+            final KafkaCursor kafkaCursor = kafkaCursor(toKafkaPartition(partition), kafkaOffset);
+            kafkaCursors.add(kafkaCursor);
+        }
+
+        return new NakadiKafkaConsumer(kafkaFactory, topic, kafkaCursors, settings.getKafkaPollTimeoutMs());
     }
 }

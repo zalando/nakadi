@@ -127,7 +127,7 @@ public class EventStreamTest {
                         assertThat(batch, sameJSONAs(jsonBatch("0", "0", empty()))));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 10000)
     public void whenBatchSizeIsSetThenGetEventsInBatches() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
