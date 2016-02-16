@@ -58,14 +58,14 @@ public class EventTypeDbRepository implements EventTypeRepository {
     }
 
     @Override
-    public void update(final EventType eventType) throws UnprocessableEntityException {
+    public void update(final EventType eventType) throws InternalNakadiException {
         try {
             jdbcTemplate.update(
                     "UPDATE zn_data.event_type SET et_event_type_object = ?::jsonb WHERE et_name = ?",
                     jsonMapper.writer().writeValueAsString(eventType),
                     eventType.getName());
         } catch (JsonProcessingException e) {
-            throw new UnprocessableEntityException("Serialization problem during persistence of event type \""
+            throw new InternalNakadiException("Serialization problem during persistence of event type \""
                     + eventType.getName() + "\"", e);
         }
     }
