@@ -16,7 +16,7 @@ import de.zalando.aruha.nakadi.controller.PartitionsController;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
-import de.zalando.aruha.nakadi.repository.kafka.KafkaRepository;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaRepositorySettings;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.json.JSONObject;
@@ -108,8 +108,8 @@ public class NakadiConfig {
     }
 
     @Bean
-    public KafkaRepository kafkaRepository() {
-        return new KafkaRepository(zooKeeperHolder(), kafkaFactory(), kafkaRepositorySettings());
+    public KafkaTopicRepository kafkaRepository() {
+        return new KafkaTopicRepository(zooKeeperHolder(), kafkaFactory(), kafkaRepositorySettings());
     }
 
     @Bean

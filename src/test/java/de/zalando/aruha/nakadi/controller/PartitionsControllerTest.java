@@ -2,9 +2,10 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.junit.Before;
@@ -90,7 +91,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenListPartitionsAndNakadiExceptionThenServiceUnavaiable() throws Exception {
-        final NakadiException nakadiException = new NakadiException("", DUMMY_MESSAGE, null);
+        final NakadiException nakadiException = new ServiceUnavailableException("", DUMMY_MESSAGE, null);
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(nakadiException);
 
         final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, DUMMY_MESSAGE);
@@ -149,7 +150,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionAndNakadiExceptionThenServiceUnavaiable() throws Exception {
-        final NakadiException nakadiException = new NakadiException("", DUMMY_MESSAGE, null);
+        final NakadiException nakadiException = new ServiceUnavailableException("", DUMMY_MESSAGE, null);
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(nakadiException);
 
         final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, DUMMY_MESSAGE);

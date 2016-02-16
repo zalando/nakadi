@@ -6,8 +6,9 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 
 public class InMemoryEventTypeRepository implements EventTypeRepository {
     private final Map<String, EventType> eventTypes = new HashMap<>();

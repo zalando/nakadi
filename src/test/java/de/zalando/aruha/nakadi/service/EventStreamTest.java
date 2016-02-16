@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
-import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.kafka.NakadiKafkaConsumer;
 import org.junit.Test;

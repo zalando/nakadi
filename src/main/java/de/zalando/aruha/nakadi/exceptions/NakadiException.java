@@ -1,7 +1,12 @@
-package de.zalando.aruha.nakadi;
+package de.zalando.aruha.nakadi.exceptions;
 
 
-public class NakadiException extends Exception {
+import org.apache.commons.lang3.StringUtils;
+import org.zalando.problem.Problem;
+
+import javax.ws.rs.core.Response;
+
+public abstract class NakadiException extends Exception {
 
     private String problemMessage;
 
@@ -25,5 +30,12 @@ public class NakadiException extends Exception {
     public void setProblemMessage(final String problemMessage) {
         this.problemMessage = problemMessage;
     }
+
+    public Problem asProblem() {
+        final String detail = StringUtils.isNotBlank(problemMessage) ? problemMessage : getMessage();
+        return Problem.valueOf(getStatus(), detail);
+    }
+
+    protected abstract Response.StatusType getStatus();
 
 }

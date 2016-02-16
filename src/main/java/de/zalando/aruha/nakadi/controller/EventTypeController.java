@@ -1,12 +1,11 @@
 package de.zalando.aruha.nakadi.controller;
 
-import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.problem.DuplicatedEventTypeNameProblem;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.slf4j.Logger;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
@@ -67,8 +65,7 @@ public class EventTypeController {
             topicRepository.createTopic(eventType.getName());
             return status(HttpStatus.CREATED).build();
         } catch (DuplicatedEventTypeNameException e) {
-            final Problem problem = new DuplicatedEventTypeNameProblem(e.getName());
-            return create(problem, nativeWebRequest);
+            return create(e.asProblem(), nativeWebRequest);
         } catch (TopicCreationException e) {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
 
@@ -76,10 +73,8 @@ public class EventTypeController {
             Problem problem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
             return create(problem, nativeWebRequest);
         } catch (NakadiException e) {
-            LOG.error("Error creating event type", e);
-
-            Problem problem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
-            return create(problem, nativeWebRequest);
+            LOG.error("Error creating event type " + eventType, e);
+            return create(e.asProblem(), nativeWebRequest);
         }
     }
 
@@ -103,9 +98,7 @@ public class EventTypeController {
             return create(Problem.valueOf(NOT_FOUND), nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Unable to update event type", e);
-
-            final Problem problem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, e.getMessage());
-            return create(problem, nativeWebRequest);
+            return create(e.asProblem(), nativeWebRequest);
         }
     }
 
@@ -116,7 +109,7 @@ public class EventTypeController {
             return status(HttpStatus.OK).body(eventType);
         } catch (NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", name);
-            return create(Problem.valueOf(NOT_FOUND, "EventType '" + name + "' does not exist."), nativeWebRequest);
+            return create(e.asProblem(), nativeWebRequest);
         }
     }
 

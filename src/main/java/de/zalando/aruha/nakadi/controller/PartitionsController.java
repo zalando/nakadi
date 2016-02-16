@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.controller;
 
 import com.codahale.metrics.annotation.Timed;
-import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -2,11 +2,13 @@ package de.zalando.aruha.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
 import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -32,15 +34,15 @@ public class EventTypeDbRepository implements EventTypeRepository {
     }
 
     @Override
-    public void saveEventType(final EventType eventType) throws DuplicatedEventTypeNameException, NakadiException {
+    public void saveEventType(final EventType eventType) throws NakadiException {
         try {
             jdbcTemplate.update("INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, ?::jsonb)",
                     eventType.getName(),
                     jsonMapper.writer().writeValueAsString(eventType));
         } catch (JsonProcessingException e) {
-            throw new NakadiException("Serialization problem during persistence of event type", e);
+            throw new InternalNakadiException("Serialization problem during persistence of event type", e);
         } catch (DuplicateKeyException e) {
-            throw new DuplicatedEventTypeNameException(e, eventType.getName());
+            throw new DuplicatedEventTypeNameException("EventType " + eventType.getName() + " already exists.", e);
         }
     }
 
@@ -49,7 +51,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
         final String sql = "SELECT et_event_type_object FROM zn_data.event_type WHERE et_name = ?";
 
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[] { name }, new EventTypeMapper());
+            return jdbcTemplate.queryForObject(sql, new Object[]{name}, new EventTypeMapper());
         } catch (EmptyResultDataAccessException e) {
             throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.", e);
         }
@@ -63,7 +65,8 @@ public class EventTypeDbRepository implements EventTypeRepository {
                     jsonMapper.writer().writeValueAsString(eventType),
                     eventType.getName());
         } catch (JsonProcessingException e) {
-            throw new NakadiException("Serialization problem during persistence of event type", e);
+            throw new UnprocessableEntityException("Serialization problem during persistence of event type \""
+                    + eventType.getName() + "\"", e);
         }
     }
 
