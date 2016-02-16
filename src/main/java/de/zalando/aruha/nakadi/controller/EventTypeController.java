@@ -113,7 +113,7 @@ public class EventTypeController {
         }
     }
 
-    private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NakadiException {
+    private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NoSuchEventTypeException {
         if (!errors.hasErrors()) {
             final EventType existingEventType = eventTypeRepository.findByName(name);
 

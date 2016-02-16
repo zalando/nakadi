@@ -58,7 +58,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     }
 
     @Override
-    public void update(final EventType eventType) throws NakadiException {
+    public void update(final EventType eventType) throws UnprocessableEntityException {
         try {
             jdbcTemplate.update(
                     "UPDATE zn_data.event_type SET et_event_type_object = ?::jsonb WHERE et_name = ?",
