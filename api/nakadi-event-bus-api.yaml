@@ -444,7 +444,7 @@ paths:
         The event stream is formatted as a sequence of `EventStreamBatch`es separated by `\n`. Each
         `EventStreamBatch` contains a chunk of Events and a `Cursor` pointing to the **end** of the
         chunk (i.e. last delivered Event). The cursor might specify the offset with the symbolic value
-        `OLDEST`, which will open the stream starting from the oldest available offset in the partition.
+        `BEGIN`, which will open the stream starting from the oldest available offset in the partition.
         Currently this format is the only one supported by the system, but in the future other MIME types
         will be supported (like `application/event-stream`).
 
@@ -971,7 +971,7 @@ definitions:
           This value can be used to construct a cursor when opening streams (see
           `GET /event-type/{name}/events` for details).
 
-          Might assume the special name OLDEST, meaning a pointer to the offset of the oldest available
+          Might assume the special name BEGIN, meaning a pointer to the offset of the oldest available
           event in the partition.
         type: string
 
