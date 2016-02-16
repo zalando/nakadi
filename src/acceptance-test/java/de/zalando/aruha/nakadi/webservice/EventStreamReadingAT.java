@@ -41,11 +41,13 @@ public class EventStreamReadingAT extends BaseAT {
     private KafkaTestHelper kafkaHelper;
     private String xNakadiCursors;
     private List<Cursor> initialCursors;
+    private List<Cursor> kafkaInitialNextOffsets;
 
     @Before
     public void setUp() throws InterruptedException, JsonProcessingException {
         kafkaHelper = new KafkaTestHelper(kafkaUrl);
-        initialCursors = kafkaHelper.getNextOffsets(TEST_TOPIC);
+        initialCursors = kafkaHelper.getOffsetsToReadFromLatest(TEST_TOPIC);
+        kafkaInitialNextOffsets = kafkaHelper.getNextOffsets(TEST_TOPIC);
         xNakadiCursors = jsonMapper.writeValueAsString(initialCursors);
     }
 
@@ -86,11 +88,11 @@ public class EventStreamReadingAT extends BaseAT {
                 .orElseThrow(() -> new AssertionError("Failed to find a partition in a stream"));
 
         // calculate the offset we expect to see in this batch in a stream
-        final Cursor partitionCursor = initialCursors.stream()
+        final Cursor partitionCursor = kafkaInitialNextOffsets.stream()
                 .filter(cursor -> TEST_PARTITION.equals(cursor.getPartition()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Failed to find cursor for needed partition"));
-        final String expectedOffset = Long.toString(Long.parseLong(partitionCursor.getOffset()) + eventsPushed);
+        final String expectedOffset = Long.toString(Long.parseLong(partitionCursor.getOffset()) - 1 + eventsPushed);
 
         // check that batch has offset, partition and events number we expect
         validateBatch(batchToCheck, TEST_PARTITION, expectedOffset, eventsPushed);
@@ -158,12 +160,12 @@ public class EventStreamReadingAT extends BaseAT {
         assertThat(batchesToCheck, hasSize(2));
 
         // calculate the offset we expect to see in this batch in a stream
-        final Cursor partitionCursor = initialCursors.stream()
+        final Cursor partitionCursor = kafkaInitialNextOffsets.stream()
                 .filter(cursor -> TEST_PARTITION.equals(cursor.getPartition()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Failed to find cursor for needed partition"));
-        final String expectedOffset1 = Long.toString(Long.parseLong(partitionCursor.getOffset()) + batchLimit);
-        final String expectedOffset2 = Long.toString(Long.parseLong(partitionCursor.getOffset()) + eventsPushed);
+        final String expectedOffset1 = Long.toString(Long.parseLong(partitionCursor.getOffset()) - 1 + batchLimit);
+        final String expectedOffset2 = Long.toString(Long.parseLong(partitionCursor.getOffset()) - 1 + eventsPushed);
 
         // check that batches have offset, partition and events number we expect
         validateBatch(batchesToCheck.get(0), TEST_PARTITION, expectedOffset1, batchLimit);

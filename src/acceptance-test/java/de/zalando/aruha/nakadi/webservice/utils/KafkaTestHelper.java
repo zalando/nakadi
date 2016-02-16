@@ -11,6 +11,9 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
+
 public class KafkaTestHelper {
 
     private final String kafkaUrl;
@@ -51,6 +54,21 @@ public class KafkaTestHelper {
         for (int i = 0; i < times; i++) {
             writeMessageToPartition(partition, topic, message);
         }
+    }
+
+    public List<Cursor> getOffsetsToReadFromLatest(final String topic) {
+        return getNextOffsets(topic)
+                .stream()
+                .map(cursor -> {
+                    if ("0".equals(cursor.getOffset())) {
+                        return new Cursor(cursor.getPartition(), Cursor.BEFORE_OLDEST_OFFSET);
+                    }
+                    else {
+                        final long lastEventOffset = toKafkaOffset(cursor.getOffset()) - 1;
+                        return new Cursor(cursor.getPartition(), toNakadiOffset(lastEventOffset));
+                    }
+                })
+                .collect(Collectors.toList());
     }
 
     public List<Cursor> getNextOffsets(final String topic) {
