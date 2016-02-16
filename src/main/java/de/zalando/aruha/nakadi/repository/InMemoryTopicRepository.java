@@ -65,12 +65,12 @@ public class InMemoryTopicRepository implements TopicRepository {
     private MockPartition getPartitionStorage(final String topicId, final String partitionId) throws NakadiException {
         final MockTopic topic = topics.get(topicId);
         if (topic == null) {
-            throw new InternalNakadiException("No such topic " + topicId);
+            throw new InternalNakadiException("No such topic '" + topicId + "'");
         }
 
         final MockPartition partition = topic.partitions.get(partitionId);
         if (partition == null) {
-            throw new InternalNakadiException("No such partition " + partitionId);
+            throw new InternalNakadiException("No such partition '" + partitionId + "'");
         }
 
         return partition;

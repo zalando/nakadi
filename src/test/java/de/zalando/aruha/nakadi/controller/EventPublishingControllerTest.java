@@ -83,7 +83,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void returns5xxProblemIfTopicDoesNotExistForEventType() throws Exception  {
-        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
+        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "No such topic 'registered-but-without-topic'");
 
         postEvent(EVENT_TYPE_WITHOUT_TOPIC, EVENT1)
                 .andExpect(status().is5xxServerError())

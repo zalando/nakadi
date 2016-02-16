@@ -18,7 +18,6 @@ import org.zalando.problem.ThrowableProblem;
 
 import java.util.List;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.eq;
@@ -102,18 +101,6 @@ public class PartitionsControllerTest {
     }
 
     @Test
-    public void whenListPartitionsAndExceptionThenInternalServerError() throws Exception {
-        final IllegalStateException exception = new IllegalStateException(DUMMY_MESSAGE);
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(exception);
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, DUMMY_MESSAGE);
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
-    }
-
-    @Test
     public void whenGetPartitionThenOk() throws Exception {
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
         when(topicRepositoryMock.partitionExists(eq(TEST_EVENT_TYPE), eq(TEST_PARTITION))).thenReturn(true);
@@ -157,18 +144,6 @@ public class PartitionsControllerTest {
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
-    }
-
-    @Test
-    public void whenGetPartitionAndExceptionThenInternalServerError() throws Exception {
-        final IllegalStateException exception = new IllegalStateException(DUMMY_MESSAGE);
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(exception);
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, DUMMY_MESSAGE);
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
-                .andExpect(status().isInternalServerError())
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
