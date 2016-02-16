@@ -82,10 +82,7 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPostDuplicatedEventTypeReturn409() throws Exception {
-//        final DuplicatedEventTypeNameException e = mock(DuplicatedEventTypeNameException.class);
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "some-name");
-
-//        when(e.getName()).thenReturn("some-name");
 
         Mockito.
                 doThrow(new DuplicatedEventTypeNameException("some-name")).
