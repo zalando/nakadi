@@ -42,18 +42,18 @@ info:
     Except for defined enrichment rules, Nakadi will never manipulate the content of any Event.
 
     Clients of Nakadi can be grouped in 2 categories: **EventType owners** and **Clients** (clients in turn
-    are both **Producers** and **Consumers** of Events). Application owners interact with Nakadi via the
+    are both **Producers** and **Consumers** of Events). Event Type owners interact with Nakadi via the
     **Schema Registry API** for the definition of EventTypes, while Clients via the streaming API for
     submission and reception of Events.
 
     A low level **Unmanaged API** is available, providing full control and responsibility of position
     tracking and partitioning (and therefore ordering) to the Clients.
 
-    In the high level **Subscriptoin API** the consumption of Events proceeds via the establishment of a named
-    **Subscription** to an EventType. Subscriptions are persistent relationships from an Application (which
-    might have several instances) and the stream of one or more EventType's, whose consumption tracking is
-    managed by Nakadi, freeing Consumers from any responsibility in tracking of the current position on
-    a Stream.
+    In the high level **Subscription API** the consumption of Events proceeds via the establishment of a
+    named **Subscription** to an EventType. Subscriptions are persistent relationships from an Application
+    (which might have several instances) and the stream of one or more EventType's, whose consumption
+    tracking is managed by Nakadi, freeing Consumers from any responsibility in tracking of the current
+    position on a Stream.
 
     **Note** *Currently the high level API is out of scope in this specification.
     It is in the short term plan to be included.*
@@ -109,6 +109,15 @@ securityDefinitions:
     type: oauth2
     flow: implicit
     authorizationUrl: 'https://auth.example.com/oauth2/tokeninfo'
+    scopes:
+      nakadi.read: |
+        Generic read scope for operations that do not require more specific restrictions.
+      nakadi.event.type.write: |
+        Grants access for applications to define and update EventTypes.
+      nakadi.event.stream.write: |
+        Grants access for applications to submit Events.
+      nakadi.event.stream.read: |
+        Grants access for consuming Event streams.
 
 paths:
   /metrics:
@@ -414,8 +423,10 @@ paths:
 
         The event stream is formated as a sequence of `EventStreamBatch`es separated by `\n`. Each
         `EventStreamBatch` constains a chunk of Events and a `Cursor` pointing to the **end** of the
-        chunk (i.e. last delivered Event). Currently this format is the only one supported by the system,
-        but in the future other MIME types will be suported (like `application/event-stream`)
+        chunk (i.e. last delivered Event). The cursor might specify the offset with the symbolic value
+        `OLDEST`, which will open the stream starting from the oldest available offset in the partition.
+        Currently this format is the only one supported by the system, but in the future other MIME types
+        will be suported (like `application/event-stream`).
 
         If streaming for several distinct partitions, each one is an independent `EventStreamBatch`.
 
@@ -527,6 +538,7 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
           format: flow-id
+
       responses:
         '200':
           description: |
@@ -566,6 +578,8 @@ paths:
 
         This endpoint is mostly interesting for monitoring purposes or in cases when consumer wants to start
         consuming older messages.
+
+
       parameters:
         - name: name
           in: path
@@ -713,7 +727,6 @@ definitions:
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
     additionalProperties: true
-
 
   EventMetadata:
     type: object
@@ -892,12 +905,18 @@ definitions:
       oldest_available_offset:
         description: |
           An offset of the oldest available Event in that partition. This value will be changing upon
-          removal of Events from the partition by the background archiving/cleanup mechanizms.
+          removal of Events from the partition by the background archiving/cleanup mechanism.
         type: string
       newest_available_offset:
         description: |
-          An offset of the newes available Event in that partition. This value will be changing upon
-          reception of new events for this partition by nakadi
+          An offset of the newest available Event in that partition. This value will be changing upon
+          reception of new events for this partition by Nakadi.
+
+          This value can be used to construct a cursor when opening streams (see
+          `GET /event-type/{name}/events` for details).
+
+          Might assume the special name OLDEST, meaning a pointer to the offset of the oldest available
+          event in the partition.
         type: string
 
   Cursor:
@@ -907,8 +926,12 @@ definitions:
     properties:
       partition:
         type: string
+        description: |
+          Id of the partition pointed to by this cursor.
       offset:
         type: string
+        description: |
+          Offset of the event being poninted to.
 
   EventStreamBatch:
     description: |
@@ -916,6 +939,11 @@ definitions:
       the offset of the last Event in the stream.
 
       The size of the array of Event is limited by the parameters used to initialize a Stream.
+
+      If acting as a keep alive message (see `GET /event-type/{name}/events`) the events array will be
+      omitted.
+
+      Sequential batches might repeat the cursor if no new events arrive.
     required:
       - cursor
     properties:
