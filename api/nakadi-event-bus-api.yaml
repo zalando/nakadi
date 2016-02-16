@@ -68,7 +68,7 @@ info:
     * The Schema Registry API, including configuration possibilities for the Schema, Validation, Enrichment
     and Partitioning of Events, and their effects on reception of Events.
 
-    *  The standardized event format (see definition of Event, BusinessEvent and DataChangeEvent) (Note: at a
+    * The stantardised event format (see definition of Event, BusinessEvent and DataChangeEvent) (Note: at a
     later moment this will be configurable and not be inherent part of this API).
 
     * Unmanaged API (low level).
@@ -112,11 +112,11 @@ securityDefinitions:
     scopes:
       nakadi.read: |
         Generic read scope for operations that do not require more specific restrictions.
-      nakadi.event.type.write: |
+      nakadi_event_type.write: |
         Grants access for applications to define and update EventTypes.
-      nakadi.event.stream.write: |
+      nakadi_event_stream.write: |
         Grants access for applications to submit Events.
-      nakadi.event.stream.read: |
+      nakadi_event_stream.read: |
         Grants access for consuming Event streams.
 
 paths:
@@ -828,19 +828,14 @@ definitions:
               Event.
               If set by the producer Event will be rejected.
             format: date-time
-          parent_eid:
-            type: string
-            format: uuid
+          parent_eids:
+            type: array
+            items:
+              type: string
+              format: uuid
             description: |
               Event identifier of the Event that caused the generation of this Event.
               Set by the producer.
-            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
-          root_eid:
-            type: string
-            format: uuid
-            description: |
-              Event identifier of the root of the tree of Events (from the relation constructed from
-              parent-eid)
             example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
           flow_id:
             description: |
@@ -1085,7 +1080,8 @@ definitions:
           If not explicitly set, default value will respect the definition of the `EventType.category`.
         type: array
         items:
-          $ref: '#/definitions/EventValidationStrategy'
+          type: string
+        default: ['schema-validation']
 
       enrichment_strategies:
         description: |
@@ -1097,8 +1093,8 @@ definitions:
           enrichment.
         type: array
         items:
-          $ref: '#/definitions/EventEnrichmentStrategy'
-        default: [{name: 'metadata-enrichment'}]
+          type: string
+        default: ['metadata-enrichment']
 
       partition_resolution_strategy:
         description: |
