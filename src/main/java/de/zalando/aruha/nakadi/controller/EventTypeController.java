@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
@@ -103,9 +102,7 @@ public class EventTypeController {
             return create(Problem.valueOf(NOT_FOUND), nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Unable to update event type", e);
-
-            final Problem problem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, e.getMessage());
-            return create(problem, nativeWebRequest);
+            return create(Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR), nativeWebRequest);
         }
     }
 

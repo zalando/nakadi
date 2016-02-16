@@ -22,7 +22,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
-import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
@@ -232,23 +231,6 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPUTRepoNakadiExceptionThen422() throws Exception {
-        EventType eventType = buildEventType();
-
-        Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY);
-
-        Mockito
-                .doThrow(NakadiException.class)
-                .when(eventTypeRepository)
-                .findByName(EVENT_TYPE_NAME);
-
-        putEventType(eventType, EVENT_TYPE_NAME)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-    
-    @Test
     public void canExposeASingleEventType() throws Exception {
         final EventType expectedEventType = buildEventType();
 
@@ -279,6 +261,24 @@ public class EventTypeControllerTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
 
+    }
+
+    @Test
+    public void whenFailingToPersistUpdatesThen500() throws Exception {
+        final EventType eventType = buildEventType();
+
+        when(eventTypeRepository.findByName(EVENT_TYPE_NAME)).thenReturn(eventType);
+        Mockito
+                .doThrow(NakadiException.class)
+                .when(eventTypeRepository)
+                .update(any(EventType.class));
+
+        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
+
+        putEventType(eventType, eventType.getName())
+                .andExpect(status().is(500))
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     private ResultActions postEventType(EventType eventType) throws Exception {
