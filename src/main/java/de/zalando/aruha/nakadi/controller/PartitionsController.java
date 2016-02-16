@@ -15,7 +15,6 @@ import org.zalando.problem.Problem;
 
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -48,7 +47,7 @@ public class PartitionsController {
         }
         catch (final NakadiException e) {
             LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getProblemMessage()), request);
+            return create(e.asProblem(), request);
         }
         catch (final Exception e) {
             LOG.error("Could not list partitions. Respond with INTERNAL_SERVER_ERROR.", e);
@@ -78,7 +77,7 @@ public class PartitionsController {
         }
         catch (final NakadiException e) {
             LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getProblemMessage()), request);
+            return create(e.asProblem(), request);
         }
         catch (final Exception e) {
             LOG.error("Could not get partition. Respond with INTERNAL_SERVER_ERROR.", e);

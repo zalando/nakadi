@@ -20,13 +20,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.problem.Problem;
 
 import javax.validation.Valid;
-import javax.ws.rs.core.Response;
 import java.util.List;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -70,8 +67,7 @@ public class EventTypeController {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
 
             eventTypeRepository.removeEventType(eventType.getName());
-            Problem problem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
-            return create(problem, nativeWebRequest);
+            return create(e.asProblem(), nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Error creating event type " + eventType, e);
             return create(e.asProblem(), nativeWebRequest);
@@ -95,7 +91,7 @@ public class EventTypeController {
             }
         } catch (NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", name);
-            return create(Problem.valueOf(NOT_FOUND), nativeWebRequest);
+            return create(e.asProblem(), nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Unable to update event type", e);
             return create(e.asProblem(), nativeWebRequest);
