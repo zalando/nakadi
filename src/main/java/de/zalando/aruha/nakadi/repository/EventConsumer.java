@@ -1,14 +1,13 @@
 package de.zalando.aruha.nakadi.repository;
 
+import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+
 import java.util.Map;
 import java.util.Optional;
 
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
-import de.zalando.aruha.nakadi.domain.ConsumedEvent;
-
 public interface EventConsumer {
 
-    Optional<ConsumedEvent> readEvent() throws NakadiException;
+    Optional<ConsumedEvent> readEvent();
 
     Map<String, String> fetchNextOffsets();
 
