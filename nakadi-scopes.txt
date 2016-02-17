@@ -2,7 +2,7 @@ Resource Type ID: nakadi
 Resource Type Name: Nakadi (Zalando Event Bus)
 Owning team: aruha
 Application Scope: read
-Generic read scope in Nakadi application for operations that do not require more specific restrictions.
+Description: Generic read scope in Nakadi application for operations that do not require more specific restrictions.
 
 Resource Type ID: nakadi_event_type
 Resource Type Name: Nakadi Event Type
