@@ -54,15 +54,13 @@ public class NakadiKafkaConsumerTest {
         final ArgumentCaptor<Long> offsetCaptor = ArgumentCaptor.forClass(Long.class);
         doNothing().when(kafkaConsumerMock).seek(tpCaptor.capture(), offsetCaptor.capture());
 
-        final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
-
         final List<KafkaCursor> kafkaCursors = ImmutableList.of(
                 kafkaCursor(randomUInt(), randomULong()),
                 kafkaCursor(randomUInt(), randomULong()),
                 kafkaCursor(randomUInt(), randomULong()));
 
         // ACT //
-        new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, kafkaCursors, POLL_TIMEOUT);
+        new NakadiKafkaConsumer(kafkaConsumerMock, TOPIC, kafkaCursors, POLL_TIMEOUT);
 
         // ASSERT //
         final Map<String, String> cursors = kafkaCursors
@@ -112,13 +110,11 @@ public class NakadiKafkaConsumerTest {
         final ArgumentCaptor<Long> pollTimeoutCaptor = ArgumentCaptor.forClass(Long.class);
         when(kafkaConsumerMock.poll(pollTimeoutCaptor.capture())).thenReturn(consumerRecords, emptyRecords);
 
-        final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
-
         // we mock KafkaConsumer anyway, so the cursors we pass are not really important
         final List<KafkaCursor> cursors = ImmutableList.of(kafkaCursor(PARTITION, 0));
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, cursors, POLL_TIMEOUT);
+        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock, TOPIC, cursors, POLL_TIMEOUT);
         final Optional<ConsumedEvent> consumedEvent1 = consumer.readEvent();
         final Optional<ConsumedEvent> consumedEvent2 = consumer.readEvent();
         final Optional<ConsumedEvent> consumedEvent3 = consumer.readEvent();
@@ -153,11 +149,9 @@ public class NakadiKafkaConsumerTest {
             final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
             when(kafkaConsumerMock.poll(POLL_TIMEOUT)).thenThrow(exception);
 
-            final KafkaFactory kafkaFactoryMock = createKafkaFactoryMock(kafkaConsumerMock);
             try {
-
                 // ACT //
-                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaFactoryMock, TOPIC, ImmutableList.of(),
+                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock, TOPIC, ImmutableList.of(),
                         POLL_TIMEOUT);
                 consumer.readEvent();
 
@@ -170,12 +164,6 @@ public class NakadiKafkaConsumerTest {
 
         assertThat("We should get a NakadiException for every call", numberOfNakadiExceptions,
             equalTo(exceptions.size()));
-    }
-
-    private KafkaFactory createKafkaFactoryMock(final KafkaConsumer<String, String> kafkaConsumerMock) {
-        final KafkaFactory kafkaFactoryMock = mock(KafkaFactory.class);
-        when(kafkaFactoryMock.getConsumer()).thenReturn(kafkaConsumerMock);
-        return kafkaFactoryMock;
     }
 
 }

@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
@@ -14,13 +15,16 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -30,6 +34,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyVararg;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -95,10 +100,12 @@ public class KafkaRepositoryTest {
 
     private final KafkaRepository kafkaRepository;
     private final KafkaProducer kafkaProducer;
+    private final KafkaFactory kafkaFactory;
 
     public KafkaRepositoryTest() {
         kafkaProducer = mock(KafkaProducer.class);
-        kafkaRepository = createKafkaRepository();
+        kafkaFactory = createKafkaFactory();
+        kafkaRepository = createKafkaRepository(kafkaFactory);
     }
 
 
@@ -190,6 +197,27 @@ public class KafkaRepositoryTest {
                 });
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void canCreateEventConsumerWithOffsetsTransformed() throws NakadiException {
+        // ACT /
+        final Map<String, String> cursors = ImmutableMap.of(
+                "0", "23",
+                "1", Cursor.BEFORE_OLDEST_OFFSET);
+        kafkaRepository.createEventConsumer(MY_TOPIC, cursors);
+
+        // ASSERT //
+        Class<List<KafkaCursor>> kafkaCursorListClass = (Class<List<KafkaCursor>>) (Class) List.class;
+        final ArgumentCaptor<List<KafkaCursor>> captor = ArgumentCaptor.forClass(kafkaCursorListClass);
+        verify(kafkaFactory).createNakadiConsumer(eq(MY_TOPIC), captor.capture(), eq(0L));
+
+        final List<KafkaCursor> kafkaCursors = captor.getValue();
+        assertThat(kafkaCursors, equalTo(ImmutableList.of(
+                kafkaCursor(0, 24),
+                kafkaCursor(1, 100)
+        )));
+    }
+
     private void canListAllPartitionsOfTopic(final String topic) throws NakadiException {
         final List<TopicPartition> expected = PARTITIONS
                 .stream()
@@ -206,9 +234,9 @@ public class KafkaRepositoryTest {
         return new Cursor(partition, offset);
     }
 
-    private KafkaRepository createKafkaRepository() {
+    private KafkaRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaRepository(createZooKeeperHolder(), createKafkaFactory(), createKafkaRepositorySettings());
+            return new KafkaRepository(createZooKeeperHolder(), kafkaFactory, createKafkaRepositorySettings());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -124,7 +124,6 @@ public class KafkaRepository implements TopicRepository {
                         .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
                         .findFirst()
                         .map(pInfo -> {
-                            Cursor blah = cursor;
                             if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
                                 return true;
                             }
@@ -260,6 +259,6 @@ public class KafkaRepository implements TopicRepository {
             kafkaCursors.add(kafkaCursor);
         }
 
-        return new NakadiKafkaConsumer(kafkaFactory, topic, kafkaCursors, settings.getKafkaPollTimeoutMs());
+        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, settings.getKafkaPollTimeoutMs());
     }
 }
