@@ -241,7 +241,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
         final List<KafkaCursor> kafkaCursors = Lists.newArrayListWithCapacity(cursors.size());
 
-        for (Map.Entry<String, String> entry : cursors.entrySet()) {
+        for (final Map.Entry<String, String> entry : cursors.entrySet()) {
             final String offset = entry.getValue();
             final String partition = entry.getKey();
 
