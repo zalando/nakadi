@@ -7,6 +7,7 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 public class FlowIdRequestFilter implements Filter {
@@ -33,8 +34,14 @@ public class FlowIdRequestFilter implements Filter {
 
         FlowIdUtils.push(flowId);
 
+        if (response instanceof HttpServletResponse) {
+            final HttpServletResponse httpServletResponse = (HttpServletResponse) response;
+            httpServletResponse.setHeader(X_FLOW_ID_HEADER, flowId);
+        }
+
         try {
             chain.doFilter(request, response);
+
         } finally {
             FlowIdUtils.clear();
         }

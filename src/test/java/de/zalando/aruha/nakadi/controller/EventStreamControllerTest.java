@@ -3,10 +3,11 @@ package de.zalando.aruha.nakadi.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
@@ -254,7 +255,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenNakadiExceptionIsThrownThenServiceUnavailable() throws NakadiException, IOException {
-        final NakadiException nakadiException = new NakadiException("", "dummy message", null);
+        final NakadiException nakadiException = new ServiceUnavailableException("", "dummy message", null);
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(nakadiException);
 
         final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 0, 0, 0, 0, 0, null,

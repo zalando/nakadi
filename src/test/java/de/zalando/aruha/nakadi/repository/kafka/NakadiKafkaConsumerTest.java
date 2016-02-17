@@ -91,7 +91,7 @@ public class NakadiKafkaConsumerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void whenReadEventsThenGetRightEvents() throws NakadiException {
+    public void whenReadEventsThenGetRightEvents() {
 
         // ARRANGE //
         final String event1 = randomString();
@@ -156,8 +156,8 @@ public class NakadiKafkaConsumerTest {
                 consumer.readEvent();
 
                 // ASSERT //
-                fail("The NakadiException should be thrown");
-            } catch (NakadiException e) {
+                fail("An Exception was expected to be be thrown");
+            } catch (Exception e) {
                 numberOfNakadiExceptions++;
             }
         }

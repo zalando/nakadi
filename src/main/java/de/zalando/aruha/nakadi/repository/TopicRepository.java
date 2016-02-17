@@ -1,12 +1,12 @@
 package de.zalando.aruha.nakadi.repository;
 
-import java.util.List;
-import java.util.Map;
-
-import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * Manages access to topic information.

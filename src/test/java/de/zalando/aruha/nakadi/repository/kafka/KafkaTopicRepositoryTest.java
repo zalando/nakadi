@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
@@ -41,7 +41,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class KafkaRepositoryTest {
+public class KafkaTopicRepositoryTest {
 
     public static final String MY_TOPIC = "my-topic";
     public static final String ANOTHER_TOPIC = "another-topic";
@@ -99,38 +99,38 @@ public class KafkaRepositoryTest {
         return topicPartition;
     };
 
-    private final KafkaRepository kafkaRepository;
+    private final KafkaTopicRepository kafkaTopicRepository;
     private final KafkaProducer kafkaProducer;
     private final KafkaFactory kafkaFactory;
 
-    public KafkaRepositoryTest() {
+    public KafkaTopicRepositoryTest() {
         kafkaProducer = mock(KafkaProducer.class);
         kafkaFactory = createKafkaFactory();
-        kafkaRepository = createKafkaRepository(kafkaFactory);
+        kafkaTopicRepository = createKafkaRepository(kafkaFactory);
     }
 
 
     @Test
     public void canListAllTopics() throws Exception {
         final List<Topic> allTopics = allTopics().stream().map(Topic::new).collect(toList());
-        assertThat(kafkaRepository.listTopics(), containsInAnyOrder(allTopics.toArray()));
+        assertThat(kafkaTopicRepository.listTopics(), containsInAnyOrder(allTopics.toArray()));
     }
 
     @Test
     public void canDetermineIfTopicExists() throws NakadiException {
-        assertThat(kafkaRepository.topicExists(MY_TOPIC), is(true));
-        assertThat(kafkaRepository.topicExists(ANOTHER_TOPIC), is(true));
+        assertThat(kafkaTopicRepository.topicExists(MY_TOPIC), is(true));
+        assertThat(kafkaTopicRepository.topicExists(ANOTHER_TOPIC), is(true));
 
-        assertThat(kafkaRepository.topicExists("doesnt-exist"), is(false));
+        assertThat(kafkaTopicRepository.topicExists("doesnt-exist"), is(false));
     }
 
     @Test
     public void canDetermineIfPartitionExists() throws NakadiException {
         for (final String validPartition : MY_TOPIC_VALID_PARTITIONS) {
-            assertThat(kafkaRepository.partitionExists(MY_TOPIC, validPartition), is(true));
+            assertThat(kafkaTopicRepository.partitionExists(MY_TOPIC, validPartition), is(true));
         }
         for (final String validPartition : MY_TOPIC_INVALID_PARTITIONS) {
-            assertThat(kafkaRepository.partitionExists(MY_TOPIC, validPartition), is(false));
+            assertThat(kafkaTopicRepository.partitionExists(MY_TOPIC, validPartition), is(false));
         }
     }
 
@@ -139,37 +139,37 @@ public class KafkaRepositoryTest {
     public void validateValidCursors() throws NakadiException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
-            assertThat(cursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(cursor)), is(true));
+            assertThat(cursor.toString(), kafkaTopicRepository.areCursorsValid(MY_TOPIC, asList(cursor)), is(true));
         }
         // validate all valid cursors
-        assertThat(kafkaRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_VALID_CURSORS), is(true));
+        assertThat(kafkaTopicRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_VALID_CURSORS), is(true));
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
-            assertThat(cursor.toString(), kafkaRepository.areCursorsValid(ANOTHER_TOPIC, asList(cursor)), is(true));
+            assertThat(cursor.toString(), kafkaTopicRepository.areCursorsValid(ANOTHER_TOPIC, asList(cursor)), is(true));
         }
         // validate all valid cursors
-        assertThat(kafkaRepository.areCursorsValid(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS), is(true));
+        assertThat(kafkaTopicRepository.areCursorsValid(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS), is(true));
     }
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
     public void invalidateInvalidCursors() throws NakadiException {
         for (final Cursor invalidCursor : MY_TOPIC_INVALID_CURSORS) {
-            assertThat(invalidCursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(invalidCursor)), is(false));
+            assertThat(invalidCursor.toString(), kafkaTopicRepository.areCursorsValid(MY_TOPIC, asList(invalidCursor)), is(false));
 
             // check combination with valid cursor
             for (Cursor validCursor : MY_TOPIC_VALID_CURSORS) {
-                assertThat(invalidCursor.toString(), kafkaRepository.areCursorsValid(MY_TOPIC, asList(validCursor, invalidCursor)), is(false));
+                assertThat(invalidCursor.toString(), kafkaTopicRepository.areCursorsValid(MY_TOPIC, asList(validCursor, invalidCursor)), is(false));
             }
         }
-        assertThat(kafkaRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_INVALID_CURSORS), is(false));
+        assertThat(kafkaTopicRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_INVALID_CURSORS), is(false));
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void canPostAnEvent() throws Exception {
-        kafkaRepository.postEvent(
+        kafkaTopicRepository.postEvent(
                 EXPECTED_PRODUCER_RECORD.topic(),
                 String.valueOf(EXPECTED_PRODUCER_RECORD.partition()),
                 (String) EXPECTED_PRODUCER_RECORD.value());
@@ -190,7 +190,7 @@ public class KafkaRepositoryTest {
                 .map(PARTITION_STATE_TO_TOPIC_PARTITION)
                 .forEach(tp -> {
                     try {
-                        final TopicPartition actual = kafkaRepository.getPartition(tp.getTopicId(), tp.getPartitionId());
+                        final TopicPartition actual = kafkaTopicRepository.getPartition(tp.getTopicId(), tp.getPartitionId());
                         assertThat(actual, equalTo(tp));
                     } catch (NakadiException e) {
                         fail("Should not get NakadiException for this call");
@@ -205,7 +205,7 @@ public class KafkaRepositoryTest {
         final Map<String, String> cursors = ImmutableMap.of(
                 "0", "23",
                 "1", Cursor.BEFORE_OLDEST_OFFSET);
-        kafkaRepository.createEventConsumer(MY_TOPIC, cursors);
+        kafkaTopicRepository.createEventConsumer(MY_TOPIC, cursors);
 
         // ASSERT //
         Class<List<KafkaCursor>> kafkaCursorListClass = (Class<List<KafkaCursor>>) (Class) List.class;
@@ -226,7 +226,7 @@ public class KafkaRepositoryTest {
                 .map(PARTITION_STATE_TO_TOPIC_PARTITION)
                 .collect(toList());
 
-        final List<TopicPartition> actual = kafkaRepository.listPartitions(topic);
+        final List<TopicPartition> actual = kafkaTopicRepository.listPartitions(topic);
 
         assertThat(actual, containsInAnyOrder(expected.toArray()));
     }
@@ -235,9 +235,9 @@ public class KafkaRepositoryTest {
         return new Cursor(partition, offset);
     }
 
-    private KafkaRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
+    private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaRepository(createZooKeeperHolder(), kafkaFactory, createKafkaRepositorySettings());
+            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, createKafkaRepositorySettings());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

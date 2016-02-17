@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.controller;
 
 import com.codahale.metrics.annotation.Timed;
-import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -48,11 +46,7 @@ public class PartitionsController {
         }
         catch (final NakadiException e) {
             LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getProblemMessage()), request);
-        }
-        catch (final Exception e) {
-            LOG.error("Could not list partitions. Respond with INTERNAL_SERVER_ERROR.", e);
-            return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), request);
+            return create(e.asProblem(), request);
         }
     }
 
@@ -78,11 +72,7 @@ public class PartitionsController {
         }
         catch (final NakadiException e) {
             LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
-            return create(Problem.valueOf(SERVICE_UNAVAILABLE, e.getProblemMessage()), request);
-        }
-        catch (final Exception e) {
-            LOG.error("Could not get partition. Respond with INTERNAL_SERVER_ERROR.", e);
-            return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()), request);
+            return create(e.asProblem(), request);
         }
     }
 

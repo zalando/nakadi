@@ -1,22 +1,18 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import com.google.common.collect.Lists;
+import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.repository.EventConsumer;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import de.zalando.aruha.nakadi.domain.Cursor;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.TopicPartition;
-
-import com.google.common.collect.Lists;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.ConsumedEvent;
-import de.zalando.aruha.nakadi.repository.EventConsumer;
 
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 
@@ -55,26 +51,22 @@ public class NakadiKafkaConsumer implements EventConsumer {
     }
 
     @Override
-    public Optional<ConsumedEvent> readEvent() throws NakadiException {
+    public Optional<ConsumedEvent> readEvent() {
         if (eventQueue.isEmpty()) {
             pollFromKafka();
         }
         return Optional.ofNullable(eventQueue.poll());
     }
 
-    private void pollFromKafka() throws NakadiException {
-        try {
-            final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
-            eventQueue = StreamSupport
-                    .stream(records.spliterator(), false)
-                    .map(record -> {
-                        final Cursor cursor = kafkaCursor(record.partition(), record.offset()).asNakadiCursor();
-                        return new ConsumedEvent(record.value(), record.topic(), cursor.getPartition(),
-                                cursor.getOffset());
-                    })
-                    .collect(Collectors.toCollection(Lists::newLinkedList));
-        } catch (KafkaException e) {
-            throw new NakadiException("Error occurred when polling from kafka", e);
-        }
+    private void pollFromKafka() {
+        final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
+        eventQueue = StreamSupport
+                .stream(records.spliterator(), false)
+                .map(record -> {
+                    final Cursor cursor = kafkaCursor(record.partition(), record.offset()).asNakadiCursor();
+                    return new ConsumedEvent(record.value(), record.topic(), cursor.getPartition(),
+                            cursor.getOffset());
+                })
+                .collect(Collectors.toCollection(Lists::newLinkedList));
     }
 }
