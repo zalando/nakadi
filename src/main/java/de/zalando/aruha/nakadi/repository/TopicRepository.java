@@ -33,5 +33,5 @@ public interface TopicRepository {
 
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 
-    EventConsumer createEventConsumer(String topic, Map<String, String> cursors);
+    EventConsumer createEventConsumer(String topic, Map<String, String> cursors) throws NakadiException;
 }

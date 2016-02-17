@@ -56,4 +56,28 @@ public class KafkaCursor {
         return Long.toString(offset);
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final KafkaCursor that = (KafkaCursor) o;
+
+        return partition == that.partition && offset == that.offset;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = partition;
+        result = 31 * result + (int) (offset ^ (offset >>> 32));
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "KafkaCursor{" +
+                "partition=" + partition +
+                ", offset=" + offset +
+                '}';
+    }
 }

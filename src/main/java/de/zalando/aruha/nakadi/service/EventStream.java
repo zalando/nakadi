@@ -59,7 +59,7 @@ public class EventStream {
                     final ConsumedEvent event = eventOrEmpty.get();
 
                     // update offset for the partition of event that was read
-                    latestOffsets.put(event.getPartition(), event.getNextOffset());
+                    latestOffsets.put(event.getPartition(), event.getOffset());
 
                     // put message to batch
                     currentBatches.get(event.getPartition()).add(event.getEvent());
