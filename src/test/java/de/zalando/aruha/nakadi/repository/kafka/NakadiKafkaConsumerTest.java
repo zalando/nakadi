@@ -152,7 +152,7 @@ public class NakadiKafkaConsumerTest {
                 consumer.readEvent();
 
                 // ASSERT //
-                fail("The NakadiException should be thrown");
+                fail("An Exception was expected to be be thrown");
             } catch (Exception e) {
                 numberOfNakadiExceptions++;
             }
