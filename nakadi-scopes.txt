@@ -1,7 +1,19 @@
-Resource Type ID: nakadi_event
-Resource Type Name: Nakadi Event
+Resource Type ID: nakadi
+Resource Type Name: Nakadi (Zalando Event Bus)
 Owning team: aruha
-Application Scope: nakadi_event.read
-Description: Gives a general permission to read events from Nakadi (Zalando event bus).
-Application Scope: nakadi_event.write
-Description: Gives a general permission to write events to Nakadi (Zalando event bus).
+Application Scope: read
+Generic read scope in Nakadi application for operations that do not require more specific restrictions.
+
+Resource Type ID: nakadi_event_type
+Resource Type Name: Nakadi Event Type
+Owning team: aruha
+Application Scope: write
+Description: Grants access for applications to define and update EventTypes in Nakadi.
+
+Resource Type ID: nakadi_event_stream
+Resource Type Name: Nakadi Event Stream
+Owning team: aruha
+Application Scope: read
+Description: Grants access for applications to submit Events to Nakadi.
+Application Scope: write
+Description: Grants access for consuming Event streams from Nakadi.
