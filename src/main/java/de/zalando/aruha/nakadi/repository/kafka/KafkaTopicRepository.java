@@ -236,7 +236,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors) throws NakadiException {
+    public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors)
+            throws ServiceUnavailableException {
 
         final List<KafkaCursor> kafkaCursors = Lists.newArrayListWithCapacity(cursors.size());
 
