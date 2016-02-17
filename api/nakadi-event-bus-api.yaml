@@ -139,7 +139,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
   /event-types:
@@ -171,7 +171,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -251,7 +251,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -293,7 +293,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -347,7 +347,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -430,7 +430,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
     get:
@@ -587,7 +587,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -634,7 +634,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -680,7 +680,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -705,7 +705,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -730,7 +730,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -756,7 +756,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Service (temporary) not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
