@@ -1,16 +1,17 @@
 package de.zalando.aruha.nakadi.repository;
 
-import static java.util.stream.Collectors.toList;
+import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.Topic;
+import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.domain.Topic;
-import de.zalando.aruha.nakadi.domain.TopicPartition;
+import static java.util.stream.Collectors.toList;
 
 public class InMemoryTopicRepository implements TopicRepository {
 
@@ -64,12 +65,12 @@ public class InMemoryTopicRepository implements TopicRepository {
     private MockPartition getPartitionStorage(final String topicId, final String partitionId) throws NakadiException {
         final MockTopic topic = topics.get(topicId);
         if (topic == null) {
-            throw new NakadiException("No such topic");
+            throw new InternalNakadiException("No such topic '" + topicId + "'");
         }
 
         final MockPartition partition = topic.partitions.get(partitionId);
         if (partition == null) {
-            throw new NakadiException("No such partition");
+            throw new InternalNakadiException("No such partition '" + partitionId + "'");
         }
 
         return partition;
@@ -79,7 +80,7 @@ public class InMemoryTopicRepository implements TopicRepository {
     public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
         final MockTopic mockTopic = topics.get(topicId);
         if (mockTopic == null) {
-            throw new NakadiException("No such topic");
+            throw new InternalNakadiException("No such topic");
         }
 
         return mockTopic.partitions.values().stream().map(p -> new TopicPartition(topicId, p.id)).collect(toList());

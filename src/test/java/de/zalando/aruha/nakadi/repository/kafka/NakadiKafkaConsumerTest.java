@@ -1,47 +1,38 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
-import static java.util.function.Function.identity;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomUInt;
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomUIntAsString;
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomULong;
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomULongAsString;
-
-import static junit.framework.TestCase.fail;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
-
 import org.junit.Test;
-
 import org.mockito.ArgumentCaptor;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomUInt;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomUIntAsString;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomULong;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomULongAsString;
+import static java.util.function.Function.identity;
+import static junit.framework.TestCase.fail;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class NakadiKafkaConsumerTest {
 
@@ -161,8 +152,8 @@ public class NakadiKafkaConsumerTest {
                 consumer.readEvent();
 
                 // ASSERT //
-                fail("The NakadiException should be thrown");
-            } catch (NakadiException e) {
+                fail("An Exception was expected to be be thrown");
+            } catch (Exception e) {
                 numberOfNakadiExceptions++;
             }
         }

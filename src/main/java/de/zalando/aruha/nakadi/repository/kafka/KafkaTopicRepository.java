@@ -1,10 +1,10 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
-import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -31,17 +31,17 @@ import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartit
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
 
-public class KafkaRepository implements TopicRepository {
+public class KafkaTopicRepository implements TopicRepository {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaRepository.class);
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
 
     private final ZooKeeperHolder zkFactory;
     private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
     private final KafkaRepositorySettings settings;
 
-    public KafkaRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
-                           final KafkaRepositorySettings settings) {
+    public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
+                                final KafkaRepositorySettings settings) {
         this.zkFactory = zkFactory;
         this.kafkaProducer = kafkaFactory.createProducer();
         this.kafkaFactory = kafkaFactory;
@@ -49,7 +49,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public List<Topic> listTopics() throws NakadiException {
+    public List<Topic> listTopics() throws ServiceUnavailableException {
         try {
             return zkFactory.get()
                     .getChildren()
@@ -58,7 +58,7 @@ public class KafkaRepository implements TopicRepository {
                     .map(Topic::new)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            throw new NakadiException("Failed to list topics", e);
+            throw new ServiceUnavailableException("Failed to list topics", e);
         }
     }
 
@@ -86,7 +86,7 @@ public class KafkaRepository implements TopicRepository {
 
             AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
         } catch (Exception e) {
-            throw new TopicCreationException("unable to create topic", e);
+            throw new TopicCreationException("Unable to create topic", e);
         }
         finally {
             if (zkUtils != null) {
@@ -96,7 +96,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public boolean topicExists(final String topic) throws NakadiException {
+    public boolean topicExists(final String topic) throws ServiceUnavailableException {
         return listTopics()
                 .stream()
                 .map(Topic::getName)
@@ -104,7 +104,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public boolean partitionExists(final String topic, final String partition) throws NakadiException {
+    public boolean partitionExists(final String topic, final String partition) throws ServiceUnavailableException {
         return kafkaFactory
                 .getConsumer()
                 .partitionsFor(topic)
@@ -113,7 +113,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) throws NakadiException {
+    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) throws ServiceUnavailableException {
         final List<TopicPartition> partitions = listPartitions(topic);
         return cursors
                 .stream()
@@ -135,7 +135,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public void postEvent(final String topicId, final String partitionId, final String payload) throws NakadiException {
+    public void postEvent(final String topicId, final String partitionId, final String payload) throws ServiceUnavailableException {
         LOG.info("Posting {} {} {}", topicId, partitionId, payload);
 
         final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, toKafkaPartition(partitionId),
@@ -143,12 +143,12 @@ public class KafkaRepository implements TopicRepository {
         try {
             kafkaProducer.send(record).get(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            throw new NakadiException("Failed to send event", e);
+            throw new ServiceUnavailableException("Failed to send event", e);
         }
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
+    public List<TopicPartition> listPartitions(final String topicId) throws ServiceUnavailableException {
 
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
 
@@ -181,7 +181,7 @@ public class KafkaRepository implements TopicRepository {
                     .collect(Collectors.toList());
         }
         catch (Exception e) {
-            throw new NakadiException("Error occurred when fetching partition offsets", e);
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
 
@@ -196,8 +196,7 @@ public class KafkaRepository implements TopicRepository {
     }
 
     @Override
-    public TopicPartition getPartition(final String topicId, final String partition) throws NakadiException {
-
+    public TopicPartition getPartition(final String topicId, final String partition) throws ServiceUnavailableException {
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
 
             final org.apache.kafka.common.TopicPartition tp =
@@ -216,7 +215,7 @@ public class KafkaRepository implements TopicRepository {
             return topicPartition;
         }
         catch (Exception e) {
-            throw new NakadiException("Error occurred when fetching partition offsets", e);
+            throw new ServiceUnavailableException("Error occurred when fetching partition offsets", e);
         }
     }
 

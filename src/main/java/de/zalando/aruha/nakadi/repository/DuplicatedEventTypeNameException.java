@@ -1,17 +1,24 @@
 package de.zalando.aruha.nakadi.repository;
 
-public class DuplicatedEventTypeNameException extends Exception {
-    private final Exception exception;
-    private final String name;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 
-    public DuplicatedEventTypeNameException(Exception e, String name) {
-        super();
+import javax.ws.rs.core.Response;
 
-        this.exception = e;
-        this.name = name;
+public class DuplicatedEventTypeNameException extends NakadiException {
+    public DuplicatedEventTypeNameException(final String message) {
+        super(message);
     }
 
-    public Exception getException() { return exception; }
+    public DuplicatedEventTypeNameException(final String msg, final Exception cause) {
+        super(msg, cause);
+    }
 
-    public String getName() { return name; }
+    public DuplicatedEventTypeNameException(final String msg, final String problemMessage, final Exception cause) {
+        super(msg, problemMessage, cause);
+    }
+
+    @Override
+    protected Response.StatusType getStatus() {
+        return Response.Status.CONFLICT;
+    }
 }

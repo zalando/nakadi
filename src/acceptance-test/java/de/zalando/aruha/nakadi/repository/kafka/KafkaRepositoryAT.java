@@ -60,11 +60,11 @@ public class KafkaRepositoryAT extends BaseAT {
         final ZooKeeperHolder zooKeeperHolder = mock(ZooKeeperHolder.class);
         when(zooKeeperHolder.get()).thenReturn(curatorFramework);
 
-        final KafkaRepository kafkaRepository = new KafkaRepository(zooKeeperHolder, mock(KafkaFactory.class),
+        final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder, mock(KafkaFactory.class),
                 repositorySettings);
 
         // ACT //
-        kafkaRepository.createTopic(topicName);
+        kafkaTopicRepository.createTopic(topicName);
 
         // ASSERT //
         executeWithRetry(() -> {

@@ -1,34 +1,23 @@
 package de.zalando.aruha.nakadi.controller;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-
-import static org.springframework.http.ResponseEntity.status;
-
-import static org.springframework.web.bind.annotation.RequestMethod.POST;
-
-import static org.zalando.problem.spring.web.advice.Responses.create;
-
+import com.codahale.metrics.annotation.Timed;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 
-import org.zalando.problem.Problem;
-
-import com.codahale.metrics.annotation.Timed;
-
-import de.zalando.aruha.nakadi.NakadiException;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.NoSuchEventTypeException;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
+import static org.springframework.http.ResponseEntity.status;
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
+import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
 public class EventPublishingController {
@@ -59,11 +48,10 @@ public class EventPublishingController {
             return status(HttpStatus.CREATED).build();
         } catch (NoSuchEventTypeException e) {
             LOG.debug("Could not process event.", e);
-            return create(Problem.valueOf(NOT_FOUND, "EventType '" + eventTypeName + "' does not exist."),
-                    nativeWebRequest);
+            return create(e.asProblem(), nativeWebRequest);
         } catch (final NakadiException e) {
             LOG.error("error posting to partition", e);
-            return create(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getProblemMessage()), nativeWebRequest);
+            return create(e.asProblem(), nativeWebRequest);
         }
     }
 

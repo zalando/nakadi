@@ -2,9 +2,9 @@ package de.zalando.aruha.nakadi.service;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,7 +118,7 @@ public class EventStream {
             LOG.info("I/O error occurred when streaming events (possibly client closed connection)", e);
         } catch (IllegalStateException e) {
             LOG.info("Error occurred when streaming events (possibly server closed connection)", e);
-        } catch (NakadiException e) {
+        } catch (KafkaException e) {
             LOG.error("Error occurred when polling events from kafka", e);
         }
     }

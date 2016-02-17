@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.zalando.aruha.nakadi.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
@@ -83,7 +83,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void returns5xxProblemIfTopicDoesNotExistForEventType() throws Exception  {
-        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
+        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "No such topic 'registered-but-without-topic'");
 
         postEvent(EVENT_TYPE_WITHOUT_TOPIC, EVENT1)
                 .andExpect(status().is5xxServerError())

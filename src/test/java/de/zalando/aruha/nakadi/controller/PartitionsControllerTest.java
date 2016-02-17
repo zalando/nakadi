@@ -2,9 +2,10 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import de.zalando.aruha.nakadi.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.junit.Before;
@@ -17,7 +18,6 @@ import org.zalando.problem.ThrowableProblem;
 
 import java.util.List;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.eq;
@@ -90,25 +90,13 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenListPartitionsAndNakadiExceptionThenServiceUnavaiable() throws Exception {
-        final NakadiException nakadiException = new NakadiException("", DUMMY_MESSAGE, null);
+        final NakadiException nakadiException = new ServiceUnavailableException("", DUMMY_MESSAGE, null);
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(nakadiException);
 
         final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, DUMMY_MESSAGE);
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
-    }
-
-    @Test
-    public void whenListPartitionsAndExceptionThenInternalServerError() throws Exception {
-        final IllegalStateException exception = new IllegalStateException(DUMMY_MESSAGE);
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(exception);
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, DUMMY_MESSAGE);
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
-                .andExpect(status().isInternalServerError())
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
@@ -149,25 +137,13 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionAndNakadiExceptionThenServiceUnavaiable() throws Exception {
-        final NakadiException nakadiException = new NakadiException("", DUMMY_MESSAGE, null);
+        final NakadiException nakadiException = new ServiceUnavailableException("", DUMMY_MESSAGE, null);
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(nakadiException);
 
         final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, DUMMY_MESSAGE);
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
-    }
-
-    @Test
-    public void whenGetPartitionAndExceptionThenInternalServerError() throws Exception {
-        final IllegalStateException exception = new IllegalStateException(DUMMY_MESSAGE);
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(exception);
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, DUMMY_MESSAGE);
-        mockMvc.perform(
-                get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
-                .andExpect(status().isInternalServerError())
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
