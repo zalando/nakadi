@@ -56,7 +56,7 @@ public class KafkaRepositoryTest {
 
         PARTITIONS.add(new PartitionState(MY_TOPIC, 0, 40, 42));
         PARTITIONS.add(new PartitionState(MY_TOPIC, 1, 100, 200));
-        PARTITIONS.add(new PartitionState(MY_TOPIC, 3, 0, 0));
+        PARTITIONS.add(new PartitionState(MY_TOPIC, 2, 0, 0));
 
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 1, 0, 100));
         PARTITIONS.add(new PartitionState(ANOTHER_TOPIC, 5, 12, 60));
@@ -85,10 +85,11 @@ public class KafkaRepositoryTest {
             cursor("0", "blah"), // wrong offset
             cursor("1", "98"),   // out of bounds
             cursor("1", "200"),  // out of bounds
+            cursor("2", "0"),    // out of bounds for partition with no events ever
             cursor("99", "100")); // none existing partition
 
-    private static final List<String> MY_TOPIC_VALID_PARTITIONS = ImmutableList.of("0", "1");
-    private static final List<String> MY_TOPIC_INVALID_PARTITIONS = ImmutableList.of("2", "-1", "abc");
+    private static final List<String> MY_TOPIC_VALID_PARTITIONS = ImmutableList.of("0", "1", "2");
+    private static final List<String> MY_TOPIC_INVALID_PARTITIONS = ImmutableList.of("3", "-1", "abc");
 
     private static final Function<PartitionState, TopicPartition> PARTITION_STATE_TO_TOPIC_PARTITION = p -> {
         final TopicPartition topicPartition = new TopicPartition(p.topic, String.valueOf(p.partition));
