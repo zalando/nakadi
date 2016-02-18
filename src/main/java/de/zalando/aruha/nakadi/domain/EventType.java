@@ -9,6 +9,9 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.List;
 
+import static java.util.Collections.EMPTY_LIST;
+import static java.util.Collections.unmodifiableList;
+
 public class EventType {
 
     @NotNull
@@ -64,7 +67,7 @@ public class EventType {
     }
 
     public List<String> getOrderingKeyFields() {
-        return orderingKeyFields;
+        return unmodifiableList(orderingKeyFields != null ? orderingKeyFields : EMPTY_LIST);
     }
 
     public void setOrderingKeyFields(final List<String> orderingKeyFields) {
