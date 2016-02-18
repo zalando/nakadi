@@ -24,6 +24,8 @@ public class EventType {
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
+    private List<String> orderingKeyFields;
+
     @JsonProperty("schema")
     @NotNull
     @Valid
@@ -59,5 +61,13 @@ public class EventType {
 
     public void setEventTypeSchema(final EventTypeSchema eventTypeSchema) {
         this.eventTypeSchema = eventTypeSchema;
+    }
+
+    public List<String> getOrderingKeyFields() {
+        return orderingKeyFields;
+    }
+
+    public void setOrderingKeyFields(final List<String> orderingKeyFields) {
+        this.orderingKeyFields = orderingKeyFields;
     }
 }
