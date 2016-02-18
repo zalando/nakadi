@@ -62,6 +62,9 @@ SenzaComponents:
       TaupageConfig:
         application_id: "{{Arguments.ApplicationId}}"
         application_version: "{{SenzaInfo.StackVersion}}"
+        application_logrotate_interval: hourly
+        application_logrotate_size: 50M
+        application_logrotate_rotate: 4
         mint_bucket: "{{Arguments.MintBucket}}"
         runtime: Docker
         source: "{{Arguments.DockerImage}}"
