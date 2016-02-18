@@ -278,6 +278,32 @@ public class EventTypeControllerTest {
 
     }
 
+    @Test
+    public void whenEventTypeSchemaJsonIsMalformedThen422() throws Exception {
+        EventType eventType = buildEventType();
+        eventType.getSchema().setSchema("invalid-json");
+
+        Problem expectedProblem = invalidProblem("schema.schema", "must be a valid json");
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect((content().string(matchesProblem(expectedProblem))));
+    }
+
+    @Test
+    public void invalidEventTypeSchemaJsonSchemaThen422() throws Exception {
+        EventType eventType = buildEventType();
+
+        final String jsonSchemaString = Resources.toString(Resources.getResource("sample-invalid-json-schema.json"), Charsets.UTF_8);
+        eventType.getSchema().setSchema(jsonSchemaString);
+
+        Problem expectedProblem = invalidProblem("schema.schema", "must be valid json-schema (http://json-schema.org)");
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect((content().string(matchesProblem(expectedProblem))));
+    }
+
     private ResultActions postEventType(EventType eventType) throws Exception {
         String content = objectMapper.writeValueAsString(eventType);
 
