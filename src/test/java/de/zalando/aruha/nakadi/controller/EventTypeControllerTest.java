@@ -2,6 +2,8 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
@@ -56,7 +58,7 @@ public class EventTypeControllerTest {
     private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
 
-    public EventTypeControllerTest() {
+    public EventTypeControllerTest() throws Exception {
         EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
@@ -195,9 +197,9 @@ public class EventTypeControllerTest {
     public void whenPUTDifferentEventTypeSchemaThen422() throws Exception {
         EventType eventType = buildEventType();
         EventType persistedEventType = buildEventType();
-        persistedEventType.getEventTypeSchema().setSchema("different");
+        persistedEventType.getSchema().setSchema("different");
 
-        Problem expectedProblem = invalidProblem("eventTypeSchema",
+        Problem expectedProblem = invalidProblem("schema",
                 "The schema you've just submitted is different from the one in our system.");
 
         Mockito
@@ -334,7 +336,7 @@ public class EventTypeControllerTest {
 
         eventType.setName(EVENT_TYPE_NAME);
         eventType.setCategory(EVENT_TYPE_NAME + "-category");
-        eventType.setEventTypeSchema(schema);
+        eventType.setSchema(schema);
 
         return eventType;
     }

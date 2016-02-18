@@ -24,10 +24,9 @@ public class EventType {
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
-    @JsonProperty("schema")
     @NotNull
     @Valid
-    private EventTypeSchema eventTypeSchema;
+    private EventTypeSchema schema;
 
     public String getName() { return name; }
 
@@ -53,11 +52,11 @@ public class EventType {
         return validationStrategies;
     }
 
-    public EventTypeSchema getEventTypeSchema() {
-        return eventTypeSchema;
+    public EventTypeSchema getSchema() {
+        return schema;
     }
 
-    public void setEventTypeSchema(final EventTypeSchema eventTypeSchema) {
-        this.eventTypeSchema = eventTypeSchema;
+    public void setSchema(final EventTypeSchema schema) {
+        this.schema = schema;
     }
 }

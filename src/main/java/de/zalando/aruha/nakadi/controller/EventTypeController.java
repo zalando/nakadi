@@ -149,8 +149,8 @@ public class EventTypeController {
     }
 
     private void validateSchema(final EventType eventType, final EventType existingEventType, final Errors errors) {
-        if (!existingEventType.getEventTypeSchema().equals(eventType.getEventTypeSchema())) {
-            errors.rejectValue("eventTypeSchema", "", "The schema you've just submitted is different from the one in our system.");
+        if (!existingEventType.getSchema().equals(eventType.getSchema())) {
+            errors.rejectValue("schema", "", "The schema you've just submitted is different from the one in our system.");
         }
     }
 }
