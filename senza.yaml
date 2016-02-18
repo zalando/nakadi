@@ -163,5 +163,5 @@ Resources:
       # https
       - IpProtocol: tcp
         FromPort: 443
-        ToPort: 8080
+        ToPort: 443
         CidrIp: "{{Arguments.LimitTrafficToCidr}}"
