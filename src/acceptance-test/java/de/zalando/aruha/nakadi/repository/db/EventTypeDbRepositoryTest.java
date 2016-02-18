@@ -46,6 +46,7 @@ public class EventTypeDbRepositoryTest {
             template = new JdbcTemplate(datasource);
             repository = new EventTypeDbRepository(template, mapper);
             connection = datasource.getConnection();
+            clearEventTypeTable();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -173,9 +174,12 @@ public class EventTypeDbRepositoryTest {
 
     @After
     public void tearDown() throws SQLException {
-        template.execute("DELETE FROM zn_data.event_type");
-
+        clearEventTypeTable();
         connection.close();
+    }
+
+    private void clearEventTypeTable() {
+        template.execute("DELETE FROM zn_data.event_type");
     }
 
 }

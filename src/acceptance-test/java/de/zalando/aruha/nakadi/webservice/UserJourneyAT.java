@@ -10,7 +10,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
 import static org.hamcrest.Matchers.notNullValue;
@@ -18,7 +17,7 @@ import static org.hamcrest.core.IsEqual.equalTo;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.OK;
 
-public class UserJourneyAT extends BaseAT {
+public class UserJourneyAT extends RealEnvironmentAT {
 
     private static final String TEST_EVENT_TYPE = randomString();
     private static final String EVENT1 = "\"" + randomString() + "\"";
@@ -116,7 +115,7 @@ public class UserJourneyAT extends BaseAT {
                 .body("newest_available_offset[0]", notNullValue());
 
         // read events
-        given()
+        requestSpec()
                 .header(new Header("X-nakadi-cursors", "[{\"partition\": \"1\", \"offset\": \"BEGIN\"}]"))
                 .param("batch_limit", "2")
                 .param("stream_limit", "2")
@@ -139,7 +138,7 @@ public class UserJourneyAT extends BaseAT {
     }
 
     private RequestSpecification jsonRequestSpec() {
-        return given()
+        return requestSpec()
                 .header("accept", "application/json")
                 .contentType(JSON);
     }
