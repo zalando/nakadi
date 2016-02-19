@@ -14,10 +14,10 @@ public class FieldNameMustBeSet extends ValidationStrategy {
 
         @Override
         public Optional<ValidationError> accepts(final JSONObject event) {
-            if (event.get("name") == null) {
-                return Optional.of(new ValidationError("name is required"));
-            } else {
+            if (event.has("name") && event.get("name") != null) {
                 return Optional.empty();
+            } else {
+                return Optional.of(new ValidationError("name is required"));
             }
         }
     };
