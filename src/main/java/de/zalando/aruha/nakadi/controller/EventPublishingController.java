@@ -38,6 +38,8 @@ public class EventPublishingController {
 
     private final TopicRepository topicRepository;
     private final EventTypeRepository eventTypeRepository;
+    private final ValidationStrategy validationStrategy = new EventBodyMustRespectSchema();
+    private final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
 
     public EventPublishingController(final TopicRepository topicRepository,
             final EventTypeRepository eventTypeRepository) {
@@ -76,8 +78,6 @@ public class EventPublishingController {
 
     private Optional<ValidationError> validateSchema(final String event, final EventType eventType) {
         try {
-            final ValidationStrategy validationStrategy = new EventBodyMustRespectSchema();
-            final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
             final EventValidator validator = validationStrategy.materialize(eventType, vsc);
             return validator.accepts(new JSONObject(event));
         } catch (JSONException e) {
