@@ -52,12 +52,12 @@ public class EventPublishingController {
         LOG.trace("Received event {} for event type {}", event, eventTypeName);
 
         try {
-            EventType eventType = eventTypeRepository.findByName(eventTypeName);
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
-            Optional<ValidationError> error = validateSchema(event, eventType);
+            final Optional<ValidationError> error = validateSchema(event, eventType);
 
             if (error.isPresent()) {
-                Problem p = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, error.get().getMessage());
+                final Problem p = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, error.get().getMessage());
                 return create(p, nativeWebRequest);
             } else {
                 // Will be replaced later:
@@ -74,11 +74,11 @@ public class EventPublishingController {
         }
     }
 
-    private Optional<ValidationError> validateSchema(@RequestBody String event, EventType eventType) {
+    private Optional<ValidationError> validateSchema(final String event, final EventType eventType) {
         try {
-            ValidationStrategy validationStrategy = new EventBodyMustRespectSchema();
-            ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
-            EventValidator validator = validationStrategy.materialize(eventType, vsc);
+            final ValidationStrategy validationStrategy = new EventBodyMustRespectSchema();
+            final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
+            final EventValidator validator = validationStrategy.materialize(eventType, vsc);
             return validator.accepts(new JSONObject(event));
         } catch (JSONException e) {
             LOG.debug("Event parsing error.", e);
