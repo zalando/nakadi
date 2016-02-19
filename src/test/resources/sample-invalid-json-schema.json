@@ -1,0 +1,10 @@
+{
+  "title": "Example Schema",
+  "type": "object",
+  "properties": {
+    "firstName": {
+      "type": "invalid-type"
+    }
+  },
+  "required": ["firstName"]
+}

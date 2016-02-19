@@ -95,7 +95,7 @@ public class EventTypeAT extends BaseAT {
 
         eventType.setName(name);
         eventType.setCategory(name + "-category");
-        eventType.setEventTypeSchema(schema);
+        eventType.setSchema(schema);
 
         return eventType;
     }

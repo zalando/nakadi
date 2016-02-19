@@ -46,6 +46,7 @@ public class EventTypeDbRepositoryTest {
             template = new JdbcTemplate(datasource);
             repository = new EventTypeDbRepository(template, mapper);
             connection = datasource.getConnection();
+            clearEventTypeTable();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -70,8 +71,8 @@ public class EventTypeDbRepositoryTest {
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
-        assertThat(persisted.getEventTypeSchema().getType(), equalTo(eventType.getEventTypeSchema().getType()));
-        assertThat(persisted.getEventTypeSchema().getSchema(), equalTo(eventType.getEventTypeSchema().getSchema()));
+        assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
+        assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));
     }
 
     @Test(expected = DuplicatedEventTypeNameException.class)
@@ -121,8 +122,8 @@ public class EventTypeDbRepositoryTest {
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
-        assertThat(persisted.getEventTypeSchema().getType(), equalTo(eventType.getEventTypeSchema().getType()));
-        assertThat(persisted.getEventTypeSchema().getSchema(), equalTo(eventType.getEventTypeSchema().getSchema()));
+        assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
+        assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));
     }
 
     @Test
@@ -166,16 +167,19 @@ public class EventTypeDbRepositoryTest {
 
         eventType.setName("event-name");
         eventType.setCategory("event-category");
-        eventType.setEventTypeSchema(schema);
+        eventType.setSchema(schema);
 
         return eventType;
     }
 
     @After
     public void tearDown() throws SQLException {
-        template.execute("DELETE FROM zn_data.event_type");
-
+        clearEventTypeTable();
         connection.close();
+    }
+
+    private void clearEventTypeTable() {
+        template.execute("DELETE FROM zn_data.event_type");
     }
 
 }

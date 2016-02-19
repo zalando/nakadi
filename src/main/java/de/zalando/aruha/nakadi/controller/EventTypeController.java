@@ -8,6 +8,10 @@ import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import org.everit.json.schema.SchemaException;
+import org.everit.json.schema.loader.SchemaLoader;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +57,8 @@ public class EventTypeController {
     public ResponseEntity<?> createEventType(@Valid @RequestBody final EventType eventType,
                                              final Errors errors,
                                              final NativeWebRequest nativeWebRequest) {
+        validateSchema(eventType, errors);
+
         if (errors.hasErrors()) {
             return create(new ValidationProblem(errors), nativeWebRequest);
         }
@@ -109,6 +115,20 @@ public class EventTypeController {
         }
     }
 
+    private void validateSchema(EventType eventType, Errors errors) {
+        if (!errors.hasErrors()) {
+            try {
+                JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+
+                SchemaLoader.load(schemaAsJson);
+            } catch (JSONException e) {
+                errors.rejectValue("schema.schema", "", "must be a valid json");
+            } catch (SchemaException e) {
+                errors.rejectValue("schema.schema", "", "must be valid json-schema (http://json-schema.org)");
+            }
+        }
+    }
+
     private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NoSuchEventTypeException {
         if (!errors.hasErrors()) {
             final EventType existingEventType = eventTypeRepository.findByName(name);
@@ -129,8 +149,8 @@ public class EventTypeController {
     }
 
     private void validateSchema(final EventType eventType, final EventType existingEventType, final Errors errors) {
-        if (!existingEventType.getEventTypeSchema().equals(eventType.getEventTypeSchema())) {
-            errors.rejectValue("eventTypeSchema", "", "The schema you've just submitted is different from the one in our system.");
+        if (!existingEventType.getSchema().equals(eventType.getSchema())) {
+            errors.rejectValue("schema", "", "The schema you've just submitted is different from the one in our system.");
         }
     }
 }

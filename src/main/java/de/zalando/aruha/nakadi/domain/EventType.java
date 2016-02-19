@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Lists;
 
 import javax.validation.Valid;
@@ -29,10 +28,9 @@ public class EventType {
 
     private List<String> orderingKeyFields;
 
-    @JsonProperty("schema")
     @NotNull
     @Valid
-    private EventTypeSchema eventTypeSchema;
+    private EventTypeSchema schema;
 
     public String getName() { return name; }
 
@@ -58,12 +56,12 @@ public class EventType {
         return validationStrategies;
     }
 
-    public EventTypeSchema getEventTypeSchema() {
-        return eventTypeSchema;
+    public EventTypeSchema getSchema() {
+        return schema;
     }
 
-    public void setEventTypeSchema(final EventTypeSchema eventTypeSchema) {
-        this.eventTypeSchema = eventTypeSchema;
+    public void setSchema(final EventTypeSchema schema) {
+        this.schema = schema;
     }
 
     public List<String> getOrderingKeyFields() {
