@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.validation;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -17,8 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsonorg.JsonOrgModule;
-
-import com.google.common.base.Joiner;
 
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
@@ -164,15 +163,13 @@ class JSONSchemaValidator implements EventValidator {
     }
 
     @Override
-    public boolean accepts(final JSONObject event) {
+    public Optional<ValidationError> accepts(final JSONObject event) {
         try {
             schema.validate(event);
-            return true;
+
+            return Optional.empty();
         } catch (final ValidationException e) {
-            e.printStackTrace();
-            LOG.error("Validation failed: {}. Schema was: {}",
-                new Object[] {Joiner.on(";").join(e.getCausingExceptions()), effectiveSchema, e});
-            return false;
+            return Optional.of(new ValidationError(e.getMessage()));
         }
     }
 }
@@ -203,8 +200,7 @@ class QualifiedJSONSchemaValidator implements EventValidator {
     }
 
     @Override
-    public boolean accepts(final JSONObject event) {
-
+    public Optional<ValidationError> accepts(final JSONObject event) {
         return validator.accepts(event);
     }
 }
@@ -220,7 +216,7 @@ class QualifiedJSONSchemaValidationChain implements EventValidator {
     }
 
     @Override
-    public boolean accepts(final JSONObject event) {
+    public Optional<ValidationError> accepts(final JSONObject event) {
         final Predicate<QualifiedJSONSchemaValidator> matchingQualifier = it ->
                 it.getQualifier().getMatch().equals(event.getString(it.getQualifier().getField()));
 
