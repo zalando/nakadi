@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Lists;
 
 import javax.validation.Valid;
