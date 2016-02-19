@@ -85,7 +85,7 @@ public class JSONSchemaValidationTest {
         final EventTypeSchema ets = new EventTypeSchema();
         ets.setType(Type.JSON_SCHEMA);
         ets.setSchema(schema.toString());
-        et.setEventTypeSchema(ets);
+        et.setSchema(ets);
 
         return et;
     }

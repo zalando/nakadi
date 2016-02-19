@@ -71,8 +71,8 @@ public class EventTypeDbRepositoryTest {
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
-        assertThat(persisted.getEventTypeSchema().getType(), equalTo(eventType.getEventTypeSchema().getType()));
-        assertThat(persisted.getEventTypeSchema().getSchema(), equalTo(eventType.getEventTypeSchema().getSchema()));
+        assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
+        assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));
     }
 
     @Test(expected = DuplicatedEventTypeNameException.class)
@@ -122,8 +122,8 @@ public class EventTypeDbRepositoryTest {
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
-        assertThat(persisted.getEventTypeSchema().getType(), equalTo(eventType.getEventTypeSchema().getType()));
-        assertThat(persisted.getEventTypeSchema().getSchema(), equalTo(eventType.getEventTypeSchema().getSchema()));
+        assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
+        assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));
     }
 
     @Test
@@ -167,7 +167,7 @@ public class EventTypeDbRepositoryTest {
 
         eventType.setName("event-name");
         eventType.setCategory("event-category");
-        eventType.setEventTypeSchema(schema);
+        eventType.setSchema(schema);
 
         return eventType;
     }

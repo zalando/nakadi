@@ -37,7 +37,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
     public EventValidator materialize(final EventType eventType, final ValidationStrategyConfiguration vsc) {
 
         final JSONSchemaValidator defaultSchemaValidator = new JSONSchemaValidator(
-                new JSONObject(eventType.getEventTypeSchema().getSchema()));
+                new JSONObject(eventType.getSchema().getSchema()));
         if (vsc.getAdditionalConfiguration() == null) {
             return defaultSchemaValidator;
         }
@@ -46,7 +46,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
         mapper.registerModule(new JsonOrgModule());
 
         final Function<OverrideDefinition, OverrideDefinition> enhanceWithQualifiedSchema = definition -> {
-            final JSONObject schema = new JSONObject(eventType.getEventTypeSchema().getSchema());
+            final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
             final JSONObject copy = new JSONObject(schema, JSONObject.getNames(schema));
 
             definition.getIgnoredProperties().forEach(name -> {
