@@ -8,10 +8,13 @@ import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Test;
 
+import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
 
 public class JSONSchemaValidationTest {
 
@@ -72,10 +75,16 @@ public class JSONSchemaValidationTest {
 
         final EventTypeValidator validator = EventValidation.lookup(et);
 
-        final JSONObject event = new JSONObject(
+        final JSONObject validEvent = new JSONObject(
                 "{\"foo\": \"bar\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+        final JSONObject invalidEventMissingFoo = new JSONObject(
+                "{\"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+        final JSONObject invalidEventMissingNameField = new JSONObject(
+                "{\"foo\": \"bar\", \"extra\": \"i should be no problem\"}");
 
-        validator.validate(event);
+        assertThat(validator.validate(validEvent), isAbsent());
+        assertThat(validator.validate(invalidEventMissingFoo).get().getMessage(), equalTo("#: required key [foo] not found"));
+        assertThat(validator.validate(invalidEventMissingNameField).get().getMessage(), equalTo("name is required"));
     }
 
     private EventType buildAndRegisterEventType(final String name, final JSONObject schema) {
@@ -108,15 +117,20 @@ public class JSONSchemaValidationTest {
 
         final JSONObject event = new JSONObject(
                 "{\"event-type\" : \"X\", \"extra\": \"i should be no problem\", \"name\": \"12345\", \"field-that-will-not-be-found\": {\"val\": \"i must be present since the matcher will not succeed\"}}");
-        validator.validate(event);
-
+        final JSONObject eventDelete = new JSONObject(
+                "{\"event-type\" : \"D\"}");
+        final JSONObject invalidEvent = new JSONObject(
+                "{\"event-type\" : \"X\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+        assertThat(validator.validate(event), isAbsent());
+        assertThat(validator.validate(eventDelete), isAbsent());
+        assertThat(validator.validate(invalidEvent).get().getMessage(), equalTo("#: required key [field-that-will-not-be-found] not found"));
     }
 
     @Test
     public void schemaValidationShouldRespectIgnoreConfigurationMatchQualified() {
         final EventType et = buildAndRegisterEventType("some-event-type",
                 new JSONObject(
-                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
+                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"string\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -129,9 +143,11 @@ public class JSONSchemaValidationTest {
         final EventTypeValidator validator = EventValidation.lookup(et);
 
         final JSONObject event = new JSONObject(
-                "{\"event-type\" : \"D\", \"field-that-will-not-be-found\": \"some useless value\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
-        validator.validate(event);
-
+                "{\"event-type\" : \"X\", \"field-that-will-not-be-found\": \"some useless value\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+        final JSONObject eventDelete = new JSONObject(
+                "{\"event-type\" : \"D\", \"extra\": \"i should be no problem\"}");
+        assertThat(validator.validate(event), isAbsent());
+        assertThat(validator.validate(eventDelete), isAbsent());
     }
 
     @After
