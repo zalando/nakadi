@@ -1,22 +1,19 @@
 package de.zalando.aruha.nakadi.config;
 
-import java.text.MessageFormat;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
-
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
+
+import java.text.MessageFormat;
 
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
@@ -28,48 +25,49 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
     private static final Logger LOG = LoggerFactory.getLogger(SecurityConfiguration.class);
 
-    public static final String UID = "uid";
-    public static final String NAKADI_READ_SCOPE = "nakadi.read";
-    public static final String EVENT_TYPE_WRITE_SCOPE = "nakadi_event_type.write";
-    public static final String EVENT_STREAM_READ_SCOPE = "nakadi_event_stream.read";
-    public static final String EVENT_STREAM_WRITE_SCOPE = "nakadi_event_stream.write";
+    @Autowired
+    private SecuritySettings settings;
 
-    public enum AuthMode {
-        OFF,
-        BASIC,
-        FULL
-    }
+    @Autowired
+    private ResourceServerTokenServices tokenServices;
 
-    @Value("${nakadi.oauth2.tokenInfoUri}")
-    private String tokenInfoUri;
+    @Value("${nakadi.oauth2.scopes.uid}")
+    private String uidScope;
 
-    @Value("${nakadi.oauth2.clientId}")
-    private String clientId;
+    @Value("${nakadi.oauth2.scopes.nakadiRead}")
+    private String nakadiReadScope;
 
-    @Value("${nakadi.oauth2.mode:BASIC}")
-    private AuthMode authMode;
+    @Value("${nakadi.oauth2.scopes.eventTypeWrite}")
+    private String eventTypeWriteScope;
+
+    @Value("${nakadi.oauth2.scopes.eventStreamRead}")
+    private String eventStreamReadScope;
+
+    @Value("${nakadi.oauth2.scopes.eventStreamWrite}")
+    private String eventStreamWriteScope;
 
     @Override
     public void configure(final HttpSecurity http) throws Exception {
-        LOG.info("Authentication mode: " + authMode);
-        if (authMode == AuthMode.FULL) {
+        LOG.info("Authentication mode: " + settings.getAuthMode());
+
+        if (settings.getAuthMode() == SecuritySettings.AuthMode.FULL) {
             http.authorizeRequests()
                     .antMatchers("/health").permitAll()
-                    .antMatchers(GET, "/metrics").access(hasScope(NAKADI_READ_SCOPE))
-                    .antMatchers(GET, "/event-types").access(hasScope(NAKADI_READ_SCOPE))
-                    .antMatchers(GET, "/event-types/*").access(hasScope(NAKADI_READ_SCOPE))
-                    .antMatchers(POST, "/event-types").access(hasScope(EVENT_TYPE_WRITE_SCOPE))
-                    .antMatchers(PUT, "/event-types/*").access(hasScope(EVENT_TYPE_WRITE_SCOPE))
-                    .antMatchers(GET, "/event-types/*/events").access(hasScope(EVENT_STREAM_READ_SCOPE))
-                    .antMatchers(POST, "/event-types/*/events").access(hasScope(EVENT_STREAM_WRITE_SCOPE))
-                    .antMatchers(GET, "/event-types/*/partitions").access(hasScope(EVENT_STREAM_READ_SCOPE))
-                    .antMatchers(GET, "/event-types/*/partitions/*").access(hasScope(EVENT_STREAM_READ_SCOPE))
-                    .anyRequest().access(hasScope(UID));
+                    .antMatchers(GET, "/metrics").access(hasScope(uidScope))
+                    .antMatchers(GET, "/event-types").access(hasScope(nakadiReadScope))
+                    .antMatchers(GET, "/event-types/*").access(hasScope(nakadiReadScope))
+                    .antMatchers(POST, "/event-types").access(hasScope(eventTypeWriteScope))
+                    .antMatchers(PUT, "/event-types/*").access(hasScope(eventTypeWriteScope))
+                    .antMatchers(GET, "/event-types/*/events").access(hasScope(eventStreamReadScope))
+                    .antMatchers(POST, "/event-types/*/events").access(hasScope(eventStreamWriteScope))
+                    .antMatchers(GET, "/event-types/*/partitions").access(hasScope(eventStreamReadScope))
+                    .antMatchers(GET, "/event-types/*/partitions/*").access(hasScope(eventStreamReadScope))
+                    .anyRequest().access(hasScope(uidScope));
         }
-        else if (authMode == AuthMode.BASIC) {
+        else if (settings.getAuthMode() == SecuritySettings.AuthMode.BASIC) {
             http.authorizeRequests()
                     .antMatchers("/health").permitAll()
-                    .anyRequest().access(hasScope(UID));
+                    .anyRequest().access(hasScope(uidScope));
         }
         else {
             http.authorizeRequests()
@@ -83,11 +81,17 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
     @Override
     public void configure(final ResourceServerSecurityConfigurer resources) throws Exception {
-        resources.tokenServices(zalandoResourceTokenServices());
+        resources.tokenServices(tokenServices);
     }
 
     @Bean
     public ResourceServerTokenServices zalandoResourceTokenServices() {
-        return new TokenInfoResourceServerTokenServices(tokenInfoUri, clientId);
+        return new TokenInfoResourceServerTokenServices(settings.getTokenInfoUri(), settings.getClientId());
     }
+
+    @Bean
+    public SecuritySettings securitySettings() {
+        return new SecuritySettings();
+    }
+
 }
