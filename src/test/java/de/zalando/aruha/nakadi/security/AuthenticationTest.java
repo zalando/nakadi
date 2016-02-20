@@ -38,7 +38,7 @@ import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public abstract class EndpointsSecurityTest {
+public abstract class AuthenticationTest {
 
     @Configuration
     public static class Config {
@@ -58,7 +58,7 @@ public abstract class EndpointsSecurityTest {
         @Value("${nakadi.oauth2.scopes.eventStreamWrite}")
         protected String eventStreamWriteScope;
 
-        private static final Multimap<String, String> scopesForTokens = ArrayListMultimap.create();
+        private final Multimap<String, String> scopesForTokens = ArrayListMultimap.create();
 
         @PostConstruct
         public void mockTokensScopes() {

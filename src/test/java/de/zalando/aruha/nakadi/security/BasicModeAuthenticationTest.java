@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(Application.class)
 @WebIntegrationTest
-public class BasicModeAuthenticationTest extends EndpointsSecurityTest {
+public class BasicModeAuthenticationTest extends AuthenticationTest {
 
     static {
         authMode = SecuritySettings.AuthMode.BASIC;
