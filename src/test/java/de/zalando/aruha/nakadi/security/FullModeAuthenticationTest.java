@@ -24,36 +24,43 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringApplicationConfiguration(Application.class)
 @WebIntegrationTest
 @DirtiesContext(classMode = AFTER_CLASS)
-public class BasicModeAuthenticationTest extends AuthenticationTest {
+public class FullModeAuthenticationTest extends AuthenticationTest {
 
     static {
-        authMode = SecuritySettings.AuthMode.BASIC;
+        authMode = SecuritySettings.AuthMode.FULL;
     }
 
     private static final List<Endpoint> endpoints = ImmutableList.of(
-            new Endpoint(GET, "/event-types"),
-            new Endpoint(POST, "/event-types"),
-            new Endpoint(GET, "/event-types/foo"),
-            new Endpoint(PUT, "/event-types/foo"),
-            new Endpoint(POST, "/event-types/foo/events"),
-            new Endpoint(GET, "/event-types/foo/events"),
-            new Endpoint(GET, "/event-types/foo/partitions"),
-            new Endpoint(GET, "/event-types/foo/partitions/bar"),
-            new Endpoint(GET, "/metrics"));
+            new Endpoint(GET, "/event-types", TOKEN_WITH_NAKADI_READ_SCOPE),
+            new Endpoint(POST, "/event-types", TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE),
+            new Endpoint(GET, "/event-types/foo", TOKEN_WITH_NAKADI_READ_SCOPE),
+            new Endpoint(PUT, "/event-types/foo", TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE),
+            new Endpoint(POST, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE),
+            new Endpoint(GET, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(GET, "/event-types/foo/partitions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
 
     @Test
-    public void basicAuthMode() throws Exception {
-        endpoints.forEach(this::checkHasOnlyAccessByUidScope);
+    public void fullAuthMode() throws Exception {
+        endpoints.forEach(this::checkHasOnlyAccessByNeededScope);
+
+        mockMvc.perform(addTokenHeader(get("/metrics"), TOKEN_WITH_UID_SCOPE)).andExpect(STATUS_NOT_401_OR_403);
+        mockMvc.perform(get("/metrics")).andExpect(status().isUnauthorized());
+
         mockMvc.perform(get("/health")).andExpect(status().isOk());
     }
 
-    private void checkHasOnlyAccessByUidScope(final Endpoint endpoint) {
+    private void checkHasOnlyAccessByNeededScope(final Endpoint endpoint) {
         try {
-            // basic uid scope
-            mockMvc.perform(addTokenHeader(endpoint.toRequestBuilder(), TOKEN_WITH_UID_SCOPE))
+            // token with valid scope
+            mockMvc.perform(addTokenHeader(endpoint.toRequestBuilder(), endpoint.getValidToken().get()))
                     .andExpect(STATUS_NOT_401_OR_403);
 
-            // token with random scope
+            // check that just a uid scope is not enough
+            mockMvc.perform(addTokenHeader(endpoint.toRequestBuilder(), TOKEN_WITH_UID_SCOPE))
+                    .andExpect(status().isForbidden());
+
+            // check random scope
             mockMvc.perform(addTokenHeader(endpoint.toRequestBuilder(), TOKEN_WITH_RANDOM_SCOPE))
                     .andExpect(status().isForbidden());
 

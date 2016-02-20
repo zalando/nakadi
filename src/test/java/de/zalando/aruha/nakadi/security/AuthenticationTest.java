@@ -63,6 +63,10 @@ public abstract class AuthenticationTest {
         @PostConstruct
         public void mockTokensScopes() {
             scopesForTokens.put(TOKEN_WITH_UID_SCOPE, uidScope);
+            scopesForTokens.put(TOKEN_WITH_NAKADI_READ_SCOPE, nakadiReadScope);
+            scopesForTokens.put(TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE, eventTypeWriteScope);
+            scopesForTokens.put(TOKEN_WITH_EVENT_STREAM_READ_SCOPE, eventStreamReadScope);
+            scopesForTokens.put(TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE, eventStreamWriteScope);
             scopesForTokens.put(TOKEN_WITH_RANDOM_SCOPE, randomString());
         }
 
@@ -112,6 +116,10 @@ public abstract class AuthenticationTest {
             .is(not(isOneOf(UNAUTHORIZED.value(), FORBIDDEN.value())));
 
     protected static final String TOKEN_WITH_UID_SCOPE = randomString();
+    protected static final String TOKEN_WITH_NAKADI_READ_SCOPE = randomString();
+    protected static final String TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE = randomString();
+    protected static final String TOKEN_WITH_EVENT_STREAM_READ_SCOPE = randomString();
+    protected static final String TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE = randomString();
     protected static final String TOKEN_WITH_RANDOM_SCOPE = randomString();
 
     protected static SecuritySettings.AuthMode authMode;
