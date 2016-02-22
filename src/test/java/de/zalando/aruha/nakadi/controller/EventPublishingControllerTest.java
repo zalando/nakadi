@@ -1,9 +1,10 @@
 package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
@@ -15,6 +16,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -37,6 +39,8 @@ public class EventPublishingControllerTest {
     public static final String EVENT1 = "{\"payload\": \"My Event 1 Payload\"}";
     public static final String EVENT2 = "{\"payload\": \"My Event 2 Payload\"}";
     public static final String EVENT3 = "{\"payload\": \"My Event 3 Payload\"}";
+    public static final String INVALID_SCHEMA_EVENT = "{\"wrong-payload\": \"My Event 3 Payload\"}";
+    public static final String INVALID_JSON_EVENT = "not-a-json";
 
     private final InMemoryTopicRepository topicRepository = new InMemoryTopicRepository();
     private final JsonTestHelper jsonHelper;
@@ -101,6 +105,26 @@ public class EventPublishingControllerTest {
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
+    @Test
+    public void returns422ProblemWhenEventSchemaIsInvalid() throws Exception  {
+        final ThrowableProblem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "#: required key [payload] not found");
+
+        postEvent(EVENT_TYPE_WITH_TOPIC, INVALID_SCHEMA_EVENT)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+    }
+
+    @Test
+    public void returns422ProblemWhenEventIsNotJson() throws Exception  {
+        final ThrowableProblem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "payload must be a valid json");
+
+        postEvent(EVENT_TYPE_WITH_TOPIC, INVALID_JSON_EVENT)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+    }
+
     private ResultActions postEvent(final String eventType, final String event) throws Exception {
         final String url = "/event-types/" + eventType + "/events";
         final MockHttpServletRequestBuilder requestBuilder = post(url)
@@ -112,7 +136,11 @@ public class EventPublishingControllerTest {
 
     private static EventType eventType(final String topic) {
         final EventType eventType = new EventType();
+        final EventTypeSchema schema = new EventTypeSchema();
+        schema.setSchema("{\"type\": \"object\", \"properties\": {\"payload\": {\"type\": \"string\"}}, \"required\": [\"payload\"]}");
+        schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
         eventType.setName(topic);
+        eventType.setSchema(schema);
         return eventType;
     }
 
