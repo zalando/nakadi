@@ -136,7 +136,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
 
         generate(this::randomArticleEvent).limit(numberOfEvents)
                 .forEach(event -> {
-                    final String partition = strategy.calculatePartition(eventType, event.toString(), numberOfPartitions);
+                    final String partition = strategy.calculatePartition(eventType, event, numberOfPartitions);
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
                 });
