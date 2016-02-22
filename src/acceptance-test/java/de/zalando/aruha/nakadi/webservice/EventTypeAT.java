@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.zalando.aruha.nakadi.config.NakadiConfig;
+import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.utils.TestUtils;
@@ -20,7 +20,7 @@ import static org.hamcrest.core.IsEqual.equalTo;
 public class EventTypeAT extends BaseAT {
 
     static private final String ENDPOINT = "/event-types";
-    private final ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+    private final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
 
     @Test
     public void whenGETThenListsEventTypes() throws JsonProcessingException {
