@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.partitioning;
 
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 
@@ -15,6 +16,10 @@ public class OrderingKeyFieldsPartitioningStrategy implements PartitioningStrate
         try {
 
             final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
+            if (orderingKeyFields.isEmpty()) {
+                throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
+                        "has no ordering key fields configured.");
+            }
 
             final JsonPath traversableJsonEvent = new JsonPath(event);
 
