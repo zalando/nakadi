@@ -26,7 +26,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     private long nakadiStreamTimeout;
 
     @Autowired
-    private NakadiConfig nakadiConfig;
+    private JsonConfig jsonConfig;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -50,7 +50,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     @Bean
     public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
         final MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-        converter.setObjectMapper(nakadiConfig.jacksonObjectMapper());
+        converter.setObjectMapper(jsonConfig.jacksonObjectMapper());
         return converter;
     }
 

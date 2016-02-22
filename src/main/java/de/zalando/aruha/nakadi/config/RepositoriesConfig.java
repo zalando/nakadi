@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaFactory;
@@ -20,17 +19,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class RepositoriesConfig {
 
     @Autowired
+    private JsonConfig jsonConfig;
+
+    @Autowired
     private Environment environment;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Bean
     public EventTypeRepository eventTypeRepository() {
-        return new EventTypeDbRepository(jdbcTemplate, objectMapper);
+        return new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
     }
 
     @Bean

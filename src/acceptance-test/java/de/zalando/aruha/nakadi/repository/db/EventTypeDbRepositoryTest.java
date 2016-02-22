@@ -1,8 +1,8 @@
 package de.zalando.aruha.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
-import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
@@ -40,7 +40,7 @@ public class EventTypeDbRepositoryTest {
     @Before
     public void setUp() {
         try {
-            mapper = (new NakadiConfig()).jacksonObjectMapper();
+            mapper = (new JsonConfig()).jacksonObjectMapper();
 
             DataSource datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
             template = new JdbcTemplate(datasource);
@@ -66,7 +66,7 @@ public class EventTypeDbRepositoryTest {
 
         assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
 
-        ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+        ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
         EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
@@ -117,7 +117,7 @@ public class EventTypeDbRepositoryTest {
 
         assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
 
-        ObjectMapper mapper = (new NakadiConfig()).jacksonObjectMapper();
+        ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
         EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));

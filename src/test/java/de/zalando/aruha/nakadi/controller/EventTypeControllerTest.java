@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.zalando.aruha.nakadi.config.NakadiConfig;
+import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
@@ -53,7 +53,7 @@ public class EventTypeControllerTest {
 
     public static final String EVENT_TYPE_NAME = "event-name";
 
-    private final ObjectMapper objectMapper = new NakadiConfig().jacksonObjectMapper();
+    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
 
     public EventTypeControllerTest() {
