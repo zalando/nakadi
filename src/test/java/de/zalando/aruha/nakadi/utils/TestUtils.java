@@ -1,5 +1,8 @@
 package de.zalando.aruha.nakadi.utils;
 
+import org.apache.commons.io.IOUtils;
+
+import java.io.IOException;
 import java.util.Random;
 import java.util.UUID;
 
@@ -28,4 +31,9 @@ public class TestUtils {
     public static String randomULongAsString() {
         return Long.toString(randomULong());
     }
+
+    public static String resourceAsString(final String resourceName, final Class clazz) throws IOException {
+        return IOUtils.toString(clazz.getResourceAsStream(resourceName));
+    }
+
 }
