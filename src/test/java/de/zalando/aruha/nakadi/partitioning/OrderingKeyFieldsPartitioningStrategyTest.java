@@ -13,15 +13,20 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 
+import static de.zalando.aruha.nakadi.utils.TestUtils.resourceAsString;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
 import static java.lang.Math.pow;
+import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.generate;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
@@ -29,35 +34,45 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
 
     public static final Random RANDOM = new Random();
     public static final String DELIMITER = "#";
+    public static final int NUMBER_OF_PARTITIONS = 8;
+
     private OrderingKeyFieldsPartitioningStrategy strategy = new OrderingKeyFieldsPartitioningStrategy();
+    private final EventType simpleEventType;
+    private ArrayList<List<JSONObject>> partitions = createEmptyPartitions(NUMBER_OF_PARTITIONS);
+
+    public OrderingKeyFieldsPartitioningStrategyTest() {
+        simpleEventType = new EventType();
+        simpleEventType.setOrderingKeyFields(asList("sku", "name"));
+    }
 
     @Test
     public void calculatesSamePartitionForSameOrderingKeyFields() throws Exception {
-        final EventType eventType = new EventType();
-        eventType.setOrderingKeyFields(Arrays.asList("sku", "name"));
-
-        final int numberOfPartitions = 8;
-        final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(numberOfPartitions);
-
-        fillPartitionsWithEvents(eventType, partitions, 1000);
+        fillPartitionsWithEvents(simpleEventType, partitions, 1000);
 
         checkThatEventsWithSameKeysAreInSamePartition(partitions);
     }
 
     @Test
     public void partitionsAreEquallyDistributed() {
-        final EventType eventType = new EventType();
-        eventType.setOrderingKeyFields(Arrays.asList("sku", "name"));
-
-        final int numberOfPartitions = 8;
-        final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(numberOfPartitions);
-
-        fillPartitionsWithEvents(eventType, partitions, 10000);
+        fillPartitionsWithEvents(simpleEventType, partitions, 10000);
 
         final double[] eventDistribution = partitions.stream().map(p -> p.size()).mapToDouble(value -> value * 1.0).toArray();
         final double variance = calculateVarianceOfUniformDistribution(eventDistribution);
 
         assertThat(variance, Matchers.lessThan(1.5));
+    }
+
+    @Test
+    public void canHandleComplexKeys() throws Exception {
+        final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
+
+        final EventType eventType = new EventType();
+        eventType.setOrderingKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
+
+        final String partition = strategy.calculatePartition(eventType, event, NUMBER_OF_PARTITIONS);
+
+        assertThat(parseInt(partition), greaterThanOrEqualTo(0));
+        assertThat(parseInt(partition), lessThan(NUMBER_OF_PARTITIONS));
     }
 
     @Test
@@ -125,7 +140,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
                 .collect(toList());
     }
 
-    private ArrayList<List<JSONObject>> createEmptyPartitions(final int numberOfPartitions) {
+    private static ArrayList<List<JSONObject>> createEmptyPartitions(final int numberOfPartitions) {
         return generate(LinkedList<JSONObject>::new)
                 .limit(numberOfPartitions)
                 .collect(toCollection(ArrayList<List<JSONObject>>::new));
@@ -135,25 +150,39 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
         final int numberOfPartitions = partitions.size();
 
         generate(this::randomArticleEvent).limit(numberOfEvents)
-                .forEach(event -> {
+                .forEach(exceptionSafe(event -> {
                     final String partition = strategy.calculatePartition(eventType, event, numberOfPartitions);
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
-                });
+                }));
     }
 
     private JSONObject randomArticleEvent() {
-        return createArticleEvent(randomAlphabetic(1), randomAlphabetic(1), randomAlphabetic(10), RANDOM.nextInt(1000));
+        return createArticleEvent(randomAlphabetic(1), RANDOM.nextInt(10), randomAlphabetic(1), randomAlphabetic(10), RANDOM.nextInt(1000));
     }
 
-    private JSONObject createArticleEvent(final String sku, final String name, final String color, final int price) {
+    private JSONObject createArticleEvent(final String sku, final int categoryId, final String name, final String color, final int price) {
         final JSONObject jsonObject = new JSONObject();
         jsonObject.put("sku", sku);
+        jsonObject.put("categoryId", categoryId);
         jsonObject.put("name", name);
         jsonObject.put("color", color);
         jsonObject.put("price", price);
         return jsonObject;
     }
 
+    public static <T> Consumer<T> exceptionSafe(ConsumerWithException<T> consumer) {
+        return t -> {
+            try {
+                consumer.accept(t);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        };
+    }
 
+    @FunctionalInterface
+    private interface ConsumerWithException<T> {
+        void accept(T t) throws Exception;
+    }
 }

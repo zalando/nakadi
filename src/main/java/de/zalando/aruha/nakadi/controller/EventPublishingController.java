@@ -6,6 +6,7 @@ import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import de.zalando.aruha.nakadi.exceptions.EventValidationException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.partitioning.InvalidOrderingKeyFieldsException;
 import de.zalando.aruha.nakadi.partitioning.OrderingKeyFieldsPartitioningStrategy;
 import de.zalando.aruha.nakadi.partitioning.PartitioningStrategy;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
@@ -77,7 +78,7 @@ public class EventPublishingController {
         }
     }
 
-    private String applyPartitioningStrategy(final EventType eventType, final JSONObject eventAsJson) {
+    private String applyPartitioningStrategy(final EventType eventType, final JSONObject eventAsJson) throws InvalidOrderingKeyFieldsException {
         String partitionId;
         if (!eventType.getOrderingKeyFields().isEmpty()) {
             partitionId = orderingKeyFieldsPartitioningStrategy.calculatePartition(eventType, eventAsJson, 8);
