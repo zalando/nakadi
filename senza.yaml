@@ -45,6 +45,9 @@ SenzaInfo:
     - KmsKeyId:
         Description: "Identifier of your KMS key"
         Default: ""
+    - AuthenticationMode:
+        Description: "Authentication mode for Nakadi. Possible values: OFF (no authentication required) / BASIC (only token validity will be checked) / FULL (full authentication using oauth2 scopes) (optional, default: BASIC)"
+        Default: "BASIC"
 
 SenzaComponents:
 
@@ -76,6 +79,7 @@ SenzaComponents:
           8080: 8080
         scalyr_account_key: "{{Arguments.ScalyrAccountKey}}"
         environment:
+          NAKADI_OAUTH2_MODE: "{{Arguments.AuthenticationMode}}"
           NAKADI_ZOOKEEPER_KAFKANAMESPACE:    "{{Arguments.ZookeeperKafkaNamespace}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_BROKERS: "{{Arguments.ExhibitorBrokers}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_PORT:    "{{Arguments.ExhibitorPort}}"

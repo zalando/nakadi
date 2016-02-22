@@ -3,8 +3,8 @@ package de.zalando.aruha.nakadi.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
-import de.zalando.aruha.nakadi.config.NakadiConfig;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
@@ -67,7 +67,7 @@ public class EventStreamControllerTest {
 
     @Before
     public void setup() {
-        objectMapper = new NakadiConfig().jacksonObjectMapper();
+        objectMapper = new JsonConfig().jacksonObjectMapper();
         jsonHelper = new JsonTestHelper(objectMapper);
 
         topicRepositoryMock = mock(TopicRepository.class);
