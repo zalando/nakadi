@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.validation;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -17,8 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsonorg.JsonOrgModule;
-
-import com.google.common.base.Joiner;
 
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
@@ -37,7 +36,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
     public EventValidator materialize(final EventType eventType, final ValidationStrategyConfiguration vsc) {
 
         final JSONSchemaValidator defaultSchemaValidator = new JSONSchemaValidator(
-                new JSONObject(eventType.getEventTypeSchema().getSchema()));
+                new JSONObject(eventType.getSchema().getSchema()));
         if (vsc.getAdditionalConfiguration() == null) {
             return defaultSchemaValidator;
         }
@@ -46,7 +45,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
         mapper.registerModule(new JsonOrgModule());
 
         final Function<OverrideDefinition, OverrideDefinition> enhanceWithQualifiedSchema = definition -> {
-            final JSONObject schema = new JSONObject(eventType.getEventTypeSchema().getSchema());
+            final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
             final JSONObject copy = new JSONObject(schema, JSONObject.getNames(schema));
 
             definition.getIgnoredProperties().forEach(name -> {
@@ -164,15 +163,13 @@ class JSONSchemaValidator implements EventValidator {
     }
 
     @Override
-    public boolean accepts(final JSONObject event) {
+    public Optional<ValidationError> accepts(final JSONObject event) {
         try {
             schema.validate(event);
-            return true;
+
+            return Optional.empty();
         } catch (final ValidationException e) {
-            e.printStackTrace();
-            LOG.error("Validation failed: {}. Schema was: {}",
-                new Object[] {Joiner.on(";").join(e.getCausingExceptions()), effectiveSchema, e});
-            return false;
+            return Optional.of(new ValidationError(e.getMessage()));
         }
     }
 }
@@ -203,8 +200,7 @@ class QualifiedJSONSchemaValidator implements EventValidator {
     }
 
     @Override
-    public boolean accepts(final JSONObject event) {
-
+    public Optional<ValidationError> accepts(final JSONObject event) {
         return validator.accepts(event);
     }
 }
@@ -220,7 +216,7 @@ class QualifiedJSONSchemaValidationChain implements EventValidator {
     }
 
     @Override
-    public boolean accepts(final JSONObject event) {
+    public Optional<ValidationError> accepts(final JSONObject event) {
         final Predicate<QualifiedJSONSchemaValidator> matchingQualifier = it ->
                 it.getQualifier().getMatch().equals(event.getString(it.getQualifier().getField()));
 

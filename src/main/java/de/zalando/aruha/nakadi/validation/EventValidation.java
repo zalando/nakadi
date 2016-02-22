@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.validation;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.json.JSONObject;
 
@@ -52,11 +53,13 @@ class EventTypeValidator {
         this.eventType = eventType;
     }
 
-    public void validate(final JSONObject event) {
-
-        // FIXME: return information on the validation place that failed
-        final boolean allItemsPass = validators.stream().anyMatch(ev -> !ev.accepts(event));
-        Preconditions.checkState(!allItemsPass, "Some validation failed");
+    public Optional<ValidationError> validate(final JSONObject event) {
+        return validators
+                .stream()
+                .map(validator -> validator.accepts(event))
+                .filter(Optional::isPresent)
+                .findFirst()
+                .orElse(Optional.empty());
     }
 
     public EventTypeValidator withConfiguration(final ValidationStrategyConfiguration vsc) {

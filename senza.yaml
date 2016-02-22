@@ -36,6 +36,9 @@ SenzaInfo:
     - DatabaseUrl:
         Description: "Jdbc url, value can be encrypted with KMS"
         Default: "jdbc:postgresql://localhost:5432/local_nakadi_db"
+    - DatabaseUser:
+        Description: "The username to use when connecting to the database"
+        Default: "nakadi_app"
     - DatabasePassword:
         Description: "value can be encrypted with KMS"
         Default: "nakadi"
@@ -81,6 +84,7 @@ SenzaComponents:
           NAKADI_ZOOKEEPER_EXHIBITOR_BROKERS: "{{Arguments.ExhibitorBrokers}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_PORT:    "{{Arguments.ExhibitorPort}}"
           SPRING_DATASOURCE_URL: "{{Arguments.DatabaseUrl}}"
+          SPRING_DATASOURCE_USERNAME: "{{Arguments.DatabaseUser}}"
           SPRING_DATASOURCE_PASSWORD: "{{Arguments.DatabasePassword}}"
       AutoScaling:
         Minimum: 2
