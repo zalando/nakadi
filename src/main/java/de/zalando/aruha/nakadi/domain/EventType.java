@@ -6,12 +6,14 @@ import com.google.common.collect.Lists;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.List;
 
-import static java.util.Collections.EMPTY_LIST;
 import static java.util.Collections.unmodifiableList;
 
 public class EventType {
+
+    public static final List<String> EMPTY_STRING_LIST = new ArrayList<>(0);
 
     @NotNull
     @Size(min = 1, message = "may not be empty")
@@ -65,7 +67,7 @@ public class EventType {
     }
 
     public List<String> getOrderingKeyFields() {
-        return unmodifiableList(orderingKeyFields != null ? orderingKeyFields : EMPTY_LIST);
+        return unmodifiableList(orderingKeyFields != null ? orderingKeyFields : EMPTY_STRING_LIST);
     }
 
     public void setOrderingKeyFields(final List<String> orderingKeyFields) {
