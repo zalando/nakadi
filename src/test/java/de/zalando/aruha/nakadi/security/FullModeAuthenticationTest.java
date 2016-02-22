@@ -2,28 +2,17 @@ package de.zalando.aruha.nakadi.security;
 
 
 import com.google.common.collect.ImmutableList;
-import de.zalando.aruha.nakadi.Application;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.boot.test.SpringApplicationConfiguration;
-import org.springframework.boot.test.WebIntegrationTest;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.List;
 
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
-import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@RunWith(SpringJUnit4ClassRunner.class)
-@SpringApplicationConfiguration(Application.class)
-@WebIntegrationTest
-@DirtiesContext(classMode = AFTER_CLASS)
 public class FullModeAuthenticationTest extends AuthenticationTest {
 
     static {

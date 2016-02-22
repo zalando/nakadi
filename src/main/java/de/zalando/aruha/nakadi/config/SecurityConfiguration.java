@@ -4,14 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
-import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
 
 import java.text.MessageFormat;
 
@@ -82,16 +80,6 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     @Override
     public void configure(final ResourceServerSecurityConfigurer resources) throws Exception {
         resources.tokenServices(tokenServices);
-    }
-
-    @Bean
-    public ResourceServerTokenServices zalandoResourceTokenServices() {
-        return new TokenInfoResourceServerTokenServices(settings.getTokenInfoUri(), settings.getClientId());
-    }
-
-    @Bean
-    public SecuritySettings securitySettings() {
-        return new SecuritySettings();
     }
 
 }

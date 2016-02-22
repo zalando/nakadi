@@ -6,9 +6,9 @@ import org.springframework.beans.factory.annotation.Value;
 public class SecuritySettings {
 
     public enum AuthMode {
-        OFF,
-        BASIC,
-        FULL
+        OFF,   // no authentication at all
+        BASIC, // only checks that the token is valid (has "uid" scope)
+        FULL   // full authentication and authorization using oauth2 scopes
     }
 
     @Value("${nakadi.oauth2.tokenInfoUri}")
