@@ -57,9 +57,9 @@ class EventTypeValidator {
         return validators
                 .stream()
                 .map(validator -> validator.accepts(event))
-                .filter(errorOptional -> errorOptional.isPresent())
+                .filter(Optional::isPresent)
                 .findFirst()
-                .map(errorOptionalOptional -> errorOptionalOptional.get());
+                .orElse(Optional.empty());
     }
 
     public EventTypeValidator withConfiguration(final ValidationStrategyConfiguration vsc) {

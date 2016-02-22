@@ -20,8 +20,8 @@ import static org.springframework.http.HttpStatus.OK;
 public class UserJourneyAT extends RealEnvironmentAT {
 
     private static final String TEST_EVENT_TYPE = randomString();
-    private static final String EVENT1 = "\"" + randomString() + "\"";
-    private static final String EVENT2 = "\"" + randomString() + "\"";
+    private static final String EVENT1 = "{\"foo\":\"" + randomString() + "\"}";
+    private static final String EVENT2 = "{\"foo\":\"" + randomString() + "\"}";
 
     private String eventTypeBody;
     private String eventTypeBodyUpdate;
@@ -53,7 +53,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("owning_application", equalTo("article-producer"))
                 .body("category", equalTo("data"))
                 .body("schema.type", equalTo("JSON_SCHEMA"))
-                .body("schema.schema", equalTo("{ \"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" }}}}"));
+                .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
 
         // list event types
         jsonRequestSpec()
