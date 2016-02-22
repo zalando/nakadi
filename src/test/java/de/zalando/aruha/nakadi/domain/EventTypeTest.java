@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.domain;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.zalando.aruha.nakadi.config.NakadiConfig;
+import de.zalando.aruha.nakadi.config.JsonConfig;
 import org.junit.Test;
 
 import static de.zalando.aruha.nakadi.utils.TestUtils.resourceAsString;
@@ -13,7 +13,7 @@ public class EventTypeTest {
     private final ObjectMapper objectMapper;
 
     public EventTypeTest() {
-        objectMapper = new NakadiConfig().jacksonObjectMapper();
+        objectMapper = new JsonConfig().jacksonObjectMapper();
     }
 
     @Test
