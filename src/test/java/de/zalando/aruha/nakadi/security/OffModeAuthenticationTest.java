@@ -30,10 +30,15 @@ public class OffModeAuthenticationTest extends AuthenticationTest {
             new Endpoint(GET, "/metrics"));
 
     @Test
-    public void offAuthMode() throws Exception {
-        for (final Endpoint endpoint : endpoints) {
-            mockMvc.perform(endpoint.toRequestBuilder()).andExpect(STATUS_NOT_401_OR_403);
-        }
+    public void offAuthMode() {
+        endpoints.stream().forEach(endpoint -> {
+            try {
+                mockMvc.perform(endpoint.toRequestBuilder()).andExpect(STATUS_NOT_401_OR_403);
+            }
+            catch (AssertionError | Exception e) {
+                throw new AssertionError("Exception/AssertionError when calling endpoint: " + endpoint, e);
+            }
+        });
     }
 
 }
