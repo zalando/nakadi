@@ -19,9 +19,8 @@ public class OrderingKeyFieldsPartitioningStrategy implements PartitioningStrate
             final JsonPath traversableJsonEvent = new JsonPath(event);
 
             int hashValue = orderingKeyFields.stream()
-                    // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to a string first
-                    // and then use hashCode()
-                    //.map(okf -> event.get(okf).toString().hashCode())
+                    // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
+                    // a string first and then use hashCode()
                     .map(okf -> traversableJsonEvent.get(okf).toString().hashCode())
                     .mapToInt(hc -> hc)
                     .sum();
