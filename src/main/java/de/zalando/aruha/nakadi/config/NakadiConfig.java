@@ -7,8 +7,7 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.partitioning.PartitionsCache;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
@@ -29,10 +28,7 @@ public class NakadiConfig {
     private JsonConfig jsonConfig;
 
     @Autowired
-    private EventTypeRepository eventTypeRepository;
-
-    @Autowired
-    private TopicRepository topicRepository;
+    private RepositoriesConfig repositoriesConfig;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -56,7 +52,8 @@ public class NakadiConfig {
 
     @Bean
     public EventStreamController eventStreamController() {
-        return new EventStreamController(topicRepository, jsonConfig.jacksonObjectMapper(), eventStreamFactory());
+        return new EventStreamController(repositoriesConfig.kafkaRepository(), jsonConfig.jacksonObjectMapper(),
+                eventStreamFactory());
     }
 
     @Bean
@@ -66,12 +63,19 @@ public class NakadiConfig {
 
     @Bean
     public PartitionsController partitionsController() {
-        return new PartitionsController(topicRepository);
+        return new PartitionsController(repositoriesConfig.kafkaRepository());
     }
 
     @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(topicRepository, eventTypeRepository);
+        return new EventPublishingController(repositoriesConfig.kafkaRepository(),
+                repositoriesConfig.eventTypeRepository(),
+                numberOfPartionsCache());
+    }
+
+    @Bean
+    public PartitionsCache numberOfPartionsCache() {
+        return new PartitionsCache(repositoriesConfig.kafkaFactory());
     }
 
 }

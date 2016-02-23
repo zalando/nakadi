@@ -7,7 +7,6 @@ import org.junit.Test;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -24,7 +23,7 @@ import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.generate;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.isIn;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
@@ -33,11 +32,11 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
 
     public static final Random RANDOM = new Random();
     public static final String DELIMITER = "#";
-    public static final int NUMBER_OF_PARTITIONS = 8;
+    public static final String[] PARTITIONS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7"};
 
     private final OrderingKeyFieldsPartitioningStrategy strategy = new OrderingKeyFieldsPartitioningStrategy();
     private final EventType simpleEventType;
-    private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(NUMBER_OF_PARTITIONS);
+    private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
 
     public OrderingKeyFieldsPartitioningStrategyTest() {
         simpleEventType = new EventType();
@@ -53,6 +52,9 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
 
     @Test
     public void partitionsAreEquallyDistributed() {
+        // This is a probabilistic test.
+        // The probability that it fails is approx. 0.577%
+
         fillPartitionsWithEvents(simpleEventType, partitions, 10000);
 
         final double[] eventDistribution = partitions.stream().map(p -> p.size()).mapToDouble(value -> value * 1.0).toArray();
@@ -68,10 +70,9 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
         final EventType eventType = new EventType();
         eventType.setOrderingKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
 
-        final String partition = strategy.calculatePartition(eventType, event, NUMBER_OF_PARTITIONS);
+        final String partition = strategy.calculatePartition(eventType, event, PARTITIONS);
 
-        assertThat(parseInt(partition), greaterThanOrEqualTo(0));
-        assertThat(parseInt(partition), lessThan(NUMBER_OF_PARTITIONS));
+        assertThat(partition, isIn(PARTITIONS));
     }
 
     @Test
@@ -80,15 +81,29 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
         final SecureRandom random = new SecureRandom();
 
         final int numberOfSamples = 10000;
+        final int numberOfRuns = 100 * 1000;
+        final double threshold = 1.5;
 
-        for (int run = 0; run < 100; run++) {
+        double failProbability = 0;
+
+        for (int run = 0; run < numberOfRuns; run++) {
             final double[] dist = new double[8];
             for (int i = 0; i < numberOfSamples; i++) {
                 dist[random.nextInt(dist.length)]++;
             }
             final double variance = calculateVarianceOfUniformDistribution(dist);
-            System.out.println(Arrays.toString(dist) + " = " + variance);
+            //System.out.println(Arrays.toString(dist) + " = " + variance);
+
+            if (variance > threshold) {
+                failProbability += (1.0 / numberOfRuns);
+            }
+
+            if (((run * 100.0) / numberOfRuns) % 1 == 0) {
+                System.out.println((int) ((run * 100.0) / numberOfRuns) + "%");
+            }
         }
+
+        System.out.println("probability to fail the test: " + failProbability);
     }
 
 
@@ -150,7 +165,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
 
         generate(this::randomArticleEvent).limit(numberOfEvents)
                 .forEach(exceptionSafe(event -> {
-                    final String partition = strategy.calculatePartition(eventType, event, numberOfPartitions);
+                    final String partition = strategy.calculatePartition(eventType, event, PARTITIONS);
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
                 }));

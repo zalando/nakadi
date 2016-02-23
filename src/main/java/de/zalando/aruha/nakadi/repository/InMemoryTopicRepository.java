@@ -15,7 +15,7 @@ import static java.util.stream.Collectors.toList;
 
 public class InMemoryTopicRepository implements TopicRepository {
 
-    public static final int DEFAULT_NUMBER_OF_PARTITIONS = 3;
+    public static final int DEFAULT_NUMBER_OF_PARTITIONS = 8;
     private final Map<String, MockTopic> topics;
 
     public InMemoryTopicRepository() {
@@ -107,7 +107,7 @@ public class InMemoryTopicRepository implements TopicRepository {
         private MockTopic(final String name, final int numberOfPartitions) {
             this.name = name;
             partitions = new HashMap<>();
-            for (int i = 1; i <= numberOfPartitions; i++) {
+            for (int i = 0; i < numberOfPartitions; i++) {
                 final String partitionId = String.valueOf(i);
                 partitions.put(partitionId, new MockPartition(partitionId));
             }
