@@ -92,14 +92,12 @@ public class EventPublishingController {
         return partitionId;
     }
 
-    private JSONObject validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException {
+    private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException {
             final EventValidator validator = validationStrategy.materialize(eventType, vsc);
             final Optional<ValidationError> validationError = validator.accepts(event);
             if (validationError.isPresent()) {
                 throw new EventValidationException(validationError.get());
             }
-
-            return event;
     }
 
     private JSONObject parseJson(final String event) throws EventValidationException {
