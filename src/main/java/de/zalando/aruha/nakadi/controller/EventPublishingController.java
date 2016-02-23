@@ -85,7 +85,7 @@ public class EventPublishingController {
             partitionId = orderingKeyFieldsPartitioningStrategy.calculatePartition(eventType, eventAsJson, partitions);
         } else {
             // Will be replaced later:
-            partitionId = partitions[0];
+            partitionId = "0";
         }
         return partitionId;
     }
