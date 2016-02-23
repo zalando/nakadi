@@ -62,7 +62,7 @@ public class JSONSchemaValidationTest {
     public void schemaValidationShouldRespectEventTypeDefinition() {
         final EventType et = buildAndRegisterEventType("some-event-type",
                 new JSONObject(
-                    "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"string\"}}, \"required\": [\"foo\", \"bar\"]}"));
+                    "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}}, \"required\": [\"foo\", \"bar\"]}"));
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -76,18 +76,19 @@ public class JSONSchemaValidationTest {
         final EventTypeValidator validator = EventValidation.lookup(et);
 
         final JSONObject validEvent = new JSONObject(
-                "{\"foo\": \"bar\", \"bar\": \"baz\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
-        final JSONObject invalidEventMissingFoo = new JSONObject(
-                "{\"bar\": \"baz\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+                "{\"foo\": \"bar\", \"bar\": {\"foo\": \"baz\"}, \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+        final JSONObject invalidEventMissingBar = new JSONObject(
+                "{\"foo\": \"bar\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
         final JSONObject invalidEventMissingNameField = new JSONObject(
-                "{\"foo\": \"bar\", \"bar\": \"baz\", \"extra\": \"i should be no problem\"}");
+                "{\"foo\": \"bar\", \"bar\": {\"foo\": \"baz\"}, \"extra\": \"i should be no problem\"}");
         final JSONObject invalidEventMissingMultipleFields = new JSONObject(
-                "{\"extra\": \"i should be no problem\", \"name\": \"12345\"}");
+                "{\"bar\": {\"foobar\": \"baz\"}, \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
 
         assertThat(validator.validate(validEvent), isAbsent());
-        assertThat(validator.validate(invalidEventMissingFoo).get().getMessage(), equalTo("#: required key [foo] not found"));
+        assertThat(validator.validate(invalidEventMissingBar).get().getMessage(), equalTo("#: required key [bar] not found"));
         assertThat(validator.validate(invalidEventMissingNameField).get().getMessage(), equalTo("name is required"));
-        assertThat(validator.validate(invalidEventMissingMultipleFields).get().getMessage(), equalTo("#: 2 schema violations found\n#: required key [foo] not found\n#: required key [bar] not found"));
+        assertThat(validator.validate(invalidEventMissingMultipleFields).get().getMessage(),
+                equalTo("#: 2 schema violations found\n#/bar: required key [foo] not found\n#: required key [foo] not found"));
     }
 
     private EventType buildAndRegisterEventType(final String name, final JSONObject schema) {
