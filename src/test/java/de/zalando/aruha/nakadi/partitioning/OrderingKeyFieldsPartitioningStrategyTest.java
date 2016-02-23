@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.partitioning;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import org.hamcrest.Matchers;
 import org.json.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -36,9 +35,9 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
     public static final String DELIMITER = "#";
     public static final int NUMBER_OF_PARTITIONS = 8;
 
-    private OrderingKeyFieldsPartitioningStrategy strategy = new OrderingKeyFieldsPartitioningStrategy();
+    private final OrderingKeyFieldsPartitioningStrategy strategy = new OrderingKeyFieldsPartitioningStrategy();
     private final EventType simpleEventType;
-    private ArrayList<List<JSONObject>> partitions = createEmptyPartitions(NUMBER_OF_PARTITIONS);
+    private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(NUMBER_OF_PARTITIONS);
 
     public OrderingKeyFieldsPartitioningStrategyTest() {
         simpleEventType = new EventType();
@@ -59,7 +58,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
         final double[] eventDistribution = partitions.stream().map(p -> p.size()).mapToDouble(value -> value * 1.0).toArray();
         final double variance = calculateVarianceOfUniformDistribution(eventDistribution);
 
-        assertThat(variance, Matchers.lessThan(1.5));
+        assertThat(variance, lessThan(1.5));
     }
 
     @Test
