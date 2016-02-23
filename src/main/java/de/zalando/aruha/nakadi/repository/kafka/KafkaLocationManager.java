@@ -1,12 +1,6 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-
-import javax.annotation.PostConstruct;
-
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.apache.curator.framework.CuratorFramework;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,9 +9,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import javax.annotation.PostConstruct;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
-public class KafkaLocationManager {
+class KafkaLocationManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaLocationManager.class);
 
