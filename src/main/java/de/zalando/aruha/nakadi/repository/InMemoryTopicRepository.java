@@ -87,6 +87,11 @@ public class InMemoryTopicRepository implements TopicRepository {
     }
 
     @Override
+    public String[] listPartitionNames(final String topicId) throws NakadiException {
+        return listPartitions(topicId).stream().map(p -> p.getPartitionId()).toArray(String[]::new);
+    }
+
+    @Override
     public TopicPartition getPartition(final String topicId, final String partition) throws NakadiException {
         throw new UnsupportedOperationException("not implemented");
     }

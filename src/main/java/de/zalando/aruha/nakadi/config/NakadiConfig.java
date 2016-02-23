@@ -8,6 +8,7 @@ import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
 import de.zalando.aruha.nakadi.partitioning.PartitionsCache;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
@@ -26,6 +27,9 @@ public class NakadiConfig {
 
     @Autowired
     private JsonConfig jsonConfig;
+
+    @Autowired
+    private KafkaConfig kafkaConfig;
 
     @Autowired
     private RepositoriesConfig repositoriesConfig;
@@ -52,7 +56,7 @@ public class NakadiConfig {
 
     @Bean
     public EventStreamController eventStreamController() {
-        return new EventStreamController(repositoriesConfig.kafkaRepository(), jsonConfig.jacksonObjectMapper(),
+        return new EventStreamController(kafkaConfig.kafkaTopicRepository(), jsonConfig.jacksonObjectMapper(),
                 eventStreamFactory());
     }
 
@@ -63,19 +67,19 @@ public class NakadiConfig {
 
     @Bean
     public PartitionsController partitionsController() {
-        return new PartitionsController(repositoriesConfig.kafkaRepository());
+        return new PartitionsController(kafkaConfig.kafkaTopicRepository());
     }
 
     @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(repositoriesConfig.kafkaRepository(),
+        return new EventPublishingController(kafkaConfig.kafkaTopicRepository(),
                 repositoriesConfig.eventTypeRepository(),
                 numberOfPartionsCache());
     }
 
     @Bean
     public PartitionsCache numberOfPartionsCache() {
-        return new PartitionsCache(repositoriesConfig.kafkaFactory());
+        return new PartitionsCache(kafkaConfig.kafkaTopicRepository());
     }
 
 }
