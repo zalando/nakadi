@@ -5,7 +5,6 @@ import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
-import de.zalando.aruha.nakadi.partitioning.PartitionsCache;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
@@ -26,9 +25,6 @@ import java.util.LinkedList;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -61,10 +57,7 @@ public class EventPublishingControllerTest {
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITH_TOPIC));
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITHOUT_TOPIC));
 
-        final PartitionsCache partitionsCache = mock(PartitionsCache.class);
-        when(partitionsCache.getPartitionsFor(anyString())).thenReturn(PARTITIONS);
-
-        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository, partitionsCache);
+        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)

@@ -7,7 +7,6 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
-import de.zalando.aruha.nakadi.partitioning.PartitionsCache;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,13 +72,8 @@ public class NakadiConfig {
     @Bean
     public EventPublishingController eventPublishingController() {
         return new EventPublishingController(kafkaConfig.kafkaTopicRepository(),
-                repositoriesConfig.eventTypeRepository(),
-                numberOfPartionsCache());
-    }
-
-    @Bean
-    public PartitionsCache numberOfPartionsCache() {
-        return new PartitionsCache(kafkaConfig.kafkaTopicRepository());
+                repositoriesConfig.eventTypeRepository()
+        );
     }
 
 }

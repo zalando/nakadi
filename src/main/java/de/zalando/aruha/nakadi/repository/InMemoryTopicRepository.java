@@ -80,7 +80,7 @@ public class InMemoryTopicRepository implements TopicRepository {
     public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
         final MockTopic mockTopic = topics.get(topicId);
         if (mockTopic == null) {
-            throw new InternalNakadiException("No such topic");
+            throw new InternalNakadiException("No such topic '" + topicId + "'");
         }
 
         return mockTopic.partitions.values().stream().map(p -> new TopicPartition(topicId, p.id)).collect(toList());
