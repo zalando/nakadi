@@ -59,7 +59,9 @@ public class EventPublishingController {
         try {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
-            final JSONObject eventAsJson = validateSchema(event, eventType);
+            final JSONObject eventAsJson = parseJson(event);
+
+            validateSchema(eventAsJson, eventType);
 
             String partitionId = applyPartitioningStrategy(eventType, eventAsJson);
 
@@ -90,17 +92,19 @@ public class EventPublishingController {
         return partitionId;
     }
 
-    private JSONObject validateSchema(final String event, final EventType eventType) throws EventValidationException {
-        try {
+    private JSONObject validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException {
             final EventValidator validator = validationStrategy.materialize(eventType, vsc);
-            final JSONObject jsonObject = new JSONObject(event);
-
-            final Optional<ValidationError> validationError = validator.accepts(jsonObject);
+            final Optional<ValidationError> validationError = validator.accepts(event);
             if (validationError.isPresent()) {
                 throw new EventValidationException(validationError.get());
             }
 
-            return jsonObject;
+            return event;
+    }
+
+    private JSONObject parseJson(final String event) throws EventValidationException {
+        try {
+            return parseJson(event);
         } catch (JSONException e) {
             throw new EventValidationException(new ValidationError("payload must be a valid json"));
         }
