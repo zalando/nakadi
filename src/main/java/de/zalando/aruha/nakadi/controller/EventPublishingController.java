@@ -82,8 +82,8 @@ public class EventPublishingController {
 
     private String applyPartitioningStrategy(final EventType eventType, final JSONObject eventAsJson) throws InvalidOrderingKeyFieldsException, NakadiException {
         String partitionId;
-        final String[] partitions = topicRepository.listPartitionNames(eventType.getName());
         if (!eventType.getOrderingKeyFields().isEmpty()) {
+            final String[] partitions = topicRepository.listPartitionNames(eventType.getName());
             partitionId = orderingKeyFieldsPartitioningStrategy.calculatePartition(eventType, eventAsJson, partitions);
         } else {
             // Will be replaced later:
@@ -93,11 +93,11 @@ public class EventPublishingController {
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException {
-            final EventValidator validator = validationStrategy.materialize(eventType, vsc);
-            final Optional<ValidationError> validationError = validator.accepts(event);
-            if (validationError.isPresent()) {
-                throw new EventValidationException(validationError.get());
-            }
+        final EventValidator validator = validationStrategy.materialize(eventType, vsc);
+        final Optional<ValidationError> validationError = validator.accepts(event);
+        if (validationError.isPresent()) {
+            throw new EventValidationException(validationError.get());
+        }
     }
 
     private JSONObject parseJson(final String event) throws EventValidationException {
