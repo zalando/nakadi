@@ -5,7 +5,7 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import javax.annotation.concurrent.Immutable;
 
 @Immutable
-public class KafkaCursor {
+class KafkaCursor {
 
     private final int partition;
 

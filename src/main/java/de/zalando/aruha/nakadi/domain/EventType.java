@@ -6,9 +6,14 @@ import com.google.common.collect.Lists;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.List;
 
+import static java.util.Collections.unmodifiableList;
+
 public class EventType {
+
+    public static final List<String> EMPTY_STRING_LIST = new ArrayList<>(0);
 
     @NotNull
     @Size(min = 1, message = "may not be empty")
@@ -22,6 +27,8 @@ public class EventType {
 
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
+
+    private List<String> orderingKeyFields;
 
     @NotNull
     @Valid
@@ -57,5 +64,13 @@ public class EventType {
 
     public void setSchema(final EventTypeSchema schema) {
         this.schema = schema;
+    }
+
+    public List<String> getOrderingKeyFields() {
+        return unmodifiableList(orderingKeyFields != null ? orderingKeyFields : EMPTY_STRING_LIST);
+    }
+
+    public void setOrderingKeyFields(final List<String> orderingKeyFields) {
+        this.orderingKeyFields = orderingKeyFields;
     }
 }

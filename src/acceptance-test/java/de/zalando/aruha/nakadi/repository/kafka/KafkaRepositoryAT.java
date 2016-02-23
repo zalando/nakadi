@@ -28,7 +28,6 @@ import org.junit.Test;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import de.zalando.aruha.nakadi.webservice.BaseAT;
-import de.zalando.aruha.nakadi.webservice.utils.KafkaTestHelper;
 
 public class KafkaRepositoryAT extends BaseAT {
 

@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.webservice;
 
 import com.jayway.restassured.response.Response;
-import de.zalando.aruha.nakadi.webservice.utils.KafkaTestHelper;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;

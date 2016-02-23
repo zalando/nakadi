@@ -1,4 +1,4 @@
-package de.zalando.aruha.nakadi.webservice.utils;
+package de.zalando.aruha.nakadi.repository.kafka;
 
 import de.zalando.aruha.nakadi.domain.Cursor;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
