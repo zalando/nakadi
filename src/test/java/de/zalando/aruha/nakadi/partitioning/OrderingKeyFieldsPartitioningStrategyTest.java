@@ -1,10 +1,15 @@
 package de.zalando.aruha.nakadi.partitioning;
 
 import de.zalando.aruha.nakadi.domain.EventType;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -30,9 +35,13 @@ import static org.junit.Assert.assertThat;
 
 public class OrderingKeyFieldsPartitioningStrategyTest {
 
-    public static final Random RANDOM = new Random();
-    public static final String DELIMITER = "#";
-    public static final String[] PARTITIONS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7"};
+    private static final Random RANDOM = new Random();
+    private static final String DELIMITER = "#";
+    private static final String[] PARTITIONS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7"};
+
+    private static List<JSONObject> EVENT_SAMPLES_A = null;
+    private static List<JSONObject> EVENT_SAMPLES_B = null;
+    private static List<JSONObject> EVENT_SAMPLES_C = null;
 
     private final OrderingKeyFieldsPartitioningStrategy strategy = new OrderingKeyFieldsPartitioningStrategy();
     private final EventType simpleEventType;
@@ -45,22 +54,49 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
 
     @Test
     public void calculatesSamePartitionForSameOrderingKeyFields() throws Exception {
-        fillPartitionsWithEvents(simpleEventType, partitions, 1000);
+        fillPartitionsWithRandomEvents(simpleEventType, partitions, 1000);
 
         checkThatEventsWithSameKeysAreInSamePartition(partitions);
     }
 
     @Test
-    public void partitionsAreEquallyDistributed() {
+    @Ignore
+    public void partitionsAreEvenlyDistributed_usingRandomEvents() {
         // This is a probabilistic test.
         // The probability that it fails is approx. 0.577%
 
-        fillPartitionsWithEvents(simpleEventType, partitions, 10000);
+        fillPartitionsWithRandomEvents(simpleEventType, partitions, 10000);
 
         final double[] eventDistribution = partitions.stream().map(p -> p.size()).mapToDouble(value -> value * 1.0).toArray();
         final double variance = calculateVarianceOfUniformDistribution(eventDistribution);
 
         assertThat(variance, lessThan(1.5));
+    }
+
+    @Test
+    public void partitionsAreEvenlyDistributed() throws IOException {
+        loadEventSamples();
+
+        assertThat("Event sample set A is not evenly distributed with strategy", varianceForEvents(EVENT_SAMPLES_A), lessThan(1.5));
+        assertThat("Event sample set B is not evenly distributed with strategy", varianceForEvents(EVENT_SAMPLES_B), lessThan(1.5));
+        assertThat("Event sample set C is not evenly distributed with strategy", varianceForEvents(EVENT_SAMPLES_C), lessThan(1.5));
+    }
+
+    private double varianceForEvents(final List<JSONObject> events) {
+        fillPartitionsWithEvents(simpleEventType, partitions, events);
+
+        final double[] eventDistribution = partitions.stream().map(p -> p.size()).mapToDouble(value -> value * 1.0).toArray();
+        return calculateVarianceOfUniformDistribution(eventDistribution);
+    }
+
+    @Test
+    @Ignore
+    public void createSampleSet() {
+        final List<JSONObject> events = generateRandomEvents(10000);
+
+        for (JSONObject event : events) {
+            System.out.println(event.toString());
+        }
     }
 
     @Test
@@ -80,8 +116,8 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
     public void testVariance() {
         final SecureRandom random = new SecureRandom();
 
-        final int numberOfSamples = 10000;
-        final int numberOfRuns = 100 * 1000;
+        final int numberOfSamples = 100000;
+        final int numberOfRuns = 1000;
         final double threshold = 1.5;
 
         double failProbability = 0;
@@ -105,7 +141,6 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
 
         System.out.println("probability to fail the test: " + failProbability);
     }
-
 
     private double calculateVarianceOfUniformDistribution(final double[] samples) {
         final double x_sum = stream(samples).sum();
@@ -160,10 +195,16 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
                 .collect(toCollection(ArrayList<List<JSONObject>>::new));
     }
 
-    private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions, final int numberOfEvents) {
-        final int numberOfPartitions = partitions.size();
+    private List<JSONObject> generateRandomEvents(final int numberOfEvents) {
+        return generate(this::randomArticleEvent).limit(numberOfEvents).collect(toList());
+    }
 
-        generate(this::randomArticleEvent).limit(numberOfEvents)
+    private void fillPartitionsWithRandomEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions, final int numberOfEvents) {
+        fillPartitionsWithEvents(eventType, partitions, generateRandomEvents(numberOfEvents));
+    }
+
+    private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions, final List<JSONObject> events) {
+        events.stream()
                 .forEach(exceptionSafe(event -> {
                     final String partition = strategy.calculatePartition(eventType, event, PARTITIONS);
                     final int partitionNo = parseInt(partition);
@@ -195,8 +236,35 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
         };
     }
 
+    private void loadEventSamples() throws IOException {
+        if (EVENT_SAMPLES_A == null) {
+            EVENT_SAMPLES_A = loadEventSampleSet("events.10000.A.txt");
+        }
+        if (EVENT_SAMPLES_B == null) {
+            EVENT_SAMPLES_B = loadEventSampleSet("events.10000.B.txt");
+        }
+        if (EVENT_SAMPLES_C == null) {
+            EVENT_SAMPLES_C = loadEventSampleSet("events.10000.C.txt");
+        }
+    }
+
+    private List<JSONObject> loadEventSampleSet(final String sampleSetName) throws IOException {
+        final InputStream in = this.getClass().getResourceAsStream(sampleSetName);
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+        String line;
+        final List<JSONObject> events = new ArrayList<>(10000);
+        while ((line = reader.readLine()) != null) {
+            if (StringUtils.isNoneBlank(line)) {
+                events.add(new JSONObject(line));
+            }
+        }
+        return events;
+    }
+
     @FunctionalInterface
     private interface ConsumerWithException<T> {
         void accept(T t) throws Exception;
     }
+
 }
