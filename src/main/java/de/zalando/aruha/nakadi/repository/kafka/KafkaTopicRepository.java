@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicCreationException;
@@ -32,6 +33,7 @@ import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
+import static java.util.Arrays.stream;
 
 public class KafkaTopicRepository implements TopicRepository {
 
@@ -106,12 +108,9 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public boolean partitionExists(final String topic, final String partition) throws ServiceUnavailableException {
-        return kafkaFactory
-                .getConsumer()
-                .partitionsFor(topic)
-                .stream()
-                .anyMatch(pInfo -> toNakadiPartition(pInfo.partition()).equals(partition));
+    public boolean partitionExists(final String topic, final String partition) throws NakadiException {
+        return stream(listPartitionNames(topic))
+                .anyMatch(p -> partition.equals(p));
     }
 
     @Override
@@ -194,6 +193,14 @@ public class KafkaTopicRepository implements TopicRepository {
         catch (Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
+    }
+
+    @Override
+    public String[] listPartitionNames(final String topicId) throws NakadiException {
+        return kafkaFactory.createProducer().partitionsFor(topicId)
+                .stream()
+                .map(partitionInfo -> String.valueOf(partitionInfo.partition()))
+                .toArray(n -> new String[n]);
     }
 
     private String transformNewestOffset(final Long newestOffset) {

@@ -2,10 +2,10 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
@@ -25,6 +25,7 @@ import java.util.concurrent.Future;
 import java.util.function.Function;
 
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
+import static java.lang.String.valueOf;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -33,6 +34,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyVararg;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -92,9 +94,9 @@ public class KafkaTopicRepositoryTest {
     private static final List<String> MY_TOPIC_INVALID_PARTITIONS = ImmutableList.of("3", "-1", "abc");
 
     private static final Function<PartitionState, TopicPartition> PARTITION_STATE_TO_TOPIC_PARTITION = p -> {
-        final TopicPartition topicPartition = new TopicPartition(p.topic, String.valueOf(p.partition));
-        topicPartition.setOldestAvailableOffset(String.valueOf(p.earliestOffset));
-        final String newestAvailable = p.latestOffset == 0 ? Cursor.BEFORE_OLDEST_OFFSET : String.valueOf(p.latestOffset - 1);
+        final TopicPartition topicPartition = new TopicPartition(p.topic, valueOf(p.partition));
+        topicPartition.setOldestAvailableOffset(valueOf(p.earliestOffset));
+        final String newestAvailable = p.latestOffset == 0 ? Cursor.BEFORE_OLDEST_OFFSET : valueOf(p.latestOffset - 1);
         topicPartition.setNewestAvailableOffset(newestAvailable);
         return topicPartition;
     };
@@ -105,6 +107,10 @@ public class KafkaTopicRepositoryTest {
 
     public KafkaTopicRepositoryTest() {
         kafkaProducer = mock(KafkaProducer.class);
+        when(kafkaProducer.partitionsFor(anyString())).then(
+                invocation -> partitionsOfTopic((String) invocation.getArguments()[0])
+        );
+
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory);
     }
@@ -171,7 +177,7 @@ public class KafkaTopicRepositoryTest {
     public void canPostAnEvent() throws Exception {
         kafkaTopicRepository.postEvent(
                 EXPECTED_PRODUCER_RECORD.topic(),
-                String.valueOf(EXPECTED_PRODUCER_RECORD.partition()),
+                valueOf(EXPECTED_PRODUCER_RECORD.partition()),
                 (String) EXPECTED_PRODUCER_RECORD.value());
 
         verify(kafkaProducer, times(1)).send(EXPECTED_PRODUCER_RECORD);

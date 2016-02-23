@@ -2,9 +2,10 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.partitioning.PartitionsCache;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
@@ -25,6 +26,9 @@ import java.util.LinkedList;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -40,6 +44,7 @@ public class EventPublishingControllerTest {
     public static final String EVENT3 = "{\"payload\": \"My Event 3 Payload\"}";
     public static final String INVALID_SCHEMA_EVENT = "{\"wrong-payload\": \"My Event 3 Payload\"}";
     public static final String INVALID_JSON_EVENT = "not-a-json";
+    public static final String[] PARTITIONS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7"};
 
     private final InMemoryTopicRepository topicRepository = new InMemoryTopicRepository();
     private final JsonTestHelper jsonHelper;
@@ -56,7 +61,10 @@ public class EventPublishingControllerTest {
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITH_TOPIC));
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITHOUT_TOPIC));
 
-        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository);
+        final PartitionsCache partitionsCache = mock(PartitionsCache.class);
+        when(partitionsCache.getPartitionsFor(anyString())).thenReturn(PARTITIONS);
+
+        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository, partitionsCache);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
@@ -70,7 +78,7 @@ public class EventPublishingControllerTest {
         postEvent(EVENT_TYPE_WITH_TOPIC, EVENT2);
         postEvent(EVENT_TYPE_WITH_TOPIC, EVENT3);
 
-        final LinkedList<String> events = topicRepository.getEvents(EVENT_TYPE_WITH_TOPIC, "1");
+        final LinkedList<String> events = topicRepository.getEvents(EVENT_TYPE_WITH_TOPIC, "0");
 
         assertThat(events, hasSize(3));
 
