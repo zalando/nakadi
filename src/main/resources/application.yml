@@ -41,7 +41,7 @@ nakadi:
     connectionTimeoutMs: 10000
   oauth2:
     mode: BASIC
-    tokenInfoUri: https://auth.zalando.com/oauth2/tokeninfo
+    tokenInfoUri: https://info.services.auth.zalando.com/oauth2/tokeninfo
     clientId: stups_aruha-event-store-poc
     scopes:
       uid: uid
