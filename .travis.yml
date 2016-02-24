@@ -10,7 +10,7 @@ services:
 
 before_script:
   - sudo /etc/init.d/postgresql stop
-  - pip install --user codecov
+  - pip install codecov
   - curl http://www.jpm4j.org/install/script | sudo sh
   - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
   
