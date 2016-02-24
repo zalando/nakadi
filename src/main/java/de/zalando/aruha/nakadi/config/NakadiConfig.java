@@ -7,7 +7,8 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
-import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
@@ -28,10 +29,10 @@ public class NakadiConfig {
     private JsonConfig jsonConfig;
 
     @Autowired
-    private KafkaConfig kafkaConfig;
+    private TopicRepository topicRepository;
 
     @Autowired
-    private RepositoriesConfig repositoriesConfig;
+    private EventTypeRepository eventTypeRepository;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -55,7 +56,7 @@ public class NakadiConfig {
 
     @Bean
     public EventStreamController eventStreamController() {
-        return new EventStreamController(kafkaConfig.kafkaTopicRepository(), jsonConfig.jacksonObjectMapper(),
+        return new EventStreamController(topicRepository, jsonConfig.jacksonObjectMapper(),
                 eventStreamFactory());
     }
 
@@ -66,13 +67,13 @@ public class NakadiConfig {
 
     @Bean
     public PartitionsController partitionsController() {
-        return new PartitionsController(kafkaConfig.kafkaTopicRepository());
+        return new PartitionsController(topicRepository);
     }
 
     @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(kafkaConfig.kafkaTopicRepository(),
-                repositoriesConfig.eventTypeRepository()
+        return new EventPublishingController(topicRepository,
+                eventTypeRepository
         );
     }
 
