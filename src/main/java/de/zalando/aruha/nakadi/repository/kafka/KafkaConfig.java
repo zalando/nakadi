@@ -1,17 +1,17 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperConfig;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 @Configuration
-@Import(ZooKeeperConfig.class)
+@Import(ZookeeperConfig.class)
 public class KafkaConfig {
 
     @Autowired
-    private ZooKeeperConfig zookeeperConfig;
+    private ZookeeperConfig zookeeperConfig;
 
     @Bean
     public KafkaLocationManager getKafkaLocationManager() {

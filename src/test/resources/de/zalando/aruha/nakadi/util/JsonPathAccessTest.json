@@ -1,0 +1,11 @@
+{
+  "sku": "ABCDE",
+  "brand": {
+    "name": "Superbrand"
+  },
+  "dynamic_attributes": {
+    "field.with.dots": {
+      "field.\\with'chars\"": "you reached it"
+    }
+  }
+}

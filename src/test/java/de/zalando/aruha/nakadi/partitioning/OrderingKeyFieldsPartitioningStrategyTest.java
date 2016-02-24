@@ -16,8 +16,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.TreeSet;
-import java.util.function.Consumer;
 
+import static de.zalando.aruha.nakadi.exceptions.ExceptionWrapper.wrapConsumer;
 import static de.zalando.aruha.nakadi.utils.TestUtils.resourceAsString;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
@@ -205,7 +205,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
 
     private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions, final List<JSONObject> events) {
         events.stream()
-                .forEach(exceptionSafe(event -> {
+                .forEach(wrapConsumer(event -> {
                     final String partition = strategy.calculatePartition(eventType, event, PARTITIONS);
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
@@ -224,16 +224,6 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
         jsonObject.put("color", color);
         jsonObject.put("price", price);
         return jsonObject;
-    }
-
-    public static <T> Consumer<T> exceptionSafe(ConsumerWithException<T> consumer) {
-        return t -> {
-            try {
-                consumer.accept(t);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        };
     }
 
     private void loadEventSamples() throws IOException {
@@ -260,11 +250,6 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
             }
         }
         return events;
-    }
-
-    @FunctionalInterface
-    private interface ConsumerWithException<T> {
-        void accept(T t) throws Exception;
     }
 
 }

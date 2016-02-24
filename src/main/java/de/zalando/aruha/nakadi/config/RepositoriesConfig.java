@@ -3,7 +3,7 @@ package de.zalando.aruha.nakadi.config;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperConfig;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
 @Profile("!test")
-@Import({KafkaConfig.class, ZooKeeperConfig.class})
+@Import({KafkaConfig.class, ZookeeperConfig.class})
 public class RepositoriesConfig {
 
     @Autowired

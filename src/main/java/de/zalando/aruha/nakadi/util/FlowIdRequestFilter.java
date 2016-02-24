@@ -1,4 +1,4 @@
-package de.zalando.aruha.nakadi;
+package de.zalando.aruha.nakadi.util;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
