@@ -51,7 +51,6 @@ public class JsonPathAccess {
                 return null;
             }
 
-            //int oldPos = pos;
             StringBuilder tokenBuilder = new StringBuilder(path.length - pos);
 
             boolean inSingleQuote = false;
