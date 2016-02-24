@@ -175,13 +175,11 @@ class JSONSchemaValidator implements EventValidator {
     private void collectErrorMessages(ValidationException e, StringBuilder builder) {
         builder.append(e.getMessage());
 
-        if (!e.getCausingExceptions().isEmpty()) {
-            e.getCausingExceptions().stream()
-                    .forEach(causingException -> {
-                        builder.append("\n");
-                        collectErrorMessages(causingException, builder);
-                    });
-        }
+        e.getCausingExceptions().stream()
+                .forEach(causingException -> {
+                    builder.append("\n");
+                    collectErrorMessages(causingException, builder);
+                });
     }
 }
 
