@@ -102,7 +102,7 @@ public class EventPublishingController {
 
     private JSONObject parseJson(final String event) throws EventValidationException {
         try {
-            return parseJson(event);
+            return new JSONObject(event);
         } catch (JSONException e) {
             throw new EventValidationException(new ValidationError("payload must be a valid json"));
         }
