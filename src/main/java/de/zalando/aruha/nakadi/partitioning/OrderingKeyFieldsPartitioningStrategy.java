@@ -14,7 +14,7 @@ import static java.lang.Math.abs;
 public class OrderingKeyFieldsPartitioningStrategy implements PartitioningStrategy {
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final String[] partitions) throws InvalidOrderingKeyFieldsException {
+    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions) throws InvalidOrderingKeyFieldsException {
         final List<String> orderingKeyFields = eventType.getOrderingKeyFields();
         if (orderingKeyFields.isEmpty()) {
             throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
@@ -32,8 +32,8 @@ public class OrderingKeyFieldsPartitioningStrategy implements PartitioningStrate
                     .mapToInt(hc -> hc)
                     .sum();
 
-            final int partitionIndex = abs(hashValue) % partitions.length;
-            return partitions[partitionIndex];
+            final int partitionIndex = abs(hashValue) % partitions.size();
+            return partitions.get(partitionIndex);
 
         } catch (ExceptionWrapper e) {
             final Exception original = e.getWrapped();

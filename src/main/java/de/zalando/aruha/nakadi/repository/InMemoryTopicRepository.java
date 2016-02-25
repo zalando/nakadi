@@ -11,6 +11,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 
 public class InMemoryTopicRepository implements TopicRepository {
@@ -87,8 +88,8 @@ public class InMemoryTopicRepository implements TopicRepository {
     }
 
     @Override
-    public String[] listPartitionNames(final String topicId) throws NakadiException {
-        return listPartitions(topicId).stream().map(p -> p.getPartitionId()).toArray(String[]::new);
+    public List<String> listPartitionNames(final String topicId) throws NakadiException {
+        return unmodifiableList(listPartitions(topicId).stream().map(p -> p.getPartitionId()).collect(toList()));
     }
 
     @Override

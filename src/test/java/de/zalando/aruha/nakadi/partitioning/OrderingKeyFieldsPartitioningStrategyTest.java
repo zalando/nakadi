@@ -106,7 +106,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
         final EventType eventType = new EventType();
         eventType.setOrderingKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
 
-        final String partition = strategy.calculatePartition(eventType, event, PARTITIONS);
+        final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
 
         assertThat(partition, isIn(PARTITIONS));
     }
@@ -206,7 +206,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
     private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions, final List<JSONObject> events) {
         events.stream()
                 .forEach(wrapConsumer(event -> {
-                    final String partition = strategy.calculatePartition(eventType, event, PARTITIONS);
+                    final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
                 }));

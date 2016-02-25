@@ -31,7 +31,7 @@ public interface TopicRepository {
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
-    String[] listPartitionNames(final String topicId) throws NakadiException;
+    List<String> listPartitionNames(final String topicId) throws NakadiException;
 
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 

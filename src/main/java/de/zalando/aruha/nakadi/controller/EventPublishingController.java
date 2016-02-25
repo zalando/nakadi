@@ -4,9 +4,9 @@ import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import de.zalando.aruha.nakadi.exceptions.EventValidationException;
+import de.zalando.aruha.nakadi.exceptions.InvalidOrderingKeyFieldsException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
-import de.zalando.aruha.nakadi.exceptions.InvalidOrderingKeyFieldsException;
 import de.zalando.aruha.nakadi.partitioning.OrderingKeyFieldsPartitioningStrategy;
 import de.zalando.aruha.nakadi.partitioning.PartitioningStrategy;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.springframework.http.ResponseEntity.status;
@@ -83,7 +84,7 @@ public class EventPublishingController {
     private String applyPartitioningStrategy(final EventType eventType, final JSONObject eventAsJson) throws InvalidOrderingKeyFieldsException, NakadiException {
         String partitionId;
         if (!eventType.getOrderingKeyFields().isEmpty()) {
-            final String[] partitions = topicRepository.listPartitionNames(eventType.getName());
+            final List<String> partitions = topicRepository.listPartitionNames(eventType.getName());
             partitionId = orderingKeyFieldsPartitioningStrategy.calculatePartition(eventType, eventAsJson, partitions);
         } else {
             // Will be replaced later:
