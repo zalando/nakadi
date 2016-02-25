@@ -11,8 +11,8 @@ public class SecuritySettings {
         FULL   // full authentication and authorization using oauth2 scopes
     }
 
-    @Value("${nakadi.oauth2.tokenInfoUri}")
-    private String tokenInfoUri;
+    @Value("${nakadi.oauth2.tokenInfoUrl}")
+    private String tokenInfoUrl;
 
     @Value("${nakadi.oauth2.clientId}")
     private String clientId;
@@ -20,8 +20,8 @@ public class SecuritySettings {
     @Value("${nakadi.oauth2.mode:BASIC}")
     private AuthMode authMode;
 
-    public String getTokenInfoUri() {
-        return tokenInfoUri;
+    public String getTokenInfoUrl() {
+        return tokenInfoUrl;
     }
 
     public String getClientId() {
