@@ -6,7 +6,7 @@ import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import de.zalando.aruha.nakadi.exceptions.EventValidationException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
-import de.zalando.aruha.nakadi.partitioning.InvalidOrderingKeyFieldsException;
+import de.zalando.aruha.nakadi.exceptions.InvalidOrderingKeyFieldsException;
 import de.zalando.aruha.nakadi.partitioning.OrderingKeyFieldsPartitioningStrategy;
 import de.zalando.aruha.nakadi.partitioning.PartitioningStrategy;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;

@@ -1,6 +1,4 @@
-package de.zalando.aruha.nakadi.partitioning;
-
-import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
+package de.zalando.aruha.nakadi.exceptions;
 
 public class InvalidOrderingKeyFieldsException extends InternalNakadiException {
     public InvalidOrderingKeyFieldsException(final String message) {

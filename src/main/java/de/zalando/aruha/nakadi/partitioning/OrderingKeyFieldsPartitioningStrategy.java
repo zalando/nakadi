@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.partitioning;
 
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
+import de.zalando.aruha.nakadi.exceptions.InvalidOrderingKeyFieldsException;
 import de.zalando.aruha.nakadi.util.JsonPathAccess;
 import org.json.JSONObject;
 

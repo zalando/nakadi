@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.util;
 
-import de.zalando.aruha.nakadi.partitioning.InvalidOrderingKeyFieldsException;
+import de.zalando.aruha.nakadi.exceptions.InvalidOrderingKeyFieldsException;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.json.JSONObject;
 import org.junit.Test;
