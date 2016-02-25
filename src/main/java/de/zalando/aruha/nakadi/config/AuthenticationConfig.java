@@ -12,7 +12,7 @@ public class AuthenticationConfig {
 
     @Bean
     public ResourceServerTokenServices zalandoResourceTokenServices() {
-        return new TokenInfoResourceServerTokenServices(securitySettings().getTokenInfoUri(), securitySettings().getClientId());
+        return new TokenInfoResourceServerTokenServices(securitySettings().getTokenInfoUrl(), securitySettings().getClientId());
     }
 
     @Bean
