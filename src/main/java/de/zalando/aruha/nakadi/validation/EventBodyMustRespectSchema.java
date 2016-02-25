@@ -1,26 +1,22 @@
 package de.zalando.aruha.nakadi.validation;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsonorg.JsonOrgModule;
+import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
+import org.everit.json.schema.Schema;
+import org.everit.json.schema.ValidationException;
+import org.everit.json.schema.loader.SchemaLoader;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
-import org.everit.json.schema.Schema;
-import org.everit.json.schema.ValidationException;
-import org.everit.json.schema.loader.SchemaLoader;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsonorg.JsonOrgModule;
-
-import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 
 public class EventBodyMustRespectSchema extends ValidationStrategy {
 
@@ -169,8 +165,21 @@ class JSONSchemaValidator implements EventValidator {
 
             return Optional.empty();
         } catch (final ValidationException e) {
-            return Optional.of(new ValidationError(e.getMessage()));
+            StringBuilder builder = new StringBuilder();
+            collectErrorMessages(e, builder);
+
+            return Optional.of(new ValidationError(builder.toString()));
         }
+    }
+
+    private void collectErrorMessages(ValidationException e, StringBuilder builder) {
+        builder.append(e.getMessage());
+
+        e.getCausingExceptions().stream()
+                .forEach(causingException -> {
+                    builder.append("\n");
+                    collectErrorMessages(causingException, builder);
+                });
     }
 }
 
