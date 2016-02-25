@@ -60,7 +60,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
     }
 
     @Test
-    @Ignore
+    @Ignore("This might be useful to play around with for future implementations of PartitioningStrategies")
     public void partitionsAreEvenlyDistributed_usingRandomEvents() {
         // This is a probabilistic test.
         // The probability that it fails is approx. 0.577%
@@ -90,7 +90,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
     }
 
     @Test
-    @Ignore
+    @Ignore("Run this to create a new set of event samples")
     public void createSampleSet() {
         final List<JSONObject> events = generateRandomEvents(10000);
 
@@ -112,7 +112,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
     }
 
     @Test
-    @Ignore
+    @Ignore("Tests the variance used in the tests here")
     public void testVariance() {
         final SecureRandom random = new SecureRandom();
 
