@@ -41,9 +41,11 @@ public class JsonPathAccess {
     private static class JsonPathTokenizer {
         private final char[] path;
         private int pos = 0;
+        private final StringBuilder tokenBuilder;
 
         private JsonPathTokenizer(final String path) {
             this.path = path.toCharArray();
+            tokenBuilder = new StringBuilder(this.path.length);
         }
 
         public synchronized String nextToken() {
@@ -51,7 +53,7 @@ public class JsonPathAccess {
                 return null;
             }
 
-            StringBuilder tokenBuilder = new StringBuilder(path.length - pos);
+            tokenBuilder.setLength(0);
 
             boolean inSingleQuote = false;
             boolean escaped = false;
@@ -79,9 +81,8 @@ public class JsonPathAccess {
 
             }
 
-            final String token = tokenBuilder.toString();
-            if (token.length() > 0) {
-                return token;
+            if (tokenBuilder.length() > 0) {
+                return tokenBuilder.toString();
             } else {
                 return null;
             }
