@@ -105,7 +105,6 @@ public class EventTypeCache {
             }
 
             private void invalidateCacheKey(PathChildrenCacheEvent event) {
-                System.out.println("INVALIDATE "+event.getData().getPath());
                 String path[] = event.getData().getPath().split("/");
 
                 cache.invalidate(path[path.length - 1]);
@@ -128,7 +127,6 @@ public class EventTypeCache {
     private LoadingCache<String,EventType> setupInMemoryCache(EventTypeRepository dbRepo) {
         CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
             public EventType load(String key) throws NoSuchEventTypeException {
-                System.out.println("CACHE MISS");
                 return dbRepo.findByName(key);
             }
         };
