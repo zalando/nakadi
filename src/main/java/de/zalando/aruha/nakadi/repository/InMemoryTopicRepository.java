@@ -11,11 +11,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 
 public class InMemoryTopicRepository implements TopicRepository {
 
-    public static final int DEFAULT_NUMBER_OF_PARTITIONS = 3;
+    public static final int DEFAULT_NUMBER_OF_PARTITIONS = 8;
     private final Map<String, MockTopic> topics;
 
     public InMemoryTopicRepository() {
@@ -80,10 +81,15 @@ public class InMemoryTopicRepository implements TopicRepository {
     public List<TopicPartition> listPartitions(final String topicId) throws NakadiException {
         final MockTopic mockTopic = topics.get(topicId);
         if (mockTopic == null) {
-            throw new InternalNakadiException("No such topic");
+            throw new InternalNakadiException("No such topic '" + topicId + "'");
         }
 
         return mockTopic.partitions.values().stream().map(p -> new TopicPartition(topicId, p.id)).collect(toList());
+    }
+
+    @Override
+    public List<String> listPartitionNames(final String topicId) throws NakadiException {
+        return unmodifiableList(listPartitions(topicId).stream().map(p -> p.getPartitionId()).collect(toList()));
     }
 
     @Override
@@ -107,7 +113,7 @@ public class InMemoryTopicRepository implements TopicRepository {
         private MockTopic(final String name, final int numberOfPartitions) {
             this.name = name;
             partitions = new HashMap<>();
-            for (int i = 1; i <= numberOfPartitions; i++) {
+            for (int i = 0; i < numberOfPartitions; i++) {
                 final String partitionId = String.valueOf(i);
                 partitions.put(partitionId, new MockPartition(partitionId));
             }

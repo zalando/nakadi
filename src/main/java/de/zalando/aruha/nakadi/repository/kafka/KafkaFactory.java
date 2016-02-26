@@ -7,7 +7,7 @@ import org.apache.kafka.clients.producer.Producer;
 
 import java.util.List;
 
-public class KafkaFactory {
+class KafkaFactory {
     private final KafkaLocationManager kafkaLocationManager;
     private final KafkaProducer<String, String> kafkaProducer;
 

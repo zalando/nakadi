@@ -29,10 +29,10 @@ public class NakadiConfig {
     private JsonConfig jsonConfig;
 
     @Autowired
-    private EventTypeRepository eventTypeRepository;
+    private TopicRepository topicRepository;
 
     @Autowired
-    private TopicRepository topicRepository;
+    private EventTypeRepository eventTypeRepository;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -56,7 +56,8 @@ public class NakadiConfig {
 
     @Bean
     public EventStreamController eventStreamController() {
-        return new EventStreamController(topicRepository, jsonConfig.jacksonObjectMapper(), eventStreamFactory());
+        return new EventStreamController(topicRepository, jsonConfig.jacksonObjectMapper(),
+                eventStreamFactory());
     }
 
     @Bean
@@ -71,7 +72,9 @@ public class NakadiConfig {
 
     @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(topicRepository, eventTypeRepository);
+        return new EventPublishingController(topicRepository,
+                eventTypeRepository
+        );
     }
 
 }

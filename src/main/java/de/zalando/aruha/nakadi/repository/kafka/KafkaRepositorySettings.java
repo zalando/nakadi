@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import org.springframework.beans.factory.annotation.Value;
 
-public class KafkaRepositorySettings {
+class KafkaRepositorySettings {
 
     @Value("${nakadi.topic.default.partitionNum}")
     private int defaultTopicPartitionNum;

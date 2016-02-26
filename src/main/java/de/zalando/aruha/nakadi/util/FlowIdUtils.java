@@ -1,4 +1,4 @@
-package de.zalando.aruha.nakadi;
+package de.zalando.aruha.nakadi.util;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.log4j.NDC;

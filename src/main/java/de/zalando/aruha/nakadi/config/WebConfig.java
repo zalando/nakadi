@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
-import de.zalando.aruha.nakadi.FlowIdRequestFilter;
+import de.zalando.aruha.nakadi.util.FlowIdRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;

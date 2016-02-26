@@ -7,7 +7,7 @@ import com.google.common.collect.Sets;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.webservice.utils.KafkaTestHelper;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;

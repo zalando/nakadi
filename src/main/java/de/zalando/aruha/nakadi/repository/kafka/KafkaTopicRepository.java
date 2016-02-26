@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicCreationException;
@@ -32,6 +33,8 @@ import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
 
 public class KafkaTopicRepository implements TopicRepository {
 
@@ -58,7 +61,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     .forPath("/brokers/topics")
                     .stream()
                     .map(Topic::new)
-                    .collect(Collectors.toList());
+                    .collect(toList());
         } catch (Exception e) {
             throw new ServiceUnavailableException("Failed to list topics", e);
         }
@@ -106,12 +109,9 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public boolean partitionExists(final String topic, final String partition) throws ServiceUnavailableException {
-        return kafkaFactory
-                .getConsumer()
-                .partitionsFor(topic)
-                .stream()
-                .anyMatch(pInfo -> toNakadiPartition(pInfo.partition()).equals(partition));
+    public boolean partitionExists(final String topic, final String partition) throws NakadiException {
+        return listPartitionNames(topic).stream()
+                .anyMatch(p -> partition.equals(p));
     }
 
     @Override
@@ -164,7 +164,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     .partitionsFor(topicId)
                     .stream()
                     .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
-                    .collect(Collectors.toList());
+                    .collect(toList());
 
             consumer.assign(kafkaTPs);
 
@@ -189,11 +189,19 @@ public class KafkaTopicRepository implements TopicRepository {
                         topicPartition.setOldestAvailableOffset(toNakadiOffset(earliestOffsets.get(partition)));
                         return topicPartition;
                     })
-                    .collect(Collectors.toList());
+                    .collect(toList());
         }
         catch (Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
+    }
+
+    @Override
+    public List<String> listPartitionNames(final String topicId) throws NakadiException {
+        return unmodifiableList(kafkaFactory.createProducer().partitionsFor(topicId)
+                .stream()
+                .map(partitionInfo -> String.valueOf(partitionInfo.partition()))
+                .collect(toList()));
     }
 
     private String transformNewestOffset(final Long newestOffset) {

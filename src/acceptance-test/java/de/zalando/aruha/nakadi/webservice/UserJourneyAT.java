@@ -94,11 +94,11 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // get offsets for partition
         jsonRequestSpec()
                 .when()
-                .get("/event-types/" + TEST_EVENT_TYPE + "/partitions/1")
+                .get("/event-types/" + TEST_EVENT_TYPE + "/partitions/0")
                 .then()
                 .statusCode(OK.value())
                 .and()
-                .body("partition", equalTo("1"))
+                .body("partition", equalTo("0"))
                 .body("oldest_available_offset", equalTo("0"))
                 .body("newest_available_offset", equalTo("1"));
 
@@ -116,7 +116,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // read events
         requestSpec()
-                .header(new Header("X-nakadi-cursors", "[{\"partition\": \"1\", \"offset\": \"BEGIN\"}]"))
+                .header(new Header("X-nakadi-cursors", "[{\"partition\": \"0\", \"offset\": \"BEGIN\"}]"))
                 .param("batch_limit", "2")
                 .param("stream_limit", "2")
                 .when()
@@ -124,7 +124,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .and()
-                .body(equalTo("{\"cursor\":{\"partition\":\"1\",\"offset\":\"1\"},\"events\":" +
+                .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"1\"},\"events\":" +
                         "[" + EVENT1 + "," + EVENT2 + "]}\n"));
     }
 

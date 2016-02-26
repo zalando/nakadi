@@ -1,0 +1,17 @@
+{
+  "id": "abcdef123456",
+  "category_id": 15,
+  "sku": "A1",
+  "name": "Super Shirt",
+  "details": {
+    "detail_a": {
+      "detail_a_a": "foobar"
+    },
+    "detail_b": 364632
+  },
+  "brand": {
+    "brand_code": "ABC",
+    "brand_name": "Superbrand"
+  },
+  "price": 1000
+}
