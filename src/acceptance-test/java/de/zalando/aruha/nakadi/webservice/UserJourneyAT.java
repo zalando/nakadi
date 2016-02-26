@@ -52,7 +52,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("name", equalTo(TEST_EVENT_TYPE))
                 .body("owning_application", equalTo("article-producer"))
                 .body("category", equalTo("data"))
-                .body("schema.type", equalTo("JSON_SCHEMA"))
+                .body("schema.type", equalTo("json_schema"))
                 .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
 
         // list event types
@@ -85,7 +85,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .statusCode(OK.value())
                 .and()
                 .body("owning_application", equalTo("my-app"))
-                .body("category", equalTo("new-data"));
+                .body("category", equalTo("business"));
 
         // push two events to event-type
         postEvent(EVENT1);

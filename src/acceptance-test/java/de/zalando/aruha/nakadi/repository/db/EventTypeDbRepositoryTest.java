@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
@@ -108,7 +109,7 @@ public class EventTypeDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        eventType.setCategory("new-category");
+        eventType.setCategory(EventCategory.UNDEFINED);
 
         repository.update(eventType);
 
@@ -166,7 +167,7 @@ public class EventTypeDbRepositoryTest {
         schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
 
         eventType.setName("event-name");
-        eventType.setCategory("event-category");
+        eventType.setCategory(EventCategory.UNDEFINED);
         eventType.setSchema(schema);
 
         return eventType;
