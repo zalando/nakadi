@@ -430,7 +430,7 @@ paths:
 
         If streaming for several distinct partitions, each one is an independent `EventStreamBatch`.
 
-        The initialization of a stream can be parametrized in terms of size of each chunk, timeout for
+        The initialization of a stream can be parameterized in terms of size of each chunk, timeout for
         flushing each chunk, total amount of delivered Events and total time for the duration of the stream.
 
         Nakadi will keep a streaming connection open even if there are no events to be delivered. In this
