@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.repository;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 
 import javax.annotation.Nullable;
