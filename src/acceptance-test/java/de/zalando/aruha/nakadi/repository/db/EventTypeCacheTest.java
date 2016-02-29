@@ -42,14 +42,8 @@ public class EventTypeCacheTest {
     }
 
     @Before
-    public void setUp() throws Exception {
-        if (client.checkExists().forPath("/nakadi/event_types/event-name") != null) {
-            client.delete().forPath("/nakadi/event_types/event-name");
-        }
-    }
-
     @After
-    public void tearDown() throws Exception {
+    public void setUp() throws Exception {
         if (client.checkExists().forPath("/nakadi/event_types/event-name") != null) {
             client.delete().forPath("/nakadi/event_types/event-name");
         }
