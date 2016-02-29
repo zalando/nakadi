@@ -105,8 +105,8 @@ public class EventTypeCacheTest {
                 .when(dbRepo)
                 .findByName(et.getName());
 
-        assertThat(etc.get(et.getName()), equalTo(et));
-        assertThat(etc.get(et.getName()), equalTo(et));
+        assertThat(etc.getEventType(et.getName()), equalTo(et));
+        assertThat(etc.getEventType(et.getName()), equalTo(et));
 
         verify(dbRepo, times(1)).findByName(et.getName());
     }
@@ -123,16 +123,14 @@ public class EventTypeCacheTest {
                 .findByName(et.getName());
 
         etc.created(et);
-        etc.get(et.getName());
+        etc.getEventType(et.getName());
         etc.updated(et.getName());
 
         executeWithRetry(() -> {
                     try {
-                        etc.get(et.getName());
+                        etc.getEventType(et.getName());
                         verify(dbRepo, times(2)).findByName(et.getName());
                     } catch (NoSuchEventTypeException e) {
-                        fail();
-                    } catch (ExecutionException e) {
                         fail();
                     } catch (Exception e) {
                         fail();

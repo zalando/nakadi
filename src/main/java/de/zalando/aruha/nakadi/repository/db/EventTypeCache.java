@@ -4,8 +4,12 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
+import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
+import de.zalando.aruha.nakadi.validation.EventTypeValidator;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -20,7 +24,8 @@ public class EventTypeCache {
 
     public final String ZKNODE_PATH = "/nakadi/event_types";
 
-    private final LoadingCache<String, EventType> cache;
+    private final LoadingCache<String, EventType> eventTypeCache;
+    private final LoadingCache<String, EventTypeValidator> validatorCache;
     private final PathChildrenCache cacheSync;
     private final CuratorFramework zkClient;
 
@@ -28,7 +33,8 @@ public class EventTypeCache {
         initParentCacheZNode(zkClient);
 
         this.zkClient = zkClient;
-        this.cache = setupInMemoryCache(dbRepo);
+        this.eventTypeCache = setupInMemoryEventTypeCache(dbRepo);
+        this.validatorCache = setupInMemoryValidatorCache(eventTypeCache);
         this.cacheSync = setupCacheSync(zkClient);
     }
 
@@ -37,17 +43,21 @@ public class EventTypeCache {
         zkClient.setData().forPath(path, new byte[0]);
     }
 
-    public EventType get(final String name) throws NoSuchEventTypeException, ExecutionException {
+    public EventType getEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
         try {
-            return cache.get(name);
+            return eventTypeCache.get(name);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof NoSuchEventTypeException) {
                 NoSuchEventTypeException noSuchEventTypeException = (NoSuchEventTypeException) e.getCause();
                 throw noSuchEventTypeException;
             } else {
-                throw e;
+                throw new InternalNakadiException("Problem loading event type", e);
             }
         }
+    }
+
+    public EventTypeValidator getValidator(final String name) throws ExecutionException {
+        return validatorCache.get(name);
     }
 
     public void created(final EventType eventType) throws Exception {
@@ -76,7 +86,7 @@ public class EventTypeCache {
         }
     }
 
-    private void addCacheChangeListener(final LoadingCache<String, EventType> cache, final PathChildrenCache cacheSync) {
+    private void addCacheChangeListener(final LoadingCache<String, EventType> eventTypeCache, LoadingCache<String, EventTypeValidator> validatorCache, final PathChildrenCache cacheSync) {
         final PathChildrenCacheListener listener = new PathChildrenCacheListener() {
             @Override
             public void childEvent(final CuratorFramework client, final PathChildrenCacheEvent event) throws Exception {
@@ -94,8 +104,10 @@ public class EventTypeCache {
 
             private void invalidateCacheKey(final PathChildrenCacheEvent event) {
                 final String path[] = event.getData().getPath().split("/");
+                final String key = path[path.length - 1];
 
-                cache.invalidate(path[path.length - 1]);
+                validatorCache.invalidate(key);
+                eventTypeCache.invalidate(key);
             }
         };
 
@@ -107,12 +119,26 @@ public class EventTypeCache {
 
         cacheSync.start();
 
-        addCacheChangeListener(cache, cacheSync);
+        addCacheChangeListener(eventTypeCache, validatorCache, cacheSync);
 
         return cacheSync;
     }
 
-    private LoadingCache<String,EventType> setupInMemoryCache(final EventTypeRepository dbRepo) {
+    private LoadingCache<String, EventTypeValidator> setupInMemoryValidatorCache(LoadingCache<String, EventType> eventTypeCache) {
+        final CacheLoader<String, EventTypeValidator> loader = new CacheLoader<String, EventTypeValidator>() {
+            public EventTypeValidator load(final String key) throws Exception {
+                final EventType et = eventTypeCache.get(key);
+                final EventTypeValidator etv = new EventTypeValidator(et);
+                final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
+                vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
+                return etv.withConfiguration(vsc);
+            }
+        };
+
+        return CacheBuilder.newBuilder().maximumSize(100000).build(loader);
+    }
+
+    private LoadingCache<String,EventType> setupInMemoryEventTypeCache(final EventTypeRepository dbRepo) {
         final CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
             public EventType load(final String key) throws Exception {
                 return dbRepo.findByName(key);
