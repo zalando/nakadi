@@ -105,8 +105,8 @@ public class EventTypeCacheTest {
                 .when(dbRepo)
                 .findByName(et.getName());
 
-        etc.get(et.getName());
-        etc.get(et.getName());
+        assertThat(etc.get(et.getName()), equalTo(et));
+        assertThat(etc.get(et.getName()), equalTo(et));
 
         verify(dbRepo, times(1)).findByName(et.getName());
     }
