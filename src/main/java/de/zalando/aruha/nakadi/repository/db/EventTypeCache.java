@@ -24,7 +24,7 @@ public class EventTypeCache {
     private final PathChildrenCache cacheSync;
     private final CuratorFramework zkClient;
 
-    public EventTypeCache(EventTypeRepository dbRepo, CuratorFramework zkClient) throws Exception {
+    public EventTypeCache(final EventTypeRepository dbRepo, final CuratorFramework zkClient) throws Exception {
         initParentCacheZNode(zkClient);
 
         this.zkClient = zkClient;
@@ -32,16 +32,16 @@ public class EventTypeCache {
         this.cacheSync = setupCacheSync(zkClient);
     }
 
-    public void updated(String name) {
+    public void updated(final String name) {
         try {
-            String path = getZNodePath(name);
+            final String path = getZNodePath(name);
             zkClient.setData().forPath(path, new byte[0]);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public EventType get(String name) throws NoSuchEventTypeException {
+    public EventType get(final String name) throws NoSuchEventTypeException {
         try {
             return cache.get(name);
         } catch (ExecutionException e) {
@@ -54,9 +54,9 @@ public class EventTypeCache {
         }
     }
 
-    public void created(EventType eventType) {
+    public void created(final EventType eventType) {
         try {
-            String path = getZNodePath(eventType.getName());
+            final String path = getZNodePath(eventType.getName());
             zkClient
                     .create()
                     .creatingParentsIfNeeded()
@@ -67,16 +67,16 @@ public class EventTypeCache {
         }
     }
 
-    public void removed(String name) {
+    public void removed(final String name) {
         try {
-            String path = ZKPaths.makePath(ZKNODE_PATH, name);
+            final String path = ZKPaths.makePath(ZKNODE_PATH, name);
             zkClient.delete().forPath(path);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void initParentCacheZNode(CuratorFramework zkClient) throws Exception {
+    private void initParentCacheZNode(final CuratorFramework zkClient) throws Exception {
         try {
             zkClient
                     .create()
@@ -88,11 +88,11 @@ public class EventTypeCache {
         }
     }
 
-    private void addCacheChangeListener(final LoadingCache<String, EventType> cache, PathChildrenCache cacheSync) {
-        PathChildrenCacheListener listener = new PathChildrenCacheListener() {
+    private void addCacheChangeListener(final LoadingCache<String, EventType> cache, final PathChildrenCache cacheSync) {
+        final PathChildrenCacheListener listener = new PathChildrenCacheListener() {
             @Override
-            public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
-                switch ( event.getType() ) {
+            public void childEvent(final CuratorFramework client, final PathChildrenCacheEvent event) throws Exception {
+                switch (event.getType()) {
                     case CHILD_UPDATED: {
                         invalidateCacheKey(event);
                         break;
@@ -104,8 +104,8 @@ public class EventTypeCache {
                 }
             }
 
-            private void invalidateCacheKey(PathChildrenCacheEvent event) {
-                String path[] = event.getData().getPath().split("/");
+            private void invalidateCacheKey(final PathChildrenCacheEvent event) {
+                final String path[] = event.getData().getPath().split("/");
 
                 cache.invalidate(path[path.length - 1]);
             }
@@ -114,8 +114,8 @@ public class EventTypeCache {
         cacheSync.getListenable().addListener(listener);
     }
 
-    private PathChildrenCache setupCacheSync(CuratorFramework zkClient) throws Exception {
-        PathChildrenCache cacheSync = new PathChildrenCache(zkClient, ZKNODE_PATH, false);
+    private PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
+        final PathChildrenCache cacheSync = new PathChildrenCache(zkClient, ZKNODE_PATH, false);
 
         cacheSync.start();
 
@@ -124,9 +124,9 @@ public class EventTypeCache {
         return cacheSync;
     }
 
-    private LoadingCache<String,EventType> setupInMemoryCache(EventTypeRepository dbRepo) {
-        CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
-            public EventType load(String key) throws NoSuchEventTypeException {
+    private LoadingCache<String,EventType> setupInMemoryCache(final EventTypeRepository dbRepo) {
+        final CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
+            public EventType load(final String key) throws NoSuchEventTypeException {
                 return dbRepo.findByName(key);
             }
         };
@@ -134,7 +134,7 @@ public class EventTypeCache {
         return CacheBuilder.newBuilder().maximumSize(100000).build(loader);
     }
 
-    private String getZNodePath(String eventTypeName) {
+    private String getZNodePath(final String eventTypeName) {
         return ZKPaths.makePath(ZKNODE_PATH, eventTypeName);
     }
 }

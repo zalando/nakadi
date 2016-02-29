@@ -13,25 +13,25 @@ public class EventTypeCachedRepository implements EventTypeRepository {
 
     private final EventTypeCache cache;
 
-    public EventTypeCachedRepository(EventTypeRepository repository,
-                                     EventTypeCache cache) throws Exception {
+    public EventTypeCachedRepository(final EventTypeRepository repository,
+                                     final EventTypeCache cache) throws Exception {
         this.repository = repository;
         this.cache = cache;
     }
 
     @Override
-    public void saveEventType(EventType eventType) throws NakadiException {
+    public void saveEventType(final EventType eventType) throws NakadiException {
         this.repository.saveEventType(eventType);
         this.cache.created(eventType);
     }
 
     @Override
-    public EventType findByName(String name) throws NoSuchEventTypeException {
+    public EventType findByName(final String name) throws NoSuchEventTypeException {
         return cache.get(name);
     }
 
     @Override
-    public void update(EventType eventType) throws NakadiException {
+    public void update(final EventType eventType) throws NakadiException {
         this.repository.update(eventType);
         this.cache.updated(eventType.getName());
     }
@@ -42,7 +42,7 @@ public class EventTypeCachedRepository implements EventTypeRepository {
     }
 
     @Override
-    public void removeEventType(String name) {
+    public void removeEventType(final String name) {
         this.repository.removeEventType(name);
         this.cache.removed(name);
     }

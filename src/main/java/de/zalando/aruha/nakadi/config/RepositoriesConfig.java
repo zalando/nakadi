@@ -37,11 +37,11 @@ public class RepositoriesConfig {
 
     @Bean
     public EventTypeRepository eventTypeRepository() throws Exception {
-        EventTypeRepository dbRepo = new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
+        final EventTypeRepository dbRepo = new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
 
-        String connectString = zookeeperConfig.zooKeeperHolder().get().getZookeeperClient().getCurrentConnectionString();
-        RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        CuratorFramework client = CuratorFrameworkFactory.newClient(connectString, retryPolicy);
+        final String connectString = zookeeperConfig.zooKeeperHolder().get().getZookeeperClient().getCurrentConnectionString();
+        final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
+        final CuratorFramework client = CuratorFrameworkFactory.newClient(connectString, retryPolicy);
 
         client.start();
 
