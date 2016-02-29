@@ -50,13 +50,6 @@ public class EventTypeCacheTest {
     }
 
     @Test
-    public void initializingCacheShouldCreateParentZNode() throws Exception {
-        EventTypeCache etc = new EventTypeCache(dbRepo, client);
-
-        assertNotNull(client.checkExists().forPath("/nakadi/event_types"));
-    }
-
-    @Test
     public void onCreatedAddNewChildrenZNode() throws Exception {
         EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
