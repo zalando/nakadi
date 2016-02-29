@@ -4,7 +4,6 @@ import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -15,6 +14,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.concurrent.ExecutionException;
 
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
@@ -130,6 +131,10 @@ public class EventTypeCacheTest {
                         etc.get(et.getName());
                         verify(dbRepo, times(2)).findByName(et.getName());
                     } catch (NoSuchEventTypeException e) {
+                        fail();
+                    } catch (ExecutionException e) {
+                        fail();
+                    } catch (Exception e) {
                         fail();
                     }
                 },

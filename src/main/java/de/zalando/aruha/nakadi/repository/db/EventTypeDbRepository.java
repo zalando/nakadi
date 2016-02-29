@@ -29,7 +29,7 @@ public class EventTypeDbRepository implements EventTypeRepository {
     }
 
     @Override
-    public void saveEventType(final EventType eventType) throws NakadiException {
+    public void saveEventType(final EventType eventType) throws InternalNakadiException, DuplicatedEventTypeNameException {
         try {
             jdbcTemplate.update("INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, ?::jsonb)",
                     eventType.getName(),

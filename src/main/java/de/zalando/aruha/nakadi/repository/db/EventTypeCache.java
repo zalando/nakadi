@@ -32,16 +32,12 @@ public class EventTypeCache {
         this.cacheSync = setupCacheSync(zkClient);
     }
 
-    public void updated(final String name) {
-        try {
-            final String path = getZNodePath(name);
-            zkClient.setData().forPath(path, new byte[0]);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public void updated(final String name) throws Exception {
+        final String path = getZNodePath(name);
+        zkClient.setData().forPath(path, new byte[0]);
     }
 
-    public EventType get(final String name) throws NoSuchEventTypeException {
+    public EventType get(final String name) throws NoSuchEventTypeException, ExecutionException {
         try {
             return cache.get(name);
         } catch (ExecutionException e) {
@@ -49,31 +45,23 @@ public class EventTypeCache {
                 NoSuchEventTypeException noSuchEventTypeException = (NoSuchEventTypeException) e.getCause();
                 throw noSuchEventTypeException;
             } else {
-                throw new RuntimeException(e);
+                throw e;
             }
         }
     }
 
-    public void created(final EventType eventType) {
-        try {
-            final String path = getZNodePath(eventType.getName());
-            zkClient
-                    .create()
-                    .creatingParentsIfNeeded()
-                    .withMode(CreateMode.PERSISTENT)
-                    .forPath(path, new byte[0]);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public void created(final EventType eventType) throws Exception {
+        final String path = getZNodePath(eventType.getName());
+        zkClient
+                .create()
+                .creatingParentsIfNeeded()
+                .withMode(CreateMode.PERSISTENT)
+                .forPath(path, new byte[0]);
     }
 
-    public void removed(final String name) {
-        try {
-            final String path = ZKPaths.makePath(ZKNODE_PATH, name);
-            zkClient.delete().forPath(path);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public void removed(final String name) throws Exception {
+        final String path = ZKPaths.makePath(ZKNODE_PATH, name);
+        zkClient.delete().forPath(path);
     }
 
     private void initParentCacheZNode(final CuratorFramework zkClient) throws Exception {
@@ -84,7 +72,7 @@ public class EventTypeCache {
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(ZKNODE_PATH);
         } catch (KeeperException.NodeExistsException e) {
-            System.out.println("NODE ALREADY EXISTS");
+            // silently do nothing since it means that the node is already there
         }
     }
 
@@ -126,7 +114,7 @@ public class EventTypeCache {
 
     private LoadingCache<String,EventType> setupInMemoryCache(final EventTypeRepository dbRepo) {
         final CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
-            public EventType load(final String key) throws NoSuchEventTypeException {
+            public EventType load(final String key) throws Exception {
                 return dbRepo.findByName(key);
             }
         };

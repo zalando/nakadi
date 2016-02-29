@@ -1,13 +1,19 @@
 package de.zalando.aruha.nakadi.repository.db;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class EventTypeCachedRepository implements EventTypeRepository {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EventTypeCachedRepository.class);
 
     private final EventTypeRepository repository;
 
@@ -20,20 +26,44 @@ public class EventTypeCachedRepository implements EventTypeRepository {
     }
 
     @Override
-    public void saveEventType(final EventType eventType) throws NakadiException {
+    public void saveEventType(final EventType eventType) throws InternalNakadiException, DuplicatedEventTypeNameException {
         this.repository.saveEventType(eventType);
-        this.cache.created(eventType);
+
+        try {
+            this.cache.created(eventType);
+        } catch (Exception e) {
+            LOG.error("Failed to create new cache entry for event type '" + eventType.getName() + "'", e);
+            try {
+                this.repository.removeEventType(eventType.getName());
+            } catch (NoSuchEventTypeException e1) {
+                LOG.error("Failed to revert event type db persistence", e1);
+            }
+            throw new InternalNakadiException("Failed to save event type", e);
+        }
     }
 
     @Override
-    public EventType findByName(final String name) throws NoSuchEventTypeException {
-        return cache.get(name);
+    public EventType findByName(final String name) throws InternalNakadiException, NoSuchEventTypeException {
+        try {
+            return cache.get(name);
+        } catch (ExecutionException e) {
+            LOG.error("Failed to load event type from cache '" + name + "'", e);
+            throw new InternalNakadiException("Failed to load event type", e);
+        }
     }
 
     @Override
-    public void update(final EventType eventType) throws NakadiException {
+    public void update(final EventType eventType) throws InternalNakadiException, NoSuchEventTypeException {
+        EventType original = this.repository.findByName(eventType.getName());
         this.repository.update(eventType);
-        this.cache.updated(eventType.getName());
+
+        try {
+            this.cache.updated(eventType.getName());
+        } catch (Exception e) {
+            LOG.error("Failed to update cache for event type '" + eventType.getName() + "'", e);
+            this.repository.update(original);
+            throw new InternalNakadiException("Failed to update event type", e);
+        }
     }
 
     @Override
@@ -42,8 +72,22 @@ public class EventTypeCachedRepository implements EventTypeRepository {
     }
 
     @Override
-    public void removeEventType(final String name) {
+    public void removeEventType(final String name) throws InternalNakadiException, NoSuchEventTypeException {
+        EventType original = this.repository.findByName(name);
+
         this.repository.removeEventType(name);
-        this.cache.removed(name);
+
+        try {
+            this.cache.removed(name);
+        } catch (Exception e) {
+            LOG.error("Failed to remove entry from cache '" + name + "'");
+            try {
+                this.repository.saveEventType(original);
+            } catch (DuplicatedEventTypeNameException e1) {
+                LOG.error("Failed to rollback db removal", e);
+            }
+            throw new InternalNakadiException("Failed to remove event type", e);
+        }
+
     }
 }
