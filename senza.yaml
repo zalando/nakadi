@@ -11,7 +11,7 @@ SenzaInfo:
     - MintBucket:
         Description: "Name of the mint bucket to use for this application"
     - ScalyrAccountKey:
-        Description: "Key for Skalyr logging (optional)"
+        Description: "Key for Scalyr logging (optional)"
         Default: ""
     - InstanceType:
         Description: "The EC2 Instance type that is used for the Nakadi instances (optional, default: t2.micro)"

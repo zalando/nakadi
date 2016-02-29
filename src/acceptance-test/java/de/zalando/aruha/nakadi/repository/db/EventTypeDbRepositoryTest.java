@@ -59,7 +59,7 @@ public class EventTypeDbRepositoryTest {
         repository.saveEventType(eventType);
 
         final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
-        assertThat("Number of rows should encrease", rows, equalTo(1));
+        assertThat("Number of rows should increase", rows, equalTo(1));
 
         SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
         rs.next();
