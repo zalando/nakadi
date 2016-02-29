@@ -32,11 +32,9 @@ public class EventTypeCacheTest {
     private final CuratorFramework client;
 
     public EventTypeCacheTest() throws Exception {
-        ZooKeeperHolder zkHolder = new ZooKeeperHolder("127.0.0.1:2181", "", "", 0);
-        zkHolder.init();
-        String connecString = zkHolder.get().getZookeeperClient().getCurrentConnectionString();
+        String connectString = "127.0.0.1:2181";
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        CuratorFramework cf = CuratorFrameworkFactory.newClient(connecString, retryPolicy);
+        CuratorFramework cf = CuratorFrameworkFactory.newClient(connectString, retryPolicy);
         cf.start();
         this.client = cf;
     }
