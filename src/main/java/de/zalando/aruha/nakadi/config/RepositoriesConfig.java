@@ -45,7 +45,7 @@ public class RepositoriesConfig {
 
         client.start();
 
-        EventBodyMustRespectSchema strategy = new EventBodyMustRespectSchema();
+        final EventBodyMustRespectSchema strategy = new EventBodyMustRespectSchema();
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, strategy);
 
         return new EventTypeCache(dbRepo(), client);

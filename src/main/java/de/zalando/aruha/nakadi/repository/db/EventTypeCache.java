@@ -92,7 +92,9 @@ public class EventTypeCache {
         }
     }
 
-    private void addCacheChangeListener(final LoadingCache<String, EventType> eventTypeCache, LoadingCache<String, EventTypeValidator> validatorCache, final PathChildrenCache cacheSync) {
+    private void addCacheChangeListener(final LoadingCache<String, EventType> eventTypeCache,
+                                        final LoadingCache<String, EventTypeValidator> validatorCache,
+                                        final PathChildrenCache cacheSync) {
         final PathChildrenCacheListener listener = new PathChildrenCacheListener() {
             @Override
             public void childEvent(final CuratorFramework client, final PathChildrenCacheEvent event) throws Exception {
@@ -125,7 +127,7 @@ public class EventTypeCache {
         return cacheSync;
     }
 
-    private LoadingCache<String, EventTypeValidator> setupInMemoryValidatorCache(LoadingCache<String, EventType> eventTypeCache) {
+    private LoadingCache<String, EventTypeValidator> setupInMemoryValidatorCache(final LoadingCache<String, EventType> eventTypeCache) {
         final CacheLoader<String, EventTypeValidator> loader = new CacheLoader<String, EventTypeValidator>() {
             public EventTypeValidator load(final String key) throws Exception {
                 final EventType et = eventTypeCache.get(key);
