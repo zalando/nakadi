@@ -17,7 +17,8 @@ before_script:
 
 # run tests
 script:
-  - travis_wait gradle check fullAcceptanceTest --stacktrace
+  - travis_wait gradle check --stacktrace
+  - gradle fullAcceptanceTest --stacktrace
 
 after_success:
   - codecov
