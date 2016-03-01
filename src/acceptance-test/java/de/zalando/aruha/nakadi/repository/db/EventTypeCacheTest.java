@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.repository.db;
 
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
@@ -145,7 +146,7 @@ public class EventTypeCacheTest {
         schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
 
         eventType.setName("event-name");
-        eventType.setCategory("event-category");
+        eventType.setCategory(EventCategory.BUSINESS);
         eventType.setSchema(schema);
 
         return eventType;
