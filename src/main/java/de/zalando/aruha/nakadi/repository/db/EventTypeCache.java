@@ -85,15 +85,10 @@ public class EventTypeCache {
         final PathChildrenCacheListener listener = new PathChildrenCacheListener() {
             @Override
             public void childEvent(final CuratorFramework client, final PathChildrenCacheEvent event) throws Exception {
-                switch (event.getType()) {
-                    case CHILD_UPDATED: {
-                        invalidateCacheKey(event);
-                        break;
-                    }
-                    case CHILD_REMOVED: {
-                        invalidateCacheKey(event);
-                        break;
-                    }
+                if (event.getType() == PathChildrenCacheEvent.Type.CHILD_UPDATED) {
+                    invalidateCacheKey(event);
+                } else if (event.getType() == PathChildrenCacheEvent.Type.CHILD_REMOVED) {
+                    invalidateCacheKey(event);
                 }
             }
 
