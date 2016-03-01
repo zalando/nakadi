@@ -109,7 +109,8 @@ public class EventTypeDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        eventType.setCategory(EventCategory.UNDEFINED);
+        eventType.setCategory(EventCategory.BUSINESS);
+        eventType.setOwningApplication("new-application");
 
         repository.update(eventType);
 
@@ -122,6 +123,8 @@ public class EventTypeDbRepositoryTest {
         EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
+        assertThat(persisted.getOwningApplication(), equalTo(eventType.getOwningApplication()));
+        assertThat(persisted.getOrderingKeyFields(), equalTo(eventType.getOrderingKeyFields()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
         assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
         assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));
