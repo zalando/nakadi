@@ -56,6 +56,7 @@ public class EventTypeCache {
             final String path = getZNodePath(name);
             zkClient
                     .create()
+                    .creatingParentsIfNeeded()
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(path, new byte[0]);
         } catch (KeeperException.NodeExistsException e) {
