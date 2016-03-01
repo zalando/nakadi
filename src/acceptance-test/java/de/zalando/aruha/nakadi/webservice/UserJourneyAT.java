@@ -19,7 +19,7 @@ import static org.springframework.http.HttpStatus.OK;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
-    private static final String TEST_EVENT_TYPE = randomString();
+    private static final String TEST_EVENT_TYPE = "order.ORDER_CANCELLED";
     private static final String EVENT1 = "{\"foo\":\"" + randomString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomString() + "\"}";
 
