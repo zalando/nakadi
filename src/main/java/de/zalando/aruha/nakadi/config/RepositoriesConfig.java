@@ -1,17 +1,15 @@
 package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.CachingEventTypeRepository;
+import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
+
 import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
 import de.zalando.aruha.nakadi.validation.ValidationStrategy;
-import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,11 +37,8 @@ public class RepositoriesConfig {
 
     @Bean
     public EventTypeCache eventTypeCache() throws Exception {
-        final String connectString = zookeeperConfig.zooKeeperHolder().get().getZookeeperClient().getCurrentConnectionString();
-        final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        final CuratorFramework client = CuratorFrameworkFactory.newClient(connectString, retryPolicy);
-
-        client.start();
+        final CuratorFramework client = zookeeperConfig.zooKeeperHolder().get();
+        final EventTypeCache cache = new EventTypeCache(dbRepo(), client);
 
         final EventBodyMustRespectSchema strategy = new EventBodyMustRespectSchema();
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, strategy);
