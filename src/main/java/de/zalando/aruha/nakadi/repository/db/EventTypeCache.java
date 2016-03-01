@@ -40,6 +40,7 @@ public class EventTypeCache {
 
     public void updated(final String name) throws Exception {
         final String path = getZNodePath(name);
+        created(name); // make sure every event type is tracked in the remote cache
         zkClient.setData().forPath(path, new byte[0]);
     }
 
@@ -60,17 +61,22 @@ public class EventTypeCache {
         return validatorCache.get(name);
     }
 
-    public void created(final EventType eventType) throws Exception {
-        final String path = getZNodePath(eventType.getName());
-        zkClient
-                .create()
-                .creatingParentsIfNeeded()
-                .withMode(CreateMode.PERSISTENT)
-                .forPath(path, new byte[0]);
+    public void created(final String name) throws Exception {
+        try {
+            final String path = getZNodePath(name);
+            zkClient
+                    .create()
+                    .creatingParentsIfNeeded()
+                    .withMode(CreateMode.PERSISTENT)
+                    .forPath(path, new byte[0]);
+        } catch (KeeperException.NodeExistsException e) {
+            // silently do nothing since it's already been tracked
+        }
     }
 
     public void removed(final String name) throws Exception {
-        final String path = ZKPaths.makePath(ZKNODE_PATH, name);
+        final String path = getZNodePath(name);
+        created(name); // make sure every nome is tracked in the remote cache
         zkClient.delete().forPath(path);
     }
 
@@ -90,15 +96,10 @@ public class EventTypeCache {
         final PathChildrenCacheListener listener = new PathChildrenCacheListener() {
             @Override
             public void childEvent(final CuratorFramework client, final PathChildrenCacheEvent event) throws Exception {
-                switch (event.getType()) {
-                    case CHILD_UPDATED: {
-                        invalidateCacheKey(event);
-                        break;
-                    }
-                    case CHILD_REMOVED: {
-                        invalidateCacheKey(event);
-                        break;
-                    }
+                if (event.getType() == PathChildrenCacheEvent.Type.CHILD_UPDATED) {
+                    invalidateCacheKey(event);
+                } else if (event.getType() == PathChildrenCacheEvent.Type.CHILD_REMOVED) {
+                    invalidateCacheKey(event);
                 }
             }
 
@@ -141,7 +142,9 @@ public class EventTypeCache {
     private LoadingCache<String,EventType> setupInMemoryEventTypeCache(final EventTypeRepository dbRepo) {
         final CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
             public EventType load(final String key) throws Exception {
-                return dbRepo.findByName(key);
+                EventType eventType = dbRepo.findByName(key);
+                created(key); // make sure that all event types are tracked in the remote cache
+                return eventType;
             }
         };
 

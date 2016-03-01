@@ -29,7 +29,7 @@ info:
     before persisting it. Usually enrichment affects the metadata of an Event but is not limited to.
 
     * The **ordering** expectations of Events in this stream. Each EventType will have its Events stored in
-    an underlying logical stream (the Topic) that is phisically organized in disjoint collections of
+    an underlying logical stream (the Topic) that is physically organized in disjoint collections of
     strictly ordered Events (the Partition). The EventType defines the field that acts as evaluator of the
     ordering (that is, its partitioning key); this ordering is guaranteed by making Events whose partition
     key resolves to the same Partition (usually a hash function on its value) be persisted strictly ordered
@@ -68,12 +68,12 @@ info:
     * The Schema Registry API, including configuration possibilities for the Schema, Validation, Enrichment
     and Partitioning of Events, and their effects on reception of Events.
 
-    *  The stantardised event format (see definition of Event, BusinessEvent and DataChangeEvent) (Note: at a
+    * The stantardised event format (see definition of Event, BusinessEvent and DataChangeEvent) (Note: at a
     later moment this will be configurable and not be inherent part of this API).
 
     * Unmanaged API (low level).
 
-    Other aspects of the Event Bus are at this moment to be defined and otherwise specificied, not included
+    Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
 
     Notable omissions here are:
@@ -112,11 +112,11 @@ securityDefinitions:
     scopes:
       nakadi.read: |
         Generic read scope for operations that do not require more specific restrictions.
-      nakadi.event.type.write: |
+      nakadi_event_type.write: |
         Grants access for applications to define and update EventTypes.
-      nakadi.event.stream.write: |
+      nakadi_event_stream.write: |
         Grants access for applications to submit Events.
-      nakadi.event.stream.read: |
+      nakadi_event_stream.read: |
         Grants access for consuming Event streams.
 
 paths:
@@ -139,7 +139,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
   /event-types:
@@ -170,6 +170,10 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
     post:
       tags:
@@ -178,7 +182,7 @@ paths:
         Creates a new `EventType`.
 
         **Implementation note:** The creation of an EventType implicitly creates the structures in the
-        backing messaging implementation needed for the reception and persistency of the Events. Considering
+        backing messaging implementation needed for the reception and persistence of the Events. Considering
         that at this time only Kafka is used, this corresponds to the creation of a Topic. If so desired,
         clients can interact directly with the topic using the low level API (for existing restrictions see
         the corresponding methods on the topic-api).
@@ -191,13 +195,13 @@ paths:
         an `Event` of this `EventType`. Details of usage can be found in an external document (TBD link to
         document).
         **Notes**: Some EventValidationStrategies might support additional parameters. The behaviour is
-        specific to each strategy and one is suggested to consult its `doc` field for detailes of operation.
+        specific to each strategy and one is suggested to consult its `doc` field for details of operation.
         The default `SchemaValidationStrategy` supports passing fields to be ignored if the qualifier matches
         the input.
 
-        * TDB Enrichment strategy
+        * TBD Enrichment strategy
 
-        * TDB Partition resolution strategy
+        * TBD Partition resolution strategy
 
         * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only json-schema is
         supported.
@@ -212,7 +216,7 @@ paths:
         that is invalid with respect to the schema's type. Rejects with 422 Unprocessable entity.
 
         * Referring any of Validation, Enrichment or Partitioning strategies that does not exist or whose
-        parameterization is deemed invalid. Rejects with 422 Unprocessable entity.
+        parametrization is deemed invalid. Rejects with 422 Unprocessable entity.
 
         Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be
         followed by all EventTypes (examples include: validation rules to match the schema; enriching every
@@ -244,6 +248,10 @@ paths:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -282,6 +290,10 @@ paths:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -334,6 +346,10 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   /event-types/{name}/events:
     post:
@@ -356,7 +372,7 @@ paths:
         rules in the order the rules are defined in the `EventType`.
         No preexisting value might be changed (even if added by an enrichment rule). Violations on this will
         force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
-        attempt will be included in the respose's Problem object.
+        attempt will be included in the response's Problem object.
 
         1. The incoming Event's relative ordering is evaluated according to the rule on the
         `EventType`. Failure to evaluate the rule will **reject** the Event.
@@ -413,6 +429,10 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
     get:
       tags:
         - stream-api
@@ -421,12 +441,12 @@ paths:
       description: |
         Starts a stream delivery for the specified partitions of the given EventType.
 
-        The event stream is formated as a sequence of `EventStreamBatch`es separated by `\n`. Each
-        `EventStreamBatch` constains a chunk of Events and a `Cursor` pointing to the **end** of the
+        The event stream is formatted as a sequence of `EventStreamBatch`es separated by `\n`. Each
+        `EventStreamBatch` contains a chunk of Events and a `Cursor` pointing to the **end** of the
         chunk (i.e. last delivered Event). The cursor might specify the offset with the symbolic value
-        `OLDEST`, which will open the stream starting from the oldest available offset in the partition.
+        `BEGIN`, which will open the stream starting from the oldest available offset in the partition.
         Currently this format is the only one supported by the system, but in the future other MIME types
-        will be suported (like `application/event-stream`).
+        will be supported (like `application/event-stream`).
 
         If streaming for several distinct partitions, each one is an independent `EventStreamBatch`.
 
@@ -462,7 +482,7 @@ paths:
 
             **Note:** we are not using query parameters for passing the cursors only because of the length
             limitations on the HTTP query. Another way to initiate this call would be the POST method with
-            cursors passed in the method body. This aproach can implemented in the future versions of this
+            cursors passed in the method body. This approach can implemented in the future versions of this
             API.
 
           required: false
@@ -487,7 +507,7 @@ paths:
             Maximum number of `Event`s in this stream (over all partitions being streamed in this
             connection).
 
-            * If 0 or undefined, will stream batches indefinately.
+            * If 0 or undefined, will stream batches indefinitely.
 
             * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
           type: integer
@@ -511,7 +531,7 @@ paths:
           in: query
           description: |
             Maximum time in seconds a stream will live before being interrupted.
-            If 0 or unspecified will stream indefinately.
+            If 0 or unspecified will stream indefinitely.
 
             If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
             to the client.
@@ -566,6 +586,10 @@ paths:
           description: Internal Server Error. Details are provided on the returned `Problem`.
           schema:
             $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   /event-types/{name}/partitions':
     get:
@@ -607,6 +631,10 @@ paths:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -651,6 +679,10 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/registry/validation-strategies':
     get:
@@ -668,6 +700,14 @@ paths:
             type: array
             items:
               $ref: '#/definitions/EventValidationStrategy'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/registry/enrichment-strategies':
     get:
@@ -685,6 +725,14 @@ paths:
             type: array
             items:
               $ref: '#/definitions/EventEnrichmentStrategy'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
 
   '/registry/partitioning-strategies':
@@ -703,6 +751,14 @@ paths:
             type: array
             items:
               $ref: '#/definitions/PartitionResolutionStrategy'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
 
 # ################################### #
@@ -721,7 +777,7 @@ definitions:
       EventType, as is its enforcement (see POST /event-types). Setting of metadata properties are
       dependent on the configured enrichment as well.
 
-      For explanation on default configurations of validation and enrichment, see documentatin of
+      For explanation on default configurations of validation and enrichment, see documentation of
       `EventType.type`.
 
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
@@ -748,7 +804,7 @@ definitions:
               of the Event.
 
               If not present upon reception, Nakadi will generate and fill this with a unique value.
-              (TBD: enforce UUID formatif set by the client?)
+              (TBD: enforce UUID format if set by the client?)
             type: string
             example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
           event_type:
@@ -772,19 +828,14 @@ definitions:
               Event.
               If set by the producer Event will be rejected.
             format: date-time
-          parent_eid:
-            type: string
-            format: uuid
+          parent_eids:
+            type: array
+            items:
+              type: string
+              format: uuid
             description: |
               Event identifier of the Event that caused the generation of this Event.
-              Set by the procuder.
-            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
-          root_eid:
-            type: string
-            format: uuid
-            description: |
-              Event identifier of the root of the tree of Events (from the relation constructed from
-              parent-eid)
+              Set by the producer.
             example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
           flow_id:
             description: |
@@ -862,7 +913,7 @@ definitions:
       title:
         type: string
         description: |
-          A short, summary of the problem type. Written in english and readable for engineers (usually not
+          A short, summary of the problem type. Written in English and readable for engineers (usually not
           suited for non technical stakeholders and not localized)
         example: Service Unavailable
       status:
@@ -915,7 +966,7 @@ definitions:
           This value can be used to construct a cursor when opening streams (see
           `GET /event-type/{name}/events` for details).
 
-          Might assume the special name OLDEST, meaning a pointer to the offset of the oldest available
+          Might assume the special name BEGIN, meaning a pointer to the offset of the oldest available
           event in the partition.
         type: string
 
@@ -931,7 +982,7 @@ definitions:
       offset:
         type: string
         description: |
-          Offset of the event being poninted to.
+          Offset of the event being pointed to.
 
   EventStreamBatch:
     description: |
@@ -974,7 +1025,7 @@ definitions:
           in the past tense for BusinessEvents.
 
           (TBD: how to deal with organizational changes? Should be reflected on the name of the EventType?
-          Isn t it better to omit [organization:team] completely?)
+          Isn't it better to omit [organization:team] completely?)
       owning_application:
         type: string
         description: |
@@ -1029,7 +1080,8 @@ definitions:
           If not explicitly set, default value will respect the definition of the `EventType.category`.
         type: array
         items:
-          $ref: '#/definitions/EventValidationStrategy'
+          type: string
+        default: ['schema-validation']
 
       enrichment_strategies:
         description: |
@@ -1041,19 +1093,21 @@ definitions:
           enrichment.
         type: array
         items:
-          $ref: '#/definitions/EventEnrichmentStrategy'
-        default: [{name: 'metadata-enrichment'}]
+          type: string
+        default: ['metadata-enrichment']
 
       partition_resolution_strategy:
         description: |
           Determines how the assignment of the event to a Partition should be handled.
 
         type: object
-        $ref: '#/definitions/PartitionResolutionStrategy'
+        allOf:
+          - $ref: '#/definitions/PartitionResolutionStrategy'
 
       schema:
         type: object
-        $ref: '#/definitions/EventTypeSchema'
+        allOf:
+          - $ref: '#/definitions/EventTypeSchema'
         description: |
           The schema for this EventType. This is expected to be a json schema in yaml format (other formats
           might be added in the future).

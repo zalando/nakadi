@@ -3,7 +3,7 @@
   "owning_application": "article-producer",
   "category": "data",
   "schema": {
-    "type": "JSON_SCHEMA",
+    "type": "json_schema",
     "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"
   }
 }

@@ -10,6 +10,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
@@ -21,7 +23,8 @@ import static org.springframework.http.HttpStatus.OK;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
-    private static final String TEST_EVENT_TYPE = randomString();
+    private static final String TEST_EVENT_TYPE = "UserJourneyAT." + timeString();
+
     private static final String EVENT1 = "{\"foo\":\"" + randomString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomString() + "\"}";
 
@@ -34,6 +37,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json");
     }
 
+    @SuppressWarnings("unchecked")
     @Test(timeout = 15000)
     public void userJourneyM1() throws InterruptedException {
         // create event-type
@@ -54,7 +58,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("name", equalTo(TEST_EVENT_TYPE))
                 .body("owning_application", equalTo("article-producer"))
                 .body("category", equalTo("data"))
-                .body("schema.type", equalTo("JSON_SCHEMA"))
+                .body("schema.type", equalTo("json_schema"))
                 .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
 
         // list event types
@@ -89,7 +93,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                             .statusCode(OK.value())
                             .and()
                             .body("owning_application", equalTo("my-app"))
-                            .body("category", equalTo("new-data"));
+                            .body("category", equalTo("business"));
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
@@ -154,4 +158,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
         final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
         return json.replace("NAME_PLACEHOLDER", TEST_EVENT_TYPE);
     }
+
+    private static String timeString() {
+        return DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS").format(LocalDateTime.now());
+    }
+
 }

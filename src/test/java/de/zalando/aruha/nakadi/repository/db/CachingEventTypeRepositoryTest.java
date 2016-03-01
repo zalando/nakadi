@@ -10,15 +10,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-public class EventTypeCachedRepositoryTest {
+public class CachingEventTypeRepositoryTest {
 
     private final EventTypeRepository dbRepo = mock(EventTypeRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
     private final EventTypeRepository cachedRepo;
     private final EventType et = mock(EventType.class);
 
-    public EventTypeCachedRepositoryTest() throws Exception {
-        this.cachedRepo = new EventTypeCachedRepository(dbRepo, cache);
+    public CachingEventTypeRepositoryTest() throws Exception {
+        this.cachedRepo = new CachingEventTypeRepository(dbRepo, cache);
 
         Mockito
                 .doReturn("event-name")
@@ -31,7 +31,7 @@ public class EventTypeCachedRepositoryTest {
         cachedRepo.saveEventType(et);
 
         verify(dbRepo, times(1)).saveEventType(et);
-        verify(cache, times(1)).created(et);
+        verify(cache, times(1)).created(et.getName());
     }
 
     @Test
@@ -39,7 +39,7 @@ public class EventTypeCachedRepositoryTest {
         Mockito
                 .doThrow(Exception.class)
                 .when(cache)
-                .created(et);
+                .created("event-name");
 
         try {
             cachedRepo.saveEventType(et);

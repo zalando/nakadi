@@ -11,16 +11,16 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-public class EventTypeCachedRepository implements EventTypeRepository {
+public class CachingEventTypeRepository implements EventTypeRepository {
 
-    private static final Logger LOG = LoggerFactory.getLogger(EventTypeCachedRepository.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CachingEventTypeRepository.class);
 
     private final EventTypeRepository repository;
 
     private final EventTypeCache cache;
 
-    public EventTypeCachedRepository(final EventTypeRepository repository,
-                                     final EventTypeCache cache) throws Exception {
+    public CachingEventTypeRepository(final EventTypeRepository repository,
+                                      final EventTypeCache cache) throws Exception {
         this.repository = repository;
         this.cache = cache;
     }
@@ -30,7 +30,7 @@ public class EventTypeCachedRepository implements EventTypeRepository {
         this.repository.saveEventType(eventType);
 
         try {
-            this.cache.created(eventType);
+            this.cache.created(eventType.getName());
         } catch (Exception e) {
             LOG.error("Failed to create new cache entry for event type '" + eventType.getName() + "'", e);
             try {
@@ -49,7 +49,7 @@ public class EventTypeCachedRepository implements EventTypeRepository {
 
     @Override
     public void update(final EventType eventType) throws InternalNakadiException, NoSuchEventTypeException {
-        EventType original = this.repository.findByName(eventType.getName());
+        final EventType original = this.repository.findByName(eventType.getName());
         this.repository.update(eventType);
 
         try {
@@ -68,7 +68,7 @@ public class EventTypeCachedRepository implements EventTypeRepository {
 
     @Override
     public void removeEventType(final String name) throws InternalNakadiException, NoSuchEventTypeException {
-        EventType original = this.repository.findByName(name);
+        final EventType original = this.repository.findByName(name);
 
         this.repository.removeEventType(name);
 
