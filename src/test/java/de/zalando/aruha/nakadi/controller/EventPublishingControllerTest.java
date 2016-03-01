@@ -8,8 +8,12 @@ import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
+import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
+import de.zalando.aruha.nakadi.validation.EventTypeValidator;
+import de.zalando.aruha.nakadi.validation.ValidationError;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,10 +25,15 @@ import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.util.LinkedList;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -42,12 +51,14 @@ public class EventPublishingControllerTest {
     public static final String INVALID_JSON_EVENT = "not-a-json";
     public static final String[] PARTITIONS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7"};
 
+    private final EventTypeCache cache;
+    private final EventTypeValidator validator;
     private final InMemoryTopicRepository topicRepository = new InMemoryTopicRepository();
     private final JsonTestHelper jsonHelper;
 
     private final MockMvc mockMvc;
 
-    public EventPublishingControllerTest() throws NakadiException {
+    public EventPublishingControllerTest() throws NakadiException, ExecutionException {
         final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
 
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -57,7 +68,15 @@ public class EventPublishingControllerTest {
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITH_TOPIC));
         eventTypeRepository.saveEventType(eventType(EVENT_TYPE_WITHOUT_TOPIC));
 
-        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository);
+        cache = mock(EventTypeCache.class);
+        validator = mock(EventTypeValidator.class);
+
+        Mockito
+                .doReturn(validator)
+                .when(cache)
+                .getValidator(anyString());
+
+        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository, cache);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
@@ -67,6 +86,11 @@ public class EventPublishingControllerTest {
 
     @Test
     public void canPostEventsToTopic() throws Exception {
+        Mockito
+                .doReturn(Optional.empty())
+                .when(validator)
+                .validate(any());
+
         postEvent(EVENT_TYPE_WITH_TOPIC, EVENT1);
         postEvent(EVENT_TYPE_WITH_TOPIC, EVENT2);
         postEvent(EVENT_TYPE_WITH_TOPIC, EVENT3);
@@ -82,12 +106,22 @@ public class EventPublishingControllerTest {
 
     @Test
     public void returns2xxForValidPost() throws Exception {
+        Mockito
+                .doReturn(Optional.empty())
+                .when(validator)
+                .validate(any());
+
         postEvent(EVENT_TYPE_WITH_TOPIC, EVENT1).andExpect(status().is2xxSuccessful());
     }
 
     @Test
     public void returns5xxProblemIfTopicDoesNotExistForEventType() throws Exception  {
         final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "No such topic 'registered-but-without-topic'");
+
+        Mockito
+                .doReturn(Optional.empty())
+                .when(validator)
+                .validate(any());
 
         postEvent(EVENT_TYPE_WITHOUT_TOPIC, EVENT1)
                 .andExpect(status().is5xxServerError())
@@ -108,6 +142,11 @@ public class EventPublishingControllerTest {
     @Test
     public void returns422ProblemWhenEventSchemaIsInvalid() throws Exception  {
         final ThrowableProblem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "#: required key [payload] not found");
+
+        Mockito
+                .doReturn(Optional.of(new ValidationError("#: required key [payload] not found")))
+                .when(validator)
+                .validate(any());
 
         postEvent(EVENT_TYPE_WITH_TOPIC, INVALID_SCHEMA_EVENT)
                 .andExpect(status().isUnprocessableEntity())
