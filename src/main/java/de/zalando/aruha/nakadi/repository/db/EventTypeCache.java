@@ -64,7 +64,7 @@ public class EventTypeCache {
     }
 
     public void removed(final String name) throws Exception {
-        final String path = ZKPaths.makePath(ZKNODE_PATH, name);
+        final String path = getZNodePath(name);
         created(name); // make sure every nome is tracked in the remote cache
         zkClient.delete().forPath(path);
     }
