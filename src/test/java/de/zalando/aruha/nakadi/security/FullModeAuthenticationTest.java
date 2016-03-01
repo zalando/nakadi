@@ -14,7 +14,7 @@ import static org.springframework.http.HttpMethod.PUT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@Ignore("On travis it is very often timed out; temporarily disabled")
+//@Ignore("On travis it is very often timed out; temporarily disabled")
 public class FullModeAuthenticationTest extends AuthenticationTest {
 
     static {
