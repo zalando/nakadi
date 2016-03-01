@@ -16,6 +16,7 @@ import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -78,6 +79,21 @@ public class EventTypeControllerTest {
         Problem expectedProblem = invalidProblem("name", "may not be empty");
 
         postEventType(invalidEventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithNoCategoryThenReturn422() throws Exception {
+        EventType invalidEventType = buildEventType();
+        final JSONObject jsonObject = new JSONObject(objectMapper.writeValueAsString(invalidEventType));
+
+        jsonObject.remove("category");
+
+        Problem expectedProblem = invalidProblem("category", "may not be null");
+
+        postEventType(jsonObject.toString())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -165,11 +181,13 @@ public class EventTypeControllerTest {
     @Test
     public void whenPUTInvalidEventTypeThen422() throws Exception {
         EventType invalidEventType = buildEventType();
-        invalidEventType.setCategory(EventCategory.UNDEFINED);
+        final JSONObject jsonObject = new JSONObject(objectMapper.writeValueAsString(invalidEventType));
 
-        Problem expectedProblem = invalidProblem("category", "may not be empty");
+        jsonObject.remove("category");
 
-        putEventType(invalidEventType, invalidEventType.getName())
+        Problem expectedProblem = invalidProblem("category", "may not be null");
+
+        putEventType(jsonObject.toString(), invalidEventType.getName())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -310,6 +328,10 @@ public class EventTypeControllerTest {
     private ResultActions postEventType(EventType eventType) throws Exception {
         String content = objectMapper.writeValueAsString(eventType);
 
+        return postEventType(content);
+    }
+
+    private ResultActions postEventType(final String content) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = post("/event-types")
                 .contentType(APPLICATION_JSON)
                 .content(content);
@@ -320,6 +342,10 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(EventType eventType, String name) throws Exception {
         String content = objectMapper.writeValueAsString(eventType);
 
+        return putEventType(content, name);
+    }
+
+    private ResultActions putEventType(final String content, final String name) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
                 .contentType(APPLICATION_JSON)
                 .content(content);
@@ -338,6 +364,7 @@ public class EventTypeControllerTest {
         eventType.setName(EVENT_TYPE_NAME);
         eventType.setCategory(EventCategory.UNDEFINED);
         eventType.setSchema(schema);
+        eventType.setOwningApplication("event-producer-application");
 
         return eventType;
     }
