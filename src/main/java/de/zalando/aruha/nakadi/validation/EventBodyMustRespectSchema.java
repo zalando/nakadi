@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 public class EventBodyMustRespectSchema extends ValidationStrategy {
 
-    public static final String NAME = "event-body-must-respect-schema";
+    public static final String NAME = "schema-validation";
 
     private static final Function<OverrideDefinition, QualifiedJSONSchemaValidator> toQualifiedJSONSchemaValidator =
         t -> {
