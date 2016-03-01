@@ -1101,11 +1101,13 @@ definitions:
           Determines how the assignment of the event to a Partition should be handled.
 
         type: object
-        $ref: '#/definitions/PartitionResolutionStrategy'
+        allOf:
+          - $ref: '#/definitions/PartitionResolutionStrategy'
 
       schema:
         type: object
-        $ref: '#/definitions/EventTypeSchema'
+        allOf:
+          - $ref: '#/definitions/EventTypeSchema'
         description: |
           The schema for this EventType. This is expected to be a json schema in yaml format (other formats
           might be added in the future).
