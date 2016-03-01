@@ -34,6 +34,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json");
     }
 
+    @SuppressWarnings("unchecked")
     @Test(timeout = 15000)
     public void userJourneyM1() throws InterruptedException {
         // create event-type
