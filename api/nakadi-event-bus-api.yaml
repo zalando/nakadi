@@ -139,7 +139,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '503':
-          description: Not available
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
   /event-types:
@@ -168,6 +168,10 @@ paths:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -246,6 +250,10 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
 
   /event-types/{name}:
@@ -282,6 +290,10 @@ paths:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -332,6 +344,10 @@ paths:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -411,6 +427,10 @@ paths:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
     get:
@@ -566,6 +586,10 @@ paths:
           description: Internal Server Error. Details are provided on the returned `Problem`.
           schema:
             $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   /event-types/{name}/partitions':
     get:
@@ -607,6 +631,10 @@ paths:
             $ref: '#/definitions/Problem'
         '500':
           description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -651,6 +679,10 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/registry/validation-strategies':
     get:
@@ -668,6 +700,14 @@ paths:
             type: array
             items:
               $ref: '#/definitions/EventValidationStrategy'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/registry/enrichment-strategies':
     get:
@@ -685,6 +725,14 @@ paths:
             type: array
             items:
               $ref: '#/definitions/EventEnrichmentStrategy'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
 
   '/registry/partitioning-strategies':
@@ -703,6 +751,14 @@ paths:
             type: array
             items:
               $ref: '#/definitions/PartitionResolutionStrategy'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
 
 # ################################### #
