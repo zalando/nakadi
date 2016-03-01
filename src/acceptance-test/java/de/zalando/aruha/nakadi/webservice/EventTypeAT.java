@@ -3,6 +3,7 @@ package de.zalando.aruha.nakadi.webservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.utils.TestUtils;
@@ -31,7 +32,9 @@ public class EventTypeAT extends BaseAT {
                 body(body).
                 header("accept", "application/json").
                 contentType(JSON).
-                post(ENDPOINT);
+                post(ENDPOINT).
+                then().
+                statusCode(HttpStatus.SC_CREATED);
 
         given().
                 header("accept", "application/json").
@@ -94,8 +97,9 @@ public class EventTypeAT extends BaseAT {
         schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
 
         eventType.setName(name);
-        eventType.setCategory(name + "-category");
+        eventType.setCategory(EventCategory.UNDEFINED);
         eventType.setSchema(schema);
+        eventType.setOwningApplication("producer-application");
 
         return eventType;
     }

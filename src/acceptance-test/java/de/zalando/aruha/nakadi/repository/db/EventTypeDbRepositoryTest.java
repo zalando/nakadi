@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
@@ -108,7 +109,8 @@ public class EventTypeDbRepositoryTest {
 
         repository.saveEventType(eventType);
 
-        eventType.setCategory("new-category");
+        eventType.setCategory(EventCategory.BUSINESS);
+        eventType.setOwningApplication("new-application");
 
         repository.update(eventType);
 
@@ -121,6 +123,8 @@ public class EventTypeDbRepositoryTest {
         EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
+        assertThat(persisted.getOwningApplication(), equalTo(eventType.getOwningApplication()));
+        assertThat(persisted.getOrderingKeyFields(), equalTo(eventType.getOrderingKeyFields()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
         assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
         assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));
@@ -166,7 +170,7 @@ public class EventTypeDbRepositoryTest {
         schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
 
         eventType.setName("event-name");
-        eventType.setCategory("event-category");
+        eventType.setCategory(EventCategory.UNDEFINED);
         eventType.setSchema(schema);
 
         return eventType;
