@@ -54,7 +54,7 @@ public class EventTypeCacheTest {
 
         EventType et = buildEventType();
 
-        etc.created(et);
+        etc.created(et.getName());
 
         assertNotNull(client.checkExists().forPath("/nakadi/event_types/" + et.getName()));
     }
@@ -122,7 +122,7 @@ public class EventTypeCacheTest {
                 .when(dbRepo)
                 .findByName(et.getName());
 
-        etc.created(et);
+        etc.created(et.getName());
         etc.get(et.getName());
         etc.updated(et.getName());
 

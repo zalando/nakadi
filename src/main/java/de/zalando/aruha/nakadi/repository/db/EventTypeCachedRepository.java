@@ -30,7 +30,7 @@ public class EventTypeCachedRepository implements EventTypeRepository {
         this.repository.saveEventType(eventType);
 
         try {
-            this.cache.created(eventType);
+            this.cache.created(eventType.getName());
         } catch (Exception e) {
             LOG.error("Failed to create new cache entry for event type '" + eventType.getName() + "'", e);
             try {

@@ -31,7 +31,7 @@ public class EventTypeCachedRepositoryTest {
         cachedRepo.saveEventType(et);
 
         verify(dbRepo, times(1)).saveEventType(et);
-        verify(cache, times(1)).created(et);
+        verify(cache, times(1)).created(et.getName());
     }
 
     @Test
@@ -39,7 +39,7 @@ public class EventTypeCachedRepositoryTest {
         Mockito
                 .doThrow(Exception.class)
                 .when(cache)
-                .created(et);
+                .created(et.getName());
 
         try {
             cachedRepo.saveEventType(et);
