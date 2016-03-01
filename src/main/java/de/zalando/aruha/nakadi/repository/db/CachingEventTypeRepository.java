@@ -11,16 +11,16 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-public class EventTypeCachedRepository implements EventTypeRepository {
+public class CachingEventTypeRepository implements EventTypeRepository {
 
-    private static final Logger LOG = LoggerFactory.getLogger(EventTypeCachedRepository.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CachingEventTypeRepository.class);
 
     private final EventTypeRepository repository;
 
     private final EventTypeCache cache;
 
-    public EventTypeCachedRepository(final EventTypeRepository repository,
-                                     final EventTypeCache cache) throws Exception {
+    public CachingEventTypeRepository(final EventTypeRepository repository,
+                                      final EventTypeCache cache) throws Exception {
         this.repository = repository;
         this.cache = cache;
     }

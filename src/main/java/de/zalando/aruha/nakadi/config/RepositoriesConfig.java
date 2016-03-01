@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
-import de.zalando.aruha.nakadi.repository.db.EventTypeCachedRepository;
+import de.zalando.aruha.nakadi.repository.db.CachingEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
@@ -45,6 +45,6 @@ public class RepositoriesConfig {
 
         client.start();
 
-        return new EventTypeCachedRepository(dbRepo, new EventTypeCache(dbRepo, client));
+        return new CachingEventTypeRepository(dbRepo, new EventTypeCache(dbRepo, client));
     }
 }

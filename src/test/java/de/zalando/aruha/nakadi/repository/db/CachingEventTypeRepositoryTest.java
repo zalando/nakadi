@@ -10,15 +10,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-public class EventTypeCachedRepositoryTest {
+public class CachingEventTypeRepositoryTest {
 
     private final EventTypeRepository dbRepo = mock(EventTypeRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
     private final EventTypeRepository cachedRepo;
     private final EventType et = mock(EventType.class);
 
-    public EventTypeCachedRepositoryTest() throws Exception {
-        this.cachedRepo = new EventTypeCachedRepository(dbRepo, cache);
+    public CachingEventTypeRepositoryTest() throws Exception {
+        this.cachedRepo = new CachingEventTypeRepository(dbRepo, cache);
 
         Mockito
                 .doReturn("event-name")
