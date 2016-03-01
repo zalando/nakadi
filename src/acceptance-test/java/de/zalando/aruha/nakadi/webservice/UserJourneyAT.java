@@ -4,6 +4,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 
 import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.springframework.http.HttpStatus.CREATED;
@@ -35,8 +37,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json");
     }
 
+    @SuppressWarnings("unchecked")
     @Test(timeout = 15000)
-    public void userJourneyM1() {
+    public void userJourneyM1() throws InterruptedException {
         // create event-type
         jsonRequestSpec()
                 .body(eventTypeBody)
@@ -80,15 +83,20 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value());
 
-        // get event type to check that update is done
-        jsonRequestSpec()
-                .when()
-                .get("/event-types/" + TEST_EVENT_TYPE)
-                .then()
-                .statusCode(OK.value())
-                .and()
-                .body("owning_application", equalTo("my-app"))
-                .body("category", equalTo("business"));
+        // Updates should eventually cause a cache invalidation, so we must retry
+        executeWithRetry(() -> {
+                    // get event type to check that update is done
+                    jsonRequestSpec()
+                            .when()
+                            .get("/event-types/" + TEST_EVENT_TYPE)
+                            .then()
+                            .statusCode(OK.value())
+                            .and()
+                            .body("owning_application", equalTo("my-app"))
+                            .body("category", equalTo("business"));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
 
         // push two events to event-type
         postEvent(EVENT1);

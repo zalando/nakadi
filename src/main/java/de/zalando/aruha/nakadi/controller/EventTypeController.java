@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
@@ -72,7 +73,11 @@ public class EventTypeController {
         } catch (TopicCreationException e) {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
 
-            eventTypeRepository.removeEventType(eventType.getName());
+            try {
+                eventTypeRepository.removeEventType(eventType.getName());
+            } catch (NakadiException e1) {
+                return create(e.asProblem(), nativeWebRequest);
+            }
             return create(e.asProblem(), nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Error creating event type " + eventType, e);
@@ -112,6 +117,9 @@ public class EventTypeController {
         } catch (NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", name);
             return create(e.asProblem(), nativeWebRequest);
+        } catch (InternalNakadiException e) {
+            LOG.error("Problem loading event type " + name, e);
+            return create(e.asProblem(), nativeWebRequest);
         }
     }
 
@@ -129,7 +137,7 @@ public class EventTypeController {
         }
     }
 
-    private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NoSuchEventTypeException {
+    private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NoSuchEventTypeException, InternalNakadiException {
         if (!errors.hasErrors()) {
             final EventType existingEventType = eventTypeRepository.findByName(name);
 
