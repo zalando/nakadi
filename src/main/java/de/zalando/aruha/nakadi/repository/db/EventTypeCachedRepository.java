@@ -54,7 +54,7 @@ public class EventTypeCachedRepository implements EventTypeRepository {
 
     @Override
     public void update(final EventType eventType) throws InternalNakadiException, NoSuchEventTypeException {
-        EventType original = this.repository.findByName(eventType.getName());
+        final EventType original = this.repository.findByName(eventType.getName());
         this.repository.update(eventType);
 
         try {
@@ -73,7 +73,7 @@ public class EventTypeCachedRepository implements EventTypeRepository {
 
     @Override
     public void removeEventType(final String name) throws InternalNakadiException, NoSuchEventTypeException {
-        EventType original = this.repository.findByName(name);
+        final EventType original = this.repository.findByName(name);
 
         this.repository.removeEventType(name);
 

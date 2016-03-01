@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.repository.db;
 
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
-import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -14,8 +13,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-
-import java.util.concurrent.ExecutionException;
 
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
@@ -33,9 +30,9 @@ public class EventTypeCacheTest {
     private final CuratorFramework client;
 
     public EventTypeCacheTest() throws Exception {
-        String connectString = "127.0.0.1:2181";
-        RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        CuratorFramework cf = CuratorFrameworkFactory.newClient(connectString, retryPolicy);
+        final String connectString = "127.0.0.1:2181";
+        final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
+        final CuratorFramework cf = CuratorFrameworkFactory.newClient(connectString, retryPolicy);
         cf.start();
         this.client = cf;
     }
@@ -50,9 +47,9 @@ public class EventTypeCacheTest {
 
     @Test
     public void onCreatedAddNewChildrenZNode() throws Exception {
-        EventTypeCache etc = new EventTypeCache(dbRepo, client);
+        final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        EventType et = buildEventType();
+        final EventType et = buildEventType();
 
         etc.created(et.getName());
 
@@ -61,9 +58,9 @@ public class EventTypeCacheTest {
 
     @Test
     public void whenUpdatedSetChildrenZNodeValue() throws Exception {
-        EventTypeCache etc = new EventTypeCache(dbRepo, client);
+        final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        EventType et = buildEventType();
+        final EventType et = buildEventType();
 
         client
                 .create()
@@ -73,15 +70,15 @@ public class EventTypeCacheTest {
 
         etc.updated(et.getName());
 
-        byte data[] = client.getData().forPath("/nakadi/event_types/" + et.getName());
+        final byte data[] = client.getData().forPath("/nakadi/event_types/" + et.getName());
         assertThat(data, equalTo(new byte[0]));
     }
 
     @Test
     public void whenRemovedThenDeleteZNodeValue() throws Exception {
-        EventTypeCache etc = new EventTypeCache(dbRepo, client);
+        final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        EventType et = buildEventType();
+        final EventType et = buildEventType();
 
         client
                 .create()
@@ -96,9 +93,9 @@ public class EventTypeCacheTest {
 
     @Test
     public void loadsFromDbOnCacheMissTest() throws Exception {
-        EventTypeCache etc = new EventTypeCache(dbRepo, client);
+        final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        EventType et = buildEventType();
+        final EventType et = buildEventType();
 
         Mockito
                 .doReturn(et)
@@ -111,11 +108,12 @@ public class EventTypeCacheTest {
         verify(dbRepo, times(1)).findByName(et.getName());
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void invalidateCacheOnUpdate() throws Exception {
-        EventTypeCache etc = new EventTypeCache(dbRepo, client);
+        final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        EventType et = buildEventType();
+        final EventType et = buildEventType();
 
         Mockito
                 .doReturn(et)
@@ -130,10 +128,6 @@ public class EventTypeCacheTest {
                     try {
                         etc.get(et.getName());
                         verify(dbRepo, times(2)).findByName(et.getName());
-                    } catch (NoSuchEventTypeException e) {
-                        fail();
-                    } catch (ExecutionException e) {
-                        fail();
                     } catch (Exception e) {
                         fail();
                     }
