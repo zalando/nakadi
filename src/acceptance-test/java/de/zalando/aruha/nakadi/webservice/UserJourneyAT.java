@@ -9,6 +9,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
@@ -19,7 +21,8 @@ import static org.springframework.http.HttpStatus.OK;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
-    private static final String TEST_EVENT_TYPE = "order.ORDER_CANCELLED";
+    private static final String TEST_EVENT_TYPE = "UserJourneyAT." + timeString();
+
     private static final String EVENT1 = "{\"foo\":\"" + randomString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomString() + "\"}";
 
@@ -147,4 +150,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
         final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
         return json.replace("NAME_PLACEHOLDER", TEST_EVENT_TYPE);
     }
+
+    private static String timeString() {
+        return DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS").format(LocalDateTime.now());
+    }
+
 }
