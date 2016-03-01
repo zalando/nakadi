@@ -3,7 +3,6 @@ package de.zalando.aruha.nakadi.security;
 
 import com.google.common.collect.ImmutableList;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
@@ -14,7 +13,6 @@ import static org.springframework.http.HttpMethod.PUT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-//@Ignore("On travis it is very often timed out; temporarily disabled")
 public class BasicModeAuthenticationTest extends AuthenticationTest {
 
     static {
