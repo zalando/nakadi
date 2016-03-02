@@ -6,6 +6,9 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
+
+import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
+import de.zalando.aruha.nakadi.validation.ValidationStrategy;
 import org.apache.curator.framework.CuratorFramework;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -33,11 +36,22 @@ public class RepositoriesConfig {
     private ZookeeperConfig zookeeperConfig;
 
     @Bean
-    public EventTypeRepository eventTypeRepository() throws Exception {
-        final EventTypeRepository dbRepo = new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
+    public EventTypeCache eventTypeCache() throws Exception {
         final CuratorFramework client = zookeeperConfig.zooKeeperHolder().get();
-        final EventTypeCache cache = new EventTypeCache(dbRepo, client);
+        final EventTypeCache cache = new EventTypeCache(dbRepo(), client);
 
-        return new CachingEventTypeRepository(dbRepo, cache);
+        final EventBodyMustRespectSchema strategy = new EventBodyMustRespectSchema();
+        ValidationStrategy.register(EventBodyMustRespectSchema.NAME, strategy);
+
+        return new EventTypeCache(dbRepo(), client);
+    }
+
+    @Bean
+    public EventTypeRepository eventTypeRepository() throws Exception {
+        return new CachingEventTypeRepository(dbRepo(), eventTypeCache());
+    }
+
+    private EventTypeRepository dbRepo() {
+        return new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
     }
 }
