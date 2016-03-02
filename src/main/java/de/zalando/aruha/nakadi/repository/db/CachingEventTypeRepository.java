@@ -44,7 +44,12 @@ public class CachingEventTypeRepository implements EventTypeRepository {
 
     @Override
     public EventType findByName(final String name) throws InternalNakadiException, NoSuchEventTypeException {
-        return cache.getEventType(name);
+        try {
+            return cache.get(name);
+        } catch (ExecutionException e) {
+            LOG.error("Failed to load event type from cache '" + name + "'", e);
+            throw new InternalNakadiException("Failed to load event type", e);
+        }
     }
 
     @Override

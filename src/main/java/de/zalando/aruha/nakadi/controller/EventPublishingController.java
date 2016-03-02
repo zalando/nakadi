@@ -2,8 +2,8 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import de.zalando.aruha.nakadi.exceptions.EventValidationException;
-import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidOrderingKeyFieldsException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
@@ -11,9 +11,10 @@ import de.zalando.aruha.nakadi.partitioning.OrderingKeyFieldsPartitioningStrateg
 import de.zalando.aruha.nakadi.partitioning.PartitioningStrategy;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
-import de.zalando.aruha.nakadi.validation.EventTypeValidator;
+import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
+import de.zalando.aruha.nakadi.validation.EventValidator;
 import de.zalando.aruha.nakadi.validation.ValidationError;
+import de.zalando.aruha.nakadi.validation.ValidationStrategy;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -28,7 +29,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
@@ -41,15 +41,14 @@ public class EventPublishingController {
 
     private final TopicRepository topicRepository;
     private final EventTypeRepository eventTypeRepository;
-    private final EventTypeCache cache;
     private final PartitioningStrategy orderingKeyFieldsPartitioningStrategy = new OrderingKeyFieldsPartitioningStrategy();
+    private final ValidationStrategy validationStrategy = new EventBodyMustRespectSchema();
+    private final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
 
     public EventPublishingController(final TopicRepository topicRepository,
-                                     final EventTypeRepository eventTypeRepository,
-                                     final EventTypeCache cache) {
+                                     final EventTypeRepository eventTypeRepository) {
         this.topicRepository = topicRepository;
         this.eventTypeRepository = eventTypeRepository;
-        this.cache = cache;
     }
 
     @Timed(name = "post_events", absolute = true)
@@ -94,17 +93,11 @@ public class EventPublishingController {
         return partitionId;
     }
 
-    private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException, InternalNakadiException {
-        try {
-            final EventTypeValidator validator = cache.getValidator(eventType.getName());
-            final Optional<ValidationError> validationError = validator.validate(event);
-
-            if (validationError.isPresent()) {
-                throw new EventValidationException(validationError.get());
-            }
-        } catch (ExecutionException e) {
-            LOG.error("Error loading validator", e);
-            throw new InternalNakadiException("Error loading validator", e);
+    private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException {
+        final EventValidator validator = validationStrategy.materialize(eventType, vsc);
+        final Optional<ValidationError> validationError = validator.accepts(event);
+        if (validationError.isPresent()) {
+            throw new EventValidationException(validationError.get());
         }
     }
 
