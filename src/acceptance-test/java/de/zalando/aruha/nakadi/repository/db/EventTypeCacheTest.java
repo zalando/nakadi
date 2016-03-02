@@ -3,6 +3,7 @@ package de.zalando.aruha.nakadi.repository.db;
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -103,8 +104,8 @@ public class EventTypeCacheTest {
                 .when(dbRepo)
                 .findByName(et.getName());
 
-        assertThat(etc.get(et.getName()), equalTo(et));
-        assertThat(etc.get(et.getName()), equalTo(et));
+        assertThat(etc.getEventType(et.getName()), equalTo(et));
+        assertThat(etc.getEventType(et.getName()), equalTo(et));
 
         verify(dbRepo, times(1)).findByName(et.getName());
     }
@@ -122,13 +123,15 @@ public class EventTypeCacheTest {
                 .findByName(et.getName());
 
         etc.created(et.getName());
-        etc.get(et.getName());
+        etc.getEventType(et.getName());
         etc.updated(et.getName());
 
         executeWithRetry(() -> {
                     try {
-                        etc.get(et.getName());
+                        etc.getEventType(et.getName());
                         verify(dbRepo, times(2)).findByName(et.getName());
+                    } catch (NoSuchEventTypeException e) {
+                        fail();
                     } catch (Exception e) {
                         fail();
                     }
