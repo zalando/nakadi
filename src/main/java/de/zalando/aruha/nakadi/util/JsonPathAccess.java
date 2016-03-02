@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.util;
 
-import de.zalando.aruha.nakadi.exceptions.InvalidOrderingKeyFieldsException;
+import de.zalando.aruha.nakadi.exceptions.InvalidPartitioningKeyFieldsException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -18,7 +18,7 @@ public class JsonPathAccess {
         this.jsonObject = jsonObject;
     }
 
-    public Object get(final String path) throws InvalidOrderingKeyFieldsException {
+    public Object get(final String path) throws InvalidPartitioningKeyFieldsException {
 
         final JsonPathTokenizer pathTokenizer = new JsonPathTokenizer(path);
 
@@ -27,12 +27,12 @@ public class JsonPathAccess {
 
         while ((field = pathTokenizer.nextToken()) != null) {
             if (!(curr instanceof JSONObject)) {
-                throw new InvalidOrderingKeyFieldsException("field " + field + "doesn't exist.");
+                throw new InvalidPartitioningKeyFieldsException("field " + field + "doesn't exist.");
             }
             try {
                 curr = ((JSONObject) curr).get(field);
             } catch (JSONException e) {
-                throw new InvalidOrderingKeyFieldsException("field " + field + "doesn't exist.");
+                throw new InvalidPartitioningKeyFieldsException("field " + field + "doesn't exist.");
             }
         }
         return curr;
