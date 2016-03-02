@@ -22,5 +22,4 @@ script:
 
 after_success:
   - codecov
-  - CODACY_PROJECT_TOKEN=3b80c14af47147a185d106c4666d4999 codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
-
+  - codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
