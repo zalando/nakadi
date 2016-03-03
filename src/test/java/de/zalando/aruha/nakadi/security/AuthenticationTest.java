@@ -8,6 +8,7 @@ import de.zalando.aruha.nakadi.Application;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -116,6 +117,11 @@ public abstract class AuthenticationTest {
         @Bean
         public EventTypeRepository mockDbRepository() {
             return mock(EventTypeDbRepository.class);
+        }
+
+        @Bean
+        public EventTypeCache eventTypeCache() {
+            return mock(EventTypeCache.class);
         }
     }
 
