@@ -100,6 +100,19 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenPostWithNoSchemaSchemaThenReturn422() throws Exception {
+        Problem expectedProblem = invalidProblem("schema.schema", "may not be null");
+
+        final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", " +
+                "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
     public void whenPostDuplicatedEventTypeReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "some-name");
 
