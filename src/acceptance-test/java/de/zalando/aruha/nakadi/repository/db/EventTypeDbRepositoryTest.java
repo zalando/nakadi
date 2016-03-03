@@ -124,7 +124,7 @@ public class EventTypeDbRepositoryTest {
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getOwningApplication(), equalTo(eventType.getOwningApplication()));
-        assertThat(persisted.getOrderingKeyFields(), equalTo(eventType.getOrderingKeyFields()));
+        assertThat(persisted.getPartitioningKeyFields(), equalTo(eventType.getPartitioningKeyFields()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
         assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
         assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));

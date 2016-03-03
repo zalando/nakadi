@@ -4,10 +4,10 @@ import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EventValidationException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
-import de.zalando.aruha.nakadi.exceptions.InvalidOrderingKeyFieldsException;
+import de.zalando.aruha.nakadi.exceptions.InvalidPartitioningKeyFieldsException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
-import de.zalando.aruha.nakadi.partitioning.OrderingKeyFieldsPartitioningStrategy;
+import de.zalando.aruha.nakadi.partitioning.PartitioningKeyFieldsPartitioningStrategy;
 import de.zalando.aruha.nakadi.partitioning.PartitioningStrategy;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -41,8 +41,8 @@ public class EventPublishingController {
 
     private final TopicRepository topicRepository;
     private final EventTypeRepository eventTypeRepository;
+    private final PartitioningStrategy partitioningKeyFieldsPartitioningStrategy = new PartitioningKeyFieldsPartitioningStrategy();
     private final EventTypeCache cache;
-    private final PartitioningStrategy orderingKeyFieldsPartitioningStrategy = new OrderingKeyFieldsPartitioningStrategy();
 
     public EventPublishingController(final TopicRepository topicRepository,
                                      final EventTypeRepository eventTypeRepository,
@@ -82,11 +82,11 @@ public class EventPublishingController {
         }
     }
 
-    private String applyPartitioningStrategy(final EventType eventType, final JSONObject eventAsJson) throws InvalidOrderingKeyFieldsException, NakadiException {
+    private String applyPartitioningStrategy(final EventType eventType, final JSONObject eventAsJson) throws InvalidPartitioningKeyFieldsException, NakadiException {
         String partitionId;
-        if (!eventType.getOrderingKeyFields().isEmpty()) {
+        if (!eventType.getPartitioningKeyFields().isEmpty()) {
             final List<String> partitions = topicRepository.listPartitionNames(eventType.getName());
-            partitionId = orderingKeyFieldsPartitioningStrategy.calculatePartition(eventType, eventAsJson, partitions);
+            partitionId = partitioningKeyFieldsPartitioningStrategy.calculatePartition(eventType, eventAsJson, partitions);
         } else {
             // Will be replaced later:
             partitionId = "0";
