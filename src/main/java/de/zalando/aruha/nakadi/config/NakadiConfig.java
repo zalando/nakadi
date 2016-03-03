@@ -1,6 +1,12 @@
 package de.zalando.aruha.nakadi.config;
 
+import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.MetricSet;
+import com.codahale.metrics.jvm.BufferPoolMetricSet;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
@@ -18,6 +24,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import java.lang.management.ManagementFactory;
+import java.util.Map;
 
 @Configuration
 @EnableMetrics
@@ -50,12 +59,27 @@ public class NakadiConfig {
 
     @Bean
     public MetricsConfigurerAdapter metricsConfigurerAdapter() {
+        registerAll("jvm.gc", new GarbageCollectorMetricSet(), METRIC_REGISTRY);
+        registerAll("jvm.buffers", new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()), METRIC_REGISTRY);
+        registerAll("jvm.memory", new MemoryUsageGaugeSet(), METRIC_REGISTRY);
+        registerAll("jvm.threads", new ThreadStatesGaugeSet(), METRIC_REGISTRY);
+
         return new MetricsConfigurerAdapter() {
             @Override
             public MetricRegistry getMetricRegistry() {
                 return METRIC_REGISTRY;
             }
         };
+    }
+
+    private static void registerAll(final String prefix, final MetricSet metricSet, final MetricRegistry metricRegistry) {
+        for (Map.Entry<String, Metric> entry : metricSet.getMetrics().entrySet()) {
+            if (entry.getValue() instanceof MetricSet) {
+                registerAll(prefix + "." + entry.getKey(), (MetricSet) entry.getValue(), metricRegistry);
+            } else {
+                metricRegistry.register(prefix + "." + entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     @Bean
