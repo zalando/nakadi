@@ -843,6 +843,9 @@ definitions:
               from the header into the metadata by Nakadi to avoid clients having to explicitly copy this.
             type: string
             example: 'JAh6xH4OQhCJ9PutIV_RYw'
+        required:
+          - eid
+          - occurred_at
 
         additionalProperties: false
 
