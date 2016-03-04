@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
@@ -15,6 +16,7 @@ import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -59,7 +61,7 @@ public class EventTypeControllerTest {
     private final MockMvc mockMvc;
 
     public EventTypeControllerTest() throws Exception {
-        EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository);
+        final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
@@ -71,12 +73,40 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPostWithInvalidEventTypeThenReturn422() throws Exception {
-        EventType invalidEventType = buildEventType();
+        final EventType invalidEventType = buildEventType();
         invalidEventType.setName("");
 
-        Problem expectedProblem = invalidProblem("name", "may not be empty");
+        final Problem expectedProblem = invalidProblem("name", "may not be empty");
 
         postEventType(invalidEventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithNoCategoryThenReturn422() throws Exception {
+        final EventType invalidEventType = buildEventType();
+        final JSONObject jsonObject = new JSONObject(objectMapper.writeValueAsString(invalidEventType));
+
+        jsonObject.remove("category");
+
+        final Problem expectedProblem = invalidProblem("category", "may not be null");
+
+        postEventType(jsonObject.toString())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithNoSchemaSchemaThenReturn422() throws Exception {
+        final Problem expectedProblem = invalidProblem("schema.schema", "may not be null");
+
+        final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", " +
+                "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
+
+        postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -163,12 +193,14 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTInvalidEventTypeThen422() throws Exception {
-        EventType invalidEventType = buildEventType();
-        invalidEventType.setCategory("");
+        final EventType invalidEventType = buildEventType();
+        final JSONObject jsonObject = new JSONObject(objectMapper.writeValueAsString(invalidEventType));
 
-        Problem expectedProblem = invalidProblem("category", "may not be empty");
+        jsonObject.remove("category");
 
-        putEventType(invalidEventType, invalidEventType.getName())
+        final Problem expectedProblem = invalidProblem("category", "may not be null");
+
+        putEventType(jsonObject.toString(), invalidEventType.getName())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -176,10 +208,10 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTDifferentEventTypeNameThen422() throws Exception {
-        EventType eventType = buildEventType();
+        final EventType eventType = buildEventType();
         eventType.setName("event-name-different");
 
-        Problem expectedProblem = invalidProblem("name",
+        final Problem expectedProblem = invalidProblem("name",
                 "The submitted event type name \"event-name-different\" should match the parameter name \"event-name\"");
 
         Mockito
@@ -195,11 +227,11 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTDifferentEventTypeSchemaThen422() throws Exception {
-        EventType eventType = buildEventType();
-        EventType persistedEventType = buildEventType();
+        final EventType eventType = buildEventType();
+        final EventType persistedEventType = buildEventType();
         persistedEventType.getSchema().setSchema("different");
 
-        Problem expectedProblem = invalidProblem("schema",
+        final Problem expectedProblem = invalidProblem("schema",
                 "The schema you've just submitted is different from the one in our system.");
 
         Mockito
@@ -215,9 +247,9 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTInexistingEventTypeThen404() throws Exception {
-        EventType eventType = buildEventType();
+        final EventType eventType = buildEventType();
 
-        Problem expectedProblem = Problem.valueOf(NOT_FOUND);
+        final Problem expectedProblem = Problem.valueOf(NOT_FOUND);
 
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
@@ -232,9 +264,9 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTRepoNakadiExceptionThen422() throws Exception {
-        EventType eventType = buildEventType();
+        final EventType eventType = buildEventType();
 
-        Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY);
+        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY);
 
         Mockito
                 .doThrow(UnprocessableEntityException.class)
@@ -282,10 +314,10 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenEventTypeSchemaJsonIsMalformedThen422() throws Exception {
-        EventType eventType = buildEventType();
+        final EventType eventType = buildEventType();
         eventType.getSchema().setSchema("invalid-json");
 
-        Problem expectedProblem = invalidProblem("schema.schema", "must be a valid json");
+        final Problem expectedProblem = invalidProblem("schema.schema", "must be a valid json");
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -294,21 +326,25 @@ public class EventTypeControllerTest {
 
     @Test
     public void invalidEventTypeSchemaJsonSchemaThen422() throws Exception {
-        EventType eventType = buildEventType();
+        final EventType eventType = buildEventType();
 
         final String jsonSchemaString = Resources.toString(Resources.getResource("sample-invalid-json-schema.json"), Charsets.UTF_8);
         eventType.getSchema().setSchema(jsonSchemaString);
 
-        Problem expectedProblem = invalidProblem("schema.schema", "must be valid json-schema (http://json-schema.org)");
+        final Problem expectedProblem = invalidProblem("schema.schema", "must be valid json-schema (http://json-schema.org)");
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect((content().string(matchesProblem(expectedProblem))));
     }
 
-    private ResultActions postEventType(EventType eventType) throws Exception {
-        String content = objectMapper.writeValueAsString(eventType);
+    private ResultActions postEventType(final EventType eventType) throws Exception {
+        final String content = objectMapper.writeValueAsString(eventType);
 
+        return postEventType(content);
+    }
+
+    private ResultActions postEventType(final String content) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = post("/event-types")
                 .contentType(APPLICATION_JSON)
                 .content(content);
@@ -316,9 +352,13 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private ResultActions putEventType(EventType eventType, String name) throws Exception {
-        String content = objectMapper.writeValueAsString(eventType);
+    private ResultActions putEventType(final EventType eventType, final String name) throws Exception {
+        final String content = objectMapper.writeValueAsString(eventType);
 
+        return putEventType(content, name);
+    }
+
+    private ResultActions putEventType(final String content, final String name) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
                 .contentType(APPLICATION_JSON)
                 .content(content);
@@ -335,16 +375,17 @@ public class EventTypeControllerTest {
         schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
 
         eventType.setName(EVENT_TYPE_NAME);
-        eventType.setCategory(EVENT_TYPE_NAME + "-category");
+        eventType.setCategory(EventCategory.UNDEFINED);
         eventType.setSchema(schema);
+        eventType.setOwningApplication("event-producer-application");
 
         return eventType;
     }
 
-    private Problem invalidProblem(String field, String description) {
-        FieldError[] fieldErrors = { new FieldError("", field, description) };
+    private Problem invalidProblem(final String field, final String description) {
+        final FieldError[] fieldErrors = { new FieldError("", field, description) };
 
-        Errors errors = mock(Errors.class);
+        final Errors errors = mock(Errors.class);
         when(errors.getAllErrors()).thenReturn(Arrays.asList(fieldErrors));
         return new ValidationProblem(errors);
     }

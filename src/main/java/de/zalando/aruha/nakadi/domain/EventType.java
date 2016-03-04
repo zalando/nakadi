@@ -19,16 +19,16 @@ public class EventType {
     @Size(min = 1, message = "may not be empty")
     private String name;
 
+    @NotNull
     private String owningApplication;
 
     @NotNull
-    @Size(min = 1, message = "may not be empty")
-    private String category;
+    private EventCategory category;
 
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
-    private List<String> orderingKeyFields;
+    private List<String> partitioningKeyFields;
 
     @NotNull
     @Valid
@@ -42,15 +42,15 @@ public class EventType {
         return owningApplication;
     }
 
-    public void setOwningApplication(String owningApplication) {
+    public void setOwningApplication(final String owningApplication) {
         this.owningApplication = owningApplication;
     }
 
-    public String getCategory() {
+    public EventCategory getCategory() {
         return category;
     }
 
-    public void setCategory(String category) {
+    public void setCategory(final EventCategory category) {
         this.category = category;
     }
 
@@ -66,11 +66,12 @@ public class EventType {
         this.schema = schema;
     }
 
-    public List<String> getOrderingKeyFields() {
-        return unmodifiableList(orderingKeyFields != null ? orderingKeyFields : EMPTY_STRING_LIST);
+    public List<String> getPartitioningKeyFields() {
+        return unmodifiableList(partitioningKeyFields != null ? partitioningKeyFields : EMPTY_STRING_LIST);
     }
 
-    public void setOrderingKeyFields(final List<String> orderingKeyFields) {
-        this.orderingKeyFields = orderingKeyFields;
+    public void setPartitioningKeyFields(final List<String> partitioningKeyFields) {
+        this.partitioningKeyFields = partitioningKeyFields;
     }
+
 }

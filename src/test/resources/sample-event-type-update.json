@@ -1,9 +1,9 @@
 {
   "name": "NAME_PLACEHOLDER",
   "owning_application": "my-app",
-  "category": "new-data",
+  "category": "business",
   "schema": {
-    "type": "JSON_SCHEMA",
+    "type": "json_schema",
     "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"
   }
 }

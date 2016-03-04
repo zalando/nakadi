@@ -16,6 +16,7 @@ import org.springframework.http.converter.xml.SourceHttpMessageConverter;
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.List;
 
@@ -66,5 +67,12 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
         converters.add(mappingJackson2HttpMessageConverter());
         super.configureMessageConverters(converters);
+    }
+
+    @Override
+    public RequestMappingHandlerMapping requestMappingHandlerMapping() {
+        final RequestMappingHandlerMapping handlerMapping = super.requestMappingHandlerMapping();
+        handlerMapping.setUseSuffixPatternMatch(false);
+        return handlerMapping;
     }
 }

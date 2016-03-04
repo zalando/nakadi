@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.repository;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 
 import javax.annotation.Nullable;
@@ -13,7 +12,7 @@ public class InMemoryEventTypeRepository implements EventTypeRepository {
     private final Map<String, EventType> eventTypes = new HashMap<>();
 
     @Override
-    public void saveEventType(final EventType eventType) throws NakadiException {
+    public void saveEventType(final EventType eventType) {
         eventTypes.put(eventType.getName(), eventType);
     }
 
@@ -29,7 +28,7 @@ public class InMemoryEventTypeRepository implements EventTypeRepository {
     }
 
     @Override
-    public void update(EventType eventType) throws NakadiException {
+    public void update(EventType eventType) {
         // TODO
     }
 

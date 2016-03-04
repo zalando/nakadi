@@ -43,8 +43,8 @@ public class EventTypeSchema {
 
     @Override
     public int hashCode() {
-        int result = type.hashCode();
-        result = 31 * result + schema.hashCode();
+        int result = type != null ? type.hashCode() : 0;
+        result = 31 * result + (schema != null ? schema.hashCode() : 0);
         return result;
     }
 }

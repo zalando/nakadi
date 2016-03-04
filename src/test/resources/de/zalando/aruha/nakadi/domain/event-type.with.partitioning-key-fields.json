@@ -2,7 +2,7 @@
   "name": "article",
   "owning_application": "article-producer",
   "category": "data",
-  "ordering_key_fields": [
+  "partitioning_key_fields": [
     "sku", "name"
   ],
   "schema": {
