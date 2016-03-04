@@ -146,6 +146,8 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.read']
       description: Returns a list of all registered `EventType`s
       parameters:
         - name: X-Flow-Id
@@ -178,6 +180,8 @@ paths:
     post:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi_event_type.write']
       description: |
         Creates a new `EventType`.
 
@@ -260,6 +264,8 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.read']
       description: |
         Returns the `EventType` identified by its name.
       parameters:
@@ -300,6 +306,8 @@ paths:
     put:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi_event_type.write']
       description: |
         Updates the `EventType` identified by its name. Behaviour is the same as creation of `EventType` (See
         POST /event-type) except where noted below.
@@ -355,6 +363,8 @@ paths:
     post:
       tags:
         - stream-api
+      security:
+        - oauth2: ['nakadi_event_stream.write']
       description: |
         Publishes one `Event` of this `EventType`. (**Note** *Format and response semantics of publishing of
         batches of Events will be added in the short term.*)
@@ -437,7 +447,8 @@ paths:
       tags:
         - stream-api
         - unmanaged-api
-        - draft
+      security:
+        - oauth2: ['nakadi_event_stream.read']
       description: |
         Starts a stream delivery for the specified partitions of the given EventType.
 
@@ -597,6 +608,8 @@ paths:
         - unmanaged-api
         - monitoring
         - management-api
+      security:
+        - oauth2: ['nakadi_event_stream.read']
       description: |
         Lists the `Partition`s for the given event-type.
 
@@ -643,6 +656,9 @@ paths:
       tags:
         - unmanaged-api
         - management-api
+      security:
+        - oauth2: ['nakadi_event_stream.read']
+
       description: Returns the given `Partition` of this EventType
       parameters:
         - name: name
@@ -693,6 +709,8 @@ paths:
 
         If the EventType creation is to have special validations (besides the default), one can consult over
         this method the available possibilities.
+      security:
+        - oauth2: ['nakadi.read']
       responses:
         '200':
           description: Returns a list of all `EventValidationStrategy` known to Nakadi
@@ -739,6 +757,9 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.read']
+
       description: |
         Lists all of the partitioning strategies supported by this installation of Nakadi.
 
