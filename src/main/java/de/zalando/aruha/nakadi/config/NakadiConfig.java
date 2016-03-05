@@ -30,7 +30,7 @@ import java.lang.management.ManagementFactory;
 @EnableScheduling
 public class NakadiConfig {
 
-    public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
+    public static final MetricRegistry METRIC_REGISTRY = createMetricRegistry();
 
     @Autowired
     private JsonConfig jsonConfig;
@@ -56,11 +56,6 @@ public class NakadiConfig {
 
     @Bean
     public MetricsConfigurerAdapter metricsConfigurerAdapter() {
-        METRIC_REGISTRY.register("jvm.gc", new GarbageCollectorMetricSet());
-        METRIC_REGISTRY.register("jvm.buffers", new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
-        METRIC_REGISTRY.register("jvm.memory", new MemoryUsageGaugeSet());
-        METRIC_REGISTRY.register("jvm.threads", new ThreadStatesGaugeSet());
-
         return new MetricsConfigurerAdapter() {
             @Override
             public MetricRegistry getMetricRegistry() {
@@ -88,6 +83,17 @@ public class NakadiConfig {
     @Bean
     public EventPublishingController eventPublishingController() {
         return new EventPublishingController(topicRepository, eventTypeRepository, eventTypeCache);
+    }
+
+    private static MetricRegistry createMetricRegistry() {
+        final MetricRegistry metricRegistry = new MetricRegistry();
+
+        metricRegistry.register("jvm.gc", new GarbageCollectorMetricSet());
+        metricRegistry.register("jvm.buffers", new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
+        metricRegistry.register("jvm.memory", new MemoryUsageGaugeSet());
+        metricRegistry.register("jvm.threads", new ThreadStatesGaugeSet());
+
+        return metricRegistry;
     }
 
 }
