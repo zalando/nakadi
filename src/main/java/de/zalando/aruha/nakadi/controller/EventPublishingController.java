@@ -31,6 +31,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.springframework.http.ResponseEntity.status;
@@ -66,11 +67,11 @@ public class EventPublishingController {
         LOG.trace("Received event {} for event type {}", event, eventTypeName);
 
         try {
+            final long startingTime = System.nanoTime();
+
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
             try {
-                final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, SUCCESS_METRIC_NAME));
-                final Timer.Context successfullyPublishedTimerContext = successfullyPublishedTimer.time();
 
                 final JSONObject eventAsJson = parseJson(event);
                 validateSchema(eventAsJson, eventType);
@@ -78,7 +79,8 @@ public class EventPublishingController {
 
                 topicRepository.postEvent(eventTypeName, partitionId, event);
 
-                successfullyPublishedTimerContext.stop();
+                final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, SUCCESS_METRIC_NAME));
+                successfullyPublishedTimer.update(System.nanoTime() - startingTime, TimeUnit.NANOSECONDS);
 
                 return status(HttpStatus.CREATED).build();
             } catch (Exception e) {
