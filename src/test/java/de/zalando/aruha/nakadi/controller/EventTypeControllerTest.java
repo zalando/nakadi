@@ -10,6 +10,7 @@ import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -128,7 +130,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostAndTopicExistsTypeReturn409() throws Exception {
+    public void whenPostAndTopicExistsReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT,
                 "EventType with name " + EVENT_TYPE_NAME + " already exists (or wasn't completely removed yet)");
 
@@ -144,6 +146,71 @@ public class EventTypeControllerTest {
 
         postEventType(buildEventType())
                 .andExpect(status().isConflict())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenDeleteEventTypeThenOk() throws Exception {
+        Mockito
+                .doNothing()
+                .when(eventTypeRepository)
+                .removeEventType(EVENT_TYPE_NAME);
+
+        Mockito
+                .doNothing()
+                .when(topicRepository)
+                .deleteTopic(EVENT_TYPE_NAME);
+
+        deleteEventType(EVENT_TYPE_NAME)
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+
+        verify(eventTypeRepository, times(1)).removeEventType(EVENT_TYPE_NAME);
+        verify(topicRepository, times(1)).deleteTopic(EVENT_TYPE_NAME);
+    }
+
+    @Test
+    public void whenDeleteNoneExistingEventTypeThen404() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy message");
+
+        Mockito
+                .doThrow(new NoSuchEventTypeException("dummy message"))
+                .when(eventTypeRepository)
+                .removeEventType(EVENT_TYPE_NAME);
+
+        deleteEventType(EVENT_TYPE_NAME)
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenDeleteEventTypeAndTopicDeletionExceptionThen503() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, "dummy message");
+
+        Mockito
+                .doThrow(new TopicDeletionException("dummy message", null))
+                .when(topicRepository)
+                .deleteTopic(EVENT_TYPE_NAME);
+
+        deleteEventType(EVENT_TYPE_NAME)
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
+
+        Mockito
+                .doThrow(new InternalNakadiException("dummy message"))
+                .when(eventTypeRepository)
+                .removeEventType(EVENT_TYPE_NAME);
+
+        deleteEventType(EVENT_TYPE_NAME)
+                .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
     }
@@ -357,6 +424,10 @@ public class EventTypeControllerTest {
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect((content().string(matchesProblem(expectedProblem))));
+    }
+
+    private ResultActions deleteEventType(final String eventTypeName) throws Exception {
+        return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }
 
     private ResultActions postEventType(final EventType eventType) throws Exception {
