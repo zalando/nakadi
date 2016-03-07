@@ -86,8 +86,8 @@ public class EventTypeDbRepository implements EventTypeRepository {
     @Override
     public void removeEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
         try {
-            final int deleted = jdbcTemplate.update("DELETE FROM zn_data.event_type WHERE et_name = ?", name);
-            if (deleted == 0) {
+            final int deletedRows = jdbcTemplate.update("DELETE FROM zn_data.event_type WHERE et_name = ?", name);
+            if (deletedRows == 0) {
                 throw new NoSuchEventTypeException("EventType " + name + " doesn't exist");
             }
         } catch (DataAccessException e) {
