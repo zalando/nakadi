@@ -41,6 +41,8 @@ import static org.zalando.problem.spring.web.advice.Responses.create;
 public class EventPublishingController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublishingController.class);
+    public static final String SUCCESS_METRIC_NAME = "success";
+    public static final String FAILED_METRIC_NAME = "failed";
 
     private final TopicRepository topicRepository;
     private final EventTypeRepository eventTypeRepository;
@@ -67,7 +69,7 @@ public class EventPublishingController {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
             try {
-                final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, "success"));
+                final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, SUCCESS_METRIC_NAME));
                 final Timer.Context successfullyPublishedTimerContext = successfullyPublishedTimer.time();
 
                 final JSONObject eventAsJson = parseJson(event);
@@ -80,7 +82,7 @@ public class EventPublishingController {
 
                 return status(HttpStatus.CREATED).build();
             } catch (Exception e) {
-                metricRegistry.counter(metricNameFor(eventTypeName, "failed")).inc();
+                metricRegistry.counter(metricNameFor(eventTypeName, FAILED_METRIC_NAME)).inc();
                 throw e;
             }
 

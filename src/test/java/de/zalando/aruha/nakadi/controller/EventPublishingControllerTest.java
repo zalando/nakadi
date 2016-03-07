@@ -1,6 +1,8 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
@@ -13,7 +15,9 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import de.zalando.aruha.nakadi.validation.EventTypeValidator;
 import de.zalando.aruha.nakadi.validation.ValidationError;
+import org.json.JSONObject;
 import org.junit.Test;
+import org.mockito.Matchers;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -29,12 +33,14 @@ import java.util.LinkedList;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
+import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -55,6 +61,7 @@ public class EventPublishingControllerTest {
     private final EventTypeCache cache;
     private final EventTypeValidator validator;
     private final InMemoryTopicRepository topicRepository = new InMemoryTopicRepository();
+    private final MetricRegistry metricRegistry;
     private final JsonTestHelper jsonHelper;
 
     private final MockMvc mockMvc;
@@ -77,7 +84,8 @@ public class EventPublishingControllerTest {
                 .when(cache)
                 .getValidator(anyString());
 
-        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository, cache, new MetricRegistry());
+        metricRegistry = new MetricRegistry();
+        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository, cache, metricRegistry);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
@@ -116,7 +124,7 @@ public class EventPublishingControllerTest {
     }
 
     @Test
-    public void returns5xxProblemIfTopicDoesNotExistForEventType() throws Exception  {
+    public void returns5xxProblemIfTopicDoesNotExistForEventType() throws Exception {
         final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "No such topic 'registered-but-without-topic'");
 
         Mockito
@@ -131,7 +139,7 @@ public class EventPublishingControllerTest {
     }
 
     @Test
-    public void returns404ProblemIfEventTypeIsNotRegistered() throws Exception  {
+    public void returns404ProblemIfEventTypeIsNotRegistered() throws Exception {
         final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "EventType 'does-not-exist' does not exist.");
 
         postEvent("does-not-exist", EVENT1)
@@ -141,7 +149,7 @@ public class EventPublishingControllerTest {
     }
 
     @Test
-    public void returns422ProblemWhenEventSchemaIsInvalid() throws Exception  {
+    public void returns422ProblemWhenEventSchemaIsInvalid() throws Exception {
         final ThrowableProblem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "#: required key [payload] not found");
 
         Mockito
@@ -156,13 +164,39 @@ public class EventPublishingControllerTest {
     }
 
     @Test
-    public void returns422ProblemWhenEventIsNotJson() throws Exception  {
+    public void returns422ProblemWhenEventIsNotJson() throws Exception {
         final ThrowableProblem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "payload must be a valid json");
 
         postEvent(EVENT_TYPE_WITH_TOPIC, INVALID_JSON_EVENT)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+    }
+
+    @Test
+    public void metrics() throws Exception {
+        when(validator.validate(Matchers.any(JSONObject.class))).then(invocation -> {
+            final JSONObject jsonObject = (JSONObject) invocation.getArguments()[0];
+            return jsonObject.has("fail") ? Optional.of(new ValidationError("Should fail")) : Optional.empty();
+        });
+
+        final Timer successfulTimer = metricRegistry.timer(
+                metricNameFor(EVENT_TYPE_WITH_TOPIC, EventPublishingController.SUCCESS_METRIC_NAME));
+        final Counter failedCounter = metricRegistry.counter(
+                metricNameFor(EVENT_TYPE_WITH_TOPIC, EventPublishingController.FAILED_METRIC_NAME));
+
+        assertThat(successfulTimer.getCount(), equalTo(0L));
+        assertThat(failedCounter.getCount(), equalTo(0L));
+
+        postEvent(EVENT_TYPE_WITH_TOPIC, "{}");
+        postEvent(EVENT_TYPE_WITH_TOPIC, "{}");
+        postEvent(EVENT_TYPE_WITH_TOPIC, "{}");
+
+        postEvent(EVENT_TYPE_WITH_TOPIC, "{\"fail\": \"fail\"}");
+        postEvent(EVENT_TYPE_WITH_TOPIC, "{\"fail\": \"fail\"}");
+
+        assertThat(successfulTimer.getCount(), equalTo(3L));
+        assertThat(failedCounter.getCount(), equalTo(2L));
     }
 
     private ResultActions postEvent(final String eventType, final String event) throws Exception {
