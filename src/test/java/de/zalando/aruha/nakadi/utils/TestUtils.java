@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.utils;
 
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import org.apache.commons.io.IOUtils;
@@ -47,6 +48,7 @@ public class TestUtils {
         ets.setType(EventTypeSchema.Type.JSON_SCHEMA);
         ets.setSchema(schema);
         et.setSchema(ets);
+        et.setCategory(EventCategory.UNDEFINED);
 
         return et;
     }
