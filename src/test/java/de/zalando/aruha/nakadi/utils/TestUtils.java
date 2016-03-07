@@ -1,6 +1,9 @@
 package de.zalando.aruha.nakadi.utils;
 
+import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import org.apache.commons.io.IOUtils;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.Random;
@@ -34,6 +37,18 @@ public class TestUtils {
 
     public static String resourceAsString(final String resourceName, final Class clazz) throws IOException {
         return IOUtils.toString(clazz.getResourceAsStream(resourceName));
+    }
+
+    public static EventType buildEventType(final String name, final String schema) {
+        final EventType et = new EventType();
+        et.setName(name);
+
+        final EventTypeSchema ets = new EventTypeSchema();
+        ets.setType(EventTypeSchema.Type.JSON_SCHEMA);
+        ets.setSchema(schema);
+        et.setSchema(ets);
+
+        return et;
     }
 
 }

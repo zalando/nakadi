@@ -1,13 +1,12 @@
 package de.zalando.aruha.nakadi.validation;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.EventTypeSchema;
-import de.zalando.aruha.nakadi.domain.EventTypeSchema.Type;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import org.json.JSONObject;
 import org.junit.Test;
 
 import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildEventType;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -22,9 +21,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void schemaValidationShouldRespectEventTypeDefinition() {
-        final EventType et = buildAndRegisterEventType("some-event-type",
-                new JSONObject(
-                    "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"string\"}}, \"required\": [\"foo\", \"bar\"]}}, \"required\": [\"foo\", \"bar\"]}"));
+        final EventType et = buildEventType("some-event-type",
+                    "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"string\"}}, \"required\": [\"foo\", \"bar\"]}}, \"required\": [\"foo\", \"bar\"]}");
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -52,23 +50,10 @@ public class JSONSchemaValidationTest {
                 equalTo("#: 2 schema violations found\n#/bar: 2 schema violations found\n#/bar: required key [foo] not found\n#/bar: required key [bar] not found\n#: required key [foo] not found"));
     }
 
-    private EventType buildAndRegisterEventType(final String name, final JSONObject schema) {
-        final EventType et = new EventType();
-        et.setName(name);
-
-        final EventTypeSchema ets = new EventTypeSchema();
-        ets.setType(Type.JSON_SCHEMA);
-        ets.setSchema(schema.toString());
-        et.setSchema(ets);
-
-        return et;
-    }
-
     @Test
     public void schemaValidationShouldRespectIgnoreConfigurationMatchRegular() {
-        final EventType et = buildAndRegisterEventType("some-event-type",
-                new JSONObject(
-                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
+        final EventType et = buildEventType("some-event-type",
+                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}");
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -91,9 +76,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void schemaValidationShouldRespectIgnoreConfigurationMatchQualified() {
-        final EventType et = buildAndRegisterEventType("some-event-type",
-                new JSONObject(
-                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"string\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
+        final EventType et = buildEventType("some-event-type",
+                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"string\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}");
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
