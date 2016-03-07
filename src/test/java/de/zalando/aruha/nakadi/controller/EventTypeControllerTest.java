@@ -128,6 +128,27 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenPostAndTopicExistsTypeReturn409() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT,
+                "EventType with name " + EVENT_TYPE_NAME + " already exists (or wasn't completely removed yet)");
+
+        Mockito
+                .doNothing()
+                .when(eventTypeRepository)
+                .saveEventType(any(EventType.class));
+
+        Mockito
+                .doReturn(true)
+                .when(topicRepository)
+                .topicExists(EVENT_TYPE_NAME);
+
+        postEventType(buildEventType())
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
     public void whenPersistencyErrorThen500() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
 
