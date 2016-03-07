@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -74,7 +75,7 @@ public class EventStreamControllerTest {
         eventStreamFactoryMock = mock(EventStreamFactory.class);
 
         controller = new EventStreamController(topicRepositoryMock, objectMapper,
-                eventStreamFactoryMock);
+                eventStreamFactoryMock, new MetricRegistry());
 
         requestMock = mock(NativeWebRequest.class);
         responseMock = mock(HttpServletResponse.class);

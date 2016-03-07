@@ -67,7 +67,7 @@ public class NakadiConfig {
     @Bean
     public EventStreamController eventStreamController() {
         return new EventStreamController(topicRepository, jsonConfig.jacksonObjectMapper(),
-                eventStreamFactory());
+                eventStreamFactory(), METRIC_REGISTRY);
     }
 
     @Bean

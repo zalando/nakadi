@@ -1,10 +1,13 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.metrics.MetricUtils;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
@@ -46,16 +49,16 @@ public class EventStreamController {
     private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
 
     private final TopicRepository topicRepository;
-
     private final ObjectMapper jsonMapper;
-
     private final EventStreamFactory eventStreamFactory;
+    private final MetricRegistry metricRegistry;
 
     public EventStreamController(final TopicRepository topicRepository, final ObjectMapper jsonMapper,
-                                 final EventStreamFactory eventStreamFactory) {
+                                 final EventStreamFactory eventStreamFactory, final MetricRegistry metricRegistry) {
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
+        this.metricRegistry = metricRegistry;
     }
 
     @Timed(name = "stream_events_for_event_type", absolute = true)
@@ -71,7 +74,13 @@ public class EventStreamController {
             final NativeWebRequest request, final HttpServletResponse response) throws IOException {
 
         return outputStream -> {
+
+            Counter consumerCounter = null;
+
             try {
+                consumerCounter = metricRegistry.counter(MetricUtils.metricNameFor(eventTypeName, "consumers"));
+                consumerCounter.inc();
+
                 @SuppressWarnings("UnnecessaryLocalVariable")
                 final String topic = eventTypeName;
 
@@ -150,6 +159,10 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             }
             finally {
+                if (consumerCounter != null) {
+                    consumerCounter.dec();
+                }
+
                 outputStream.flush();
                 outputStream.close();
             }
@@ -161,4 +174,6 @@ public class EventStreamController {
         response.setStatus(statusCode.getStatusCode());
         jsonMapper.writer().writeValue(outputStream, Problem.valueOf(statusCode, message));
     }
+
+
 }

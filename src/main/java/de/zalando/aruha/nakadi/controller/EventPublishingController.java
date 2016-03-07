@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
+import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -66,7 +67,7 @@ public class EventPublishingController {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
             try {
-                final Timer successfullyPublishedTimer = metricRegistry.timer(metricName(eventTypeName, "success"));
+                final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, "success"));
                 final Timer.Context successfullyPublishedTimerContext = successfullyPublishedTimer.time();
 
                 final JSONObject eventAsJson = parseJson(event);
@@ -79,7 +80,7 @@ public class EventPublishingController {
 
                 return status(HttpStatus.CREATED).build();
             } catch (Exception e) {
-                metricRegistry.counter(metricName(eventTypeName, "failed")).inc();
+                metricRegistry.counter(metricNameFor(eventTypeName, "failed")).inc();
                 throw e;
             }
 
@@ -93,10 +94,6 @@ public class EventPublishingController {
             LOG.error("error posting to partition", e);
             return create(e.asProblem(), nativeWebRequest);
         }
-    }
-
-    private String metricName(final String eventTypeName, final String metricName) {
-        return "nakadi.eventtypes." + eventTypeName.replace('.', '#') + "." + metricName;
     }
 
     private String applyPartitioningStrategy(final EventType eventType, final JSONObject eventAsJson) throws InvalidPartitioningKeyFieldsException, NakadiException {
