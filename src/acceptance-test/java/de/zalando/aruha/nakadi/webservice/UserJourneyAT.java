@@ -57,7 +57,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .and()
                 .body("name", equalTo(TEST_EVENT_TYPE))
                 .body("owning_application", equalTo("article-producer"))
-                .body("category", equalTo("data"))
+                .body("category", equalTo("undefined"))
                 .body("schema.type", equalTo("json_schema"))
                 .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
 
@@ -92,8 +92,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                             .then()
                             .statusCode(OK.value())
                             .and()
-                            .body("owning_application", equalTo("my-app"))
-                            .body("category", equalTo("business"));
+                            .body("owning_application", equalTo("my-app"));
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));

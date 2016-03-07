@@ -10,8 +10,9 @@ import static org.hamcrest.Matchers.is;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventValidationTest {
+
     @Test
-    public void whenTypeIsUnknownThenReturnsPlainSchema() {
+    public void whenTypeIsUndefinedThenReturnsPlainSchema() {
         final String schema = "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"} }, \"required\": [\"foo\"]}";
         final EventType et = buildEventType("some-event-type", schema);
 
@@ -63,14 +64,13 @@ public class EventValidationTest {
     }
 
     @Test
-    public void whenTypeIsDataChangeThenAddMetadataField() {
-    }
+    public void whenTypeIsDataChangeThenWrap() {
+        final String schema = "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"} }, \"required\": [\"foo\"]}";
+        final EventType et = buildEventType("some-event-type", schema);
+        et.setCategory(EventCategory.DATA);
 
-    @Test
-    public void whenTypeIsDataChangeThenAddDataOpField() {
-    }
+        final String dataSchema = "{\"type\": \"object\", \"properties\": { \"data_type\": { \"type\": \"string\" }, \"data_op\": { \"type\": \"string\", \"enum\": [\"C\", \"U\", \"D\", \"S\"] } ,\"data\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"} }, \"required\": [\"foo\"]} }, \"required\": [\"data\", \"data_op\", \"data_type\"]}";
 
-    @Test
-    public void whenTypeIsDataChangeThenNestSchemaInData() {
+        assertThat(EventValidation.effectiveSchema(et).toString(), is(sameJSONAs(dataSchema).allowingAnyArrayOrdering()));
     }
 }
