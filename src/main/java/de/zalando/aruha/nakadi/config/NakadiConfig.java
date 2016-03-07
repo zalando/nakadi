@@ -82,7 +82,7 @@ public class NakadiConfig {
 
     @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(topicRepository, eventTypeRepository, eventTypeCache);
+        return new EventPublishingController(topicRepository, eventTypeRepository, eventTypeCache, METRIC_REGISTRY);
     }
 
     private static MetricRegistry createMetricRegistry() {

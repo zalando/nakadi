@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
@@ -76,7 +77,7 @@ public class EventPublishingControllerTest {
                 .when(cache)
                 .getValidator(anyString());
 
-        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository, cache);
+        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository, cache, new MetricRegistry());
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
