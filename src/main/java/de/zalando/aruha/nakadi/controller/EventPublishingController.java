@@ -1,5 +1,7 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EventValidationException;
@@ -30,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
+import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -38,18 +41,22 @@ import static org.zalando.problem.spring.web.advice.Responses.create;
 public class EventPublishingController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublishingController.class);
+    public static final String SUCCESS_METRIC_NAME = "success";
+    public static final String FAILED_METRIC_NAME = "failed";
 
     private final TopicRepository topicRepository;
     private final EventTypeRepository eventTypeRepository;
     private final PartitioningStrategy partitioningKeyFieldsPartitioningStrategy = new PartitioningKeyFieldsPartitioningStrategy();
     private final EventTypeCache cache;
+    private final MetricRegistry metricRegistry;
 
     public EventPublishingController(final TopicRepository topicRepository,
                                      final EventTypeRepository eventTypeRepository,
-                                     final EventTypeCache cache) {
+                                     final EventTypeCache cache, final MetricRegistry metricRegistry) {
         this.topicRepository = topicRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.cache = cache;
+        this.metricRegistry = metricRegistry;
     }
 
     @Timed(name = "post_events", absolute = true)
@@ -61,14 +68,23 @@ public class EventPublishingController {
         try {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
-            final JSONObject eventAsJson = parseJson(event);
+            try {
+                final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, SUCCESS_METRIC_NAME));
+                final Timer.Context successfullyPublishedTimerContext = successfullyPublishedTimer.time();
 
-            validateSchema(eventAsJson, eventType);
+                final JSONObject eventAsJson = parseJson(event);
+                validateSchema(eventAsJson, eventType);
+                String partitionId = applyPartitioningStrategy(eventType, eventAsJson);
 
-            String partitionId = applyPartitioningStrategy(eventType, eventAsJson);
+                topicRepository.postEvent(eventTypeName, partitionId, event);
 
-            topicRepository.postEvent(eventTypeName, partitionId, event);
-            return status(HttpStatus.CREATED).build();
+                successfullyPublishedTimerContext.stop();
+
+                return status(HttpStatus.CREATED).build();
+            } catch (Exception e) {
+                metricRegistry.counter(metricNameFor(eventTypeName, FAILED_METRIC_NAME)).inc();
+                throw e;
+            }
 
         } catch (NoSuchEventTypeException e) {
             LOG.debug("Could not process event.", e);
