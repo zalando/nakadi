@@ -41,6 +41,10 @@ public final class ExceptionHandling implements ProblemHandling {
     @Override
     @ExceptionHandler
     public ResponseEntity<Problem> handleMessageNotReadableException(final HttpMessageNotReadableException exception, final NativeWebRequest request) {
+        /*
+        Unwrap nested JsonMappingException because the enclosing HttpMessageNotReadableException adds some ugly, Java
+        class and stacktrace like information.
+         */
         final Throwable mostSpecificCause = exception.getMostSpecificCause();
         final String message;
         if (mostSpecificCause instanceof JsonMappingException) {
