@@ -174,7 +174,7 @@ public class EventPublishingControllerTest {
     }
 
     @Test
-    public void metrics() throws Exception {
+    public void publishedEventsAreReportedPerEventType() throws Exception {
         when(validator.validate(Matchers.any(JSONObject.class))).then(invocation -> {
             final JSONObject jsonObject = (JSONObject) invocation.getArguments()[0];
             return jsonObject.has("fail") ? Optional.of(new ValidationError("Should fail")) : Optional.empty();
