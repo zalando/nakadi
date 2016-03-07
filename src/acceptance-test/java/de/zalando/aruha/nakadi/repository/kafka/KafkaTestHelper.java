@@ -1,6 +1,8 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import de.zalando.aruha.nakadi.domain.Cursor;
+import kafka.admin.AdminUtils;
+import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -88,5 +90,18 @@ public class KafkaTestHelper {
                 .map(partition -> new Cursor(Integer.toString(partition.partition()),
                         Long.toString(consumer.position(partition))))
                 .collect(Collectors.toList());
+    }
+
+    public void createTopic(final String topic, final String zkUrl) {
+        ZkUtils zkUtils = null;
+        try {
+            zkUtils = ZkUtils.apply(zkUrl, 30000, 10000, false);
+            AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties());
+        }
+        finally {
+            if (zkUtils != null) {
+                zkUtils.close();
+            }
+        }
     }
 }
