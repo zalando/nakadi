@@ -19,6 +19,7 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 
 public class UserJourneyAT extends RealEnvironmentAT {
@@ -95,7 +96,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
                             .body("owning_application", equalTo("my-app"))
                             .body("category", equalTo("business"));
                 },
-                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                new RetryForSpecifiedTimeStrategy<Void>(5000)
+                        .withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
 
         // push two events to event-type
@@ -137,6 +139,20 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .and()
                 .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"1\"},\"events\":" +
                         "[" + EVENT1 + "," + EVENT2 + "]}\n"));
+
+        // delete event type
+        jsonRequestSpec()
+                .when()
+                .delete("/event-types/" + TEST_EVENT_TYPE)
+                .then()
+                .statusCode(OK.value());
+
+        // check that it was removed
+        jsonRequestSpec()
+                .when()
+                .get("/event-types/" + TEST_EVENT_TYPE)
+                .then()
+                .statusCode(NOT_FOUND.value());
     }
 
     private void postEvent(final String event) {
