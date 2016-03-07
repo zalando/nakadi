@@ -93,7 +93,7 @@ public class EventTypeController {
     }
 
     @RequestMapping(value = "/{name}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> createEventType(@PathVariable("name") final String eventTypeName,
+    public ResponseEntity<?> deleteEventType(@PathVariable("name") final String eventTypeName,
                                              final NativeWebRequest nativeWebRequest) {
         try {
             eventTypeRepository.removeEventType(eventTypeName);
