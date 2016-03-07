@@ -4,6 +4,8 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
+import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 
 import java.util.List;
 import java.util.Map;
@@ -20,6 +22,8 @@ public interface TopicRepository {
     void createTopic(String topic) throws TopicCreationException;
 
     void createTopic(String topic, int partitionsNum, int replicaFactor, long retentionMs, long rotationMs) throws TopicCreationException;
+
+    void deleteTopic(String topic) throws TopicDeletionException;
 
     boolean topicExists(String topic) throws NakadiException;
 
