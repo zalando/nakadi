@@ -71,6 +71,7 @@ public class JsonConfig {
 
         @Override
         public Enum deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+            @SuppressWarnings("unchecked")
             Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
             return Enum.valueOf(rawClass, jp.getValueAsString().toUpperCase());
         }
