@@ -53,8 +53,10 @@ public class EventValidation {
     private static void addToRequired(final JSONObject schema, final String[] toBeRequired) {
         final Set<String> required = new HashSet<>(Arrays.asList(toBeRequired));
 
-        for(int i = 0; i < schema.getJSONArray("required").length(); i++) {
-            required.add(schema.getJSONArray("required").getString(i));
+        JSONArray currentRequired = schema.getJSONArray("required");
+
+        for(int i = 0; i < currentRequired.length(); i++) {
+            required.add(currentRequired.getString(i));
         }
 
         schema.put("required", required);

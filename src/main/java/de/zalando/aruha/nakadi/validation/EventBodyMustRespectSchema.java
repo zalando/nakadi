@@ -31,7 +31,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
     @Override
     public EventValidator materialize(final EventType eventType, final ValidationStrategyConfiguration vsc) {
 
-        JSONObject effectiveSchema = EventValidation.effectiveSchema(eventType);
+        final JSONObject effectiveSchema = EventValidation.effectiveSchema(eventType);
 
         final JSONSchemaValidator defaultSchemaValidator = new JSONSchemaValidator(effectiveSchema);
 
