@@ -17,16 +17,16 @@ public class EventTypeTest {
     }
 
     @Test
-    public void canDeserializeWithoutOrderingKeyFields() throws Exception {
-        final String json = resourceAsString("event-type.without.ordering-key-fields.json", this.getClass());
+    public void canDeserializeWithoutPartitioningKeyFields() throws Exception {
+        final String json = resourceAsString("event-type.without.partitioning-key-fields.json", this.getClass());
         final EventType eventType = objectMapper.readValue(json, EventType.class);
 
         assertThat(eventType, notNullValue());
     }
 
     @Test
-    public void canDeserializeWithOrderingKeyFields() throws Exception {
-        final String json = resourceAsString("event-type.with.ordering-key-fields.json", this.getClass());
+    public void canDeserializeWithPartitioningKeyFields() throws Exception {
+        final String json = resourceAsString("event-type.with.partitioning-key-fields.json", this.getClass());
         final EventType eventType = objectMapper.readValue(json, EventType.class);
 
         assertThat(eventType, notNullValue());

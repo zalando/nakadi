@@ -28,7 +28,7 @@ public class EventType {
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
-    private List<String> orderingKeyFields;
+    private List<String> partitioningKeyFields;
 
     @NotNull
     @Valid
@@ -66,12 +66,12 @@ public class EventType {
         this.schema = schema;
     }
 
-    public List<String> getOrderingKeyFields() {
-        return unmodifiableList(orderingKeyFields != null ? orderingKeyFields : EMPTY_STRING_LIST);
+    public List<String> getPartitioningKeyFields() {
+        return unmodifiableList(partitioningKeyFields != null ? partitioningKeyFields : EMPTY_STRING_LIST);
     }
 
-    public void setOrderingKeyFields(final List<String> orderingKeyFields) {
-        this.orderingKeyFields = orderingKeyFields;
+    public void setPartitioningKeyFields(final List<String> partitioningKeyFields) {
+        this.partitioningKeyFields = partitioningKeyFields;
     }
 
 }

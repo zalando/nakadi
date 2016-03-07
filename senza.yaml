@@ -51,6 +51,9 @@ SenzaInfo:
     - TokenInfoUrl:
         Description: "Authentication server token-info endpoint URL"
         Default: "https://example.com/tokeninfo"
+    - ReplicaFactor:
+        Description: "Replica factor for event broker"
+        Default: "3"
 
 SenzaComponents:
 
@@ -87,6 +90,7 @@ SenzaComponents:
           NAKADI_ZOOKEEPER_KAFKANAMESPACE:    "{{Arguments.ZookeeperKafkaNamespace}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_BROKERS: "{{Arguments.ExhibitorBrokers}}"
           NAKADI_ZOOKEEPER_EXHIBITOR_PORT:    "{{Arguments.ExhibitorPort}}"
+          NAKADI_TOPIC_DEFAULT_REPLICAFACTOR: "{{Arguments.ReplicaFactor}}"
           SPRING_DATASOURCE_URL: "{{Arguments.DatabaseUrl}}"
           SPRING_DATASOURCE_USERNAME: "{{Arguments.DatabaseUser}}"
           SPRING_DATASOURCE_PASSWORD: "{{Arguments.DatabasePassword}}"

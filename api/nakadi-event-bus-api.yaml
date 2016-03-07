@@ -1122,8 +1122,10 @@ definitions:
           If set MUST be a valid required field as defined in the schema.
           (TBD should be required? Is applicable only to both Business and DataChange Events?)
 
-      ordering_key_field:
-        type: string
+      partitioning_key_fields:
+        type: array
+        items:
+          type: string
         description: |
           Indicator of the field used for guaranteeing the ordering of Events of this type (used by the
           PartitionResolutionStrategy).

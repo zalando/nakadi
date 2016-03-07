@@ -33,7 +33,7 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
-public class OrderingKeyFieldsPartitioningStrategyTest {
+public class PartitioningKeyFieldsPartitioningStrategyTest {
 
     private static final Random RANDOM = new Random();
     private static final String DELIMITER = "#";
@@ -43,17 +43,17 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
     private static List<JSONObject> EVENT_SAMPLES_B = null;
     private static List<JSONObject> EVENT_SAMPLES_C = null;
 
-    private final OrderingKeyFieldsPartitioningStrategy strategy = new OrderingKeyFieldsPartitioningStrategy();
+    private final PartitioningKeyFieldsPartitioningStrategy strategy = new PartitioningKeyFieldsPartitioningStrategy();
     private final EventType simpleEventType;
     private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
 
-    public OrderingKeyFieldsPartitioningStrategyTest() {
+    public PartitioningKeyFieldsPartitioningStrategyTest() {
         simpleEventType = new EventType();
-        simpleEventType.setOrderingKeyFields(asList("sku", "name"));
+        simpleEventType.setPartitioningKeyFields(asList("sku", "name"));
     }
 
     @Test
-    public void calculatesSamePartitionForSameOrderingKeyFields() throws Exception {
+    public void calculatesSamePartitionForSamePartitioningKeyFields() throws Exception {
         fillPartitionsWithRandomEvents(simpleEventType, partitions, 1000);
 
         checkThatEventsWithSameKeysAreInSamePartition(partitions);
@@ -104,7 +104,7 @@ public class OrderingKeyFieldsPartitioningStrategyTest {
         final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
 
         final EventType eventType = new EventType();
-        eventType.setOrderingKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
+        eventType.setPartitioningKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
 
         final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
 
