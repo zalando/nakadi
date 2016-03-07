@@ -46,6 +46,7 @@ nakadi:
     scopes:
       uid: uid
       nakadiRead: nakadi.read
+      nakadiAdmin: nakadi.admin
       eventTypeWrite: nakadi_event_type.write
       eventStreamRead: nakadi_event_stream.read
       eventStreamWrite: nakadi_event_stream.write

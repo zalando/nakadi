@@ -1,6 +1,4 @@
-package de.zalando.aruha.nakadi.repository;
-
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
+package de.zalando.aruha.nakadi.exceptions;
 
 import javax.ws.rs.core.Response;
 

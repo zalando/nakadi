@@ -12,9 +12,9 @@ import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
+import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.TopicCreationException;
+import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -120,6 +120,27 @@ public class EventTypeControllerTest {
                 doThrow(new DuplicatedEventTypeNameException("some-name")).
                 when(eventTypeRepository).
                 saveEventType(any(EventType.class));
+
+        postEventType(buildEventType())
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostAndTopicExistsTypeReturn409() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT,
+                "EventType with name " + EVENT_TYPE_NAME + " already exists (or wasn't completely removed yet)");
+
+        Mockito
+                .doNothing()
+                .when(eventTypeRepository)
+                .saveEventType(any(EventType.class));
+
+        Mockito
+                .doReturn(true)
+                .when(topicRepository)
+                .topicExists(EVENT_TYPE_NAME);
 
         postEventType(buildEventType())
                 .andExpect(status().isConflict())
