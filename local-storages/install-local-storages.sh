@@ -19,7 +19,8 @@ cat >> opt/${KAFKA_IMG}/config/server.properties << --
 
 advertised.host.name=localhost
 advertised.host.port=9092
-auto.create.topics.enable = false
+auto.create.topics.enable=false
+delete.topic.enable=true
 --
 
 # drop and create main cluster, because it was created with locale=C...

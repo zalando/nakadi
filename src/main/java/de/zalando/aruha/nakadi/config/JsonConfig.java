@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
@@ -24,6 +25,8 @@ import org.zalando.problem.ProblemModule;
 import java.io.IOException;
 
 import static com.fasterxml.jackson.databind.PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.joining;
 
 @Configuration
 public class JsonConfig {
@@ -71,8 +74,17 @@ public class JsonConfig {
 
         @Override
         public Enum deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+            @SuppressWarnings("unchecked")
             Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
-            return Enum.valueOf(rawClass, jp.getValueAsString().toUpperCase());
+            final String jpValueAsString = jp.getValueAsString();
+            try {
+                return Enum.valueOf(rawClass, jpValueAsString.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                final String possibleValues = stream(rawClass.getEnumConstants())
+                        .map(enumValue -> enumValue.name().toLowerCase())
+                        .collect(joining(", "));
+                throw new JsonMappingException("Illegal enum value: '" + jpValueAsString + "'. Possible values: [" + possibleValues + "]");
+            }
         }
     }
 

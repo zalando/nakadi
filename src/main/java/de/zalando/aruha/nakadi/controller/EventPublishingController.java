@@ -31,6 +31,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.springframework.http.ResponseEntity.status;
@@ -66,25 +67,18 @@ public class EventPublishingController {
         LOG.trace("Received event {} for event type {}", event, eventTypeName);
 
         try {
+            final long startingTime = System.nanoTime();
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
-            try {
-                final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, SUCCESS_METRIC_NAME));
-                final Timer.Context successfullyPublishedTimerContext = successfullyPublishedTimer.time();
-
+            return doWithMetrics(eventTypeName, startingTime, () -> {
                 final JSONObject eventAsJson = parseJson(event);
                 validateSchema(eventAsJson, eventType);
                 String partitionId = applyPartitioningStrategy(eventType, eventAsJson);
 
                 topicRepository.postEvent(eventTypeName, partitionId, event);
 
-                successfullyPublishedTimerContext.stop();
-
                 return status(HttpStatus.CREATED).build();
-            } catch (Exception e) {
-                metricRegistry.counter(metricNameFor(eventTypeName, FAILED_METRIC_NAME)).inc();
-                throw e;
-            }
+            });
 
         } catch (NoSuchEventTypeException e) {
             LOG.debug("Could not process event.", e);
@@ -130,5 +124,23 @@ public class EventPublishingController {
         } catch (JSONException e) {
             throw new EventValidationException(new ValidationError("payload must be a valid json"));
         }
+    }
+
+    private ResponseEntity doWithMetrics(final String eventTypeName, final long startingNanos, final EventProcessingTask task) throws NakadiException {
+        try {
+            final ResponseEntity responseEntity = task.execute();
+
+            final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, SUCCESS_METRIC_NAME));
+            successfullyPublishedTimer.update(System.nanoTime() - startingNanos, TimeUnit.NANOSECONDS);
+
+            return responseEntity;
+        } catch (Exception e) {
+            metricRegistry.counter(metricNameFor(eventTypeName, FAILED_METRIC_NAME)).inc();
+            throw e;
+        }
+    }
+
+    private interface EventProcessingTask {
+        ResponseEntity execute() throws NakadiException;
     }
 }
