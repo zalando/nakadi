@@ -35,6 +35,7 @@ import uk.co.datumedge.hamcrest.json.SameJSONAs;
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
 
+import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
@@ -107,6 +108,21 @@ public class EventTypeControllerTest {
 
         final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", " +
                 "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPOSTBusinessEventTypeMetadataThen422() throws Exception {
+        final EventType eventType = buildEventType();
+        eventType.getSchema().setSchema("{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
+        eventType.setCategory(BUSINESS);
+
+        final Problem expectedProblem = invalidProblem("schema.schema",
+                "The \"metadata\" property is reserved");
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())

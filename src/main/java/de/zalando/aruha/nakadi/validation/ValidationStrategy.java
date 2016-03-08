@@ -1,12 +1,11 @@
 package de.zalando.aruha.nakadi.validation;
 
-import java.util.Map;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
-
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
+
+import java.util.Map;
 
 public abstract class ValidationStrategy {
 
