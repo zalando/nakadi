@@ -1,12 +1,14 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.config.JsonConfig;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -18,6 +20,7 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.mockito.exceptions.base.MockitoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -31,16 +34,21 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.LinkedList;
 
+import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy.retryForSpecifiedTimeOf;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
+import static org.echocat.jomon.runtime.util.Duration.duration;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -64,6 +72,7 @@ public class EventStreamControllerTest {
     private ObjectMapper objectMapper;
     private EventStreamController controller;
     private JsonTestHelper jsonHelper;
+    private MetricRegistry metricRegistry;
 
     @Before
     public void setup() {
@@ -73,8 +82,9 @@ public class EventStreamControllerTest {
         topicRepositoryMock = mock(TopicRepository.class);
         eventStreamFactoryMock = mock(EventStreamFactory.class);
 
+        metricRegistry = new MetricRegistry();
         controller = new EventStreamController(topicRepositoryMock, objectMapper,
-                eventStreamFactoryMock);
+                eventStreamFactoryMock, metricRegistry);
 
         requestMock = mock(NativeWebRequest.class);
         responseMock = mock(HttpServletResponse.class);
@@ -275,6 +285,57 @@ public class EventStreamControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, "dummy message");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+    }
+
+    @Test
+    public void reportCurrentNumberOfConsumers() throws Exception {
+        when(topicRepositoryMock.topicExists(anyString())).thenReturn(true);
+        final EventStream eventStream = mock(EventStream.class);
+
+        // block to simulate the streaming until thread is interrupted
+        Mockito.doAnswer(invocation -> {
+            while (!Thread.interrupted()) { Thread.sleep(100); }
+            return null;
+        }).when(eventStream).streamEvents();
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(eventStream);
+
+        // "connect" to the server
+        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 0, 0, 0, 0, 0, null,
+                requestMock, responseMock);
+
+
+        final LinkedList<Thread> clients = new LinkedList<>();
+        final Counter counter = metricRegistry.counter(metricNameFor(TEST_EVENT_TYPE, EventStreamController.CONSUMERS_COUNT_METRIC_NAME));
+
+        // create clients...
+        for (int i=0; i<3; i++) {
+            final Thread client = new Thread(() -> {
+                try {
+                    responseBody.writeTo(new ByteArrayOutputStream());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            client.start();
+            clients.add(client);
+
+            Thread.sleep(500);
+
+            executeWithRetry(
+                    () -> {assertThat(counter.getCount(), equalTo((long) clients.size()));},
+                    retryForSpecifiedTimeOf(duration("5s"))
+            );
+
+        }
+
+        // ...and disconnect them one by one
+        while (!clients.isEmpty()) {
+            final Thread client = clients.pop();
+            client.interrupt();
+            client.join();
+
+            assertThat(counter.getCount(), equalTo((long) clients.size()));
+        }
     }
 
     private String responseToString(final StreamingResponseBody responseBody) throws IOException {
