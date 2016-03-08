@@ -10,6 +10,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
 import de.zalando.aruha.nakadi.validation.EventTypeValidator;
+import de.zalando.aruha.nakadi.validation.EventValidation;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -131,10 +132,7 @@ public class EventTypeCache {
         final CacheLoader<String, EventTypeValidator> loader = new CacheLoader<String, EventTypeValidator>() {
             public EventTypeValidator load(final String key) throws Exception {
                 final EventType et = eventTypeCache.get(key);
-                final EventTypeValidator etv = new EventTypeValidator(et);
-                final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
-                vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
-                return etv.withConfiguration(vsc);
+                return EventValidation.forType(et);
             }
         };
 

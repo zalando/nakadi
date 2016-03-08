@@ -32,7 +32,7 @@ public class JSONSchemaValidationTest {
         vsc2.setStrategyName(FieldNameMustBeSet.NAME);
         et.getValidationStrategies().add(vsc2);
 
-        final EventTypeValidator validator = EventValidation.forType(et).withConfiguration(vsc1).withConfiguration(vsc2);
+        final EventTypeValidator validator = new EventTypeValidator(et).withConfiguration(vsc1).withConfiguration(vsc2);
 
         final JSONObject validEvent = new JSONObject(
                 "{\"foo\": \"bar\", \"bar\": {\"foo\": \"baz\", \"bar\": \"baz\"}, \"extra\": \"i should be no problem\", \"name\": \"12345\"}");
@@ -61,7 +61,7 @@ public class JSONSchemaValidationTest {
                 "{\"overrides\": [{\"qualifier\": {\"field\": \"event-type\", \"match\" : \"D\"}, \"ignoredProperties\": [\"field-that-will-not-be-found\"]}]}"));
         et.getValidationStrategies().add(vsc1);
 
-        final EventTypeValidator validator = EventValidation.forType(et).withConfiguration(vsc1);
+        final EventTypeValidator validator = new EventTypeValidator(et).withConfiguration(vsc1);
 
         final JSONObject event = new JSONObject(
                 "{\"event-type\" : \"X\", \"extra\": \"i should be no problem\", \"name\": \"12345\", \"field-that-will-not-be-found\": {\"val\": \"i must be present since the matcher will not succeed\"}}");
@@ -85,7 +85,7 @@ public class JSONSchemaValidationTest {
                 "{\"overrides\": [{\"qualifier\": {\"field\": \"event-type\", \"match\" : \"D\"}, \"ignoredProperties\": [\"field-that-will-not-be-found\"]}]}"));
         et.getValidationStrategies().add(vsc1);
 
-        final EventTypeValidator validator = EventValidation.forType(et).withConfiguration(vsc1);
+        final EventTypeValidator validator = new EventTypeValidator(et).withConfiguration(vsc1);
 
         final JSONObject event = new JSONObject(
                 "{\"event-type\" : \"X\", \"field-that-will-not-be-found\": \"some useless value\", \"extra\": \"i should be no problem\", \"name\": \"12345\"}");

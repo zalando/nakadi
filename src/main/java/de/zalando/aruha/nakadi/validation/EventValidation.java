@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.validation;
 
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -11,7 +12,13 @@ import java.util.Set;
 
 public class EventValidation {
     public static EventTypeValidator forType(final EventType eventType) {
-        return new EventTypeValidator(eventType);
+        final EventTypeValidator etv = new EventTypeValidator(eventType);
+        final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
+        vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
+
+        // TODO configure metadata validation on a per EventCategory basis
+
+        return etv.withConfiguration(vsc);
     }
 
     public static JSONObject effectiveSchema(final EventType eventType) throws JSONException {
