@@ -69,7 +69,7 @@ public class EventValidationTest {
         final EventType et = buildEventType("some-event-type", schema);
         et.setCategory(EventCategory.DATA);
 
-        final String dataSchema = "{\"type\": \"object\", \"properties\": { \"data_type\": { \"type\": \"string\" }, \"data_op\": { \"type\": \"string\", \"enum\": [\"C\", \"U\", \"D\", \"S\"] } ,\"data\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"} }, \"required\": [\"foo\"]} }, \"required\": [\"data\", \"data_op\", \"data_type\"]}";
+        final String dataSchema = "{\"type\": \"object\", \"properties\": { \"data_type\": { \"type\": \"string\" }, \"data_op\": { \"type\": \"string\", \"enum\": [\"C\", \"U\", \"D\", \"S\"] }, \"metadata\": {\"type\": \"object\"}, \"data\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"} }, \"required\": [\"foo\"]} }, \"required\": [\"data\", \"data_op\", \"data_type\", \"metadata\"], \"additionalProperties\": false}";
 
         assertThat(EventValidation.effectiveSchema(et).toString(), is(sameJSONAs(dataSchema).allowingAnyArrayOrdering()));
     }
