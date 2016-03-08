@@ -1,10 +1,12 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.base.CaseFormat;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
@@ -36,5 +38,20 @@ public final class ExceptionHandling implements ProblemHandling {
         return "ETI" + RandomStringUtils.randomAlphanumeric(24);
     }
 
-
+    @Override
+    @ExceptionHandler
+    public ResponseEntity<Problem> handleMessageNotReadableException(final HttpMessageNotReadableException exception, final NativeWebRequest request) {
+        /*
+        Unwrap nested JsonMappingException because the enclosing HttpMessageNotReadableException adds some ugly, Java
+        class and stacktrace like information.
+         */
+        final Throwable mostSpecificCause = exception.getMostSpecificCause();
+        final String message;
+        if (mostSpecificCause instanceof JsonMappingException) {
+            message = mostSpecificCause.getMessage();
+        } else {
+            message = exception.getMessage();
+        }
+        return Responses.create(Response.Status.BAD_REQUEST, message, request);
+    }
 }
