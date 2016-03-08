@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
@@ -13,6 +14,7 @@ import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import kafka.admin.AdminUtils;
+import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
@@ -69,7 +71,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void createTopic(final String topic) throws TopicCreationException {
+    public void createTopic(final String topic) throws TopicCreationException, DuplicatedEventTypeNameException {
         createTopic(topic,
                 settings.getDefaultTopicPartitionNum(),
                 settings.getDefaultTopicReplicaFactor(),
@@ -79,7 +81,8 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
-                            final long retentionMs, final long rotationMs) throws TopicCreationException {
+                            final long retentionMs, final long rotationMs)
+            throws TopicCreationException, DuplicatedEventTypeNameException {
         try {
             doWithZkUtils(zkUtils -> {
                 final Properties topicConfig = new Properties();
@@ -87,6 +90,10 @@ public class KafkaTopicRepository implements TopicRepository {
                 topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
                 AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
             });
+        }
+        catch (TopicExistsException e) {
+            throw new DuplicatedEventTypeNameException("EventType with name " + topic +
+                    " already exists (or wasn't completely removed yet)");
         }
         catch (Exception e) {
             throw new TopicCreationException("Unable to create topic " + topic, e);

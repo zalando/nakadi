@@ -131,8 +131,7 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPostAndTopicExistsReturn409() throws Exception {
-        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT,
-                "EventType with name " + EVENT_TYPE_NAME + " already exists (or wasn't completely removed yet)");
+        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "dummy message");
 
         Mockito
                 .doNothing()
@@ -140,9 +139,9 @@ public class EventTypeControllerTest {
                 .saveEventType(any(EventType.class));
 
         Mockito
-                .doReturn(true)
+                .doThrow(new DuplicatedEventTypeNameException("dummy message"))
                 .when(topicRepository)
-                .topicExists(EVENT_TYPE_NAME);
+                .createTopic(EVENT_TYPE_NAME);
 
         postEventType(buildEventType())
                 .andExpect(status().isConflict())

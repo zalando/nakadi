@@ -66,12 +66,6 @@ public class EventTypeController {
         }
 
         try {
-            // can happen if EventType already exists or if topic deletion
-            // was not yet processed after EventType deletion
-            if (topicRepository.topicExists(eventType.getName())) {
-                throw new DuplicatedEventTypeNameException("EventType with name " + eventType.getName() +
-                        " already exists (or wasn't completely removed yet)");
-            }
             eventTypeRepository.saveEventType(eventType);
             topicRepository.createTopic(eventType.getName());
             return status(HttpStatus.CREATED).build();
