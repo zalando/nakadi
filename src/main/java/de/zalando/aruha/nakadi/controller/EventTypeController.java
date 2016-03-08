@@ -4,10 +4,11 @@ import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
+import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.TopicCreationException;
+import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -81,6 +82,25 @@ public class EventTypeController {
             return create(e.asProblem(), nativeWebRequest);
         } catch (NakadiException e) {
             LOG.error("Error creating event type " + eventType, e);
+            return create(e.asProblem(), nativeWebRequest);
+        }
+    }
+
+    @RequestMapping(value = "/{name}", method = RequestMethod.DELETE)
+    public ResponseEntity<?> deleteEventType(@PathVariable("name") final String eventTypeName,
+                                             final NativeWebRequest nativeWebRequest) {
+        try {
+            eventTypeRepository.removeEventType(eventTypeName);
+            topicRepository.deleteTopic(eventTypeName);
+            return status(HttpStatus.OK).build();
+        } catch (NoSuchEventTypeException e) {
+            LOG.warn("Tried to remove EventType " + eventTypeName + " that doesn't exist", e);
+            return create(e.asProblem(), nativeWebRequest);
+        } catch (TopicDeletionException e) {
+            LOG.error("Problem deleting kafka topic " + eventTypeName, e);
+            return create(e.asProblem(), nativeWebRequest);
+        } catch (NakadiException e) {
+            LOG.error("Error deleting event type " + eventTypeName, e);
             return create(e.asProblem(), nativeWebRequest);
         }
     }

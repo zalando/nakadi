@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import java.util.List;
 
+import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
@@ -22,6 +23,7 @@ public class OffModeAuthenticationTest extends AuthenticationTest {
             new Endpoint(POST, "/event-types"),
             new Endpoint(GET, "/event-types/foo"),
             new Endpoint(PUT, "/event-types/foo"),
+            new Endpoint(DELETE, "/event-types/foo"),
             new Endpoint(POST, "/event-types/foo/events"),
             new Endpoint(GET, "/event-types/foo/events"),
             new Endpoint(GET, "/event-types/foo/partitions"),
