@@ -1,7 +1,7 @@
 import os
 
 KAFKA_BROKER = os.environ.get('KAFKA_BROKER', 'localhost:9092')
-KAFKA_CLIENTS_MAX_POOL_SIZE = int(os.environ.get('KAFKA_CLIENTS_MAX_POOL_SIZE', '16'))
+KAFKA_CLIENTS_MAX_POOL_SIZE = int(os.environ.get('KAFKA_CLIENTS_MAX_POOL_SIZE', '128'))
 KAFKA_CLIENTS_INIT_POOL_SIZE = int(os.environ.get('KAFKA_CLIENTS_INIT_POOL_SIZE', '4'))
 ARUHA_LISTEN_PORT = int(os.environ.get('ARUHA_LISTEN_PORT', '8080'))
 ENABLE_LOGS_ROTATION = True
