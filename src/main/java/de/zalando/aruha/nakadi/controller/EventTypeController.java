@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.controller;
 
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
@@ -128,13 +129,23 @@ public class EventTypeController {
             try {
                 JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
-                SchemaLoader.load(schemaAsJson);
+                if (hasReservedField(eventType, schemaAsJson, "metadata")) {
+                    errors.rejectValue("schema.schema", "", "The \"metadata\" property is reserved");
+                } else {
+                    SchemaLoader.load(schemaAsJson);
+                }
             } catch (JSONException e) {
                 errors.rejectValue("schema.schema", "", "must be a valid json");
             } catch (SchemaException e) {
                 errors.rejectValue("schema.schema", "", "must be valid json-schema (http://json-schema.org)");
             }
         }
+    }
+
+    private boolean hasReservedField(final EventType eventType, final JSONObject schemaAsJson, final String field) {
+        return eventType.getCategory() == EventCategory.BUSINESS
+                && schemaAsJson.optJSONObject("properties") != null
+                && schemaAsJson.getJSONObject("properties").has("metadata");
     }
 
     private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NoSuchEventTypeException, InternalNakadiException {
