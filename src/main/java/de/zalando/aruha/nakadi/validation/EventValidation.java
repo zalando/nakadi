@@ -36,11 +36,15 @@ public class EventValidation {
 
         normalizeSchema(wrapper);
 
+        addMetadata(wrapper);
+
         wrapper.getJSONObject("properties").put("data_type", new JSONObject("{\"type\": \"string\"}"));
 
         wrapper.getJSONObject("properties").put("data_op", new JSONObject("{\"type\": \"string\", \"enum\": [\"C\", \"U\", \"D\", \"S\"]}"));
 
         wrapper.getJSONObject("properties").put("data", schema);
+
+        wrapper.put("additionalProperties", false);
 
         addToRequired(wrapper, new String[]{ "data_type", "data_op", "data" });
 
