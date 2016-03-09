@@ -16,7 +16,7 @@ public class EventValidation {
         final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
         vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
 
-        return etv.withConfiguration(vsc);;
+        return etv.withConfiguration(vsc);
     }
 
     public static JSONObject effectiveSchema(final EventType eventType) throws JSONException {
