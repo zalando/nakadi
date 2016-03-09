@@ -40,13 +40,13 @@ public class TestUtils {
         return IOUtils.toString(clazz.getResourceAsStream(resourceName));
     }
 
-    public static EventType buildEventType(final String name, final String schema) {
+    public static EventType buildEventType(final String name, final JSONObject schema) {
         final EventType et = new EventType();
         et.setName(name);
 
         final EventTypeSchema ets = new EventTypeSchema();
         ets.setType(EventTypeSchema.Type.JSON_SCHEMA);
-        ets.setSchema(schema);
+        ets.setSchema(schema.toString());
         et.setSchema(ets);
         et.setCategory(EventCategory.UNDEFINED);
 

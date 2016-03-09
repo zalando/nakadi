@@ -16,27 +16,25 @@ public class EventValidation {
         final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
         vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
 
-        // TODO configure metadata validation on a per EventCategory basis
-
-        return etv.withConfiguration(vsc);
+        return etv.withConfiguration(vsc);;
     }
 
     public static JSONObject effectiveSchema(final EventType eventType) throws JSONException {
         final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
 
         switch (eventType.getCategory()) {
-            case BUSINESS: return addMetadata(schema);
-            case DATA: return wrapSchemaInData(schema);
+            case BUSINESS: return addMetadata(schema, eventType);
+            case DATA: return wrapSchemaInData(schema, eventType);
             default: return schema;
         }
     }
 
-    private static JSONObject wrapSchemaInData(final JSONObject schema) {
+    private static JSONObject wrapSchemaInData(final JSONObject schema, EventType eventType) {
         final JSONObject wrapper = new JSONObject();
 
         normalizeSchema(wrapper);
 
-        addMetadata(wrapper);
+        addMetadata(wrapper, eventType);
 
         wrapper.getJSONObject("properties").put("data_type", new JSONObject("{\"type\": \"string\"}"));
 
@@ -51,10 +49,34 @@ public class EventValidation {
         return wrapper;
     }
 
-    private static JSONObject addMetadata(final JSONObject schema) {
+    private static JSONObject addMetadata(final JSONObject schema, EventType eventType) {
         normalizeSchema(schema);
 
-        schema.getJSONObject("properties").put("metadata", new JSONObject("{\"type\": \"object\"}"));
+        final JSONObject metadata = new JSONObject();
+        final JSONObject metadataProperties = new JSONObject();
+
+        final JSONObject uuid = new JSONObject("{\"type\": \"string\", \"pattern\": \"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$\"}");
+        final JSONObject eventTypeString = new JSONObject("{\"type\": \"string\", \"enum\": [\"" + eventType.getName() + "\"]}");
+        final JSONObject string = new JSONObject("{\"type\": \"string\"}");
+
+        // We know this is not rfc3339. We think this is enough by now
+        final String rfc3339 = "^[0-9]{4}-?[0-9]{2}-?[0-9]{2}T?[0-9]{2}:?[0-9]{2}:?[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})$";
+        final JSONObject dateTime = new JSONObject("{\"type\": \"string\", \"pattern\": \"" + rfc3339 + "\"}");
+
+        metadataProperties.put("eid", uuid);
+        metadataProperties.put("event_type", eventTypeString);
+        metadataProperties.put("occurred_at", dateTime);
+        metadataProperties.put("received_at", dateTime);
+        metadataProperties.put("parent_eid", uuid);
+        metadataProperties.put("root_eid", uuid);
+        metadataProperties.put("flow_id", string);
+
+        metadata.put("type", "object");
+        metadata.put("properties", metadataProperties);
+        metadata.put("required", Arrays.asList(new String[]{"eid", "occurred_at"}));
+        metadata.put("additionalProperties", false);
+
+        schema.getJSONObject("properties").put("metadata", metadata);
 
         addToRequired(schema, new String[]{ "metadata" });
 
