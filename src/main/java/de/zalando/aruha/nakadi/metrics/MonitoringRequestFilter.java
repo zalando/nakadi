@@ -18,8 +18,8 @@ public class MonitoringRequestFilter implements Filter {
     private Counter openHttpConnectionsCounter;
 
     public MonitoringRequestFilter(final MetricRegistry metricRegistry) {
-        openHttpConnectionsCounter = metricRegistry.counter(MetricUtils.NAKADI_PREFIX + "general.openHttpConnections");
-        httpConnectionsTimer = metricRegistry.timer(MetricUtils.NAKADI_PREFIX + "general.httpConnections");
+        openHttpConnectionsCounter = metricRegistry.counter(MetricUtils.NAKADI_PREFIX + "general.openSynchronousHttpConnections");
+        httpConnectionsTimer = metricRegistry.timer(MetricUtils.NAKADI_PREFIX + "general.synchronousHttpConnections");
     }
 
     @Override
