@@ -39,10 +39,7 @@ public class RepositoriesConfig {
         final CuratorFramework client = zookeeperConfig.zooKeeperHolder().get();
         final EventTypeCache cache = new EventTypeCache(dbRepo(), client);
 
-        final EventBodyMustRespectSchema strategy = new EventBodyMustRespectSchema();
-        ValidationStrategy.register(EventBodyMustRespectSchema.NAME, strategy);
-
-        // TODO register metadata validation
+        ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
 
         return new EventTypeCache(dbRepo(), client);
     }
