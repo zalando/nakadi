@@ -15,7 +15,7 @@ import java.io.IOException;
 public class MonitoringRequestFilter implements Filter {
 
     private final Timer httpConnectionsTimer;
-    private Counter openHttpConnectionsCounter;
+    private final Counter openHttpConnectionsCounter;
 
     public MonitoringRequestFilter(final MetricRegistry metricRegistry) {
         openHttpConnectionsCounter = metricRegistry.counter(MetricUtils.NAKADI_PREFIX + "general.openSynchronousHttpConnections");
