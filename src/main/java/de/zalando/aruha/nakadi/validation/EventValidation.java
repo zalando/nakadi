@@ -36,11 +36,12 @@ public class EventValidation {
 
         addMetadata(wrapper, eventType);
 
-        wrapper.getJSONObject("properties").put("data_type", new JSONObject("{\"type\": \"string\"}"));
+        JSONObject properties = wrapper.getJSONObject("properties");
 
-        wrapper.getJSONObject("properties").put("data_op", new JSONObject("{\"type\": \"string\", \"enum\": [\"C\", \"U\", \"D\", \"S\"]}"));
-
-        wrapper.getJSONObject("properties").put("data", schema);
+        properties.put("data_type", new JSONObject().put("type", "string"));
+        properties.put("data_op", new JSONObject().put("type", "string")
+                .put("enum", Arrays.asList(new String[] { "C", "U", "D", "S" })));
+        properties.put("data", schema);
 
         wrapper.put("additionalProperties", false);
 
@@ -55,15 +56,19 @@ public class EventValidation {
         final JSONObject metadata = new JSONObject();
         final JSONObject metadataProperties = new JSONObject();
 
-        final JSONObject uuid = new JSONObject("{\"type\": \"string\", \"pattern\": \"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$\"}");
-        final JSONObject arrayOfUUIDs = new JSONObject();
-        arrayOfUUIDs.put("type", "array");
-        arrayOfUUIDs.put("items", uuid);
-        final JSONObject eventTypeString = new JSONObject("{\"type\": \"string\", \"enum\": [\"" + eventType.getName() + "\"]}");
-        final JSONObject string = new JSONObject("{\"type\": \"string\"}");
-
-        final String dateTimePattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T| )[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$";
-        final JSONObject dateTime = new JSONObject("{\"type\": \"string\", \"pattern\": \"" + dateTimePattern + "\"}");
+        final JSONObject uuid = new JSONObject()
+                .put("type", "string")
+                .put("pattern", "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$");
+        final JSONObject arrayOfUUIDs = new JSONObject()
+                .put("type", "array")
+                .put("items", uuid);
+        final JSONObject eventTypeString = new JSONObject()
+                .put("type", "string")
+                .put("enum", Arrays.asList(new String[] { eventType.getName() }));
+        final JSONObject string = new JSONObject().put("type", "string");
+        final JSONObject dateTime = new JSONObject()
+                .put("type", "string")
+                .put("pattern", "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T| )[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$");
 
         metadataProperties.put("eid", uuid);
         metadataProperties.put("event_type", eventTypeString);
