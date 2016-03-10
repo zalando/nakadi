@@ -370,8 +370,6 @@ paths:
         Deletes an `EventType` identified by its name. This operation happens asyncrhonously in the
         background and might take up to the retention time for the underlying topic to succeed.
 
-        Attempting to immediatelly recreate an EventType with the same name might fail (409 Conflict).
-
         This operation is supposed ot be used by Nakadi operators and rights for its use might not granted
         to other users.
       parameters:
@@ -400,10 +398,6 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: EventType not found.
-          schema:
-            $ref: '#/definitions/Problem'
-        '409':
-          description: Conflict
           schema:
             $ref: '#/definitions/Problem'
         '500':
