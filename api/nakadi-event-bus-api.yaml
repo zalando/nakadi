@@ -367,11 +367,11 @@ paths:
       security:
         - oauth2: [nakadi.admin]
       description: |
-        Deletes an `EventType` identified by its name. This operation happens asyncrhonously in the
-        background and might take up to the retention time for the underlying topic to succeed.
-
-        This operation is supposed ot be used by Nakadi operators and rights for its use might not granted
-        to other users.
+        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of this `EventType`
+        will also be removed.
+        It's important to note that topic deletion in Kafka can take some time, so before it is completelly removed
+        it will not be possible to create an `EventType` with the same name as removed one had (you will get 409
+        response code from creation endpoint)
       parameters:
         - name: name
           in: path
@@ -399,7 +399,7 @@ paths:
         '404':
           description: EventType not found.
           schema:
-            $ref: '#/definitions/Problem'
+              $ref: '#/definitions/Problem'
         '500':
           description: Server error
           schema:
@@ -1096,13 +1096,13 @@ definitions:
 
           (TBD: how to deal with organizational changes? Should be reflected on the name of the EventType?
           Isn't it better to omit [organization:team] completely?)
-
+        pattern: '[-0-9a-zA-Z_]+(\.[-0-9a-zA-Z_]+)*'
+        example: order.ORDER_CANCELLED
       owning_application:
         type: string
         description: |
           Indicator of the (Stups) Application owning this `EventType`.
         example: price-service
-
       category:
         type: string
         enum:
@@ -1113,21 +1113,20 @@ definitions:
           Defines the category of this EventType.
 
           The value set will influence, if not set otherwise, the default set of validation-strategies,
-          enrichment-strategies, and the effective_schema in the following way:
+          enrichment-strategies, and the effective schema for validation in the following way:
 
-          - `undefined`: No predefined changes apply. `effective_schema` is exactly the same as the
+          - `undefined`: No predefined changes apply. The effective schema for the validation is exactly the same as the
             `EventTypeSchema`.
-            Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
+            Default validation_strategy for this `EventType` is `['schema-validation']`.
 
-          - `data`: Events of this category will be DataChangeEvents. `effective_schema` contains `metadata`,
+          - `data`: Events of this category will be DataChangeEvents. The effective schema during the validation contains `metadata`,
             and adds fields `data_op` and `data_type`. The passed EventTypeSchema defines the schema of
             `data`.
-            Default validation_strategy for this `EventType` is `[{name: 'datachange-schema-validation'}]`.
 
-          - `business`: Events of this category will be BusinessEvents. `effective_schema` contains
+          - `business`: Events of this category will be BusinessEvents. The effective schema for validation contains
             `metadata` and any additionally defined properties passed in the `EventTypeSchema` directly on
             top level of the Event. If name conflicts arise, creation of this EventType will be rejected.
-            Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
+            Default validation_strategy for this `EventType` is `['schema-validation']`.
 
       validation_strategies:
         description: |
@@ -1194,7 +1193,6 @@ definitions:
     required:
       - name
       - category
-      - owning_application
 
   EventTypeSchema:
     properties:
