@@ -59,9 +59,8 @@ public class EventValidation {
         final JSONObject eventTypeString = new JSONObject("{\"type\": \"string\", \"enum\": [\"" + eventType.getName() + "\"]}");
         final JSONObject string = new JSONObject("{\"type\": \"string\"}");
 
-        // We know this is not rfc3339. We think this is enough by now
-        final String rfc3339 = "^[0-9]{4}-?[0-9]{2}-?[0-9]{2}T?[0-9]{2}:?[0-9]{2}:?[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})$";
-        final JSONObject dateTime = new JSONObject("{\"type\": \"string\", \"pattern\": \"" + rfc3339 + "\"}");
+        final String dateTimePattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T| )[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$";
+        final JSONObject dateTime = new JSONObject("{\"type\": \"string\", \"pattern\": \"" + dateTimePattern + "\"}");
 
         metadataProperties.put("eid", uuid);
         metadataProperties.put("event_type", eventTypeString);
