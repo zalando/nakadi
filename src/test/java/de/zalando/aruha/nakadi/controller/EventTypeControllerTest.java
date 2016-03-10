@@ -269,14 +269,14 @@ public class EventTypeControllerTest {
         Mockito
                 .doNothing()
                 .when(topicRepository)
-                .createTopic("team.event-name");
+                .createTopic(EVENT_TYPE_NAME);
 
         postEventType(buildEventType())
                 .andExpect(status().isCreated())
                 .andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic("team.event-name");
+        verify(topicRepository, times(1)).createTopic(EVENT_TYPE_NAME);
     }
 
     @Test
@@ -304,8 +304,8 @@ public class EventTypeControllerTest {
             .andExpect(content().string(matchesProblem(expectedProblem)));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic("team.event-name");
-        verify(eventTypeRepository, times(1)).removeEventType("team.event-name");
+        verify(topicRepository, times(1)).createTopic(EVENT_TYPE_NAME);
+        verify(eventTypeRepository, times(1)).removeEventType(EVENT_TYPE_NAME);
     }
 
     @Test
