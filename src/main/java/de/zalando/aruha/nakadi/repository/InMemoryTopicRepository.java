@@ -5,6 +5,7 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -41,6 +42,11 @@ public class InMemoryTopicRepository implements TopicRepository {
     public void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
             final long retentionMs, final long rotationMs) {
         topics.put(topic, new MockTopic(topic, partitionsNum));
+    }
+
+    @Override
+    public void deleteTopic(final String topic) throws TopicDeletionException {
+        topics.remove(topic);
     }
 
     @Override

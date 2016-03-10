@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
+import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
 import de.zalando.aruha.nakadi.util.FlowIdRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +20,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.List;
+
+import static de.zalando.aruha.nakadi.config.NakadiConfig.METRIC_REGISTRY;
 
 @Configuration
 public class WebConfig extends WebMvcConfigurationSupport {
@@ -44,6 +47,14 @@ public class WebConfig extends WebMvcConfigurationSupport {
     public FilterRegistrationBean flowIdRequestFilter() {
         final FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean();
         filterRegistrationBean.setFilter(new FlowIdRequestFilter());
+        filterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+        return filterRegistrationBean;
+    }
+
+    @Bean
+    public FilterRegistrationBean monitoringRequestFilter() {
+        final FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean();
+        filterRegistrationBean.setFilter(new MonitoringRequestFilter(METRIC_REGISTRY));
         filterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return filterRegistrationBean;
     }

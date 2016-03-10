@@ -1,13 +1,15 @@
 package de.zalando.aruha.nakadi.controller;
 
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import de.zalando.aruha.nakadi.repository.DuplicatedEventTypeNameException;
+import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.TopicCreationException;
+import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -85,6 +87,25 @@ public class EventTypeController {
         }
     }
 
+    @RequestMapping(value = "/{name}", method = RequestMethod.DELETE)
+    public ResponseEntity<?> deleteEventType(@PathVariable("name") final String eventTypeName,
+                                             final NativeWebRequest nativeWebRequest) {
+        try {
+            eventTypeRepository.removeEventType(eventTypeName);
+            topicRepository.deleteTopic(eventTypeName);
+            return status(HttpStatus.OK).build();
+        } catch (NoSuchEventTypeException e) {
+            LOG.warn("Tried to remove EventType " + eventTypeName + " that doesn't exist", e);
+            return create(e.asProblem(), nativeWebRequest);
+        } catch (TopicDeletionException e) {
+            LOG.error("Problem deleting kafka topic " + eventTypeName, e);
+            return create(e.asProblem(), nativeWebRequest);
+        } catch (NakadiException e) {
+            LOG.error("Error deleting event type " + eventTypeName, e);
+            return create(e.asProblem(), nativeWebRequest);
+        }
+    }
+
     @RequestMapping(value = "/{name}", method = RequestMethod.PUT)
     public ResponseEntity<?> update(
             @PathVariable("name") final String name,
@@ -128,13 +149,23 @@ public class EventTypeController {
             try {
                 JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
-                SchemaLoader.load(schemaAsJson);
+                if (hasReservedField(eventType, schemaAsJson, "metadata")) {
+                    errors.rejectValue("schema.schema", "", "The \"metadata\" property is reserved");
+                } else {
+                    SchemaLoader.load(schemaAsJson);
+                }
             } catch (JSONException e) {
                 errors.rejectValue("schema.schema", "", "must be a valid json");
             } catch (SchemaException e) {
                 errors.rejectValue("schema.schema", "", "must be valid json-schema (http://json-schema.org)");
             }
         }
+    }
+
+    private boolean hasReservedField(final EventType eventType, final JSONObject schemaAsJson, final String field) {
+        return eventType.getCategory() == EventCategory.BUSINESS
+                && schemaAsJson.optJSONObject("properties") != null
+                && schemaAsJson.getJSONObject("properties").has("metadata");
     }
 
     private void validateUpdate(final String name, final EventType eventType, final Errors errors) throws NoSuchEventTypeException, InternalNakadiException {

@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
@@ -13,6 +14,7 @@ import org.springframework.security.oauth2.provider.token.ResourceServerTokenSer
 
 import java.text.MessageFormat;
 
+import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
@@ -35,6 +37,9 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     @Value("${nakadi.oauth2.scopes.nakadiRead}")
     private String nakadiReadScope;
 
+    @Value("${nakadi.oauth2.scopes.nakadiAdmin}")
+    private String nakadiAdminScope;
+
     @Value("${nakadi.oauth2.scopes.eventTypeWrite}")
     private String eventTypeWriteScope;
 
@@ -56,6 +61,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers(GET, "/event-types/*").access(hasScope(nakadiReadScope))
                     .antMatchers(POST, "/event-types").access(hasScope(eventTypeWriteScope))
                     .antMatchers(PUT, "/event-types/*").access(hasScope(eventTypeWriteScope))
+                    .antMatchers(DELETE, "/event-types/*").access(hasScope(nakadiAdminScope))
                     .antMatchers(GET, "/event-types/*/events").access(hasScope(eventStreamReadScope))
                     .antMatchers(POST, "/event-types/*/events").access(hasScope(eventStreamWriteScope))
                     .antMatchers(GET, "/event-types/*/partitions").access(hasScope(eventStreamReadScope))

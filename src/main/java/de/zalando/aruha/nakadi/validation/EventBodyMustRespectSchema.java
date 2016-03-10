@@ -31,8 +31,10 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
     @Override
     public EventValidator materialize(final EventType eventType, final ValidationStrategyConfiguration vsc) {
 
-        final JSONSchemaValidator defaultSchemaValidator = new JSONSchemaValidator(
-                new JSONObject(eventType.getSchema().getSchema()));
+        final JSONObject effectiveSchema = EventValidation.effectiveSchema(eventType);
+
+        final JSONSchemaValidator defaultSchemaValidator = new JSONSchemaValidator(effectiveSchema);
+
         if (vsc.getAdditionalConfiguration() == null) {
             return defaultSchemaValidator;
         }
@@ -151,10 +153,8 @@ class JSONSchemaValidator implements EventValidator {
     private static final Logger LOG = LoggerFactory.getLogger(JSONSchemaValidator.class);
 
     private final Schema schema;
-    private final JSONObject effectiveSchema;
 
     public JSONSchemaValidator(final JSONObject effectiveSchema) {
-        this.effectiveSchema = effectiveSchema;
         schema = SchemaLoader.load(effectiveSchema);
     }
 

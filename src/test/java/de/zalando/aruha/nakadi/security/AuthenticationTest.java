@@ -63,6 +63,9 @@ public abstract class AuthenticationTest {
         @Value("${nakadi.oauth2.scopes.nakadiRead}")
         protected String nakadiReadScope;
 
+        @Value("${nakadi.oauth2.scopes.nakadiAdmin}")
+        protected String nakadiAdminScope;
+
         @Value("${nakadi.oauth2.scopes.eventTypeWrite}")
         protected String eventTypeWriteScope;
 
@@ -78,6 +81,7 @@ public abstract class AuthenticationTest {
         public void mockTokensScopes() {
             scopesForTokens.put(TOKEN_WITH_UID_SCOPE, uidScope);
             scopesForTokens.put(TOKEN_WITH_NAKADI_READ_SCOPE, nakadiReadScope);
+            scopesForTokens.put(TOKEN_WITH_NAKADI_ADMIN_SCOPE, nakadiAdminScope);
             scopesForTokens.put(TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE, eventTypeWriteScope);
             scopesForTokens.put(TOKEN_WITH_EVENT_STREAM_READ_SCOPE, eventStreamReadScope);
             scopesForTokens.put(TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE, eventStreamWriteScope);
@@ -130,6 +134,7 @@ public abstract class AuthenticationTest {
 
     protected static final String TOKEN_WITH_UID_SCOPE = randomString();
     protected static final String TOKEN_WITH_NAKADI_READ_SCOPE = randomString();
+    protected static final String TOKEN_WITH_NAKADI_ADMIN_SCOPE = randomString();
     protected static final String TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE = randomString();
     protected static final String TOKEN_WITH_EVENT_STREAM_READ_SCOPE = randomString();
     protected static final String TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE = randomString();

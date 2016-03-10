@@ -1,6 +1,10 @@
 package de.zalando.aruha.nakadi.config;
 
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.jvm.BufferPoolMetricSet;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
@@ -19,12 +23,14 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.lang.management.ManagementFactory;
+
 @Configuration
 @EnableMetrics
 @EnableScheduling
 public class NakadiConfig {
 
-    public static final MetricRegistry METRIC_REGISTRY = new MetricRegistry();
+    public static final MetricRegistry METRIC_REGISTRY = createMetricRegistry();
 
     @Autowired
     private JsonConfig jsonConfig;
@@ -61,7 +67,7 @@ public class NakadiConfig {
     @Bean
     public EventStreamController eventStreamController() {
         return new EventStreamController(topicRepository, jsonConfig.jacksonObjectMapper(),
-                eventStreamFactory());
+                eventStreamFactory(), METRIC_REGISTRY);
     }
 
     @Bean
@@ -76,7 +82,18 @@ public class NakadiConfig {
 
     @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(topicRepository, eventTypeRepository, eventTypeCache);
+        return new EventPublishingController(topicRepository, eventTypeRepository, eventTypeCache, METRIC_REGISTRY);
+    }
+
+    private static MetricRegistry createMetricRegistry() {
+        final MetricRegistry metricRegistry = new MetricRegistry();
+
+        metricRegistry.register("jvm.gc", new GarbageCollectorMetricSet());
+        metricRegistry.register("jvm.buffers", new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
+        metricRegistry.register("jvm.memory", new MemoryUsageGaugeSet());
+        metricRegistry.register("jvm.threads", new ThreadStatesGaugeSet());
+
+        return metricRegistry;
     }
 
 }

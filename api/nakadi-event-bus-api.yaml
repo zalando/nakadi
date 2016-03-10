@@ -112,6 +112,8 @@ securityDefinitions:
     scopes:
       nakadi.read: |
         Generic read scope for operations that do not require more specific restrictions.
+      nakadi.admin: |
+        Grants access for administrative operations in Nakadi.
       nakadi_event_type.write: |
         Grants access for applications to define and update EventTypes.
       nakadi_event_stream.write: |
@@ -350,6 +352,54 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+
+    delete:
+      tags:
+        - schema-registry-api
+      security:
+        - oauth2: [nakadi.admin]
+      description: |
+        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of this `EventType`
+        will also be removed.
+        It's important to note that topic deletion in Kafka can take some time, so before it is completelly removed
+        it will not be possible to create an `EventType` with the same name as removed one had (you will get 409
+        response code from creation endpoint)
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType to delete.
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+          format: flow-id
+      responses:
+        '200':
+          description: EventType is successfuly removed
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: EventType not found.
+          schema:
+              $ref: '#/definitions/Problem'
         '500':
           description: Server error
           schema:
