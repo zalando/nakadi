@@ -29,14 +29,14 @@ public class EventValidation {
         }
     }
 
-    private static JSONObject wrapSchemaInData(final JSONObject schema, EventType eventType) {
+    private static JSONObject wrapSchemaInData(final JSONObject schema, final EventType eventType) {
         final JSONObject wrapper = new JSONObject();
 
         normalizeSchema(wrapper);
 
         addMetadata(wrapper, eventType);
 
-        JSONObject properties = wrapper.getJSONObject("properties");
+        final JSONObject properties = wrapper.getJSONObject("properties");
 
         properties.put("data_type", new JSONObject().put("type", "string"));
         properties.put("data_op", new JSONObject().put("type", "string")
@@ -50,7 +50,7 @@ public class EventValidation {
         return wrapper;
     }
 
-    private static JSONObject addMetadata(final JSONObject schema, EventType eventType) {
+    private static JSONObject addMetadata(final JSONObject schema, final EventType eventType) {
         normalizeSchema(schema);
 
         final JSONObject metadata = new JSONObject();
@@ -91,7 +91,7 @@ public class EventValidation {
     private static void addToRequired(final JSONObject schema, final String[] toBeRequired) {
         final Set<String> required = new HashSet<>(Arrays.asList(toBeRequired));
 
-        JSONArray currentRequired = schema.getJSONArray("required");
+        final JSONArray currentRequired = schema.getJSONArray("required");
 
         for(int i = 0; i < currentRequired.length(); i++) {
             required.add(currentRequired.getString(i));
