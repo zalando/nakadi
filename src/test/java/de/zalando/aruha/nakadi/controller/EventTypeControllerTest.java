@@ -58,7 +58,7 @@ public class EventTypeControllerTest {
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
 
-    public static final String EVENT_TYPE_NAME = "event-name";
+    public static final String EVENT_TYPE_NAME = "team.event-name";
 
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
@@ -75,17 +75,31 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithInvalidEventTypeThenReturn422() throws Exception {
+    public void eventTypeWithEmptyNameReturns422() throws Exception {
         final EventType invalidEventType = buildEventType();
-        invalidEventType.setName("");
+        invalidEventType.setName("?");
 
-        final Problem expectedProblem = invalidProblem("name", "may not be empty");
+        final Problem expectedProblem = invalidProblem("name", "format not allowed");
 
         postEventType(invalidEventType)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
     }
+
+
+    @Test
+    public void whenPostWithEventTypeNameNotSetThenReturn422() throws Exception {
+        final EventType invalidEventType = buildEventType();
+        invalidEventType.setName(null);
+        final Problem expectedProblem = invalidProblem("name", "may not be null");
+
+        postEventType(invalidEventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
 
     @Test
     public void whenPostWithNoCategoryThenReturn422() throws Exception {
@@ -255,14 +269,14 @@ public class EventTypeControllerTest {
         Mockito
                 .doNothing()
                 .when(topicRepository)
-                .createTopic("event-name");
+                .createTopic("team.event-name");
 
         postEventType(buildEventType())
                 .andExpect(status().isCreated())
                 .andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic("event-name");
+        verify(topicRepository, times(1)).createTopic("team.event-name");
     }
 
     @Test
@@ -275,23 +289,23 @@ public class EventTypeControllerTest {
         Mockito
                 .doThrow(TopicCreationException.class)
                 .when(topicRepository)
-                .createTopic("event-name");
+                .createTopic(EVENT_TYPE_NAME);
 
         Mockito
                 .doNothing()
                 .when(eventTypeRepository)
-                .removeEventType("event-name");
+                .removeEventType(EVENT_TYPE_NAME);
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE);
 
         postEventType(buildEventType())
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(content().contentType("application/problem+json"))
+            .andExpect(content().string(matchesProblem(expectedProblem)));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic("event-name");
-        verify(eventTypeRepository, times(1)).removeEventType("event-name");
+        verify(topicRepository, times(1)).createTopic("team.event-name");
+        verify(eventTypeRepository, times(1)).removeEventType("team.event-name");
     }
 
     @Test
@@ -315,7 +329,7 @@ public class EventTypeControllerTest {
         eventType.setName("event-name-different");
 
         final Problem expectedProblem = invalidProblem("name",
-                "The submitted event type name \"event-name-different\" should match the parameter name \"event-name\"");
+                "The submitted event type name \"event-name-different\" should match the parameter name \"team.event-name\"");
 
         Mockito
                 .doReturn(eventType)
@@ -381,7 +395,7 @@ public class EventTypeControllerTest {
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(content().string(matchesProblem(expectedProblem)));
     }
-    
+
     @Test
     public void canExposeASingleEventType() throws Exception {
         final EventType expectedEventType = buildEventType();
@@ -400,7 +414,7 @@ public class EventTypeControllerTest {
 
     @Test
     public void askingForANonExistingEventTypeResultsIn404() throws Exception {
-        when(eventTypeRepository.findByName(anyString())).thenThrow(new NoSuchEventTypeException("EventType 'event-name' does not exist."));
+        when(eventTypeRepository.findByName(anyString())).thenThrow(new NoSuchEventTypeException("EventType 'team.event-name' does not exist."));
 
         final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + EVENT_TYPE_NAME)
                 .accept(APPLICATION_JSON);
