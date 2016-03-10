@@ -1096,6 +1096,8 @@ definitions:
 
           (TBD: how to deal with organizational changes? Should be reflected on the name of the EventType?
           Isn't it better to omit [organization:team] completely?)
+        pattern: '[-0-9a-zA-Z_]+(\.[-0-9a-zA-Z_]+)*'
+        example: order.ORDER_CANCELLED
       owning_application:
         type: string
         description: |
@@ -1111,33 +1113,20 @@ definitions:
           Defines the category of this EventType.
 
           The value set will influence, if not set otherwise, the default set of validation-strategies,
-          enrichment-strategies, and the effective_schema in the following way:
+          enrichment-strategies, and the effective schema for validation in the following way:
 
-          - `undefined`: No predefined changes apply. `effective_schema` is exactly the same as the
+          - `undefined`: No predefined changes apply. The effective schema for the validation is exactly the same as the
             `EventTypeSchema`.
-            Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
+            Default validation_strategy for this `EventType` is `['schema-validation']`.
 
-          - `data`: Events of this category will be DataChangeEvents. `effective_schema` contains `metadata`,
+          - `data`: Events of this category will be DataChangeEvents. The effective schema during the validation contains `metadata`,
             and adds fields `data_op` and `data_type`. The passed EventTypeSchema defines the schema of
             `data`.
-            Default validation_strategy for this `EventType` is `[{name: 'datachange-schema-validation'}]`.
 
-          - `business`: Events of this category will be BusinessEvents. `effective_schema` contains
+          - `business`: Events of this category will be BusinessEvents. The effective schema for validation contains
             `metadata` and any additionally defined properties passed in the `EventTypeSchema` directly on
             top level of the Event. If name conflicts arise, creation of this EventType will be rejected.
-            Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
-      effective_schema:
-        type: string
-        #read-only: true
-        description: |
-          The effective schema of this `EventType`. The predefined schema validator will use the value of
-          this field as base for the validation.
-
-          The creation of EventTypes of different categories implies a distinct general structure for the
-          payload of events of each type. This ultimate format the payload must adhere to is reflected in
-          the `effective_schema`. See description of field `category` for more details of its generation.
-
-          This field is informative and its contents cannot be manipulated directly.
+            Default validation_strategy for this `EventType` is `['schema-validation']`.
 
       validation_strategies:
         description: |
