@@ -170,7 +170,7 @@ public class JSONSchemaValidationTest {
 
         Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        assertThat(error.get().getMessage(), equalTo("#/metadata/occurred_at: string [x] does not match pattern ^[0-9]{4}-?[0-9]{2}-?[0-9]{2}T?[0-9]{2}:?[0-9]{2}:?[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})$"));
+        assertThat(error.get().getMessage(), equalTo("#/metadata/occurred_at: string [x] does not match pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T| )[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"));
     }
 
     @Test
