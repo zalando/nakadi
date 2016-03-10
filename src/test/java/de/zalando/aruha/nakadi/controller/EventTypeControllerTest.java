@@ -8,14 +8,15 @@ import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
+import de.zalando.aruha.nakadi.exceptions.EventValidationException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -121,8 +122,7 @@ public class EventTypeControllerTest {
         eventType.getSchema().setSchema("{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
         eventType.setCategory(BUSINESS);
 
-        final Problem expectedProblem = invalidProblem("schema.schema",
-                "The \"metadata\" property is reserved");
+        final Problem expectedProblem = new EventValidationException("\"metadata\" property is reserved").asProblem();
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -314,8 +314,7 @@ public class EventTypeControllerTest {
         final EventType eventType = buildEventType();
         eventType.setName("event-name-different");
 
-        final Problem expectedProblem = invalidProblem("name",
-                "The submitted event type name \"event-name-different\" should match the parameter name \"event-name\"");
+        final Problem expectedProblem = new EventValidationException("path does not match resource name").asProblem();
 
         Mockito
                 .doReturn(eventType)
@@ -334,8 +333,7 @@ public class EventTypeControllerTest {
         final EventType persistedEventType = buildEventType();
         persistedEventType.getSchema().setSchema("different");
 
-        final Problem expectedProblem = invalidProblem("schema",
-                "The schema you've just submitted is different from the one in our system.");
+        final Problem expectedProblem = new EventValidationException("schema must not be changed").asProblem();
 
         Mockito
                 .doReturn(persistedEventType)
@@ -420,7 +418,7 @@ public class EventTypeControllerTest {
         final EventType eventType = buildEventType();
         eventType.getSchema().setSchema("invalid-json");
 
-        final Problem expectedProblem = invalidProblem("schema.schema", "must be a valid json");
+        final Problem expectedProblem = new EventValidationException("schema must be a valid json").asProblem();
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -434,7 +432,7 @@ public class EventTypeControllerTest {
         final String jsonSchemaString = Resources.toString(Resources.getResource("sample-invalid-json-schema.json"), Charsets.UTF_8);
         eventType.getSchema().setSchema(jsonSchemaString);
 
-        final Problem expectedProblem = invalidProblem("schema.schema", "must be valid json-schema (http://json-schema.org)");
+        final Problem expectedProblem = new EventValidationException("schema must be a valid json-schema").asProblem();
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
