@@ -1193,6 +1193,7 @@ definitions:
     required:
       - name
       - category
+      - owning_application
 
   EventTypeSchema:
     properties:
