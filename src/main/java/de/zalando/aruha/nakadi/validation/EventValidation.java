@@ -56,6 +56,9 @@ public class EventValidation {
         final JSONObject metadataProperties = new JSONObject();
 
         final JSONObject uuid = new JSONObject("{\"type\": \"string\", \"pattern\": \"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$\"}");
+        final JSONObject arrayOfUUIDs = new JSONObject();
+        arrayOfUUIDs.put("type", "array");
+        arrayOfUUIDs.put("items", uuid);
         final JSONObject eventTypeString = new JSONObject("{\"type\": \"string\", \"enum\": [\"" + eventType.getName() + "\"]}");
         final JSONObject string = new JSONObject("{\"type\": \"string\"}");
 
@@ -65,7 +68,7 @@ public class EventValidation {
         metadataProperties.put("eid", uuid);
         metadataProperties.put("event_type", eventTypeString);
         metadataProperties.put("occurred_at", dateTime);
-        metadataProperties.put("parent_eid", uuid);
+        metadataProperties.put("parent_eids", uuid);
         metadataProperties.put("root_eid", uuid);
         metadataProperties.put("flow_id", string);
 
