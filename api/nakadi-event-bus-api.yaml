@@ -1076,18 +1076,6 @@ definitions:
             `metadata` and any additionally defined properties passed in the `EventTypeSchema` directly on
             top level of the Event. If name conflicts arise, creation of this EventType will be rejected.
             Default validation_strategy for this `EventType` is `[{name: 'schema-validation'}]`.
-      effective_schema:
-        type: string
-        #read-only: true
-        description: |
-          The effective schema of this `EventType`. The predefined schema validator will use the value of
-          this field as base for the validation.
-
-          The creation of EventTypes of different categories implies a distinct general structure for the
-          payload of events of each type. This ultimate format the payload must adhere to is reflected in
-          the `effective_schema`. See description of field `category` for more details of its generation.
-
-          This field is informative and its contents cannot be manipulated directly.
 
       validation_strategies:
         description: |
@@ -1154,6 +1142,7 @@ definitions:
     required:
       - name
       - category
+      - owning_application
 
   EventTypeSchema:
     properties:
