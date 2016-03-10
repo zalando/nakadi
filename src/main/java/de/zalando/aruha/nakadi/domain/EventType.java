@@ -17,7 +17,7 @@ public class EventType {
     public static final List<String> EMPTY_STRING_LIST = new ArrayList<>(0);
 
     @NotNull
-    @Pattern(regexp = "[-0-9a-zA-Z_]+(\\.[-0-9a-zA-Z_]+)*", message = "format not allowed" )
+    @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed" )
     private String name;
 
     @NotNull
