@@ -16,8 +16,6 @@ public class EventValidation {
         final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
         vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
 
-        // TODO configure metadata validation on a per EventCategory basis
-
         return etv.withConfiguration(vsc);
     }
 
@@ -25,24 +23,25 @@ public class EventValidation {
         final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
 
         switch (eventType.getCategory()) {
-            case BUSINESS: return addMetadata(schema);
-            case DATA: return wrapSchemaInData(schema);
+            case BUSINESS: return addMetadata(schema, eventType);
+            case DATA: return wrapSchemaInData(schema, eventType);
             default: return schema;
         }
     }
 
-    private static JSONObject wrapSchemaInData(final JSONObject schema) {
+    private static JSONObject wrapSchemaInData(final JSONObject schema, final EventType eventType) {
         final JSONObject wrapper = new JSONObject();
 
         normalizeSchema(wrapper);
 
-        addMetadata(wrapper);
+        addMetadata(wrapper, eventType);
 
-        wrapper.getJSONObject("properties").put("data_type", new JSONObject("{\"type\": \"string\"}"));
+        final JSONObject properties = wrapper.getJSONObject("properties");
 
-        wrapper.getJSONObject("properties").put("data_op", new JSONObject("{\"type\": \"string\", \"enum\": [\"C\", \"U\", \"D\", \"S\"]}"));
-
-        wrapper.getJSONObject("properties").put("data", schema);
+        properties.put("data_type", new JSONObject().put("type", "string"));
+        properties.put("data_op", new JSONObject().put("type", "string")
+                .put("enum", Arrays.asList(new String[] { "C", "U", "D", "S" })));
+        properties.put("data", schema);
 
         wrapper.put("additionalProperties", false);
 
@@ -51,10 +50,38 @@ public class EventValidation {
         return wrapper;
     }
 
-    private static JSONObject addMetadata(final JSONObject schema) {
+    private static JSONObject addMetadata(final JSONObject schema, final EventType eventType) {
         normalizeSchema(schema);
 
-        schema.getJSONObject("properties").put("metadata", new JSONObject("{\"type\": \"object\"}"));
+        final JSONObject metadata = new JSONObject();
+        final JSONObject metadataProperties = new JSONObject();
+
+        final JSONObject uuid = new JSONObject()
+                .put("type", "string")
+                .put("pattern", "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$");
+        final JSONObject arrayOfUUIDs = new JSONObject()
+                .put("type", "array")
+                .put("items", uuid);
+        final JSONObject eventTypeString = new JSONObject()
+                .put("type", "string")
+                .put("enum", Arrays.asList(new String[] { eventType.getName() }));
+        final JSONObject string = new JSONObject().put("type", "string");
+        final JSONObject dateTime = new JSONObject()
+                .put("type", "string")
+                .put("pattern", "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T| )[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$");
+
+        metadataProperties.put("eid", uuid);
+        metadataProperties.put("event_type", eventTypeString);
+        metadataProperties.put("occurred_at", dateTime);
+        metadataProperties.put("parent_eids", arrayOfUUIDs);
+        metadataProperties.put("flow_id", string);
+
+        metadata.put("type", "object");
+        metadata.put("properties", metadataProperties);
+        metadata.put("required", Arrays.asList(new String[]{"eid", "occurred_at"}));
+        metadata.put("additionalProperties", false);
+
+        schema.getJSONObject("properties").put("metadata", metadata);
 
         addToRequired(schema, new String[]{ "metadata" });
 
@@ -64,7 +91,7 @@ public class EventValidation {
     private static void addToRequired(final JSONObject schema, final String[] toBeRequired) {
         final Set<String> required = new HashSet<>(Arrays.asList(toBeRequired));
 
-        JSONArray currentRequired = schema.getJSONArray("required");
+        final JSONArray currentRequired = schema.getJSONArray("required");
 
         for(int i = 0; i < currentRequired.length(); i++) {
             required.add(currentRequired.getString(i));

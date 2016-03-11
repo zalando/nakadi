@@ -6,6 +6,7 @@ import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
@@ -15,8 +16,6 @@ import static org.junit.Assert.assertThat;
 
 public class JSONSchemaValidationTest {
 
-    // FIXME: once we are fully wired up and other validations exist, this should be removed from here and the
-    // registration should be done in a common place.
     static {
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
         ValidationStrategy.register(FieldNameMustBeSet.NAME, new FieldNameMustBeSet());
@@ -25,7 +24,7 @@ public class JSONSchemaValidationTest {
     @Test
     public void schemaValidationShouldRespectEventTypeDefinition() {
         final EventType et = buildEventType("some-event-type",
-                    "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"string\"}}, \"required\": [\"foo\", \"bar\"]}}, \"required\": [\"foo\", \"bar\"]}");
+                    new JSONObject("{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"string\"}}, \"required\": [\"foo\", \"bar\"]}}, \"required\": [\"foo\", \"bar\"]}"));
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -56,7 +55,7 @@ public class JSONSchemaValidationTest {
     @Test
     public void schemaValidationShouldRespectIgnoreConfigurationMatchRegular() {
         final EventType et = buildEventType("some-event-type",
-                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}");
+                    new JSONObject("{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -80,7 +79,7 @@ public class JSONSchemaValidationTest {
     @Test
     public void schemaValidationShouldRespectIgnoreConfigurationMatchQualified() {
         final EventType et = buildEventType("some-event-type",
-                    "{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"string\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}");
+                    new JSONObject("{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"string\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -100,8 +99,7 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfBusinessEventShouldRequiredMetadata() {
-        final EventType et = buildEventType("some-event-type",
-                "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"} }, \"required\": [\"foo\"]}");
+        final EventType et = buildEventType("some-event-type", basicSchema());
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = new JSONObject("{ \"foo\": \"bar\" }");
@@ -113,8 +111,7 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfDataChangeEventRequiresExtraFields() {
-        final EventType et = buildEventType("some-event-type",
-                "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"} }, \"required\": [\"foo\"]}");
+        final EventType et = buildEventType("some-event-type", basicSchema());
         et.setCategory(EventCategory.DATA);
 
         final JSONObject event = new JSONObject("{ \"data\": { \"foo\": \"bar\" } }");
@@ -126,14 +123,111 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfDataChangeEventShouldNotAllowAdditionalFieldsAtTheRootLevelObject() {
-        final EventType et = buildEventType("some-event-type",
-                "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"} }, \"required\": [\"foo\"]}");
+        final EventType et = buildEventType("some-event-type", basicSchema());
         et.setCategory(EventCategory.DATA);
 
-        final JSONObject event = new JSONObject("{ \"data\": { \"foo\": \"bar\" }, \"data_op\": \"C\", \"data_type\": \"some-event-type\", \"metadata\": {}, \"foo\": 1 }");
+        final JSONObject event = dataChangeEvent();
+        event.put("foo", "anything");
 
         Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#: extraneous key [foo] is not permitted"));
+    }
+
+    @Test
+    public void requireMetadataEventTypeToBeTheSameAsEventTypeName() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("event_type", "different-from-event-name");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error.get().getMessage(), equalTo("#/metadata/event_type: different-from-event-name is not a valid enum value"));
+    }
+
+    @Test
+    public void requireMetadataOccurredAt() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").remove("occurred_at");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error.get().getMessage(), equalTo("#/metadata: required key [occurred_at] not found"));
+    }
+
+    @Test
+    public void requireMetadataOccurredAtToBeFormattedAsDateTime() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("occurred_at", "x");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error.get().getMessage(), equalTo("#/metadata/occurred_at: string [x] does not match pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T| )[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"));
+    }
+
+    @Test
+    public void requireEidToBeFormattedAsUUID() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("eid", "x");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error.get().getMessage(), equalTo("#/metadata/eid: string [x] does not match pattern ^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"));
+    }
+
+    private JSONObject basicSchema() {
+        final JSONObject schema = new JSONObject();
+        final JSONObject string = new JSONObject();
+        string.put("type", "string");
+
+        final JSONObject properties = new JSONObject();
+        properties.put("foo", string);
+
+        schema.put("type", "object");
+        schema.put("required", Arrays.asList(new String[]{"foo"}));
+        schema.put("properties", properties);
+
+        return schema;
+    }
+
+    private JSONObject businessEvent() {
+        final JSONObject event = new JSONObject();
+        event.put("foo", "bar");
+        event.put("metadata", metadata());
+
+        return event;
+    }
+
+    private JSONObject dataChangeEvent() {
+        final JSONObject event = new JSONObject();
+
+        final JSONObject data = new JSONObject();
+        data.put("foo", "bar");
+
+        event.put("data", data);
+        event.put("data_op", "C");
+        event.put("data_type", "event-name");
+        event.put("metadata", metadata());
+
+        return event;
+    }
+
+    private JSONObject metadata() {
+        final JSONObject metadata = new JSONObject();
+        metadata.put("eid", "de305d54-75b4-431b-adb2-eb6b9e546014");
+        metadata.put("occurred_at", "1996-12-19T16:39:57-08:00");
+
+        return metadata;
     }
 }
