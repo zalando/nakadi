@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Optional;
 
 import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
+import static de.zalando.aruha.nakadi.utils.IsOptional.isPresent;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildEventType;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
@@ -18,6 +19,7 @@ public class JSONSchemaValidationTest {
 
     static {
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
+        ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
         ValidationStrategy.register(FieldNameMustBeSet.NAME, new FieldNameMustBeSet());
     }
 
@@ -170,7 +172,20 @@ public class JSONSchemaValidationTest {
 
         Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
-        assertThat(error.get().getMessage(), equalTo("#/metadata/occurred_at: string [x] does not match pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}(T| )[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"));
+        assertThat(error, isPresent());
+    }
+
+    @Test
+    public void requireMetadataOccurredAtToBeFormattedAsDateTimeWithValidDate() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("occurred_at", "1996-60-15T16:39:57-08:00");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error, isPresent());
     }
 
     @Test
