@@ -15,8 +15,8 @@ before_script:
   - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
 
 env:
-  - TEST_SUITE=travis_wait gradle check --stacktrace
-  - TEST_SUITE=gradle fullAcceptanceTest --stacktrace
+  - TEST_SUITE="travis_wait gradle check --stacktrace"
+  - TEST_SUITE="gradle fullAcceptanceTest --stacktrace"
 
 # run tests
 script: "$TEST_SUITE"
