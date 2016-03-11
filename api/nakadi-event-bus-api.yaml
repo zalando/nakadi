@@ -416,7 +416,8 @@ paths:
       security:
         - oauth2: ['nakadi_event_stream.write']
       description: |
-        Publishes a batch `Event`s of this `EventType`. All items must be of the same EventType.
+        Publishes a batch of `Event`s of this `EventType`. All items must be of the EventType identified
+        by `name`.
 
         Reception of Events will always respect the configuration of its `EventType` w.r.t. validation,
         enrichment and partitioning. The steps performed on reception of incoming message are:
