@@ -3,8 +3,8 @@ package de.zalando.aruha.nakadi.controller;
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
-import de.zalando.aruha.nakadi.exceptions.EventValidationException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
+import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
@@ -70,7 +70,7 @@ public class EventTypeController {
             eventTypeRepository.saveEventType(eventType);
             topicRepository.createTopic(eventType.getName());
             return status(HttpStatus.CREATED).build();
-        } catch (EventValidationException e) {
+        } catch (InvalidEventTypeException e) {
             return create(e.asProblem(), nativeWebRequest);
         } catch (DuplicatedEventTypeNameException e) {
             return create(e.asProblem(), nativeWebRequest);
@@ -122,7 +122,7 @@ public class EventTypeController {
             validateUpdate(name, eventType);
             eventTypeRepository.update(eventType);
             return status(HttpStatus.OK).build();
-        } catch (EventValidationException e) {
+        } catch (InvalidEventTypeException e) {
             return create(e.asProblem(), nativeWebRequest);
         } catch (NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", name);
@@ -147,19 +147,19 @@ public class EventTypeController {
         }
     }
 
-    private void validateSchema(final EventType eventType) throws EventValidationException {
+    private void validateSchema(final EventType eventType) throws InvalidEventTypeException {
         try {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
             if (hasReservedField(eventType, schemaAsJson, "metadata")) {
-                throw new EventValidationException("\"metadata\" property is reserved");
+                throw new InvalidEventTypeException("\"metadata\" property is reserved");
             } else {
                 SchemaLoader.load(schemaAsJson);
             }
         } catch (JSONException e) {
-            throw new EventValidationException("schema must be a valid json");
+            throw new InvalidEventTypeException("schema must be a valid json");
         } catch (SchemaException e) {
-            throw new EventValidationException("schema must be a valid json-schema");
+            throw new InvalidEventTypeException("schema must be a valid json-schema");
         }
     }
 
@@ -169,22 +169,22 @@ public class EventTypeController {
                 && schemaAsJson.getJSONObject("properties").has(field);
     }
 
-    private void validateUpdate(final String name, final EventType eventType) throws NoSuchEventTypeException, InternalNakadiException, EventValidationException {
+    private void validateUpdate(final String name, final EventType eventType) throws NoSuchEventTypeException, InternalNakadiException, InvalidEventTypeException {
         final EventType existingEventType = eventTypeRepository.findByName(name);
 
         validateName(name, eventType);
         validateSchemaChange(eventType, existingEventType);
     }
 
-    private void validateName(final String name, final EventType eventType) throws EventValidationException {
+    private void validateName(final String name, final EventType eventType) throws InvalidEventTypeException {
         if (!eventType.getName().equals(name)) {
-            throw new EventValidationException("path does not match resource name");
+            throw new InvalidEventTypeException("path does not match resource name");
         }
     }
 
-    private void validateSchemaChange(final EventType eventType, final EventType existingEventType) throws EventValidationException {
+    private void validateSchemaChange(final EventType eventType, final EventType existingEventType) throws InvalidEventTypeException {
         if (!existingEventType.getSchema().equals(eventType.getSchema())) {
-            throw new EventValidationException("schema must not be changed");
+            throw new InvalidEventTypeException("schema must not be changed");
         }
     }
 }
