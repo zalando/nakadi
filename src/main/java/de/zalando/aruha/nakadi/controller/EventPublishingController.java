@@ -84,7 +84,7 @@ public class EventPublishingController {
             LOG.debug("Could not process event.", e);
             return create(e.asProblem(), nativeWebRequest);
         } catch (final EventValidationException e) {
-            LOG.debug("Event validation error: {}", e.getValidationError().getMessage());
+            LOG.debug("Event validation error: {}", e.getMessage());
             return create(e.asProblem(), nativeWebRequest);
         } catch (final NakadiException e) {
             LOG.error("error posting to partition", e);
