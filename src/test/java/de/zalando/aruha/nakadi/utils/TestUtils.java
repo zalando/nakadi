@@ -1,23 +1,22 @@
 package de.zalando.aruha.nakadi.utils;
 
-import de.zalando.aruha.nakadi.domain.EventCategory;
-import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.EventTypeSchema;
-import org.apache.commons.io.IOUtils;
-import org.json.JSONObject;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-
 import java.io.IOException;
+
 import java.util.Random;
 import java.util.UUID;
 
+import org.apache.commons.io.IOUtils;
+
+import org.json.JSONObject;
+
+import de.zalando.aruha.nakadi.domain.EventCategory;
+import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+
 public class TestUtils {
 
-
     private static final String VALID_EVENT_TYPE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ";
-
-
+    private static final String VALID_EVENT_BODY_CHARS = VALID_EVENT_TYPE_NAME_CHARS + " \t!@#$%^&*()=+-_";
 
     private static final Random RANDOM = new Random();
 
@@ -27,21 +26,39 @@ public class TestUtils {
         return UUID.randomUUID().toString();
     }
 
+    public static String randomTextString() {
+        return randomString(VALID_EVENT_TYPE_NAME_CHARS);
+    }
+
+    public static String randomString() {
+        final int length = RANDOM.nextInt(500);
+
+        String s = "";
+
+        for (int i = 0; i < length; i++) {
+            s += (char) RANDOM.nextInt(128);
+        }
+
+        return s;
+
+    }
+
     public static String randomString(final String validChars) {
-    	final int length = RANDOM.nextInt(50);
+        final int length = RANDOM.nextInt(49) + 1;
 
-    	String s = "";
+        String s = "";
 
-    	for (int i = 0; i < length; i++) {
-			s += validChars.charAt(RANDOM.nextInt(validChars.length()));
-		}
+        for (int i = 0; i < length; i++) {
+            s += validChars.charAt(RANDOM.nextInt(validChars.length()));
+        }
 
-    	return s;
+        return s;
 
     }
 
     public static String randomValidEventTypeName() {
-    	return String.format("%s.%s", randomString(VALID_EVENT_TYPE_NAME_CHARS), randomString(VALID_EVENT_TYPE_NAME_CHARS));
+        return String.format("%s.%s", randomString(VALID_EVENT_TYPE_NAME_CHARS),
+                randomString(VALID_EVENT_TYPE_NAME_CHARS));
     }
 
     public static int randomUInt() {
@@ -78,25 +95,7 @@ public class TestUtils {
         return et;
     }
 
-
-    public static EventType buildDefaultEventType () {
-    	return buildEventType(randomValidEventTypeName(), "{ \"price\": 1000 }");
+    public static EventType buildDefaultEventType() {
+        return buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"));
     }
-/*
-    private EventType buildEventType() throws JsonProcessingException {
-
-        final EventTypeSchema schema = new EventTypeSchema();
-        final EventType eventType = new EventType();
-
-        schema.setSchema("{ \"price\": 1000 }");
-        schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
-
-        eventType.setName(EVENT_TYPE_NAME);
-        eventType.setCategory(EventCategory.UNDEFINED);
-        eventType.setSchema(schema);
-        eventType.setOwningApplication("event-producer-application");
-
-        return eventType;
-    }
-*/
 }
