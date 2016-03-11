@@ -1,21 +1,14 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import de.zalando.aruha.nakadi.domain.ConsumedEvent;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
-import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.TopicPartition;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
@@ -23,18 +16,34 @@ import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiParti
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomUInt;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomULong;
+
 import static junit.framework.TestCase.fail;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.TopicPartition;
+
+import org.junit.Test;
+
+import org.mockito.ArgumentCaptor;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+
+import de.zalando.aruha.nakadi.domain.ConsumedEvent;
+import de.zalando.aruha.nakadi.utils.TestUtils;
 
 public class NakadiKafkaConsumerTest {
 
-    private static final String TOPIC = randomString();
+    private static final String TOPIC = TestUtils.randomValidEventTypeName();
     private static final int PARTITION = randomUInt();
     private static final long POLL_TIMEOUT = randomULong();
 
@@ -45,7 +54,7 @@ public class NakadiKafkaConsumerTest {
         // ARRANGE //
         final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
 
-        Class<List<TopicPartition>> topicPartitionListClass = (Class<List<TopicPartition>>) (Class) List.class;
+        final Class<List<TopicPartition>> topicPartitionListClass = (Class) List.class;
         final ArgumentCaptor<List<TopicPartition>> partitionsCaptor = ArgumentCaptor.forClass(topicPartitionListClass);
         doNothing().when(kafkaConsumerMock).assign(partitionsCaptor.capture());
 
@@ -53,21 +62,16 @@ public class NakadiKafkaConsumerTest {
         final ArgumentCaptor<Long> offsetCaptor = ArgumentCaptor.forClass(Long.class);
         doNothing().when(kafkaConsumerMock).seek(tpCaptor.capture(), offsetCaptor.capture());
 
-        final List<KafkaCursor> kafkaCursors = ImmutableList.of(
-                kafkaCursor(randomUInt(), randomULong()),
-                kafkaCursor(randomUInt(), randomULong()),
-                kafkaCursor(randomUInt(), randomULong()));
+        final List<KafkaCursor> kafkaCursors = ImmutableList.of(kafkaCursor(randomUInt(), randomULong()),
+                kafkaCursor(randomUInt(), randomULong()), kafkaCursor(randomUInt(), randomULong()));
 
         // ACT //
         new NakadiKafkaConsumer(kafkaConsumerMock, TOPIC, kafkaCursors, POLL_TIMEOUT);
 
         // ASSERT //
-        final Map<String, String> cursors = kafkaCursors
-                .stream()
-                .collect(Collectors.toMap(
-                        kafkaCursor -> toNakadiPartition(kafkaCursor.getPartition()),
-                        kafkaCursor -> toNakadiOffset(kafkaCursor.getOffset())
-                ));
+        final Map<String, String> cursors = kafkaCursors.stream().collect(Collectors.toMap(kafkaCursor ->
+                        toNakadiPartition(kafkaCursor.getPartition()),
+                    kafkaCursor -> toNakadiOffset(kafkaCursor.getOffset())));
 
         final List<TopicPartition> assignedPartitions = partitionsCaptor.getValue();
         assertThat(assignedPartitions, hasSize(cursors.size()));
@@ -97,12 +101,10 @@ public class NakadiKafkaConsumerTest {
         final String event2 = randomString();
         final int event1Offset = randomUInt();
         final int event2Offset = randomUInt();
-        final ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(
-                ImmutableMap.of(
-                        new TopicPartition(TOPIC, PARTITION),
-                        ImmutableList.of(
-                                new ConsumerRecord<>(TOPIC, PARTITION, event1Offset, "k1", event1),
-                                new ConsumerRecord<>(TOPIC, PARTITION, event2Offset, "k2", event2))));
+        final ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(ImmutableMap.of(
+                    new TopicPartition(TOPIC, PARTITION),
+                    ImmutableList.of(new ConsumerRecord<>(TOPIC, PARTITION, event1Offset, "k1", event1),
+                        new ConsumerRecord<>(TOPIC, PARTITION, event2Offset, "k2", event2))));
         final ConsumerRecords<String, String> emptyRecords = new ConsumerRecords<>(ImmutableMap.of());
 
         final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
@@ -149,14 +151,15 @@ public class NakadiKafkaConsumerTest {
             when(kafkaConsumerMock.poll(POLL_TIMEOUT)).thenThrow(exception);
 
             try {
+
                 // ACT //
-                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock, TOPIC, ImmutableList.of(),
-                        POLL_TIMEOUT);
+                final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock, TOPIC,
+                        ImmutableList.of(), POLL_TIMEOUT);
                 consumer.readEvent();
 
                 // ASSERT //
                 fail("An Exception was expected to be be thrown");
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 numberOfNakadiExceptions++;
             }
         }
