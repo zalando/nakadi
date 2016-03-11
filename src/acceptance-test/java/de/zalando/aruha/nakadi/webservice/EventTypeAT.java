@@ -21,7 +21,7 @@ import java.util.Set;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
@@ -154,7 +154,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     private EventType buildEventType() throws JsonProcessingException {
-        final String name = randomString();
+        final String name = randomUUID();
 
         final EventTypeSchema schema = new EventTypeSchema();
         final EventType eventType = new EventType();
