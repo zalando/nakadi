@@ -1,51 +1,17 @@
 package de.zalando.aruha.nakadi.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Charsets;
-import com.google.common.io.Resources;
-import de.zalando.aruha.nakadi.config.JsonConfig;
-import de.zalando.aruha.nakadi.domain.EventCategory;
-import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.EventTypeSchema;
-import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
-import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
-import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
-import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
-import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.utils.TestUtils;
-
-import org.json.JSONObject;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.validation.Errors;
-import org.springframework.validation.FieldError;
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
-import uk.co.datumedge.hamcrest.json.SameJSONAs;
-
-import javax.ws.rs.core.Response;
-import java.util.Arrays;
-
-import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -53,9 +19,56 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+
+import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
+
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
-import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
+import java.util.Arrays;
+
+import javax.ws.rs.core.Response;
+
+import org.json.JSONObject;
+
+import org.junit.Test;
+
+import org.mockito.Mockito;
+
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import org.springframework.validation.Errors;
+import org.springframework.validation.FieldError;
+
+import org.zalando.problem.MoreStatus;
+import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
+
+import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
+import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
+import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
+import de.zalando.aruha.nakadi.problem.ValidationProblem;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
+import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.utils.TestUtils;
+
+import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 public class EventTypeControllerTest {
 
@@ -69,11 +82,10 @@ public class EventTypeControllerTest {
         final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
-                new MappingJackson2HttpMessageConverter(objectMapper);
+            new MappingJackson2HttpMessageConverter(objectMapper);
 
-        mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .build();
+        mockMvc = standaloneSetup(controller).setMessageConverters(new StringHttpMessageConverter(),
+                jackson2HttpMessageConverter).build();
     }
 
     @Test
@@ -83,25 +95,22 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem = invalidProblem("name", "format not allowed");
 
-        postEventType(invalidEventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(invalidEventType).andExpect(status().isUnprocessableEntity())
+                                       .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                                               .string(matchesProblem(expectedProblem)));
     }
-
 
     @Test
     public void whenPostWithEventTypeNameNotSetThenReturn422() throws Exception {
         final EventType invalidEventType = buildDefaultEventType();
         invalidEventType.setName(null);
+
         final Problem expectedProblem = invalidProblem("name", "may not be null");
 
-        postEventType(invalidEventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(invalidEventType).andExpect(status().isUnprocessableEntity())
+                                       .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                                               .string(matchesProblem(expectedProblem)));
     }
-
 
     @Test
     public void whenPostWithNoCategoryThenReturn422() throws Exception {
@@ -112,93 +121,72 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem = invalidProblem("category", "may not be null");
 
-        postEventType(jsonObject.toString())
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(jsonObject.toString()).andExpect(status().isUnprocessableEntity())
+                                            .andExpect(content().contentType("application/problem+json")).andExpect(
+                                                content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenPostWithNoSchemaSchemaThenReturn422() throws Exception {
         final Problem expectedProblem = invalidProblem("schema.schema", "may not be null");
 
-        final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", " +
-                "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
+        final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", "
+                + "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
 
-        postEventType(eventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                                .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                                        .string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenPOSTBusinessEventTypeMetadataThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.getSchema().setSchema("{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
+        eventType.getSchema().setSchema(
+            "{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
         eventType.setCategory(BUSINESS);
 
-        final Problem expectedProblem = invalidProblem("schema.schema",
-                "The \"metadata\" property is reserved");
+        final Problem expectedProblem = invalidProblem("schema.schema", "The \"metadata\" property is reserved");
 
-        postEventType(eventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                                .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                                        .string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenPostDuplicatedEventTypeReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "some-name");
 
-        Mockito.
-                doThrow(new DuplicatedEventTypeNameException("some-name")).
-                when(eventTypeRepository).
-                saveEventType(any(EventType.class));
+        Mockito.doThrow(new DuplicatedEventTypeNameException("some-name")).when(eventTypeRepository).saveEventType(any(
+                EventType.class));
 
-        postEventType(buildDefaultEventType())
-                .andExpect(status().isConflict())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(buildDefaultEventType()).andExpect(status().isConflict())
+                                              .andExpect(content().contentType("application/problem+json")).andExpect(
+                                                  content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenPostAndTopicExistsReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "dummy message");
         final EventType et = buildDefaultEventType();
-        Mockito
-                .doNothing()
-                .when(eventTypeRepository)
-                .saveEventType(any(EventType.class));
+        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        Mockito
-                .doThrow(new DuplicatedEventTypeNameException("dummy message"))
-                .when(topicRepository)
-                .createTopic(et.getName());
+        Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository).createTopic(
+            et.getName());
 
-        postEventType(et)
-                .andExpect(status().isConflict())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(et).andExpect(status().isConflict()).andExpect(content().contentType("application/problem+json"))
+                         .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenDeleteEventTypeThenOk() throws Exception {
 
-final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = TestUtils.randomValidEventTypeName();
 
-        Mockito
-                .doNothing()
-                .when(eventTypeRepository)
-                .removeEventType(eventTypeName);
+        Mockito.doNothing().when(eventTypeRepository).removeEventType(eventTypeName);
 
-        Mockito
-                .doNothing()
-                .when(topicRepository)
-                .deleteTopic(eventTypeName);
+        Mockito.doNothing().when(topicRepository).deleteTopic(eventTypeName);
 
-        deleteEventType(eventTypeName)
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
+        deleteEventType(eventTypeName).andExpect(status().isOk()).andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).removeEventType(eventTypeName);
         verify(topicRepository, times(1)).deleteTopic(eventTypeName);
@@ -207,86 +195,65 @@ final String eventTypeName = TestUtils.randomValidEventTypeName();
     @Test
     public void whenDeleteNoneExistingEventTypeThen404() throws Exception {
 
-final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = TestUtils.randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy message");
 
-        Mockito
-                .doThrow(new NoSuchEventTypeException("dummy message"))
-                .when(eventTypeRepository)
-                .removeEventType(eventTypeName);
+        Mockito.doThrow(new NoSuchEventTypeException("dummy message")).when(eventTypeRepository).removeEventType(
+            eventTypeName);
 
-        deleteEventType(eventTypeName)
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        deleteEventType(eventTypeName).andExpect(status().isNotFound())
+                                      .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                                              .string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenDeleteEventTypeAndTopicDeletionExceptionThen503() throws Exception {
 
-final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = TestUtils.randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, "dummy message");
 
-        Mockito
-                .doThrow(new TopicDeletionException("dummy message", null))
-                .when(topicRepository)
-                .deleteTopic(eventTypeName);
+        Mockito.doThrow(new TopicDeletionException("dummy message", null)).when(topicRepository).deleteTopic(
+            eventTypeName);
 
-        deleteEventType(eventTypeName)
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        deleteEventType(eventTypeName).andExpect(status().isServiceUnavailable())
+                                      .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                                              .string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
-final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = TestUtils.randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
 
-        Mockito
-                .doThrow(new InternalNakadiException("dummy message"))
-                .when(eventTypeRepository)
-                .removeEventType(eventTypeName);
+        Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
+            eventTypeName);
 
-        deleteEventType(eventTypeName)
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
+                                      .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                                              .string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenPersistencyErrorThen500() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
 
-        Mockito
-                .doThrow(InternalNakadiException.class)
-                .when(eventTypeRepository)
-                .saveEventType(any(EventType.class));
+        Mockito.doThrow(InternalNakadiException.class).when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        postEventType(buildDefaultEventType())
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(buildDefaultEventType()).andExpect(status().isInternalServerError())
+                                              .andExpect(content().contentType("application/problem+json")).andExpect(
+                                                  content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
     public void whenCreateSuccessfullyThen201() throws Exception {
-    	final EventType et = buildDefaultEventType();
+        final EventType et = buildDefaultEventType();
 
-        Mockito
-                .doNothing()
-                .when(eventTypeRepository)
-                .saveEventType(any(EventType.class));
+        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        Mockito
-                .doNothing()
-                .when(topicRepository)
-                .createTopic(et.getName());
+        Mockito.doNothing().when(topicRepository).createTopic(et.getName());
 
-        postEventType(et)
-                .andExpect(status().isCreated())
-                .andExpect(content().string(""));
+        postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
         verify(topicRepository, times(1)).createTopic(et.getName());
@@ -295,29 +262,18 @@ final String eventTypeName = TestUtils.randomValidEventTypeName();
     @Test
     public void whenTopicCreationFailsRemoveEventTypeFromRepositoryAnd500() throws Exception {
 
-//final String eventTypeName = TestUtils.randomValidEventTypeName();
-final EventType et = buildDefaultEventType();
-        Mockito
-                .doNothing()
-                .when(eventTypeRepository)
-                .saveEventType(any(EventType.class));
+        final EventType et = buildDefaultEventType();
+        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        Mockito
-                .doThrow(TopicCreationException.class)
-                .when(topicRepository)
-                .createTopic(et.getName());
+        Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(et.getName());
 
-        Mockito
-                .doNothing()
-                .when(eventTypeRepository)
-                .removeEventType(et.getName());
+        Mockito.doNothing().when(eventTypeRepository).removeEventType(et.getName());
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE);
 
-        postEventType(et)
-            .andExpect(status().isServiceUnavailable())
-            .andExpect(content().contentType("application/problem+json"))
-            .andExpect(content().string(matchesProblem(expectedProblem)));
+        postEventType(et).andExpect(status().isServiceUnavailable())
+                         .andExpect(content().contentType("application/problem+json")).andExpect(content().string(
+                                 matchesProblem(expectedProblem)));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
         verify(topicRepository, times(1)).createTopic(et.getName());
@@ -333,10 +289,11 @@ final EventType et = buildDefaultEventType();
 
         final Problem expectedProblem = invalidProblem("category", "may not be null");
 
-        putEventType(jsonObject.toString(), invalidEventType.getName())
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        putEventType(jsonObject.toString(), invalidEventType.getName()).andExpect(status().isUnprocessableEntity())
+                                                                       .andExpect(content().contentType(
+                                                                               "application/problem+json")).andExpect(
+                                                                           content().string(
+                                                                               matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -345,20 +302,16 @@ final EventType et = buildDefaultEventType();
         final String eventTypeName = eventType.getName();
         eventType.setName("event-name-different");
 
-
-
         final Problem expectedProblem = invalidProblem("name",
-                String.format("The submitted event type name \"event-name-different\" should match the parameter name \"%s\"", eventTypeName));
+                String.format(
+                    "The submitted event type name \"event-name-different\" should match the parameter name \"%s\"",
+                    eventTypeName));
 
-        Mockito
-                .doReturn(eventType)
-                .when(eventTypeRepository)
-                .findByName(eventTypeName);
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventTypeName);
 
-        putEventType(eventType, eventTypeName)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        putEventType(eventType, eventTypeName).andExpect(status().isUnprocessableEntity())
+                                              .andExpect(content().contentType("application/problem+json")).andExpect(
+                                                  content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -371,15 +324,12 @@ final EventType et = buildDefaultEventType();
         final Problem expectedProblem = invalidProblem("schema",
                 "The schema you've just submitted is different from the one in our system.");
 
-        Mockito
-                .doReturn(persistedEventType)
-                .when(eventTypeRepository)
-                .findByName(persistedEventType.getName());
+        Mockito.doReturn(persistedEventType).when(eventTypeRepository).findByName(persistedEventType.getName());
 
-        putEventType(eventType, persistedEventType.getName())
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        putEventType(eventType, persistedEventType.getName()).andExpect(status().isUnprocessableEntity())
+                                                             .andExpect(content().contentType(
+                                                                     "application/problem+json")).andExpect(content()
+                                                                     .string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -388,15 +338,11 @@ final EventType et = buildDefaultEventType();
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND);
 
-        Mockito
-                .doThrow(NoSuchEventTypeException.class)
-                .when(eventTypeRepository)
-                .findByName(eventType.getName());
+        Mockito.doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eventType.getName());
 
-        putEventType(eventType, eventType.getName())
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        putEventType(eventType, eventType.getName()).andExpect(status().isNotFound())
+                                                    .andExpect(content().contentType("application/problem+json"))
+                                                    .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -405,15 +351,11 @@ final EventType et = buildDefaultEventType();
 
         final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY);
 
-        Mockito
-                .doThrow(UnprocessableEntityException.class)
-                .when(eventTypeRepository)
-                .findByName(eventType.getName());
+        Mockito.doThrow(UnprocessableEntityException.class).when(eventTypeRepository).findByName(eventType.getName());
 
-        putEventType(eventType, eventType.getName())
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
+                                                    .andExpect(content().contentType("application/problem+json"))
+                                                    .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -422,32 +364,30 @@ final EventType et = buildDefaultEventType();
 
         when(eventTypeRepository.findByName(expectedEventType.getName())).thenReturn(expectedEventType);
 
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + expectedEventType.getName())
-                .accept(APPLICATION_JSON);
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + expectedEventType.getName()).accept(
+                APPLICATION_JSON);
 
-        mockMvc.perform(requestBuilder)
-                .andExpect(status().is(200))
-                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().json(asJsonString(expectedEventType)));
+        mockMvc.perform(requestBuilder).andExpect(status().is(200))
+               .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON)).andExpect(content().json(
+                       asJsonString(expectedEventType)));
 
     }
 
     @Test
     public void askingForANonExistingEventTypeResultsIn404() throws Exception {
-    	final String eventTypeName = TestUtils.randomValidEventTypeName();
-        when(eventTypeRepository.findByName(anyString())).thenThrow(new NoSuchEventTypeException(String.format("EventType '%s' does not exist.", eventTypeName)));
+        final String eventTypeName = TestUtils.randomValidEventTypeName();
+        when(eventTypeRepository.findByName(anyString())).thenThrow(new NoSuchEventTypeException(
+                String.format("EventType '%s' does not exist.", eventTypeName)));
 
-
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" +  eventTypeName)
-                .accept(APPLICATION_JSON);
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName).accept(
+                APPLICATION_JSON);
 
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND,
-                "EventType '" +  eventTypeName + "' does not exist.");
+                "EventType '" + eventTypeName + "' does not exist.");
 
-        mockMvc.perform(requestBuilder)
-                .andExpect(status().is(404))
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        mockMvc.perform(requestBuilder).andExpect(status().is(404))
+               .andExpect(content().contentTypeCompatibleWith("application/problem+json")).andExpect(content().string(
+                       matchesProblem(expectedProblem)));
 
     }
 
@@ -458,23 +398,23 @@ final EventType et = buildDefaultEventType();
 
         final Problem expectedProblem = invalidProblem("schema.schema", "must be a valid json");
 
-        postEventType(eventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect((content().string(matchesProblem(expectedProblem))));
+        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
+                    matchesProblem(expectedProblem))));
     }
 
     @Test
     public void invalidEventTypeSchemaJsonSchemaThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        final String jsonSchemaString = Resources.toString(Resources.getResource("sample-invalid-json-schema.json"), Charsets.UTF_8);
+        final String jsonSchemaString = Resources.toString(Resources.getResource("sample-invalid-json-schema.json"),
+                Charsets.UTF_8);
         eventType.getSchema().setSchema(jsonSchemaString);
 
-        final Problem expectedProblem = invalidProblem("schema.schema", "must be valid json-schema (http://json-schema.org)");
+        final Problem expectedProblem = invalidProblem("schema.schema",
+                "must be valid json-schema (http://json-schema.org)");
 
-        postEventType(eventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect((content().string(matchesProblem(expectedProblem))));
+        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
+                    matchesProblem(expectedProblem))));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
@@ -488,9 +428,8 @@ final EventType et = buildDefaultEventType();
     }
 
     private ResultActions postEventType(final String content) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = post("/event-types")
-                .contentType(APPLICATION_JSON)
-                .content(content);
+        final MockHttpServletRequestBuilder requestBuilder = post("/event-types").contentType(APPLICATION_JSON).content(
+                content);
 
         return mockMvc.perform(requestBuilder);
     }
@@ -502,16 +441,14 @@ final EventType et = buildDefaultEventType();
     }
 
     private ResultActions putEventType(final String content, final String name) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
-                .contentType(APPLICATION_JSON)
-                .content(content);
+        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name).contentType(APPLICATION_JSON)
+                                                                                        .content(content);
 
         return mockMvc.perform(requestBuilder);
     }
 
-
     private Problem invalidProblem(final String field, final String description) {
-        final FieldError[] fieldErrors = { new FieldError("", field, description) };
+        final FieldError[] fieldErrors = {new FieldError("", field, description)};
 
         final Errors errors = mock(Errors.class);
         when(errors.getAllErrors()).thenReturn(Arrays.asList(fieldErrors));
