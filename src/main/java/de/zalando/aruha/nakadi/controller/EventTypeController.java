@@ -45,14 +45,14 @@ public class EventTypeController {
     private final TopicRepository topicRepository;
 
     @Autowired
-    public EventTypeController(EventTypeRepository eventTypeRepository, TopicRepository topicRepository) {
+    public EventTypeController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
     }
 
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity<?> list() {
-        List<EventType> eventTypes = eventTypeRepository.list();
+        final List<EventType> eventTypes = eventTypeRepository.list();
 
         return status(HttpStatus.OK).body(eventTypes);
     }
@@ -70,45 +70,45 @@ public class EventTypeController {
             eventTypeRepository.saveEventType(eventType);
             topicRepository.createTopic(eventType.getName());
             return status(HttpStatus.CREATED).build();
-        } catch (InvalidEventTypeException e) {
+        } catch (final InvalidEventTypeException e) {
             return create(e.asProblem(), nativeWebRequest);
-        } catch (DuplicatedEventTypeNameException e) {
+        } catch (final DuplicatedEventTypeNameException e) {
             return create(e.asProblem(), nativeWebRequest);
-        } catch (TopicCreationException e) {
+        } catch (final TopicCreationException e) {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
 
             try {
                 eventTypeRepository.removeEventType(eventType.getName());
-            } catch (NakadiException e1) {
+            } catch (final NakadiException e1) {
                 return create(e.asProblem(), nativeWebRequest);
             }
             return create(e.asProblem(), nativeWebRequest);
-        } catch (NakadiException e) {
+        } catch (final NakadiException e) {
             LOG.error("Error creating event type " + eventType, e);
             return create(e.asProblem(), nativeWebRequest);
         }
     }
 
-    @RequestMapping(value = "/{name}", method = RequestMethod.DELETE)
+    @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteEventType(@PathVariable("name") final String eventTypeName,
                                              final NativeWebRequest nativeWebRequest) {
         try {
             eventTypeRepository.removeEventType(eventTypeName);
             topicRepository.deleteTopic(eventTypeName);
             return status(HttpStatus.OK).build();
-        } catch (NoSuchEventTypeException e) {
+        } catch (final NoSuchEventTypeException e) {
             LOG.warn("Tried to remove EventType " + eventTypeName + " that doesn't exist", e);
             return create(e.asProblem(), nativeWebRequest);
-        } catch (TopicDeletionException e) {
+        } catch (final TopicDeletionException e) {
             LOG.error("Problem deleting kafka topic " + eventTypeName, e);
             return create(e.asProblem(), nativeWebRequest);
-        } catch (NakadiException e) {
+        } catch (final NakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             return create(e.asProblem(), nativeWebRequest);
         }
     }
 
-    @RequestMapping(value = "/{name}", method = RequestMethod.PUT)
+    @RequestMapping(value = "/{name:.+}", method = RequestMethod.PUT)
     public ResponseEntity<?> update(
             @PathVariable("name") final String name,
             @RequestBody @Valid final EventType eventType,
@@ -122,26 +122,26 @@ public class EventTypeController {
             validateUpdate(name, eventType);
             eventTypeRepository.update(eventType);
             return status(HttpStatus.OK).build();
-        } catch (InvalidEventTypeException e) {
+        } catch (final InvalidEventTypeException e) {
             return create(e.asProblem(), nativeWebRequest);
-        } catch (NoSuchEventTypeException e) {
+        } catch (final NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", name);
             return create(e.asProblem(), nativeWebRequest);
-        } catch (NakadiException e) {
+        } catch (final NakadiException e) {
             LOG.error("Unable to update event type", e);
             return create(e.asProblem(), nativeWebRequest);
         }
     }
 
-    @RequestMapping(value = "/{name}", method = RequestMethod.GET)
+    @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
     public ResponseEntity<?> exposeSingleEventType(@PathVariable final String name, final NativeWebRequest nativeWebRequest) {
         try {
             final EventType eventType = eventTypeRepository.findByName(name);
             return status(HttpStatus.OK).body(eventType);
-        } catch (NoSuchEventTypeException e) {
+        } catch (final NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", name);
             return create(e.asProblem(), nativeWebRequest);
-        } catch (InternalNakadiException e) {
+        } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type " + name, e);
             return create(e.asProblem(), nativeWebRequest);
         }

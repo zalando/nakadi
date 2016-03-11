@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +17,7 @@ public class EventType {
     public static final List<String> EMPTY_STRING_LIST = new ArrayList<>(0);
 
     @NotNull
-    @Size(min = 1, message = "may not be empty")
+    @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed" )
     private String name;
 
     @NotNull
