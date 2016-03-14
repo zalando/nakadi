@@ -13,12 +13,13 @@ before_script:
   - pip install --user codecov
   - curl http://www.jpm4j.org/install/script | sudo sh
   - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
-  
 
-# run tests
-script:
-  - travis_wait gradle check --stacktrace
-  - gradle fullAcceptanceTest --stacktrace
+env:
+  - TEST_SUITE="travis_wait gradle check --stacktrace"   # unit tests
+  - TEST_SUITE="gradle fullAcceptanceTest --stacktrace"  # acceptance tests
+
+# run test suits in parallel
+script: "$TEST_SUITE"
 
 after_success:
   - codecov
