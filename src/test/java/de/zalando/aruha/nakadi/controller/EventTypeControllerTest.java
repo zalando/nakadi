@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.controller;
 
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.PARTITIONING_KEYS_STRATEGY;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 import static org.mockito.Matchers.any;
@@ -29,7 +30,9 @@ import java.util.Arrays;
 
 import javax.ws.rs.core.Response;
 
+import de.zalando.aruha.nakadi.domain.PartitionResolutionStrategy;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
+import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import org.json.JSONObject;
 
 import org.junit.Test;
@@ -80,7 +83,9 @@ public class EventTypeControllerTest {
     private final MockMvc mockMvc;
 
     public EventTypeControllerTest() throws Exception {
-        final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository);
+        final PartitionResolver partitionResolver = new PartitionResolver(topicRepository);
+        final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository,
+                partitionResolver);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
@@ -137,6 +142,45 @@ public class EventTypeControllerTest {
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
                                         .string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithUnknownPartitioningStrategyThenReturn422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy("unknown_strategy", null);
+        eventType.setPartitionResolutionStrategy(strategy);
+
+        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                "partitioning strategy does not exist: unknown_strategy");
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithNullPartitioningStrategyNameThenReturn422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(null, null);
+        eventType.setPartitionResolutionStrategy(strategy);
+
+        final Problem expectedProblem = invalidProblem("partition_resolution_strategy.name", "may not be null");
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithKnownPartitioningStrategyThenReturn201() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(PARTITIONING_KEYS_STRATEGY, null);
+        eventType.setPartitionResolutionStrategy(strategy);
+
+        postEventType(eventType)
+                .andExpect(status().isCreated())
+                .andExpect(content().string(""));
     }
 
     @Test

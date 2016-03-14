@@ -27,6 +27,10 @@ public class PartitionResolver {
         this.topicRepository = topicRepository;
     }
 
+    public boolean strategyExists(final String strategyName) {
+        return PARTITIONING_STRATEGIES.containsKey(strategyName);
+    }
+
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
             throws PartitioningException, NakadiException {
 

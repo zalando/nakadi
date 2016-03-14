@@ -2,13 +2,16 @@ package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.PartitionResolutionStrategy;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchPartitioningStrategyException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
+import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -43,11 +46,14 @@ public class EventTypeController {
 
     private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
+    private final PartitionResolver partitionResolver;
 
     @Autowired
-    public EventTypeController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository) {
+    public EventTypeController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
+                               final PartitionResolver partitionResolver) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
+        this.partitionResolver = partitionResolver;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -67,12 +73,13 @@ public class EventTypeController {
 
         try {
             validateSchema(eventType);
+            validatePartitioningStrategy(eventType);
             eventTypeRepository.saveEventType(eventType);
             topicRepository.createTopic(eventType.getName());
             return status(HttpStatus.CREATED).build();
-        } catch (final InvalidEventTypeException e) {
-            return create(e.asProblem(), nativeWebRequest);
-        } catch (final DuplicatedEventTypeNameException e) {
+        } catch (final InvalidEventTypeException | NoSuchPartitioningStrategyException |
+                DuplicatedEventTypeNameException e) {
+            LOG.warn(e.getMessage(), e);
             return create(e.asProblem(), nativeWebRequest);
         } catch (final TopicCreationException e) {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
@@ -144,6 +151,14 @@ public class EventTypeController {
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type " + name, e);
             return create(e.asProblem(), nativeWebRequest);
+        }
+    }
+
+    private void validatePartitioningStrategy(final EventType eventType) throws NoSuchPartitioningStrategyException {
+        final PartitionResolutionStrategy partitioningStrategy = eventType.getPartitionResolutionStrategy();
+        if (partitioningStrategy != null && !partitionResolver.strategyExists(partitioningStrategy.getName())) {
+            throw new NoSuchPartitioningStrategyException("partitioning strategy does not exist: " +
+                    partitioningStrategy.getName());
         }
     }
 
