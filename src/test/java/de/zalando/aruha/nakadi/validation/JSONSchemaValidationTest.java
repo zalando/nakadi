@@ -186,6 +186,18 @@ public class JSONSchemaValidationTest {
         assertThat(error.get().getMessage(), equalTo("#/metadata/eid: string [x] does not match pattern ^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"));
     }
 
+    @Test
+    public void validationOfNullSchemaIsNoOp() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setSchema(null);
+
+        final JSONObject event = businessEvent();
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error, isAbsent());
+    }
+
     private JSONObject basicSchema() {
         final JSONObject schema = new JSONObject();
         final JSONObject string = new JSONObject();

@@ -13,10 +13,14 @@ import java.util.Set;
 public class EventValidation {
     public static EventTypeValidator forType(final EventType eventType) {
         final EventTypeValidator etv = new EventTypeValidator(eventType);
-        final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
-        vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
 
-        return etv.withConfiguration(vsc);
+        if (eventType.getSchema() != null) {
+            final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
+            vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
+            etv.withConfiguration(vsc);
+        }
+
+        return etv;
     }
 
     public static JSONObject effectiveSchema(final EventType eventType) throws JSONException {
