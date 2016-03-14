@@ -6,11 +6,10 @@ import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EventValidationException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
-import de.zalando.aruha.nakadi.exceptions.InvalidPartitioningKeyFieldsException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
-import de.zalando.aruha.nakadi.partitioning.PartitioningKeyFieldsPartitioningStrategy;
-import de.zalando.aruha.nakadi.partitioning.PartitioningStrategy;
+import de.zalando.aruha.nakadi.exceptions.PartitioningException;
+import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
@@ -47,17 +46,20 @@ public class EventPublishingController {
 
     private final TopicRepository topicRepository;
     private final EventTypeRepository eventTypeRepository;
-    private final PartitioningStrategy partitioningKeyFieldsPartitioningStrategy = new PartitioningKeyFieldsPartitioningStrategy();
     private final EventTypeCache cache;
     private final MetricRegistry metricRegistry;
+    private final PartitionResolver partitionResolver;
 
     public EventPublishingController(final TopicRepository topicRepository,
                                      final EventTypeRepository eventTypeRepository,
-                                     final EventTypeCache cache, final MetricRegistry metricRegistry) {
+                                     final EventTypeCache cache,
+                                     final MetricRegistry metricRegistry,
+                                     final PartitionResolver partitionResolver) {
         this.topicRepository = topicRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.cache = cache;
         this.metricRegistry = metricRegistry;
+        this.partitionResolver = partitionResolver;
     }
 
     @Timed(name = "post_events", absolute = true)
@@ -73,7 +75,7 @@ public class EventPublishingController {
             return doWithMetrics(eventTypeName, startingTime, () -> {
                 final JSONObject eventAsJson = parseJson(event);
                 validateSchema(eventAsJson, eventType);
-                String partitionId = applyPartitioningStrategy(eventType, eventAsJson);
+                String partitionId = partitionResolver.resolvePartition(eventType, eventAsJson);
 
                 topicRepository.postEvent(eventTypeName, partitionId, event);
 
@@ -86,22 +88,13 @@ public class EventPublishingController {
         } catch (final EventValidationException e) {
             LOG.debug("Event validation error: {}", e.getMessage());
             return create(e.asProblem(), nativeWebRequest);
+        } catch (final PartitioningException e) {
+            LOG.debug("Event partitioning error: {}", e.getMessage());
+            return create(e.asProblem(), nativeWebRequest);
         } catch (final NakadiException e) {
             LOG.error("error posting to partition", e);
             return create(e.asProblem(), nativeWebRequest);
         }
-    }
-
-    private String applyPartitioningStrategy(final EventType eventType, final JSONObject eventAsJson) throws InvalidPartitioningKeyFieldsException, NakadiException {
-        String partitionId;
-        if (!eventType.getPartitioningKeyFields().isEmpty()) {
-            final List<String> partitions = topicRepository.listPartitionNames(eventType.getName());
-            partitionId = partitioningKeyFieldsPartitioningStrategy.calculatePartition(eventType, eventAsJson, partitions);
-        } else {
-            // Will be replaced later:
-            partitionId = "0";
-        }
-        return partitionId;
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException, InternalNakadiException {
