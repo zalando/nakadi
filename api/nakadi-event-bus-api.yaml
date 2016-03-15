@@ -1282,7 +1282,7 @@ definitions:
         type: string
         format: uuid
         description: |
-          eid of the corresponding item.
+          eid of the corresponding item. Will be absent if missing on the incoming Event.
       publishing_status:
         type: string
         enum:
@@ -1318,5 +1318,4 @@ definitions:
           Human readable information about the failure on this item. Items that are not SUBMITTED should have
           a description.
     required:
-      - eid
       - publishing_status
