@@ -154,9 +154,9 @@ public class EventTypeController {
 
                 if (hasReservedField(eventType, schemaAsJson, "metadata")) {
                     throw new InvalidEventTypeException("\"metadata\" property is reserved");
-                } else {
-                    SchemaLoader.load(schemaAsJson);
                 }
+
+                SchemaLoader.load(schemaAsJson);
             } catch (JSONException e) {
                 throw new InvalidEventTypeException("schema must be a valid json");
             } catch (SchemaException e) {
