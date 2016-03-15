@@ -1290,9 +1290,11 @@ definitions:
           - SUBMITTED
           - ABORTED
         description: |
-          Indicator of the submission of the Event. SUBMITTED indicates successful submission, including commit on he underlying broker. FAILED indicates the message submission was not possible and can be resubmitted if so desired.
-
-          ABORTED indicates that no further attempt at publishing the affected item was attempted because of a failure on another item.
+          Indicator of the submission of the Event within a Batch.
+          - SUBMITTED indicates successful submission, including commit on he underlying broker.
+          - FAILED indicates the message submission was not possible and can be resubmitted if so desired.
+          - ABORTED indicates that no further attempt at publishing the affected item was attempted because
+            of a failure on another item.
       step:
         type: string
         enum:
@@ -1304,11 +1306,17 @@ definitions:
         description: |
           Indicator of the last step in the pulbishing process this Event reached.
 
-          Items that are not SUBMITTED should have an indication of the last step in processing.
+          Items that are not SUBMITTED will have an indication of the last step in processing.
+
+          - NONE indicates that nothing was yet attempted for the publishing of this Event. Should be present
+            only in the case of aborting the publishing during the validation of another (previous) Event.
+          - VALIDATION, ENRICHMENT, PARTITIONING and PUBLISHING indicate all the corresponding steps of the
+            publishing process.
       detail:
         type: string
         description: |
-          Human readable information about the failure on this item. Items that are not SUBMITTED should have a description.
+          Human readable information about the failure on this item. Items that are not SUBMITTED should have
+          a description.
     required:
       - eid
       - publishing_status
