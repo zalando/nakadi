@@ -78,8 +78,6 @@ info:
 
     Notable omissions here are:
 
-    * Submission of events in batched manner.
-
     * The contract between Nakadi and clients in the context of the high-level API (i.e. the process for
     clients to establish subscriptions).
 
