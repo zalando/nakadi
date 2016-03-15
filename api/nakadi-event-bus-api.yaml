@@ -462,7 +462,9 @@ paths:
           in: body
           description: The Event being published
           schema:
-            $ref: '#/definitions/Event'
+            type: array
+            items:
+              $ref: '#/definitions/Event'
           required: true
       responses:
         '200':
