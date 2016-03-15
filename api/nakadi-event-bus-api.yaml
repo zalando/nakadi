@@ -78,8 +78,6 @@ info:
 
     Notable omissions here are:
 
-    * Submission of events in batched manner.
-
     * The contract between Nakadi and clients in the context of the high-level API (i.e. the process for
     clients to establish subscriptions).
 
@@ -416,28 +414,36 @@ paths:
       security:
         - oauth2: ['nakadi_event_stream.write']
       description: |
-        Publishes one `Event` of this `EventType`. (**Note** *Format and response semantics of publishing of
-        batches of Events will be added in the short term.*)
+        Publishes a batch of `Event`s of this `EventType`. All items must be of the EventType identified
+        by `name`.
 
         Reception of Events will always respect the configuration of its `EventType` w.r.t. validation,
         enrichment and partitioning. The steps performed on reception of incoming message are:
 
         1. Every validation rule specified in the `EventType` will be checked in order against the incoming
         Events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
-        in the first case of failure with a status of 400 Bad request. If the offending validation rule
-        provides information about the violation it will be included in the Problem response.
+        in the first case of failure. If the offending validation rule
+        provides information about the violation it will be included in the `BatchItemResponse`.
         If the `EventType` defines schema validation it will be performed at this moment.
 
         1. Once the validation succeeded, the content of the Event is updated according to the enrichment
         rules in the order the rules are defined in the `EventType`.
         No preexisting value might be changed (even if added by an enrichment rule). Violations on this will
-        force the immediate **rejection** of the Event with a 409 Conflict status. The invalid overwrite
-        attempt will be included in the response's Problem object.
+        force the immediate **rejection** of the Event. The invalid overwrite
+        attempt will be included in the item's `BatchItemResponse` object.
 
         1. The incoming Event's relative ordering is evaluated according to the rule on the
         `EventType`. Failure to evaluate the rule will **reject** the Event.
-        **Restriction**: POSTing Events based on its `EventType` requires it to have a
-        `PartitioningStrategy` defined. Violating this condition will produce a 405 Not allowed.
+
+        The response in successful operation is an array of same length as the input, including a
+        `BatchItemResponse` corresponding to each item's status.
+
+        Given the batched nature of this operation, any violation on validation or failures on enrichment or
+        partitioning will cause the whole batch to be rejected, i.e. none of its elements are pushed to the
+        underlying broker.
+
+        Failures on writing of specific partitions to the broker might influence other partitions. Failures
+        at this stage will fail only the affected partitions.
 
       parameters:
         - name: name
@@ -456,11 +462,17 @@ paths:
           in: body
           description: The Event being published
           schema:
-            $ref: '#/definitions/Event'
+            type: array
+            items:
+              $ref: '#/definitions/Event'
           required: true
       responses:
         '200':
           description: Ok
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/BatchItemResponse'
         '400':
           description: Bad request
           schema:
@@ -481,10 +493,6 @@ paths:
           description: Conflict.
           schema:
               $ref: '#/definitions/Problem'
-        '422':
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
         '500':
           description: Server error
           schema:
@@ -1260,3 +1268,50 @@ definitions:
         description: Documentation for the enrichment.
     required:
       - name
+
+
+  BatchItemResponse:
+    description: |
+      A status corresponding to one individual Event's publishing attempt.
+    properties:
+      eid:
+        type: string
+        format: uuid
+        description: |
+          eid of the corresponding item. Will be absent if missing on the incoming Event.
+      publishing_status:
+        type: string
+        enum:
+          - SUBMITTED
+          - FAILED
+          - ABORTED
+        description: |
+          Indicator of the submission of the Event within a Batch.
+          - SUBMITTED indicates successful submission, including commit on he underlying broker.
+          - FAILED indicates the message submission was not possible and can be resubmitted if so desired.
+          - ABORTED indicates that the submission of this item was not attempted any further due to a failure
+            on another item in the batch.
+      step:
+        type: string
+        enum:
+          - NONE
+          - VALIDATION
+          - ENRICHMENT
+          - PARTITIONING
+          - PUBLISHING
+        description: |
+          Indicator of the step in the pulbishing process this Event reached.
+
+          In Items that FAILED means the step of the failure.
+
+          - NONE indicates that nothing was yet attempted for the publishing of this Event. Should be present
+            only in the case of aborting the publishing during the validation of another (previous) Event.
+          - VALIDATION, ENRICHMENT, PARTITIONING and PUBLISHING indicate all the corresponding steps of the
+            publishing process.
+      detail:
+        type: string
+        description: |
+          Human readable information about the failure on this item. Items that are not SUBMITTED should have
+          a description.
+    required:
+      - publishing_status
