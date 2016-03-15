@@ -493,10 +493,6 @@ paths:
           description: Conflict.
           schema:
               $ref: '#/definitions/Problem'
-        '422':
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
         '500':
           description: Server error
           schema:
@@ -1286,15 +1282,15 @@ definitions:
       publishing_status:
         type: string
         enum:
-          - FAILED
           - SUBMITTED
+          - FAILED
           - ABORTED
         description: |
           Indicator of the submission of the Event within a Batch.
           - SUBMITTED indicates successful submission, including commit on he underlying broker.
           - FAILED indicates the message submission was not possible and can be resubmitted if so desired.
-          - ABORTED indicates that no further attempt at publishing the affected item was attempted because
-            of a failure on another item.
+          - ABORTED indicates that the submission of this item was not attempted any further due to a failure
+            on another item in the batch.
       step:
         type: string
         enum:
@@ -1304,9 +1300,9 @@ definitions:
           - PARTITIONING
           - PUBLISHING
         description: |
-          Indicator of the last step in the pulbishing process this Event reached.
+          Indicator of the step in the pulbishing process this Event reached.
 
-          Items that are not SUBMITTED will have an indication of the last step in processing.
+          In Items that FAILED means the step of the failure.
 
           - NONE indicates that nothing was yet attempted for the publishing of this Event. Should be present
             only in the case of aborting the publishing during the validation of another (previous) Event.
