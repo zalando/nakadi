@@ -7,8 +7,6 @@
 Nakadi Event Bus
 =====================
 
-> This is a prototype and a proof of concept project for now implemented in python.
-
 The goal of the `nakadi` project (ნაკადი means `stream` in Georgian language) is to build an event bus infrastructure to:
 
 *  enable convenient development of event-driven applications
@@ -29,13 +27,13 @@ Additional topics, that we plan to cover in the near future are:
 
 > NOTE: it is not really clear if the resource schema discoverability service should be part of `nakadi` event bus
 
-What does the prototype already have?
-=====================================
+What does the project already implement?
+========================================
 
 * [x] REST abstraction over Kafka-like queues
-* [ ] support of event filtering per Subscription
+* [ ] support of event filtering per subscriptions
 * streaming/batching of events to/from the clients
-  * [ ] creation of topics
+  * [x] creation of topics
   * [x] low-level interface
     * manual client side partition management is needed
     * no support of commits
@@ -50,18 +48,20 @@ To run the project locally
 
 Simple Nakadi startup:
 
-    ./gradlew startDockerContainer
-    
+```sh
+./gradlew startDockerContainer
+```
+
 It will start a docker container with all dependencies and another docker container running Nakadi itself. Please be
 aware that the ports 8080 (Nakadi), 5432 (PostgreSQL), 9092 (Kafka) and 2181 (Zookeeper) are needed and must not be
 blocked by another application.
 
 To stop the running Nakadi again:
 
-    ./gradlew stopAndRemoveDockerContainer
+```sh
+./gradlew stopAndRemoveDockerContainer
+```
 
 Full development pipeline:
 
-    build -> ut/it tests (depends on access to a kafka backend) -> docker (builds docker image) -> api-tests (runs tests against the docker image)
-
-
+    build -> ut/it tests (depends on access to a Kafka backend) -> docker (builds docker image) -> api-tests (runs tests against the docker image)
