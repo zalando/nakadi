@@ -4,7 +4,7 @@
 
 [![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-jvm/api/nakadi-event-bus-api.yaml)](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-jvm/api/nakadi-event-bus-api.yaml)
 
-# Nakadi Event Bus
+## Nakadi Event Bus
 
 The goal of the `nakadi` project (ნაკადი means `stream` in Georgian language) is to build an event bus infrastructure to:
 
@@ -26,7 +26,7 @@ Additional topics, that we plan to cover in the near future are:
 
 > NOTE: it is not really clear if the resource schema discoverability service should be part of `nakadi` event bus
 
-## What does the project already implement?
+### What does the project already implement?
 
 * [x] REST abstraction over Kafka-like queues
 * [ ] support of event filtering per subscriptions
@@ -39,9 +39,9 @@ Additional topics, that we plan to cover in the near future are:
     * automatic redistribution of partitions between consuming clients
     * commits should be issued to move server-side cursors
 
-# Running it locally
+## Running it locally
 
-## To run the project locally
+### To run the project locally
 
 Simple Nakadi startup:
 
@@ -59,13 +59,13 @@ To stop the running Nakadi again:
 ./gradlew stopAndRemoveDockerContainer
 ```
 
-## Full development pipeline:
+### Full development pipeline:
 
     build -> ut/it tests (depends on access to a Kafka backend) -> docker (builds docker image) -> api-tests (runs tests against the docker image)
 
-# Usage
+## Usage
 
-## Create new event type (business event)
+### Create new event type (business event)
 
 ```sh
 curl --request POST \
@@ -83,7 +83,7 @@ curl --request POST \
 }'
 ```
 
-## Get existing event types
+### Get existing event types
 
 ```sh
 curl --request GET \
@@ -91,7 +91,7 @@ curl --request GET \
      http://localhost:8080/event-types
 ```
 
-## Get event type schema
+### Get event type schema
 
 ```sh
 curl --request GET \
@@ -99,7 +99,7 @@ curl --request GET \
      http://localhost:8080/event-types/order.ORDER_RECEIVED
 ```
 
-## Get all partitions for event type
+### Get all partitions for event type
 
 ```sh
 curl --request GET \
@@ -108,7 +108,7 @@ curl --request GET \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions
 ```
 
-## Get single partition for event type
+### Get single partition for event type
 
 ```sh
 curl --request GET \
@@ -117,7 +117,7 @@ curl --request GET \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions/0
 ```
 
-## Publish event
+### Publish event
 
 ```sh
 curl --request POST \
@@ -127,7 +127,7 @@ curl --request POST \
      -d '{ "order_number": "ORDER_ONE", "metadata": { "eid": "39ac3332-eb00-11e5-91fe-1c6f65464fc6", "occurred_at": "2016-03-15T23:47:15+01:00" } }'
 ```
 
-## Receive event stream
+### Receive event stream
 
 Lookup the partition cursors with `/event-types/order.ORDER_RECEIVED/partitions` in order to provide a valid `X-Nakadi-Cursors` header.
 
