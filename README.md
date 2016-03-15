@@ -68,7 +68,10 @@ To stop the running Nakadi again:
 ## Create new event type (business event)
 
 ```sh
-curl --request POST --header "Authorization: Bearer $TOKEN" --header "Content-Type:application/json" http://localhost:8080/event-types -d '{
+curl --request POST \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types -d '{
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
   "category": "business",
@@ -83,31 +86,45 @@ curl --request POST --header "Authorization: Bearer $TOKEN" --header "Content-Ty
 ## Get existing event types
 
 ```sh
-curl --request GET --header "Authorization: Bearer $TOKEN" http://localhost:8080/event-types
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     http://localhost:8080/event-types
 ```
 
 ## Get event type schema
 
 ```sh
-curl --request GET --header "Authorization: Bearer $TOKEN" http://localhost:8080/event-types/order.ORDER_RECEIVED
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED
 ```
 
 ## Get all partitions for event type
 
 ```sh
-curl --request GET --header "Authorization: Bearer $TOKEN" --header "Content-Type:application/json" http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions
 ```
 
 ## Get single partition for event type
 
 ```sh
-curl --request GET --header "Authorization: Bearer $TOKEN" --header "Content-Type:application/json" http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions/0
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions/0
 ```
 
 ## Publish event
 
 ```sh
-curl --request POST --header "Authorization: Bearer $TOKEN" --header "Content-Type:application/json" http://localhost:8080/event-types/order.ORDER_RECEIVED/events -d '{ "order_number": "ORDER_ONE", "metadata": { "eid": "39ac3332-eb00-11e5-91fe-1c6f65464fc6", "occurred_at": "2016-03-15T23:47:15+01:00" } }'
+curl --request POST \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
+     -d '{ "order_number": "ORDER_ONE", "metadata": { "eid": "39ac3332-eb00-11e5-91fe-1c6f65464fc6", "occurred_at": "2016-03-15T23:47:15+01:00" } }'
 ```
 
 ## Receive event stream
@@ -115,13 +132,21 @@ curl --request POST --header "Authorization: Bearer $TOKEN" --header "Content-Ty
 Lookup the partition cursors with `/event-types/order.ORDER_RECEIVED/partitions` in order to provide a valid `X-Nakadi-Cursors` header.
 
 ```sh
-curl --request GET --header "Authorization: Bearer $TOKEN" --header "Content-Type:application/json" --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"0"}]' http://localhost:8080/event-types/order.ORDER_RECEIVED/events
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"0"}]' \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/events
 ```
 
 The stream contains events together with the cursors, so that clients can remember which events have already been consumed and navigate through the stream. Example:
 
 ```sh
-$ curl --request GET --header "Authorization: Bearer $TOKEN" --header "Content-Type:application/json" --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"3"}]' http://localhost:8080/event-types/order.ORDER_RECEIVED/events
+$ curl --request GET \
+       --header "Authorization: Bearer $TOKEN" \
+       --header "Content-Type:application/json" \
+       --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"3"}]' \
+       http://localhost:8080/event-types/order.ORDER_RECEIVED/events
 {"cursor":{"partition":"0","offset":"4"},"events":[{"order_number": "ORDER_001", "metadata": {"eid": "4ae5011e-eb01-11e5-8b4a-1c6f65464fc6", "occurred_at": "2016-03-15T23:56:11+01:00"}}]}
 {"cursor":{"partition":"0","offset":"5"},"events":[{"order_number": "ORDER_002", "metadata": {"eid": "4bea74a4-eb01-11e5-9efa-1c6f65464fc6", "occurred_at": "2016-03-15T23:57:15+01:00"}}]}
 {"cursor":{"partition":"0","offset":"6"},"events":[{"order_number": "ORDER_003", "metadata": {"eid": "4cc6d2f0-eb01-11e5-b606-1c6f65464fc6", "occurred_at": "2016-03-15T23:58:15+01:00"}}]}
