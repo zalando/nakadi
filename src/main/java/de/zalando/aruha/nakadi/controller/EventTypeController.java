@@ -185,8 +185,12 @@ public class EventTypeController {
     }
 
     private void validateSchemaChange(final EventType eventType, final EventType existingEventType) throws InvalidEventTypeException {
-        boolean existingNonNullSchemaChanged = existingEventType.getSchema() != null && !existingEventType.getSchema().equals(eventType.getSchema());
-        boolean existingNullSchemaChanged = existingEventType.getSchema() == null && eventType.getSchema() != null;
+        final boolean existingNonNullSchemaChanged =
+                existingEventType.getSchema() != null && !existingEventType.getSchema().equals(eventType.getSchema());
+
+        final boolean existingNullSchemaChanged =
+                existingEventType.getSchema() == null && eventType.getSchema() != null;
+
 
         if (existingNonNullSchemaChanged || existingNullSchemaChanged) {
             throw new InvalidEventTypeException("schema must not be changed");
