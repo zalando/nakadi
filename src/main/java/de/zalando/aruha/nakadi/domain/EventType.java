@@ -6,7 +6,6 @@ import com.google.common.collect.Lists;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
-import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +30,6 @@ public class EventType {
 
     private List<String> partitioningKeyFields;
 
-    @NotNull
     @Valid
     private EventTypeSchema schema;
 
