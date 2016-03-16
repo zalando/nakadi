@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.validation;
 
-import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import org.json.JSONArray;
@@ -19,12 +18,6 @@ public class EventValidation {
             final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
             vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
             etv.withConfiguration(vsc);
-        }
-
-        if (eventType.getCategory() == EventCategory.BUSINESS || eventType.getCategory() == EventCategory.DATA) {
-            final ValidationStrategyConfiguration metadataConf = new ValidationStrategyConfiguration();
-            metadataConf.setStrategyName(EventMetadataValidationStrategy.NAME);
-            etv.withConfiguration(metadataConf);
         }
 
         return etv;
@@ -78,7 +71,8 @@ public class EventValidation {
                 .put("enum", Arrays.asList(new String[] { eventType.getName() }));
         final JSONObject string = new JSONObject().put("type", "string");
         final JSONObject dateTime = new JSONObject()
-                .put("type", "string");
+                .put("type", "string")
+                .put("format", "date-time");
 
         metadataProperties.put("eid", uuid);
         metadataProperties.put("event_type", eventTypeString);

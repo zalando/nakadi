@@ -7,7 +7,6 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
 import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
-import de.zalando.aruha.nakadi.validation.EventMetadataValidationStrategy;
 import de.zalando.aruha.nakadi.validation.ValidationStrategy;
 import org.apache.curator.framework.CuratorFramework;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +40,6 @@ public class RepositoriesConfig {
         final EventTypeCache cache = new EventTypeCache(dbRepo(), client);
 
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
-        ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
 
         return new EventTypeCache(dbRepo(), client);
     }
