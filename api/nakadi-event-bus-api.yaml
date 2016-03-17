@@ -435,9 +435,6 @@ paths:
         1. The incoming Event's relative ordering is evaluated according to the rule on the
         `EventType`. Failure to evaluate the rule will **reject** the Event.
 
-        The response in successful operation is an array of same length as the input, including a
-        `BatchItemResponse` corresponding to each item's status.
-
         Given the batched nature of this operation, any violation on validation or failures on enrichment or
         partitioning will cause the whole batch to be rejected, i.e. none of its elements are pushed to the
         underlying broker.
