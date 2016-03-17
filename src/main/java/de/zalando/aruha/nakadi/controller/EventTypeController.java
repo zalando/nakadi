@@ -163,18 +163,20 @@ public class EventTypeController {
     }
 
     private void validateSchema(final EventType eventType) throws InvalidEventTypeException {
-        try {
-            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+        if (eventType.getSchema() != null) {
+            try {
+                final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
-            if (hasReservedField(eventType, schemaAsJson, "metadata")) {
-                throw new InvalidEventTypeException("\"metadata\" property is reserved");
-            } else {
+                if (hasReservedField(eventType, schemaAsJson, "metadata")) {
+                    throw new InvalidEventTypeException("\"metadata\" property is reserved");
+                }
+
                 SchemaLoader.load(schemaAsJson);
+            } catch (JSONException e) {
+                throw new InvalidEventTypeException("schema must be a valid json");
+            } catch (SchemaException e) {
+                throw new InvalidEventTypeException("schema must be a valid json-schema");
             }
-        } catch (JSONException e) {
-            throw new InvalidEventTypeException("schema must be a valid json");
-        } catch (SchemaException e) {
-            throw new InvalidEventTypeException("schema must be a valid json-schema");
         }
     }
 
@@ -198,7 +200,14 @@ public class EventTypeController {
     }
 
     private void validateSchemaChange(final EventType eventType, final EventType existingEventType) throws InvalidEventTypeException {
-        if (!existingEventType.getSchema().equals(eventType.getSchema())) {
+        final boolean existingNonNullSchemaChanged =
+                existingEventType.getSchema() != null && !existingEventType.getSchema().equals(eventType.getSchema());
+
+        final boolean existingNullSchemaChanged =
+                existingEventType.getSchema() == null && eventType.getSchema() != null;
+
+
+        if (existingNonNullSchemaChanged || existingNullSchemaChanged) {
             throw new InvalidEventTypeException("schema must not be changed");
         }
     }

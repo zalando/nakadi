@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.validation;
 
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import org.json.JSONArray;
@@ -13,10 +14,20 @@ import java.util.Set;
 public class EventValidation {
     public static EventTypeValidator forType(final EventType eventType) {
         final EventTypeValidator etv = new EventTypeValidator(eventType);
-        final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
-        vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
 
-        return etv.withConfiguration(vsc);
+        if (eventType.getSchema() != null) {
+            final ValidationStrategyConfiguration vsc = new ValidationStrategyConfiguration();
+            vsc.setStrategyName(EventBodyMustRespectSchema.NAME);
+            etv.withConfiguration(vsc);
+        }
+
+        if (eventType.getCategory() == EventCategory.BUSINESS || eventType.getCategory() == EventCategory.DATA) {
+            final ValidationStrategyConfiguration metadataConf = new ValidationStrategyConfiguration();
+            metadataConf.setStrategyName(EventMetadataValidationStrategy.NAME);
+            etv.withConfiguration(metadataConf);
+        }
+
+        return etv;
     }
 
     public static JSONObject effectiveSchema(final EventType eventType) throws JSONException {
@@ -67,8 +78,7 @@ public class EventValidation {
                 .put("enum", Arrays.asList(new String[] { eventType.getName() }));
         final JSONObject string = new JSONObject().put("type", "string");
         final JSONObject dateTime = new JSONObject()
-                .put("type", "string")
-                .put("pattern", "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T| )[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$");
+                .put("type", "string");
 
         metadataProperties.put("eid", uuid);
         metadataProperties.put("event_type", eventTypeString);

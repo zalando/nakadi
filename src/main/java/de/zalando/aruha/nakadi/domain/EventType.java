@@ -36,7 +36,6 @@ public class EventType {
     @Nullable
     private List<String> partitioningKeyFields;
 
-    @NotNull
     @Valid
     private EventTypeSchema schema;
 

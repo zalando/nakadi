@@ -4,10 +4,7 @@
 
 [![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-jvm/api/nakadi-event-bus-api.yaml)](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-jvm/api/nakadi-event-bus-api.yaml)
 
-Nakadi Event Bus
-=====================
-
-> This is a prototype and a proof of concept project for now implemented in python.
+## Nakadi Event Bus
 
 The goal of the `nakadi` project (ნაკადი means `stream` in Georgian language) is to build an event bus infrastructure to:
 
@@ -29,13 +26,12 @@ Additional topics, that we plan to cover in the near future are:
 
 > NOTE: it is not really clear if the resource schema discoverability service should be part of `nakadi` event bus
 
-What does the prototype already have?
-=====================================
+### What does the project already implement?
 
 * [x] REST abstraction over Kafka-like queues
-* [ ] support of event filtering per Subscription
+* [ ] support of event filtering per subscriptions
 * streaming/batching of events to/from the clients
-  * [ ] creation of topics
+  * [x] creation of topics
   * [x] low-level interface
     * manual client side partition management is needed
     * no support of commits
@@ -43,25 +39,116 @@ What does the prototype already have?
     * automatic redistribution of partitions between consuming clients
     * commits should be issued to move server-side cursors
 
-Running it locally
-==================
+## Running it locally
 
-To run the project locally
+### To run the project locally
 
 Simple Nakadi startup:
 
-    ./gradlew startDockerContainer
-    
+```sh
+./gradlew startDockerContainer
+```
+
 It will start a docker container with all dependencies and another docker container running Nakadi itself. Please be
 aware that the ports 8080 (Nakadi), 5432 (PostgreSQL), 9092 (Kafka) and 2181 (Zookeeper) are needed and must not be
 blocked by another application.
 
 To stop the running Nakadi again:
 
-    ./gradlew stopAndRemoveDockerContainer
+```sh
+./gradlew stopAndRemoveDockerContainer
+```
 
-Full development pipeline:
+### Full development pipeline:
 
-    build -> ut/it tests (depends on access to a kafka backend) -> docker (builds docker image) -> api-tests (runs tests against the docker image)
+    build -> ut/it tests (depends on access to a Kafka backend) -> docker (builds docker image) -> api-tests (runs tests against the docker image)
 
+## Usage
 
+### Create new event type (business event)
+
+```sh
+curl --request POST \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types -d '{
+  "name": "order.ORDER_RECEIVED",
+  "owning_application": "order-service",
+  "category": "business",
+  "partitioning_key_fields": [],
+  "schema": {
+    "type": "json_schema",
+    "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }"
+  }
+}'
+```
+
+### Get existing event types
+
+```sh
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     http://localhost:8080/event-types
+```
+
+### Get event type schema
+
+```sh
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED
+```
+
+### Get all partitions for event type
+
+```sh
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions
+```
+
+### Get single partition for event type
+
+```sh
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions/0
+```
+
+### Publish event
+
+```sh
+curl --request POST \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
+     -d '{ "order_number": "ORDER_ONE", "metadata": { "eid": "39ac3332-eb00-11e5-91fe-1c6f65464fc6", "occurred_at": "2016-03-15T23:47:15+01:00" } }'
+```
+
+### Receive event stream
+
+Lookup the partition cursors with `/event-types/order.ORDER_RECEIVED/partitions` in order to provide a valid `X-Nakadi-Cursors` header.
+
+```sh
+curl --request GET \
+     --header "Authorization: Bearer $TOKEN" \
+     --header "Content-Type:application/json" \
+     --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"0"}]' \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/events
+```
+
+The stream contains events together with the cursors, so that clients can remember which events have already been consumed and navigate through the stream. Example:
+
+```sh
+$ curl --request GET \
+       --header "Authorization: Bearer $TOKEN" \
+       --header "Content-Type:application/json" \
+       --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"3"}]' \
+       http://localhost:8080/event-types/order.ORDER_RECEIVED/events
+{"cursor":{"partition":"0","offset":"4"},"events":[{"order_number": "ORDER_001", "metadata": {"eid": "4ae5011e-eb01-11e5-8b4a-1c6f65464fc6", "occurred_at": "2016-03-15T23:56:11+01:00"}}]}
+{"cursor":{"partition":"0","offset":"5"},"events":[{"order_number": "ORDER_002", "metadata": {"eid": "4bea74a4-eb01-11e5-9efa-1c6f65464fc6", "occurred_at": "2016-03-15T23:57:15+01:00"}}]}
+{"cursor":{"partition":"0","offset":"6"},"events":[{"order_number": "ORDER_003", "metadata": {"eid": "4cc6d2f0-eb01-11e5-b606-1c6f65464fc6", "occurred_at": "2016-03-15T23:58:15+01:00"}}]}
+{"cursor":{"partition":"0","offset":"6"}}
+```
