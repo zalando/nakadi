@@ -1196,7 +1196,8 @@ definitions:
         properties:
           default:
             description: |
-              Default (initial) statistics set on the EventType.
+              Default (initial) statistics set on the EventType. These values, if set by the EventType owner
+              can be estimatives of the expected values.
             $ref: '#/definitions/EventTypeStatistics'
 
     required:
@@ -1228,12 +1229,28 @@ definitions:
     properties:
       expected_write_rate:
         type: integer
-      expected_message_size:
+        description: |
+          Write rate for events of this EventType. This rate encompasses all producers of this EventType for
+          a Nakadi cluster.
+
+          Measured in kb/minutes.
+
+      message_size:
         type: integer
-      expected_read_parallelism:
+        description: |
+          Average message size for each Event of this EventType. Includes in the count the whole serialized
+          form of the event, including metadata.
+          Measured in bytes.
+
+      read_parallelism:
         type: integer
-      expected_write_parallelism:
+        description: |
+          Amount of parallel consumers to this EventType.
+
+      write_parallelism:
         type: integer
+        description: |
+          Amount of parallel writes to this EventType.
 
   EventValidationStrategy:
     description: |
