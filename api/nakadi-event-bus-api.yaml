@@ -846,7 +846,7 @@ definitions:
       dependent on the configured enrichment as well.
 
       For explanation on default configurations of validation and enrichment, see documentation of
-      `EventType.type`.
+      `EventType.category`.
 
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
