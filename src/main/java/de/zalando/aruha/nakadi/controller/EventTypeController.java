@@ -79,7 +79,7 @@ public class EventTypeController {
             return status(HttpStatus.CREATED).build();
         } catch (final InvalidEventTypeException | NoSuchPartitioningStrategyException |
                 DuplicatedEventTypeNameException e) {
-            LOG.warn(e.getMessage(), e);
+            LOG.debug("Failed to create EventType.", e);
             return create(e.asProblem(), nativeWebRequest);
         } catch (final TopicCreationException e) {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
