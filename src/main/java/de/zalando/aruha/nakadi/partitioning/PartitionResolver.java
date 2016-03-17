@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Map;
 
 import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.DUMMY_STRATEGY;
-import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.PARTITIONING_KEYS_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
 
 public class PartitionResolver {
 
     private static Map<String, PartitioningStrategy> PARTITIONING_STRATEGIES = ImmutableMap.of(
-            PARTITIONING_KEYS_STRATEGY, new PartitioningKeyFieldsPartitioningStrategy(),
-            DUMMY_STRATEGY, new DummyPartitioningStrategy()
+            HASH_STRATEGY, new HashPartitioningStrategy(),
+            DUMMY_STRATEGY, (eventType, event, partitions) -> "0"
     );
 
     private final TopicRepository topicRepository;

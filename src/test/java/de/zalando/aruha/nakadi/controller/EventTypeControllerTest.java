@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.controller;
 
-import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.PARTITIONING_KEYS_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 import static org.mockito.Matchers.any;
@@ -175,7 +175,7 @@ public class EventTypeControllerTest {
     @Test
     public void whenPostWithKnownPartitioningStrategyThenReturn201() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(PARTITIONING_KEYS_STRATEGY, null);
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(HASH_STRATEGY, null);
         eventType.setPartitionResolutionStrategy(strategy);
 
         postEventType(eventType)

@@ -6,13 +6,12 @@ import de.zalando.aruha.nakadi.domain.PartitionResolutionStrategy;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.PartitioningException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
-import org.hamcrest.Matchers;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.PARTITIONING_KEYS_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Matchers.any;
@@ -33,7 +32,7 @@ public class PartitionResolverTest {
 
         final EventType eventType = new EventType();
         eventType.setPartitioningKeyFields(ImmutableList.of("abc"));
-        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(PARTITIONING_KEYS_STRATEGY, null);
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(HASH_STRATEGY, null);
         eventType.setPartitionResolutionStrategy(strategy);
 
         final JSONObject event = new JSONObject();
