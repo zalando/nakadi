@@ -1,64 +1,12 @@
 package de.zalando.aruha.nakadi.controller;
 
-import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import static org.springframework.http.MediaType.APPLICATION_JSON;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-
-import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
-import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
-
-import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
-
-import java.util.Arrays;
-
-import javax.ws.rs.core.Response;
-
-import de.zalando.aruha.nakadi.domain.PartitionResolutionStrategy;
-import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
-import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
-import org.json.JSONObject;
-
-import org.junit.Test;
-
-import org.mockito.Mockito;
-
-import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-
-import org.springframework.validation.Errors;
-import org.springframework.validation.FieldError;
-
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.PartitionResolutionStrategy;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -66,6 +14,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
+import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -89,6 +38,7 @@ import javax.ws.rs.core.Response;
 import java.util.Arrays;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
