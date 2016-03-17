@@ -11,6 +11,7 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
+import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
@@ -76,13 +77,19 @@ public class NakadiConfig {
     }
 
     @Bean
+    public PartitionResolver partitionResolver() {
+        return new PartitionResolver(topicRepository);
+    }
+
+    @Bean
     public PartitionsController partitionsController() {
         return new PartitionsController(topicRepository);
     }
 
     @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(topicRepository, eventTypeRepository, eventTypeCache, METRIC_REGISTRY);
+        return new EventPublishingController(topicRepository, eventTypeRepository, eventTypeCache, METRIC_REGISTRY,
+                partitionResolver());
     }
 
     private static MetricRegistry createMetricRegistry() {

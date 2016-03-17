@@ -8,6 +8,7 @@ import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.InMemoryTopicRepository;
@@ -85,7 +86,10 @@ public class EventPublishingControllerTest {
                 .getValidator(anyString());
 
         metricRegistry = new MetricRegistry();
-        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository, cache, metricRegistry);
+
+        final PartitionResolver partitionResolver = new PartitionResolver(topicRepository);
+        final EventPublishingController controller = new EventPublishingController(topicRepository, eventTypeRepository,
+                cache, metricRegistry, partitionResolver);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)

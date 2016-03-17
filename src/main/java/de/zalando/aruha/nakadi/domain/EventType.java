@@ -3,6 +3,7 @@ package de.zalando.aruha.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.Lists;
 
+import javax.annotation.Nullable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
@@ -28,6 +29,11 @@ public class EventType {
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
+    @Valid
+    @Nullable
+    private PartitionResolutionStrategy partitionResolutionStrategy;
+
+    @Nullable
     private List<String> partitioningKeyFields;
 
     @Valid
@@ -55,6 +61,15 @@ public class EventType {
 
     public List<ValidationStrategyConfiguration> getValidationStrategies() {
         return validationStrategies;
+    }
+
+    @Nullable
+    public PartitionResolutionStrategy getPartitionResolutionStrategy() {
+        return partitionResolutionStrategy;
+    }
+
+    public void setPartitionResolutionStrategy(@Nullable final PartitionResolutionStrategy partitionResolutionStrategy) {
+        this.partitionResolutionStrategy = partitionResolutionStrategy;
     }
 
     public EventTypeSchema getSchema() {

@@ -96,7 +96,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // get offsets for all partitions
         jsonRequestSpec().when().get("/event-types/" + TEST_EVENT_TYPE + "/partitions").then().statusCode(OK.value())
-                         .and().body("size()", equalTo(8)).body("partition[0]", notNullValue())
+                         .and().body("size()", equalTo(1)).body("partition[0]", notNullValue())
                          .body("oldest_available_offset[0]", notNullValue()).body("newest_available_offset[0]",
                              notNullValue());
 

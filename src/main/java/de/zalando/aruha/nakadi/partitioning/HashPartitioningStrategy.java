@@ -11,7 +11,7 @@ import java.util.List;
 import static de.zalando.aruha.nakadi.exceptions.ExceptionWrapper.wrapFunction;
 import static java.lang.Math.abs;
 
-public class PartitioningKeyFieldsPartitioningStrategy implements PartitioningStrategy {
+public class HashPartitioningStrategy implements PartitioningStrategy {
 
     @Override
     public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions) throws InvalidPartitioningKeyFieldsException {

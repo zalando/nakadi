@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.exceptions;
 
-public class InvalidPartitioningKeyFieldsException extends InternalNakadiException {
+public class InvalidPartitioningKeyFieldsException extends PartitioningException {
     public InvalidPartitioningKeyFieldsException(final String message) {
         super(message);
     }

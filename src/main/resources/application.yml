@@ -20,7 +20,7 @@ spring:
 nakadi:
   topic:
     default:
-      partitionNum: 8
+      partitionNum: 1
       replicaFactor: 1
       retentionMs: 172800000 # 2 days
       rotationMs: 86400000 # 1 day

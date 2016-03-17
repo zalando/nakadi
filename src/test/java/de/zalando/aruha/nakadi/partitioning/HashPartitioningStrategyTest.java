@@ -33,7 +33,7 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
-public class PartitioningKeyFieldsPartitioningStrategyTest {
+public class HashPartitioningStrategyTest {
 
     private static final Random RANDOM = new Random();
     private static final String DELIMITER = "#";
@@ -43,11 +43,11 @@ public class PartitioningKeyFieldsPartitioningStrategyTest {
     private static List<JSONObject> EVENT_SAMPLES_B = null;
     private static List<JSONObject> EVENT_SAMPLES_C = null;
 
-    private final PartitioningKeyFieldsPartitioningStrategy strategy = new PartitioningKeyFieldsPartitioningStrategy();
+    private final HashPartitioningStrategy strategy = new HashPartitioningStrategy();
     private final EventType simpleEventType;
     private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
 
-    public PartitioningKeyFieldsPartitioningStrategyTest() {
+    public HashPartitioningStrategyTest() {
         simpleEventType = new EventType();
         simpleEventType.setPartitioningKeyFields(asList("sku", "name"));
     }

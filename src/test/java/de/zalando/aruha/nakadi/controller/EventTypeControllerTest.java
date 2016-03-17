@@ -6,6 +6,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.PartitionResolutionStrategy;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -13,6 +14,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
+import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -36,6 +38,7 @@ import javax.ws.rs.core.Response;
 import java.util.Arrays;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
@@ -63,7 +66,9 @@ public class EventTypeControllerTest {
     private final MockMvc mockMvc;
 
     public EventTypeControllerTest() throws Exception {
-        final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository);
+        final PartitionResolver partitionResolver = new PartitionResolver(topicRepository);
+        final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository,
+                partitionResolver);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
@@ -135,6 +140,45 @@ public class EventTypeControllerTest {
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
                                         .string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithUnknownPartitioningStrategyThenReturn422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy("unknown_strategy", null);
+        eventType.setPartitionResolutionStrategy(strategy);
+
+        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                "partitioning strategy does not exist: unknown_strategy");
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithNullPartitioningStrategyNameThenReturn422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(null, null);
+        eventType.setPartitionResolutionStrategy(strategy);
+
+        final Problem expectedProblem = invalidProblem("partition_resolution_strategy.name", "may not be null");
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithKnownPartitioningStrategyThenReturn201() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(HASH_STRATEGY, null);
+        eventType.setPartitionResolutionStrategy(strategy);
+
+        postEventType(eventType)
+                .andExpect(status().isCreated())
+                .andExpect(content().string(""));
     }
 
     @Test
