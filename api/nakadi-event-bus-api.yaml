@@ -468,7 +468,9 @@ paths:
           required: true
       responses:
         '200':
-          description: Ok
+          description: All events in the batch have been successfully published.
+        '207':
+          description: At least one event has failed to be submitted.
           schema:
             type: array
             items:
@@ -487,10 +489,6 @@ paths:
               $ref: '#/definitions/Problem'
         '405':
           description: Not allowed.
-          schema:
-              $ref: '#/definitions/Problem'
-        '409':
-          description: Conflict.
           schema:
               $ref: '#/definitions/Problem'
         '500':
