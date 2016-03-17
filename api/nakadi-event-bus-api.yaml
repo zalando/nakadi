@@ -1245,12 +1245,12 @@ definitions:
       read_parallelism:
         type: integer
         description: |
-          Amount of parallel consumers to this EventType.
+          Amount of parallel readers (consumers) to this EventType.
 
       write_parallelism:
         type: integer
         description: |
-          Amount of parallel writes to this EventType.
+          Amount of parallel writers (producers) to this EventType.
 
   EventValidationStrategy:
     description: |
