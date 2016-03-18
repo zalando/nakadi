@@ -1210,6 +1210,7 @@ definitions:
           Indicator of the field used for guaranteeing the ordering of Events of this type (used only by 'hash'
           PartitionResolutionStrategy).
           If set MUST be a valid required field as defined in the schema.
+          It MUST be set if 'partition_resolution_strategy' is set to 'hash'.
 
     required:
       - name
@@ -1263,7 +1264,7 @@ definitions:
           - 'hash' will use the event field(s) defined in 'partitioning_key_fields' property of `EventType` as a source
             for a hash function that will caclulate the partition where the event will be put.
           - 'user_defined' will use 'metadata'.'partition' property of incoming event to know the partition where to put
-            the event.
+            the event. This strategy can't be used for `EventType` of category 'undefined'.
           - 'random' will put the event to a random partition. Use it only if your `EventType` has one partition or if
             you don't care about ordering of events.
       doc:

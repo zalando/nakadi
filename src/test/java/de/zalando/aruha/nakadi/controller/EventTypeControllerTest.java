@@ -38,7 +38,10 @@ import javax.ws.rs.core.Response;
 import java.util.Arrays;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
+import static de.zalando.aruha.nakadi.domain.EventCategory.UNDEFINED;
 import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.RANDOM_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.USER_DEFINED_STRATEGY;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
@@ -158,6 +161,38 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenPostWithHashPartitioningStrategyAndWithoutPartitioningKeysThenReturn422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(HASH_STRATEGY, null);
+        eventType.setPartitionResolutionStrategy(strategy);
+
+        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                "partitioning_key_fields field should be set for partition resolution strategy 'hash'");
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithUserDefinedPartitioningStrategyForUndefinedCategoryThenReturn422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCategory(UNDEFINED);
+
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(USER_DEFINED_STRATEGY, null);
+        eventType.setPartitionResolutionStrategy(strategy);
+
+        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                "'user_defined' partition resolution strategy can't be used for EventType of category 'undefined'");
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
     public void whenPostWithNullPartitioningStrategyNameThenReturn422() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(null, null);
@@ -173,7 +208,7 @@ public class EventTypeControllerTest {
     @Test
     public void whenPostWithKnownPartitioningStrategyThenReturn201() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(HASH_STRATEGY, null);
+        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(RANDOM_STRATEGY, null);
         eventType.setPartitionResolutionStrategy(strategy);
 
         postEventType(eventType)
