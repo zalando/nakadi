@@ -11,14 +11,16 @@ import org.json.JSONObject;
 import java.util.List;
 import java.util.Map;
 
-import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.DUMMY_STRATEGY;
 import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.RANDOM_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.USER_DEFINED_STRATEGY;
 
 public class PartitionResolver {
 
     private static Map<String, PartitioningStrategy> PARTITIONING_STRATEGIES = ImmutableMap.of(
             HASH_STRATEGY, new HashPartitioningStrategy(),
-            DUMMY_STRATEGY, (eventType, event, partitions) -> "0"
+            USER_DEFINED_STRATEGY, new UserDefinedPartitioningStrategy(),
+            RANDOM_STRATEGY, new RandomPartitioningStrategy()
     );
 
     private final TopicRepository topicRepository;
@@ -52,6 +54,6 @@ public class PartitionResolver {
     }
 
     private static PartitioningStrategy getDefaultPartitioningStrategy() {
-        return PARTITIONING_STRATEGIES.get(DUMMY_STRATEGY);
+        return PARTITIONING_STRATEGIES.get(RANDOM_STRATEGY);
     }
 }

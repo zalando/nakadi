@@ -10,7 +10,8 @@ import java.util.List;
 public interface PartitioningStrategy {
 
     String HASH_STRATEGY = "hash";
-    String DUMMY_STRATEGY = "dummy"; // todo: temporary, will be removed after "random" is implemented
+    String USER_DEFINED_STRATEGY = "user-defined";
+    String RANDOM_STRATEGY = "random";
 
     String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
             throws PartitioningException;
