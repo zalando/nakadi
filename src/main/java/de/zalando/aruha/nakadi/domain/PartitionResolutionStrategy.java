@@ -35,11 +35,11 @@ public class PartitionResolutionStrategy {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final PartitionResolutionStrategy that = (PartitionResolutionStrategy) o;
-        return name.equals(that.name);
+        return !(name != null ? !name.equals(that.name) : that.name != null);
     }
 
     @Override
     public int hashCode() {
-        return name.hashCode();
+        return name != null ? name.hashCode() : 0;
     }
 }

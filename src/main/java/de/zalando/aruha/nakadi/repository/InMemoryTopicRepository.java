@@ -17,7 +17,7 @@ import static java.util.stream.Collectors.toList;
 
 public class InMemoryTopicRepository implements TopicRepository {
 
-    public static final int DEFAULT_NUMBER_OF_PARTITIONS = 8;
+    public static final int DEFAULT_NUMBER_OF_PARTITIONS = 1;
     private final Map<String, MockTopic> topics;
 
     public InMemoryTopicRepository() {
