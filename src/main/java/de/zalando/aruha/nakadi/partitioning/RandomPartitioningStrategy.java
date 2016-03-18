@@ -1,17 +1,10 @@
 package de.zalando.aruha.nakadi.partitioning;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
-import de.zalando.aruha.nakadi.exceptions.InvalidPartitioningKeyFieldsException;
-import de.zalando.aruha.nakadi.exceptions.PartitioningException;
-import de.zalando.aruha.nakadi.util.JsonPathAccess;
 import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Random;
-
-import static de.zalando.aruha.nakadi.exceptions.ExceptionWrapper.wrapFunction;
-import static java.lang.Math.abs;
 
 public class RandomPartitioningStrategy implements PartitioningStrategy {
 
