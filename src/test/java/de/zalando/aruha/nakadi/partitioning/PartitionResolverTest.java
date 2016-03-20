@@ -11,7 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
+import static de.zalando.aruha.nakadi.service.Registry.HASH_PARTITIONING_STRATEGY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Matchers.any;
@@ -32,8 +32,7 @@ public class PartitionResolverTest {
 
         final EventType eventType = new EventType();
         eventType.setPartitioningKeyFields(ImmutableList.of("abc"));
-        final PartitionResolutionStrategy strategy = new PartitionResolutionStrategy(HASH_STRATEGY, null);
-        eventType.setPartitionResolutionStrategy(strategy);
+        eventType.setPartitionResolutionStrategy(HASH_PARTITIONING_STRATEGY);
 
         final JSONObject event = new JSONObject();
         event.put("abc", "blah");

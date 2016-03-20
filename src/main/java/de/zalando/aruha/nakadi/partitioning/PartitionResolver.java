@@ -34,26 +34,17 @@ public class PartitionResolver {
     }
 
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
-            throws PartitioningException, NakadiException {
+            throws NakadiException {
 
         final PartitionResolutionStrategy eventTypeStrategy = eventType.getPartitionResolutionStrategy();
-        final PartitioningStrategy partitioningStrategy;
-        if (eventTypeStrategy != null) {
-            partitioningStrategy = PARTITIONING_STRATEGIES.get(eventTypeStrategy.getName());
-            if (partitioningStrategy == null) {
-                throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
-                        eventTypeStrategy.getName());
-            }
-        }
-        else {
-            partitioningStrategy = getDefaultPartitioningStrategy();
+        final PartitioningStrategy partitioningStrategy = PARTITIONING_STRATEGIES.get(eventTypeStrategy.getName());
+        if (partitioningStrategy == null) {
+            throw new PartitioningException("Partition Strategy defined for this EventType is not found: " +
+                    eventTypeStrategy.getName());
         }
 
         final List<String> partitions = topicRepository.listPartitionNames(eventType.getName());
         return partitioningStrategy.calculatePartition(eventType, eventAsJson, partitions);
     }
 
-    private static PartitioningStrategy getDefaultPartitioningStrategy() {
-        return PARTITIONING_STRATEGIES.get(RANDOM_STRATEGY);
-    }
 }
