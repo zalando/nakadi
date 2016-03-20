@@ -10,6 +10,7 @@ import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.HASH_STRATEGY;
 import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategy.RANDOM_STRATEGY;
@@ -20,7 +21,7 @@ public class PartitionResolver {
     private static Map<String, PartitioningStrategy> PARTITIONING_STRATEGIES = ImmutableMap.of(
             HASH_STRATEGY, new HashPartitioningStrategy(),
             USER_DEFINED_STRATEGY, new UserDefinedPartitioningStrategy(),
-            RANDOM_STRATEGY, new RandomPartitioningStrategy()
+            RANDOM_STRATEGY, new RandomPartitioningStrategy(new Random())
     );
 
     private final TopicRepository topicRepository;

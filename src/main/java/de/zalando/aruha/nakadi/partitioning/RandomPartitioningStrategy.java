@@ -8,7 +8,11 @@ import java.util.Random;
 
 public class RandomPartitioningStrategy implements PartitioningStrategy {
 
-    private static final Random random = new Random();
+    private final Random random;
+
+    public RandomPartitioningStrategy(final Random random) {
+        this.random = random;
+    }
 
     @Override
     public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions) {
