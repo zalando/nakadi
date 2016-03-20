@@ -2,36 +2,50 @@ package de.zalando.aruha.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Random;
 
-import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class RandomPartitioningStrategyTest {
 
-    private static final RandomPartitioningStrategy strategy = new RandomPartitioningStrategy();
-
     @Test
-    public void whenManyRunsThenAllPartitionsAreUsed() {
+    public void whenCalculatePartitionThenRandomGeneratorIsUsedCorrectly() {
         final List<String> partitions = ImmutableList.of("a", "b", "c", "d", "e", "f", "g", "h");
-        final Set<String> resolvedPartitions = newHashSet();
 
-        final int numberOfRuns = 1000;
+        final Random randomMock = mock(Random.class);
+        when(randomMock.nextInt(anyInt())).thenReturn(3, 0, 4, 1, 7);
+        final RandomPartitioningStrategy strategy = new RandomPartitioningStrategy(randomMock);
+
+        final List<String> resolvedPartitions = newArrayList();
+        final int numberOfRuns = 5;
         for (int run = 0; run < numberOfRuns; run++) {
             final String resolvedPartition = strategy.calculatePartition(null, null, partitions);
             resolvedPartitions.add(resolvedPartition);
         }
 
-        assertThat(resolvedPartitions, equalTo(newHashSet(partitions)));
+        assertThat(resolvedPartitions, equalTo(ImmutableList.of("d", "a", "e", "b", "h")));
+        verify(randomMock, times(5)).nextInt(partitions.size());
     }
 
     @Test
-    public void whenOnePartitionThenUseIt() {
+    public void whenOnePartitionThenRandomGeneratorNotUsed() {
+        final Random randomMock = mock(Random.class);
+        final RandomPartitioningStrategy strategy = new RandomPartitioningStrategy(randomMock);
+
         final String resolvedPartition = strategy.calculatePartition(null, null, ImmutableList.of("a"));
         assertThat(resolvedPartition, equalTo("a"));
+
+        verify(randomMock, Mockito.never()).nextInt(anyInt());
     }
 
 }

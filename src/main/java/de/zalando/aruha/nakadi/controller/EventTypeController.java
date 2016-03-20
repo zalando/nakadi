@@ -160,21 +160,19 @@ public class EventTypeController {
     private void validatePartitioningStrategy(final EventType eventType) throws NoSuchPartitioningStrategyException,
             InvalidEventTypeException {
         final PartitionResolutionStrategy partitioningStrategy = eventType.getPartitionResolutionStrategy();
-        if (partitioningStrategy != null ) {
-            if (!partitionResolver.strategyExists(partitioningStrategy.getName())) {
-                throw new NoSuchPartitioningStrategyException("partitioning strategy does not exist: " +
-                        partitioningStrategy.getName());
-            }
-            else if (HASH_STRATEGY.equals(partitioningStrategy.getName()) &&
-                    eventType.getPartitioningKeyFields().isEmpty()) {
-                throw new InvalidEventTypeException("partitioning_key_fields field should be set for " +
-                        "partition resolution strategy 'hash'");
-            }
-            else if (USER_DEFINED_STRATEGY.equals(partitioningStrategy.getName()) &&
-                    UNDEFINED.equals(eventType.getCategory())) {
-                throw new InvalidEventTypeException("'user_defined' partition resolution strategy can't be used " +
-                        "for EventType of category 'undefined'");
-            }
+        if (!partitionResolver.strategyExists(partitioningStrategy.getName())) {
+            throw new NoSuchPartitioningStrategyException("partitioning strategy does not exist: " +
+                    partitioningStrategy.getName());
+        }
+        else if (HASH_STRATEGY.equals(partitioningStrategy.getName()) &&
+                eventType.getPartitioningKeyFields().isEmpty()) {
+            throw new InvalidEventTypeException("partitioning_key_fields field should be set for " +
+                    "partition resolution strategy 'hash'");
+        }
+        else if (USER_DEFINED_STRATEGY.equals(partitioningStrategy.getName()) &&
+                UNDEFINED.equals(eventType.getCategory())) {
+            throw new InvalidEventTypeException("'user_defined' partition resolution strategy can't be used " +
+                    "for EventType of category 'undefined'");
         }
     }
 

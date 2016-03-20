@@ -10,6 +10,7 @@ import javax.validation.constraints.Pattern;
 import java.util.ArrayList;
 import java.util.List;
 
+import static de.zalando.aruha.nakadi.service.Registry.RANDOM_PARTITIONING_STRATEGY;
 import static java.util.Collections.unmodifiableList;
 
 public class EventType {
@@ -30,8 +31,7 @@ public class EventType {
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
     @Valid
-    @Nullable
-    private PartitionResolutionStrategy partitionResolutionStrategy;
+    private PartitionResolutionStrategy partitionResolutionStrategy = RANDOM_PARTITIONING_STRATEGY;
 
     @Nullable
     private List<String> partitioningKeyFields;
@@ -63,12 +63,11 @@ public class EventType {
         return validationStrategies;
     }
 
-    @Nullable
     public PartitionResolutionStrategy getPartitionResolutionStrategy() {
         return partitionResolutionStrategy;
     }
 
-    public void setPartitionResolutionStrategy(@Nullable final PartitionResolutionStrategy partitionResolutionStrategy) {
+    public void setPartitionResolutionStrategy(final PartitionResolutionStrategy partitionResolutionStrategy) {
         this.partitionResolutionStrategy = partitionResolutionStrategy;
     }
 
