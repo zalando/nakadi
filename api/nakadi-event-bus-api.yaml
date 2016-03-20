@@ -834,10 +834,6 @@ paths:
           description: Server error
           schema:
             $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
 
 
 # ################################### #

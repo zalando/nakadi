@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.partitioning.PartitioningStrategyRegistry.AVAILABLE_PARTITIONING_STRATEGIES;
+import static de.zalando.aruha.nakadi.service.Registry.AVAILABLE_PARTITIONING_STRATEGIES;
 import static org.springframework.http.ResponseEntity.status;
 
 @RestController
