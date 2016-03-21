@@ -467,7 +467,7 @@ paths:
         '200':
           description: All events in the batch have been successfully published.
         '207':
-          description: At least one event has failed to be submitted.
+          description: At least one event has failed to be submitted. The batch might be partially submitted.
           schema:
             type: array
             items:
@@ -488,6 +488,12 @@ paths:
           description: Not allowed.
           schema:
               $ref: '#/definitions/Problem'
+        '422':
+          description: At least one event failed to be validated, enriched or partitioned. None were submitted.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/BatchItemResponse'
         '500':
           description: Server error
           schema:
