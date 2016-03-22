@@ -432,9 +432,6 @@ paths:
         1. The incoming Event's relative ordering is evaluated according to the rule on the
         `EventType`. Failure to evaluate the rule will **reject** the Event.
 
-        The response in successful operation is an array of same length as the input, including a
-        `BatchItemResponse` corresponding to each item's status.
-
         Given the batched nature of this operation, any violation on validation or failures on enrichment or
         partitioning will cause the whole batch to be rejected, i.e. none of its elements are pushed to the
         underlying broker.
@@ -465,7 +462,9 @@ paths:
           required: true
       responses:
         '200':
-          description: Ok
+          description: All events in the batch have been successfully published.
+        '207':
+          description: At least one event has failed to be submitted. The batch might be partially submitted.
           schema:
             type: array
             items:
@@ -486,10 +485,12 @@ paths:
           description: Not allowed.
           schema:
               $ref: '#/definitions/Problem'
-        '409':
-          description: Conflict.
+        '422':
+          description: At least one event failed to be validated, enriched or partitioned. None were submitted.
           schema:
-              $ref: '#/definitions/Problem'
+            type: array
+            items:
+              $ref: '#/definitions/BatchItemResponse'
         '500':
           description: Server error
           schema:
