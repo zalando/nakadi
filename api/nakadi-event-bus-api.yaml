@@ -1258,8 +1258,8 @@ definitions:
         enum: ['hash', 'user_defined', 'random']
         description: |
           Name of the strategy. Possible values are:
-          - 'hash' will use the event field(s) defined in 'partitioning_key_fields' property of `EventType` as a source
-            for a hash function that will caclulate the partition where the event will be put. All events with the same
+          - 'hash' will use the event field(s) defined in `partitioning_key_fields` property of `EventType` as a source
+            for a hash function that will calculate the partition where the event will be put. All events with the same
             value in this field(s) will go to the same partition, and consequently be ordered.
           - 'user_defined' will use `metadata.partition` property of incoming event to know the partition where to put
             the event. This strategy can't be used for `EventType` of category 'undefined'.
