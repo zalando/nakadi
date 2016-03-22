@@ -1205,9 +1205,9 @@ definitions:
           type: string
         description: |
           Indicator of the fields used for guaranteeing the ordering of Events of this type (used only by 'hash'
-          PartitionResolutionStrategy).
-          If set MUST be a valid required field as defined in the schema.
-          It MUST be set if 'partition_resolution_strategy' is set to 'hash'. In other cases it is ignored.
+          PartitionResolutionStrategy). Regired if 'partition_resolution_strategy' is set to 'hash'. In other cases it
+          is ignored.
+          If set it MUST be a valid required field as defined in the schema.
 
     required:
       - name
@@ -1258,7 +1258,7 @@ definitions:
         enum: ['hash', 'user_defined', 'random']
         description: |
           Name of the strategy. Possible values are:
-          - 'hash' will use the event field(s) defined in `partitioning_key_fields` property of `EventType` as a source
+          - 'hash' will use the event field(s) defined in `partitioning_key_fields property of `EventType` as a source
             for a hash function that will calculate the partition where the event will be put. All events with the same
             value in this field(s) will go to the same partition, and consequently be ordered.
           - 'user_defined' will use `metadata.partition` property of incoming event to know the partition where to put
