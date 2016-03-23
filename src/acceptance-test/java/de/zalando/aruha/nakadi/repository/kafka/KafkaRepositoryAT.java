@@ -5,6 +5,7 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
@@ -12,9 +13,12 @@ import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import de.zalando.aruha.nakadi.domain.BatchItem;
+import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import org.apache.curator.CuratorZookeeperClient;
 import org.apache.curator.framework.CuratorFramework;
 
@@ -23,12 +27,14 @@ import org.apache.kafka.common.PartitionInfo;
 
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import de.zalando.aruha.nakadi.webservice.BaseAT;
+import org.mockito.Mockito;
 
 public class KafkaRepositoryAT extends BaseAT {
 
@@ -92,6 +98,26 @@ public class KafkaRepositoryAT extends BaseAT {
                     .withWaitBetweenEachTry(500));
     }
 
+    @Test(timeout = 10000)
+    public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() throws Exception {
+        List<BatchItem> items = new ArrayList<>();
+        JSONObject event = new JSONObject();
+        String topicId = TestUtils.randomValidEventTypeName();
+        kafkaHelper.createTopic(topicId, zookeeperUrl);
+
+        for (int i = 0; i < 10; i++) {
+            BatchItem item = new BatchItem(event);
+            item.setPartition("0");
+            items.add(item);
+        }
+
+        kafkaTopicRepository.syncPostBatch(topicId, items);
+
+        for (int i = 0; i < 10; i++) {
+            assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+        }
+    }
+
     private Map<String, List<PartitionInfo>> getAllTopics() {
         final KafkaConsumer<String, String> kafkaConsumer = kafkaHelper.createConsumer();
         return kafkaConsumer.listTopics();
@@ -107,7 +133,14 @@ public class KafkaRepositoryAT extends BaseAT {
         final ZooKeeperHolder zooKeeperHolder = mock(ZooKeeperHolder.class);
         when(zooKeeperHolder.get()).thenReturn(curatorFramework);
 
-        return new KafkaTopicRepository(zooKeeperHolder, mock(KafkaFactory.class), repositorySettings);
+        final KafkaFactory factory = mock(KafkaFactory.class);
+
+        Mockito
+                .doReturn(kafkaHelper.createProducer())
+                .when(factory)
+                .createProducer();
+
+        return new KafkaTopicRepository(zooKeeperHolder, factory, repositorySettings);
     }
 
     private KafkaRepositorySettings createRepositorySettings() {
