@@ -32,7 +32,7 @@ public class PartitionResolver {
     }
 
     public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
-            throws PartitioningException, NakadiException {
+            throws PartitioningException {
 
         final PartitionResolutionStrategy eventTypeStrategy = eventType.getPartitionResolutionStrategy();
         final PartitioningStrategy partitioningStrategy;

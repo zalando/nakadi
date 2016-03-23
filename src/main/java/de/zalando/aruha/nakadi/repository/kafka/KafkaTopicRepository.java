@@ -255,7 +255,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public List<String> listPartitionNames(final String topicId) throws NakadiException {
+    public List<String> listPartitionNames(final String topicId) {
         return unmodifiableList(kafkaFactory.createProducer().partitionsFor(topicId)
                 .stream()
                 .map(partitionInfo -> toNakadiPartition(partitionInfo.partition()))
