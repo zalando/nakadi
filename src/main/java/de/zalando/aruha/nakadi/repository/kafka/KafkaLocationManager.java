@@ -79,6 +79,7 @@ class KafkaLocationManager {
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        props.put("acks", "all");
         return props;
     }
 
