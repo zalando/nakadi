@@ -919,7 +919,7 @@ definitions:
           partition:
             description: |
               This field indicates the partition to which the event should be published to. Required when the
-              partitioning strategy used is 'user_defined'.
+              partitioning strategy used is 'user_defined'. In case of another partitioning strategy it is ignored.
             type: string
             example: '0'
         required:
@@ -1169,13 +1169,14 @@ definitions:
 
       partition_resolution_strategy:
         description: |
-          Determines how the assignment of the event to a Partition should be handled. If not set - the 'random'
-          partition resolution strategy will be used, which will put the events to a random partition and that is not
-          a problem if your `EventType` type has only one partition (which is default). If your `EventType` will have
+          Determines how the assignment of the event to a partition should be handled. If not set, the 'random'
+          partition resolution strategy will be used, so that events are put to a random partition. That won't harm the
+          ordering if the `EventType` has only one partition (which is default). If your `EventType` will have
           more than one partition you should think about setting some other strategy than 'random' if you care about
           ordering of your events.
+
           See more detailed description of available partition resolution strategies in `PartitionResolutionStrategy`
-          definition
+          definition.
         type: object
         allOf:
           - $ref: '#/definitions/PartitionResolutionStrategy'
@@ -1203,10 +1204,10 @@ definitions:
         items:
           type: string
         description: |
-          Indicator of the field used for guaranteeing the ordering of Events of this type (used only by 'hash'
-          PartitionResolutionStrategy).
-          If set MUST be a valid required field as defined in the schema.
-          It MUST be set if 'partition_resolution_strategy' is set to 'hash'.
+          Indicator of the fields used for guaranteeing the ordering of Events of this type (used only by 'hash'
+          PartitionResolutionStrategy). Regired if 'partition_resolution_strategy' is set to 'hash'. In other cases it
+          is ignored.
+          If set it MUST be a valid required field as defined in the schema.
 
     required:
       - name
@@ -1257,10 +1258,10 @@ definitions:
         enum: ['hash', 'user_defined', 'random']
         description: |
           Name of the strategy. Possible values are:
-          - 'hash' will use the event field(s) defined in 'partitioning_key_fields' property of `EventType` as a source
-            for a hash function that will caclulate the partition where the event will be put. All events with the same
+          - 'hash' will use the event field(s) defined in `partitioning_key_fields property of `EventType` as a source
+            for a hash function that will calculate the partition where the event will be put. All events with the same
             value in this field(s) will go to the same partition, and consequently be ordered.
-          - 'user_defined' will use 'metadata'.'partition' property of incoming event to know the partition where to put
+          - 'user_defined' will use `metadata.partition` property of incoming event to know the partition where to put
             the event. This strategy can't be used for `EventType` of category 'undefined'.
           - 'random' will put the event to a random partition. Use it only if your `EventType` has one partition or if
             you don't care about ordering of events.
