@@ -15,6 +15,7 @@ import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
+import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
@@ -87,9 +88,13 @@ public class NakadiConfig {
     }
 
     @Bean
+    EventPublisher eventPublisher() {
+        return new EventPublisher(topicRepository, eventTypeCache, partitionResolver());
+    }
+
+    @Bean
     public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(topicRepository, eventTypeRepository, eventTypeCache, METRIC_REGISTRY,
-                partitionResolver());
+        return new EventPublishingController(eventPublisher(), METRIC_REGISTRY);
     }
 
     private static MetricRegistry createMetricRegistry() {
