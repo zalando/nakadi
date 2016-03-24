@@ -1,10 +1,14 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.BatchItemResponse;
 import de.zalando.aruha.nakadi.domain.EventPublishResult;
+import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.service.EventPublisher;
@@ -28,9 +32,13 @@ import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.SUBMITTED;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PARTITIONING;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PUBLISHING;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStep.VALIDATION;
+import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -40,7 +48,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 public class EventPublishingControllerTest {
 
     public static final String TOPIC = "my-topic";
-    private static final String EVENT_BATCH = "[{\"payload\": \"My Event 1 Payload\"}]";
+    private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
 
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MetricRegistry metricRegistry;
@@ -119,6 +127,33 @@ public class EventPublishingControllerTest {
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void publishedEventsAreReportedPerEventType() throws Exception {
+        final EventPublishResult success = new EventPublishResult(EventPublishingStatus.SUBMITTED, null, null);
+
+        final Timer successfulTimer = metricRegistry.timer(
+                metricNameFor(TOPIC, EventPublishingController.SUCCESS_METRIC_NAME));
+        final Counter failedCounter = metricRegistry.counter(
+                metricNameFor(TOPIC, EventPublishingController.FAILED_METRIC_NAME));
+
+        assertThat(successfulTimer.getCount(), equalTo(0L));
+        assertThat(failedCounter.getCount(), equalTo(0L));
+
+        Mockito
+                .doReturn(success)
+                .doReturn(success)
+                .doThrow(InternalNakadiException.class)
+                .when(publisher)
+                .publish(any(), any());
+
+        postBatch(TOPIC, EVENT_BATCH);
+        postBatch(TOPIC, EVENT_BATCH);
+        postBatch(TOPIC, EVENT_BATCH);
+
+        assertThat(successfulTimer.getCount(), equalTo(2L));
+        assertThat(failedCounter.getCount(), equalTo(1L));
     }
 
     private List<BatchItemResponse> responses() {
