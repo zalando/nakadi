@@ -98,8 +98,10 @@ SenzaComponents:
         Minimum: 2
         Maximum: "{{Arguments.InstancesMaximum}}"
         MetricType: CPU
-        ScaleUpThreshold: 70
-        ScaleDownThreshold: 40
+        ScaleUpThreshold: 40
+        ScaleDownThreshold: 10
+        Period: 60
+        EvaluationPeriods: 3
 
   # creates an ELB entry and Route53 domains to this ELB
   - AppLoadBalancer:
