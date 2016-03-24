@@ -3,7 +3,6 @@ package de.zalando.aruha.nakadi.partitioning;
 import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.PartitionResolutionStrategy;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.PartitioningException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.json.JSONObject;

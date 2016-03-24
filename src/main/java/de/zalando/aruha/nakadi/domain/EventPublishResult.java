@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.domain;
 
-import java.util.Collection;
 import java.util.List;
 
 public class EventPublishResult {
