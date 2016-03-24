@@ -19,6 +19,7 @@ public class JSONSchemaValidationTest {
 
     static {
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
+        ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
         ValidationStrategy.register(FieldNameMustBeSet.NAME, new FieldNameMustBeSet());
     }
 
@@ -185,6 +186,32 @@ public class JSONSchemaValidationTest {
         Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error, isPresent());
+    }
+
+    @Test
+    public void requireMetadataOccurredAtToBeFormattedAsDateTimeWithMilliseconds() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("occurred_at", "1996-10-15T16:39:57.1245678+07:00");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error, isAbsent());
+    }
+
+    @Test
+    public void acceptsDateTimeZoneWithoutColonSeparation() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("occurred_at", "1996-10-15T16:39:57+0800");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error, isAbsent());
     }
 
     @Test
