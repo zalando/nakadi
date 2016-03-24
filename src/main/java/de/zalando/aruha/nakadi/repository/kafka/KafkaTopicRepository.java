@@ -31,12 +31,11 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -179,6 +178,8 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException {
+        CountDownLatch done = new CountDownLatch(batch.size());
+
         for (BatchItem item : batch) {
             final ProducerRecord<String, String> record = new ProducerRecord<>(topicId,
                     toKafkaPartition(item.getPartition()), item.getPartition(), item.getEvent().toString());
@@ -186,20 +187,26 @@ public class KafkaTopicRepository implements TopicRepository {
             item.setStep(EventPublishingStep.PUBLISHING);
 
             try {
-                kafkaProducer.send(record, kafkaSendCallback(item));
+                kafkaProducer.send(record, kafkaSendCallback(item, done));
             } catch (InterruptException | SerializationException | BufferExhaustedException e) {
-                LOG.error("Error posting event to kafka", e);
                 item.setPublishingStatus(EventPublishingStatus.FAILED);
                 throw new EventPublishingException("Error publishing message to kafka", e);
             }
         }
 
-        // this is not the most precise way of waiting for the send to complete, since it will flush all
-        // other concurrent partitions in the accumulator.
-        kafkaProducer.flush();
+        try {
+            // very high ~ close to request timeout
+            boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
+
+            if (!isSuccessful) {
+                throw new EventPublishingException("Timeout publishing events");
+            }
+        } catch (InterruptedException e) {
+            throw new EventPublishingException("Error publishing message to kafka", e);
+        }
     }
 
-    private Callback kafkaSendCallback(final BatchItem item) {
+    private Callback kafkaSendCallback(final BatchItem item, CountDownLatch done) {
         return new Callback() {
             @Override
             public void onCompletion(RecordMetadata metadata, Exception exception) {
@@ -209,6 +216,8 @@ public class KafkaTopicRepository implements TopicRepository {
                     LOG.error("Failed to publish event " + item.getEvent().toString(), exception);
                     item.setPublishingStatus(EventPublishingStatus.FAILED);
                 }
+
+                done.countDown();
             }
         };
     }

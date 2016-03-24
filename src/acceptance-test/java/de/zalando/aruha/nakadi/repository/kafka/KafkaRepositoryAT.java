@@ -147,6 +147,7 @@ public class KafkaRepositoryAT extends BaseAT {
         final KafkaRepositorySettings settings = new KafkaRepositorySettings();
         settings.setDefaultTopicPartitionNum(defaultPartitionNum);
         settings.setDefaultTopicReplicaFactor(defaultReplicaFactor);
+        settings.setKafkaSendTimeoutMs(10000);
         settings.setDefaultTopicRetentionMs(100000000);
         settings.setDefaultTopicRotationMs(50000000);
         settings.setZkSessionTimeoutMs(30000);

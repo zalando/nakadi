@@ -9,6 +9,10 @@ public class EventPublishingException extends NakadiException {
         super(message, e);
     }
 
+    public EventPublishingException(String message) {
+        super(message);
+    }
+
     @Override
     protected Response.StatusType getStatus() {
         return MoreStatus.MULTI_STATUS;
