@@ -115,7 +115,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
     }
 
     private void postEvents(final String[] events) {
-        String batch = "[" + String.join(",", events) + "]";
+        final String batch = "[" + String.join(",", events) + "]";
         jsonRequestSpec().body(batch).when().post("/event-types/" + TEST_EVENT_TYPE + "/events").then().statusCode(
             OK.value());
     }

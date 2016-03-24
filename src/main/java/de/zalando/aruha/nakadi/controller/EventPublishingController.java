@@ -55,19 +55,19 @@ public class EventPublishingController {
                 final EventPublishResult result = publisher.publish(events, eventTypeName);
                 return response(result);
             });
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
-        } catch (NoSuchEventTypeException e) {
+        } catch (final NoSuchEventTypeException e) {
             LOG.debug("Event type not found.", e);
             return create(e.asProblem(), nativeWebRequest);
-        } catch (NakadiException e) {
+        } catch (final NakadiException e) {
             LOG.debug("Failed to publish batch", e);
             return create(e.asProblem(), nativeWebRequest);
         }
     }
 
-    private ResponseEntity response(EventPublishResult result) {
+    private ResponseEntity response(final EventPublishResult result) {
         switch (result.getStatus()) {
             case SUBMITTED: return status(HttpStatus.OK).build();
             case ABORTED: return status(HttpStatus.UNPROCESSABLE_ENTITY).body(result.getResponses());
@@ -75,7 +75,8 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity doWithMetrics(final String eventTypeName, final long startingNanos, final EventProcessingTask task) throws NakadiException {
+    private ResponseEntity doWithMetrics(final String eventTypeName, final long startingNanos,
+                                         final EventProcessingTask task) throws NakadiException {
         try {
             final ResponseEntity responseEntity = task.execute();
 
@@ -83,7 +84,7 @@ public class EventPublishingController {
             successfullyPublishedTimer.update(System.nanoTime() - startingNanos, TimeUnit.NANOSECONDS);
 
             return responseEntity;
-        } catch (Exception e) {
+        } catch (final Exception e) {
             metricRegistry.counter(metricNameFor(eventTypeName, FAILED_METRIC_NAME)).inc();
             throw e;
         }

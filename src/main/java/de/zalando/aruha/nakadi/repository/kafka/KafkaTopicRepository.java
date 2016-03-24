@@ -176,10 +176,10 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException {
-        CountDownLatch done = new CountDownLatch(batch.size());
+    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
+        final CountDownLatch done = new CountDownLatch(batch.size());
 
-        for (BatchItem item : batch) {
+        for (final BatchItem item : batch) {
             final ProducerRecord<String, String> record = new ProducerRecord<>(topicId,
                     toKafkaPartition(item.getPartition()), item.getPartition(), item.getEvent().toString());
 
@@ -194,7 +194,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
 
         try {
-            boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
+            final boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
                 throw new EventPublishingException("Timeout publishing events");
@@ -204,7 +204,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private Callback kafkaSendCallback(final BatchItem item, CountDownLatch done) {
+    private Callback kafkaSendCallback(final BatchItem item, final CountDownLatch done) {
         return (metadata, exception) -> {
             if (exception == null) {
                 item.setPublishingStatus(EventPublishingStatus.SUBMITTED);

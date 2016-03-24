@@ -71,7 +71,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenResultIsSubmittedThen200() throws Exception {
-        EventPublishResult result = new EventPublishResult(SUBMITTED, null, null);
+        final EventPublishResult result = new EventPublishResult(SUBMITTED, null, null);
 
         Mockito
                 .doReturn(result)
@@ -90,7 +90,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenResultIsAbortedThen422() throws Exception {
-        EventPublishResult result = new EventPublishResult(ABORTED, PARTITIONING, responses());
+        final EventPublishResult result = new EventPublishResult(ABORTED, PARTITIONING, responses());
 
         Mockito
                 .doReturn(result)
@@ -104,7 +104,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenResultIsAbortedThen207() throws Exception {
-        EventPublishResult result = new EventPublishResult(FAILED, PUBLISHING, responses());
+        final EventPublishResult result = new EventPublishResult(FAILED, PUBLISHING, responses());
 
         Mockito
                 .doReturn(result)
@@ -156,11 +156,11 @@ public class EventPublishingControllerTest {
     }
 
     private List<BatchItemResponse> responses() {
-        BatchItemResponse response = new BatchItemResponse();
+        final BatchItemResponse response = new BatchItemResponse();
         response.setPublishingStatus(ABORTED);
         response.setStep(VALIDATION);
 
-        List<BatchItemResponse> responses = new ArrayList<>();
+        final List<BatchItemResponse> responses = new ArrayList<>();
         responses.add(response);
 
         return responses;

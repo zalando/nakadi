@@ -42,7 +42,7 @@ public class EventPublisher {
         this.partitionResolver = partitionResolver;
     }
 
-    public EventPublishResult publish(JSONArray events, String eventTypeName) throws NoSuchEventTypeException,
+    public EventPublishResult publish(final JSONArray events, final String eventTypeName) throws NoSuchEventTypeException,
             InternalNakadiException {
         final EventType eventType = cache.getEventType(eventTypeName);
         final List<BatchItem> batch = initBatch(events);
@@ -65,14 +65,14 @@ public class EventPublisher {
         }
     }
 
-    private List<BatchItemResponse> responses(List<BatchItem> batch) {
+    private List<BatchItemResponse> responses(final List<BatchItem> batch) {
         return batch.stream()
                 .map(BatchItem::getResponse)
                 .collect(Collectors.toList());
     }
 
-    private List<BatchItem> initBatch(JSONArray events) {
-        List<BatchItem> batch = new ArrayList<>(events.length());
+    private List<BatchItem> initBatch(final JSONArray events) {
+        final List<BatchItem> batch = new ArrayList<>(events.length());
         for (int i = 0; i < events.length(); i++) {
             batch.add(new BatchItem(events.getJSONObject(i)));
         }
@@ -80,13 +80,13 @@ public class EventPublisher {
         return batch;
     }
 
-    private void partition(List<BatchItem> batch, EventType eventType) throws PartitioningException {
-        for (BatchItem item : batch) {
+    private void partition(final List<BatchItem> batch, final EventType eventType) throws PartitioningException {
+        for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
+                final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
                 item.setPartition(partitionId);
-            } catch (PartitioningException e) {
+            } catch (final PartitioningException e) {
                 item.setPublishingStatus(EventPublishingStatus.FAILED);
                 item.setDetail(e.getMessage());
                 throw e;
@@ -94,12 +94,13 @@ public class EventPublisher {
         }
     }
 
-    private void validate(List<BatchItem> batch, EventType eventType) throws EventValidationException, InternalNakadiException {
-        for (BatchItem item : batch) {
+    private void validate(final List<BatchItem> batch, final EventType eventType) throws EventValidationException,
+            InternalNakadiException {
+        for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.VALIDATION);
             try {
                 validateSchema(item.getEvent(), eventType);
-            } catch (EventValidationException e) {
+            } catch (final EventValidationException e) {
                 item.setPublishingStatus(EventPublishingStatus.FAILED);
                 item.setDetail(e.getMessage());
                 throw e;
@@ -107,12 +108,13 @@ public class EventPublisher {
         }
     }
 
-    private void submit(List<BatchItem> batch, EventType eventType) throws EventPublishingException {
+    private void submit(final List<BatchItem> batch, final EventType eventType) throws EventPublishingException {
         // there is no need to group by partition since its already done by kafka client
         topicRepository.syncPostBatch(eventType.getName(), batch);
     }
 
-    private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException, InternalNakadiException {
+    private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,
+            InternalNakadiException {
         try {
             final EventTypeValidator validator = cache.getValidator(eventType.getName());
             final Optional<ValidationError> validationError = validator.validate(event);
@@ -120,21 +122,20 @@ public class EventPublisher {
             if (validationError.isPresent()) {
                 throw new EventValidationException(validationError.get());
             }
-        } catch (ExecutionException e) {
-            LOG.error("Error loading validator", e);
+        } catch (final ExecutionException e) {
             throw new InternalNakadiException("Error loading validator", e);
         }
     }
 
-    private EventPublishResult failed(List<BatchItem> batch) {
+    private EventPublishResult failed(final List<BatchItem> batch) {
         return new EventPublishResult(EventPublishingStatus.FAILED, EventPublishingStep.PUBLISHING, responses(batch));
     }
 
-    private EventPublishResult aborted(EventPublishingStep step, List<BatchItem> batch) {
+    private EventPublishResult aborted(final EventPublishingStep step, final List<BatchItem> batch) {
         return new EventPublishResult(EventPublishingStatus.ABORTED, step, responses(batch));
     }
 
-    private EventPublishResult ok(List<BatchItem> batch) {
+    private EventPublishResult ok(final List<BatchItem> batch) {
         return new EventPublishResult(EventPublishingStatus.SUBMITTED, EventPublishingStep.NONE, responses(batch));
     }
 }

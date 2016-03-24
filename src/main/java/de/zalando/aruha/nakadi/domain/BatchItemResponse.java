@@ -17,7 +17,7 @@ public class BatchItemResponse {
         return step;
     }
 
-    public void setStep(EventPublishingStep step) {
+    public void setStep(final EventPublishingStep step) {
         this.step = step;
     }
 
@@ -25,7 +25,7 @@ public class BatchItemResponse {
         return detail;
     }
 
-    public void setDetail(String detail) {
+    public void setDetail(final String detail) {
         this.detail = detail;
     }
 }

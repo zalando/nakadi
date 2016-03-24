@@ -7,7 +7,7 @@ public class BatchItem {
     private final JSONObject event;
     private String partition;
 
-    public BatchItem(JSONObject event) {
+    public BatchItem(final JSONObject event) {
         this.response = new BatchItemResponse();
         this.event = event;
     }
@@ -28,11 +28,11 @@ public class BatchItem {
         return this.response;
     }
 
-    public void setStep(EventPublishingStep step) {
+    public void setStep(final EventPublishingStep step) {
         this.response.setStep(step);
     }
 
-    public void setPublishingStatus(EventPublishingStatus publishingStatus) {
+    public void setPublishingStatus(final EventPublishingStatus publishingStatus) {
         this.response.setPublishingStatus(publishingStatus);
     }
 

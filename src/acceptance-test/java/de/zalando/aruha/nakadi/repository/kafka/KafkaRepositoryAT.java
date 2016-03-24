@@ -100,13 +100,13 @@ public class KafkaRepositoryAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() throws Exception {
-        List<BatchItem> items = new ArrayList<>();
-        JSONObject event = new JSONObject();
-        String topicId = TestUtils.randomValidEventTypeName();
+        final List<BatchItem> items = new ArrayList<>();
+        final JSONObject event = new JSONObject();
+        final String topicId = TestUtils.randomValidEventTypeName();
         kafkaHelper.createTopic(topicId, zookeeperUrl);
 
         for (int i = 0; i < 10; i++) {
-            BatchItem item = new BatchItem(event);
+            final BatchItem item = new BatchItem(event);
             item.setPartition("0");
             items.add(item);
         }

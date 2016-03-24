@@ -42,13 +42,13 @@ public class EventPublisherTest {
 
     @Test
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
-        EventType eventType = buildDefaultEventType();
-        JSONArray batch = buildDefaultBatch(1);
-        JSONObject event = batch.getJSONObject(0);
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType, event);
 
-        EventPublishResult result = publisher.publish(batch, eventType.getName());
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getName()), any());
@@ -56,13 +56,13 @@ public class EventPublisherTest {
 
     @Test
     public void whenValidationFailsThenResultIsAborted() throws Exception {
-        EventType eventType = buildDefaultEventType();
-        JSONArray batch = buildDefaultBatch(1);
-        JSONObject event = batch.getJSONObject(0);
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject event = batch.getJSONObject(0);
 
         mockFaultValidation(eventType, event, "error");
 
-        EventPublishResult result = publisher.publish(batch, eventType.getName());
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
@@ -71,22 +71,22 @@ public class EventPublisherTest {
 
     @Test
     public void whenValidationFailsThenSubsequentItemsAreAborted() throws Exception {
-        EventType eventType = buildDefaultEventType();
-        JSONArray batch = buildDefaultBatch(2);
-        JSONObject event = batch.getJSONObject(0);
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(2);
+        final JSONObject event = batch.getJSONObject(0);
 
         mockFaultValidation(eventType, event, "error");
 
-        EventPublishResult result = publisher.publish(batch, eventType.getName());
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
-        BatchItemResponse first = result.getResponses().get(0);
+        final BatchItemResponse first = result.getResponses().get(0);
         assertThat(first.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
         assertThat(first.getStep(), equalTo(EventPublishingStep.VALIDATION));
         assertThat(first.getDetail(), equalTo("error"));
 
-        BatchItemResponse second = result.getResponses().get(1);
+        final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
         assertThat(second.getStep(), equalTo(EventPublishingStep.NONE));
         assertThat(second.getDetail(), is(nullValue()));
@@ -96,37 +96,37 @@ public class EventPublisherTest {
 
     @Test
     public void whenPartitionFailsThenResultIsAborted() throws Exception {
-        EventType eventType = buildDefaultEventType();
-        JSONArray batch = buildDefaultBatch(1);
-        JSONObject event = batch.getJSONObject(0);
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType, event);
         mockFaultPartition(eventType, event);
 
-        EventPublishResult result = publisher.publish(batch, eventType.getName());
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
     }
 
     @Test
     public void whenPartitionFailsThenSubsequentItemsAreAborted() throws Exception {
-        EventType eventType = buildDefaultEventType();
-        JSONArray batch = buildDefaultBatch(2);
-        JSONObject event = batch.getJSONObject(0);
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(2);
+        final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType);
         mockFaultPartition(eventType, event);
 
-        EventPublishResult result = publisher.publish(batch, eventType.getName());
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
-        BatchItemResponse first = result.getResponses().get(0);
+        final BatchItemResponse first = result.getResponses().get(0);
         assertThat(first.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
         assertThat(first.getStep(), equalTo(EventPublishingStep.PARTITIONING));
         assertThat(first.getDetail(), equalTo("partition error"));
 
-        BatchItemResponse second = result.getResponses().get(1);
+        final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
         assertThat(second.getStep(), equalTo(EventPublishingStep.VALIDATION));
         assertThat(second.getDetail(), is(nullValue()));
@@ -137,13 +137,13 @@ public class EventPublisherTest {
 
     @Test
     public void whenPublishingFailsThenResultIsFailed() throws Exception {
-        EventType eventType = buildDefaultEventType();
-        JSONArray batch = buildDefaultBatch(1);
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
 
         mockSuccessfulValidation(eventType);
         mockFailedPublishing();
 
-        EventPublishResult result = publisher.publish(batch, eventType.getName());
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.FAILED));
         verify(topicRepository, times(1)).syncPostBatch(any(), any());
@@ -156,15 +156,15 @@ public class EventPublisherTest {
                 .syncPostBatch(any(), any());
     }
 
-    private void mockFaultPartition(EventType eventType, JSONObject event) throws PartitioningException {
+    private void mockFaultPartition(final EventType eventType, final JSONObject event) throws PartitioningException {
         Mockito
                 .doThrow(new PartitioningException("partition error"))
                 .when(partitionResolver)
                 .resolvePartition(eventType, event);
     }
 
-    private void mockFaultValidation(EventType eventType, JSONObject event, String error) throws Exception {
-        EventTypeValidator faultyValidator = mock(EventTypeValidator.class);
+    private void mockFaultValidation(final EventType eventType, final JSONObject event, final String error) throws Exception {
+        final EventTypeValidator faultyValidator = mock(EventTypeValidator.class);
 
         Mockito
                 .doReturn(eventType)
@@ -182,8 +182,8 @@ public class EventPublisherTest {
                 .validate(event);
     }
 
-    private void mockSuccessfulValidation(EventType eventType, JSONObject event) throws Exception {
-        EventTypeValidator truthyValidator = mock(EventTypeValidator.class);
+    private void mockSuccessfulValidation(final EventType eventType, final JSONObject event) throws Exception {
+        final EventTypeValidator truthyValidator = mock(EventTypeValidator.class);
 
         Mockito
                 .doReturn(eventType)
@@ -201,8 +201,8 @@ public class EventPublisherTest {
                 .getValidator(eventType.getName());
     }
 
-    private void mockSuccessfulValidation(EventType eventType) throws Exception {
-        EventTypeValidator truthyValidator = mock(EventTypeValidator.class);
+    private void mockSuccessfulValidation(final EventType eventType) throws Exception {
+        final EventTypeValidator truthyValidator = mock(EventTypeValidator.class);
 
         Mockito
                 .doReturn(eventType)
@@ -220,8 +220,8 @@ public class EventPublisherTest {
                 .getValidator(eventType.getName());
     }
 
-    private JSONArray buildDefaultBatch(int numberOfEvents) {
-        List<JSONObject> events = new ArrayList<>();
+    private JSONArray buildDefaultBatch(final int numberOfEvents) {
+        final List<JSONObject> events = new ArrayList<>();
 
         for (int i = 0; i < numberOfEvents; i++) {
             final JSONObject event = new JSONObject();

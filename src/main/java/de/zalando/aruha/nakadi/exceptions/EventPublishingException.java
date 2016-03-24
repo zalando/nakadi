@@ -5,11 +5,11 @@ import org.zalando.problem.MoreStatus;
 import javax.ws.rs.core.Response;
 
 public class EventPublishingException extends NakadiException {
-    public EventPublishingException(final String message, Exception e) {
+    public EventPublishingException(final String message, final Exception e) {
         super(message, e);
     }
 
-    public EventPublishingException(String message) {
+    public EventPublishingException(final String message) {
         super(message);
     }
 
