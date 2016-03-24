@@ -195,7 +195,6 @@ public class KafkaTopicRepository implements TopicRepository {
         }
 
         try {
-            // very high ~ close to request timeout
             boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
@@ -207,18 +206,15 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private Callback kafkaSendCallback(final BatchItem item, CountDownLatch done) {
-        return new Callback() {
-            @Override
-            public void onCompletion(RecordMetadata metadata, Exception exception) {
-                if (exception == null) {
-                    item.setPublishingStatus(EventPublishingStatus.SUBMITTED);
-                } else {
-                    LOG.error("Failed to publish event " + item.getEvent().toString(), exception);
-                    item.setPublishingStatus(EventPublishingStatus.FAILED);
-                }
-
-                done.countDown();
+        return (metadata, exception) -> {
+            if (exception == null) {
+                item.setPublishingStatus(EventPublishingStatus.SUBMITTED);
+            } else {
+                LOG.error("Failed to publish event " + item.getEvent().toString(), exception);
+                item.setPublishingStatus(EventPublishingStatus.FAILED);
             }
+
+            done.countDown();
         };
     }
 
