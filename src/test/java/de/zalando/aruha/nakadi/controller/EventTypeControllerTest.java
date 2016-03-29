@@ -39,9 +39,9 @@ import java.util.Arrays;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
 import static de.zalando.aruha.nakadi.domain.EventCategory.UNDEFINED;
-import static de.zalando.aruha.nakadi.service.Registry.HASH_PARTITIONING_STRATEGY;
-import static de.zalando.aruha.nakadi.service.Registry.RANDOM_PARTITIONING_STRATEGY;
-import static de.zalando.aruha.nakadi.service.Registry.USER_DEFINED_PARTITIONING_STRATEGY;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.HASH_PARTITIONING_STRATEGY;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITIONING_STRATEGY;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.USER_DEFINED_PARTITIONING_STRATEGY;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;

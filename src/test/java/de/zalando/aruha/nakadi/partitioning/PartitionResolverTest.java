@@ -11,7 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import static de.zalando.aruha.nakadi.service.Registry.HASH_PARTITIONING_STRATEGY;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.HASH_PARTITIONING_STRATEGY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Matchers.any;

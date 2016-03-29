@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.service.Registry.AVAILABLE_PARTITIONING_STRATEGIES;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.AVAILABLE_PARTITIONING_STRATEGIES;
 import static org.springframework.http.ResponseEntity.status;
 
 @RestController
 @RequestMapping(value = "/registry")
-public class RegistryController {
+public class StrategiesRegistryController {
 
     @RequestMapping(value = "/partitioning-strategies", method = RequestMethod.GET)
     public ResponseEntity<List<PartitionResolutionStrategy>> listPartitioningStrategies() {

@@ -69,7 +69,6 @@ To stop the running Nakadi again:
 
 ```sh
 curl --request POST \
-     --header "Authorization: Bearer $TOKEN" \
      --header "Content-Type:application/json" \
      http://localhost:8080/event-types -d '{
   "name": "order.ORDER_RECEIVED",
@@ -87,7 +86,6 @@ curl --request POST \
 
 ```sh
 curl --request GET \
-     --header "Authorization: Bearer $TOKEN" \
      http://localhost:8080/event-types
 ```
 
@@ -95,7 +93,6 @@ curl --request GET \
 
 ```sh
 curl --request GET \
-     --header "Authorization: Bearer $TOKEN" \
      http://localhost:8080/event-types/order.ORDER_RECEIVED
 ```
 
@@ -103,7 +100,6 @@ curl --request GET \
 
 ```sh
 curl --request GET \
-     --header "Authorization: Bearer $TOKEN" \
      --header "Content-Type:application/json" \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions
 ```
@@ -112,7 +108,6 @@ curl --request GET \
 
 ```sh
 curl --request GET \
-     --header "Authorization: Bearer $TOKEN" \
      --header "Content-Type:application/json" \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions/0
 ```
@@ -121,7 +116,6 @@ curl --request GET \
 
 ```sh
 curl --request POST \
-     --header "Authorization: Bearer $TOKEN" \
      --header "Content-Type:application/json" \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
      -d '{ "order_number": "ORDER_ONE", "metadata": { "eid": "39ac3332-eb00-11e5-91fe-1c6f65464fc6", "occurred_at": "2016-03-15T23:47:15+01:00" } }'
@@ -129,13 +123,23 @@ curl --request POST \
 
 ### Receive event stream
 
-Lookup the partition cursors with `/event-types/order.ORDER_RECEIVED/partitions` in order to provide a valid `X-Nakadi-Cursors` header.
+You can consume from all partitions of an event type by just getting the `events` sub-resource:
 
 ```sh
 curl --request GET \
-     --header "Authorization: Bearer $TOKEN" \
      --header "Content-Type:application/json" \
-     --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"0"}]' \
+     http://localhost:8080/event-types/order.ORDER_RECEIVED/events
+```
+
+You can consume only certain partitions or from in the middle of the stream or from the beginning by using the `X-Nakadi-Cursors` header.
+Lookup the partition cursors with `/event-types/order.ORDER_RECEIVED/partitions` in order to provide a valid `X-Nakadi-Cursors` header.
+
+For instance, to read from partition `0` from the beginning:
+
+```sh
+curl --request GET \
+     --header "Content-Type:application/json" \
+     --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"BEGIN"}]' \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/events
 ```
 
@@ -143,7 +147,6 @@ The stream contains events together with the cursors, so that clients can rememb
 
 ```sh
 $ curl --request GET \
-       --header "Authorization: Bearer $TOKEN" \
        --header "Content-Type:application/json" \
        --header 'X-Nakadi-Cursors:[{"partition": "0", "offset":"3"}]' \
        http://localhost:8080/event-types/order.ORDER_RECEIVED/events
@@ -152,3 +155,5 @@ $ curl --request GET \
 {"cursor":{"partition":"0","offset":"6"},"events":[{"order_number": "ORDER_003", "metadata": {"eid": "4cc6d2f0-eb01-11e5-b606-1c6f65464fc6", "occurred_at": "2016-03-15T23:58:15+01:00"}}]}
 {"cursor":{"partition":"0","offset":"6"}}
 ```
+
+Note that the offset is zero based and exclusive.

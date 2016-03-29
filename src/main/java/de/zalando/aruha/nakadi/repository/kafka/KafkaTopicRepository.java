@@ -2,29 +2,38 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
+import de.zalando.aruha.nakadi.domain.EventPublishingStep;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
+import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
+import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
-import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.producer.BufferExhaustedException;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.errors.InterruptException;
+import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -167,6 +176,48 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
+    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
+        final CountDownLatch done = new CountDownLatch(batch.size());
+
+        for (final BatchItem item : batch) {
+            final ProducerRecord<String, String> record = new ProducerRecord<>(topicId,
+                    toKafkaPartition(item.getPartition()), item.getPartition(), item.getEvent().toString());
+
+            item.setStep(EventPublishingStep.PUBLISHING);
+
+            try {
+                kafkaProducer.send(record, kafkaSendCallback(item, done));
+            } catch (InterruptException | SerializationException | BufferExhaustedException e) {
+                item.setPublishingStatus(EventPublishingStatus.FAILED);
+                throw new EventPublishingException("Error publishing message to kafka", e);
+            }
+        }
+
+        try {
+            final boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
+
+            if (!isSuccessful) {
+                throw new EventPublishingException("Timeout publishing events");
+            }
+        } catch (InterruptedException e) {
+            throw new EventPublishingException("Error publishing message to kafka", e);
+        }
+    }
+
+    private Callback kafkaSendCallback(final BatchItem item, final CountDownLatch done) {
+        return (metadata, exception) -> {
+            if (exception == null) {
+                item.setPublishingStatus(EventPublishingStatus.SUBMITTED);
+            } else {
+                LOG.error("Failed to publish event " + item.getEvent().toString(), exception);
+                item.setPublishingStatus(EventPublishingStatus.FAILED);
+            }
+
+            done.countDown();
+        };
+    }
+
+    @Override
     public List<TopicPartition> listPartitions(final String topicId) throws ServiceUnavailableException {
 
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
@@ -208,7 +259,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public List<String> listPartitionNames(final String topicId) throws NakadiException {
+    public List<String> listPartitionNames(final String topicId) {
         return unmodifiableList(kafkaFactory.createProducer().partitionsFor(topicId)
                 .stream()
                 .map(partitionInfo -> toNakadiPartition(partitionInfo.partition()))

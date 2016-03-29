@@ -1,9 +1,11 @@
 package de.zalando.aruha.nakadi.repository;
 
+import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
+import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
@@ -35,9 +37,11 @@ public interface TopicRepository {
 
     void postEvent(String topicId, String partitionId, String payload) throws NakadiException;
 
+    void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
+
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
-    List<String> listPartitionNames(final String topicId) throws NakadiException;
+    List<String> listPartitionNames(final String topicId);
 
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 

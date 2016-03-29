@@ -6,7 +6,7 @@ import de.zalando.aruha.nakadi.partitioning.PartitioningStrategy;
 
 import java.util.List;
 
-public class Registry {
+public class StrategiesRegistry {
 
     public static final PartitionResolutionStrategy HASH_PARTITIONING_STRATEGY =
             new PartitionResolutionStrategy("hash", "This strategy will use the event " +
