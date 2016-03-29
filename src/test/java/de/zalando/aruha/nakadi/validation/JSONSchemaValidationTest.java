@@ -189,6 +189,32 @@ public class JSONSchemaValidationTest {
     }
 
     @Test
+    public void requireMetadataOccurredAtToBeFormattedAsDateTimeWithMilliseconds() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("occurred_at", "1996-10-15T16:39:57.1245678+07:00");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error, isAbsent());
+    }
+
+    @Test
+    public void acceptsDateTimeZoneWithoutColonSeparation() {
+        final EventType et = buildEventType("some-event-type", basicSchema());
+        et.setCategory(EventCategory.BUSINESS);
+
+        final JSONObject event = businessEvent();
+        event.getJSONObject("metadata").put("occurred_at", "1996-10-15T16:39:57+0800");
+
+        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error, isAbsent());
+    }
+
+    @Test
     public void requireEidToBeFormattedAsUUID() {
         final EventType et = buildEventType("some-event-type", basicSchema());
         et.setCategory(EventCategory.BUSINESS);

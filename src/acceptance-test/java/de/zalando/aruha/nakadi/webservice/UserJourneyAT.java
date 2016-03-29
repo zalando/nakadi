@@ -86,8 +86,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .withWaitBetweenEachTry(500));
 
         // push two events to event-type
-        postEvent(EVENT1);
-        postEvent(EVENT2);
+        postEvents(new String[]{ EVENT1, EVENT2});
 
         // get offsets for partition
         jsonRequestSpec().when().get("/event-types/" + TEST_EVENT_TYPE + "/partitions/0").then().statusCode(OK.value())
@@ -115,9 +114,10 @@ public class UserJourneyAT extends RealEnvironmentAT {
         jsonRequestSpec().when().get("/event-types/" + TEST_EVENT_TYPE).then().statusCode(NOT_FOUND.value());
     }
 
-    private void postEvent(final String event) {
-        jsonRequestSpec().body(event).when().post("/event-types/" + TEST_EVENT_TYPE + "/events").then().statusCode(
-            CREATED.value());
+    private void postEvents(final String[] events) {
+        final String batch = "[" + String.join(",", events) + "]";
+        jsonRequestSpec().body(batch).when().post("/event-types/" + TEST_EVENT_TYPE + "/events").then().statusCode(
+            OK.value());
     }
 
     private RequestSpecification jsonRequestSpec() {

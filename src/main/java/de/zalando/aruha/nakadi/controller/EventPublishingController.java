@@ -3,20 +3,12 @@ package de.zalando.aruha.nakadi.controller;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.annotation.Timed;
-import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.exceptions.EventValidationException;
-import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
+import de.zalando.aruha.nakadi.domain.EventPublishResult;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
-import de.zalando.aruha.nakadi.exceptions.PartitioningException;
-import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
-import de.zalando.aruha.nakadi.validation.EventTypeValidator;
-import de.zalando.aruha.nakadi.validation.ValidationError;
+import de.zalando.aruha.nakadi.service.EventPublisher;
+import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,10 +18,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.problem.Problem;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
+import javax.ws.rs.core.Response;
 import java.util.concurrent.TimeUnit;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
@@ -44,22 +35,12 @@ public class EventPublishingController {
     public static final String SUCCESS_METRIC_NAME = "success";
     public static final String FAILED_METRIC_NAME = "failed";
 
-    private final TopicRepository topicRepository;
-    private final EventTypeRepository eventTypeRepository;
-    private final EventTypeCache cache;
     private final MetricRegistry metricRegistry;
-    private final PartitionResolver partitionResolver;
+    private final EventPublisher publisher;
 
-    public EventPublishingController(final TopicRepository topicRepository,
-                                     final EventTypeRepository eventTypeRepository,
-                                     final EventTypeCache cache,
-                                     final MetricRegistry metricRegistry,
-                                     final PartitionResolver partitionResolver) {
-        this.topicRepository = topicRepository;
-        this.eventTypeRepository = eventTypeRepository;
-        this.cache = cache;
+    public EventPublishingController(final EventPublisher publisher, final MetricRegistry metricRegistry) {
+        this.publisher = publisher;
         this.metricRegistry = metricRegistry;
-        this.partitionResolver = partitionResolver;
     }
 
     @Timed(name = "post_events", absolute = true)
@@ -69,57 +50,33 @@ public class EventPublishingController {
         LOG.trace("Received event {} for event type {}", event, eventTypeName);
 
         try {
-            final long startingTime = System.nanoTime();
-            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-
-            return doWithMetrics(eventTypeName, startingTime, () -> {
-                final JSONObject eventAsJson = parseJson(event);
-                validateSchema(eventAsJson, eventType);
-                String partitionId = partitionResolver.resolvePartition(eventType, eventAsJson);
-
-                topicRepository.postEvent(eventTypeName, partitionId, event);
-
-                return status(HttpStatus.CREATED).build();
+            return doWithMetrics(eventTypeName, System.nanoTime(), () -> {
+                final JSONArray eventsAsJsonObjects = new JSONArray(event);
+                final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName);
+                return response(result);
             });
-
-        } catch (NoSuchEventTypeException e) {
-            LOG.debug("Could not process event.", e);
-            return create(e.asProblem(), nativeWebRequest);
-        } catch (final EventValidationException e) {
-            LOG.debug("Event validation error: {}", e.getMessage());
-            return create(e.asProblem(), nativeWebRequest);
-        } catch (final PartitioningException e) {
-            LOG.debug("Event partitioning error: {}", e.getMessage());
+        } catch (final JSONException e) {
+            LOG.debug("Problem parsing event", e);
+            return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
+        } catch (final NoSuchEventTypeException e) {
+            LOG.debug("Event type not found.", e);
             return create(e.asProblem(), nativeWebRequest);
         } catch (final NakadiException e) {
-            LOG.error("error posting to partition", e);
+            LOG.debug("Failed to publish batch", e);
             return create(e.asProblem(), nativeWebRequest);
         }
     }
 
-    private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException, InternalNakadiException {
-        try {
-            final EventTypeValidator validator = cache.getValidator(eventType.getName());
-            final Optional<ValidationError> validationError = validator.validate(event);
-
-            if (validationError.isPresent()) {
-                throw new EventValidationException(validationError.get());
-            }
-        } catch (ExecutionException e) {
-            LOG.error("Error loading validator", e);
-            throw new InternalNakadiException("Error loading validator", e);
+    private ResponseEntity response(final EventPublishResult result) {
+        switch (result.getStatus()) {
+            case SUBMITTED: return status(HttpStatus.OK).build();
+            case ABORTED: return status(HttpStatus.UNPROCESSABLE_ENTITY).body(result.getResponses());
+            default: return status(HttpStatus.MULTI_STATUS).body(result.getResponses());
         }
     }
 
-    private JSONObject parseJson(final String event) throws EventValidationException {
-        try {
-            return new JSONObject(event);
-        } catch (JSONException e) {
-            throw new EventValidationException(new ValidationError("payload must be a valid json"));
-        }
-    }
-
-    private ResponseEntity doWithMetrics(final String eventTypeName, final long startingNanos, final EventProcessingTask task) throws NakadiException {
+    private ResponseEntity doWithMetrics(final String eventTypeName, final long startingNanos,
+                                         final EventProcessingTask task) throws NakadiException {
         try {
             final ResponseEntity responseEntity = task.execute();
 
@@ -127,7 +84,7 @@ public class EventPublishingController {
             successfullyPublishedTimer.update(System.nanoTime() - startingNanos, TimeUnit.NANOSECONDS);
 
             return responseEntity;
-        } catch (Exception e) {
+        } catch (final Exception e) {
             metricRegistry.counter(metricNameFor(eventTypeName, FAILED_METRIC_NAME)).inc();
             throw e;
         }
