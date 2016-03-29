@@ -12,7 +12,6 @@ import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.service.EventPublisher;
@@ -39,9 +38,6 @@ public class NakadiConfig {
 
     @Autowired
     private TopicRepository topicRepository;
-
-    @Autowired
-    private EventTypeRepository eventTypeRepository;
 
     @Autowired
     private EventTypeCache eventTypeCache;
