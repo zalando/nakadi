@@ -88,7 +88,7 @@ public class NakadiConfig {
     }
 
     @Bean
-    EventPublisher eventPublisher() {
+    public EventPublisher eventPublisher() {
         return new EventPublisher(topicRepository, eventTypeCache, partitionResolver());
     }
 
