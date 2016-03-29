@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.controller;
 
+import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.annotation.Timed;
@@ -37,10 +38,12 @@ public class EventPublishingController {
 
     private final MetricRegistry metricRegistry;
     private final EventPublisher publisher;
+    private Histogram batchSizeHistogram;
 
     public EventPublishingController(final EventPublisher publisher, final MetricRegistry metricRegistry) {
         this.publisher = publisher;
         this.metricRegistry = metricRegistry;
+        batchSizeHistogram = metricRegistry.histogram("nakadi.general.publishing.batchSize");
     }
 
     @Timed(name = "post_events", absolute = true)
@@ -50,8 +53,9 @@ public class EventPublishingController {
         LOG.trace("Received event {} for event type {}", event, eventTypeName);
 
         try {
-            return doWithMetrics(eventTypeName, System.nanoTime(), () -> {
+            return doWithTimerMetric(eventTypeName, System.nanoTime(), () -> {
                 final JSONArray eventsAsJsonObjects = new JSONArray(event);
+                batchSizeHistogram.update(eventsAsJsonObjects.length());
                 final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName);
                 return response(result);
             });
@@ -75,8 +79,8 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity doWithMetrics(final String eventTypeName, final long startingNanos,
-                                         final EventProcessingTask task) throws NakadiException {
+    private ResponseEntity doWithTimerMetric(final String eventTypeName, final long startingNanos,
+                                             final EventProcessingTask task) throws NakadiException {
         try {
             final ResponseEntity responseEntity = task.execute();
 
