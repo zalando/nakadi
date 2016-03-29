@@ -38,7 +38,7 @@ public class EventPublishingController {
 
     private final MetricRegistry metricRegistry;
     private final EventPublisher publisher;
-    private Histogram batchSizeHistogram;
+    private final Histogram batchSizeHistogram;
 
     public EventPublishingController(final EventPublisher publisher, final MetricRegistry metricRegistry) {
         this.publisher = publisher;
