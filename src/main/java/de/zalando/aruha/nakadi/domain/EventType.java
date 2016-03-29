@@ -10,7 +10,7 @@ import javax.validation.constraints.Pattern;
 import java.util.ArrayList;
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.service.Registry.RANDOM_PARTITIONING_STRATEGY;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITIONING_STRATEGY;
 import static java.util.Collections.unmodifiableList;
 
 public class EventType {
