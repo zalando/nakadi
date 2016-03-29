@@ -31,20 +31,20 @@ public class EventPublisher {
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
 
     private final TopicRepository topicRepository;
-    private final EventTypeCache cache;
+    private final EventTypeCache eventTypeCache;
     private final PartitionResolver partitionResolver;
 
     public EventPublisher(final TopicRepository topicRepository,
-                         final EventTypeCache cache,
+                         final EventTypeCache eventTypeCache,
                          final PartitionResolver partitionResolver) {
         this.topicRepository = topicRepository;
-        this.cache = cache;
+        this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
     }
 
     public EventPublishResult publish(final JSONArray events, final String eventTypeName) throws NoSuchEventTypeException,
             InternalNakadiException {
-        final EventType eventType = cache.getEventType(eventTypeName);
+        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         final List<BatchItem> batch = initBatch(events);
 
         try {
@@ -116,7 +116,7 @@ public class EventPublisher {
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,
             InternalNakadiException {
         try {
-            final EventTypeValidator validator = cache.getValidator(eventType.getName());
+            final EventTypeValidator validator = eventTypeCache.getValidator(eventType.getName());
             final Optional<ValidationError> validationError = validator.validate(event);
 
             if (validationError.isPresent()) {

@@ -51,8 +51,8 @@ public class EventPublishingController {
 
         try {
             return doWithMetrics(eventTypeName, System.nanoTime(), () -> {
-                final JSONArray events = new JSONArray(event);
-                final EventPublishResult result = publisher.publish(events, eventTypeName);
+                final JSONArray eventsAsJsonObjects = new JSONArray(event);
+                final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName);
                 return response(result);
             });
         } catch (final JSONException e) {
