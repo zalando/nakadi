@@ -130,7 +130,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void publishedEventsAreReportedPerEventType() throws Exception {
-        final EventPublishResult success = new EventPublishResult(EventPublishingStatus.SUBMITTED, null, null);
+        final EventPublishResult success = new EventPublishResult(SUBMITTED, null, null);
 
         final Timer successfulTimer = metricRegistry.timer(
                 metricNameFor(TOPIC, EventPublishingController.SUCCESS_METRIC_NAME));
