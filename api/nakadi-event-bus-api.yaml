@@ -365,11 +365,11 @@ paths:
       security:
         - oauth2: [nakadi.admin]
       description: |
-        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of this `EventType`
-        will also be removed.
-        It's important to note that topic deletion in Kafka can take some time, so before it is completelly removed
-        it will not be possible to create an `EventType` with the same name as removed one had (you will get 409
-        response code from creation endpoint)
+        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of this
+        `EventType` will also be removed.
+        **Note**: Kafka's topic deletion happens asynchronously w.r.t. this DELETE call; therefore creation
+        of an equally named `EventType` before the underlying topic deletion is complete will not succeed
+        (failure is a 409 Conflic).
       parameters:
         - name: name
           in: path
