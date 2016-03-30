@@ -155,7 +155,9 @@ dependencies {
 
     // json
     compile 'org.everit.json:org.everit.json.schema:1.2.0'
-    compile 'com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.4.0'
+    compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.4.0') {
+        exclude module: "json"
+    }
 
     // scala dependencies
     //compile 'org.scala-lang:scala-library:2.11.6'
