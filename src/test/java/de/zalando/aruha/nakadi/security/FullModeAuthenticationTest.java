@@ -33,7 +33,7 @@ public class FullModeAuthenticationTest extends AuthenticationTest {
 
     private static final List<Endpoint> endpointsForUidScope = ImmutableList.of(
             new Endpoint(GET, "/metrics"),
-            new Endpoint(GET, "/registry/partitioning-strategies"));
+            new Endpoint(GET, "/registry/partition-strategies"));
 
     @Test
     public void fullAuthMode() throws Exception {

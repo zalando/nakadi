@@ -53,14 +53,14 @@ public class HashPartitionStrategyTest {
     }
 
     @Test
-    public void calculatesSamePartitionForSamePartitioningKeyFields() throws Exception {
+    public void calculatesSamePartitionForSamePartitionKeyFields() throws Exception {
         fillPartitionsWithRandomEvents(simpleEventType, partitions, 1000);
 
         checkThatEventsWithSameKeysAreInSamePartition(partitions);
     }
 
     @Test
-    @Ignore("This might be useful to play around with for future implementations of PartitioningStrategies")
+    @Ignore("This might be useful to play around with for future implementations of PartitionStrategies")
     public void partitionsAreEvenlyDistributed_usingRandomEvents() {
         // This is a probabilistic test.
         // The probability that it fails is approx. 0.577%

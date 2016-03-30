@@ -146,13 +146,13 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithUnknownPartitioningStrategyThenReturn422() throws Exception {
+    public void whenPostWithUnknownPartitionStrategyThenReturn422() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("unknown_strategy", null);
         eventType.setPartitionStrategy(strategy);
 
         final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                "partitioning strategy does not exist: unknown_strategy");
+                "partition strategy does not exist: unknown_strategy");
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -161,12 +161,12 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithHashPartitioningStrategyAndWithoutPartitioningKeysThenReturn422() throws Exception {
+    public void whenPostWithHashPartitionStrategyAndWithoutPartitionKeysThenReturn422() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.setPartitionStrategy(HASH_PARTITION_STRATEGY);
 
         final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                "partitioning_key_fields field should be set for partition resolution strategy 'hash'");
+                "partition_key_fields field should be set for partition resolution strategy 'hash'");
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -175,7 +175,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithUserDefinedPartitioningStrategyForUndefinedCategoryThenReturn422() throws Exception {
+    public void whenPostWithUserDefinedPartitionStrategyForUndefinedCategoryThenReturn422() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.setCategory(UNDEFINED);
 
@@ -191,7 +191,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithNullPartitioningStrategyNameThenReturn422() throws Exception {
+    public void whenPostWithNullPartitionStrategyNameThenReturn422() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor(null, null);
         eventType.setPartitionStrategy(strategy);
@@ -204,7 +204,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithKnownPartitioningStrategyThenReturn201() throws Exception {
+    public void whenPostWithKnownPartitionStrategyThenReturn201() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.setPartitionStrategy(RANDOM_PARTITION_STRATEGY);
         postEventType(eventType)

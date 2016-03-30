@@ -17,7 +17,7 @@ public class StrategiesRegistryControllerTest {
     private static final MockMvc mockMvc = mockMvcForController(new StrategiesRegistryController());
 
     @Test
-    public void canExposePartitioningStrategies() throws Exception {
+    public void canExposePartitionStrategies() throws Exception {
         mockMvc.perform(get("/registry/partition-strategies"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
