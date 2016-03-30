@@ -7,7 +7,7 @@ import org.json.JSONObject;
 import java.util.List;
 
 @FunctionalInterface
-public interface PartitioningStrategy {
+public interface PartitionStrategy {
 
     String HASH_STRATEGY = "hash";
     String USER_DEFINED_STRATEGY = "user_defined";

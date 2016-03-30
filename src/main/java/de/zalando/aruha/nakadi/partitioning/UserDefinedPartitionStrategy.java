@@ -7,7 +7,7 @@ import org.json.JSONObject;
 
 import java.util.List;
 
-public class UserDefinedPartitioningStrategy implements PartitioningStrategy {
+public class UserDefinedPartitionStrategy implements PartitionStrategy {
 
     @Override
     public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)

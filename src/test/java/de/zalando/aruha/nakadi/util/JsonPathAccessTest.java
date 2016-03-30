@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.util;
 
-import de.zalando.aruha.nakadi.exceptions.InvalidPartitioningKeyFieldsException;
+import de.zalando.aruha.nakadi.exceptions.InvalidPartitionKeyFieldsException;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -36,8 +36,8 @@ public class JsonPathAccessTest {
 
     }
 
-    @Test(expected = InvalidPartitioningKeyFieldsException.class)
-    public void throwsExceptionIfPropertyDoesNotExist() throws InvalidPartitioningKeyFieldsException {
+    @Test(expected = InvalidPartitionKeyFieldsException.class)
+    public void throwsExceptionIfPropertyDoesNotExist() throws InvalidPartitionKeyFieldsException {
 
         jsonPath.get("does_not_exist");
 
