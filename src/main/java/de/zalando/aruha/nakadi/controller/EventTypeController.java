@@ -167,11 +167,11 @@ public class EventTypeController {
         else if (HASH_STRATEGY.equals(partitionStrategy.getName()) &&
                 eventType.getPartitionKeyFields().isEmpty()) {
             throw new InvalidEventTypeException("partition_key_fields field should be set for " +
-                    "partition resolution strategy 'hash'");
+                    "partition strategy 'hash'");
         }
         else if (USER_DEFINED_STRATEGY.equals(partitionStrategy.getName()) &&
                 UNDEFINED.equals(eventType.getCategory())) {
-            throw new InvalidEventTypeException("'user_defined' partition resolution strategy can't be used " +
+            throw new InvalidEventTypeException("'user_defined' partition strategy can't be used " +
                     "for EventType of category 'undefined'");
         }
     }

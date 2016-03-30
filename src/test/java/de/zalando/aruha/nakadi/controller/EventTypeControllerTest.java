@@ -166,7 +166,7 @@ public class EventTypeControllerTest {
         eventType.setPartitionStrategy(HASH_PARTITION_STRATEGY);
 
         final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                "partition_key_fields field should be set for partition resolution strategy 'hash'");
+                "partition_key_fields field should be set for partition strategy 'hash'");
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -182,7 +182,7 @@ public class EventTypeControllerTest {
         eventType.setPartitionStrategy(USER_DEFINED_PARTITION_STRATEGY);
 
         final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                "'user_defined' partition resolution strategy can't be used for EventType of category 'undefined'");
+                "'user_defined' partition strategy can't be used for EventType of category 'undefined'");
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -196,7 +196,7 @@ public class EventTypeControllerTest {
         final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor(null, null);
         eventType.setPartitionStrategy(strategy);
 
-        final Problem expectedProblem = invalidProblem("partition_resolution_strategy.name", "may not be null");
+        final Problem expectedProblem = invalidProblem("partition_strategy.name", "may not be null");
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
