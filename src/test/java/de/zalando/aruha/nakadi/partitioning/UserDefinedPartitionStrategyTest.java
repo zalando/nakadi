@@ -10,9 +10,9 @@ import java.util.List;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-public class UserDefinedPartitioningStrategyTest {
+public class UserDefinedPartitionStrategyTest {
 
-    private static final UserDefinedPartitioningStrategy strategy = new UserDefinedPartitioningStrategy();
+    private static final UserDefinedPartitionStrategy strategy = new UserDefinedPartitionStrategy();
     private static final List<String> partitions = ImmutableList.of("a", "b", "c");
 
     @Test

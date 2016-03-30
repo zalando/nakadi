@@ -16,7 +16,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class RandomPartitioningStrategyTest {
+public class RandomPartitionStrategyTest {
 
     @Test
     public void whenCalculatePartitionThenRandomGeneratorIsUsedCorrectly() {
@@ -24,7 +24,7 @@ public class RandomPartitioningStrategyTest {
 
         final Random randomMock = mock(Random.class);
         when(randomMock.nextInt(anyInt())).thenReturn(3, 0, 4, 1, 7);
-        final RandomPartitioningStrategy strategy = new RandomPartitioningStrategy(randomMock);
+        final RandomPartitionStrategy strategy = new RandomPartitionStrategy(randomMock);
 
         final List<String> resolvedPartitions = newArrayList();
         final int numberOfRuns = 5;
@@ -40,7 +40,7 @@ public class RandomPartitioningStrategyTest {
     @Test
     public void whenOnePartitionThenRandomGeneratorNotUsed() {
         final Random randomMock = mock(Random.class);
-        final RandomPartitioningStrategy strategy = new RandomPartitioningStrategy(randomMock);
+        final RandomPartitionStrategy strategy = new RandomPartitionStrategy(randomMock);
 
         final String resolvedPartition = strategy.calculatePartition(null, null, ImmutableList.of("a"));
         assertThat(resolvedPartition, equalTo("a"));

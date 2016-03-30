@@ -6,11 +6,11 @@ import org.json.JSONObject;
 import java.util.List;
 import java.util.Random;
 
-public class RandomPartitioningStrategy implements PartitioningStrategy {
+public class RandomPartitionStrategy implements PartitionStrategy {
 
     private final Random random;
 
-    public RandomPartitioningStrategy(final Random random) {
+    public RandomPartitionStrategy(final Random random) {
         this.random = random;
     }
 

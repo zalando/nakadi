@@ -10,7 +10,7 @@ import javax.validation.constraints.Pattern;
 import java.util.ArrayList;
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITIONING_STRATEGY;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITION_STRATEGY;
 import static java.util.Collections.unmodifiableList;
 
 public class EventType {
@@ -31,10 +31,10 @@ public class EventType {
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
     @Valid
-    private PartitionResolutionStrategy partitionResolutionStrategy = RANDOM_PARTITIONING_STRATEGY;
+    private PartitionStrategyDescriptor partitionStrategy = RANDOM_PARTITION_STRATEGY;
 
     @Nullable
-    private List<String> partitioningKeyFields;
+    private List<String> partitionKeyFields;
 
     @Valid
     private EventTypeSchema schema;
@@ -63,12 +63,12 @@ public class EventType {
         return validationStrategies;
     }
 
-    public PartitionResolutionStrategy getPartitionResolutionStrategy() {
-        return partitionResolutionStrategy;
+    public PartitionStrategyDescriptor getPartitionStrategy() {
+        return partitionStrategy;
     }
 
-    public void setPartitionResolutionStrategy(final PartitionResolutionStrategy partitionResolutionStrategy) {
-        this.partitionResolutionStrategy = partitionResolutionStrategy;
+    public void setPartitionStrategy(final PartitionStrategyDescriptor partitionStrategyDescriptor) {
+        this.partitionStrategy = partitionStrategyDescriptor;
     }
 
     public EventTypeSchema getSchema() {
@@ -79,12 +79,12 @@ public class EventType {
         this.schema = schema;
     }
 
-    public List<String> getPartitioningKeyFields() {
-        return unmodifiableList(partitioningKeyFields != null ? partitioningKeyFields : EMPTY_STRING_LIST);
+    public List<String> getPartitionKeyFields() {
+        return unmodifiableList(partitionKeyFields != null ? partitionKeyFields : EMPTY_STRING_LIST);
     }
 
-    public void setPartitioningKeyFields(final List<String> partitioningKeyFields) {
-        this.partitioningKeyFields = partitioningKeyFields;
+    public void setPartitionKeyFields(final List<String> partitionKeyFields) {
+        this.partitionKeyFields = partitionKeyFields;
     }
 
 }
