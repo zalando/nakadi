@@ -76,7 +76,7 @@ public class EventTypeController {
 
         try {
             validateSchema(eventType);
-            validatePartitioningStrategy(eventType);
+            validatePartitionStrategy(eventType);
             eventTypeRepository.saveEventType(eventType);
             topicRepository.createTopic(eventType.getName());
             return status(HttpStatus.CREATED).build();
@@ -157,19 +157,19 @@ public class EventTypeController {
         }
     }
 
-    private void validatePartitioningStrategy(final EventType eventType) throws NoSuchPartitionStrategyException,
+    private void validatePartitionStrategy(final EventType eventType) throws NoSuchPartitionStrategyException,
             InvalidEventTypeException {
-        final PartitionStrategyDescriptor partitioningStrategy = eventType.getPartitionStrategy();
-        if (!partitionResolver.strategyExists(partitioningStrategy.getName())) {
-            throw new NoSuchPartitionStrategyException("partitioning strategy does not exist: " +
-                    partitioningStrategy.getName());
+        final PartitionStrategyDescriptor partitionStrategy = eventType.getPartitionStrategy();
+        if (!partitionResolver.strategyExists(partitionStrategy.getName())) {
+            throw new NoSuchPartitionStrategyException("partition strategy does not exist: " +
+                    partitionStrategy.getName());
         }
-        else if (HASH_STRATEGY.equals(partitioningStrategy.getName()) &&
+        else if (HASH_STRATEGY.equals(partitionStrategy.getName()) &&
                 eventType.getPartitionKeyFields().isEmpty()) {
-            throw new InvalidEventTypeException("partitioning_key_fields field should be set for " +
+            throw new InvalidEventTypeException("partition_key_fields field should be set for " +
                     "partition resolution strategy 'hash'");
         }
-        else if (USER_DEFINED_STRATEGY.equals(partitioningStrategy.getName()) &&
+        else if (USER_DEFINED_STRATEGY.equals(partitionStrategy.getName()) &&
                 UNDEFINED.equals(eventType.getCategory())) {
             throw new InvalidEventTypeException("'user_defined' partition resolution strategy can't be used " +
                     "for EventType of category 'undefined'");

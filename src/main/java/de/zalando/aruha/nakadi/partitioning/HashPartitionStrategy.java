@@ -18,7 +18,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
         final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
         if (partitionKeyFields.isEmpty()) {
             throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +
-                    "has no partitioning key fields configured.");
+                    "has no partition key fields configured.");
         }
 
         try {
