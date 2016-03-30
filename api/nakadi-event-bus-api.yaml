@@ -876,8 +876,8 @@ definitions:
             description: |
               Identifier of this Event.
 
-              Clients are allowed to generate this and this SHOULD be guaranteed to be unique from the
-              perspective of the producer. Consumers MIGHT use this value to assert uniqueness of reception
+              Clients MUST generate this and this SHOULD be guaranteed to be unique from the perspective of the
+              producer. Consumers MIGHT use this value to assert uniqueness of reception
               of the Event.
             type: string
             example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
