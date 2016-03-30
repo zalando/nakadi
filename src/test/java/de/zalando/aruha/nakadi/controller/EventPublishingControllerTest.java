@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.BatchItemResponse;
 import de.zalando.aruha.nakadi.domain.EventPublishResult;
-import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
@@ -31,7 +30,7 @@ import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.FAILED;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.SUBMITTED;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PARTITIONING;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PUBLISHING;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStep.VALIDATION;
+import static de.zalando.aruha.nakadi.domain.EventPublishingStep.VALIDATING;
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -158,7 +157,7 @@ public class EventPublishingControllerTest {
     private List<BatchItemResponse> responses() {
         final BatchItemResponse response = new BatchItemResponse();
         response.setPublishingStatus(ABORTED);
-        response.setStep(VALIDATION);
+        response.setStep(VALIDATING);
 
         final List<BatchItemResponse> responses = new ArrayList<>();
         responses.add(response);

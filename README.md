@@ -74,7 +74,7 @@ curl --request POST \
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
   "category": "business",
-  "partitioning_key_fields": [],
+  "partition_key_fields": [],
   "schema": {
     "type": "json_schema",
     "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }"

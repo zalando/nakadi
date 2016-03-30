@@ -17,16 +17,16 @@ public class EventTypeTest {
     }
 
     @Test
-    public void canDeserializeWithoutPartitioningKeyFields() throws Exception {
-        final String json = resourceAsString("event-type.without.partitioning-key-fields.json", this.getClass());
+    public void canDeserializeWithoutPartitionKeyFields() throws Exception {
+        final String json = resourceAsString("event-type.without.partition-key-fields.json", this.getClass());
         final EventType eventType = objectMapper.readValue(json, EventType.class);
 
         assertThat(eventType, notNullValue());
     }
 
     @Test
-    public void canDeserializeWithPartitioningKeyFields() throws Exception {
-        final String json = resourceAsString("event-type.with.partitioning-key-fields.json", this.getClass());
+    public void canDeserializeWithPartitionKeyFields() throws Exception {
+        final String json = resourceAsString("event-type.with.partition-key-fields.json", this.getClass());
         final EventType eventType = objectMapper.readValue(json, EventType.class);
 
         assertThat(eventType, notNullValue());

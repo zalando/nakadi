@@ -33,7 +33,7 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
-public class HashPartitioningStrategyTest {
+public class HashPartitionStrategyTest {
 
     private static final Random RANDOM = new Random();
     private static final String DELIMITER = "#";
@@ -43,24 +43,24 @@ public class HashPartitioningStrategyTest {
     private static List<JSONObject> EVENT_SAMPLES_B = null;
     private static List<JSONObject> EVENT_SAMPLES_C = null;
 
-    private final HashPartitioningStrategy strategy = new HashPartitioningStrategy();
+    private final HashPartitionStrategy strategy = new HashPartitionStrategy();
     private final EventType simpleEventType;
     private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
 
-    public HashPartitioningStrategyTest() {
+    public HashPartitionStrategyTest() {
         simpleEventType = new EventType();
-        simpleEventType.setPartitioningKeyFields(asList("sku", "name"));
+        simpleEventType.setPartitionKeyFields(asList("sku", "name"));
     }
 
     @Test
-    public void calculatesSamePartitionForSamePartitioningKeyFields() throws Exception {
+    public void calculatesSamePartitionForSamePartitionKeyFields() throws Exception {
         fillPartitionsWithRandomEvents(simpleEventType, partitions, 1000);
 
         checkThatEventsWithSameKeysAreInSamePartition(partitions);
     }
 
     @Test
-    @Ignore("This might be useful to play around with for future implementations of PartitioningStrategies")
+    @Ignore("This might be useful to play around with for future implementations of PartitionStrategies")
     public void partitionsAreEvenlyDistributed_usingRandomEvents() {
         // This is a probabilistic test.
         // The probability that it fails is approx. 0.577%
@@ -104,7 +104,7 @@ public class HashPartitioningStrategyTest {
         final JSONObject event = new JSONObject(resourceAsString("../complex-event.json", this.getClass()));
 
         final EventType eventType = new EventType();
-        eventType.setPartitioningKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
+        eventType.setPartitionKeyFields(asList("sku", "brand", "category_id", "details.detail_a.detail_a_a"));
 
         final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
 
