@@ -364,9 +364,9 @@ paths:
       description: |
         Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of this
         `EventType` will also be removed.
-        **Note**: Kafka's topic deletion happens asynchronously w.r.t. this DELETE call; therefore creation
-        of an equally named `EventType` before the underlying topic deletion is complete will not succeed
-        (failure is a 409 Conflic).
+        **Note**: Kafka's topic deletion happens asynchronously with respect to this DELETE call; therefore
+        creation of an equally named `EventType` before the underlying topic deletion is complete will not
+        succeed (failure is a 409 Conflic).
       parameters:
         - name: name
           in: path
@@ -414,8 +414,8 @@ paths:
         Publishes a batch of `Event`s of this `EventType`. All items must be of the EventType identified
         by `name`.
 
-        Reception of Events will always respect the configuration of its `EventType` w.r.t. validation,
-        enrichment and partitioning. The steps performed on reception of incoming message are:
+        Reception of Events will always respect the configuration of its `EventType` with respect to
+        validation, enrichment and partitioning. The steps performed on reception of incoming message are:
 
         1. Every validation rule specified in the `EventType` will be checked in order against the incoming
         Events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
@@ -823,13 +823,13 @@ paths:
 
         Nakadi offers currently, out of the box, the following strategies:
 
-        - `random`: Resulution of the target partition happens randomly (events are evenly distributed on the
+        - `random`: Resolution of the target partition happens randomly (events are evenly distributed on the
           topic's partitions).
 
         - `user_defined`: Target partition is defined by the client. As long as the indicated partition
-          exists, Event assignment will respect this value. Correctnes of the relative ordering of events is
+          exists, Event assignment will respect this value. Correctness of the relative ordering of events is
           under the responsibility of the Producer.
-          Requires that the client provides the target partition on `metadata.paritition` (See
+          Requires that the client provides the target partition on `metadata.partition` (See
           `EventMetadata`). Failure to do so will reject the publishing of the Event.
 
         - `hash`: Resolution of the partition follows the computation of a hash from the value of the fields
