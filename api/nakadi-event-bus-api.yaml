@@ -31,7 +31,7 @@ info:
     * The **ordering** expectations of Events in this stream. Each EventType will have its Events stored in
     an underlying logical stream (the Topic) that is physically organized in disjoint collections of
     strictly ordered Events (the Partition). The EventType defines the field that acts as evaluator of the
-    ordering (that is, its partitioning key); this ordering is guaranteed by making Events whose partition
+    ordering (that is, its partition key); this ordering is guaranteed by making Events whose partition
     key resolves to the same Partition (usually a hash function on its value) be persisted strictly ordered
     in a Partition.
     In practice this means that all Events within a Partition have their relative order guaranteed: Events
@@ -47,7 +47,7 @@ info:
     submission and reception of Events.
 
     A low level **Unmanaged API** is available, providing full control and responsibility of position
-    tracking and partitioning (and therefore ordering) to the Clients.
+    tracking and partition resolution (and therefore ordering) to the Clients.
 
     In the high level **Subscription API** the consumption of Events proceeds via the establishment of a
     named **Subscription** to an EventType. Subscriptions are persistent relationships from an Application
@@ -202,8 +202,6 @@ paths:
 
         * TBD Enrichment strategy
 
-        * TBD Partition resolution strategy (indicate user-defined, random and partitioning key based)
-
         * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only json-schema is
         supported.
 
@@ -216,7 +214,7 @@ paths:
         * Using `EventTypeSchema.type` other than json-schema or passing a `EventTypeSchema.schema`
         that is invalid with respect to the schema's type. Rejects with 422 Unprocessable entity.
 
-        * Referring any of Validation, Enrichment or Partitioning strategies that does not exist or whose
+        * Referring any of Validation, Enrichment or Partition strategies that does not exist or whose
         parametrization is deemed invalid. Rejects with 422 Unprocessable entity.
 
         Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that MUST be
@@ -415,7 +413,7 @@ paths:
         by `name`.
 
         Reception of Events will always respect the configuration of its `EventType` with respect to
-        validation, enrichment and partitioning. The steps performed on reception of incoming message are:
+        validation, enrichment and partition. The steps performed on reception of incoming message are:
 
         1. Every validation rule specified in the `EventType` will be checked in order against the incoming
         Events. Validation rules are evaluated in the order they are defined and the Event is **rejected**
@@ -808,7 +806,7 @@ paths:
             $ref: '#/definitions/Problem'
 
 
-  '/registry/partitioning-strategies':
+  '/registry/partition-strategies':
     get:
       tags:
         - schema-registry-api
@@ -816,9 +814,9 @@ paths:
         - oauth2: ['nakadi.read']
 
       description: |
-        Lists all of the partitioning strategies supported by this installation of Nakadi.
+        Lists all of the partition resolution strategies supported by this installation of Nakadi.
 
-        If the EventType creation is to have a specific partitioning (besides the default), one can
+        If the EventType creation is to have a specific partition strategy (other than the default), one can
         consult over this method the available possibilities.
 
         Nakadi offers currently, out of the box, the following strategies:
@@ -833,15 +831,15 @@ paths:
           `EventMetadata`). Failure to do so will reject the publishing of the Event.
 
         - `hash`: Resolution of the partition follows the computation of a hash from the value of the fields
-          indicated in the EventType's `partitioning_key_fields`, guaranteeing that Events with same values
+          indicated in the EventType's `partition_key_fields`, guaranteeing that Events with same values
           on those fields end in the same partition.
       responses:
         '200':
-          description: Returns a list of all `EventPartitioningStrategy` known to Nakadi
+          description: Returns a list of all `EventPartitionStrategy` known to Nakadi
           schema:
             type: array
             items:
-              $ref: '#/definitions/PartitionResolutionStrategy'
+              $ref: '#/definitions/EventPartitionStrategy'
         '500':
           description: Server error
           schema:
@@ -886,7 +884,7 @@ definitions:
             description: |
               Identifier of this Event.
 
-              Clients are allowed to generate this and this SHOULD be guaranteed to be unique from the
+              Clients MUST generate this value and it SHOULD be guaranteed to be unique from the
               perspective of the producer. Consumers MIGHT use this value to assert uniqueness of reception
               of the Event.
             type: string
@@ -932,7 +930,7 @@ definitions:
             description: |
               Indicates the partition assigned to this Event.
 
-              Required to be set by the client if partitioning strategy of the EventType is 'user_defined'.
+              Required to be set by the client if partition strategy of the EventType is 'user_defined'.
             type: string
             example: '0'
         required:
@@ -1181,15 +1179,15 @@ definitions:
           type: string
         default: ['metadata-enrichment']
 
-      partition_resolution_strategy:
+      partition_strategy:
         description: |
           Determines how the assignment of the event to a partition should be handled.
 
-          For details of possible values, see GET /registry/partitioning-strategies.
+          For details of possible values, see GET /registry/partition-strategies.
         type: object
         default: {name: 'random'}
         allOf:
-          - $ref: '#/definitions/PartitionResolutionStrategy'
+          - $ref: '#/definitions/EventPartitionStrategy'
 
       schema:
         type: object
@@ -1301,7 +1299,7 @@ definitions:
       - name
 
 
-  PartitionResolutionStrategy:
+  EventPartitionStrategy:
     description: |
       Defines a rule for the resolution of incoming Events into partitions.
 
@@ -1362,8 +1360,8 @@ definitions:
         type: string
         enum:
           - NONE
-          - VALIDATION
-          - ENRICHMENT
+          - VALIDATING
+          - ENRICHING
           - PARTITIONING
           - PUBLISHING
         description: |
@@ -1373,7 +1371,7 @@ definitions:
 
           - NONE indicates that nothing was yet attempted for the publishing of this Event. Should be present
             only in the case of aborting the publishing during the validation of another (previous) Event.
-          - VALIDATION, ENRICHMENT, PARTITIONING and PUBLISHING indicate all the corresponding steps of the
+          - VALIDATING, ENRICHING, PARTITIONING and PUBLISHING indicate all the corresponding steps of the
             publishing process.
       detail:
         type: string
