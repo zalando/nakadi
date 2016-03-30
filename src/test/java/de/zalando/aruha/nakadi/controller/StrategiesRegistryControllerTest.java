@@ -18,7 +18,7 @@ public class StrategiesRegistryControllerTest {
 
     @Test
     public void canExposePartitioningStrategies() throws Exception {
-        mockMvc.perform(get("/registry/partitioning-strategies"))
+        mockMvc.perform(get("/registry/partition-strategies"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(AVAILABLE_PARTITION_STRATEGIES.size())))
