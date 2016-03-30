@@ -835,11 +835,11 @@ paths:
           on those fields end in the same partition.
       responses:
         '200':
-          description: Returns a list of all `PartitionResolutionStrategy` known to Nakadi
+          description: Returns a list of all `EventPartitionStrategy` known to Nakadi
           schema:
             type: array
             items:
-              $ref: '#/definitions/PartitionResolutionStrategy'
+              $ref: '#/definitions/EventPartitionStrategy'
         '500':
           description: Server error
           schema:
@@ -1187,7 +1187,7 @@ definitions:
         type: object
         default: {name: 'random'}
         allOf:
-          - $ref: '#/definitions/PartitionResolutionStrategy'
+          - $ref: '#/definitions/EventPartitionStrategy'
 
       schema:
         type: object
@@ -1299,7 +1299,7 @@ definitions:
       - name
 
 
-  PartitionResolutionStrategy:
+  EventPartitionStrategy:
     description: |
       Defines a rule for the resolution of incoming Events into partitions.
 
