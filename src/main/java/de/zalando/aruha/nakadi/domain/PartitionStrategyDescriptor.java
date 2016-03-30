@@ -10,10 +10,10 @@ import javax.validation.constraints.NotNull;
 public class PartitionStrategyDescriptor {
 
     @NotNull
-    private String name;
+    private final String name;
 
     @Nullable
-    private String doc;
+    private final String doc;
 
     public PartitionStrategyDescriptor(@JsonProperty("name") final String name,
                                        @JsonProperty("doc") @Nullable final String doc) {
