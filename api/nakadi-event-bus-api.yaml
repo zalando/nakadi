@@ -362,11 +362,11 @@ paths:
       security:
         - oauth2: [nakadi.admin]
       description: |
-        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of this `EventType`
-        will also be removed.
-        It's important to note that topic deletion in Kafka can take some time, so before it is completelly removed
-        it will not be possible to create an `EventType` with the same name as removed one had (you will get 409
-        response code from creation endpoint)
+        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of this
+        `EventType` will also be removed.
+        **Note**: Kafka's topic deletion happens asynchronously w.r.t. this DELETE call; therefore creation
+        of an equally named `EventType` before the underlying topic deletion is complete will not succeed
+        (failure is a 409 Conflic).
       parameters:
         - name: name
           in: path
@@ -658,7 +658,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /event-types/{name}/partitions':
+  '/event-types/{name}/partitions':
     get:
       tags:
         - unmanaged-api
@@ -671,7 +671,6 @@ paths:
 
         This endpoint is mostly interesting for monitoring purposes or in cases when consumer wants to start
         consuming older messages.
-
 
       parameters:
         - name: name
@@ -821,6 +820,21 @@ paths:
 
         If the EventType creation is to have a specific partitioning (besides the default), one can
         consult over this method the available possibilities.
+
+        Nakadi offers currently, out of the box, the following strategies:
+
+        - `random`: Resulution of the target partition happens randomly (events are evenly distributed on the
+          topic's partitions).
+
+        - `user_defined`: Target partition is defined by the client. As long as the indicated partition
+          exists, Event assignment will respect this value. Correctnes of the relative ordering of events is
+          under the responsibility of the Producer.
+          Requires that the client provides the target partition on `metadata.paritition` (See
+          `EventMetadata`). Failure to do so will reject the publishing of the Event.
+
+        - `hash`: Resolution of the partition follows the computation of a hash from the value of the fields
+          indicated in the EventType's `partitioning_key_fields`, guaranteeing that Events with same values
+          on those fields end in the same partition.
       responses:
         '200':
           description: Returns a list of all `EventPartitioningStrategy` known to Nakadi
@@ -830,10 +844,6 @@ paths:
               $ref: '#/definitions/PartitionResolutionStrategy'
         '500':
           description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -918,6 +928,13 @@ definitions:
               from the header into the metadata by Nakadi to avoid clients having to explicitly copy this.
             type: string
             example: 'JAh6xH4OQhCJ9PutIV_RYw'
+          partition:
+            description: |
+              Indicates the partition assigned to this Event.
+
+              Required to be set by the client if partitioning strategy of the EventType is 'user_defined'.
+            type: string
+            example: '0'
         required:
           - eid
           - occurred_at
@@ -1072,7 +1089,7 @@ definitions:
       If acting as a keep alive message (see `GET /event-type/{name}/events`) the events array will be
       omitted.
 
-      Sequential batches might repeat the cursor if no new events arrive.
+      Sequential batches might present repeated cursors if no new events have arrived.
     required:
       - cursor
     properties:
@@ -1092,8 +1109,7 @@ definitions:
           Name of this EventType. Encodes the owner/responsible for this EventType.
 
           The name for the EventType SHOULD follow the pattern, but is not enforced
-          'stups_owning_application.event-type', for example
-          'gizig.price-change'.
+          'stups_owning_application.event-type', for example 'gizig.price-change'.
 
           The components of the name are:
           * Organization: the organizational unit where the team is located; can be omitted.
@@ -1123,17 +1139,19 @@ definitions:
           The value set will influence, if not set otherwise, the default set of validation-strategies,
           enrichment-strategies, and the effective schema for validation in the following way:
 
-          - `undefined`: No predefined changes apply. The effective schema for the validation is exactly the same as the
-            `EventTypeSchema`.
+          - `undefined`: No predefined changes apply. The effective schema for the validation is exactly the
+            same as the `EventTypeSchema`.
             Default validation_strategy for this `EventType` is `['schema-validation']`.
 
-          - `data`: Events of this category will be DataChangeEvents. The effective schema during the validation contains `metadata`,
+          - `data`: Events of this category will be DataChangeEvents. The effective schema during the
+            validation contains `metadata`,
             and adds fields `data_op` and `data_type`. The passed EventTypeSchema defines the schema of
             `data`.
 
-          - `business`: Events of this category will be BusinessEvents. The effective schema for validation contains
-            `metadata` and any additionally defined properties passed in the `EventTypeSchema` directly on
-            top level of the Event. If name conflicts arise, creation of this EventType will be rejected.
+          - `business`: Events of this category will be BusinessEvents. The effective schema for validation
+            contains `metadata` and any additionally defined properties passed in the `EventTypeSchema`
+            directly on top level of the Event. If name conflicts arise, creation of this EventType will be
+            rejected.
             Default validation_strategy for this `EventType` is `['schema-validation']`.
 
       validation_strategies:
@@ -1165,9 +1183,11 @@ definitions:
 
       partition_resolution_strategy:
         description: |
-          Determines how the assignment of the event to a Partition should be handled.
+          Determines how the assignment of the event to a partition should be handled.
 
+          For details of possible values, see GET /registry/partitioning-strategies.
         type: object
+        default: {name: 'random'}
         allOf:
           - $ref: '#/definitions/PartitionResolutionStrategy'
 
@@ -1194,9 +1214,10 @@ definitions:
         items:
           type: string
         description: |
-          Indicator of the field used for guaranteeing the ordering of Events of this type (used by the
-          PartitionResolutionStrategy).
-          If set MUST be a valid required field as defined in the schema.
+          Required when 'partition_resolution_strategy' is set to 'hash'. Must be absent otherwise.
+          Indicates the fields used for evaluatiion the partition of Events of this type.
+
+          If set it MUST be a valid required field as defined in the schema.
 
       statistics:
         type: object
@@ -1289,7 +1310,16 @@ definitions:
     properties:
       name:
         type: string
-        description: Name of the strategy.
+        enum: ['hash', 'user_defined', 'random']
+        description: |
+          Name of the strategy. Possible values are:
+          - 'hash' will use the event field(s) defined in `partitioning_key_fields property of `EventType` as a source
+            for a hash function that will calculate the partition where the event will be put. All events with the same
+            value in this field(s) will go to the same partition, and consequently be ordered.
+          - 'user_defined' will use `metadata.partition` property of incoming event to know the partition where to put
+            the event. This strategy can't be used for `EventType` of category 'undefined'.
+          - 'random' will put the event to a random partition. Use it only if your `EventType` has one partition or if
+            you don't care about ordering of events.
       doc:
         type: string
         description: Documentation for the partition resolution.

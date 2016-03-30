@@ -85,6 +85,7 @@ public class EventValidation {
         metadataProperties.put("occurred_at", dateTime);
         metadataProperties.put("parent_eids", arrayOfUUIDs);
         metadataProperties.put("flow_id", string);
+        metadataProperties.put("partition", string);
 
         metadata.put("type", "object");
         metadata.put("properties", metadataProperties);
