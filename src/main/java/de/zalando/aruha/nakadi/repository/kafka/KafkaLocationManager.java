@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import javax.annotation.PostConstruct;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
@@ -25,6 +26,11 @@ class KafkaLocationManager {
     private ZooKeeperHolder zkFactory;
 
     private Properties kafkaProperties;
+    private final List<KafkaPropertiesListener> kafkaPropertiesListeners = new LinkedList<>();
+
+    public void registerPropertiesListener(final KafkaPropertiesListener listener) {
+        kafkaPropertiesListeners.add(listener);
+    }
 
     static class Broker {
         final String host;
@@ -95,7 +101,12 @@ class KafkaLocationManager {
             if (!brokers.isEmpty()) {
                 kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
             }
+            notifyPropertiesListeners();
         }
+    }
+
+    private void notifyPropertiesListeners() {
+        kafkaPropertiesListeners.stream().forEach(listener -> listener.updateProperties(getKafkaProperties()));
     }
 
     public Properties getKafkaProperties() {
