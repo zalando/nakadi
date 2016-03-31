@@ -11,8 +11,8 @@ public class StrategiesRegistry {
     public static final PartitionStrategyDescriptor HASH_PARTITION_STRATEGY =
             new PartitionStrategyDescriptor("hash", "This strategy will use the event " +
             "field(s) defined in 'partition_key_fields' property of `EventType` as a source for a hash " +
-            "function that will caclulate the partition where the event will be put. All events with the " +
-            "same value in this field(s) will go to the same partition, and consequently be ordered.");
+            "function that will calculate the partition where the event will be put. All events with the " +
+            "same value in this field(s) will go to the same partition, and consequently be ordered");
 
     public static final PartitionStrategyDescriptor USER_DEFINED_PARTITION_STRATEGY =
             new PartitionStrategyDescriptor(PartitionStrategy.USER_DEFINED_STRATEGY, "This strategy will use " +
