@@ -97,11 +97,16 @@ class KafkaLocationManager {
     @Scheduled(fixedDelay = 30000)
     private void updateBrokers() {
         if (kafkaProperties != null) {
+            final Properties oldProperties = getKafkaProperties();
+
             final List<Broker> brokers = fetchBrokers();
             if (!brokers.isEmpty()) {
-                kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
+                this.kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
             }
-            notifyPropertiesListeners();
+
+            if (!oldProperties.getProperty("bootstrap.servers").equals(kafkaProperties.getProperty("bootstrap.servers"))) {
+                notifyPropertiesListeners();
+            }
         }
     }
 
