@@ -1,12 +1,11 @@
 package de.zalando.aruha.nakadi.controller;
 
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Timer;
 import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.domain.EventPublishResult;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
+import de.zalando.aruha.nakadi.metrics.EventTypeMetrics;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -24,7 +23,6 @@ import org.zalando.problem.Problem;
 import javax.ws.rs.core.Response;
 import java.util.concurrent.TimeUnit;
 
-import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -36,26 +34,28 @@ public class EventPublishingController {
     public static final String SUCCESS_METRIC_NAME = "success";
     public static final String FAILED_METRIC_NAME = "failed";
 
-    private final MetricRegistry metricRegistry;
     private final EventPublisher publisher;
-    private final Histogram batchSizeHistogram;
+    private final EventTypeMetricRegistry eventTypeMetricRegistry;
 
-    public EventPublishingController(final EventPublisher publisher, final MetricRegistry metricRegistry) {
+    public EventPublishingController(final EventPublisher publisher, final EventTypeMetricRegistry eventTypeMetricRegistry) {
         this.publisher = publisher;
-        this.metricRegistry = metricRegistry;
-        batchSizeHistogram = metricRegistry.histogram("nakadi.general.publishing.batchSize");
+        this.eventTypeMetricRegistry = eventTypeMetricRegistry;
     }
 
     @Timed(name = "post_events", absolute = true)
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
-    public ResponseEntity postEvent(@PathVariable final String eventTypeName, @RequestBody final String event,
+    public ResponseEntity postEvent(@PathVariable final String eventTypeName, @RequestBody final String eventsAsString,
                                     final NativeWebRequest nativeWebRequest) {
-        LOG.trace("Received event {} for event type {}", event, eventTypeName);
+        LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
 
         try {
-            return doWithTimerMetric(eventTypeName, System.nanoTime(), () -> {
-                final JSONArray eventsAsJsonObjects = new JSONArray(event);
-                batchSizeHistogram.update(eventsAsJsonObjects.length());
+            final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
+
+            return doWithTimerMetric(eventTypeMetrics, System.nanoTime(), () -> {
+                final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
+
+                reportMetrics(eventTypeMetrics, eventsAsString, eventsAsJsonObjects);
+
                 final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName);
                 return response(result);
             });
@@ -71,6 +71,12 @@ public class EventPublishingController {
         }
     }
 
+    private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final String eventsAsString, final JSONArray eventsAsJsonObjects) {
+        final int numberOfEventsInBatch = eventsAsJsonObjects.length();
+        eventTypeMetrics.getEventsPerBatchHistogram().update(numberOfEventsInBatch);
+        eventTypeMetrics.getAverageEventSizeInBytesHistogram().update(eventsAsString.length() / numberOfEventsInBatch);
+    }
+
     private ResponseEntity response(final EventPublishResult result) {
         switch (result.getStatus()) {
             case SUBMITTED: return status(HttpStatus.OK).build();
@@ -79,17 +85,16 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity doWithTimerMetric(final String eventTypeName, final long startingNanos,
+    private ResponseEntity doWithTimerMetric(final EventTypeMetrics eventTypeMetrics, final long startingNanos,
                                              final EventProcessingTask task) throws NakadiException {
         try {
             final ResponseEntity responseEntity = task.execute();
 
-            final Timer successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, SUCCESS_METRIC_NAME));
-            successfullyPublishedTimer.update(System.nanoTime() - startingNanos, TimeUnit.NANOSECONDS);
+            eventTypeMetrics.getSuccessfullyPublishedTimer().update(System.nanoTime() - startingNanos, TimeUnit.NANOSECONDS);
 
             return responseEntity;
         } catch (final Exception e) {
-            metricRegistry.counter(metricNameFor(eventTypeName, FAILED_METRIC_NAME)).inc();
+            eventTypeMetrics.getFailedPublishedCounter().inc();
             throw e;
         }
     }

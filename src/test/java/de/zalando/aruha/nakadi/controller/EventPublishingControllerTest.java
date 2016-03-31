@@ -7,10 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.BatchItemResponse;
 import de.zalando.aruha.nakadi.domain.EventPublishResult;
-import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.json.JSONArray;
@@ -60,8 +60,9 @@ public class EventPublishingControllerTest {
         jsonHelper = new JsonTestHelper(objectMapper);
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
+        final EventTypeMetricRegistry eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
 
-        final EventPublishingController controller = new EventPublishingController(publisher, metricRegistry);
+        final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
