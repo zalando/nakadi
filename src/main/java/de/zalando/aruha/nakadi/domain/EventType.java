@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +20,7 @@ public class EventType {
 
     @NotNull
     @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed" )
+    @Size(min = 1, max = 255, message = "the length of the name must be >= 1 and <= 255")
     private String name;
 
     @NotNull
