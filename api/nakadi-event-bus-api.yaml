@@ -1292,9 +1292,6 @@ definitions:
       name:
         type: string
         description: Name of the strategy.
-      doc:
-        type: string
-        description: Documentation for the validation.
     required:
       - name
 
@@ -1310,9 +1307,6 @@ definitions:
         type: string
         description: |
           Name of the strategy to be used.
-      doc:
-        type: string
-        description: Documentation for the partition resolution.
     required:
       - name
 
@@ -1328,9 +1322,6 @@ definitions:
       name:
         type: string
         description: Name of the strategy.
-      doc:
-        type: string
-        description: Documentation for the enrichment.
     required:
       - name
 
