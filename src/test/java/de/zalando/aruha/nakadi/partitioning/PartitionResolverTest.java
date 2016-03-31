@@ -44,7 +44,7 @@ public class PartitionResolverTest {
     @Test(expected = PartitioningException.class)
     public void whenResolvePartitionWithUnknownStrategyThenPartitioningException() throws NakadiException {
         final EventType eventType = new EventType();
-        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("blah_strategy", null);
+        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("blah_strategy");
         eventType.setPartitionStrategy(strategy);
 
         partitionResolver.resolvePartition(eventType, null);

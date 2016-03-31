@@ -12,22 +12,12 @@ public class PartitionStrategyDescriptor {
     @NotNull
     private final String name;
 
-    @Nullable
-    private final String doc;
-
-    public PartitionStrategyDescriptor(@JsonProperty("name") final String name,
-                                       @JsonProperty("doc") @Nullable final String doc) {
+    public PartitionStrategyDescriptor(@JsonProperty("name") final String name) {
         this.name = name;
-        this.doc = doc;
     }
 
     public String getName() {
         return name;
-    }
-
-    @Nullable
-    public String getDoc() {
-        return doc;
     }
 
     @Override

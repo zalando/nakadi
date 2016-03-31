@@ -148,7 +148,7 @@ public class EventTypeControllerTest {
     @Test
     public void whenPostWithUnknownPartitionStrategyThenReturn422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("unknown_strategy", null);
+        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("unknown_strategy");
         eventType.setPartitionStrategy(strategy);
 
         final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
@@ -193,7 +193,7 @@ public class EventTypeControllerTest {
     @Test
     public void whenPostWithNullPartitionStrategyNameThenReturn422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor(null, null);
+        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor(null);
         eventType.setPartitionStrategy(strategy);
 
         final Problem expectedProblem = invalidProblem("partition_strategy.name", "may not be null");

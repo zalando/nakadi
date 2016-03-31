@@ -22,8 +22,7 @@ public class StrategiesRegistryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(AVAILABLE_PARTITION_STRATEGIES.size())))
-                .andExpect(jsonPath("$[0:3].name").exists())
-                .andExpect(jsonPath("$[0:3].doc").exists());
+                .andExpect(jsonPath("$[0:3].name").exists());
     }
 
 }
