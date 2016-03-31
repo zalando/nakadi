@@ -15,8 +15,8 @@ public class EventTypeMetrics {
     private final Histogram averageEventSizeInBytesHistogram;
 
     public EventTypeMetrics(final String eventTypeName, final MetricRegistry metricRegistry) {
-        eventsPerBatchHistogram = metricRegistry.histogram(MetricUtils.metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
-        averageEventSizeInBytesHistogram = metricRegistry.histogram(MetricUtils.metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
+        eventsPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
+        averageEventSizeInBytesHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
         successfullyPublishedTimer = metricRegistry.timer(metricNameFor(eventTypeName, "publishing.successfully"));
         failedPublishedCounter = metricRegistry.counter(metricNameFor(eventTypeName, "publishing.failed"));
     }
