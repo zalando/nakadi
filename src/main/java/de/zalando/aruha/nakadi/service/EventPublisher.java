@@ -55,9 +55,9 @@ public class EventPublisher {
             return ok(batch);
         } catch (final EventValidationException e) {
             LOG.debug("Event validation error: {}", e.getMessage());
-            return aborted(EventPublishingStep.VALIDATION, batch);
+            return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final PartitioningException e) {
-            LOG.debug("Event partitioning error: {}", e.getMessage());
+            LOG.debug("Event partition error: {}", e.getMessage());
             return aborted(EventPublishingStep.PARTITIONING, batch);
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
@@ -97,7 +97,7 @@ public class EventPublisher {
     private void validate(final List<BatchItem> batch, final EventType eventType) throws EventValidationException,
             InternalNakadiException {
         for (final BatchItem item : batch) {
-            item.setStep(EventPublishingStep.VALIDATION);
+            item.setStep(EventPublishingStep.VALIDATING);
             try {
                 validateSchema(item.getEvent(), eventType);
             } catch (final EventValidationException e) {

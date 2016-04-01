@@ -1,40 +1,32 @@
 package de.zalando.aruha.nakadi.webservice;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.not;
-
-import static org.hamcrest.core.IsEqual.equalTo;
-
-import static com.jayway.restassured.RestAssured.given;
-import static com.jayway.restassured.RestAssured.when;
-import static com.jayway.restassured.http.ContentType.JSON;
-
-import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
-
-import java.util.Set;
-
-import org.apache.http.HttpStatus;
-
-import org.junit.After;
-import org.junit.Test;
-
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
+import org.apache.http.HttpStatus;
+import org.junit.After;
+import org.junit.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
+
+import java.util.Set;
+
+import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
+import static com.jayway.restassured.http.ContentType.JSON;
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
+import static de.zalando.aruha.nakadi.utils.TestUtils.resourceAsString;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.core.IsEqual.equalTo;
 
 public class EventTypeAT extends BaseAT {
 
@@ -62,6 +54,14 @@ public class EventTypeAT extends BaseAT {
 
         given().body(body).header("accept", "application/json").contentType(JSON).when().post(ENDPOINT).then()
                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
+    }
+
+    @Test
+    public void rejectTooLongEventTypeNames() throws Exception {
+        final String body = resourceAsString("../domain/event-type.with.too-long-name.json", this.getClass());
+
+        given().body(body).header("accept", "application/json").contentType(JSON).when().post(ENDPOINT).then()
+                .body(containsString("the length of the name must be")).statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
     @Test

@@ -32,7 +32,8 @@ import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.FAILED;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.SUBMITTED;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PARTITIONING;
 import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PUBLISHING;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStep.VALIDATION;
+import static de.zalando.aruha.nakadi.domain.EventPublishingStep.VALIDATING;
+import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
@@ -159,7 +160,7 @@ public class EventPublishingControllerTest {
     private List<BatchItemResponse> responses() {
         final BatchItemResponse response = new BatchItemResponse();
         response.setPublishingStatus(ABORTED);
-        response.setStep(VALIDATION);
+        response.setStep(VALIDATING);
 
         final List<BatchItemResponse> responses = new ArrayList<>();
         responses.add(response);

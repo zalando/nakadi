@@ -31,14 +31,29 @@ public class FullModeAuthenticationTest extends AuthenticationTest {
             new Endpoint(GET, "/event-types/foo/partitions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
 
+    private static final List<Endpoint> endpointsForUidScope = ImmutableList.of(
+            new Endpoint(GET, "/metrics"),
+            new Endpoint(GET, "/registry/partition-strategies"));
+
     @Test
     public void fullAuthMode() throws Exception {
         endpoints.forEach(this::checkHasOnlyAccessByNeededScope);
-
-        mockMvc.perform(addTokenHeader(get("/metrics"), TOKEN_WITH_UID_SCOPE)).andExpect(STATUS_NOT_401_OR_403);
-        mockMvc.perform(get("/metrics")).andExpect(status().isUnauthorized());
-
+        endpointsForUidScope.forEach(this::checkHasAccessByUidScope);
         mockMvc.perform(get("/health")).andExpect(status().isOk());
+    }
+
+    private void checkHasAccessByUidScope(final Endpoint endpoint) {
+        try {
+            mockMvc.perform(addTokenHeader(endpoint.toRequestBuilder(), TOKEN_WITH_UID_SCOPE))
+                    .andExpect(STATUS_NOT_401_OR_403);
+            mockMvc.perform(endpoint.toRequestBuilder()).andExpect(status().isUnauthorized());
+        }
+        catch (Exception e) {
+            throw new AssertionError("Error occurred when calling endpoint: " + endpoint, e);
+        }
+        catch (AssertionError e) {
+            throw new AssertionError("Assertion failed for endpoint: " + endpoint, e);
+        }
     }
 
     private void checkHasOnlyAccessByNeededScope(final Endpoint endpoint) {

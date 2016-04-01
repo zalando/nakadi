@@ -74,7 +74,7 @@ curl --request POST \
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
   "category": "business",
-  "partitioning_key_fields": [],
+  "partition_key_fields": [],
   "schema": {
     "type": "json_schema",
     "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }"
@@ -112,13 +112,16 @@ curl --request GET \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions/0
 ```
 
-### Publish event
+### Publish events
 
 ```sh
 curl --request POST \
      --header "Content-Type:application/json" \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
-     -d '{ "order_number": "ORDER_ONE", "metadata": { "eid": "39ac3332-eb00-11e5-91fe-1c6f65464fc6", "occurred_at": "2016-03-15T23:47:15+01:00" } }'
+     -d '[
+       { "order_number": "ORDER_ONE", "metadata": { "eid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "occurred_at": "2016-03-15T23:47:15+01:00" } },
+       { "order_number": "ORDER_TWO", "metadata": { "eid": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "occurred_at": "2016-03-15T23:47:16+01:00" } }
+     ]'
 ```
 
 ### Receive event stream

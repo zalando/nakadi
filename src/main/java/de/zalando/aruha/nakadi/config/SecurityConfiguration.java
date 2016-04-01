@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
@@ -57,6 +56,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
             http.authorizeRequests()
                     .antMatchers("/health").permitAll()
                     .antMatchers(GET, "/metrics").access(hasScope(uidScope))
+                    .antMatchers(GET, "/registry/*").access(hasScope(uidScope))
                     .antMatchers(GET, "/event-types").access(hasScope(nakadiReadScope))
                     .antMatchers(GET, "/event-types/*").access(hasScope(nakadiReadScope))
                     .antMatchers(POST, "/event-types").access(hasScope(eventTypeWriteScope))

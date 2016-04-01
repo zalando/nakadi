@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.UUID;
 
+import de.zalando.aruha.nakadi.config.JsonConfig;
 import org.apache.commons.io.IOUtils;
 
 import org.json.JSONObject;
@@ -12,6 +13,11 @@ import org.json.JSONObject;
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 public class TestUtils {
 
@@ -97,5 +103,15 @@ public class TestUtils {
 
     public static EventType buildDefaultEventType() {
         return buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"));
+    }
+
+    public static MappingJackson2HttpMessageConverter createMessageConverter() {
+        return new MappingJackson2HttpMessageConverter(new JsonConfig().jacksonObjectMapper());
+    }
+
+    public static MockMvc mockMvcForController(final Object controller) {
+        return standaloneSetup(controller)
+                .setMessageConverters(new StringHttpMessageConverter(), createMessageConverter())
+                .build();
     }
 }

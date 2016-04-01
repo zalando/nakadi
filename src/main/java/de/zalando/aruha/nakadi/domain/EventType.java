@@ -7,9 +7,11 @@ import javax.annotation.Nullable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
 
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITION_STRATEGY;
 import static java.util.Collections.unmodifiableList;
 
 public class EventType {
@@ -18,6 +20,7 @@ public class EventType {
 
     @NotNull
     @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed" )
+    @Size(min = 1, max = 255, message = "the length of the name must be >= 1 and <= 255")
     private String name;
 
     @NotNull
@@ -30,11 +33,10 @@ public class EventType {
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
     @Valid
-    @Nullable
-    private PartitionResolutionStrategy partitionResolutionStrategy;
+    private PartitionStrategyDescriptor partitionStrategy = RANDOM_PARTITION_STRATEGY;
 
     @Nullable
-    private List<String> partitioningKeyFields;
+    private List<String> partitionKeyFields;
 
     @Valid
     private EventTypeSchema schema;
@@ -63,13 +65,12 @@ public class EventType {
         return validationStrategies;
     }
 
-    @Nullable
-    public PartitionResolutionStrategy getPartitionResolutionStrategy() {
-        return partitionResolutionStrategy;
+    public PartitionStrategyDescriptor getPartitionStrategy() {
+        return partitionStrategy;
     }
 
-    public void setPartitionResolutionStrategy(@Nullable final PartitionResolutionStrategy partitionResolutionStrategy) {
-        this.partitionResolutionStrategy = partitionResolutionStrategy;
+    public void setPartitionStrategy(final PartitionStrategyDescriptor partitionStrategyDescriptor) {
+        this.partitionStrategy = partitionStrategyDescriptor;
     }
 
     public EventTypeSchema getSchema() {
@@ -80,12 +81,12 @@ public class EventType {
         this.schema = schema;
     }
 
-    public List<String> getPartitioningKeyFields() {
-        return unmodifiableList(partitioningKeyFields != null ? partitioningKeyFields : EMPTY_STRING_LIST);
+    public List<String> getPartitionKeyFields() {
+        return unmodifiableList(partitionKeyFields != null ? partitionKeyFields : EMPTY_STRING_LIST);
     }
 
-    public void setPartitioningKeyFields(final List<String> partitioningKeyFields) {
-        this.partitioningKeyFields = partitioningKeyFields;
+    public void setPartitionKeyFields(final List<String> partitionKeyFields) {
+        this.partitionKeyFields = partitionKeyFields;
     }
 
 }
