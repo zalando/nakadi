@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
 
