@@ -10,7 +10,7 @@ import java.util.Properties;
 
 class KafkaFactory implements KafkaPropertiesListener {
     private final KafkaLocationManager kafkaLocationManager;
-    private KafkaProducer<String, String> kafkaProducer;
+    private volatile KafkaProducer<String, String> kafkaProducer;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager) {
         this.kafkaLocationManager = kafkaLocationManager;
