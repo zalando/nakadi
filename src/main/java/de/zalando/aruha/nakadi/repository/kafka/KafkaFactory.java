@@ -18,7 +18,7 @@ class KafkaFactory implements KafkaPropertiesListener {
         kafkaLocationManager.registerPropertiesListener(this);
     }
 
-    public Producer<String, String> createProducer() {
+    public Producer<String, String> getProducer() {
         return kafkaProducer;
     }
 

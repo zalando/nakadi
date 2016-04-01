@@ -23,7 +23,6 @@ import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.SerializationException;
@@ -53,14 +52,12 @@ public class KafkaTopicRepository implements TopicRepository {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
 
     private final ZooKeeperHolder zkFactory;
-    private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
     private final KafkaRepositorySettings settings;
 
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
                                 final KafkaRepositorySettings settings) {
         this.zkFactory = zkFactory;
-        this.kafkaProducer = kafkaFactory.createProducer();
         this.kafkaFactory = kafkaFactory;
         this.settings = settings;
     }
@@ -169,7 +166,7 @@ public class KafkaTopicRepository implements TopicRepository {
         final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, toKafkaPartition(partitionId),
                 partitionId, payload);
         try {
-            kafkaProducer.send(record).get(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
+            kafkaFactory.getProducer().send(record).get(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             throw new ServiceUnavailableException("Failed to send event", e);
         }
@@ -186,7 +183,7 @@ public class KafkaTopicRepository implements TopicRepository {
             item.setStep(EventPublishingStep.PUBLISHING);
 
             try {
-                kafkaProducer.send(record, kafkaSendCallback(item, done));
+                kafkaFactory.getProducer().send(record, kafkaSendCallback(item, done));
             } catch (InterruptException | SerializationException | BufferExhaustedException e) {
                 item.setPublishingStatus(EventPublishingStatus.FAILED);
                 throw new EventPublishingException("Error publishing message to kafka", e);
@@ -260,7 +257,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public List<String> listPartitionNames(final String topicId) {
-        return unmodifiableList(kafkaFactory.createProducer().partitionsFor(topicId)
+        return unmodifiableList(kafkaFactory.getProducer().partitionsFor(topicId)
                 .stream()
                 .map(partitionInfo -> toNakadiPartition(partitionInfo.partition()))
                 .collect(toList()));
