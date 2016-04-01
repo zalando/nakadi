@@ -51,7 +51,7 @@ public class EventPublishingController {
         try {
             final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
-            return doWithTimerMetric(eventTypeMetrics, System.nanoTime(), () -> {
+            return doWithTimerMetric(eventTypeMetrics, () -> {
                 final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
 
                 reportMetrics(eventTypeMetrics, eventsAsString, eventsAsJsonObjects);
@@ -85,9 +85,11 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity doWithTimerMetric(final EventTypeMetrics eventTypeMetrics, final long startingNanos,
+    private ResponseEntity doWithTimerMetric(final EventTypeMetrics eventTypeMetrics,
                                              final EventProcessingTask task) throws NakadiException {
         try {
+            final long startingNanos = System.nanoTime();
+
             final ResponseEntity responseEntity = task.execute();
 
             eventTypeMetrics.getSuccessfullyPublishedTimer().update(System.nanoTime() - startingNanos, TimeUnit.NANOSECONDS);
