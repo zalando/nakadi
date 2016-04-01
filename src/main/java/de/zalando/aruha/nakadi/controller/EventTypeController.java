@@ -200,11 +200,13 @@ public class EventTypeController {
                 && schemaAsJson.getJSONObject("properties").has(field);
     }
 
-    private void validateUpdate(final String name, final EventType eventType) throws NoSuchEventTypeException, InternalNakadiException, InvalidEventTypeException {
+    private void validateUpdate(final String name, final EventType eventType) throws NoSuchEventTypeException,
+            InternalNakadiException, InvalidEventTypeException, NoSuchPartitionStrategyException {
         final EventType existingEventType = eventTypeRepository.findByName(name);
 
         validateName(name, eventType);
         validateSchemaChange(eventType, existingEventType);
+        validatePartitionStrategy(eventType);
     }
 
     private void validateName(final String name, final EventType eventType) throws InvalidEventTypeException {
