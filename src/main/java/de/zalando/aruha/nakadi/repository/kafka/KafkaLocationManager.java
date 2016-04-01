@@ -23,7 +23,7 @@ class KafkaLocationManager {
     private static final String _BROKERS_IDS_PATH = "/brokers/ids";
 
     @Autowired
-    private ZooKeeperHolder zkFactory;
+    private volatile ZooKeeperHolder zkFactory;
 
     private Properties kafkaProperties;
     private final List<KafkaPropertiesListener> kafkaPropertiesListeners = new LinkedList<>();
