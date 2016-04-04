@@ -1248,7 +1248,8 @@ definitions:
           The schema as string in the syntax defined in the field type. Failure to respect the syntax will
           fail any operation on an EventType.
 
-          To have an open generic it is possible to only define `"schema": "{\"additionalProperties\": true}"`.
+          To have an generic, undefined schema it is possible to define the schema as
+          `"schema": "{\"additionalProperties\": true}"`.
     required:
       - type
       - schema
