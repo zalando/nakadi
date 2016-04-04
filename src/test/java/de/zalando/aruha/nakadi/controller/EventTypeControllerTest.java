@@ -93,18 +93,15 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void eventTypeSchemaShouldBeOptional() throws Exception {
-        final EventType et = buildDefaultEventType();
-        et.setSchema(null);
+    public void eventTypeWithoutSchemaReturns422() throws Exception {
+        final EventType invalidEventType = buildDefaultEventType();
+        invalidEventType.setSchema(null);
 
-        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+        final Problem expectedProblem = invalidProblem("schema", "may not be null");
 
-        Mockito.doNothing().when(topicRepository).createTopic(et.getName());
-
-        postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
-
-        verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic(et.getName());
+        postEventType(invalidEventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                .string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -400,23 +397,6 @@ public class EventTypeControllerTest {
                                                              .andExpect(content().contentType(
                                                                      "application/problem+json")).andExpect(content()
                                                                      .string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenPersistedSchemaIsNullChangesAreNotAllowed() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        final EventType persistedEventType = buildDefaultEventType();
-        persistedEventType.setSchema(null);
-        eventType.setName(persistedEventType.getName());
-
-        final Problem expectedProblem = new InvalidEventTypeException("schema must not be changed").asProblem();
-
-        Mockito.doReturn(persistedEventType).when(eventTypeRepository).findByName(persistedEventType.getName());
-
-        putEventType(eventType, persistedEventType.getName()).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType(
-                        "application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
     }
 
     @Test
