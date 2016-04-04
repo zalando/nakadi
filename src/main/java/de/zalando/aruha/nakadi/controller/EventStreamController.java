@@ -77,6 +77,7 @@ public class EventStreamController {
         return outputStream -> {
 
             Counter consumerCounter = null;
+            EventConsumer eventConsumer = null;
 
             try {
                 consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
@@ -145,8 +146,7 @@ public class EventStreamController {
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("text/plain"); // TODO: must be aligned with API
 
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer(topic,
-                        streamConfig.getCursors());
+                eventConsumer = topicRepository.createEventConsumer(topic, streamConfig.getCursors());
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
                         streamConfig);
                 eventStream.streamEvents();
@@ -162,6 +162,9 @@ public class EventStreamController {
             finally {
                 if (consumerCounter != null) {
                     consumerCounter.dec();
+                }
+                if (eventConsumer != null) {
+                    eventConsumer.close();
                 }
 
                 outputStream.flush();
