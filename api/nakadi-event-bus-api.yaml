@@ -1234,6 +1234,7 @@ definitions:
       - name
       - category
       - owning_application
+      - schema
 
   EventTypeSchema:
     properties:
@@ -1246,6 +1247,8 @@ definitions:
         description: |
           The schema as string in the syntax defined in the field type. Failure to respect the syntax will
           fail any operation on an EventType.
+
+          To have an open generic it is possible to only define `"schema": "{\"additionalProperties\": true}"`.
     required:
       - type
       - schema
