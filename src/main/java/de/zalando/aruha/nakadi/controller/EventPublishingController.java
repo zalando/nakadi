@@ -74,14 +74,20 @@ public class EventPublishingController {
     private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final String eventsAsString, final JSONArray eventsAsJsonObjects) {
         final int numberOfEventsInBatch = eventsAsJsonObjects.length();
         eventTypeMetrics.getEventsPerBatchHistogram().update(numberOfEventsInBatch);
-        eventTypeMetrics.getAverageEventSizeInBytesHistogram().update(eventsAsString.length() / numberOfEventsInBatch);
+
+        final int averageApproximateEventSize = numberOfEventsInBatch > 0
+                ? eventsAsString.length() / numberOfEventsInBatch : 0;
+        eventTypeMetrics.getAverageEventSizeInBytesHistogram().update(averageApproximateEventSize);
     }
 
     private ResponseEntity response(final EventPublishResult result) {
         switch (result.getStatus()) {
-            case SUBMITTED: return status(HttpStatus.OK).build();
-            case ABORTED: return status(HttpStatus.UNPROCESSABLE_ENTITY).body(result.getResponses());
-            default: return status(HttpStatus.MULTI_STATUS).body(result.getResponses());
+            case SUBMITTED:
+                return status(HttpStatus.OK).build();
+            case ABORTED:
+                return status(HttpStatus.UNPROCESSABLE_ENTITY).body(result.getResponses());
+            default:
+                return status(HttpStatus.MULTI_STATUS).body(result.getResponses());
         }
     }
 
