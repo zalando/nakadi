@@ -2,12 +2,12 @@ package de.zalando.aruha.nakadi.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class EventTypeMetricRegistry {
 
-    private final Map<String, EventTypeMetrics> metricsPerEventType = new HashMap<>();
+    private final ConcurrentMap<String, EventTypeMetrics> metricsPerEventType = new ConcurrentHashMap<>();
     private final MetricRegistry metricRegistry;
 
 
@@ -16,21 +16,8 @@ public class EventTypeMetricRegistry {
     }
 
     public EventTypeMetrics metricsFor(final String eventTypeName) {
-        EventTypeMetrics eventTypeMetrics = metricsPerEventType.get(eventTypeName);
-        if (eventTypeMetrics == null) {
-            synchronized (metricsPerEventType) {
-                eventTypeMetrics = getOrAddMetricsFor(eventTypeName);
-            }
-        }
-        return eventTypeMetrics;
+        return metricsPerEventType.computeIfAbsent(eventTypeName,
+                key -> new EventTypeMetrics(eventTypeName, metricRegistry));
     }
 
-    private EventTypeMetrics getOrAddMetricsFor(final String eventTypeName) {
-        EventTypeMetrics eventTypeMetrics = metricsPerEventType.get(eventTypeName);
-        if (eventTypeMetrics == null) {
-            eventTypeMetrics = new EventTypeMetrics(eventTypeName, metricRegistry);
-            metricsPerEventType.put(eventTypeName, eventTypeMetrics);
-        }
-        return eventTypeMetrics;
-    }
 }
