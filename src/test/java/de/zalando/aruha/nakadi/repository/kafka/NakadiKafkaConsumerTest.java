@@ -8,6 +8,8 @@ import static org.hamcrest.Matchers.is;
 
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
@@ -166,6 +168,19 @@ public class NakadiKafkaConsumerTest {
 
         assertThat("We should get a NakadiException for every call", numberOfNakadiExceptions,
             equalTo(exceptions.size()));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void whenCloseThenKafkaConsumerIsClosed() {
+        // ARRANGE //
+        final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
+        final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(kafkaConsumerMock, TOPIC,
+                ImmutableList.of(), POLL_TIMEOUT);
+        // ACT //
+        nakadiKafkaConsumer.close();
+        // ASSERT //
+        verify(kafkaConsumerMock, times(1)).close();
     }
 
 }

@@ -58,6 +58,11 @@ public class NakadiKafkaConsumer implements EventConsumer {
         return Optional.ofNullable(eventQueue.poll());
     }
 
+    @Override
+    public void close() {
+        kafkaConsumer.close();
+    }
+
     private void pollFromKafka() {
         final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
         eventQueue = StreamSupport
