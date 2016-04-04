@@ -6,10 +6,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import javax.annotation.PostConstruct;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -22,11 +20,15 @@ class KafkaLocationManager {
 
     private static final String _BROKERS_IDS_PATH = "/brokers/ids";
 
-    @Autowired
-    private ZooKeeperHolder zkFactory;
+    private final ZooKeeperHolder zkFactory;
 
     private volatile Properties kafkaProperties;
     private final List<KafkaPropertiesListener> kafkaPropertiesListeners = new LinkedList<>();
+
+    public KafkaLocationManager(final ZooKeeperHolder zkFactory) {
+        this.zkFactory = zkFactory;
+        init();
+    }
 
     public void registerPropertiesListener(final KafkaPropertiesListener listener) {
         kafkaPropertiesListeners.add(listener);
@@ -89,7 +91,6 @@ class KafkaLocationManager {
         return props;
     }
 
-    @PostConstruct
     private void init() {
         kafkaProperties = buildKafkaProperties(fetchBrokers());
     }
