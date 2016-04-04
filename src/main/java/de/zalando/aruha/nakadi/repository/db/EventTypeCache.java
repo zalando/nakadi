@@ -4,11 +4,9 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
 import de.zalando.aruha.nakadi.validation.EventTypeValidator;
 import de.zalando.aruha.nakadi.validation.EventValidation;
 import org.apache.curator.framework.CuratorFramework;
@@ -30,11 +28,11 @@ public class EventTypeCache {
     private final PathChildrenCache cacheSync;
     private final CuratorFramework zkClient;
 
-    public EventTypeCache(final EventTypeRepository dbRepo, final CuratorFramework zkClient) throws Exception {
+    public EventTypeCache(final EventTypeRepository eventTypeRepository, final CuratorFramework zkClient) throws Exception {
         initParentCacheZNode(zkClient);
 
         this.zkClient = zkClient;
-        this.eventTypeCache = setupInMemoryEventTypeCache(dbRepo);
+        this.eventTypeCache = setupInMemoryEventTypeCache(eventTypeRepository);
         this.validatorCache = setupInMemoryValidatorCache(eventTypeCache);
         this.cacheSync = setupCacheSync(zkClient);
     }
@@ -139,10 +137,10 @@ public class EventTypeCache {
         return CacheBuilder.newBuilder().maximumSize(100000).build(loader);
     }
 
-    private LoadingCache<String,EventType> setupInMemoryEventTypeCache(final EventTypeRepository dbRepo) {
+    private LoadingCache<String,EventType> setupInMemoryEventTypeCache(final EventTypeRepository eventTypeRepository) {
         final CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
             public EventType load(final String key) throws Exception {
-                EventType eventType = dbRepo.findByName(key);
+                EventType eventType = eventTypeRepository.findByName(key);
                 created(key); // make sure that all event types are tracked in the remote cache
                 return eventType;
             }

@@ -10,6 +10,8 @@ import de.zalando.aruha.nakadi.domain.EventPublishResult;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
+import de.zalando.aruha.nakadi.metrics.EventTypeMetrics;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.json.JSONArray;
@@ -54,13 +56,15 @@ public class EventPublishingControllerTest {
     private final EventPublisher publisher;
 
     private final MockMvc mockMvc;
+    private final EventTypeMetricRegistry eventTypeMetricRegistry;
 
     public EventPublishingControllerTest() throws NakadiException, ExecutionException {
         jsonHelper = new JsonTestHelper(objectMapper);
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
+        eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
 
-        final EventPublishingController controller = new EventPublishingController(publisher, metricRegistry);
+        final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
@@ -131,10 +135,9 @@ public class EventPublishingControllerTest {
     public void publishedEventsAreReportedPerEventType() throws Exception {
         final EventPublishResult success = new EventPublishResult(SUBMITTED, null, null);
 
-        final Timer successfulTimer = metricRegistry.timer(
-                metricNameFor(TOPIC, EventPublishingController.SUCCESS_METRIC_NAME));
-        final Counter failedCounter = metricRegistry.counter(
-                metricNameFor(TOPIC, EventPublishingController.FAILED_METRIC_NAME));
+        final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(TOPIC);
+        final Timer successfulTimer = eventTypeMetrics.getSuccessfullyPublishedTimer();
+        final Counter failedCounter = eventTypeMetrics.getFailedPublishedCounter();
 
         assertThat(successfulTimer.getCount(), equalTo(0L));
         assertThat(failedCounter.getCount(), equalTo(0L));
