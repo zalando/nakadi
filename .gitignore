@@ -79,3 +79,4 @@ kafka-src
 *.swp
 .settings
 /bin/
+scm-source.json
