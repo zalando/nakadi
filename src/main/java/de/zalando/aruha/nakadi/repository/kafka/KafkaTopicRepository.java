@@ -188,7 +188,7 @@ public class KafkaTopicRepository implements TopicRepository {
             try {
                 kafkaProducer.send(record, kafkaSendCallback(item, done));
             } catch (InterruptException | SerializationException | BufferExhaustedException e) {
-                item.setPublishingStatus(EventPublishingStatus.FAILED);
+                item.safeFail("internal error");
                 throw new EventPublishingException("Error publishing message to kafka", e);
             }
         }
@@ -197,9 +197,17 @@ public class KafkaTopicRepository implements TopicRepository {
             final boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
+                for (final BatchItem item : batch) {
+                    item.safeFail("timed out");
+                }
+
                 throw new EventPublishingException("Timeout publishing events");
             }
         } catch (InterruptedException e) {
+            for (final BatchItem item : batch) {
+                item.safeFail("internal error");
+            }
+
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
     }
@@ -210,7 +218,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.setPublishingStatus(EventPublishingStatus.SUBMITTED);
             } else {
                 LOG.error("Failed to publish event " + item.getEvent().toString(), exception);
-                item.setPublishingStatus(EventPublishingStatus.FAILED);
+                item.safeFail("internal error");
             }
 
             done.countDown();
