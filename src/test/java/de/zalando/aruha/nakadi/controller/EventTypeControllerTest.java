@@ -6,7 +6,6 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.PartitionStrategyDescriptor;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -38,10 +37,6 @@ import javax.ws.rs.core.Response;
 import java.util.Arrays;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
-import static de.zalando.aruha.nakadi.domain.EventCategory.UNDEFINED;
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.HASH_PARTITION_STRATEGY;
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITION_STRATEGY;
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.USER_DEFINED_PARTITION_STRATEGY;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
@@ -64,12 +59,12 @@ public class EventTypeControllerTest {
 
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
-
+    private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
 
     public EventTypeControllerTest() throws Exception {
-        final PartitionResolver partitionResolver = new PartitionResolver(topicRepository);
+
         final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository,
                 partitionResolver);
 
@@ -93,18 +88,15 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void eventTypeSchemaShouldBeOptional() throws Exception {
-        final EventType et = buildDefaultEventType();
-        et.setSchema(null);
+    public void eventTypeWithoutSchemaReturns422() throws Exception {
+        final EventType invalidEventType = buildDefaultEventType();
+        invalidEventType.setSchema(null);
 
-        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+        final Problem expectedProblem = invalidProblem("schema", "may not be null");
 
-        Mockito.doNothing().when(topicRepository).createTopic(et.getName());
-
-        postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
-
-        verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic(et.getName());
+        postEventType(invalidEventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                .string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -146,70 +138,33 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithUnknownPartitionStrategyThenReturn422() throws Exception {
+    public void whenPOSTWithInvalidPartitionStrategyThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("unknown_strategy", null);
-        eventType.setPartitionStrategy(strategy);
 
-        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                "partition strategy does not exist: unknown_strategy");
+        Mockito
+                .doThrow(InvalidEventTypeException.class)
+                .when(partitionResolver)
+                .validate(any());
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+                .andExpect(content().contentType("application/problem+json"));
     }
 
     @Test
-    public void whenPostWithHashPartitionStrategyAndWithoutPartitionKeysThenReturn422() throws Exception {
+    public void whenPUTWithInvalidPartitionStrategyThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setPartitionStrategy(HASH_PARTITION_STRATEGY);
 
-        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                "partition_key_fields field should be set for partition strategy 'hash'");
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
 
-        postEventType(eventType)
+        Mockito
+                .doThrow(InvalidEventTypeException.class)
+                .when(partitionResolver)
+                .validate(any());
+
+        putEventType(eventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenPostWithUserDefinedPartitionStrategyForUndefinedCategoryThenReturn422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        eventType.setCategory(UNDEFINED);
-
-        eventType.setPartitionStrategy(USER_DEFINED_PARTITION_STRATEGY);
-
-        final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                "'user_defined' partition strategy can't be used for EventType of category 'undefined'");
-
-        postEventType(eventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenPostWithNullPartitionStrategyNameThenReturn422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor(null, null);
-        eventType.setPartitionStrategy(strategy);
-
-        final Problem expectedProblem = invalidProblem("partition_strategy.name", "may not be null");
-
-        postEventType(eventType)
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenPostWithKnownPartitionStrategyThenReturn201() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        eventType.setPartitionStrategy(RANDOM_PARTITION_STRATEGY);
-        postEventType(eventType)
-                .andExpect(status().isCreated())
-                .andExpect(content().string(""));
+                .andExpect(content().contentType("application/problem+json"));
     }
 
     @Test
@@ -400,23 +355,6 @@ public class EventTypeControllerTest {
                                                              .andExpect(content().contentType(
                                                                      "application/problem+json")).andExpect(content()
                                                                      .string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenPersistedSchemaIsNullChangesAreNotAllowed() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        final EventType persistedEventType = buildDefaultEventType();
-        persistedEventType.setSchema(null);
-        eventType.setName(persistedEventType.getName());
-
-        final Problem expectedProblem = new InvalidEventTypeException("schema must not be changed").asProblem();
-
-        Mockito.doReturn(persistedEventType).when(eventTypeRepository).findByName(persistedEventType.getName());
-
-        putEventType(eventType, persistedEventType.getName()).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType(
-                        "application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
     }
 
     @Test
