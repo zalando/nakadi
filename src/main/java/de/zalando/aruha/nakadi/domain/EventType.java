@@ -37,6 +37,7 @@ public class EventType {
     private List<String> partitionKeyFields;
 
     @Valid
+    @NotNull
     private EventTypeSchema schema;
 
     public String getName() { return name; }
