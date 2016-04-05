@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.PartitionStrategyDescriptor;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -35,9 +34,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import javax.validation.Valid;
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.domain.EventCategory.UNDEFINED;
-import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
-import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STRATEGY;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -76,7 +72,7 @@ public class EventTypeController {
 
         try {
             validateSchema(eventType);
-            validatePartitionStrategy(eventType);
+            partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
             topicRepository.createTopic(eventType.getName());
             return status(HttpStatus.CREATED).build();
@@ -130,6 +126,7 @@ public class EventTypeController {
 
         try {
             validateUpdate(name, eventType);
+            partitionResolver.validate(eventType);
             eventTypeRepository.update(eventType);
             return status(HttpStatus.OK).build();
         } catch (final InvalidEventTypeException e) {
@@ -154,25 +151,6 @@ public class EventTypeController {
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type " + name, e);
             return create(e.asProblem(), nativeWebRequest);
-        }
-    }
-
-    private void validatePartitionStrategy(final EventType eventType) throws NoSuchPartitionStrategyException,
-            InvalidEventTypeException {
-        final PartitionStrategyDescriptor partitionStrategy = eventType.getPartitionStrategy();
-        if (!partitionResolver.strategyExists(partitionStrategy.getName())) {
-            throw new NoSuchPartitionStrategyException("partition strategy does not exist: " +
-                    partitionStrategy.getName());
-        }
-        else if (HASH_STRATEGY.equals(partitionStrategy.getName()) &&
-                eventType.getPartitionKeyFields().isEmpty()) {
-            throw new InvalidEventTypeException("partition_key_fields field should be set for " +
-                    "partition strategy 'hash'");
-        }
-        else if (USER_DEFINED_STRATEGY.equals(partitionStrategy.getName()) &&
-                UNDEFINED.equals(eventType.getCategory())) {
-            throw new InvalidEventTypeException("'user_defined' partition strategy can't be used " +
-                    "for EventType of category 'undefined'");
         }
     }
 
@@ -206,7 +184,6 @@ public class EventTypeController {
 
         validateName(name, eventType);
         validateSchemaChange(eventType, existingEventType);
-        validatePartitionStrategy(eventType);
     }
 
     private void validateName(final String name, final EventType eventType) throws InvalidEventTypeException {
