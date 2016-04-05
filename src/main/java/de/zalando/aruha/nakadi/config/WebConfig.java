@@ -16,6 +16,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.http.converter.xml.SourceHttpMessageConverter;
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
+import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
@@ -85,5 +86,12 @@ public class WebConfig extends WebMvcConfigurationSupport {
         final RequestMappingHandlerMapping handlerMapping = super.requestMappingHandlerMapping();
         handlerMapping.setUseSuffixPatternMatch(false);
         return handlerMapping;
+    }
+
+    @Override
+    public void configurePathMatch(final PathMatchConfigurer configurer) {
+        super.configurePathMatch(configurer);
+        configurer.setUseTrailingSlashMatch(false);
+        configurer.setUseSuffixPatternMatch(false);
     }
 }
