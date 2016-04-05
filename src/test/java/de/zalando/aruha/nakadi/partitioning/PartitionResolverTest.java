@@ -3,7 +3,9 @@ package de.zalando.aruha.nakadi.partitioning;
 import com.google.common.collect.ImmutableList;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.PartitionStrategyDescriptor;
+import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchPartitionStrategyException;
 import de.zalando.aruha.nakadi.exceptions.PartitioningException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.json.JSONObject;
@@ -11,7 +13,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static de.zalando.aruha.nakadi.domain.EventCategory.UNDEFINED;
 import static de.zalando.aruha.nakadi.service.StrategiesRegistry.HASH_PARTITION_STRATEGY;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITION_STRATEGY;
+import static de.zalando.aruha.nakadi.service.StrategiesRegistry.USER_DEFINED_PARTITION_STRATEGY;
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Matchers.any;
@@ -48,5 +54,48 @@ public class PartitionResolverTest {
         eventType.setPartitionStrategy(strategy);
 
         partitionResolver.resolvePartition(eventType, null);
+    }
+
+    @Test(expected = NoSuchPartitionStrategyException.class)
+    public void whenValidateWithUnknownPartitionStrategyThenExceptionThrown() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("unknown_strategy", null);
+        eventType.setPartitionStrategy(strategy);
+
+        partitionResolver.validate(eventType);
+    }
+
+    @Test(expected = NoSuchPartitionStrategyException.class)
+    public void whenValidateWithNullPartitionStrategyNameThenExceptionThrown() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor(null, null);
+        eventType.setPartitionStrategy(strategy);
+
+        partitionResolver.validate(eventType);
+    }
+
+    @Test(expected = InvalidEventTypeException.class)
+    public void whenValidateWithHashPartitionStrategyAndWithoutPartitionKeysThenExceptionThrown() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setPartitionStrategy(HASH_PARTITION_STRATEGY);
+
+        partitionResolver.validate(eventType);
+    }
+
+    @Test(expected = InvalidEventTypeException.class)
+    public void whenValidateWithUserDefinedPartitionStrategyForUndefinedCategoryThenExceptionThrown() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCategory(UNDEFINED);
+        eventType.setPartitionStrategy(USER_DEFINED_PARTITION_STRATEGY);
+
+        partitionResolver.validate(eventType);
+    }
+
+    @Test
+    public void whenValidateWithKnownPartitionStrategyThenOk() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setPartitionStrategy(RANDOM_PARTITION_STRATEGY);
+
+        partitionResolver.validate(eventType);
     }
 }
