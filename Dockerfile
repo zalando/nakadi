@@ -4,6 +4,7 @@ MAINTAINER Team Aruha, team-aruha@zalando.de
 
 WORKDIR /
 ADD build/libs/nakadi.jar nakadi.jar
+ADD scm-source.json
 
 EXPOSE 8080
 

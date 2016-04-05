@@ -272,8 +272,12 @@ task startStoragesInDocker() {
     outputs.upToDateWhen { false }
 }
 
+task generateScmSourceJson(type: Exec) {
+    commandLine "scm-source", "-f", "scm-source.json"
+}
+
 task buildDockerImage {
-    dependsOn bootRepackage
+    dependsOn bootRepackage, generateScmSourceJson
     doLast {
         println "Building docker image with tag: $dockerImageTag"
         if (execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout) != 0) {
