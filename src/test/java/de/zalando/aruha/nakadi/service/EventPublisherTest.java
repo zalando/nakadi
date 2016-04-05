@@ -25,7 +25,7 @@ import java.util.Optional;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -89,7 +89,7 @@ public class EventPublisherTest {
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
         assertThat(second.getStep(), equalTo(EventPublishingStep.NONE));
-        assertThat(second.getDetail(), is(nullValue()));
+        assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(1)).getValidator(any());
     }
@@ -129,7 +129,7 @@ public class EventPublisherTest {
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
         assertThat(second.getStep(), equalTo(EventPublishingStep.VALIDATING));
-        assertThat(second.getDetail(), is(nullValue()));
+        assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(2)).getValidator(any());
         verify(partitionResolver, times(1)).resolvePartition(any(), any());

@@ -3,7 +3,7 @@ package de.zalando.aruha.nakadi.domain;
 public class BatchItemResponse {
     private EventPublishingStatus publishingStatus = EventPublishingStatus.ABORTED;
     private EventPublishingStep step = EventPublishingStep.NONE;
-    private String detail;
+    private String detail = "";
 
     public EventPublishingStatus getPublishingStatus() {
         return publishingStatus;
