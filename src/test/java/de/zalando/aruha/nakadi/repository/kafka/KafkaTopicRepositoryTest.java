@@ -194,9 +194,9 @@ public class KafkaTopicRepositoryTest {
     @Test
     @SuppressWarnings("unchecked")
     public void whenPostEventTimesOutThenUpdateItemStatus() throws Exception {
-        BatchItem item = new BatchItem(new JSONObject());
+        final BatchItem item = new BatchItem(new JSONObject());
         item.setPartition("1");
-        List<BatchItem> batch = new ArrayList<>();
+        final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
         when(settings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
@@ -218,9 +218,9 @@ public class KafkaTopicRepositoryTest {
     @Test
     @SuppressWarnings("unchecked")
     public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
-        BatchItem item = new BatchItem(new JSONObject());
+        final BatchItem item = new BatchItem(new JSONObject());
         item.setPartition("1");
-        List<BatchItem> batch = new ArrayList<>();
+        final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
         Mockito
