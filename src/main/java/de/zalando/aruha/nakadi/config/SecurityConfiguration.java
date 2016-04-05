@@ -33,9 +33,6 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     @Value("${nakadi.oauth2.scopes.uid}")
     private String uidScope;
 
-    @Value("${nakadi.oauth2.scopes.nakadiRead}")
-    private String nakadiReadScope;
-
     @Value("${nakadi.oauth2.scopes.nakadiAdmin}")
     private String nakadiAdminScope;
 
@@ -57,8 +54,8 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers("/health").permitAll()
                     .antMatchers(GET, "/metrics").access(hasScope(uidScope))
                     .antMatchers(GET, "/registry/*").access(hasScope(uidScope))
-                    .antMatchers(GET, "/event-types").access(hasScope(nakadiReadScope))
-                    .antMatchers(GET, "/event-types/*").access(hasScope(nakadiReadScope))
+                    .antMatchers(GET, "/event-types").access(hasScope(uidScope))
+                    .antMatchers(GET, "/event-types/*").access(hasScope(uidScope))
                     .antMatchers(POST, "/event-types").access(hasScope(eventTypeWriteScope))
                     .antMatchers(PUT, "/event-types/*").access(hasScope(eventTypeWriteScope))
                     .antMatchers(DELETE, "/event-types/*").access(hasScope(nakadiAdminScope))

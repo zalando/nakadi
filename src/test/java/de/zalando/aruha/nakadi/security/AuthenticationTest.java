@@ -75,9 +75,6 @@ public abstract class AuthenticationTest {
         @Value("${nakadi.oauth2.scopes.uid}")
         protected String uidScope;
 
-        @Value("${nakadi.oauth2.scopes.nakadiRead}")
-        protected String nakadiReadScope;
-
         @Value("${nakadi.oauth2.scopes.nakadiAdmin}")
         protected String nakadiAdminScope;
 
@@ -95,7 +92,6 @@ public abstract class AuthenticationTest {
         @PostConstruct
         public void mockTokensScopes() {
             scopesForTokens.put(TOKEN_WITH_UID_SCOPE, uidScope);
-            scopesForTokens.put(TOKEN_WITH_NAKADI_READ_SCOPE, nakadiReadScope);
             scopesForTokens.put(TOKEN_WITH_NAKADI_ADMIN_SCOPE, nakadiAdminScope);
             scopesForTokens.put(TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE, eventTypeWriteScope);
             scopesForTokens.put(TOKEN_WITH_EVENT_STREAM_READ_SCOPE, eventStreamReadScope);
@@ -148,7 +144,6 @@ public abstract class AuthenticationTest {
                 isOneOf(UNAUTHORIZED.value(), FORBIDDEN.value())));
 
     protected static final String TOKEN_WITH_UID_SCOPE = randomUUID();
-    protected static final String TOKEN_WITH_NAKADI_READ_SCOPE = randomUUID();
     protected static final String TOKEN_WITH_NAKADI_ADMIN_SCOPE = randomUUID();
     protected static final String TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE = randomUUID();
     protected static final String TOKEN_WITH_EVENT_STREAM_READ_SCOPE = randomUUID();
