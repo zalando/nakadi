@@ -197,18 +197,18 @@ public class KafkaTopicRepository implements TopicRepository {
             final boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
-                for (final BatchItem item : batch) {
-                    item.safeFail("timed out");
-                }
-
+                failBatch(batch, "timed out");
                 throw new EventPublishingException("Timeout publishing events");
             }
         } catch (InterruptedException e) {
-            for (final BatchItem item : batch) {
-                item.safeFail("internal error");
-            }
-
+            failBatch(batch, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
+        }
+    }
+
+    private void failBatch(List<BatchItem> batch, final String reason) {
+        for (final BatchItem item : batch) {
+            item.safeFail(reason);
         }
     }
 
