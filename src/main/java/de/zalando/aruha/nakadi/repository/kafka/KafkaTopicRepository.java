@@ -188,7 +188,7 @@ public class KafkaTopicRepository implements TopicRepository {
             try {
                 kafkaProducer.send(record, kafkaSendCallback(item, done));
             } catch (InterruptException | SerializationException | BufferExhaustedException e) {
-                item.safeFail("internal error");
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
                 throw new EventPublishingException("Error publishing message to kafka", e);
             }
         }
@@ -208,17 +208,17 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private void failBatch(List<BatchItem> batch, final String reason) {
         for (final BatchItem item : batch) {
-            item.safeFail(reason);
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason);
         }
     }
 
     private Callback kafkaSendCallback(final BatchItem item, final CountDownLatch done) {
         return (metadata, exception) -> {
             if (exception == null) {
-                item.setPublishingStatus(EventPublishingStatus.SUBMITTED);
+                item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
             } else {
                 LOG.error("Failed to publish event " + item.getEvent().toString(), exception);
-                item.safeFail("internal error");
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             }
 
             done.countDown();

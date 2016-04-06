@@ -35,20 +35,8 @@ public class BatchItem {
         this.response.setStep(step);
     }
 
-    // avoid race condition with kafka producer callback
-    synchronized public void setPublishingStatus(final EventPublishingStatus publishingStatus) {
+    synchronized public void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
         this.response.setPublishingStatus(publishingStatus);
-    }
-
-    public void setDetail(String detail) {
         this.response.setDetail(detail);
-    }
-
-    // avoid race condition with kafka producer callback
-    synchronized public void safeFail(final String reason) {
-        if (this.getResponse().getPublishingStatus() != SUBMITTED) {
-            this.setDetail(reason);
-            this.response.setPublishingStatus(FAILED);
-        }
     }
 }

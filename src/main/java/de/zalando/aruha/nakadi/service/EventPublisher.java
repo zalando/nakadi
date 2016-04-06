@@ -87,8 +87,7 @@ public class EventPublisher {
                 final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
                 item.setPartition(partitionId);
             } catch (final PartitioningException e) {
-                item.setPublishingStatus(EventPublishingStatus.FAILED);
-                item.setDetail(e.getMessage());
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
             }
         }
@@ -101,8 +100,7 @@ public class EventPublisher {
             try {
                 validateSchema(item.getEvent(), eventType);
             } catch (final EventValidationException e) {
-                item.setPublishingStatus(EventPublishingStatus.FAILED);
-                item.setDetail(e.getMessage());
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
             }
         }
