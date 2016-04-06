@@ -64,7 +64,7 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(Application.class)
-@WebIntegrationTest
+@WebIntegrationTest(randomPort = true)
 @DirtiesContext(classMode = AFTER_CLASS)
 @ActiveProfiles("test")
 public abstract class AuthenticationTest {

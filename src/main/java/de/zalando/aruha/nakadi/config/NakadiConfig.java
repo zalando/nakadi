@@ -13,6 +13,7 @@ import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.enrichment.EnrichmentsRegistry;
+import de.zalando.aruha.nakadi.controller.VersionController;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -69,6 +70,11 @@ public class NakadiConfig {
     public EventStreamController eventStreamController() {
         return new EventStreamController(topicRepository, jsonConfig.jacksonObjectMapper(),
                 eventStreamFactory(), METRIC_REGISTRY);
+    }
+
+    @Bean
+    public VersionController versionController() {
+        return new VersionController(jsonConfig.jacksonObjectMapper());
     }
 
     @Bean
