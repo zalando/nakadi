@@ -217,7 +217,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (exception == null) {
                 item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
             } else {
-                LOG.error("Failed to publish event " + item.getEvent().toString(), exception);
+                LOG.error("Failed to publish event", exception);
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             }
 
