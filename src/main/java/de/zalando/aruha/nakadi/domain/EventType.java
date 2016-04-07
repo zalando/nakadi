@@ -32,6 +32,9 @@ public class EventType {
     @JsonIgnore
     private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
+    @NotNull
+    private List<EnrichmentStrategyDescriptor> enrichmentStrategies = Lists.newArrayList();
+
     @Valid
     private PartitionStrategyDescriptor partitionStrategy = RANDOM_PARTITION_STRATEGY;
 
@@ -88,6 +91,14 @@ public class EventType {
 
     public void setPartitionKeyFields(final List<String> partitionKeyFields) {
         this.partitionKeyFields = partitionKeyFields;
+    }
+
+    public List<EnrichmentStrategyDescriptor> getEnrichmentStrategies() {
+        return enrichmentStrategies;
+    }
+
+    public void setEnrichmentStrategies(final List<EnrichmentStrategyDescriptor> enrichmentStrategies) {
+        this.enrichmentStrategies = enrichmentStrategies;
     }
 
 }

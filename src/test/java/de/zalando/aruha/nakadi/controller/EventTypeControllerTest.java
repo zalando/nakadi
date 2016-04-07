@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.EnrichmentStrategyDescriptor;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
@@ -439,6 +440,60 @@ public class EventTypeControllerTest {
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
                     matchesProblem(expectedProblem))));
+    }
+
+    @Test
+    public void whenEventTypeCategoryUndefinedThenEnrichmentShouldBeEmpty() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
+
+        final Problem expectedProblem = new InvalidEventTypeException("must not define enrichment strategy for undefined event type").asProblem();
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
+                matchesProblem(expectedProblem))));
+    }
+
+    @Test
+    public void whenEnrichmentIsNullThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        eventType.setEnrichmentStrategies(null);
+
+        final Problem expectedProblem = invalidProblem("enrichment_strategies", "may not be null");
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
+                matchesProblem(expectedProblem))));
+    }
+
+    @Test
+    public void whenEnrichmentInvalidThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCategory(BUSINESS);
+
+        final Problem expectedProblem = new InvalidEventTypeException("must define metadata enrichment strategy").asProblem();
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
+                matchesProblem(expectedProblem))));
+    }
+
+    @Test
+    public void validateEnrichmentStrategyUniqueness() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCategory(BUSINESS);
+
+        eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
+        eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
+
+        final Problem expectedProblem = new InvalidEventTypeException("enrichment strategies must not contain duplicated entries").asProblem();
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
+                matchesProblem(expectedProblem))));
+    }
+
+    @Test
+    public void requireBusinessAndDataChangeEventsToHaveMetadataEnrichment() throws Exception {
+
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
