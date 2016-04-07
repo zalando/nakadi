@@ -192,13 +192,9 @@ paths:
         effect on the incoming Event of this EventType. For its impacts on the reception of events please
         consult the Event submission API methods.
 
-        * Validation strategies define an array of `EventValidationStrategy` to be evaluated on reception of
+        * Validation strategies define an array of validation stategies to be evaluated on reception of
         an `Event` of this `EventType`. Details of usage can be found in an external document (TBD link to
         document).
-        **Notes**: Some EventValidationStrategies might support additional parameters. The behaviour is
-        specific to each strategy and one is suggested to consult its `doc` field for details of operation.
-        The default `SchemaValidationStrategy` supports passing fields to be ignored if the qualifier matches
-        the input.
 
         * TBD Enrichment strategy
 
@@ -766,11 +762,11 @@ paths:
         - oauth2: ['nakadi.read']
       responses:
         '200':
-          description: Returns a list of all `EventValidationStrategy` known to Nakadi
+          description: Returns a list of all validation strategies known to Nakadi
           schema:
             type: array
             items:
-              $ref: '#/definitions/EventValidationStrategy'
+              type: string
         '500':
           description: Server error
           schema:
@@ -791,11 +787,11 @@ paths:
         this method the available possibilities.
       responses:
         '200':
-          description: Returns a list of all `EventEnrichmentStrategy` known to Nakadi
+          description: Returns a list of all enrichment strategies known to Nakadi
           schema:
             type: array
             items:
-              $ref: '#/definitions/EventEnrichmentStrategy'
+              type: string
         '500':
           description: Server error
           schema:
@@ -835,11 +831,11 @@ paths:
           on those fields end in the same partition.
       responses:
         '200':
-          description: Returns a list of all `EventPartitionStrategy` known to Nakadi
+          description: Returns a list of all partitioning strategies known to Nakadi
           schema:
             type: array
             items:
-              $ref: '#/definitions/EventPartitionStrategy'
+              type: string
         '500':
           description: Server error
           schema:
@@ -1184,10 +1180,8 @@ definitions:
           Determines how the assignment of the event to a partition should be handled.
 
           For details of possible values, see GET /registry/partition-strategies.
-        type: object
-        default: {name: 'random'}
-        allOf:
-          - $ref: '#/definitions/EventPartitionStrategy'
+        type: string
+        default: 'random'
 
       schema:
         type: object
@@ -1285,59 +1279,6 @@ definitions:
         type: integer
         description: |
           Amount of parallel writers (producers) to this EventType.
-
-  EventValidationStrategy:
-    description: |
-      Defines a rule for validation of an incoming Event.
-
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See
-      GET /registry/validation-strategies for a list of available rules.
-    properties:
-      name:
-        type: string
-        description: Name of the strategy.
-      doc:
-        type: string
-        description: Documentation for the validation.
-    required:
-      - name
-
-
-  EventPartitionStrategy:
-    description: |
-      Defines a rule for the resolution of incoming Events into partitions.
-
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See
-      `GET /registry/partition-strategies` for a list of available rules.
-    properties:
-      name:
-        type: string
-        description: |
-          Name of the strategy to be used.
-      doc:
-        type: string
-        description: Documentation for the partition resolution.
-    required:
-      - name
-
-  EventEnrichmentStrategy:
-    description: |
-      Defines a rule for transformation of an incoming Event. No existing fields might be modified. In
-      practice this is used to set automatically values in the Event upon reception (i.e. set a reception
-      timestamp on the Event).
-
-      Rules might require additional parameters; see the `doc` field of the existing rules for details. See
-      GET /registry/enrichment-strategies for a list of available rules.
-    properties:
-      name:
-        type: string
-        description: Name of the strategy.
-      doc:
-        type: string
-        description: Documentation for the enrichment.
-    required:
-      - name
-
 
   BatchItemResponse:
     description: |
