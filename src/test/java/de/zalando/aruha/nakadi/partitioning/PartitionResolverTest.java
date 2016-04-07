@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableList;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.PartitionStrategyDescriptor;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchPartitionStrategyException;
@@ -14,9 +13,9 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.UNDEFINED;
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.HASH_PARTITION_STRATEGY;
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITION_STRATEGY;
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.USER_DEFINED_PARTITION_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
+import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STRATEGY;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
@@ -38,7 +37,7 @@ public class PartitionResolverTest {
 
         final EventType eventType = new EventType();
         eventType.setPartitionKeyFields(ImmutableList.of("abc"));
-        eventType.setPartitionStrategy(HASH_PARTITION_STRATEGY);
+        eventType.setPartitionStrategy(HASH_STRATEGY);
 
         final JSONObject event = new JSONObject();
         event.put("abc", "blah");
@@ -50,8 +49,7 @@ public class PartitionResolverTest {
     @Test(expected = PartitioningException.class)
     public void whenResolvePartitionWithUnknownStrategyThenPartitioningException() throws NakadiException {
         final EventType eventType = new EventType();
-        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("blah_strategy", null);
-        eventType.setPartitionStrategy(strategy);
+        eventType.setPartitionStrategy("blah_strategy");
 
         partitionResolver.resolvePartition(eventType, null);
     }
@@ -59,8 +57,7 @@ public class PartitionResolverTest {
     @Test(expected = NoSuchPartitionStrategyException.class)
     public void whenValidateWithUnknownPartitionStrategyThenExceptionThrown() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor("unknown_strategy", null);
-        eventType.setPartitionStrategy(strategy);
+        eventType.setPartitionStrategy("unknown_strategy");
 
         partitionResolver.validate(eventType);
     }
@@ -68,8 +65,7 @@ public class PartitionResolverTest {
     @Test(expected = NoSuchPartitionStrategyException.class)
     public void whenValidateWithNullPartitionStrategyNameThenExceptionThrown() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        final PartitionStrategyDescriptor strategy = new PartitionStrategyDescriptor(null, null);
-        eventType.setPartitionStrategy(strategy);
+        eventType.setPartitionStrategy(null);
 
         partitionResolver.validate(eventType);
     }
@@ -77,7 +73,7 @@ public class PartitionResolverTest {
     @Test(expected = InvalidEventTypeException.class)
     public void whenValidateWithHashPartitionStrategyAndWithoutPartitionKeysThenExceptionThrown() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setPartitionStrategy(HASH_PARTITION_STRATEGY);
+        eventType.setPartitionStrategy(HASH_STRATEGY);
 
         partitionResolver.validate(eventType);
     }
@@ -86,7 +82,7 @@ public class PartitionResolverTest {
     public void whenValidateWithUserDefinedPartitionStrategyForUndefinedCategoryThenExceptionThrown() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.setCategory(UNDEFINED);
-        eventType.setPartitionStrategy(USER_DEFINED_PARTITION_STRATEGY);
+        eventType.setPartitionStrategy(USER_DEFINED_STRATEGY);
 
         partitionResolver.validate(eventType);
     }
@@ -94,7 +90,7 @@ public class PartitionResolverTest {
     @Test
     public void whenValidateWithKnownPartitionStrategyThenOk() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setPartitionStrategy(RANDOM_PARTITION_STRATEGY);
+        eventType.setPartitionStrategy(RANDOM_STRATEGY);
 
         partitionResolver.validate(eventType);
     }
