@@ -2,21 +2,28 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
+import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +54,7 @@ public class KafkaTopicRepositoryTest {
 
     public static final String MY_TOPIC = "my-topic";
     public static final String ANOTHER_TOPIC = "another-topic";
+    final KafkaRepositorySettings settings = mock(KafkaRepositorySettings.class);
 
     @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");
@@ -184,6 +192,52 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void whenPostEventTimesOutThenUpdateItemStatus() throws Exception {
+        final BatchItem item = new BatchItem(new JSONObject());
+        item.setPartition("1");
+        final List<BatchItem> batch = new ArrayList<>();
+        batch.add(item);
+
+        when(settings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
+
+        Mockito
+                .doReturn(mock(Future.class))
+                .when(kafkaProducer)
+                .send(any(), any());
+
+        try {
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            fail();
+        } catch (EventPublishingException e) {
+            assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+            assertThat(item.getResponse().getDetail(), equalTo("timed out"));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
+        final BatchItem item = new BatchItem(new JSONObject());
+        item.setPartition("1");
+        final List<BatchItem> batch = new ArrayList<>();
+        batch.add(item);
+
+        Mockito
+                .doThrow(BufferExhaustedException.class)
+                .when(kafkaProducer)
+                .send(any(), any());
+
+        try {
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            fail();
+        } catch (EventPublishingException e) {
+            assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+            assertThat(item.getResponse().getDetail(), equalTo("internal error"));
+        }
+    }
+
+    @Test
     public void canListAllPartitions() throws NakadiException {
         canListAllPartitionsOfTopic(MY_TOPIC);
         canListAllPartitionsOfTopic(ANOTHER_TOPIC);
@@ -243,17 +297,10 @@ public class KafkaTopicRepositoryTest {
 
     private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, createKafkaRepositorySettings());
+            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-
-    private KafkaRepositorySettings createKafkaRepositorySettings() {
-        @SuppressWarnings("UnnecessaryLocalVariable")
-        final KafkaRepositorySettings settings = mock(KafkaRepositorySettings.class);
-        return settings;
     }
 
     private ZooKeeperHolder createZooKeeperHolder() throws Exception {

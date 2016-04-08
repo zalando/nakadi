@@ -188,7 +188,7 @@ public class KafkaTopicRepository implements TopicRepository {
             try {
                 kafkaProducer.send(record, kafkaSendCallback(item, done));
             } catch (InterruptException | SerializationException | BufferExhaustedException e) {
-                item.setPublishingStatus(EventPublishingStatus.FAILED);
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
                 throw new EventPublishingException("Error publishing message to kafka", e);
             }
         }
@@ -197,20 +197,28 @@ public class KafkaTopicRepository implements TopicRepository {
             final boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
+                failBatch(batch, "timed out");
                 throw new EventPublishingException("Timeout publishing events");
             }
         } catch (InterruptedException e) {
+            failBatch(batch, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
+        }
+    }
+
+    private void failBatch(List<BatchItem> batch, final String reason) {
+        for (final BatchItem item : batch) {
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason);
         }
     }
 
     private Callback kafkaSendCallback(final BatchItem item, final CountDownLatch done) {
         return (metadata, exception) -> {
             if (exception == null) {
-                item.setPublishingStatus(EventPublishingStatus.SUBMITTED);
+                item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
             } else {
-                LOG.error("Failed to publish event " + item.getEvent().toString(), exception);
-                item.setPublishingStatus(EventPublishingStatus.FAILED);
+                LOG.error("Failed to publish event", exception);
+                item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             }
 
             done.countDown();
