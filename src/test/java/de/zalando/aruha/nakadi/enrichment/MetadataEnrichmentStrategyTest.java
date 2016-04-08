@@ -3,20 +3,15 @@ package de.zalando.aruha.nakadi.enrichment;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.util.FlowIdUtils;
-import org.echocat.jomon.runtime.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
-
-import java.io.IOException;
 
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildBusinessEvent;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.isEmptyString;
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertThat;
 
 public class MetadataEnrichmentStrategyTest {
     private final MetadataEnrichmentStrategy strategy = new MetadataEnrichmentStrategy();
