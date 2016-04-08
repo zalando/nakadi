@@ -26,4 +26,12 @@ public class StrategiesRegistryControllerTest {
                 .andExpect(jsonPath("$[0:3].doc").exists());
     }
 
+    @Test
+    public void canExposeEnrichmentStrategies() throws Exception {
+        mockMvc.perform(get("/registry/enrichment-strategies"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(content().string("[\"metadata_enrichment\"]"));
+    }
+
 }
