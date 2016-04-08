@@ -5,7 +5,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import javax.ws.rs.core.MediaType;
-import org.codehaus.jackson.annotate.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,20 +18,16 @@ public class VersionController {
     private static final String SCM_SOURCE_FILE = "/scm-source.json";
 
     private static class ScmSource {
-        @JsonProperty("author")
         private String author;
-        @JsonProperty("revision")
         private String revision;
-        @JsonProperty("status")
         private String status;
-        @JsonProperty("url")
         private String url;
 
         public String getAuthor() {
             return author;
         }
 
-        public void setAuthor(String author) {
+        public void setAuthor(final String author) {
             this.author = author;
         }
 
@@ -40,7 +35,7 @@ public class VersionController {
             return revision;
         }
 
-        public void setRevision(String revision) {
+        public void setRevision(final String revision) {
             this.revision = revision;
         }
 
@@ -48,7 +43,7 @@ public class VersionController {
             return status;
         }
 
-        public void setStatus(String status) {
+        public void setStatus(final String status) {
             this.status = status;
         }
 
@@ -56,7 +51,7 @@ public class VersionController {
             return url;
         }
 
-        public void setUrl(String url) {
+        public void setUrl(final String url) {
             this.url = url;
         }
     }
@@ -64,7 +59,7 @@ public class VersionController {
     private static class VersionInfo {
         private final ScmSource scmSource;
 
-        public VersionInfo(ScmSource scmSource) {
+        public VersionInfo(final ScmSource scmSource) {
             this.scmSource = scmSource;
         }
 
@@ -86,7 +81,7 @@ public class VersionController {
         return versionInfo;
     }
 
-    private static ScmSource loadScmSource(ObjectMapper objectMapper) {
+    private static ScmSource loadScmSource(final ObjectMapper objectMapper) {
         try (InputStream in = new FileInputStream(SCM_SOURCE_FILE)) {
             return objectMapper.readValue(in, ScmSource.class);
         } catch (IOException ex) {
