@@ -105,15 +105,13 @@ securityDefinitions:
     flow: implicit
     authorizationUrl: 'https://auth.example.com/oauth2/tokeninfo'
     scopes:
-      nakadi.read: |
-        Generic read scope for operations that do not require more specific restrictions.
-      nakadi.admin: |
-        Grants access for administrative operations in Nakadi.
-      nakadi_event_type.write: |
+      nakadi.config.write: |
+        Grants access for changing Nakadi configuration.
+      nakadi.event_type.write: |
         Grants access for applications to define and update EventTypes.
-      nakadi_event_stream.write: |
+      nakadi.event_stream.write: |
         Grants access for applications to submit Events.
-      nakadi_event_stream.read: |
+      nakadi.event_stream.read: |
         Grants access for consuming Event streams.
 
 paths:
@@ -143,8 +141,6 @@ paths:
     get:
       tags:
         - schema-registry-api
-      security:
-        - oauth2: ['nakadi.read']
       description: Returns a list of all registered `EventType`s
       parameters:
         - name: X-Flow-Id
@@ -178,7 +174,7 @@ paths:
       tags:
         - schema-registry-api
       security:
-        - oauth2: ['nakadi_event_type.write']
+        - oauth2: ['nakadi.event_type.write']
       description: |
         Creates a new `EventType`.
 
@@ -259,8 +255,6 @@ paths:
     get:
       tags:
         - schema-registry-api
-      security:
-        - oauth2: ['nakadi.read']
       description: |
         Returns the `EventType` identified by its name.
       parameters:
@@ -302,7 +296,7 @@ paths:
       tags:
         - schema-registry-api
       security:
-        - oauth2: ['nakadi_event_type.write']
+        - oauth2: ['nakadi.event_type.write']
       description: |
         Updates the `EventType` identified by its name. Behaviour is the same as creation of `EventType` (See
         POST /event-type) except where noted below.
@@ -358,7 +352,7 @@ paths:
       tags:
         - schema-registry-api
       security:
-        - oauth2: [nakadi.admin]
+        - oauth2: ['nakadi.config.write']
       description: |
         Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of this
         `EventType` will also be removed.
@@ -407,7 +401,7 @@ paths:
       tags:
         - stream-api
       security:
-        - oauth2: ['nakadi_event_stream.write']
+        - oauth2: ['nakadi.event_stream.write']
       description: |
         Publishes a batch of `Event`s of this `EventType`. All items must be of the EventType identified
         by `name`.
@@ -502,7 +496,7 @@ paths:
         - stream-api
         - unmanaged-api
       security:
-        - oauth2: ['nakadi_event_stream.read']
+        - oauth2: ['nakadi.event_stream.read']
       description: |
         Starts a stream delivery for the specified partitions of the given EventType.
 
@@ -663,7 +657,7 @@ paths:
         - monitoring
         - management-api
       security:
-        - oauth2: ['nakadi_event_stream.read']
+        - oauth2: ['nakadi.event_stream.read']
       description: |
         Lists the `Partition`s for the given event-type.
 
@@ -710,7 +704,7 @@ paths:
         - unmanaged-api
         - management-api
       security:
-        - oauth2: ['nakadi_event_stream.read']
+        - oauth2: ['nakadi.event_stream.read']
 
       description: Returns the given `Partition` of this EventType
       parameters:
@@ -762,8 +756,6 @@ paths:
 
         If the EventType creation is to have special validations (besides the default), one can consult over
         this method the available possibilities.
-      security:
-        - oauth2: ['nakadi.read']
       responses:
         '200':
           description: Returns a list of all `EventValidationStrategy` known to Nakadi
@@ -810,9 +802,6 @@ paths:
     get:
       tags:
         - schema-registry-api
-      security:
-        - oauth2: ['nakadi.read']
-
       description: |
         Lists all of the partition resolution strategies supported by this installation of Nakadi.
 

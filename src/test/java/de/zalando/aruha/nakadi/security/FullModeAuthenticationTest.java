@@ -21,9 +21,7 @@ public class FullModeAuthenticationTest extends AuthenticationTest {
     }
 
     private static final List<Endpoint> endpoints = ImmutableList.of(
-            new Endpoint(GET, "/event-types", TOKEN_WITH_NAKADI_READ_SCOPE),
             new Endpoint(POST, "/event-types", TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE),
-            new Endpoint(GET, "/event-types/foo", TOKEN_WITH_NAKADI_READ_SCOPE),
             new Endpoint(PUT, "/event-types/foo", TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE),
             new Endpoint(DELETE, "/event-types/foo", TOKEN_WITH_NAKADI_ADMIN_SCOPE),
             new Endpoint(POST, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE),
@@ -33,7 +31,9 @@ public class FullModeAuthenticationTest extends AuthenticationTest {
 
     private static final List<Endpoint> endpointsForUidScope = ImmutableList.of(
             new Endpoint(GET, "/metrics"),
-            new Endpoint(GET, "/registry/partition-strategies"));
+            new Endpoint(GET, "/registry/partition-strategies"),
+            new Endpoint(GET, "/event-types"),
+            new Endpoint(GET, "/event-types/foo"));
 
     @Test
     public void fullAuthMode() throws Exception {

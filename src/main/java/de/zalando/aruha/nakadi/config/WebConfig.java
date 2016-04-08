@@ -86,4 +86,5 @@ public class WebConfig extends WebMvcConfigurationSupport {
         handlerMapping.setUseSuffixPatternMatch(false);
         return handlerMapping;
     }
+
 }
