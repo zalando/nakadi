@@ -1,8 +1,8 @@
 package de.zalando.aruha.nakadi.controller;
 
-import de.zalando.aruha.nakadi.domain.EnrichmentStrategyDescriptor;
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -33,9 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 
 import javax.validation.Valid;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -49,13 +47,17 @@ public class EventTypeController {
     private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
     private final PartitionResolver partitionResolver;
+    private final Enrichment enrichment;
 
     @Autowired
-    public EventTypeController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
-                               final PartitionResolver partitionResolver) {
+    public EventTypeController(final EventTypeRepository eventTypeRepository,
+                               final TopicRepository topicRepository,
+                               final PartitionResolver partitionResolver,
+                               final Enrichment enrichment) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
+        this.enrichment = enrichment;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -75,7 +77,7 @@ public class EventTypeController {
 
         try {
             validateSchema(eventType);
-            validateEnrichment(eventType);
+            enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
             topicRepository.createTopic(eventType.getName());
@@ -130,7 +132,7 @@ public class EventTypeController {
 
         try {
             validateUpdate(name, eventType);
-            validateEnrichment(eventType);
+            enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.update(eventType);
             return status(HttpStatus.OK).build();
@@ -198,22 +200,6 @@ public class EventTypeController {
     private void validateSchemaChange(final EventType eventType, final EventType existingEventType) throws InvalidEventTypeException {
         if (!existingEventType.getSchema().equals(eventType.getSchema())) {
             throw new InvalidEventTypeException("schema must not be changed");
-        }
-    }
-
-    private void validateEnrichment(final EventType eventType) throws InvalidEventTypeException {
-        if (eventType.getCategory() == EventCategory.UNDEFINED && !eventType.getEnrichmentStrategies().isEmpty()) {
-            throw new InvalidEventTypeException("must not define enrichment strategy for undefined event type");
-        }
-
-        Set<EnrichmentStrategyDescriptor> uniqueStrategies = new HashSet<EnrichmentStrategyDescriptor>();
-        uniqueStrategies.addAll(eventType.getEnrichmentStrategies());
-        if (eventType.getEnrichmentStrategies().size() != uniqueStrategies.size()) {
-            throw new InvalidEventTypeException("enrichment strategies must not contain duplicated entries");
-        }
-
-        if (eventType.getCategory() != EventCategory.UNDEFINED && !eventType.getEnrichmentStrategies().contains(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT)) {
-            throw new InvalidEventTypeException("must define metadata enrichment strategy");
         }
     }
 }

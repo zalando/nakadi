@@ -7,6 +7,7 @@ import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EnrichmentStrategyDescriptor;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -61,13 +62,14 @@ public class EventTypeControllerTest {
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
+    private final Enrichment enrichment = mock(Enrichment.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
 
     public EventTypeControllerTest() throws Exception {
 
         final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository,
-                partitionResolver);
+                partitionResolver, enrichment);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
@@ -443,57 +445,33 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenEventTypeCategoryUndefinedThenEnrichmentShouldBeEmpty() throws Exception {
+    public void whenPOSTWithInvalidEnrichmentStrategyThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
+        Mockito
+                .doThrow(InvalidEventTypeException.class)
+                .when(enrichment)
+                .validate(any());
 
-        final Problem expectedProblem = new InvalidEventTypeException("must not define enrichment strategy for undefined event type").asProblem();
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
-                matchesProblem(expectedProblem))));
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
     }
 
     @Test
-    public void whenEnrichmentIsNullThen422() throws Exception {
+    public void whenPUTWithInvalidEnrichmentStrategyThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        eventType.setEnrichmentStrategies(null);
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
 
-        final Problem expectedProblem = invalidProblem("enrichment_strategies", "may not be null");
+        Mockito
+                .doThrow(InvalidEventTypeException.class)
+                .when(enrichment)
+                .validate(any());
 
-        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
-                matchesProblem(expectedProblem))));
-    }
-
-    @Test
-    public void whenEnrichmentInvalidThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        eventType.setCategory(BUSINESS);
-
-        final Problem expectedProblem = new InvalidEventTypeException("must define metadata enrichment strategy").asProblem();
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
-                matchesProblem(expectedProblem))));
-    }
-
-    @Test
-    public void validateEnrichmentStrategyUniqueness() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        eventType.setCategory(BUSINESS);
-
-        eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
-        eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
-
-        final Problem expectedProblem = new InvalidEventTypeException("enrichment strategies must not contain duplicated entries").asProblem();
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
-                matchesProblem(expectedProblem))));
-    }
-
-    @Test
-    public void requireBusinessAndDataChangeEventsToHaveMetadataEnrichment() throws Exception {
-
+        putEventType(eventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {

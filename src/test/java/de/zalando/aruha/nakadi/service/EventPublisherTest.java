@@ -5,6 +5,8 @@ import de.zalando.aruha.nakadi.domain.EventPublishResult;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.EventPublishingStep;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.enrichment.Enrichment;
+import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
 import de.zalando.aruha.nakadi.exceptions.PartitioningException;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
@@ -38,7 +40,8 @@ public class EventPublisherTest {
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
-    private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver);
+    private final Enrichment enrichment = mock(Enrichment.class);
+    private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver, enrichment);
 
     @Test
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
@@ -65,6 +68,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+        verify(enrichment, times(0)).enrich(event, eventType);
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
         verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
@@ -128,7 +132,7 @@ public class EventPublisherTest {
 
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(second.getStep(), equalTo(EventPublishingStep.VALIDATING));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.ENRICHING));
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(2)).getValidator(any());
@@ -149,6 +153,46 @@ public class EventPublisherTest {
         verify(topicRepository, times(1)).syncPostBatch(any(), any());
     }
 
+    @Test
+    public void whenEnrichmentFailsThenResultIsAborted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject event = batch.getJSONObject(0);
+
+        mockSuccessfulValidation(eventType, event);
+        mockFaultEnrichment(eventType, event);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+        verify(partitionResolver, times(0)).resolvePartition(eventType, event);
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+    }
+
+    @Test
+    public void whenEnrichmentFailsThenSubsequentItemsAreAborted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(2);
+        final JSONObject event = batch.getJSONObject(0);
+
+        mockSuccessfulValidation(eventType);
+        mockFaultEnrichment(eventType, event);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+
+        final BatchItemResponse first = result.getResponses().get(0);
+        assertThat(first.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+        assertThat(first.getStep(), equalTo(EventPublishingStep.ENRICHING));
+        assertThat(first.getDetail(), equalTo("enrichment error"));
+
+        final BatchItemResponse second = result.getResponses().get(1);
+        assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.VALIDATING));
+        assertThat(second.getDetail(), is(isEmptyString()));
+    }
+
     private void mockFailedPublishing() throws Exception {
         Mockito
                 .doThrow(EventPublishingException.class)
@@ -161,6 +205,13 @@ public class EventPublisherTest {
                 .doThrow(new PartitioningException("partition error"))
                 .when(partitionResolver)
                 .resolvePartition(eventType, event);
+    }
+
+    private void mockFaultEnrichment(final EventType eventType, final JSONObject event) throws EnrichmentException {
+        Mockito
+                .doThrow(new EnrichmentException("enrichment error"))
+                .when(enrichment)
+                .enrich(event, eventType);
     }
 
     private void mockFaultValidation(final EventType eventType, final JSONObject event, final String error) throws Exception {

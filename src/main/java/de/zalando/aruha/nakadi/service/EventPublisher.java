@@ -6,6 +6,8 @@ import de.zalando.aruha.nakadi.domain.EventPublishResult;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.EventPublishingStep;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.enrichment.Enrichment;
+import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
 import de.zalando.aruha.nakadi.exceptions.EventValidationException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
@@ -33,13 +35,16 @@ public class EventPublisher {
     private final TopicRepository topicRepository;
     private final EventTypeCache eventTypeCache;
     private final PartitionResolver partitionResolver;
+    private final Enrichment enrichment;
 
     public EventPublisher(final TopicRepository topicRepository,
-                         final EventTypeCache eventTypeCache,
-                         final PartitionResolver partitionResolver) {
+                          final EventTypeCache eventTypeCache,
+                          final PartitionResolver partitionResolver,
+                          final Enrichment enrichment) {
         this.topicRepository = topicRepository;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
+        this.enrichment = enrichment;
     }
 
     public EventPublishResult publish(final JSONArray events, final String eventTypeName) throws NoSuchEventTypeException,
@@ -49,6 +54,7 @@ public class EventPublisher {
 
         try {
             validate(batch, eventType);
+            enrich(batch, eventType);
             partition(batch, eventType);
             submit(batch, eventType);
 
@@ -56,12 +62,29 @@ public class EventPublisher {
         } catch (final EventValidationException e) {
             LOG.debug("Event validation error: {}", e.getMessage());
             return aborted(EventPublishingStep.VALIDATING, batch);
+        } catch (EnrichmentException e) {
+            LOG.debug("Event enrichment error: {}", e.getMessage());
+            return aborted(EventPublishingStep.ENRICHING, batch);
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
             return aborted(EventPublishingStep.PARTITIONING, batch);
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
+        }
+    }
+
+    private void enrich(final List<BatchItem> batch, final EventType eventType) throws EnrichmentException {
+        for (BatchItem item : batch) {
+            try {
+                item.setStep(EventPublishingStep.ENRICHING);
+                enrichment.enrich(item.getEvent(), eventType);
+            } catch (EnrichmentException e) {
+                item.setPublishingStatus(EventPublishingStatus.FAILED);
+                item.setDetail(e.getMessage());
+
+                throw e;
+            }
         }
     }
 
