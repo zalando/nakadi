@@ -22,8 +22,7 @@ public class Enrichment {
             throw new InvalidEventTypeException("must not define enrichment strategy for undefined event type");
         }
 
-        final Set<EnrichmentStrategyDescriptor> uniqueStrategies = new HashSet<EnrichmentStrategyDescriptor>();
-        uniqueStrategies.addAll(eventType.getEnrichmentStrategies());
+        final Set<EnrichmentStrategyDescriptor> uniqueStrategies = new HashSet<>(eventType.getEnrichmentStrategies());
         if (eventType.getEnrichmentStrategies().size() != uniqueStrategies.size()) {
             throw new InvalidEventTypeException("enrichment strategies must not contain duplicated entries");
         }
