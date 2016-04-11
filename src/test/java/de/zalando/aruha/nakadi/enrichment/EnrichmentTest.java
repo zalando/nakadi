@@ -10,8 +10,6 @@ import org.mockito.Mockito;
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
 import static de.zalando.aruha.nakadi.domain.EventCategory.DATA;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -52,16 +50,6 @@ public class EnrichmentTest {
         eventType.getEnrichmentStrategies().add(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT);
 
         enrichment.validate(eventType);
-    }
-
-    @Test
-    public void enrichMutatesTheGivenEvent() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        final JSONObject event = new JSONObject();
-
-        final JSONObject result = enrichment.enrich(event, eventType);
-
-        assertThat(result, equalTo(event));
     }
 
     @Test

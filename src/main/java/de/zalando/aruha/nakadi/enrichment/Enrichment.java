@@ -34,13 +34,11 @@ public class Enrichment {
         }
     }
 
-    public JSONObject enrich(JSONObject event, final EventType eventType) throws EnrichmentException {
+    public void enrich(JSONObject event, final EventType eventType) throws EnrichmentException {
         for (EnrichmentStrategyDescriptor descriptor : eventType.getEnrichmentStrategies()) {
             EnrichmentStrategy strategy = getStrategy(descriptor);
             event = strategy.enrich(event, eventType);
         }
-
-        return event;
     }
 
     private EnrichmentStrategy getStrategy(final EnrichmentStrategyDescriptor enrichmentStrategyDescriptor) {
