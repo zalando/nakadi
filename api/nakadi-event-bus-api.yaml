@@ -1200,7 +1200,7 @@ definitions:
 
           If set it MUST be a valid required field as defined in the schema.
 
-      statistics:
+      default_statistics:
         type: object
         description: |
           Statistics of this EventType used for optimization purposes. Internal use of these values might
@@ -1250,7 +1250,7 @@ definitions:
           Write rate for events of this EventType. This rate encompasses all producers of this EventType for
           a Nakadi cluster.
 
-          Measured in kb/minutes.
+          Measured in event count per minute.
 
       message_size:
         type: integer

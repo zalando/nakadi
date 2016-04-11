@@ -7,6 +7,7 @@ import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
+import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -21,6 +22,8 @@ import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.json.JSONObject;
 import org.junit.Test;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -202,7 +205,7 @@ public class EventTypeControllerTest {
         Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
 
         Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository).createTopic(
-            et.getName());
+            eq(et.getName()), anyObject());
 
         postEventType(et).andExpect(status().isConflict()).andExpect(content().contentType("application/problem+json"))
                          .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -282,12 +285,12 @@ public class EventTypeControllerTest {
 
         Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        Mockito.doNothing().when(topicRepository).createTopic(et.getName());
+        Mockito.doNothing().when(topicRepository).createTopic(eq(et.getName()), any(EventTypeStatistics.class));
 
         postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic(et.getName());
+        verify(topicRepository, times(1)).createTopic(eq(et.getName()), any(EventTypeStatistics.class));
     }
 
     @Test
@@ -296,7 +299,7 @@ public class EventTypeControllerTest {
         final EventType et = buildDefaultEventType();
         Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(et.getName());
+        Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(eq(et.getName()), anyObject());
 
         Mockito.doNothing().when(eventTypeRepository).removeEventType(et.getName());
 
@@ -307,7 +310,7 @@ public class EventTypeControllerTest {
                                  matchesProblem(expectedProblem)));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic(et.getName());
+        verify(topicRepository, times(1)).createTopic(eq(et.getName()), any(EventTypeStatistics.class));
         verify(eventTypeRepository, times(1)).removeEventType(et.getName());
     }
 

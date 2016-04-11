@@ -38,7 +38,7 @@ import org.mockito.Mockito;
 
 public class KafkaRepositoryAT extends BaseAT {
 
-    private static final int defaultPartitionNum = 8;
+    private static final int defaultPartitionCount = 8;
     private static final int defaultReplicaFactor = 1;
 
     private KafkaRepositorySettings repositorySettings;
@@ -59,7 +59,7 @@ public class KafkaRepositoryAT extends BaseAT {
     public void whenCreateTopicThenTopicIsCreated() throws Exception {
 
         // ACT //
-        kafkaTopicRepository.createTopic(topicName);
+        kafkaTopicRepository.createTopic(topicName, null);
 
         // ASSERT //
         executeWithRetry(() -> {
@@ -67,7 +67,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 assertThat(topics.keySet(), hasItem(topicName));
 
                 final List<PartitionInfo> partitionInfos = topics.get(topicName);
-                assertThat(partitionInfos, hasSize(defaultPartitionNum));
+                assertThat(partitionInfos, hasSize(defaultPartitionCount));
 
                 partitionInfos.stream().forEach(pInfo ->
                         assertThat(pInfo.replicas(), arrayWithSize(defaultReplicaFactor)));
@@ -140,12 +140,12 @@ public class KafkaRepositoryAT extends BaseAT {
                 .when(factory)
                 .createProducer();
 
-        return new KafkaTopicRepository(zooKeeperHolder, factory, repositorySettings);
+        return new KafkaTopicRepository(zooKeeperHolder, factory, repositorySettings, null);
     }
 
     private KafkaRepositorySettings createRepositorySettings() {
         final KafkaRepositorySettings settings = new KafkaRepositorySettings();
-        settings.setDefaultTopicPartitionNum(defaultPartitionNum);
+        settings.setDefaultTopicPartitionCount(defaultPartitionCount);
         settings.setDefaultTopicReplicaFactor(defaultReplicaFactor);
         settings.setKafkaSendTimeoutMs(10000);
         settings.setDefaultTopicRetentionMs(100000000);

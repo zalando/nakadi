@@ -297,7 +297,7 @@ public class KafkaTopicRepositoryTest {
 
     private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings);
+            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings, null);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

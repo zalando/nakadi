@@ -4,8 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 
 class KafkaRepositorySettings {
 
+    @Value("${nakadi.topic.max.partitionNum}")
+    private int maxTopicPartitionCount;
+
     @Value("${nakadi.topic.default.partitionNum}")
-    private int defaultTopicPartitionNum;
+    private int defaultTopicPartitionCount;
 
     @Value("${nakadi.topic.default.replicaFactor}")
     private int defaultTopicReplicaFactor;
@@ -28,12 +31,20 @@ class KafkaRepositorySettings {
     @Value("${nakadi.zookeeper.connectionTimeoutMs}")
     private int zkConnectionTimeoutMs;
 
-    public int getDefaultTopicPartitionNum() {
-        return defaultTopicPartitionNum;
+    public int getDefaultTopicPartitionCount() {
+        return defaultTopicPartitionCount;
     }
 
-    public void setDefaultTopicPartitionNum(final int defaultTopicPartitionNum) {
-        this.defaultTopicPartitionNum = defaultTopicPartitionNum;
+    public void setDefaultTopicPartitionCount(final int defaultTopicPartitionCount) {
+        this.defaultTopicPartitionCount = defaultTopicPartitionCount;
+    }
+
+    public int getMaxTopicPartitionCount() {
+        return maxTopicPartitionCount;
+    }
+
+    public void setMaxTopicPartitionCount(int maxTopicPartitionCount) {
+        this.maxTopicPartitionCount = maxTopicPartitionCount;
     }
 
     public int getDefaultTopicReplicaFactor() {

@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
@@ -15,6 +16,9 @@ import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import java.util.List;
+import java.util.Objects;
+import javax.validation.Valid;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
@@ -24,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import static org.springframework.http.ResponseEntity.status;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,11 +36,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-
-import javax.validation.Valid;
-import java.util.List;
-
-import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -68,6 +68,7 @@ public class EventTypeController {
     }
 
     @RequestMapping(method = RequestMethod.POST)
+    @SuppressWarnings("unused")
     public ResponseEntity<?> createEventType(@Valid @RequestBody final EventType eventType,
                                              final Errors errors,
                                              final NativeWebRequest nativeWebRequest) {
@@ -80,7 +81,7 @@ public class EventTypeController {
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(eventType.getName());
+            topicRepository.createTopic(eventType.getName(), eventType.getDefaultStatistic());
             return status(HttpStatus.CREATED).build();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
@@ -189,6 +190,18 @@ public class EventTypeController {
 
         validateName(name, eventType);
         validateSchemaChange(eventType, existingEventType);
+        eventType.setDefaultStatistic(
+                validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
+    }
+
+    private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing, final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
+        if (existing != null && newStatistics == null) {
+            return existing;
+        }
+        if (!Objects.equals(existing, newStatistics)) {
+            throw new InvalidEventTypeException("default statistics must not be changed");
+        }
+        return newStatistics;
     }
 
     private void validateName(final String name, final EventType eventType) throws InvalidEventTypeException {
