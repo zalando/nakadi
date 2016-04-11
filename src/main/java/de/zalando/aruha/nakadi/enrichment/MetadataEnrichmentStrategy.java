@@ -10,7 +10,7 @@ import org.json.JSONObject;
 
 public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     @Override
-    public JSONObject enrich(final JSONObject event, final EventType eventType) throws EnrichmentException {
+    public void enrich(final JSONObject event, final EventType eventType) throws EnrichmentException {
         try {
             final JSONObject metadata = event.getJSONObject("metadata");
 
@@ -20,8 +20,6 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);
         }
-
-        return event;
     }
 
     private void setFlowId(final JSONObject metadata) {

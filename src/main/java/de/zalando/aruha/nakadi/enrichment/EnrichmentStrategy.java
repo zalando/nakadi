@@ -5,5 +5,5 @@ import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import org.json.JSONObject;
 
 public interface EnrichmentStrategy {
-    JSONObject enrich(JSONObject event, EventType eventType) throws EnrichmentException;
+    void enrich(JSONObject event, EventType eventType) throws EnrichmentException;
 }

@@ -36,7 +36,7 @@ public class Enrichment {
     public void enrich(JSONObject event, final EventType eventType) throws EnrichmentException {
         for (EnrichmentStrategyDescriptor descriptor : eventType.getEnrichmentStrategies()) {
             EnrichmentStrategy strategy = getStrategy(descriptor);
-            event = strategy.enrich(event, eventType);
+            strategy.enrich(event, eventType);
         }
     }
 
