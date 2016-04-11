@@ -3,6 +3,7 @@ package de.zalando.aruha.nakadi.enrichment;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.util.FlowIdUtils;
+import org.joda.time.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
 
@@ -24,10 +25,10 @@ public class MetadataEnrichmentStrategyTest {
         assertThat(event.getJSONObject("metadata").optString("received_at"), isEmptyString());
 
         try {
-            org.joda.time.DateTimeUtils.setCurrentMillisFixed(0);
+            DateTimeUtils.setCurrentMillisFixed(0);
             strategy.enrich(event, eventType);
         } finally {
-            org.joda.time.DateTimeUtils.setCurrentMillisSystem();
+            DateTimeUtils.setCurrentMillisSystem();
         }
 
         assertThat(event.getJSONObject("metadata").getString("received_at"), equalTo("1970-01-01T00:00:00.000Z"));
