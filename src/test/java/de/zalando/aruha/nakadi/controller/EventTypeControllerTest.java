@@ -6,6 +6,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -60,13 +61,14 @@ public class EventTypeControllerTest {
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
+    private final Enrichment enrichment = mock(Enrichment.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
 
     public EventTypeControllerTest() throws Exception {
 
         final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository,
-                partitionResolver);
+                partitionResolver, enrichment);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
@@ -439,6 +441,36 @@ public class EventTypeControllerTest {
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
                     matchesProblem(expectedProblem))));
+    }
+
+    @Test
+    public void whenPOSTWithInvalidEnrichmentStrategyThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        Mockito
+                .doThrow(InvalidEventTypeException.class)
+                .when(enrichment)
+                .validate(any());
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void whenPUTWithInvalidEnrichmentStrategyThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        Mockito
+                .doThrow(InvalidEventTypeException.class)
+                .when(enrichment)
+                .validate(any());
+
+        putEventType(eventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {

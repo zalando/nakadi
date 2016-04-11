@@ -24,4 +24,12 @@ public class StrategiesRegistryControllerTest {
                 .andExpect(jsonPath("$", hasSize(ALL_PARTITION_STRATEGIES.size())));
     }
 
+    @Test
+    public void canExposeEnrichmentStrategies() throws Exception {
+        mockMvc.perform(get("/registry/enrichment-strategies"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(content().string("[\"metadata_enrichment\"]"));
+    }
+
 }

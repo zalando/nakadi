@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.UUID;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import org.apache.commons.io.IOUtils;
 
@@ -103,6 +105,11 @@ public class TestUtils {
 
     public static EventType buildDefaultEventType() {
         return buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"));
+    }
+
+    public static JSONObject buildBusinessEvent() throws IOException {
+        final String json = Resources.toString(Resources.getResource("sample-business-event.json"), Charsets.UTF_8);
+        return new JSONObject(json);
     }
 
     public static MappingJackson2HttpMessageConverter createMessageConverter() {

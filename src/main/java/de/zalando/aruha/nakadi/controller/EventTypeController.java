@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -46,13 +47,17 @@ public class EventTypeController {
     private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
     private final PartitionResolver partitionResolver;
+    private final Enrichment enrichment;
 
     @Autowired
-    public EventTypeController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
-                               final PartitionResolver partitionResolver) {
+    public EventTypeController(final EventTypeRepository eventTypeRepository,
+                               final TopicRepository topicRepository,
+                               final PartitionResolver partitionResolver,
+                               final Enrichment enrichment) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
+        this.enrichment = enrichment;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -72,6 +77,7 @@ public class EventTypeController {
 
         try {
             validateSchema(eventType);
+            enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
             topicRepository.createTopic(eventType.getName());
@@ -126,6 +132,7 @@ public class EventTypeController {
 
         try {
             validateUpdate(name, eventType);
+            enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.update(eventType);
             return status(HttpStatus.OK).build();
