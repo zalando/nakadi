@@ -45,8 +45,7 @@ nakadi:
     clientId: stups_aruha-event-store-poc
     scopes:
       uid: uid
-      nakadiRead: nakadi.read
-      nakadiAdmin: nakadi.admin
-      eventTypeWrite: nakadi_event_type.write
-      eventStreamRead: nakadi_event_stream.read
-      eventStreamWrite: nakadi_event_stream.write
+      nakadiAdmin: nakadi.config.write
+      eventTypeWrite: nakadi.event_type.write
+      eventStreamRead: nakadi.event_stream.read
+      eventStreamWrite: nakadi.event_stream.write

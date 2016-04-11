@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EnrichmentStrategyDescriptor;
-import de.zalando.aruha.nakadi.domain.PartitionStrategyDescriptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Arrays;
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.AVAILABLE_PARTITION_STRATEGIES;
+import static de.zalando.aruha.nakadi.partitioning.PartitionResolver.ALL_PARTITION_STRATEGIES;
 import static org.springframework.http.ResponseEntity.status;
 
 @RestController
@@ -19,8 +18,8 @@ import static org.springframework.http.ResponseEntity.status;
 public class StrategiesRegistryController {
 
     @RequestMapping(value = "/partition-strategies", method = RequestMethod.GET)
-    public ResponseEntity<List<PartitionStrategyDescriptor>> listPartitionStrategies() {
-        return status(HttpStatus.OK).body(AVAILABLE_PARTITION_STRATEGIES);
+    public ResponseEntity<List<String>> listPartitionStrategies() {
+        return status(HttpStatus.OK).body(ALL_PARTITION_STRATEGIES);
     }
 
     @RequestMapping(value = "/enrichment-strategies", method = RequestMethod.GET)

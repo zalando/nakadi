@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.Lists;
+import de.zalando.aruha.nakadi.partitioning.PartitionStrategy;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
@@ -11,7 +12,6 @@ import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.service.StrategiesRegistry.RANDOM_PARTITION_STRATEGY;
 import static java.util.Collections.unmodifiableList;
 
 public class EventType {
@@ -35,8 +35,7 @@ public class EventType {
     @NotNull
     private List<EnrichmentStrategyDescriptor> enrichmentStrategies = Lists.newArrayList();
 
-    @Valid
-    private PartitionStrategyDescriptor partitionStrategy = RANDOM_PARTITION_STRATEGY;
+    private String partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
 
     @Nullable
     private List<String> partitionKeyFields;
@@ -69,12 +68,12 @@ public class EventType {
         return validationStrategies;
     }
 
-    public PartitionStrategyDescriptor getPartitionStrategy() {
+    public String getPartitionStrategy() {
         return partitionStrategy;
     }
 
-    public void setPartitionStrategy(final PartitionStrategyDescriptor partitionStrategyDescriptor) {
-        this.partitionStrategy = partitionStrategyDescriptor;
+    public void setPartitionStrategy(final String partitionStrategy) {
+        this.partitionStrategy = partitionStrategy;
     }
 
     public EventTypeSchema getSchema() {

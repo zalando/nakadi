@@ -33,9 +33,6 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     @Value("${nakadi.oauth2.scopes.uid}")
     private String uidScope;
 
-    @Value("${nakadi.oauth2.scopes.nakadiRead}")
-    private String nakadiReadScope;
-
     @Value("${nakadi.oauth2.scopes.nakadiAdmin}")
     private String nakadiAdminScope;
 
@@ -54,23 +51,18 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
 
         if (settings.getAuthMode() == SecuritySettings.AuthMode.FULL) {
             http.authorizeRequests()
-                    .antMatchers("/health").permitAll()
-                    .antMatchers(GET, "/metrics").access(hasScope(uidScope))
-                    .antMatchers(GET, "/registry/*").access(hasScope(uidScope))
-                    .antMatchers(GET, "/event-types").access(hasScope(nakadiReadScope))
-                    .antMatchers(GET, "/event-types/*").access(hasScope(nakadiReadScope))
-                    .antMatchers(POST, "/event-types").access(hasScope(eventTypeWriteScope))
-                    .antMatchers(PUT, "/event-types/*").access(hasScope(eventTypeWriteScope))
-                    .antMatchers(DELETE, "/event-types/*").access(hasScope(nakadiAdminScope))
-                    .antMatchers(GET, "/event-types/*/events").access(hasScope(eventStreamReadScope))
-                    .antMatchers(POST, "/event-types/*/events").access(hasScope(eventStreamWriteScope))
-                    .antMatchers(GET, "/event-types/*/partitions").access(hasScope(eventStreamReadScope))
-                    .antMatchers(GET, "/event-types/*/partitions/*").access(hasScope(eventStreamReadScope))
+                    .antMatchers(GET, "/event-types/*/partitions/**").access(hasScope(eventStreamReadScope))
+                    .antMatchers(GET, "/event-types/*/events/**").access(hasScope(eventStreamReadScope))
+                    .antMatchers(POST, "/event-types/*/events/**").access(hasScope(eventStreamWriteScope))
+                    .antMatchers(DELETE, "/event-types/*/**").access(hasScope(nakadiAdminScope))
+                    .antMatchers(POST, "/event-types/**").access(hasScope(eventTypeWriteScope))
+                    .antMatchers(PUT, "/event-types/**").access(hasScope(eventTypeWriteScope))
+                    .antMatchers(GET, "/health/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
         }
         else if (settings.getAuthMode() == SecuritySettings.AuthMode.BASIC) {
             http.authorizeRequests()
-                    .antMatchers("/health").permitAll()
+                    .antMatchers(GET, "/health/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
         }
         else {
