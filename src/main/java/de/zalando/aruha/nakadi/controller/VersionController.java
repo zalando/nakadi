@@ -56,7 +56,7 @@ public class VersionController {
         }
     }
 
-    private static class VersionInfo {
+    public static class VersionInfo {
         private final ScmSource scmSource;
 
         public VersionInfo(final ScmSource scmSource) {

@@ -64,7 +64,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
         else if (settings.getAuthMode() == SecuritySettings.AuthMode.BASIC) {
             http.authorizeRequests()
                     .antMatchers(GET, "/health/**").permitAll()
-                    .antMatchers(GET, "/version").permitAll()
+                    .antMatchers(GET, "/version/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
         }
         else {
