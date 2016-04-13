@@ -7,32 +7,27 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetrics;
 import de.zalando.aruha.nakadi.service.EventPublisher;
+import javax.ws.rs.core.Response;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import static org.springframework.http.ResponseEntity.status;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
-
-import javax.ws.rs.core.Response;
-import java.util.concurrent.TimeUnit;
-
-import static org.springframework.http.ResponseEntity.status;
-import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
 public class EventPublishingController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublishingController.class);
-    public static final String SUCCESS_METRIC_NAME = "success";
-    public static final String FAILED_METRIC_NAME = "failed";
 
     private final EventPublisher publisher;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
@@ -47,18 +42,27 @@ public class EventPublishingController {
     public ResponseEntity postEvent(@PathVariable final String eventTypeName, @RequestBody final String eventsAsString,
                                     final NativeWebRequest nativeWebRequest) {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
+        final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
-            final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
+            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString, nativeWebRequest, eventTypeMetrics);
+            eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
+            return response;
+        } catch (RuntimeException ex) {
+            eventTypeMetrics.incrementResponseCount(-1); // yep, dunno response code here, related to event type.
+            throw ex;
+        }
+    }
 
-            return doWithTimerMetric(eventTypeMetrics, () -> {
-                final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
+    private ResponseEntity postEventInternal(String eventTypeName, String eventsAsString, NativeWebRequest nativeWebRequest, EventTypeMetrics eventTypeMetrics) {
+        final long startingNanos = System.nanoTime();
+        try {
+            final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
 
-                reportMetrics(eventTypeMetrics, eventsAsString, eventsAsJsonObjects);
+            final int eventCount = eventsAsJsonObjects.length();
+            eventTypeMetrics.reportSizing(eventCount, eventsAsString.length());
 
-                final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName);
-                return response(result);
-            });
+            return response(publisher.publish(eventsAsJsonObjects, eventTypeName));
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
@@ -68,16 +72,9 @@ public class EventPublishingController {
         } catch (final NakadiException e) {
             LOG.debug("Failed to publish batch", e);
             return create(e.asProblem(), nativeWebRequest);
+        } finally {
+            eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
         }
-    }
-
-    private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final String eventsAsString, final JSONArray eventsAsJsonObjects) {
-        final int numberOfEventsInBatch = eventsAsJsonObjects.length();
-        eventTypeMetrics.getEventsPerBatchHistogram().update(numberOfEventsInBatch);
-
-        final int averageApproximateEventSize = numberOfEventsInBatch > 0
-                ? eventsAsString.length() / numberOfEventsInBatch : 0;
-        eventTypeMetrics.getAverageEventSizeInBytesHistogram().update(averageApproximateEventSize);
     }
 
     private ResponseEntity response(final EventPublishResult result) {
@@ -89,25 +86,5 @@ public class EventPublishingController {
             default:
                 return status(HttpStatus.MULTI_STATUS).body(result.getResponses());
         }
-    }
-
-    private ResponseEntity doWithTimerMetric(final EventTypeMetrics eventTypeMetrics,
-                                             final EventProcessingTask task) throws NakadiException {
-        try {
-            final long startingNanos = System.nanoTime();
-
-            final ResponseEntity responseEntity = task.execute();
-
-            eventTypeMetrics.getSuccessfullyPublishedTimer().update(System.nanoTime() - startingNanos, TimeUnit.NANOSECONDS);
-
-            return responseEntity;
-        } catch (final Exception e) {
-            eventTypeMetrics.getFailedPublishedCounter().inc();
-            throw e;
-        }
-    }
-
-    private interface EventProcessingTask {
-        ResponseEntity execute() throws NakadiException;
     }
 }
