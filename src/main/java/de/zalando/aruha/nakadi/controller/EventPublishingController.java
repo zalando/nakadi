@@ -49,7 +49,7 @@ public class EventPublishingController {
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {
-            eventTypeMetrics.incrementResponseCount(-1); // yep, dunno response code here, related to event type.
+            eventTypeMetrics.incrementResponseCount(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }
     }
