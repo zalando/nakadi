@@ -1,66 +1,54 @@
 package de.zalando.aruha.nakadi.security;
 
-import static org.hamcrest.Matchers.isOneOf;
-import static org.hamcrest.Matchers.not;
-
-import static org.mockito.Matchers.any;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import static org.springframework.http.HttpStatus.FORBIDDEN;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
-
-import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
-
-import java.util.Set;
-
-import javax.annotation.PostConstruct;
-
-import javax.servlet.Filter;
-
-import org.junit.Before;
-
-import org.junit.runner.RunWith;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-
-import org.springframework.boot.test.SpringApplicationConfiguration;
-import org.springframework.boot.test.WebIntegrationTest;
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.oauth2.provider.OAuth2Authentication;
-import org.springframework.security.oauth2.provider.OAuth2Request;
-import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
-
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultMatcher;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import org.springframework.web.context.WebApplicationContext;
-
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
-
 import de.zalando.aruha.nakadi.Application;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
+import java.util.List;
+import java.util.Set;
+import javax.annotation.PostConstruct;
+import javax.servlet.Filter;
+import static org.hamcrest.Matchers.isOneOf;
+import static org.hamcrest.Matchers.not;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.SpringApplicationConfiguration;
+import org.springframework.boot.test.WebIntegrationTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import static org.springframework.http.HttpMethod.DELETE;
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.PUT;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.security.oauth2.provider.OAuth2Request;
+import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
+import org.springframework.test.annotation.DirtiesContext;
+import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(Application.class)
@@ -152,6 +140,26 @@ public abstract class AuthenticationTest {
 
     protected static SecuritySettings.AuthMode authMode;
 
+    protected static final List<Endpoint> endpoints = ImmutableList.of(
+            new Endpoint(POST, "/event-types", TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE),
+            new Endpoint(PUT, "/event-types/foo", TOKEN_WITH_EVENT_TYPE_WRITE_SCOPE),
+            new Endpoint(DELETE, "/event-types/foo", TOKEN_WITH_NAKADI_ADMIN_SCOPE),
+            new Endpoint(POST, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE),
+            new Endpoint(GET, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(GET, "/event-types/foo/partitions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
+
+    protected static final List<Endpoint> endpointsForUidScope = ImmutableList.of(
+            new Endpoint(GET, "/metrics", TOKEN_WITH_UID_SCOPE),
+            new Endpoint(GET, "/registry/partition-strategies", TOKEN_WITH_UID_SCOPE),
+            new Endpoint(GET, "/event-types", TOKEN_WITH_UID_SCOPE),
+            new Endpoint(GET, "/event-types/foo", TOKEN_WITH_UID_SCOPE));
+
+    private static final List<Endpoint> endpointsWithNoScope = ImmutableList.of(
+            new Endpoint(GET, "/health"),
+            new Endpoint(GET, "/version"));
+
+
     @Autowired
     private WebApplicationContext applicationContext;
 
@@ -165,9 +173,19 @@ public abstract class AuthenticationTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(applicationContext).addFilters(springSecurityFilterChain).build();
     }
 
-    protected MockHttpServletRequestBuilder addTokenHeader(final MockHttpServletRequestBuilder builder,
-            final String token) {
-        return builder.header("Authorization", "Bearer " + token);
+    @Test
+    public void testPublicEndpoints() {
+        endpointsWithNoScope.forEach(this::checkOkResponse);
+    }
+
+    private void checkOkResponse(final Endpoint endpoint) {
+        try {
+            mockMvc.perform(endpoint.toRequestBuilder()).andExpect(status().isOk());
+        } catch (final Exception e) {
+            throw new AssertionError("Exception occurred while calling endpoint: " + endpoint, e);
+        } catch (final AssertionError e) {
+            throw new AssertionError("Assertion error on endpoint:" + endpoint, e);
+        }
     }
 
 }
