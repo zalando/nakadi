@@ -6,12 +6,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import javax.annotation.PostConstruct;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
@@ -21,10 +20,19 @@ class KafkaLocationManager {
 
     private static final String _BROKERS_IDS_PATH = "/brokers/ids";
 
-    @Autowired
-    private ZooKeeperHolder zkFactory;
+    private final ZooKeeperHolder zkFactory;
 
-    private Properties kafkaProperties;
+    private volatile Properties kafkaProperties;
+    private final List<KafkaPropertiesListener> kafkaPropertiesListeners = new LinkedList<>();
+
+    public KafkaLocationManager(final ZooKeeperHolder zkFactory) {
+        this.zkFactory = zkFactory;
+        init();
+    }
+
+    public void registerPropertiesListener(final KafkaPropertiesListener listener) {
+        kafkaPropertiesListeners.add(listener);
+    }
 
     static class Broker {
         final String host;
@@ -83,7 +91,6 @@ class KafkaLocationManager {
         return props;
     }
 
-    @PostConstruct
     private void init() {
         kafkaProperties = buildKafkaProperties(fetchBrokers());
     }
@@ -91,11 +98,21 @@ class KafkaLocationManager {
     @Scheduled(fixedDelay = 30000)
     private void updateBrokers() {
         if (kafkaProperties != null) {
+            final Properties oldProperties = getKafkaProperties();
+
             final List<Broker> brokers = fetchBrokers();
             if (!brokers.isEmpty()) {
-                kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
+                this.kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
+            }
+
+            if (!oldProperties.getProperty("bootstrap.servers").equals(kafkaProperties.getProperty("bootstrap.servers"))) {
+                notifyPropertiesListeners();
             }
         }
+    }
+
+    private void notifyPropertiesListeners() {
+        kafkaPropertiesListeners.stream().forEach(listener -> listener.updateProperties(getKafkaProperties()));
     }
 
     public Properties getKafkaProperties() {

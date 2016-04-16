@@ -6,17 +6,19 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 
 import java.util.List;
+import java.util.Properties;
 
-class KafkaFactory {
+class KafkaFactory implements KafkaPropertiesListener {
     private final KafkaLocationManager kafkaLocationManager;
-    private final KafkaProducer<String, String> kafkaProducer;
+    private volatile KafkaProducer<String, String> kafkaProducer;
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager) {
         this.kafkaLocationManager = kafkaLocationManager;
         kafkaProducer = new KafkaProducer<>(kafkaLocationManager.getKafkaProperties());
+        kafkaLocationManager.registerPropertiesListener(this);
     }
 
-    public Producer<String, String> createProducer() {
+    public Producer<String, String> getProducer() {
         return kafkaProducer;
     }
 
@@ -29,4 +31,8 @@ class KafkaFactory {
         return new NakadiKafkaConsumer(getConsumer(), topic, kafkaCursors, pollTimeout);
     }
 
+    @Override
+    public void updateProperties(final Properties kafkaProperties) {
+        kafkaProducer = new KafkaProducer<>(kafkaProperties);
+    }
 }

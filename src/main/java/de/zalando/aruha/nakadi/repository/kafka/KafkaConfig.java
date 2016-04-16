@@ -17,7 +17,7 @@ public class KafkaConfig {
 
     @Bean
     public KafkaLocationManager getKafkaLocationManager() {
-        return new KafkaLocationManager();
+        return new KafkaLocationManager(zookeeperConfig.zooKeeperHolder());
     }
 
     @Bean
