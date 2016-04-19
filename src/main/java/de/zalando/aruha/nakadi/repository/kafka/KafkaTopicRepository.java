@@ -29,9 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toList;
 import kafka.admin.AdminUtils;
@@ -58,7 +56,7 @@ public class KafkaTopicRepository implements TopicRepository {
     private final KafkaPartitionsCalculator partitionsCalculator;
 
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
-                                final KafkaRepositorySettings settings, KafkaPartitionsCalculator partitionsCalculator) {
+                                final KafkaRepositorySettings settings, final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;
         this.partitionsCalculator = partitionsCalculator;
         this.kafkaProducer = kafkaFactory.createProducer();
@@ -75,7 +73,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     .stream()
                     .map(Topic::new)
                     .collect(toList());
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new ServiceUnavailableException("Failed to list topics", e);
         }
     }
@@ -99,12 +97,10 @@ public class KafkaTopicRepository implements TopicRepository {
                 topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
                 AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
             });
-        }
-        catch (TopicExistsException e) {
+        } catch (final TopicExistsException e) {
             throw new DuplicatedEventTypeNameException("EventType with name " + topic +
                     " already exists (or wasn't completely removed yet)");
-        }
-        catch (Exception e) {
+        } catch (final Exception e) {
             throw new TopicCreationException("Unable to create topic " + topic, e);
         }
     }
@@ -114,8 +110,7 @@ public class KafkaTopicRepository implements TopicRepository {
         try {
             // this will only trigger topic deletion, but the actual deletion is asynchronous
             doWithZkUtils(zkUtils -> AdminUtils.deleteTopic(zkUtils, topic));
-        }
-        catch (Exception e) {
+        } catch (final Exception e) {
             throw new TopicDeletionException("Unable to delete topic " + topic, e);
         }
     }
@@ -162,18 +157,6 @@ public class KafkaTopicRepository implements TopicRepository {
                         .orElse(false));
     }
 
-    void postEvent(final String topicId, final String partitionId, final String payload) throws ServiceUnavailableException {
-        LOG.info("Posting {} {} {}", topicId, partitionId, payload);
-
-        final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, toKafkaPartition(partitionId),
-                partitionId, payload);
-        try {
-            kafkaProducer.send(record).get(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            throw new ServiceUnavailableException("Failed to send event", e);
-        }
-    }
-
     @Override
     public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
         final CountDownLatch done = new CountDownLatch(batch.size());
@@ -199,13 +182,13 @@ public class KafkaTopicRepository implements TopicRepository {
                 failBatch(batch, "timed out");
                 throw new EventPublishingException("Timeout publishing events");
             }
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
             failBatch(batch, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
     }
 
-    private void failBatch(List<BatchItem> batch, final String reason) {
+    private void failBatch(final List<BatchItem> batch, final String reason) {
         for (final BatchItem item : batch) {
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason);
         }
@@ -259,8 +242,7 @@ public class KafkaTopicRepository implements TopicRepository {
                         return topicPartition;
                     })
                     .collect(toList());
-        }
-        catch (Exception e) {
+        } catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
@@ -307,7 +289,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
             return topicPartition;
         }
-        catch (Exception e) {
+        catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partition offsets", e);
         }
     }
@@ -366,12 +348,12 @@ public class KafkaTopicRepository implements TopicRepository {
         if (maxPartitionsDueParallelism >= settings.getMaxTopicPartitionCount()) {
             return settings.getMaxTopicPartitionCount();
         }
-        return Math.min(8, Math.max(
+        return Math.min(settings.getMaxTopicPartitionCount(), Math.max(
                 maxPartitionsDueParallelism,
-                calculatePartitionsAccordingLoad(stat.getExpectedWriteRate(), stat.getMessageSize())));
+                calculatePartitionsAccordingLoad(stat.getMessagesPerMinute(), stat.getMessageSize())));
     }
 
-    private int calculatePartitionsAccordingLoad(int messagesPerMinute, int avgEventSizeBytes) {
+    private int calculatePartitionsAccordingLoad(final int messagesPerMinute, final int avgEventSizeBytes) {
         final float throughoutputMbPerSec = (messagesPerMinute * avgEventSizeBytes) / (1024.f * 1024.f * 60.f);
         return partitionsCalculator.getBestPartitionsCount(avgEventSizeBytes, throughoutputMbPerSec);
     }

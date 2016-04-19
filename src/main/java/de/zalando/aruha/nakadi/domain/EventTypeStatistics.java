@@ -6,31 +6,31 @@ import javax.validation.constraints.NotNull;
 
 public class EventTypeStatistics {
     @NotNull
-    @Min(value = 0, message = "expected_write_rate can't be less then zero")
-    private Integer expectedWriteRate; // messages per minute
+    @Min(value = 0, message = "can't be less then zero")
+    private Integer messagesPerMinute;
     @NotNull
-    @Min(value = 1, message = "message_size can't be less then 1")
-    private Integer messageSize; // bytes
+    @Min(value = 1, message = "can't be less then 1")
+    private Integer messageSize;
     @NotNull
-    @Min(value = 1, message = "problem with read_parallelism: at least one reader expected")
+    @Min(value = 1, message = "at least one reader expected")
     private Integer readParallelism;
     @NotNull
-    @Min(value = 1, message = "problem with write_parallelism: at least one writer expected")
+    @Min(value = 1, message = "at least one writer expected")
     private Integer writeParallelism;
 
-    public Integer getExpectedWriteRate() {
-        return expectedWriteRate;
+    public Integer getMessagesPerMinute() {
+        return messagesPerMinute;
     }
 
-    public void setExpectedWriteRate(Integer expectedWriteRate) {
-        this.expectedWriteRate = expectedWriteRate;
+    public void setMessagesPerMinute(final Integer messagesPerMinute) {
+        this.messagesPerMinute = messagesPerMinute;
     }
 
     public Integer getMessageSize() {
         return messageSize;
     }
 
-    public void setMessageSize(Integer messageSize) {
+    public void setMessageSize(final Integer messageSize) {
         this.messageSize = messageSize;
     }
 
@@ -38,7 +38,7 @@ public class EventTypeStatistics {
         return readParallelism;
     }
 
-    public void setReadParallelism(Integer readParallelism) {
+    public void setReadParallelism(final Integer readParallelism) {
         this.readParallelism = readParallelism;
     }
 
@@ -46,17 +46,17 @@ public class EventTypeStatistics {
         return writeParallelism;
     }
 
-    public void setWriteParallelism(Integer writeParallelism) {
+    public void setWriteParallelism(final Integer writeParallelism) {
         this.writeParallelism = writeParallelism;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        EventTypeStatistics that = (EventTypeStatistics) o;
-        return Objects.equals(expectedWriteRate, that.expectedWriteRate)
+        final EventTypeStatistics that = (EventTypeStatistics) o;
+        return Objects.equals(messagesPerMinute, that.messagesPerMinute)
                 && Objects.equals(messageSize, that.messageSize)
                 && Objects.equals(readParallelism, that.readParallelism)
                 && Objects.equals(writeParallelism, that.writeParallelism);
@@ -64,7 +64,7 @@ public class EventTypeStatistics {
 
     @Override
     public int hashCode() {
-        int result = expectedWriteRate != null ? expectedWriteRate.hashCode() : 0;
+        int result = messagesPerMinute != null ? messagesPerMinute.hashCode() : 0;
         result = 31 * result + (messageSize != null ? messageSize.hashCode() : 0);
         result = 31 * result + (readParallelism != null ? readParallelism.hashCode() : 0);
         result = 31 * result + (writeParallelism != null ? writeParallelism.hashCode() : 0);

@@ -68,7 +68,6 @@ public class EventTypeController {
     }
 
     @RequestMapping(method = RequestMethod.POST)
-    @SuppressWarnings("unused")
     public ResponseEntity<?> createEventType(@Valid @RequestBody final EventType eventType,
                                              final Errors errors,
                                              final NativeWebRequest nativeWebRequest) {
@@ -171,9 +170,9 @@ public class EventTypeController {
             }
 
             SchemaLoader.load(schemaAsJson);
-        } catch (JSONException e) {
+        } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
-        } catch (SchemaException e) {
+        } catch (final SchemaException e) {
             throw new InvalidEventTypeException("schema must be a valid json-schema");
         }
     }

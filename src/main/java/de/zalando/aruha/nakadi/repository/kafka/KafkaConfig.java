@@ -35,13 +35,13 @@ public class KafkaConfig {
 
     @Bean
     public KafkaPartitionsCalculator kafkaPartitionsCalculator(
-            @Value("${nakadi.kafka.instanceType}") final String instainceType,
-            ObjectMapper objectMapper) throws IOException {
-        return KafkaPartitionsCalculator.load(objectMapper, instainceType);
+            @Value("${nakadi.kafka.instanceType}") final String instanceType,
+            final ObjectMapper objectMapper) throws IOException {
+        return KafkaPartitionsCalculator.load(objectMapper, instanceType);
     }
 
     @Bean
-    public KafkaTopicRepository kafkaTopicRepository(KafkaPartitionsCalculator partitionsCalculator) {
+    public KafkaTopicRepository kafkaTopicRepository(final KafkaPartitionsCalculator partitionsCalculator) {
         return new KafkaTopicRepository(zookeeperConfig.zooKeeperHolder(), kafkaFactory(), kafkaRepositorySettings(), partitionsCalculator);
     }
 

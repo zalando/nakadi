@@ -43,7 +43,7 @@ class KafkaRepositorySettings {
         return maxTopicPartitionCount;
     }
 
-    public void setMaxTopicPartitionCount(int maxTopicPartitionCount) {
+    public void setMaxTopicPartitionCount(final int maxTopicPartitionCount) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
     }
 

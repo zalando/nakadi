@@ -15,13 +15,13 @@ public class KafkaPartitionsCalculator {
     // Contains mapping from message size (in bytes) to list of throughput of kafka with (index + 1) as partition count.
     private final NavigableMap<Integer, float[]> stats = new TreeMap<>();
 
-    private KafkaPartitionsCalculator(InstanceInfo instanceInfo) {
-        for (SpeedStatistics ss : instanceInfo.getStats()) {
+    private KafkaPartitionsCalculator(final InstanceInfo instanceInfo) {
+        for (final SpeedStatistics ss : instanceInfo.getStats()) {
             stats.put(ss.getMessageSize(), ss.getSpeed());
         }
     }
 
-    public int getBestPartitionsCount(int messageSize, float mbsPerSecond) {
+    public int getBestPartitionsCount(final int messageSize, final float mbsPerSecond) {
         final Map.Entry<Integer, float[]> floor = stats.floorEntry(messageSize);
         final Map.Entry<Integer, float[]> ceil = stats.ceilingEntry(messageSize);
         if (floor == null) {
@@ -34,11 +34,11 @@ public class KafkaPartitionsCalculator {
                 return floorResult;
             }
             final int ceilResult = getBestPartitionsCount(ceil.getValue(), mbsPerSecond);
-            return floorResult + (ceilResult - floorResult) * (messageSize - floor.getKey()) / (ceil.getKey() - floor.getKey());
+            return floorResult + ((ceilResult - floorResult) * (messageSize - floor.getKey())) / (ceil.getKey() - floor.getKey());
         }
     }
 
-    private static int getBestPartitionsCount(float[] perPartitionThroughput, float mbsPerSecond) {
+    private static int getBestPartitionsCount(final float[] perPartitionThroughput, final float mbsPerSecond) {
         int nearestIndex = -1;
         for (int i = 0; i < perPartitionThroughput.length; ++i) {
             if (mbsPerSecond <= perPartitionThroughput[i]) {
@@ -61,7 +61,7 @@ public class KafkaPartitionsCalculator {
             return messageSize;
         }
 
-        public void setMessageSize(int messageSize) {
+        public void setMessageSize(final int messageSize) {
             this.messageSize = messageSize;
         }
 
@@ -69,16 +69,16 @@ public class KafkaPartitionsCalculator {
             return speed;
         }
 
-        public void setSpeed(float[] speed) {
+        public void setSpeed(final float[] speed) {
             this.speed = speed;
         }
 
         @Override
-        public boolean equals(Object o) {
+        public boolean equals(final Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
 
-            SpeedStatistics that = (SpeedStatistics) o;
+            final SpeedStatistics that = (SpeedStatistics) o;
 
             if (messageSize != that.messageSize) return false;
             return Arrays.equals(speed, that.speed);
@@ -99,7 +99,7 @@ public class KafkaPartitionsCalculator {
             return name;
         }
 
-        public void setName(String name) {
+        public void setName(final String name) {
             this.name = name;
         }
 
@@ -107,16 +107,16 @@ public class KafkaPartitionsCalculator {
             return stats;
         }
 
-        public void setStats(SpeedStatistics[] stats) {
+        public void setStats(final SpeedStatistics[] stats) {
             this.stats = stats;
         }
 
         @Override
-        public boolean equals(Object o) {
+        public boolean equals(final Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
 
-            InstanceInfo that = (InstanceInfo) o;
+            final InstanceInfo that = (InstanceInfo) o;
 
             if (!name.equals(that.name)) return false;
             return Arrays.equals(stats, that.stats);
@@ -139,7 +139,7 @@ public class KafkaPartitionsCalculator {
     }
 
     @VisibleForTesting
-    static KafkaPartitionsCalculator load(ObjectMapper objectMapper, String instanceType, InputStream in) throws IOException {
+    static KafkaPartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType, final InputStream in) throws IOException {
         final InstanceInfo[] instanceInfos = objectMapper.readValue(in, InstanceInfo[].class);
         final InstanceInfo instanceInfo = Stream.of(instanceInfos)
                 .filter(ii -> instanceType.equals(ii.getName()))

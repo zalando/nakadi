@@ -1244,7 +1244,7 @@ definitions:
       might be used to guide changes in internal parameters.
 
     properties:
-      expected_write_rate:
+      messages_per_minute:
         type: integer
         description: |
           Write rate for events of this EventType. This rate encompasses all producers of this EventType for

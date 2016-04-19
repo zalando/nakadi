@@ -9,7 +9,18 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import static java.lang.String.valueOf;
+import java.util.ArrayList;
+import static java.util.Arrays.asList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Future;
+import java.util.function.Function;
+import static java.util.stream.Collectors.toList;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -18,35 +29,21 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
-import org.json.JSONObject;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.function.Function;
-
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
-import static java.lang.String.valueOf;
-import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import org.json.JSONObject;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyVararg;
 import static org.mockito.Matchers.eq;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -173,22 +170,11 @@ public class KafkaTopicRepositoryTest {
             assertThat(invalidCursor.toString(), kafkaTopicRepository.areCursorsValid(MY_TOPIC, asList(invalidCursor)), is(false));
 
             // check combination with valid cursor
-            for (Cursor validCursor : MY_TOPIC_VALID_CURSORS) {
+            for (final Cursor validCursor : MY_TOPIC_VALID_CURSORS) {
                 assertThat(invalidCursor.toString(), kafkaTopicRepository.areCursorsValid(MY_TOPIC, asList(validCursor, invalidCursor)), is(false));
             }
         }
         assertThat(kafkaTopicRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_INVALID_CURSORS), is(false));
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    public void canPostAnEvent() throws Exception {
-        kafkaTopicRepository.postEvent(
-                EXPECTED_PRODUCER_RECORD.topic(),
-                valueOf(EXPECTED_PRODUCER_RECORD.partition()),
-                (String) EXPECTED_PRODUCER_RECORD.value());
-
-        verify(kafkaProducer, times(1)).send(EXPECTED_PRODUCER_RECORD);
     }
 
     @Test
@@ -209,7 +195,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
             fail();
-        } catch (EventPublishingException e) {
+        } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("timed out"));
         }
@@ -231,7 +217,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
             fail();
-        } catch (EventPublishingException e) {
+        } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("internal error"));
         }
@@ -252,7 +238,7 @@ public class KafkaTopicRepositoryTest {
                     try {
                         final TopicPartition actual = kafkaTopicRepository.getPartition(tp.getTopicId(), tp.getPartitionId());
                         assertThat(actual, equalTo(tp));
-                    } catch (NakadiException e) {
+                    } catch (final NakadiException e) {
                         fail("Should not get NakadiException for this call");
                     }
                 });
@@ -268,7 +254,7 @@ public class KafkaTopicRepositoryTest {
         kafkaTopicRepository.createEventConsumer(MY_TOPIC, cursors);
 
         // ASSERT //
-        Class<List<KafkaCursor>> kafkaCursorListClass = (Class<List<KafkaCursor>>) (Class) List.class;
+        final Class<List<KafkaCursor>> kafkaCursorListClass = (Class<List<KafkaCursor>>) (Class) List.class;
         final ArgumentCaptor<List<KafkaCursor>> captor = ArgumentCaptor.forClass(kafkaCursorListClass);
         verify(kafkaFactory).createNakadiConsumer(eq(MY_TOPIC), captor.capture(), eq(0L));
 
@@ -298,7 +284,7 @@ public class KafkaTopicRepositoryTest {
     private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
             return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings, null);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new RuntimeException(e);
         }
     }

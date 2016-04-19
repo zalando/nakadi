@@ -43,6 +43,7 @@ public class EventType {
     private EventTypeSchema schema;
 
     @Valid
+    @Nullable
     private EventTypeStatistics defaultStatistic;
 
     public String getName() { return name; }
@@ -89,7 +90,7 @@ public class EventType {
         return defaultStatistic;
     }
 
-    public void setDefaultStatistic(EventTypeStatistics defaultStatistic) {
+    public void setDefaultStatistic(final EventTypeStatistics defaultStatistic) {
         this.defaultStatistic = defaultStatistic;
     }
 
