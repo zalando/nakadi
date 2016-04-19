@@ -75,7 +75,7 @@ curl --request POST \
   "owning_application": "order-service",
   "category": "business",
   "partition_strategy": "random",
-  "enrichment_strategies": ["METADATA_ENRICHMENT"],
+  "enrichment_strategies": ["metadata_enrichment"],
   "schema": {
     "type": "json_schema",
     "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }"
