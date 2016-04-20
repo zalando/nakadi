@@ -54,6 +54,9 @@ SenzaInfo:
     - ReplicaFactor:
         Description: "Replica factor for event broker"
         Default: "3"
+    - JavaOpts:
+        Description: "Java opts to be passed to jvm"
+        Default: ""
 
 SenzaComponents:
 
@@ -94,6 +97,7 @@ SenzaComponents:
           SPRING_DATASOURCE_URL: "{{Arguments.DatabaseUrl}}"
           SPRING_DATASOURCE_USERNAME: "{{Arguments.DatabaseUser}}"
           SPRING_DATASOURCE_PASSWORD: "{{Arguments.DatabasePassword}}"
+          JAVA_OPTS: "{{Arguments.JavaOpts}}"
       AutoScaling:
         Minimum: 2
         Maximum: "{{Arguments.InstancesMaximum}}"
