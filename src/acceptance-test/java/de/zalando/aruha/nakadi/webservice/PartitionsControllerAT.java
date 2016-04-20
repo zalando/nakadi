@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.webservice;
 
 import com.jayway.restassured.response.Response;
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -141,9 +142,14 @@ public class PartitionsControllerAT extends BaseAT {
 
     private void validateOffsetIncreasedBy(final Map<String, String> partitionInfoBefore,
                                            final Map<String, String> partitionInfoAfter, final long delta) {
-        final long offsetBefore = Long.parseLong(partitionInfoBefore.get("newest_available_offset"));
-        final long offsetAfter = Long.parseLong(partitionInfoAfter.get("newest_available_offset"));
+        final long offsetBefore = getNewestOffsetAsLong(partitionInfoBefore);
+        final long offsetAfter = getNewestOffsetAsLong(partitionInfoAfter);
         assertThat(offsetAfter, is(offsetBefore + delta));
+    }
+
+    private Long getNewestOffsetAsLong(final Map<String, String> partitionInfo) {
+        final String offset = partitionInfo.get("newest_available_offset");
+        return Cursor.BEFORE_OLDEST_OFFSET.equals(offset) ? -1 : Long.parseLong(offset);
     }
 
     private void writeMessageToPartition(final int partition) throws InterruptedException, ExecutionException {
