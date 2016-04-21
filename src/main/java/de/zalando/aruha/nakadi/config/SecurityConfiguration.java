@@ -58,13 +58,11 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers(POST, "/event-types/**").access(hasScope(eventTypeWriteScope))
                     .antMatchers(PUT, "/event-types/**").access(hasScope(eventTypeWriteScope))
                     .antMatchers(GET, "/health/**").permitAll()
-                    .antMatchers(GET, "/version/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
         }
         else if (settings.getAuthMode() == SecuritySettings.AuthMode.BASIC) {
             http.authorizeRequests()
                     .antMatchers(GET, "/health/**").permitAll()
-                    .antMatchers(GET, "/version/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
         }
         else {
