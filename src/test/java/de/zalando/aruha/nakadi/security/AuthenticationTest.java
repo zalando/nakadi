@@ -153,11 +153,11 @@ public abstract class AuthenticationTest {
             new Endpoint(GET, "/metrics", TOKEN_WITH_UID_SCOPE),
             new Endpoint(GET, "/registry/partition-strategies", TOKEN_WITH_UID_SCOPE),
             new Endpoint(GET, "/event-types", TOKEN_WITH_UID_SCOPE),
-            new Endpoint(GET, "/event-types/foo", TOKEN_WITH_UID_SCOPE));
+            new Endpoint(GET, "/event-types/foo", TOKEN_WITH_UID_SCOPE),
+            new Endpoint(GET, "/version", TOKEN_WITH_UID_SCOPE));
 
     private static final List<Endpoint> endpointsWithNoScope = ImmutableList.of(
-            new Endpoint(GET, "/health"),
-            new Endpoint(GET, "/version"));
+            new Endpoint(GET, "/health"));
 
 
     @Autowired
