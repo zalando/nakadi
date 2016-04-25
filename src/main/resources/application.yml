@@ -19,6 +19,8 @@ spring:
     validationQuery: SELECT 1
 nakadi:
   topic:
+    max:
+      partitionNum: 8
     default:
       partitionNum: 1
       replicaFactor: 1
@@ -27,6 +29,7 @@ nakadi:
   stream:
     timeoutMs: 31536000000 # 1 year :-P
   kafka:
+    instanceType: t2.large
     poll:
       timeoutMs: 100
     send:

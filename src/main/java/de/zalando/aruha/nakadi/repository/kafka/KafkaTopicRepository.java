@@ -6,6 +6,7 @@ import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.EventPublishingStep;
+import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -16,7 +17,21 @@ import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import static java.util.Collections.unmodifiableList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import static java.util.stream.Collectors.toList;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
@@ -30,24 +45,6 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toList;
-
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
@@ -56,10 +53,12 @@ public class KafkaTopicRepository implements TopicRepository {
     private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
     private final KafkaRepositorySettings settings;
+    private final KafkaPartitionsCalculator partitionsCalculator;
 
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
-                                final KafkaRepositorySettings settings) {
+                                final KafkaRepositorySettings settings, final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;
+        this.partitionsCalculator = partitionsCalculator;
         this.kafkaProducer = kafkaFactory.createProducer();
         this.kafkaFactory = kafkaFactory;
         this.settings = settings;
@@ -74,23 +73,22 @@ public class KafkaTopicRepository implements TopicRepository {
                     .stream()
                     .map(Topic::new)
                     .collect(toList());
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new ServiceUnavailableException("Failed to list topics", e);
         }
     }
 
     @Override
-    public void createTopic(final String topic) throws TopicCreationException, DuplicatedEventTypeNameException {
+    public void createTopic(final String topic, final EventTypeStatistics statistics) throws TopicCreationException, DuplicatedEventTypeNameException {
         createTopic(topic,
-                settings.getDefaultTopicPartitionNum(),
+                calculateKafkaPartitionCount(statistics),
                 settings.getDefaultTopicReplicaFactor(),
                 settings.getDefaultTopicRetentionMs(),
                 settings.getDefaultTopicRotationMs());
     }
 
-    @Override
-    public void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
-                            final long retentionMs, final long rotationMs)
+    private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
+                             final long retentionMs, final long rotationMs)
             throws TopicCreationException, DuplicatedEventTypeNameException {
         try {
             doWithZkUtils(zkUtils -> {
@@ -99,12 +97,10 @@ public class KafkaTopicRepository implements TopicRepository {
                 topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
                 AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
             });
-        }
-        catch (TopicExistsException e) {
+        } catch (final TopicExistsException e) {
             throw new DuplicatedEventTypeNameException("EventType with name " + topic +
                     " already exists (or wasn't completely removed yet)");
-        }
-        catch (Exception e) {
+        } catch (final Exception e) {
             throw new TopicCreationException("Unable to create topic " + topic, e);
         }
     }
@@ -114,8 +110,7 @@ public class KafkaTopicRepository implements TopicRepository {
         try {
             // this will only trigger topic deletion, but the actual deletion is asynchronous
             doWithZkUtils(zkUtils -> AdminUtils.deleteTopic(zkUtils, topic));
-        }
-        catch (Exception e) {
+        } catch (final Exception e) {
             throw new TopicDeletionException("Unable to delete topic " + topic, e);
         }
     }
@@ -163,19 +158,6 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void postEvent(final String topicId, final String partitionId, final String payload) throws ServiceUnavailableException {
-        LOG.info("Posting {} {} {}", topicId, partitionId, payload);
-
-        final ProducerRecord<String, String> record = new ProducerRecord<>(topicId, toKafkaPartition(partitionId),
-                partitionId, payload);
-        try {
-            kafkaProducer.send(record).get(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            throw new ServiceUnavailableException("Failed to send event", e);
-        }
-    }
-
-    @Override
     public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
         final CountDownLatch done = new CountDownLatch(batch.size());
 
@@ -200,13 +182,13 @@ public class KafkaTopicRepository implements TopicRepository {
                 failBatch(batch, "timed out");
                 throw new EventPublishingException("Timeout publishing events");
             }
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
             failBatch(batch, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
     }
 
-    private void failBatch(List<BatchItem> batch, final String reason) {
+    private void failBatch(final List<BatchItem> batch, final String reason) {
         for (final BatchItem item : batch) {
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason);
         }
@@ -260,8 +242,7 @@ public class KafkaTopicRepository implements TopicRepository {
                         return topicPartition;
                     })
                     .collect(toList());
-        }
-        catch (Exception e) {
+        } catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
     }
@@ -308,7 +289,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
             return topicPartition;
         }
-        catch (Exception e) {
+        catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partition offsets", e);
         }
     }
@@ -327,7 +308,6 @@ public class KafkaTopicRepository implements TopicRepository {
             if (Cursor.BEFORE_OLDEST_OFFSET.equals(offset)) {
                 final TopicPartition tp = getPartition(topic, partition);
                 kafkaOffset = toKafkaOffset(tp.getOldestAvailableOffset());
-
             }
             else {
                 kafkaOffset = toKafkaOffset(offset) + 1L;
@@ -358,5 +338,23 @@ public class KafkaTopicRepository implements TopicRepository {
                 zkUtils.close();
             }
         }
+    }
+
+    private Integer calculateKafkaPartitionCount(final EventTypeStatistics stat) {
+        if (null == stat) {
+            return settings.getDefaultTopicPartitionCount();
+        }
+        final int maxPartitionsDueParallelism = Math.max(stat.getReadParallelism(), stat.getWriteParallelism());
+        if (maxPartitionsDueParallelism >= settings.getMaxTopicPartitionCount()) {
+            return settings.getMaxTopicPartitionCount();
+        }
+        return Math.min(settings.getMaxTopicPartitionCount(), Math.max(
+                maxPartitionsDueParallelism,
+                calculatePartitionsAccordingLoad(stat.getMessagesPerMinute(), stat.getMessageSize())));
+    }
+
+    private int calculatePartitionsAccordingLoad(final int messagesPerMinute, final int avgEventSizeBytes) {
+        final float throughoutputMbPerSec = (messagesPerMinute * avgEventSizeBytes) / (1024.f * 1024.f * 60.f);
+        return partitionsCalculator.getBestPartitionsCount(avgEventSizeBytes, throughoutputMbPerSec);
     }
 }
