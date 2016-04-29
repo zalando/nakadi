@@ -141,6 +141,8 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['uid']
       description: Returns a list of all registered `EventType`s
       parameters:
         - name: X-Flow-Id
@@ -389,6 +391,46 @@ paths:
             $ref: '#/definitions/Problem'
         '503':
           description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /event-types/{name}/effective_schema:
+    get:
+      tags:
+        - schema-registry-api
+      security:
+        - oauth2: ['uid']
+      description: |
+        When publishing events whose `EventType` category is either "business" or "data", additional fields are required
+        other than those described in the schema.
+
+        This endpoint exposes this effective schema, e.g. the schema used to validate events in fact.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType to update.
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+          format: flow-id
+      responses:
+        '200':
+          description: Ok
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: EventType not found.
+          schema:
+              $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
           schema:
             $ref: '#/definitions/Problem'
 

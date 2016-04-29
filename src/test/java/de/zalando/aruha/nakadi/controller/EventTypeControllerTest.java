@@ -6,8 +6,8 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
+import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
@@ -22,8 +22,6 @@ import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.json.JSONObject;
 import org.junit.Test;
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -44,7 +42,9 @@ import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -494,6 +494,56 @@ public class EventTypeControllerTest {
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void exposesBusinessEventEffectiveSchema() throws Exception {
+        final String eventTypeString = TestUtils.getStringFromFile("sample-business-event-type.json");
+        final EventType eventType = objectMapper.readValue(eventTypeString, EventType.class);
+        final JSONObject expectedEffectiveSchema = new JSONObject(TestUtils.getStringFromFile("sample-business-event-type-effective-schema.json"));
+
+        when(eventTypeRepository.findByName(eventType.getName())).thenReturn(eventType);
+
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventType.getName() + "/effective_schema").accept(
+                APPLICATION_JSON);
+
+        mockMvc.perform(requestBuilder).andExpect(status().is(200))
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(content().json(asJsonString(expectedEffectiveSchema)));
+    }
+
+    @Test
+    public void exposesDataChangeEventEffectiveSchema() throws Exception {
+        final String eventTypeString = TestUtils.getStringFromFile("sample-datachange-event-type.json");
+        final EventType eventType = objectMapper.readValue(eventTypeString, EventType.class);
+        final JSONObject expectedEffectiveSchema = new JSONObject(TestUtils.getStringFromFile("sample-datachange-event-type-effective-schema.json"));
+
+        when(eventTypeRepository.findByName(eventType.getName())).thenReturn(eventType);
+
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventType.getName() + "/effective_schema").accept(
+                APPLICATION_JSON);
+
+        mockMvc.perform(requestBuilder).andExpect(status().is(200))
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(content().json(asJsonString(expectedEffectiveSchema)));
+    }
+
+    @Test
+    public void whenEventTypeMissingThen404OnEffectiveSchema() throws Exception {
+        final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final Problem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy message");
+
+        Mockito.doThrow(new NoSuchEventTypeException("dummy message")).when(eventTypeRepository).findByName(
+                eventTypeName);
+
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName + "/effective_schema").
+                accept(APPLICATION_JSON);
+
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content()
+                .string(matchesProblem(expectedProblem)));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {

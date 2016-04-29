@@ -19,6 +19,8 @@ import de.zalando.aruha.nakadi.repository.TopicRepository;
 import java.util.List;
 import java.util.Objects;
 import javax.validation.Valid;
+
+import de.zalando.aruha.nakadi.validation.EventValidation;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
@@ -152,6 +154,21 @@ public class EventTypeController {
         try {
             final EventType eventType = eventTypeRepository.findByName(name);
             return status(HttpStatus.OK).body(eventType);
+        } catch (final NoSuchEventTypeException e) {
+            LOG.debug("Could not find EventType: {}", name);
+            return create(e.asProblem(), nativeWebRequest);
+        } catch (final InternalNakadiException e) {
+            LOG.error("Problem loading event type " + name, e);
+            return create(e.asProblem(), nativeWebRequest);
+        }
+    }
+
+    @RequestMapping(value = "/{name}/effective_schema", method = RequestMethod.GET)
+    public ResponseEntity<?> exposeEventTypeEffectiveSchema(@PathVariable final String name, final NativeWebRequest nativeWebRequest) {
+        try {
+            final EventType eventType = eventTypeRepository.findByName(name);
+            final JSONObject effectiveSchema = EventValidation.effectiveSchema(eventType);
+            return status(HttpStatus.OK).body(effectiveSchema);
         } catch (final NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", name);
             return create(e.asProblem(), nativeWebRequest);

@@ -1,0 +1,53 @@
+{
+  "type": "object",
+  "properties": {
+    "data_type": {
+      "type": "string"
+    },
+    "data_op": {
+      "type": "string",
+      "enum": ["C", "U", "D", "S"]
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "required": ["foo"]
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "eid": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+        },
+        "event_type": {
+          "type": "string",
+          "enum": ["NAME_PLACEHOLDER"]
+        },
+        "occurred_at": {
+          "type": "string"
+        },
+        "parent_eids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+          }
+        },
+        "flow_id": {
+          "type": "string"
+        },
+        "partition": {
+          "type": "string"
+        }
+      },
+      "required": ["eid", "occurred_at"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["metadata", "data_type", "data_op", "data"]
+}
