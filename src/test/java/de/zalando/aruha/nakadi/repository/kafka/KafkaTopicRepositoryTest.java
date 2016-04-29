@@ -9,18 +9,7 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import static java.lang.String.valueOf;
-import java.util.ArrayList;
-import static java.util.Arrays.asList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.function.Function;
-import static java.util.stream.Collectors.toList;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -29,19 +18,34 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
+import org.json.JSONObject;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Future;
+import java.util.function.Function;
+
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
+import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
+import static de.zalando.aruha.nakadi.utils.IsOptional.isValue;
+import static java.lang.String.valueOf;
+import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
-import org.json.JSONObject;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyVararg;
 import static org.mockito.Matchers.eq;
-import org.mockito.Mockito;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -85,15 +89,6 @@ public class KafkaTopicRepositoryTest {
 
     public static final List<Cursor> ANOTHER_TOPIC_VALID_CURSORS = asList(cursor("1", "0"), cursor("1", "99"),
             cursor("5", "30"), cursor("9", "100"));
-
-    public static final List<Cursor> MY_TOPIC_INVALID_CURSORS = asList(
-            cursor("0", "38"),   // out of bounds
-            cursor("0", "42"),   // out of bounds
-            cursor("0", "blah"), // wrong offset
-            cursor("1", "98"),   // out of bounds
-            cursor("1", "200"),  // out of bounds
-            cursor("2", "0"),    // out of bounds for partition with no events ever
-            cursor("99", "100")); // none existing partition
 
     private static final List<String> MY_TOPIC_VALID_PARTITIONS = ImmutableList.of("0", "1", "2");
     private static final List<String> MY_TOPIC_INVALID_PARTITIONS = ImmutableList.of("3", "-1", "abc");
@@ -150,31 +145,33 @@ public class KafkaTopicRepositoryTest {
     public void validateValidCursors() throws NakadiException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
-            assertThat(cursor.toString(), kafkaTopicRepository.areCursorsValid(MY_TOPIC, asList(cursor)), is(true));
+            assertThat(cursor.toString(), kafkaTopicRepository.validateCursors(MY_TOPIC, asList(cursor)), isAbsent());
         }
         // validate all valid cursors
-        assertThat(kafkaTopicRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_VALID_CURSORS), is(true));
+        assertThat(kafkaTopicRepository.validateCursors(MY_TOPIC, MY_TOPIC_VALID_CURSORS), isAbsent());
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
-            assertThat(cursor.toString(), kafkaTopicRepository.areCursorsValid(ANOTHER_TOPIC, asList(cursor)), is(true));
+            assertThat(cursor.toString(), kafkaTopicRepository.validateCursors(ANOTHER_TOPIC, asList(cursor)), isAbsent());
         }
         // validate all valid cursors
-        assertThat(kafkaTopicRepository.areCursorsValid(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS), is(true));
+        assertThat(kafkaTopicRepository.validateCursors(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS), isAbsent());
     }
 
     @Test
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
     public void invalidateInvalidCursors() throws NakadiException {
-        for (final Cursor invalidCursor : MY_TOPIC_INVALID_CURSORS) {
-            assertThat(invalidCursor.toString(), kafkaTopicRepository.areCursorsValid(MY_TOPIC, asList(invalidCursor)), is(false));
+        final Cursor outOfBoundOffset = cursor("0", "38");
+        assertThat(outOfBoundOffset.toString(), kafkaTopicRepository.validateCursors(MY_TOPIC, asList(outOfBoundOffset)), isValue("offset 38 for partition 0 unavailable"));
 
-            // check combination with valid cursor
-            for (final Cursor validCursor : MY_TOPIC_VALID_CURSORS) {
-                assertThat(invalidCursor.toString(), kafkaTopicRepository.areCursorsValid(MY_TOPIC, asList(validCursor, invalidCursor)), is(false));
-            }
-        }
-        assertThat(kafkaTopicRepository.areCursorsValid(MY_TOPIC, MY_TOPIC_INVALID_CURSORS), is(false));
+        final Cursor emptyPartition = cursor("2", "0");
+        assertThat(outOfBoundOffset.toString(), kafkaTopicRepository.validateCursors(MY_TOPIC, asList(emptyPartition)), isValue("partition 2 is empty"));
+
+        final Cursor nonExistingPartition = cursor("99", "100");
+        assertThat(outOfBoundOffset.toString(), kafkaTopicRepository.validateCursors(MY_TOPIC, asList(nonExistingPartition)), isValue("non existing partition 99"));
+
+        final Cursor wrongOffset = cursor("0", "blah");
+        assertThat(outOfBoundOffset.toString(), kafkaTopicRepository.validateCursors(MY_TOPIC, asList(wrongOffset)), isValue("invalid offset blah for partition 0"));
     }
 
     @Test

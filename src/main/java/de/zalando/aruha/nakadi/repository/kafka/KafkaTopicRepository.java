@@ -17,21 +17,7 @@ import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
-import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import static java.util.Collections.unmodifiableList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import static java.util.stream.Collectors.toList;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
@@ -44,6 +30,23 @@ import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
+import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
 
 public class KafkaTopicRepository implements TopicRepository {
 
@@ -127,34 +130,6 @@ public class KafkaTopicRepository implements TopicRepository {
     public boolean partitionExists(final String topic, final String partition) throws NakadiException {
         return listPartitionNames(topic).stream()
                 .anyMatch(partition::equals);
-    }
-
-    @Override
-    public boolean areCursorsValid(final String topic, final List<Cursor> cursors) throws ServiceUnavailableException {
-        final List<TopicPartition> partitions = listPartitions(topic);
-        return cursors
-                .stream()
-                .allMatch(cursor -> partitions
-                        .stream()
-                        .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
-                        .findFirst()
-                        .map(pInfo -> {
-                            if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
-                                return true;
-                            }
-                            else if (Cursor.BEFORE_OLDEST_OFFSET.equals(pInfo.getNewestAvailableOffset())) {
-                                return false;
-                            }
-                            final long newestOffset = toKafkaOffset(pInfo.getNewestAvailableOffset());
-                            final long oldestOffset = toKafkaOffset(pInfo.getOldestAvailableOffset());
-                            try {
-                                final long offset = fromNakadiCursor(cursor).getOffset();
-                                return offset >= oldestOffset - 1 && offset <= newestOffset;
-                            } catch (NumberFormatException e) {
-                                return false;
-                            }
-                        })
-                        .orElse(false));
     }
 
     @Override
@@ -318,6 +293,41 @@ public class KafkaTopicRepository implements TopicRepository {
         }
 
         return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, settings.getKafkaPollTimeoutMs());
+    }
+
+    @Override
+    public Optional<String> validateCursors(final String topic, final List<Cursor> cursors) throws ServiceUnavailableException {
+        final List<TopicPartition> partitions = listPartitions(topic);
+
+        return cursors
+                .stream()
+                .map(cursor -> (Optional<String>)partitions
+                        .stream()
+                        .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
+                        .findFirst()
+                        .map(pInfo -> {
+                            if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
+                                return Optional.empty();
+                            } else if (Cursor.BEFORE_OLDEST_OFFSET.equals(pInfo.getNewestAvailableOffset())) {
+                                return Optional.of("partition " + cursor.getPartition() + " is empty");
+                            }
+                            final long newestOffset = toKafkaOffset(pInfo.getNewestAvailableOffset());
+                            final long oldestOffset = toKafkaOffset(pInfo.getOldestAvailableOffset());
+                            try {
+                                final long offset = fromNakadiCursor(cursor).getOffset();
+                                if (offset < oldestOffset - 1 || offset > newestOffset) {
+                                    return Optional.of("offset " + offset + " for partition " + cursor.getPartition() + " unavailable");
+                                }
+                            } catch (NumberFormatException e) {
+                                return Optional.of("invalid offset " + cursor.getOffset() + " for partition " + cursor.getPartition());
+                            }
+                            return Optional.empty();
+                        })
+                        .orElse(Optional.of("non existing partition " + cursor.getPartition()))
+                )
+                .filter(Optional::isPresent)
+                .findFirst()
+                .orElse(Optional.empty());
     }
 
     @FunctionalInterface

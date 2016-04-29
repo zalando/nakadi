@@ -35,6 +35,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.LinkedList;
+import java.util.Optional;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -99,7 +100,7 @@ public class EventStreamControllerTest {
                 .thenReturn(eventStreamMock);
 
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.areCursorsValid(eq(TEST_EVENT_TYPE), any())).thenReturn(true);
+        when(topicRepositoryMock.validateCursors(eq(TEST_EVENT_TYPE), any())).thenReturn(Optional.empty());
 
         final MockMvc mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
@@ -177,8 +178,8 @@ public class EventStreamControllerTest {
     @Test
     public void whenInvalidCursorsThenPreconditionFailed() throws NakadiException, IOException {
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.areCursorsValid(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
-                .thenReturn(false);
+        when(topicRepositoryMock.validateCursors(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
+                .thenReturn(Optional.of("cursors are not valid"));
 
         final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 0, 0, 0, 0, 0,
                 "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock);
@@ -217,8 +218,8 @@ public class EventStreamControllerTest {
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws IOException, NakadiException {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.areCursorsValid(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
-                .thenReturn(true);
+        when(topicRepositoryMock.validateCursors(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
+                .thenReturn(Optional.empty());
         when(topicRepositoryMock.createEventConsumer(eq(TEST_EVENT_TYPE), eq(ImmutableMap.of("0", "0"))))
                 .thenReturn(eventConsumerMock);
 
@@ -312,7 +313,7 @@ public class EventStreamControllerTest {
             final Thread client = new Thread(() -> {
                 try {
                     responseBody.writeTo(new ByteArrayOutputStream());
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     throw new RuntimeException(e);
                 }
             });

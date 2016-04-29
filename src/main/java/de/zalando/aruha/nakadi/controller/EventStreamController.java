@@ -33,6 +33,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
@@ -109,7 +110,7 @@ public class EventStreamController {
                         cursors = jsonMapper.<List<Cursor>>readValue(cursorsStr,
                                 new TypeReference<ArrayList<Cursor>>() {
                                 });
-                    } catch (IOException e) {
+                    } catch (final IOException e) {
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr + ". Respond with BAD_REQUEST.", e);
                         }
@@ -120,9 +121,12 @@ public class EventStreamController {
                 }
 
                 // check that offsets are not out of bounds and partitions exist
-                if (cursors != null && !topicRepository.areCursorsValid(topic, cursors)) {
-                    writeProblemResponse(response, outputStream, PRECONDITION_FAILED, "cursors are not valid");
-                    return;
+                if (cursors != null) {
+                    final Optional<String> errorMessage = topicRepository.validateCursors(topic, cursors);
+                    if (errorMessage.isPresent()) {
+                        writeProblemResponse(response, outputStream, PRECONDITION_FAILED, errorMessage.get());
+                        return;
+                    }
                 }
 
                 // if no cursors provided - read from the newest available events

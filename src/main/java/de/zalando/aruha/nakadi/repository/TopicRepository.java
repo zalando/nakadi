@@ -8,10 +8,13 @@ import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Manages access to topic information.
@@ -30,8 +33,6 @@ public interface TopicRepository {
 
     boolean partitionExists(String topic, String partition) throws NakadiException;
 
-    boolean areCursorsValid(String topic, List<Cursor> cursors) throws NakadiException;
-
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
@@ -41,4 +42,6 @@ public interface TopicRepository {
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 
     EventConsumer createEventConsumer(String topic, Map<String, String> cursors) throws NakadiException;
+
+    Optional<String> validateCursors(String topic, List<Cursor> cursors) throws ServiceUnavailableException;
 }
