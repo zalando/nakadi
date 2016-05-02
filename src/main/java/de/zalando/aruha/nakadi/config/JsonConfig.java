@@ -14,9 +14,6 @@ import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsonorg.JSONObjectDeserializer;
-import com.fasterxml.jackson.datatype.jsonorg.JSONObjectSerializer;
-import org.json.JSONObject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -34,14 +31,9 @@ public class JsonConfig {
     @Bean
     @Primary
     public ObjectMapper jacksonObjectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper()
+        final ObjectMapper objectMapper = new ObjectMapper()
                 .setPropertyNamingStrategy(CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
 
-        SimpleModule jsonObjectModule = new SimpleModule();
-        jsonObjectModule.addSerializer(JSONObject.class, new JSONObjectSerializer());
-        jsonObjectModule.addDeserializer(JSONObject.class, new JSONObjectDeserializer());
-
-        objectMapper.registerModule(jsonObjectModule);
         objectMapper.registerModule(enumModule());
         objectMapper.registerModule(new Jdk8Module());
         objectMapper.registerModule(new ProblemModule());
@@ -54,9 +46,9 @@ public class JsonConfig {
         final SimpleModule enumModule = new SimpleModule();
         enumModule.setDeserializerModifier(new BeanDeserializerModifier() {
             @Override
-            public JsonDeserializer<Enum> modifyEnumDeserializer(DeserializationConfig config,
+            public JsonDeserializer<Enum> modifyEnumDeserializer(final DeserializationConfig config,
                                                                  final JavaType type,
-                                                                 BeanDescription beanDesc,
+                                                                 final BeanDescription beanDesc,
                                                                  final JsonDeserializer<?> deserializer) {
                 return new LowerCaseEnumJsonDeserializer(type);
             }
@@ -73,13 +65,13 @@ public class JsonConfig {
         }
 
         @Override
-        public Enum deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+        public Enum deserialize(final JsonParser jp, final DeserializationContext ctxt) throws IOException {
             @SuppressWarnings("unchecked")
-            Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
+            final Class<? extends Enum> rawClass = (Class<Enum<?>>) type.getRawClass();
             final String jpValueAsString = jp.getValueAsString();
             try {
                 return Enum.valueOf(rawClass, jpValueAsString.toUpperCase());
-            } catch (IllegalArgumentException e) {
+            } catch (final IllegalArgumentException e) {
                 final String possibleValues = stream(rawClass.getEnumConstants())
                         .map(enumValue -> enumValue.name().toLowerCase())
                         .collect(joining(", "));
@@ -94,7 +86,7 @@ public class JsonConfig {
         }
 
         @Override
-        public void serialize(Enum value, JsonGenerator jgen, SerializerProvider provider) throws IOException {
+        public void serialize(final Enum value, final JsonGenerator jgen, final SerializerProvider provider) throws IOException {
             jgen.writeString(value.name().toLowerCase());
         }
     }
