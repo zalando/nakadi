@@ -14,7 +14,7 @@ public class BatchItem {
         this.event = event;
 
         Optional.
-                of(event.optJSONObject("metadata"))
+                ofNullable(event.optJSONObject("metadata"))
                 .map(e -> e.optString("eid"))
                 .ifPresent(this.response::setEid);
     }
