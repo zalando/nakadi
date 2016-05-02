@@ -287,7 +287,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.PRECONDITION_FAILED.value())
                 .and()
-                .body("detail", equalTo("cursors are not valid"));
+                .body("detail", equalTo("non existing partition very_wrong_partition"));
     }
 
     private static String createStreamEndpointUrl(final String eventType) {
