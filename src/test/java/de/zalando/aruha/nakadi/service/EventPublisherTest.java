@@ -21,9 +21,11 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildBusinessEvent;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -54,6 +56,20 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getName()), any());
+    }
+
+    @Test
+    public void whenEventHasEidThenSetItInTheResponse() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+        final JSONArray batch = new JSONArray(Arrays.asList(event));
+
+        mockSuccessfulValidation(eventType, event);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName());
+
+        assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
         verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getName()), any());
     }
 

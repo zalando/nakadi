@@ -4,12 +4,17 @@ public class BatchItemResponse {
     private EventPublishingStatus publishingStatus = EventPublishingStatus.ABORTED;
     private EventPublishingStep step = EventPublishingStep.NONE;
     private String detail = "";
+    private String eid = "";
+
+    public String getEid() { return eid; }
+
+    public void setEid(final String eid) { this.eid = eid; }
 
     public EventPublishingStatus getPublishingStatus() {
         return publishingStatus;
     }
 
-    public void setPublishingStatus(EventPublishingStatus publishingStatus) {
+    public void setPublishingStatus(final EventPublishingStatus publishingStatus) {
         this.publishingStatus = publishingStatus;
     }
 
