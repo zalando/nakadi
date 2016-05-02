@@ -11,6 +11,7 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
+import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
@@ -33,12 +34,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static de.zalando.aruha.nakadi.domain.CursorError.EMPTY_PARTITION;
+import static de.zalando.aruha.nakadi.domain.CursorError.INVALID_FORMAT;
+import static de.zalando.aruha.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
+import static de.zalando.aruha.nakadi.domain.CursorError.UNAVAILABLE;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
@@ -270,14 +274,15 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer createEventConsumer(final String topic, final Map<String, String> cursors)
-            throws ServiceUnavailableException {
+    public EventConsumer createEventConsumer(final String topic, final List<Cursor> cursors)
+            throws ServiceUnavailableException, InvalidCursorException {
+        this.validateCursors(topic, cursors);
 
         final List<KafkaCursor> kafkaCursors = Lists.newArrayListWithCapacity(cursors.size());
 
-        for (final Map.Entry<String, String> entry : cursors.entrySet()) {
-            final String offset = entry.getValue();
-            final String partition = entry.getKey();
+        for (final Cursor cursor : cursors) {
+            final String offset = cursor.getOffset();
+            final String partition = cursor.getPartition();
 
             final long kafkaOffset;
             if (Cursor.BEFORE_OLDEST_OFFSET.equals(offset)) {
@@ -295,39 +300,34 @@ public class KafkaTopicRepository implements TopicRepository {
         return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, settings.getKafkaPollTimeoutMs());
     }
 
-    @Override
-    public Optional<String> validateCursors(final String topic, final List<Cursor> cursors) throws ServiceUnavailableException {
+    private void validateCursors(final String topic, final List<Cursor> cursors) throws ServiceUnavailableException,
+            InvalidCursorException {
         final List<TopicPartition> partitions = listPartitions(topic);
 
-        return cursors
-                .stream()
-                .map(cursor -> (Optional<String>)partitions
+        for (final Cursor cursor : cursors) {
+            final TopicPartition topicPartition = partitions
                         .stream()
                         .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
                         .findFirst()
-                        .map(pInfo -> {
-                            if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
-                                return Optional.empty();
-                            } else if (Cursor.BEFORE_OLDEST_OFFSET.equals(pInfo.getNewestAvailableOffset())) {
-                                return Optional.of("partition " + cursor.getPartition() + " is empty");
-                            }
-                            final long newestOffset = toKafkaOffset(pInfo.getNewestAvailableOffset());
-                            final long oldestOffset = toKafkaOffset(pInfo.getOldestAvailableOffset());
-                            try {
-                                final long offset = fromNakadiCursor(cursor).getOffset();
-                                if (offset < oldestOffset - 1 || offset > newestOffset) {
-                                    return Optional.of("offset " + offset + " for partition " + cursor.getPartition() + " unavailable");
-                                }
-                            } catch (NumberFormatException e) {
-                                return Optional.of("invalid offset " + cursor.getOffset() + " for partition " + cursor.getPartition());
-                            }
-                            return Optional.empty();
-                        })
-                        .orElse(Optional.of("non existing partition " + cursor.getPartition()))
-                )
-                .filter(Optional::isPresent)
-                .findFirst()
-                .orElse(Optional.empty());
+                        .orElseThrow(() -> new InvalidCursorException(PARTITION_NOT_FOUND, cursor));
+
+            if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
+                continue;
+            } else if (Cursor.BEFORE_OLDEST_OFFSET.equals(topicPartition.getNewestAvailableOffset())) {
+                throw new InvalidCursorException(EMPTY_PARTITION, cursor);
+            }
+
+            final long newestOffset = toKafkaOffset(topicPartition.getNewestAvailableOffset());
+            final long oldestOffset = toKafkaOffset(topicPartition.getOldestAvailableOffset());
+            try {
+                final long offset = fromNakadiCursor(cursor).getOffset();
+                if (offset < oldestOffset - 1 || offset > newestOffset) {
+                    throw new InvalidCursorException(UNAVAILABLE, cursor);
+                }
+            } catch (final NumberFormatException e) {
+                throw new InvalidCursorException(INVALID_FORMAT, cursor);
+            }
+        }
     }
 
     @FunctionalInterface

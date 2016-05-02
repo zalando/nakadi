@@ -6,6 +6,8 @@ import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.CursorError;
+import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -33,7 +35,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
@@ -120,15 +121,6 @@ public class EventStreamController {
                     }
                 }
 
-                // check that offsets are not out of bounds and partitions exist
-                if (cursors != null) {
-                    final Optional<String> errorMessage = topicRepository.validateCursors(topic, cursors);
-                    if (errorMessage.isPresent()) {
-                        writeProblemResponse(response, outputStream, PRECONDITION_FAILED, errorMessage.get());
-                        return;
-                    }
-                }
-
                 // if no cursors provided - read from the newest available events
                 if (cursors == null) {
                     cursors = topicRepository
@@ -150,7 +142,7 @@ public class EventStreamController {
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("text/plain"); // TODO: must be aligned with API
 
-                eventConsumer = topicRepository.createEventConsumer(topic, streamConfig.getCursors());
+                eventConsumer = topicRepository.createEventConsumer(topic, cursors);
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
                         streamConfig);
                 eventStream.streamEvents();
@@ -158,6 +150,10 @@ public class EventStreamController {
             catch (final NakadiException e) {
                 LOG.error("Error while trying to stream events. Respond with SERVICE_UNAVAILABLE.", e);
                 writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getProblemMessage());
+            }
+            catch (final InvalidCursorException e) {
+                final String errorMessage = invalidCursorMessage(e.getError(), e.getCursor());
+                writeProblemResponse(response, outputStream, PRECONDITION_FAILED, errorMessage);
             }
             catch (final Exception e) {
                 LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
@@ -177,11 +173,22 @@ public class EventStreamController {
         };
     }
 
+    private String invalidCursorMessage(final CursorError error, final Cursor cursor) {
+        switch (error) {
+            case PARTITION_NOT_FOUND:
+                return "non existing partition " + cursor.getPartition();
+            case EMPTY_PARTITION:
+                return "partition " + cursor.getPartition() + " is empty";
+            case UNAVAILABLE:
+                return "offset " + cursor.getOffset() + " for partition " + cursor.getPartition() + " unavailable";
+            default:
+                return "invalid offset " + cursor.getOffset() + " for partition " + cursor.getPartition();
+        }
+    }
+
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
                                       final Response.StatusType statusCode, final String message) throws IOException {
         response.setStatus(statusCode.getStatusCode());
         jsonMapper.writer().writeValue(outputStream, Problem.valueOf(statusCode, message));
     }
-
-
 }

@@ -7,14 +7,13 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
+import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Manages access to topic information.
@@ -41,7 +40,5 @@ public interface TopicRepository {
 
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 
-    EventConsumer createEventConsumer(String topic, Map<String, String> cursors) throws NakadiException;
-
-    Optional<String> validateCursors(String topic, List<Cursor> cursors) throws ServiceUnavailableException;
+    EventConsumer createEventConsumer(String topic, List<Cursor> cursors) throws NakadiException, InvalidCursorException;
 }

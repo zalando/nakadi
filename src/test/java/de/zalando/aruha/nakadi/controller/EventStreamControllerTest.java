@@ -7,7 +7,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.CursorError;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
+import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
@@ -35,7 +37,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.LinkedList;
-import java.util.Optional;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -100,7 +101,6 @@ public class EventStreamControllerTest {
                 .thenReturn(eventStreamMock);
 
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.validateCursors(eq(TEST_EVENT_TYPE), any())).thenReturn(Optional.empty());
 
         final MockMvc mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
@@ -176,15 +176,16 @@ public class EventStreamControllerTest {
     }
 
     @Test
-    public void whenInvalidCursorsThenPreconditionFailed() throws NakadiException, IOException {
+    public void whenInvalidCursorsThenPreconditionFailed() throws Exception {
+        final Cursor cursor = new Cursor("0", "0");
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.validateCursors(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
-                .thenReturn(Optional.of("cursors are not valid"));
+        when(topicRepositoryMock.createEventConsumer(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(cursor))))
+                .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
         final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 0, 0, 0, 0, 0,
                 "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock);
 
-        final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED, "cursors are not valid");
+        final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED, "offset 0 for partition 0 unavailable");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
@@ -215,12 +216,12 @@ public class EventStreamControllerTest {
     }
 
     @Test
-    public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws IOException, NakadiException {
+    public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.validateCursors(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
-                .thenReturn(Optional.empty());
-        when(topicRepositoryMock.createEventConsumer(eq(TEST_EVENT_TYPE), eq(ImmutableMap.of("0", "0"))))
+//        when(topicRepositoryMock.validateCursors(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
+//                .thenReturn(Optional.empty());
+        when(topicRepositoryMock.createEventConsumer(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
 
         final ArgumentCaptor<Integer> statusCaptor = ArgumentCaptor.forClass(Integer.class);
@@ -256,7 +257,7 @@ public class EventStreamControllerTest {
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
         assertThat(contentTypeCaptor.getValue(), equalTo("text/plain"));
 
-        verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_EVENT_TYPE), eq(ImmutableMap.of("0", "0")));
+        verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
                 eq(streamConfig));
         verify(eventStreamMock, times(1)).streamEvents();
