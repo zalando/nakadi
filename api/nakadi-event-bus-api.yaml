@@ -394,7 +394,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /event-types/{name}/effective_schema:
+  /event-types/{name}/effective-schema:
     get:
       tags:
         - schema-registry-api

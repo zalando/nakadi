@@ -163,7 +163,7 @@ public class EventTypeController {
         }
     }
 
-    @RequestMapping(value = "/{name}/effective_schema", method = RequestMethod.GET)
+    @RequestMapping(value = "/{name}/effective-schema", method = RequestMethod.GET)
     public ResponseEntity<?> exposeEventTypeEffectiveSchema(@PathVariable final String name, final NativeWebRequest nativeWebRequest) {
         try {
             final EventType eventType = eventTypeRepository.findByName(name);
