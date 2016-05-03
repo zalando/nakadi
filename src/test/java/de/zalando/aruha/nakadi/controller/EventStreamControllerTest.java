@@ -219,8 +219,6 @@ public class EventStreamControllerTest {
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-//        when(topicRepositoryMock.validateCursors(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
-//                .thenReturn(Optional.empty());
         when(topicRepositoryMock.createEventConsumer(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
 
