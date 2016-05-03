@@ -2,8 +2,7 @@ package de.zalando.aruha.nakadi.domain;
 
 import org.json.JSONObject;
 
-import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.FAILED;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.SUBMITTED;
+import java.util.Optional;
 
 public class BatchItem {
     private final BatchItemResponse response;
@@ -13,6 +12,11 @@ public class BatchItem {
     public BatchItem(final JSONObject event) {
         this.response = new BatchItemResponse();
         this.event = event;
+
+        Optional.
+                ofNullable(event.optJSONObject("metadata"))
+                .map(e -> e.optString("eid", null))
+                .ifPresent(this.response::setEid);
     }
 
     public JSONObject getEvent() {
