@@ -37,7 +37,7 @@ public class EventStreamReadingAT extends BaseAT {
     private static final String STREAM_ENDPOINT = createStreamEndpointUrl(TEST_TOPIC);
     private static final String SEPARATOR = "\n";
 
-    private ObjectMapper jsonMapper = new ObjectMapper();
+    private final ObjectMapper jsonMapper = new ObjectMapper();
     private KafkaTestHelper kafkaHelper;
     private String xNakadiCursors;
     private List<Cursor> initialCursors;
