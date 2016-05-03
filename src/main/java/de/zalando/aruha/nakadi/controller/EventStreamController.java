@@ -180,7 +180,7 @@ public class EventStreamController {
             case EMPTY_PARTITION:
                 return "partition " + cursor.getPartition() + " is empty";
             case UNAVAILABLE:
-                return "offset " + cursor.getOffset() + " for partition " + cursor.getPartition() + " unavailable";
+                return "offset " + cursor.getOffset() + " for partition " + cursor.getPartition() + " is unavailable";
             default:
                 return "invalid offset " + cursor.getOffset() + " for partition " + cursor.getPartition();
         }

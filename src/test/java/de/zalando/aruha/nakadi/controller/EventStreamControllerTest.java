@@ -185,7 +185,7 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 0, 0, 0, 0, 0,
                 "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock);
 
-        final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED, "offset 0 for partition 0 unavailable");
+        final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED, "offset 0 for partition 0 is unavailable");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
