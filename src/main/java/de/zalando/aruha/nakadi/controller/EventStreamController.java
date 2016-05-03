@@ -189,7 +189,7 @@ public class EventStreamController {
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
                                       final Response.StatusType statusCode, final String message) throws IOException {
         response.setStatus(statusCode.getStatusCode());
-        response.setContentType("application/json+problem");
+        response.setContentType("application/problem+json");
         jsonMapper.writer().writeValue(outputStream, Problem.valueOf(statusCode, message));
     }
 }

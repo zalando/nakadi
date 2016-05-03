@@ -237,6 +237,8 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
+                .contentType(equalTo("application/problem+json;charset=UTF-8"))
+                .and()
                 .body("detail", equalTo("topic not found"));
     }
 
@@ -249,6 +251,8 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT)
                 .then()
                 .statusCode(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .and()
+                .contentType(equalTo("application/problem+json;charset=UTF-8"))
                 .and()
                 .body("detail", equalTo("stream_limit can't be lower than batch_limit"));
     }
@@ -263,6 +267,8 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.UNPROCESSABLE_ENTITY.value())
                 .and()
+                .contentType(equalTo("application/problem+json;charset=UTF-8"))
+                .and()
                 .body("detail", equalTo("stream_timeout can't be lower than batch_flush_timeout"));
     }
 
@@ -275,6 +281,8 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
                 .and()
+                .contentType(equalTo("application/problem+json;charset=UTF-8"))
+                .and()
                 .body("detail", equalTo("incorrect syntax of X-nakadi-cursors header"));
     }
 
@@ -286,6 +294,8 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT)
                 .then()
                 .statusCode(HttpStatus.PRECONDITION_FAILED.value())
+                .and()
+                .contentType(equalTo("application/problem+json;charset=UTF-8"))
                 .and()
                 .body("detail", equalTo("non existing partition very_wrong_partition"));
     }
