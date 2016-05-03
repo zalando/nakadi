@@ -41,6 +41,14 @@ Additional topics, that we plan to cover in the near future are:
 
 ## Running it locally
 
+### Mac OS specific
+
+Since docker for Mac OS runs on its own virtual machine, we should expose some ports in order to enable local storages setup.
+
+```sh
+docker-machine ssh default -L 9092:localhost:9092 -L 8080:localhost:8080 -L 5432:localhost:5432 -L 2181:localhost:2181
+```
+
 ### To run the project locally
 
 Simple Nakadi startup:
