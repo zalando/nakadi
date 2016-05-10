@@ -186,6 +186,20 @@ public class KafkaTopicRepositoryTest {
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }
+
+        final Cursor nullOffset = cursor("0", null);
+        try {
+            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(nullOffset));
+        } catch (final InvalidCursorException e) {
+            assertThat(e.getError(), equalTo(CursorError.NULL_OFFSET));
+        }
+
+        final Cursor nullPartition = cursor(null, "x");
+        try {
+            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(nullPartition));
+        } catch (final InvalidCursorException e) {
+            assertThat(e.getError(), equalTo(CursorError.NULL_PARTITION));
+        }
     }
 
     @Test

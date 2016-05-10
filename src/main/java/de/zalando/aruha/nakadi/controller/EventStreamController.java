@@ -130,6 +130,8 @@ public class EventStreamController {
                             .collect(Collectors.toList());
                 }
 
+                eventConsumer = topicRepository.createEventConsumer(topic, cursors);
+
                 final Map<String, String> streamCursors = cursors
                         .stream()
                         .collect(Collectors.toMap(
@@ -141,8 +143,6 @@ public class EventStreamController {
 
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("text/plain"); // TODO: must be aligned with API
-
-                eventConsumer = topicRepository.createEventConsumer(topic, cursors);
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
                         streamConfig);
                 eventStream.streamEvents();
@@ -181,6 +181,10 @@ public class EventStreamController {
                 return "partition " + cursor.getPartition() + " is empty";
             case UNAVAILABLE:
                 return "offset " + cursor.getOffset() + " for partition " + cursor.getPartition() + " is unavailable";
+            case NULL_OFFSET:
+                return "offset must not be null";
+            case NULL_PARTITION:
+                return "partition must not be null";
             default:
                 return "invalid offset " + cursor.getOffset() + " for partition " + cursor.getPartition();
         }
