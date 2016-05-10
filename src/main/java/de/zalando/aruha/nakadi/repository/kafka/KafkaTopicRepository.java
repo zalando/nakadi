@@ -41,6 +41,8 @@ import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.domain.CursorError.EMPTY_PARTITION;
 import static de.zalando.aruha.nakadi.domain.CursorError.INVALID_FORMAT;
+import static de.zalando.aruha.nakadi.domain.CursorError.NULL_OFFSET;
+import static de.zalando.aruha.nakadi.domain.CursorError.NULL_PARTITION;
 import static de.zalando.aruha.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 import static de.zalando.aruha.nakadi.domain.CursorError.UNAVAILABLE;
 import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
@@ -305,6 +307,14 @@ public class KafkaTopicRepository implements TopicRepository {
         final List<TopicPartition> partitions = listPartitions(topic);
 
         for (final Cursor cursor : cursors) {
+            if (cursor.getPartition() == null) {
+                throw  new InvalidCursorException(NULL_PARTITION, cursor);
+            }
+
+            if (cursor.getOffset() == null) {
+                throw new InvalidCursorException(NULL_OFFSET, cursor);
+            }
+
             final TopicPartition topicPartition = partitions
                         .stream()
                         .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
