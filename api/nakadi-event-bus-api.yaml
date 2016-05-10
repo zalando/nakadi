@@ -1202,16 +1202,12 @@ definitions:
 
       default_statistics:
         type: object
+        allOf:
+          - $ref: '#/definitions/EventTypeStatistics'
         description: |
           Statistics of this EventType used for optimization purposes. Internal use of these values might
           change over time.
           (TBD: measured statistics)
-        properties:
-          default:
-            description: |
-              Default (initial) statistics set on the EventType. These values, if set by the EventType owner
-              can be estimatives of the expected values.
-            $ref: '#/definitions/EventTypeStatistics'
 
     required:
       - name
@@ -1268,6 +1264,11 @@ definitions:
         type: integer
         description: |
           Amount of parallel writers (producers) to this EventType.
+    required:
+      - messages_per_minute
+      - message_size
+      - read_parallelism
+      - write_parallelism
 
   BatchItemResponse:
     description: |
