@@ -45,6 +45,8 @@ public class EventValidation {
 
         addMetadata(wrapper, eventType);
 
+        moveDefinitionsToRoot(wrapper, schema);
+
         final JSONObject properties = wrapper.getJSONObject("properties");
 
         properties.put("data_type", new JSONObject().put("type", "string"));
@@ -57,6 +59,14 @@ public class EventValidation {
         addToRequired(wrapper, new String[]{ "data_type", "data_op", "data" });
 
         return wrapper;
+    }
+
+    private static void moveDefinitionsToRoot(final JSONObject wrapper, final JSONObject schema) {
+        final Object definitions = schema.remove("definitions");
+
+        if (definitions != null) {
+            wrapper.put("definitions", definitions);
+        }
     }
 
     private static JSONObject addMetadata(final JSONObject schema, final EventType eventType) {

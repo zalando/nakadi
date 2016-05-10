@@ -12,6 +12,7 @@ import java.util.Optional;
 import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
 import static de.zalando.aruha.nakadi.utils.IsOptional.isPresent;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildEventType;
+import static de.zalando.aruha.nakadi.utils.TestUtils.readFile;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
@@ -225,6 +226,18 @@ public class JSONSchemaValidationTest {
         Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#/metadata/eid: string [x] does not match pattern ^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"));
+    }
+
+    @Test
+    public void acceptsDefinitionsOnDataChangeEvents() throws Exception {
+        final JSONObject schema = new JSONObject(readFile("product-json-schema.json"));
+        final EventType et = buildEventType("some-event-type", schema);
+        et.setCategory(EventCategory.DATA);
+        final JSONObject event = new JSONObject(readFile("product-event.json"));
+
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+
+        assertThat(error, isAbsent());
     }
 
     private JSONObject basicSchema() {

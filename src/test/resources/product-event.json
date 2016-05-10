@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "eid": "12341234-1234-1324-1324-123412341234",
+    "occurred_at": "1992-08-03T10:00:00Z"
+  },
+  "data_type": "some-event-type",
+  "data_op": "C",
+  "data": {
+    "owner_id": "sometenantid",
+    "event_timestamp": "2016-05-10T16:43:24.672Z",
+    "product_status": "active",
+    "event_type": "create",
+    "product_id": "C2FDA95C-CB3B-4EA2-9386-500E9227521D",
+    "product": {
+      "attributes": [
+        {
+          "type": {
+            "id": "4172595c-591c-4cd3-9048-d103eb5e45fc"
+          },
+          "values": [
+            {
+              "attribute": {
+                "id": "c53c6c42-ab04-49ed-8e44-0ff7ee9d519b"
+              },
+              "discrim": "ref"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+
