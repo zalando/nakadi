@@ -1157,12 +1157,16 @@ definitions:
           upon reception (and after validation) of an Event and is only possible on fields that are not
           defined on the incoming Event.
 
+          For event types in categories 'business' or 'data' it's mandatory to use metadata_enrichment strategy. For
+          'undefined' event types it's not possible to use this strategy, since metadata field is not required.
+
           See documentation for the write operation for details on behaviour in case of unsuccessful
           enrichment.
         type: array
         items:
           type: string
-        default: ['metadata-enrichment']
+          enum:
+            - metadata_enrichment
 
       partition_strategy:
         description: |
@@ -1217,6 +1221,7 @@ definitions:
       - name
       - category
       - owning_application
+      - enrichment_strategies
       - schema
 
   EventTypeSchema:
