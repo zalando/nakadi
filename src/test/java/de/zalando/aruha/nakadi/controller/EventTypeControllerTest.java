@@ -280,6 +280,26 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenDefaultStatisticsIsNoneItsNull() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+        postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
+        verify(topicRepository, times(1)).createTopic(eq(defaultEventType.getName()), eq(null));
+    }
+
+    @Test
+    public void whenDefaultStatisticsExistsItsPassed() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+        final EventTypeStatistics statistics = new EventTypeStatistics();
+        statistics.setMessageSize(100);
+        statistics.setMessagesPerMinute(1000);
+        statistics.setReadParallelism(1);
+        statistics.setWriteParallelism(2);
+        defaultEventType.setDefaultStatistic(statistics);
+        postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
+        verify(topicRepository, times(1)).createTopic(eq(defaultEventType.getName()), eq(statistics));
+    }
+
+    @Test
     public void whenCreateSuccessfullyThen201() throws Exception {
         final EventType et = buildDefaultEventType();
 

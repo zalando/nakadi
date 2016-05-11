@@ -5,6 +5,7 @@ import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.CursorError;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
+import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
@@ -256,6 +257,17 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
+    public void testIntegerOverflowOnStatisticsCalculation() throws NakadiException {
+        when(settings.getMaxTopicPartitionCount()).thenReturn(1000);
+        final EventTypeStatistics statistics = new EventTypeStatistics();
+        statistics.setReadParallelism(1);
+        statistics.setWriteParallelism(1);
+        statistics.setMessagesPerMinute(1000000000);
+        statistics.setMessageSize(1000000000);
+        assertThat(kafkaTopicRepository.calculateKafkaPartitionCount(statistics), equalTo(6));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void canCreateEventConsumerWithOffsetsTransformed() throws Exception {
         // ACT /
@@ -293,7 +305,7 @@ public class KafkaTopicRepositoryTest {
 
     private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings, null);
+            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings, KafkaPartitionsCalculatorTest.buildTest());
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
