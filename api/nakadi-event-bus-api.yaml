@@ -223,8 +223,8 @@ paths:
             $ref: '#/definitions/EventType'
           required: true
       responses:
-        '200':
-          description: Ok
+        '201':
+          description: Created
         '401':
           description: Client is not authenticated
           schema:
@@ -526,8 +526,7 @@ paths:
         - name: X-nakadi-cursors
           in: header
           description: |
-            Array of cursors indicating the partitions to read from and the starting offset on each such a
-            partition.
+            Cursors indicating the partitions to read from and respective starting offsets.
 
             Assumes the offset on each cursor is not inclusive (i.e., first delivered Event is the
             **first one after** the one pointed to in the cursor).
@@ -541,10 +540,8 @@ paths:
             API.
 
           required: false
-          type: array
-          items:
-            type: string
-            format: '#/definitions/Cursor'
+          type: string
+          format: serialized json array of '#/definitions/Cursor'
         - name: batch_limit
           in: query
           description: |
@@ -873,6 +870,7 @@ definitions:
               perspective of the producer. Consumers MIGHT use this value to assert uniqueness of reception
               of the Event.
             type: string
+            format: uuid
             example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
           event_type:
             description: |
