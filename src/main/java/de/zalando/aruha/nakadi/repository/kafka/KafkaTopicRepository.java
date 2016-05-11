@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.domain.BatchItem;
@@ -360,7 +361,8 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private Integer calculateKafkaPartitionCount(final EventTypeStatistics stat) {
+    @VisibleForTesting
+    Integer calculateKafkaPartitionCount(final EventTypeStatistics stat) {
         if (null == stat) {
             return settings.getDefaultTopicPartitionCount();
         }
@@ -374,7 +376,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private int calculatePartitionsAccordingLoad(final int messagesPerMinute, final int avgEventSizeBytes) {
-        final float throughoutputMbPerSec = (messagesPerMinute * avgEventSizeBytes) / (1024.f * 1024.f * 60.f);
+        final float throughoutputMbPerSec = ((float)messagesPerMinute * (float)avgEventSizeBytes) / (1024.f * 1024.f * 60.f);
         return partitionsCalculator.getBestPartitionsCount(avgEventSizeBytes, throughoutputMbPerSec);
     }
 }
