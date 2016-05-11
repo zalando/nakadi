@@ -1177,8 +1177,7 @@ definitions:
         allOf:
           - $ref: '#/definitions/EventTypeSchema'
         description: |
-          The schema for this EventType. This is expected to be a json schema in yaml format (other formats
-          might be added in the future).
+          The schema for this EventType. Submitted events will be validated against it.
 
       data_key_fields:
         type: array
