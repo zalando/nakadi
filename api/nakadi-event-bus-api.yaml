@@ -750,12 +750,16 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Creates a Subscription entity which then can be used to consume events from. Consuming events from a
-        Subscription is done in a high level way.
+        This endpoint creates a Subscription for EventType(s). The subscription is needed to be able to consume
+        events from EventType(s) in a high level way when Nakadi stores the offsets and manages the rebalancing of
+        consuming clients.
+        The subscription is identified by its parameters. If this endpoint is invoked several times with the same
+        subscription properties in body - the subscription will be created only once and for all calls it will
+        return the same subscription id.
       parameters:
         - name: subscription
           in: body
-          description: Subscription to be created
+          description: Subscription to create
           schema:
             $ref: '#/definitions/Subscription'
           required: true
@@ -1128,7 +1132,7 @@ definitions:
           $ref: '#/definitions/Event'
 
   Subscription:
-    description: Subscription is a high level consumption entity.
+    description: Subscription is a high level consumption unit.
     properties:
       application_id:
         type: string
