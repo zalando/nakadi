@@ -107,6 +107,10 @@ public class TestUtils {
         return buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"));
     }
 
+    public static String readFile(final String filename) throws IOException {
+        return Resources.toString(Resources.getResource(filename), Charsets.UTF_8);
+    }
+
     public static JSONObject buildBusinessEvent() throws IOException {
         final String json = Resources.toString(Resources.getResource("sample-business-event.json"), Charsets.UTF_8);
         return new JSONObject(json);
