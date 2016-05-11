@@ -901,10 +901,10 @@ definitions:
             items:
               type: string
               format: uuid
-            description: |
-              Event identifier of the Event that caused the generation of this Event.
-              Set by the producer.
-            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+              description: |
+                Event identifier of the Event that caused the generation of this Event.
+                Set by the producer.
+              example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
           flow_id:
             description: |
               The flow-id of the producer of this Event. As this is usually a HTTP header, this is enriched
