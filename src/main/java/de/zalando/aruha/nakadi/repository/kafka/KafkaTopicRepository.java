@@ -68,7 +68,7 @@ public class KafkaTopicRepository implements TopicRepository {
                                 final KafkaRepositorySettings settings, final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;
         this.partitionsCalculator = partitionsCalculator;
-        this.kafkaProducer = kafkaFactory.createProducer();
+        this.kafkaProducer = kafkaFactory.getProducer();
         this.kafkaFactory = kafkaFactory;
         this.settings = settings;
     }
@@ -230,7 +230,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public List<String> listPartitionNames(final String topicId) {
-        return unmodifiableList(kafkaFactory.createProducer().partitionsFor(topicId)
+        return unmodifiableList(kafkaFactory.getProducer().partitionsFor(topicId)
                 .stream()
                 .map(partitionInfo -> toNakadiPartition(partitionInfo.partition()))
                 .collect(toList()));

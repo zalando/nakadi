@@ -138,7 +138,7 @@ public class KafkaRepositoryAT extends BaseAT {
         Mockito
                 .doReturn(kafkaHelper.createProducer())
                 .when(factory)
-                .createProducer();
+                .getProducer();
 
         return new KafkaTopicRepository(zooKeeperHolder, factory, repositorySettings, null);
     }
