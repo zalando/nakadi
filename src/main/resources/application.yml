@@ -7,6 +7,7 @@ logging:
   level:
     ROOT: INFO
     org.springframework.web: INFO
+    org.apache.kafka: WARN
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
