@@ -1166,7 +1166,7 @@ definitions:
         items:
           type: string
           enum:
-            - metadata_enrichment
+            - METADATA_ENRICHMENT
 
       partition_strategy:
         description: |
