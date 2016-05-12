@@ -259,7 +259,7 @@ public class EventStreamControllerTest {
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
                 eq(streamConfig));
         verify(eventStreamMock, times(1)).streamEvents();
-        verify(outputStream, times(1)).flush();
+        verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
     }
 

@@ -145,6 +145,9 @@ public class EventStreamController {
                 response.setContentType("text/plain"); // TODO: must be aligned with API
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
                         streamConfig);
+
+                outputStream.flush(); // Flush status code to client
+
                 eventStream.streamEvents();
             }
             catch (final NakadiException e) {

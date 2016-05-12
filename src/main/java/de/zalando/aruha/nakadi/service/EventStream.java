@@ -49,8 +49,8 @@ public class EventStream {
                     createMapWithPartitionKeys(partition -> Lists.newArrayList());
             final Map<String, String> latestOffsets = Maps.newHashMap(config.getCursors());
 
-            long start = currentTimeMillis();
-            Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
+            final long start = currentTimeMillis();
+            final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
 
             while (true) {
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
@@ -71,7 +71,7 @@ public class EventStream {
 
                 // for each partition check if it's time to send the batch
                 for (final String partition: config.getCursors().keySet()) {
-                    long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
+                    final long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
                     if (config.getBatchTimeout() * 1000 <= timeSinceBatchStart
                             || currentBatches.get(partition).size() >= config.getBatchLimit()) {
 
@@ -101,7 +101,7 @@ public class EventStream {
                 }
 
                 // check if we reached the stream timeout or message count limit
-                long timeSinceStart = currentTimeMillis() - start;
+                final long timeSinceStart = currentTimeMillis() - start;
                 if (config.getStreamTimeout() != 0 && timeSinceStart >= config.getStreamTimeout() * 1000
                         || config.getStreamLimit() != 0 && messagesRead >= config.getStreamLimit()) {
 
@@ -114,11 +114,11 @@ public class EventStream {
                     break;
                 }
             }
-        } catch (IOException e) {
+        } catch (final IOException e) {
             LOG.info("I/O error occurred when streaming events (possibly client closed connection)", e);
-        } catch (IllegalStateException e) {
+        } catch (final IllegalStateException e) {
             LOG.info("Error occurred when streaming events (possibly server closed connection)", e);
-        } catch (KafkaException e) {
+        } catch (final KafkaException e) {
             LOG.error("Error occurred when polling events from kafka", e);
         }
     }
