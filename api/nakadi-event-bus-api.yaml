@@ -769,6 +769,8 @@ paths:
           schema:
             type: string
             description: id of subscription that was created
+            format: uuid
+            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
         '401':
           description: Client is not authenticated
           schema:
