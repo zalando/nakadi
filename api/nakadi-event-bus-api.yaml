@@ -761,16 +761,17 @@ paths:
           in: body
           description: Subscription to create
           schema:
-            $ref: '#/definitions/Subscription'
+            $ref: '#/definitions/SubscriptionIdentity'
           required: true
       responses:
         '200':
+          description: Subscription for such parameters already exists
+          schema:
+            $ref: '#/definitions/Subscription'
+        '201':
           description: Subscription was successfuly created
           schema:
-            type: string
-            description: id of subscription that was created
-            format: uuid
-            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+            $ref: '#/definitions/Subscription'
         '401':
           description: Client is not authenticated
           schema:
@@ -1133,10 +1134,10 @@ definitions:
         items:
           $ref: '#/definitions/Event'
 
-  Subscription:
-    description: Subscription is a high level consumption unit.
+  SubscriptionIdentity:
+    description: Subscription identity object is used for creation of subscription.
     properties:
-      application_id:
+      owning_application:
         type: string
         example: 'price-service'
         description: The id of application that will consume from the subscription.
@@ -1157,10 +1158,63 @@ definitions:
           The value describing the use case of this subscription.
           In general that is an additional identifier used to differ subscriptions having the same application_id
           and event_types.
+      autocommit:
+        type: boolean
+        description: |
+          Specifies if the autocommit mode should be used for this subscription. When operating in autocommit mode
+          Nakadi considers all events that were sent to consumers to be committed. Use autocommit mode only if you
+          know what you are doing.
+        default: false
+      allowed_uncommitted_event_count:
+        type: integer
+        description: |
+          The amount of uncommitted events Nakadi will stream before pausing the stream. After that Nakadi will start
+          the countdown for commit_timeout. With each commit that comes from appropriate client this counter will be
+          reset.
+          This property works in a couple with commit_period property, whatever happens first will invoke the
+          commit_timeout countdown.
+          Specifying 0 for this property will make the allowed uncommitted event count unlimited.
+          It is possible to override this property for a single stream when starting a stream for the subscription.
+          The property is ignored when autocommit is true.
+        default: 10000
+      commit_period:
+        type: integer
+        description: |
+          The amount of seconds that can pass from last commit till Nakadi will pause the stream. Works together with
+          allowed_uncommitted_event_count property. Whatever happens first invokes pausing of stream.
+          Specifying 0 for this property will make it unlimited.
+          It is possible to override this property for a single stream when starting a stream for the subscription.
+          The property is ignored when autocommit is true.
+        default: 30
+      commit_timeout:
+        type: integer
+        description: |
+          The amount of seconds Nakadi waits for client to commit offset after allowed_uncommitted_event_count or
+          commit_period is reached. After the timeout expires the connection to the client will be closed by Nakadi.
+          Specifying 0 for this property will make it unlimited.
+          It is possible to override this property for a single stream when starting a stream for the subscription.
+          The property is ignored when autocommit is true.
+        default: 300
     required:
-      - application_id
+      - owning_application
       - event_types
-      - use_case
+
+  Subscription:
+    description: Subscription is a high level consumption unit.
+    allOf:
+      - $ref: '#/definitions/SubscriptionIdentity'
+    properties:
+      id:
+        type: string
+        description: id of subscription that was created
+        format: uuid
+        example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+      created_at:
+        description: |
+          Timestamp of creation of the subscription.
+        type: string
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
 
   EventType:
     description: An event type defines the schema and its runtime properties.
