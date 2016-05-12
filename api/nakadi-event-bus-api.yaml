@@ -1222,8 +1222,11 @@ definitions:
     properties:
       type:
         type: string
-        example: 'json-schema'
-        description: The type of schema definition (avro, json-schema, etc).
+        enum:
+          - JSON_SCHEMA
+        description: |
+          The type of schema definition. Currently only JSON_SCHEMA v4 is supported, but in the future there
+          could be others.
       schema:
         type: string
         description: |
