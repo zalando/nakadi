@@ -799,6 +799,103 @@ paths:
             $ref: '#/definitions/Problem'
 
 
+  /subscriptions/{subscription_id}/offsets:
+    get:
+      tags:
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Exposes the currently committed offsets of a subscription.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+      responses:
+        '200':
+          description: Ok
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cursor'
+        '204':
+          description: |
+            No Content. If the reading from the subscription was not started yet - there is nothing to expose.
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+    put:
+      tags:
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Endpoint for committing offsets of the subscription. The offsets are per partition of EventType. One can use
+        this endpoint to commit the offsets for any of the partitions that are part of this subscription.
+        With every commit the offsets can only increase so it is not possible to commit offset that is lower than
+        already committed offset for the appropriate partition; if such request is made - it will not have any effect
+        on the committed offsets.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+        - name: cursors
+          in: body
+          description: Cursors with offsets to commit.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cursor'
+          required: true
+      responses:
+        '200':
+          description: Offsets were committed or ignored
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+
+
   '/registry/validation-strategies':
     get:
       tags:
