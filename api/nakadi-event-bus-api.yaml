@@ -1158,6 +1158,15 @@ definitions:
           The value describing the use case of this subscription.
           In general that is an additional identifier used to differ subscriptions having the same application_id
           and event_types.
+      read_from:
+        type: string
+        enum:
+          - BEGIN
+          - END
+        description: |
+          Position to start reading events from. BEGIN - read from the oldest available event. END - read from the most
+          recent offset.
+        default: 'END'
       autocommit:
         type: boolean
         description: |
