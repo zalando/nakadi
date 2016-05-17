@@ -14,6 +14,7 @@ import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
+import org.apache.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -142,6 +143,7 @@ public class EventStreamController {
                         streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
 
                 response.setStatus(HttpStatus.OK.value());
+                response.addHeader(HttpHeaders.CONNECTION, "close");
                 response.setContentType("text/plain"); // TODO: must be aligned with API
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
                         streamConfig);
@@ -169,9 +171,11 @@ public class EventStreamController {
                 if (eventConsumer != null) {
                     eventConsumer.close();
                 }
-
-                outputStream.flush();
-                outputStream.close();
+                try {
+                    outputStream.flush();
+                } finally {
+                    outputStream.close();
+                }
             }
         };
     }
