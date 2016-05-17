@@ -799,7 +799,7 @@ paths:
             $ref: '#/definitions/Problem'
 
 
-  /subscriptions/{subscription_id}/offsets:
+  /subscriptions/{subscription_id}/cursors:
     get:
       tags:
         - managed-api
@@ -822,6 +822,11 @@ paths:
         '204':
           description: |
             No Content. If the reading from the subscription was not started yet - there is nothing to expose.
+            Will return an empty list of cursors to be consistent with successful scenario.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cursor'
         '401':
           description: Client is not authenticated
           schema:
@@ -869,7 +874,7 @@ paths:
           required: true
       responses:
         '200':
-          description: Offsets were committed or ignored
+          description: Offsets were committed
         '401':
           description: Client is not authenticated
           schema:
@@ -880,6 +885,10 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: Conflict. The cursors which were tried to be committed are older than already committed ones.
           schema:
             $ref: '#/definitions/Problem'
         '422':
