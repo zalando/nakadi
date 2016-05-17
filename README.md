@@ -4,52 +4,26 @@
 
 [![Swagger API](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-jvm/api/nakadi-event-bus-api.yaml)](http://online.swagger.io/validator?url=https://raw.githubusercontent.com/zalando/nakadi/nakadi-jvm/api/nakadi-event-bus-api.yaml)
 
-## Nakadi Event Bus
+## Introduction
 
-The goal of the `nakadi` project (ნაკადი means `stream` in Georgian language) is to build an event bus infrastructure to:
+Nakadi is an *event bus* that allows for applications to easily
+publish and consume *streams* of events. It's goal is to enable
+convenient development of event-driven applications using simple
+RESTful APIs.
 
-*  enable convenient development of event-driven applications
-*  securely and efficiently publish and consume events as easy as possible
-*  abstract event exchange by a standardized RESTful [API](/api/nakadi-event-bus-api.yaml)
+Check our [getting started guide](#getting-started) to get up
+and running quickly. For a more detailed description of features,
+please check the [API specification](api/nakadi-event-bus-api.yaml).
 
-Some additional technical requirements that we wanted to cover by this architecture:
+### Main features
 
-* event ordering guarantees
-* fast (near real-time) event processing
-* scalable and highly available architecture
-* [STUPS](https://stups.io/) compatible
+* Easy to use *RESTful API* for publishing and consuming events.
+* Built-in *schema registry* and event publishing validation.
+* OAuth2 authenticaticable.
 
-Additional topics, that we plan to cover in the near future are:
+## Getting Started
 
-* discoverability of the resource structures flowing into the event bus
-* centralized discovery service, that will use these capabilities to collect resource schema information for easy lookup by developers
-
-> NOTE: it is not really clear if the resource schema discoverability service should be part of `nakadi` event bus
-
-### What does the project already implement?
-
-* [x] REST abstraction over Kafka-like queues
-* [ ] support of event filtering per subscriptions
-* streaming/batching of events to/from the clients
-  * [x] creation of topics
-  * [x] low-level interface
-    * manual client side partition management is needed
-    * no support of commits
-  * [ ] high-level interface
-    * automatic redistribution of partitions between consuming clients
-    * commits should be issued to move server-side cursors
-
-## Running it locally
-
-### Mac OS specific
-
-Since docker for Mac OS runs on its own virtual machine, we should expose some ports in order to enable local storages setup.
-
-```sh
-docker-machine ssh default -L 9092:localhost:9092 -L 8080:localhost:8080 -L 5432:localhost:5432 -L 2181:localhost:2181
-```
-
-### To run the project locally
+### Install locally
 
 Simple Nakadi startup:
 
@@ -57,55 +31,84 @@ Simple Nakadi startup:
 ./gradlew startDockerContainer
 ```
 
-It will start a docker container with all dependencies and another docker container running Nakadi itself. Please be
-aware that the ports 8080 (Nakadi), 5432 (PostgreSQL), 9092 (Kafka) and 2181 (Zookeeper) are needed and must not be
-blocked by another application.
-
-To stop the running Nakadi again:
+The following command is for Mac OS users only, since bootstrap script
+requires access to these ports.
 
 ```sh
-./gradlew stopAndRemoveDockerContainer
+docker-machine ssh default -L 9092:localhost:9092 -L 8080:localhost:8080 -L 5432:localhost:5432 -L 2181:localhost:2181
 ```
 
-### Full development pipeline:
+### Using Nakadi
 
-    build -> ut/it tests (depends on access to a Kafka backend) -> docker (builds docker image) -> api-tests (runs tests against the docker image)
+#### Create new event type
 
-## Usage
+In order to publish messages to Nakadi, users must first create an
+`EventType`. In a nutshel, it has the following roles:
 
-### Create new event type (business event)
+1. storing an event schema (for further event validations),
+2. configuring throughput options for optimized performance,
+3. providing an endpoint for publishing and consuming events.
+
+Example:
 
 ```sh
 curl --request POST \
      --header "Content-Type:application/json" \
      http://localhost:8080/event-types -d '{
-  "name": "order.ORDER_RECEIVED",
-  "owning_application": "order-service",
-  "category": "business",
-  "partition_strategy": "random",
-  "enrichment_strategies": ["metadata_enrichment"],
+  "name": "example_application.greatings",
+  "owning_application": "example_application",
+  "category": "undefined",
   "schema": {
     "type": "json_schema",
-    "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }"
+    "schema": "{ \"properties\": { \"message\": { \"type\": \"string\" } } }"
   }
 }'
 ```
 
-### Get existing event types
+Be aware that if you are running Nakadi in `BASIC` or `FULL`
+authentication mode `NAKADI_OAUTH2_MODE`, you should also provide a
+Bearer token in the header.
+
+#### Listing available event types
+
+If you are interested in subscribing to an existing event type, the
+first thing to do is to check the list of available ones.
 
 ```sh
 curl --request GET \
      http://localhost:8080/event-types
 ```
 
-### Get event type schema
+In case you already know the name of the event, it's possible to check
+for its details directly.
 
 ```sh
 curl --request GET \
-     http://localhost:8080/event-types/order.ORDER_RECEIVED
+     http://localhost:8080/event-types/example_application.greatings
 ```
 
-### Get all partitions for event type
+#### Publish events
+
+Now that an `EventType` has been created, we should be able to publish
+events to it.
+
+```sh
+curl --request POST \
+     --header "Content-Type:application/json" \
+     http://localhost:8080/event-types/example_application.greatings/events \
+     -d '[
+       { "message": "hello" },
+       { "message": "world" }
+     ]'
+```
+
+#### Partitions
+
+In order to achieve high throughput, Nakadi exposes its internal unit
+of storage, called *partition*. A partition is a sequential list of
+events. By default event types contain only a single partition. But if
+you need extra power, it's possible to configure an `EventType` for
+having more than one partition.
 
 ```sh
 curl --request GET \
@@ -113,27 +116,7 @@ curl --request GET \
      http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions
 ```
 
-### Get single partition for event type
-
-```sh
-curl --request GET \
-     --header "Content-Type:application/json" \
-     http://localhost:8080/event-types/order.ORDER_RECEIVED/partitions/0
-```
-
-### Publish events
-
-```sh
-curl --request POST \
-     --header "Content-Type:application/json" \
-     http://localhost:8080/event-types/order.ORDER_RECEIVED/events \
-     -d '[
-       { "order_number": "ORDER_ONE", "metadata": { "eid": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "occurred_at": "2016-03-15T23:47:15+01:00" } },
-       { "order_number": "ORDER_TWO", "metadata": { "eid": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "occurred_at": "2016-03-15T23:47:16+01:00" } }
-     ]'
-```
-
-### Receive event stream
+#### Streamming events
 
 You can consume from all partitions of an event type by just getting the `events` sub-resource:
 
@@ -169,3 +152,43 @@ $ curl --request GET \
 ```
 
 Note that the offset is zero based and exclusive.
+
+## Why use it
+
+At Zalando, Nakadi solves the problem of making distributed
+micro-services data available in a single place for business
+inteligence to collect, store and analyse it.
+
+It allows for a convenient way of building event-driven applications.
+
+Besides that, Nakadi was designed to achieve 4 important goals:
+
+1. Easy to use
+
+Differently from other queuing systems, Nakadi clients relies on a
+simple to use RESTful API for creating streams, producing and
+consuming events. We thoroughly document our API using OpenAPI 2.0
+specification standard.
+
+2. Safe
+
+Using HTTPS and OAuth2, Nakadi relies on battle tested standards for
+authentication and encripted data transfer.
+
+3. High quality data
+
+Having a built-in schema-registry, Nakadi provides a centralized
+repository for all available types, encreasing the value of data by
+making it discoverable and understandable.
+
+4. Performance
+
+Nakadi is designed so to add minimal overhead per event processed. It
+exposes a bulk submission API for optmizing publishing and allow for
+stream compression targeting faster delivery.
+
+## Running Nakadi in Production
+
+## License
+
+Nakadi is delivered under [MIT license](LICENSE).
