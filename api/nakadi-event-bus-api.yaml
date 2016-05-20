@@ -740,6 +740,197 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /subscriptions:
+    post:
+      tags:
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        This endpoint creates a subscription for EventTypes. The subscription is needed to be able to consume
+        events from EventTypes in a high level way when Nakadi stores the offsets and manages the rebalancing of
+        consuming clients.
+        The subscription is identified by its key parameters (owning_application, event_types, use_case). If this
+        endpoint is invoked several times with the same key subscription properties in body - the subscription will be
+        created only once and for all other calls it will just return the subscription that was already created.
+      parameters:
+        - name: subscription
+          in: body
+          description: Subscription to create
+          schema:
+            $ref: '#/definitions/Subscription'
+          required: true
+      responses:
+        '200':
+          description: |
+            Subscription for such parameters already exists. Returns subscription object that already existed.
+          schema:
+            $ref: '#/definitions/Subscription'
+        '201':
+          description: Subscription was successfuly created. Returns subscription object that was created.
+          schema:
+            $ref: '#/definitions/Subscription'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: EventType(s) not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /subscriptions/{subscription_id}/events:
+    get:
+      tags:
+        - stream-api
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        ---
+      parameters:
+        parameters:
+          - name: subscription_id
+            in: path
+            type: string
+            description: Id of subscription
+            required: true
+          - name: commit_timeout
+            in: query
+            description: |
+              The amount of time allowed between commits. If no commit is performed within this amount of time - the
+              connection will be closed from Nakadi side. Specified in seconds.
+            type: integer
+            format: int32
+            required: false
+            default: 60
+          - name: max_uncommitted_event_count
+            in: query
+            description: |
+              The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused state and
+              commit comes - the stream will continue.
+              Specifying 0 for this property will make the max uncommitted event count unlimited (the stream will never
+              be paused).
+              The property is ignored when autocommit is true for the subscription.
+            type: integer
+            format: int32
+            required: false
+            default: 10000
+          - name: batch_limit
+            in: query
+            description: |
+              Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
+
+              * If 0 or unspecified will buffer Events indefinitely and flush on reaching of
+              `batch_flush_timeout`.
+            type: integer
+            format: int32
+            required: false
+            default: 1
+          - name: stream_limit
+            in: query
+            description: |
+              Maximum number of `Event`s in this stream (over all partitions being streamed in this
+              connection).
+
+              * If 0 or undefined, will stream batches indefinitely.
+
+              * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
+            type: integer
+            format: int32
+            required: false
+            default: 0
+          - name: batch_flush_timeout
+            in: query
+            description: |
+              Maximum time in seconds to wait for the flushing of each chunk (per partition).
+
+              * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout`
+              is reached, the messages are immediately flushed to the client and batch flush timer is reset.
+
+              * If 0 or undefined, will assume 30 seconds.
+            type: number
+            format: int32
+            required: false
+            default: 30
+          - name: stream_timeout
+            in: query
+            description: |
+              Maximum time in seconds a stream will live before being interrupted.
+              If 0 or unspecified will stream indefinitely.
+
+              If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
+              to the client.
+
+              Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+            type: number
+            format: int32
+            required: false
+            default: 0
+          - name: stream_keep_alive_limit
+            in: query
+            description: |
+              Maximum number of keep-alive messages to get in a row before closing the connection.
+
+              If 0 or undefined will send keep alive messages indefinitely.
+            type: integer
+            format: int32
+            required: false
+            default: 0
+          - name: X-Flow-Id
+            in: header
+            description: |
+              The flow id of the request, which is written into the logs and passed to called services. Helpful
+              for operational troubleshooting and log analysis.
+            type: string
+            format: flow-id
+      responses:
+        '200':
+          description: |
+            ---
+          schema:
+            $ref: '#/definitions/Subscription'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+
   '/registry/validation-strategies':
     get:
       tags:
@@ -1080,6 +1271,99 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Event'
+
+  Subscription:
+    description: |
+      Subscription is a high level consumption unit. Subscriptions allow applications to easily scale the number of
+      clients by managing consumed event offsets and distributing load between instances.
+      The key properties that identify subscription are 'owning_application', 'event_types' and 'use_case'.
+      It's not possible to have two different subscriptions with these properties being the same.
+    properties:
+      id:
+        type: string
+        description: |
+          Id of subscription that was created. Is generated by Nakadi, should not be specified when creating
+          subscription.
+        format: uuid
+        example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+      created_at:
+        type: string
+        description: |
+          Timestamp of creation of the subscription. Is generated by Nakadi, should not be specified when creating
+          subscription.
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      owning_application:
+        type: string
+        example: 'price-service'
+        description: The id of application owning the subscription.
+      event_types:
+        type: array
+        items:
+          type: string
+        description: |
+          EventTypes to subscribe to.
+          The order is not important. Subscriptions that differ only be the order of EventTypes will be considered
+          the same and will have the same id.
+          * Currently only subscription to a single EventType is supported. Subscriptions with more than one EventType
+          in event_types property will be rejected.
+      use_case:
+        type: string
+        example: 'read-product-updates'
+        description: |
+          The value describing the use case of this subscription.
+          In general that is an additional identifier used to differ subscriptions having the same owning_application
+          and event_types.
+        default: 'none'
+      read_from:
+        type: string
+        enum:
+          - BEGIN
+          - END
+        description: |
+          Position to start reading events from. BEGIN - read from the oldest available event. END - read from the most
+          recent offset. Will be applied when the first client for this subscription starts consuming.
+        default: 'END'
+      autocommit:
+        type: boolean
+        description: |
+          Specifies if the autocommit mode should be used for this subscription. When operating in autocommit mode
+          Nakadi considers all events that were sent from Nakadi to be committed. It's very easy to loose events when
+          running in this mode, use autocommit mode only if you know what you are doing.
+        default: false
+      max_uncommitted_event_count:
+        type: integer
+        description: |
+          The amount of uncommitted events Nakadi will stream before pausing the stream. After that Nakadi will start
+          the countdown for commit_timeout. With each commit that comes from appropriate client this counter will be
+          reset.
+          This property works in a couple with commit_period property, whatever happens first will invoke the
+          commit_timeout countdown.
+          Specifying 0 for this property will make the allowed uncommitted event count unlimited.
+          It is possible to override this property for a single stream when starting a stream for the subscription.
+          The property is ignored when autocommit is true.
+        default: 10000
+      commit_period:
+        type: integer
+        description: |
+          The amount of seconds that can pass from last commit till Nakadi will pause the stream. Works together with
+          max_uncommitted_event_count property. Whatever happens first invokes pausing of stream.
+          Specifying 0 for this property will make it unlimited.
+          It is possible to override this property for a single stream when starting a stream for the subscription.
+          The property is ignored when autocommit is true.
+        default: 30
+      commit_timeout:
+        type: integer
+        description: |
+          The amount of seconds Nakadi waits for client to commit offset after max_uncommitted_event_count or
+          commit_period is reached. After the timeout expires the connection to the client will be closed by Nakadi.
+          Specifying 0 for this property will make it unlimited.
+          It is possible to override this property for a single stream when starting a stream for the subscription.
+          The property is ignored when autocommit is true.
+        default: 300
+    required:
+      - owning_application
+      - event_types
 
   EventType:
     description: An event type defines the schema and its runtime properties.
