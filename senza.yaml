@@ -57,6 +57,9 @@ SenzaInfo:
     - JavaOpts:
         Description: "Java opts to be passed to jvm"
         Default: ""
+    - SSLCertificateId:
+        Description: "Id of ssl certificate to use"
+        Default: ""
 
 SenzaComponents:
 
@@ -110,6 +113,12 @@ SenzaComponents:
   # creates an ELB entry and Route53 domains to this ELB
   - AppLoadBalancer:
       Type: Senza::WeightedDnsElasticLoadBalancer
+      Listeners:
+        - InstancePort: 8080
+          InstanceProtocol: tcp
+          LoadBalancerPort: 443
+          Protocol: SSL
+          SSLCertificateId: "{{Arguments.SSLCertificateId}}"
       HTTPPort: 8080
       HealthCheckPath: /health
       SecurityGroups:
