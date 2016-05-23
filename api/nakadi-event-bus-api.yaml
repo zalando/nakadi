@@ -1198,36 +1198,6 @@ definitions:
           Nakadi considers all events that were sent from Nakadi to be committed. It's very easy to loose events when
           running in this mode, use autocommit mode only if you know what you are doing.
         default: false
-      max_uncommitted_event_count:
-        type: integer
-        description: |
-          The amount of uncommitted events Nakadi will stream before pausing the stream. After that Nakadi will start
-          the countdown for commit_timeout. With each commit that comes from appropriate client this counter will be
-          reset.
-          This property works in a couple with commit_period property, whatever happens first will invoke the
-          commit_timeout countdown.
-          Specifying 0 for this property will make the allowed uncommitted event count unlimited.
-          It is possible to override this property for a single stream when starting a stream for the subscription.
-          The property is ignored when autocommit is true.
-        default: 10000
-      commit_period:
-        type: integer
-        description: |
-          The amount of seconds that can pass from last commit till Nakadi will pause the stream. Works together with
-          max_uncommitted_event_count property. Whatever happens first invokes pausing of stream.
-          Specifying 0 for this property will make it unlimited.
-          It is possible to override this property for a single stream when starting a stream for the subscription.
-          The property is ignored when autocommit is true.
-        default: 30
-      commit_timeout:
-        type: integer
-        description: |
-          The amount of seconds Nakadi waits for client to commit offset after max_uncommitted_event_count or
-          commit_period is reached. After the timeout expires the connection to the client will be closed by Nakadi.
-          Specifying 0 for this property will make it unlimited.
-          It is possible to override this property for a single stream when starting a stream for the subscription.
-          The property is ignored when autocommit is true.
-        default: 300
     required:
       - owning_application
       - event_types
