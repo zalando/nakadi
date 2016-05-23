@@ -961,6 +961,141 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /subscriptions/{subscription_id}/events:
+    get:
+      tags:
+        - stream-api
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        ---
+      parameters:
+        parameters:
+          - name: subscription_id
+            in: path
+            type: string
+            description: Id of subscription
+            required: true
+          - name: commit_timeout
+            in: query
+            description: |
+              The amount of time allowed between commits. If no commit is performed within this amount of time - the
+              connection will be closed from Nakadi side. Specified in seconds.
+            type: integer
+            format: int32
+            required: false
+            default: 60
+          - name: max_uncommitted_event_count
+            in: query
+            description: |
+              The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused state and
+              commit comes - the stream will continue.
+              Specifying 0 for this property will make the max uncommitted event count unlimited (the stream will never
+              be paused).
+              The property is ignored when autocommit is true for the subscription.
+            type: integer
+            format: int32
+            required: false
+            default: 10000
+          - name: batch_limit
+            in: query
+            description: |
+              Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
+
+              * If 0 or unspecified will buffer Events indefinitely and flush on reaching of
+              `batch_flush_timeout`.
+            type: integer
+            format: int32
+            required: false
+            default: 1
+          - name: stream_limit
+            in: query
+            description: |
+              Maximum number of `Event`s in this stream (over all partitions being streamed in this
+              connection).
+
+              * If 0 or undefined, will stream batches indefinitely.
+
+              * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
+            type: integer
+            format: int32
+            required: false
+            default: 0
+          - name: batch_flush_timeout
+            in: query
+            description: |
+              Maximum time in seconds to wait for the flushing of each chunk (per partition).
+
+              * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout`
+              is reached, the messages are immediately flushed to the client and batch flush timer is reset.
+
+              * If 0 or undefined, will assume 30 seconds.
+            type: number
+            format: int32
+            required: false
+            default: 30
+          - name: stream_timeout
+            in: query
+            description: |
+              Maximum time in seconds a stream will live before being interrupted.
+              If 0 or unspecified will stream indefinitely.
+
+              If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
+              to the client.
+
+              Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+            type: number
+            format: int32
+            required: false
+            default: 0
+          - name: stream_keep_alive_limit
+            in: query
+            description: |
+              Maximum number of keep-alive messages to get in a row before closing the connection.
+
+              If 0 or undefined will send keep alive messages indefinitely.
+            type: integer
+            format: int32
+            required: false
+            default: 0
+          - name: X-Flow-Id
+            in: header
+            description: |
+              The flow id of the request, which is written into the logs and passed to called services. Helpful
+              for operational troubleshooting and log analysis.
+            type: string
+            format: flow-id
+      responses:
+        '200':
+          description: |
+            ---
+          schema:
+            $ref: '#/definitions/Subscription'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/registry/validation-strategies':
     get:
