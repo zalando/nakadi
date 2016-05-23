@@ -10,6 +10,7 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
@@ -71,7 +72,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
 
         final String body = response.print();
         final List<Map<String, Object>> batches = deserializeBatches(body);
@@ -118,7 +119,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
         response.then().header("Content-Encoding", "gzip");
     }
 
@@ -143,7 +144,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
 
         final String body = response.print();
         final List<Map<String, Object>> batches = deserializeBatches(body);
@@ -186,7 +187,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
 
         final String body = response.print();
         final List<Map<String, Object>> batches = deserializeBatches(body);
@@ -219,7 +220,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
 
         final String body = response.print();
         final List<Map<String, Object>> batches = deserializeBatches(body);
