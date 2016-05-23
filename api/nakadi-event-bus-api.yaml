@@ -797,7 +797,74 @@ paths:
           description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
+    get:
+      tags:
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Lists all subscriptions that exist in a system.
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Subscription'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
+  /subscriptions/{subscription_id}:
+    get:
+      tags:
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Returns a subscription identified by id.
+      parameters:
+        - name: subscription_id
+          in: path
+          description: Id of subscription.
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Subscription'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
 
   /subscriptions/{subscription_id}/cursors:
     get:
