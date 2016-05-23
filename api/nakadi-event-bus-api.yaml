@@ -819,14 +819,6 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Cursor'
-        '204':
-          description: |
-            No Content. If the reading from the subscription was not started yet - there is nothing to expose.
-            Will return an empty list of cursors to be consistent with successful scenario.
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Cursor'
         '401':
           description: Client is not authenticated
           schema:
@@ -875,6 +867,8 @@ paths:
       responses:
         '200':
           description: Offsets were committed
+        '204':
+          description: No Content. The cursors which were tried to be committed are older than already committed ones.
         '401':
           description: Client is not authenticated
           schema:
@@ -885,10 +879,6 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
-          schema:
-            $ref: '#/definitions/Problem'
-        '409':
-          description: Conflict. The cursors which were tried to be committed are older than already committed ones.
           schema:
             $ref: '#/definitions/Problem'
         '422':
