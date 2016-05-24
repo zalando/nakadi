@@ -18,14 +18,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-public class EventTypeDbRepository implements EventTypeRepository {
-
-    private final JdbcTemplate jdbcTemplate;
-    private final ObjectMapper jsonMapper;
+public class EventTypeDbRepository extends AbstractDbRepository implements EventTypeRepository {
 
     public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.jsonMapper = objectMapper;
+        super(jdbcTemplate, objectMapper);
     }
 
     @Override
