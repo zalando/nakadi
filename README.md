@@ -28,9 +28,10 @@
     - [Event Stream Structure](#event-stream-structure)
     - [Cursors, Offsets and Partitions](#cursors-offsets-and-partitions)
     - [Event Stream Keepalives](#event-stream-keepalives)
-- [Development](#development)
+- [Build and Development](#build-and-development)
+  - [Building](#building)
+  - [Dependencies](#dependencies)
   - [What does the project already implement?](#what-does-the-project-already-implement)
-  - [Full development pipeline:](#full-development-pipeline)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -424,7 +425,33 @@ HTTP/1.1 200 OK
 
 This can be treated as a keep-alive control for some load balancers.
 
-## Development
+## Build and Development
+
+### Building
+
+The project is built with [Gradle](http://gradle.org). The `./gradlew` 
+[wrapper script](http://www.gradle.org/docs/current/userguide/gradle_wrapper.html) will bootstrap the right Gradle version if it's not already installed. 
+
+The gradle setup is fairly standard, the main tasks are:
+
+- `./gradlew build`: run a build and test
+- `./gradlew clean`: clean down the build
+
+Some other useful tasks are:
+
+- `./gradlew acceptanceTest`: run the ATs
+- `./gradlew fullAcceptanceTest`: run the ATs in the context of Docker
+- `./gradlew dbBootstrap`: set up the database
+- `./gradlew cleanDb`: clear down the database
+- `./gradlew startDockerContainer`: start the docker containers (and download images if needed)
+- `./gradlew stopAndRemoveDockerContainer`: shutdown the docker processes
+- `./gradlew startStoragesInDocker`: start the storage container (handy for running Nakadi directly or in your IDE)
+
+For working with an IDE, the `eclipse` IDE task is available and you'll be able to import the `build.gradle` into Intellij IDEA directly.
+
+### Dependencies
+
+The Nakadi server is a Java 8 [Spring Boot](http://projects.spring.io/spring-boot/) application. It uses [Kafka 0.9](http://kafka.apache.org/090/documentation.html) as its broker and [PostgreSQL 9.5](http://www.postgresql.org/docs/9.5/static/release-9-5.html) as its supporting database.
 
 ### What does the project already implement?
 
@@ -437,12 +464,3 @@ This can be treated as a keep-alive control for some load balancers.
 * [ ] high-level interface
     * automatic redistribution of partitions between consuming clients
     * commits should be issued to move server-side cursors
-
-### Full development pipeline:
-
-```
-    build 
-      -> ut/it tests (depends on access to a Kafka backend) 
-       -> docker (builds docker image) 
-          -> api-tests (runs tests against the docker image)
-```
