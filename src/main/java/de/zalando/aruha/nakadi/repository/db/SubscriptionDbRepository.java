@@ -33,9 +33,9 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
                     subscription.getId(),
                     jsonMapper.writer().writeValueAsString(subscription));
-        } catch (JsonProcessingException e) {
+        } catch (final JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during persistence of event type", e);
-        } catch (DuplicateKeyException e) {
+        } catch (final DuplicateKeyException e) {
             throw new DuplicatedSubscriptionException("Subscription with the same key properties already exists", e);
         }
     }
@@ -44,8 +44,8 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription WHERE s_id = ?";
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
-        } catch (EmptyResultDataAccessException e) {
-            throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist.", e);
+        } catch (final EmptyResultDataAccessException e) {
+            throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist", e);
         }
     }
 
@@ -61,19 +61,19 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             final String eventTypesJson = jsonMapper.writer().writeValueAsString(newTreeSet(eventTypes));
             return jdbcTemplate.queryForObject(sql, new Object[]{owningApplication, eventTypesJson, useCase},
                     rowMapper);
-        } catch (JsonProcessingException e) {
+        } catch (final JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during getting event type", e);
-        } catch (EmptyResultDataAccessException e) {
-            throw new NoSuchSubscriptionException("Subscription does not exist.", e);
+        } catch (final EmptyResultDataAccessException e) {
+            throw new NoSuchSubscriptionException("Subscription does not exist", e);
         }
     }
 
     private class SubscriptionMapper implements RowMapper<Subscription> {
         @Override
-        public Subscription mapRow(ResultSet rs, int rowNum) throws SQLException {
+        public Subscription mapRow(final ResultSet rs, final int rowNum) throws SQLException {
             try {
                 return jsonMapper.readValue(rs.getString("s_subscription_object"), Subscription.class);
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new SQLException(e);
             }
         }
