@@ -62,20 +62,35 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
+    public void whenGetSubscriptionByIdThenOk() throws NoSuchEventTypeException, InternalNakadiException,
+            JsonProcessingException {
+
+        // insert subscription into DB
+        final Subscription subscription = createSubscription();
+        insertSubscriptionToDB(subscription);
+
+        // get subscription by id and compare to original
+        final Subscription gotSubscription = repository.getSubscription(subscription.getId());
+        assertThat("We found the needed subscription", gotSubscription, equalTo(subscription));
+    }
+
+    @Test
     public void whenGetSubscriptionByKeyPropertiesThenOk() throws NoSuchEventTypeException, InternalNakadiException,
             JsonProcessingException {
 
         // insert subscription into DB
         final Subscription subscription = createSubscription("myapp", ImmutableSet.of("my-et", "second-et"), "mycase");
-        template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
-                subscription.getId(), mapper.writer().writeValueAsString(subscription));
+        insertSubscriptionToDB(subscription);
 
-        // get subscription by key properties
+        // get subscription by key properties and compare to original
         final Subscription gotSubscription = repository.getSubscription("myapp", ImmutableSet.of("second-et", "my-et"),
                 "mycase");
-
-        // assert
         assertThat("We found the needed subscription", gotSubscription, equalTo(subscription));
+    }
+
+    private void insertSubscriptionToDB(final Subscription subscription) throws JsonProcessingException {
+        template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
+                subscription.getId(), mapper.writer().writeValueAsString(subscription));
     }
 
     private Subscription createSubscription() {
