@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
-import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,6 +28,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
     public void saveSubscription(final Subscription subscription) throws InternalNakadiException,
             DuplicatedSubscriptionException {
+
         try {
             jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
                     subscription.getId(),
@@ -39,17 +40,19 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
-    public Subscription getSubscription(final String id) throws NoSuchEventTypeException {
+    public Subscription getSubscription(final String id) throws NoSuchSubscriptionException {
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription WHERE s_id = ?";
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
         } catch (EmptyResultDataAccessException e) {
-            throw new NoSuchEventTypeException("Subscription with id \"" + id + "\" does not exist.", e);
+            throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist.", e);
         }
     }
 
     public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,
-                                        final String useCase) throws NoSuchEventTypeException, InternalNakadiException {
+                                        final String useCase)
+            throws NoSuchSubscriptionException, InternalNakadiException {
+
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription " +
                 "WHERE s_subscription_object->>'owning_application' = ? " +
                 "AND replace(s_subscription_object->>'event_types', ' ', '') = ? " +
@@ -61,7 +64,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         } catch (JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during getting event type", e);
         } catch (EmptyResultDataAccessException e) {
-            throw new NoSuchEventTypeException("Subscription does not exist.", e);
+            throw new NoSuchSubscriptionException("Subscription does not exist.", e);
         }
     }
 
