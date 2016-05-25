@@ -7,7 +7,7 @@ import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
-import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,8 +62,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenGetSubscriptionByIdThenOk() throws NoSuchEventTypeException, InternalNakadiException,
-            JsonProcessingException {
+    public void whenGetSubscriptionByIdThenOk() throws InternalNakadiException, JsonProcessingException,
+            NoSuchSubscriptionException {
 
         // insert subscription into DB
         final Subscription subscription = createSubscription();
@@ -75,8 +75,8 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenGetSubscriptionByKeyPropertiesThenOk() throws NoSuchEventTypeException, InternalNakadiException,
-            JsonProcessingException {
+    public void whenGetSubscriptionByKeyPropertiesThenOk() throws InternalNakadiException, JsonProcessingException,
+            NoSuchSubscriptionException {
 
         // insert subscription into DB
         final Subscription subscription = createSubscription("myapp", ImmutableSet.of("my-et", "second-et"), "mycase");
