@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.controller;
 
-import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.domain.EventPublishResult;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
@@ -37,7 +36,6 @@ public class EventPublishingController {
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
     }
 
-    @Timed(name = "post_events", absolute = true)
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity postEvent(@PathVariable final String eventTypeName, @RequestBody final String eventsAsString,
                                     final NativeWebRequest nativeWebRequest) {

@@ -3,6 +3,8 @@ server:
   compression:
     enabled: true
 #    mime-types: custom/mime-type,text/html,text/xml,text/plain
+management:
+  port: 7979
 logging:
   level:
     ROOT: INFO

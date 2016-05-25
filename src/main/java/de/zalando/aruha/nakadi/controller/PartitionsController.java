@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.controller;
 
-import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.slf4j.Logger;
@@ -28,7 +27,6 @@ public class PartitionsController {
         this.topicRepository = topicRepository;
     }
 
-    @Timed(name = "get_partitions", absolute = true)
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
     public ResponseEntity<?> listPartitions(@PathVariable("name") final String eventTypeName,
                                             final NativeWebRequest request) {
@@ -50,7 +48,6 @@ public class PartitionsController {
         }
     }
 
-    @Timed(name = "get_partition", absolute = true)
     @RequestMapping(value = "/event-types/{name}/partitions/{partition}", method = RequestMethod.GET)
     public ResponseEntity<?> getPartition(@PathVariable("name") final String eventTypeName,
                                           @PathVariable("partition") final String partition,
