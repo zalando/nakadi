@@ -5,9 +5,9 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.Date;
-import java.util.List;
+import java.util.Set;
 
-import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Sets.newTreeSet;
 
 public class Subscription {
 
@@ -19,7 +19,7 @@ public class Subscription {
 
     @NotNull
     @Size(min = 1, max = 1)
-    private List<String> eventTypes;
+    private Set<String> eventTypes;
 
     private String useCase = "none";
 
@@ -41,13 +41,12 @@ public class Subscription {
         this.owningApplication = owningApplication;
     }
 
-    public List<String> getEventTypes() {
-        return Collections.unmodifiableList(eventTypes);
+    public Set<String> getEventTypes() {
+        return Collections.unmodifiableSet(eventTypes);
     }
 
-    public void setEventTypes(final List<String> eventTypes) {
-        this.eventTypes = newArrayList(eventTypes);
-        Collections.sort(this.eventTypes);
+    public void setEventTypes(final Set<String> eventTypes) {
+        this.eventTypes = newTreeSet(eventTypes);
     }
 
     public String getUseCase() {

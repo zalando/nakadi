@@ -1,14 +1,18 @@
 package de.zalando.aruha.nakadi.repository.db;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.Set;
 
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -57,11 +61,37 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         repository.saveSubscription(subscription);
     }
 
+    @Test
+    public void whenGetSubscriptionByKeyPropertiesThenOk() throws NoSuchEventTypeException, InternalNakadiException,
+            JsonProcessingException {
+
+        // insert subscription into DB
+        final Subscription subscription = createSubscription("myapp", ImmutableSet.of("my-et", "second-et"), "mycase");
+        template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
+                subscription.getId(), mapper.writer().writeValueAsString(subscription));
+
+        // get subscription by key properties
+        final Subscription gotSubscription = repository.getSubscription("myapp", ImmutableSet.of("second-et", "my-et"),
+                "mycase");
+
+        // assert
+        assertThat("We found the needed subscription", gotSubscription, equalTo(subscription));
+    }
+
     private Subscription createSubscription() {
         final Subscription subscription = new Subscription();
         subscription.setId(randomUUID().toString());
-        subscription.setOwningApplication("my_consumer");
-        subscription.setEventTypes(ImmutableList.of("my_et"));
+        subscription.setOwningApplication("myapp");
+        subscription.setEventTypes(ImmutableSet.of("my-et"));
+        return subscription;
+    }
+
+    private Subscription createSubscription(final String owningApplication, final Set<String> eventTypes,
+                                            final String usecase) {
+        final Subscription subscription = createSubscription();
+        subscription.setOwningApplication(owningApplication);
+        subscription.setEventTypes(eventTypes);
+        subscription.setUseCase(usecase);
         return subscription;
     }
 

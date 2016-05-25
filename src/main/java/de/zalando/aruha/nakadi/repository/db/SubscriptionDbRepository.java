@@ -14,7 +14,9 @@ import org.springframework.jdbc.core.RowMapper;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
+import java.util.Set;
+
+import static com.google.common.collect.Sets.newTreeSet;
 
 public class SubscriptionDbRepository extends AbstractDbRepository {
 
@@ -24,8 +26,8 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         super(jdbcTemplate, objectMapper);
     }
 
-    public void saveSubscription(final Subscription subscription)
-            throws InternalNakadiException, DuplicatedSubscriptionException {
+    public void saveSubscription(final Subscription subscription) throws InternalNakadiException,
+            DuplicatedSubscriptionException {
         try {
             jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
                     subscription.getId(),
@@ -46,14 +48,18 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
-    public Subscription getSubscription(final String owningApplication, final List<String> eventTypes,
-                                        final String useCase) throws NoSuchEventTypeException {
+    public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,
+                                        final String useCase) throws NoSuchEventTypeException, InternalNakadiException {
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription " +
                 "WHERE s_subscription_object->>'owning_application' = ? " +
-                "AND s_subscription_object->>'event_types' = ? " +
+                "AND replace(s_subscription_object->>'event_types', ' ', '') = ? " +
                 "AND s_subscription_object->>'use_case' = ? ";
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{owningApplication, eventTypes, useCase}, rowMapper);
+            final String eventTypesJson = jsonMapper.writer().writeValueAsString(newTreeSet(eventTypes));
+            return jdbcTemplate.queryForObject(sql, new Object[]{owningApplication, eventTypesJson, useCase},
+                    rowMapper);
+        } catch (JsonProcessingException e) {
+            throw new InternalNakadiException("Serialization problem during getting event type", e);
         } catch (EmptyResultDataAccessException e) {
             throw new NoSuchEventTypeException("Subscription does not exist.", e);
         }
