@@ -11,7 +11,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class AbstractDbRepositoryTest {
+public abstract class AbstractDbRepositoryTest {
 
     protected JdbcTemplate template;
     protected Connection connection;
