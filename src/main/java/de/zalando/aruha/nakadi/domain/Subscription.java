@@ -3,8 +3,11 @@ package de.zalando.aruha.nakadi.domain;
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+
+import static com.google.common.collect.Lists.newArrayList;
 
 public class Subscription {
 
@@ -39,11 +42,12 @@ public class Subscription {
     }
 
     public List<String> getEventTypes() {
-        return eventTypes;
+        return Collections.unmodifiableList(eventTypes);
     }
 
     public void setEventTypes(final List<String> eventTypes) {
-        this.eventTypes = eventTypes;
+        this.eventTypes = newArrayList(eventTypes);
+        Collections.sort(this.eventTypes);
     }
 
     public String getUseCase() {
@@ -60,5 +64,24 @@ public class Subscription {
 
     public void setCreatedAt(final Date createdAt) {
         this.createdAt = createdAt;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final Subscription that = (Subscription) o;
+        return id != null ? id.equals(that.id) : that.id == null && owningApplication.equals(that.owningApplication) &&
+                eventTypes.equals(that.eventTypes) && useCase.equals(that.useCase) && createdAt.equals(that.createdAt);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = id != null ? id.hashCode() : 0;
+        result = 31 * result + owningApplication.hashCode();
+        result = 31 * result + eventTypes.hashCode();
+        result = 31 * result + useCase.hashCode();
+        result = 31 * result + createdAt.hashCode();
+        return result;
     }
 }
