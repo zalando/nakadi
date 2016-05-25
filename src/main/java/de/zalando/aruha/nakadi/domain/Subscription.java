@@ -1,10 +1,12 @@
 package de.zalando.aruha.nakadi.domain;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.newTreeSet;
@@ -23,7 +25,7 @@ public class Subscription {
 
     private String useCase = "none";
 
-    private Date createdAt = new Date();
+    private DateTime createdAt = new DateTime(DateTimeZone.UTC);
 
     public String getId() {
         return id;
@@ -57,11 +59,11 @@ public class Subscription {
         this.useCase = useCase;
     }
 
-    public Date getCreatedAt() {
+    public DateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(final Date createdAt) {
+    public void setCreatedAt(final DateTime createdAt) {
         this.createdAt = createdAt;
     }
 
