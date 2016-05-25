@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.metrics;
 
-import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.google.common.annotations.VisibleForTesting;
@@ -19,7 +19,7 @@ public class EventTypeMetrics {
     private final Histogram eventsPerBatchHistogram;
     private final Timer publishingTimer;
     private final Histogram averageEventSizeInBytesHistogram;
-    private final ConcurrentMap<Integer, Counter> statusCodeCounter = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Integer, Meter> statusCodeMeter = new ConcurrentHashMap<>();
 
     public EventTypeMetrics(final String eventTypeName, final MetricRegistry metricRegistry) {
         this.eventTypeName = eventTypeName;
@@ -35,9 +35,9 @@ public class EventTypeMetrics {
     }
 
     public void incrementResponseCount(int code) {
-        statusCodeCounter.computeIfAbsent(code,
-                key -> metricRegistry.counter(metricNameFor(eventTypeName, "publishing." + code)))
-                .inc();
+        statusCodeMeter.computeIfAbsent(code,
+                key -> metricRegistry.meter(metricNameFor(eventTypeName, "publishing." + code)))
+                .mark();
     }
 
     public void updateTiming(long startingNanos, long currentNanos) {
@@ -46,6 +46,6 @@ public class EventTypeMetrics {
 
     @VisibleForTesting
     public long getResponseCount(int code) {
-        return Optional.ofNullable(statusCodeCounter.get(code)).map(Counter::getCount).orElse(-1L);
+        return Optional.ofNullable(statusCodeMeter.get(code)).map(Meter::getCount).orElse(-1L);
     }
 }
