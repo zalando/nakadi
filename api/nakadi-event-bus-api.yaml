@@ -81,6 +81,8 @@ info:
     * negotiation of sessions' parameters
     * auto commit mode (implying at most once)
     * support for controlled replaying of subscriptions (for example the initial point of streaming)
+    * moment (creation of subscription or first stream) and offset (newest available or latest available) of initialization of cursors of subscription
+    *
 
     relevant for managemnet of nakadi:
     - low watermark tracking of each strams' window per session
@@ -144,13 +146,7 @@ paths:
         - schema-registry-api
       description: Returns a list of all registered `EventType`s
       parameters:
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
       responses:
         '200':
           description: Ok
@@ -259,13 +255,7 @@ paths:
           description: Name of the EventType to load.
           type: string
           required: true
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
       responses:
         '200':
           description: Ok
@@ -313,13 +303,7 @@ paths:
           schema:
             $ref: '#/definitions/EventType'
           required: true
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
       responses:
         '200':
           description: Ok
@@ -361,13 +345,7 @@ paths:
           description: Name of the EventType to delete.
           type: string
           required: true
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
       responses:
         '200':
           description: EventType is successfuly removed
@@ -433,13 +411,7 @@ paths:
           type: string
           description: Name of the EventType
           required: true
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
         - name: event
           in: body
           description: The Event being published
@@ -555,13 +527,7 @@ paths:
           format: int32
           required: false
           default: 0
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
 
       responses:
         '200':
@@ -615,13 +581,7 @@ paths:
           description: EventType name
           type: string
           required: true
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
       responses:
         '200':
           description: OK
@@ -663,13 +623,7 @@ paths:
           description: Partition id
           type: string
           required: true
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
       responses:
         '200':
           description: OK
@@ -962,13 +916,7 @@ paths:
           format: int32
           required: false
           default: 0
-        - name: X-Flow-Id
-          in: header
-          description: |
-            The flow id of the request, which is written into the logs and passed to called services. Helpful
-            for operational troubleshooting and log analysis.
-          type: string
-          format: flow-id
+        - $ref: '#/parameters/XFlowId'
       responses:
         '200':
           description: |
@@ -1683,3 +1631,12 @@ parameters:
     format: int32
     required: false
     default: 0
+
+  XFlowId:
+    name: X-Flow-Id
+    in: header
+    description: |
+      The flow id of the request, which is written into the logs and passed to called services. Helpful
+      for operational troubleshooting and log analysis.
+    type: string
+    format: flow-id
