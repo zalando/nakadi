@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.annotation.Timed;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Cursor;
@@ -64,7 +63,6 @@ public class EventStreamController {
         this.metricRegistry = metricRegistry;
     }
 
-    @Timed(name = "stream_events_for_event_type", absolute = true)
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("name") final String eventTypeName,
