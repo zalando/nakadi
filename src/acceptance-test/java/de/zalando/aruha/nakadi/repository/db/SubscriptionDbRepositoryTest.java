@@ -79,12 +79,12 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
             NoSuchSubscriptionException {
 
         // insert subscription into DB
-        final Subscription subscription = createSubscription("myapp", ImmutableSet.of("my-et", "second-et"), "mycase");
+        final Subscription subscription = createSubscription("myapp", ImmutableSet.of("my-et", "second-et"), "my-cg");
         insertSubscriptionToDB(subscription);
 
         // get subscription by key properties and compare to original
         final Subscription gotSubscription = repository.getSubscription("myapp", ImmutableSet.of("second-et", "my-et"),
-                "mycase");
+                "my-cg");
         assertThat("We found the needed subscription", gotSubscription, equalTo(subscription));
     }
 
@@ -102,11 +102,11 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     private Subscription createSubscription(final String owningApplication, final Set<String> eventTypes,
-                                            final String usecase) {
+                                            final String consumerGroup) {
         final Subscription subscription = createSubscription();
         subscription.setOwningApplication(owningApplication);
         subscription.setEventTypes(eventTypes);
-        subscription.setUseCase(usecase);
+        subscription.setConsumerGroup(consumerGroup);
         return subscription;
     }
 

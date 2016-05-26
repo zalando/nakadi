@@ -23,7 +23,7 @@ public class Subscription {
     @Size(min = 1, max = 1)
     private Set<String> eventTypes;
 
-    private String useCase = "none";
+    private String consumerGroup = "none";
 
     private DateTime createdAt = new DateTime(DateTimeZone.UTC);
 
@@ -51,12 +51,12 @@ public class Subscription {
         this.eventTypes = newTreeSet(eventTypes);
     }
 
-    public String getUseCase() {
-        return useCase;
+    public String getConsumerGroup() {
+        return consumerGroup;
     }
 
-    public void setUseCase(final String useCase) {
-        this.useCase = useCase;
+    public void setConsumerGroup(final String consumerGroup) {
+        this.consumerGroup = consumerGroup;
     }
 
     public DateTime getCreatedAt() {
@@ -73,7 +73,7 @@ public class Subscription {
         if (o == null || getClass() != o.getClass()) return false;
         final Subscription that = (Subscription) o;
         return id != null ? id.equals(that.id) : that.id == null && owningApplication.equals(that.owningApplication) &&
-                eventTypes.equals(that.eventTypes) && useCase.equals(that.useCase) && createdAt.equals(that.createdAt);
+                eventTypes.equals(that.eventTypes) && consumerGroup.equals(that.consumerGroup) && createdAt.equals(that.createdAt);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class Subscription {
         int result = id != null ? id.hashCode() : 0;
         result = 31 * result + owningApplication.hashCode();
         result = 31 * result + eventTypes.hashCode();
-        result = 31 * result + useCase.hashCode();
+        result = 31 * result + consumerGroup.hashCode();
         result = 31 * result + createdAt.hashCode();
         return result;
     }

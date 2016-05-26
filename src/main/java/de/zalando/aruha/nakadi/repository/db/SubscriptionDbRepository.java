@@ -50,16 +50,16 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     }
 
     public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,
-                                        final String useCase)
+                                        final String consumerGroup)
             throws NoSuchSubscriptionException, InternalNakadiException {
 
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription " +
                 "WHERE s_subscription_object->>'owning_application' = ? " +
                 "AND replace(s_subscription_object->>'event_types', ' ', '') = ? " +
-                "AND s_subscription_object->>'use_case' = ? ";
+                "AND s_subscription_object->>'consumer_group' = ? ";
         try {
             final String eventTypesJson = jsonMapper.writer().writeValueAsString(newTreeSet(eventTypes));
-            return jdbcTemplate.queryForObject(sql, new Object[]{owningApplication, eventTypesJson, useCase},
+            return jdbcTemplate.queryForObject(sql, new Object[]{owningApplication, eventTypesJson, consumerGroup},
                     rowMapper);
         } catch (final JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during getting event type", e);
