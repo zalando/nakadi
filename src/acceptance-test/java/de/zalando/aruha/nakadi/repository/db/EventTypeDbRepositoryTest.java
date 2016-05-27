@@ -9,17 +9,11 @@ import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 
-import javax.sql.DataSource;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -27,30 +21,18 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-public class EventTypeDbRepositoryTest {
+public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
-    private JdbcTemplate template;
     private EventTypeRepository repository;
-    private Connection connection;
-    private ObjectMapper mapper;
 
-    private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
-    private static final String username = "nakadi_app";
-    private static final String password = "nakadi";
+    public EventTypeDbRepositoryTest() {
+        super("zn_data.event_type");
+    }
 
     @Before
     public void setUp() {
-        try {
-            mapper = (new JsonConfig()).jacksonObjectMapper();
-
-            DataSource datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
-            template = new JdbcTemplate(datasource);
-            repository = new EventTypeDbRepository(template, mapper);
-            connection = datasource.getConnection();
-            clearEventTypeTable();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        super.setUp();
+        repository = new EventTypeDbRepository(template, mapper);
     }
 
     @Test
@@ -174,16 +156,6 @@ public class EventTypeDbRepositoryTest {
         eventType.setSchema(schema);
 
         return eventType;
-    }
-
-    @After
-    public void tearDown() throws SQLException {
-        clearEventTypeTable();
-        connection.close();
-    }
-
-    private void clearEventTypeTable() {
-        template.execute("DELETE FROM zn_data.event_type");
     }
 
 }
