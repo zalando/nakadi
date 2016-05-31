@@ -37,15 +37,15 @@
 
 ## Nakadi Event Broker
 
-The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide an event broker infrastructure to:
+Nakadi (ნაკადი means "stream" in Georgian) aims to provide an event broker infrastructure to:
 
-- Abstract event delivery via a secured [RESTful API](/api/nakadi-event-bus-api.yaml). This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology. Access to the API can be managed and secured using OAuth scopes.
+- abstract event delivery via a secured [RESTful API](/api/nakadi-event-bus-api.yaml). This allows microservices teams to maintain service boundaries without having to directly depend on any specific message broker technology. Access to the API can be managed and secured with OAuth scopes.
 
-- Enable convenient development of event-driven applications and asynchronous microservices. Event types can be defined with schemas and managed via a registry. Nakadi also has optional support for events describing business processes and data changes using standard primitives for identity, timestamps, event types, and causality. 
+- enable convenient development of event-driven applications and asynchronous microservices. Event types can be defined with schemas and managed via a registry. Nakadi also has optional support for events that describe business processes, and for data changes that use standard primitives for identity, timestamps, event types, and causality. 
 
--  Efficient low latency event delivery. Once a publisher sends an event using a simple HTTP POST, consumers can be pushed to via a streaming HTTP connection, allowing near real-time event processing. The consumer connection has keepalive controls and support for managing stream offsets. 
+-  provide efficient low-latency event delivery. Once a publisher sends an event using a simple HTTP POST, consumers can have events pushed to them via a streaming HTTP connection, allowing near real-time event processing. The consumer connection has keepalive controls and support for managing stream offsets. 
 
-The project also provides compatability with the [STUPS project](https://stups.io/). Additional features that we plan to cover in the future are:
+Nakadi also provides compatability with the [STUPS project](https://stups.io/). Additional features that we plan to cover in the future are:
 
 * Discoverability of the resource structures flowing into the broker.
 
@@ -69,9 +69,9 @@ From the project's home directory you can install and start a Nakadi container v
 ./gradlew startDockerContainer
 ```
 
-This will start a docker container for the Nakadi server and another container 
+This will start a Docker container for the Nakadi server and another container 
 with its PostgreSQL, Kafka and Zookeeper dependencies. The ports 8080 (Nakadi), 
-5432 (PostgreSQL), 9092 (Kafka) and 2181 (Zookeeper) are to allow the services 
+5432 (PostgreSQL), 9092 (Kafka) and 2181 (Zookeeper) allow the services 
 to communicate with each other and must not be used by other applications.
 
 ### Stopping a Server
@@ -84,8 +84,8 @@ To stop the running Nakadi:
 
 ### Mac OS Docker Settings 
 
-Since Docker for Mac OS runs inside Virtual Box, you will  want to expose 
-some ports first to allow Nakadi to access its dependencies -
+Docker for Mac OS runs inside Virtual Box, so you will want to expose 
+some ports first to allow Nakadi to access its dependencies:
 
 ```sh
 docker-machine ssh default \
@@ -98,7 +98,7 @@ docker-machine ssh default \
 Alternatively you can set up port forwarding on the "default" machine through 
 its network settings in the VirtualBox UI. If you get the message "Is the 
 docker daemon running on this host?" but you know Docker and VirtualBox are 
-running, you might want to run this command - 
+running, you might want to run this command: 
 
 ```sh
 eval "$(docker-machine env default)"
@@ -110,21 +110,21 @@ eval "$(docker-machine env default)"
 ### Events and Event Types
 
 The Nakadi API allows the publishing and consuming of _events_ over HTTP. 
-To do this the producer must register an _event type_ with the Nakadi schema 
+To do this, the producer must register an _event type_ with the Nakadi schema 
 registry. 
 
 The event type contains information such as the name, the owning application, 
-strategies for partitioning and enriching data, and a JSON  schema. Once the 
+strategies for partitioning and enriching data, and a JSON schema. Once the 
 event type is created, a publishing resource becomes available that will accept 
 events for the type, and consumers can also read from the event stream.
 
-There are three main _categories_ of event type defined by Nakadi - 
+There are three main _categories_ of event type defined by Nakadi: 
 
-- Undefined: A free form category suitable for events that are entirely custom to the producer.
+- Undefined: A free-form category suitable for events that are entirely custom to the producer.
 
 - Data: an event that represents a change to a record or other item, or a new item. Change events are associated with a create, update, delete, or snapshot operation. 
 
-- Business: an event that is part of, or drives a business process, such as a state transition in a customer order. 
+- Business: an event that is part of, or drives, a business process, such as a state transition in a customer order. 
 
 The events for the business and data change helper categories follow a 
 generic Nakadi event schema as well as a schema custom to the event data. The generic 
@@ -145,20 +145,20 @@ to validate data on the stream.
 
 #### Create an Event Type 
 
-An event type can be created by posting to the `event-types` resource. 
+Create an event type by posting to the `event-types` resource. 
 
-Each event type must have a unique `name`. If the event type already exists a 
-`409 Conflict` response will be returned. Otherwise a successful request will 
+Each event type must have a unique `name`. If the event type already exists, a 
+`409 Conflict` response will be returned. Otherwise, a successful request will 
 result in a `201 Created` response. The exact required fields depend on the 
 event type's category, but `name`, `owning_application` and `schema` are always 
 expected.
 
-The `schema` value should only declare the custom part of the event - the generic 
+The `schema` value should only declare the custom part of the event. The generic 
 schema is implicit and doesn't need to be defined. The combination of the two 
 (the "effective schema") will be checked when events are submitted for the event type.
 
 This example shows a `business` category event type with a simple schema for an 
-order number -
+order number:
 
 ```sh
 curl -v -XPOST http://localhost:8080/event-types -d '{
@@ -174,7 +174,7 @@ curl -v -XPOST http://localhost:8080/event-types -d '{
 }'
 ```
 
-This example shows an `undefined` category event type with a wilcard schema -
+This example shows an `undefined` category event type with a wildcard schema:
 
 ```sh
 curl -v -XPOST http://localhost:8080/event-types -d '{
@@ -219,7 +219,7 @@ Content-Type: application/json;charset=UTF-8
 
 #### View an Event Type
 
-Each event type registered with Nakadi has a URI based on its `name` -
+Each event type registered with Nakadi has a URI based on its `name`:
 
 ```sh
 curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED
@@ -283,7 +283,7 @@ Content-Type: application/json;charset=UTF-8
 
 ### Publishing Events
 
-#### Posting one or more Events
+#### Posting One or More Events
 
 Events for an event type can be published by posting to its "events" collection:
 
@@ -311,7 +311,7 @@ The events collection accepts an array of events. As well as the fields defined
 in the event type's schema, the posted event must also contain a `metadata` 
 object with an `eid` and `occurred_at` fields. The `eid` is a UUID that uniquely 
 identifies an event and the `occurred_at` field identifies the time of creation 
-of the Event defined by the producer.
+of the event defined by the producer.
 
 Note that the order of events in the posted array will be the order they are published 
 onto the event stream and seen by consumers. They are not re-ordered based on 
@@ -330,8 +330,8 @@ curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED/events
 #### Event Stream Structure
 
 The stream response groups events into batches. Batches in the response 
-are separated by a newline and each batch will be emitted on a single 
-line, but a pretty-printed batch object looks like this -
+are separated by a newline, and each batch will be emitted on a single 
+line. A pretty-printed batch object looks like this:
 
 ```json
 {
@@ -357,12 +357,12 @@ line, but a pretty-printed batch object looks like this -
 
 The `cursor` object describes the partition and the offset for this batch of 
 events. The cursor allow clients to checkpoint which events have already been 
-consumed and navigate through the stream - individual events in the stream don't 
+consumed and have navigated through the stream. Individual events in the stream don't 
 have cursors. The `events` array contains a list of events that were published in 
 the order they were posted by the producer. Each event will contain a `metadata` 
 field as well as the custom data defined by the event type's schema.
 
-The HTTP response then will look something like this -
+The HTTP response then will look something like this:
 
 ```sh
 curl -v http://localhost:8080/event-types/order.ORDER_RECEIVED/events 
@@ -377,9 +377,9 @@ HTTP/1.1 200 OK
 
 #### Cursors, Offsets and Partitions
 
-By default the `events` resource will consume from all partitions of an event 
+By default, the `events` resource will consume from all partitions of an event 
 type and from the end (or "tail") of the stream. To select only particular 
-partitions and a position where in the stream to start, you can supply 
+partitions and a starting position in the stream, you can supply 
 an `X-Nakadi-Cursors` header in the request:
 
 ```sh
@@ -391,8 +391,8 @@ The header value is a JSON array of _cursors_. Each cursor in the array
 describes its partition for the stream and an offset to stream from. Note that 
 events within the same partition maintain their overall order.
 
-The `offset` value of the cursor allows you select where the in the stream you 
-want to consume from. This can be any known offset value, or the dedicated value 
+The `offset` value of the cursor allows you select where in the stream you 
+want to consume from. This can be any known offset value or the dedicated value 
 `BEGIN` which will start the stream from the beginning. For example, to read 
 from partition `0` from the beginning:
 
@@ -406,7 +406,7 @@ available via its `partitions` resource.
 
 #### Event Stream Keepalives
 
-If there are no events to be delivered Nakadi will keep a streaming connection open by 
+If there are no events to be delivered, Nakadi will keep a streaming connection open by 
 periodically sending a batch with no events but which contains a `cursor` pointing to 
 the current offset. For example:
 
@@ -432,7 +432,7 @@ This can be treated as a keep-alive control for some load balancers.
 The project is built with [Gradle](http://gradle.org). The `./gradlew` 
 [wrapper script](http://www.gradle.org/docs/current/userguide/gradle_wrapper.html) will bootstrap the right Gradle version if it's not already installed. 
 
-The gradle setup is fairly standard, the main tasks are:
+The Gradle setup is fairly standard. The main tasks are:
 
 - `./gradlew build`: run a build and test
 - `./gradlew clean`: clean down the build
@@ -443,11 +443,11 @@ Some other useful tasks are:
 - `./gradlew fullAcceptanceTest`: run the ATs in the context of Docker
 - `./gradlew dbBootstrap`: set up the database
 - `./gradlew cleanDb`: clear down the database
-- `./gradlew startDockerContainer`: start the docker containers (and download images if needed)
-- `./gradlew stopAndRemoveDockerContainer`: shutdown the docker processes
+- `./gradlew startDockerContainer`: start the Docker containers (and download images if needed)
+- `./gradlew stopAndRemoveDockerContainer`: shutdown the Docker processes
 - `./gradlew startStoragesInDocker`: start the storage container (handy for running Nakadi directly or in your IDE)
 
-For working with an IDE, the `eclipse` IDE task is available and you'll be able to import the `build.gradle` into Intellij IDEA directly.
+For working with an IDE, the `eclipse` IDE task is available. You can directly import the `build.gradle` into IntelliJ.
 
 ### Dependencies
 
