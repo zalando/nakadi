@@ -1191,7 +1191,7 @@ definitions:
           If set MUST be a valid required field as defined in the schema.
           (TBD should be required? Is applicable only to both Business and DataChange Events?)
 
-      partitioning_key_fields:
+      partition_key_fields:
         type: array
         items:
           type: string
