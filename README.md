@@ -32,6 +32,7 @@
   - [Building](#building)
   - [Dependencies](#dependencies)
   - [What does the project already implement?](#what-does-the-project-already-implement)
+- [Contributing](#contributing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -464,3 +465,10 @@ The Nakadi server is a Java 8 [Spring Boot](http://projects.spring.io/spring-boo
 * [ ] high-level interface
     * automatic redistribution of partitions between consuming clients
     * commits should be issued to move server-side cursors
+
+## Contributing
+
+Nakadi accepts contributions from the open-source community. Please see the [issue tracker](https://github.com/zalando/nakadi/issues) for things to work on.
+
+Before making a contribution, please let us know by posting a comment to the relevant issue. And if you would like to propose a new feature, do start a new issue explaining the feature you’d like to contribute.
+
