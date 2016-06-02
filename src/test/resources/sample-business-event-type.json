@@ -1,0 +1,9 @@
+{
+  "name": "NAME_PLACEHOLDER",
+  "owning_application": "article-producer",
+  "category": "business",
+  "schema": {
+    "type": "json_schema",
+    "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"
+  }
+}

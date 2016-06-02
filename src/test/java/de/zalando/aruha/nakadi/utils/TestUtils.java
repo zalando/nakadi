@@ -89,6 +89,10 @@ public class TestUtils {
         return IOUtils.toString(clazz.getResourceAsStream(resourceName));
     }
 
+    public static String getStringFromFile(final String resourceName) throws IOException {
+        return Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
+    }
+
     public static EventType buildEventType(final String name, final JSONObject schema) {
         final EventType et = new EventType();
         et.setName(name);
