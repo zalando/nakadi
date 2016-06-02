@@ -140,7 +140,7 @@ public class EventStreamController {
                         streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
 
                 response.setStatus(HttpStatus.OK.value());
-                response.setContentType("text/plain"); // TODO: must be aligned with API
+                response.setContentType("application/x-json-stream");
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
                         streamConfig);
 

@@ -253,8 +253,8 @@ public class EventStreamControllerTest {
                 ));
 
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
-        assertThat(contentTypeCaptor.getValue(), equalTo("text/plain"));
-
+        assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
+        
         verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_EVENT_TYPE), eq(ImmutableList.of(new Cursor("0", "0"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
                 eq(streamConfig));
