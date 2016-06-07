@@ -4,6 +4,7 @@ import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.CachingEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
+import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
@@ -59,5 +60,10 @@ public class RepositoriesConfig {
 
     private EventTypeRepository dbRepo() {
         return new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
+    }
+
+    @Bean
+    public SubscriptionDbRepository subscriptionsRepository() {
+        return new SubscriptionDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
     }
 }

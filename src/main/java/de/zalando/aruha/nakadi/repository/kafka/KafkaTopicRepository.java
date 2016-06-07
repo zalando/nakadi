@@ -20,6 +20,7 @@ import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import java.util.stream.Stream;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
@@ -230,6 +231,30 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
+    public Map<String, Long> materializePositions(final String topicId, String position) throws ServiceUnavailableException {
+        try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+            final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
+                    .partitionsFor(topicId)
+                    .stream()
+                    .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
+                    .toArray(org.apache.kafka.common.TopicPartition[]::new);
+            if (position.equals(Cursor.BEFORE_OLDEST_OFFSET)) {
+                consumer.seekToBeginning(kafkaTPs);
+            } else if (position.equals(Cursor.AFTER_NEWEST_OFFSET)) {
+                consumer.seekToEnd(kafkaTPs);
+            } else {
+                throw new ServiceUnavailableException("Bad offset specification " + position + " for topic " + topicId);
+            }
+            return Stream.of(kafkaTPs).collect(Collectors.toMap(
+                    tp -> String.valueOf(tp.partition()),
+                    consumer::position));
+        } catch (final Exception e) {
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+        }
+
+    }
+
+    @Override
     public List<String> listPartitionNames(final String topicId) {
         return unmodifiableList(kafkaFactory.getProducer().partitionsFor(topicId)
                 .stream()
@@ -274,6 +299,10 @@ public class KafkaTopicRepository implements TopicRepository {
         catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partition offsets", e);
         }
+    }
+
+    public Consumer<String, String> createKafkaConsumer() {
+        return kafkaFactory.getConsumer();
     }
 
     @Override

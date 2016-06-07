@@ -14,6 +14,7 @@ import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Manages access to topic information.
@@ -36,9 +37,13 @@ public interface TopicRepository {
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
+    Map<String, Long> materializePositions(final String topicId, String position) throws ServiceUnavailableException;
+
     List<String> listPartitionNames(final String topicId);
 
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 
     EventConsumer createEventConsumer(String topic, List<Cursor> cursors) throws NakadiException, InvalidCursorException;
+
+
 }
