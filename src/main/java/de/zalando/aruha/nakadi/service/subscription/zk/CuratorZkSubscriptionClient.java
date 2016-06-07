@@ -35,18 +35,18 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
     @Override
     public void runLocked(final Runnable function) {
-        log.info("Taking runLocked for " + function.hashCode());
+        log.info("Taking lock for " + function.hashCode());
         try {
             lock.acquire();
             log.debug("Lock taken " + function.hashCode());
             try {
                 function.run();
             } finally {
-                log.info("Releasing runLocked for " + function.hashCode());
+                log.info("Releasing lock for " + function.hashCode());
                 try {
                     lock.release();
                 } catch (final Exception e) {
-                    log.error("Failed to release runLocked", e);
+                    log.error("Failed to release lock", e);
                     throw e;
                 }
                 log.debug("Lock released " + function.hashCode());
