@@ -7,7 +7,6 @@ import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class KafkaClient {
     private final Subscription subscription;
