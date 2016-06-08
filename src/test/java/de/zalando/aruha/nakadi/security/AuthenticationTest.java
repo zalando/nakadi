@@ -17,6 +17,8 @@ import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
 import static org.hamcrest.Matchers.isOneOf;
 import static org.hamcrest.Matchers.not;
+
+import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -123,6 +125,11 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
+        public SubscriptionDbRepository subscriptionRepository() {
+            return mock(SubscriptionDbRepository.class);
+        }
+
+        @Bean
         public EventTypeCache eventTypeCache() {
             return mock(EventTypeCache.class);
         }
@@ -147,7 +154,8 @@ public abstract class AuthenticationTest {
             new Endpoint(POST, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_WRITE_SCOPE),
             new Endpoint(GET, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/event-types/foo/partitions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
-            new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
+            new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(POST, "/subscriptions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
 
     protected static final List<Endpoint> endpointsForUidScope = ImmutableList.of(
             new Endpoint(GET, "/metrics", TOKEN_WITH_UID_SCOPE),
