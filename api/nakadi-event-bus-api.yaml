@@ -781,8 +781,8 @@ paths:
           description: Client is not authorized to perform this operation
           schema:
             $ref: '#/definitions/Problem'
-        '400':
-          description: Bad Request
+        '404':
+          description: EventType(s) not found.
           schema:
             $ref: '#/definitions/Problem'
         '422':
