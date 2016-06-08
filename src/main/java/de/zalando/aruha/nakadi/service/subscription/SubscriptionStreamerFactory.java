@@ -10,10 +10,13 @@ import de.zalando.aruha.nakadi.service.subscription.zk.CuratorZkSubscriptionClie
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SubscriptionStreamerFactory {
+    @Value("${nakadi.kafka.poll.timeoutMs}")
+    private long kafkaPollTimeout;
     private final ZooKeeperHolder zkHolder;
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final KafkaTopicRepository topicRepository;
@@ -53,7 +56,8 @@ public class SubscriptionStreamerFactory {
                 executorService,
                 zkClient,
                 kafkaClient,
-                new ExactWeightRebalancer());
+                new ExactWeightRebalancer(),
+                kafkaPollTimeout);
 
         // register exception listener to die fast on zookeeper exceptions.
         zkClient.setExceptionListener(streamer::onZkException);

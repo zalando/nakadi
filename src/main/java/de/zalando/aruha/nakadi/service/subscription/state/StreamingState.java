@@ -102,10 +102,10 @@ class StreamingState extends State {
         }
         if (kafkaConsumer.assignment().isEmpty() || pollPaused) {
             // Small optimization not to waste CPU while not yet assigned to any partitions
-            this.context.scheduleTask(this::pollDataFromKafka, 100, TimeUnit.MILLISECONDS);
+            this.context.scheduleTask(this::pollDataFromKafka, context.kafkaPollTimeout, TimeUnit.MILLISECONDS);
             return;
         }
-        final ConsumerRecords<String, String> records = kafkaConsumer.poll(100);
+        final ConsumerRecords<String, String> records = kafkaConsumer.poll(context.kafkaPollTimeout);
         if (!records.isEmpty()) {
             for (final TopicPartition tp : records.partitions()) {
                 final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition()));

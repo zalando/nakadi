@@ -22,6 +22,7 @@ public class StreamingContext implements SubscriptionStreamer {
     public final ZkSubscriptionClient zkClient;
     public final KafkaClient kafkaClient;
     public final SubscriptionOutput out;
+    public final long kafkaPollTimeout;
 
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
@@ -39,7 +40,8 @@ public class StreamingContext implements SubscriptionStreamer {
             final ScheduledExecutorService timer,
             final ZkSubscriptionClient zkClient,
             final KafkaClient kafkaClient,
-            final BiFunction<Session[], Partition[], Partition[]> rebalancer) {
+            final BiFunction<Session[], Partition[], Partition[]> rebalancer,
+            final long kafkaPollTimeout) {
         this.out = out;
         this.parameters = parameters;
         this.session = session;
@@ -48,6 +50,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.zkClient = zkClient;
         this.currentState = new StreamCreatedState(this);
         this.kafkaClient = kafkaClient;
+        this.kafkaPollTimeout = kafkaPollTimeout;
     }
 
     @Override
