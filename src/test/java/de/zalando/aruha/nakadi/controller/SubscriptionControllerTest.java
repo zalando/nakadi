@@ -1,14 +1,14 @@
 package de.zalando.aruha.nakadi.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
-import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
+import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
@@ -17,20 +17,20 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.validation.Errors;
-import org.springframework.validation.FieldError;
 import org.zalando.problem.Problem;
-import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
-import java.util.Arrays;
 import java.util.Set;
 
+import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -43,14 +43,16 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class SubscriptionControllerTest {
 
-    public static final String PROBLEM_CONTENT_TYPE = "application/problem+json";
+    private static final String PROBLEM_CONTENT_TYPE = "application/problem+json";
 
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
+    private final JsonTestHelper jsonHelper;
 
     public SubscriptionControllerTest() throws Exception {
+        jsonHelper = new JsonTestHelper(objectMapper);
 
         final SubscriptionController controller = new SubscriptionController(subscriptionRepository, eventTypeRepository);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
@@ -116,11 +118,29 @@ public class SubscriptionControllerTest {
         checkForProblem(postSubscription(subscription), expectedProblem);
     }
 
+    @Test
+    public void whenSubscriptionExistsThenReturnIt() throws Exception {
+        final Subscription subscription = createSubscription("app", ImmutableSet.of("myET"));
+        doThrow(new DuplicatedSubscriptionException("", null)).when(subscriptionRepository).saveSubscription(any());
+
+        final Subscription existingSubscription = createSubscription("app", ImmutableSet.of("myET"));
+        existingSubscription.setId("123");
+        existingSubscription.setStartFrom(Subscription.InitialPosition.BEGIN);
+        existingSubscription.setCreatedAt(new DateTime(DateTimeZone.UTC));
+        when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
+                .thenReturn(existingSubscription);
+
+        postSubscription(subscription)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))));
+    }
+
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {
         resultActions
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
     private Subscription createSubscription(final String owningApplication, final Set<String> eventTypes) {
@@ -141,19 +161,4 @@ public class SubscriptionControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private Problem invalidProblem(final String field, final String description) {
-        final FieldError[] fieldErrors = {new FieldError("", field, description)};
-
-        final Errors errors = mock(Errors.class);
-        when(errors.getAllErrors()).thenReturn(Arrays.asList(fieldErrors));
-        return new ValidationProblem(errors);
-    }
-
-    private SameJSONAs<? super String> matchesProblem(final Problem expectedProblem) throws JsonProcessingException {
-        return sameJSONAs(asJsonString(expectedProblem));
-    }
-
-    private String asJsonString(final Object object) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(object);
-    }
 }

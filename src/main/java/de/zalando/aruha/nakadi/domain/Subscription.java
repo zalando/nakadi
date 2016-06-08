@@ -14,7 +14,7 @@ import static de.zalando.aruha.nakadi.domain.Subscription.InitialPosition.END;
 
 public class Subscription {
 
-    enum InitialPosition {
+    public enum InitialPosition {
         BEGIN,
         END
     }
