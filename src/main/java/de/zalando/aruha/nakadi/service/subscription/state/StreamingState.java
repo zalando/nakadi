@@ -51,7 +51,7 @@ class StreamingState extends State {
         this.topologyChangeSubscription = context.zkClient.subscribeForTopologyChanges(() -> context.addTask(this::topologyChanged));
         // and call directly
         topologyChanged();
-        this.context.addTask(this::poll);
+        this.context.addTask(this::pollDataFromKafka);
         this.context.scheduleTask(this::checkBatchTimeouts, context.parameters.batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         if (null != context.parameters.streamTimeoutMillis) {
@@ -88,17 +88,21 @@ class StreamingState extends State {
         final Map<Partition.PartitionKey, Long> uncommited = offsets.entrySet().stream()
                 .filter(e -> !e.getValue().isCommited())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
-        context.switchState(new ClosingState(context, uncommited));
+        if (uncommited.isEmpty()) {
+            context.switchState(new CleanupState(context));
+        } else {
+            context.switchState(new ClosingState(context, uncommited, lastCommitMillis));
+        }
     }
 
-    private void poll() {
+    private void pollDataFromKafka() {
         if (!isCurrent() || null == kafkaConsumer) {
             LOG.info("Poll process from kafka is stopped, because state is switched or switching");
             return;
         }
         if (kafkaConsumer.assignment().isEmpty() || pollPaused) {
             // Small optimization not to waste CPU while not yet assigned to any partitions
-            this.context.scheduleTask(this::poll, 100, TimeUnit.MILLISECONDS);
+            this.context.scheduleTask(this::pollDataFromKafka, 100, TimeUnit.MILLISECONDS);
             return;
         }
         final ConsumerRecords<String, String> records = kafkaConsumer.poll(100);
@@ -115,9 +119,9 @@ class StreamingState extends State {
             this.context.addTask(this::streamToOutput);
         }
         // Yep, no timeout. All waits are in kafka.
-        // It works because only one poll task is present in queue each time. Poll process will stop when this state
+        // It works because only one pollDataFromKafka task is present in queue each time. Poll process will stop when this state
         // will be changed to any other state.
-        this.context.addTask(this::poll);
+        this.context.addTask(this::pollDataFromKafka);
     }
 
     private long getMessagesAllowedToSend() {
