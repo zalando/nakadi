@@ -10,8 +10,14 @@ import java.util.Collections;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.newTreeSet;
+import static de.zalando.aruha.nakadi.domain.Subscription.InitialPosition.END;
 
 public class Subscription {
+
+    enum InitialPosition {
+        BEGIN,
+        END
+    }
 
     @Nullable
     private String id;
@@ -26,6 +32,8 @@ public class Subscription {
     private String consumerGroup = "none";
 
     private DateTime createdAt = new DateTime(DateTimeZone.UTC);
+
+    private InitialPosition startFrom = END;
 
     public String getId() {
         return id;
@@ -67,22 +75,32 @@ public class Subscription {
         this.createdAt = createdAt;
     }
 
+    public InitialPosition getStartFrom() {
+        return startFrom;
+    }
+
+    public void setStartFrom(final InitialPosition startFrom) {
+        this.startFrom = startFrom;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final Subscription that = (Subscription) o;
         return id != null ? id.equals(that.id) : that.id == null && owningApplication.equals(that.owningApplication) &&
-                eventTypes.equals(that.eventTypes) && consumerGroup.equals(that.consumerGroup) && createdAt.equals(that.createdAt);
+                eventTypes.equals(that.eventTypes) && consumerGroup.equals(that.consumerGroup) &&
+                createdAt.equals(that.createdAt) && startFrom.equals(that.startFrom);
     }
 
     @Override
     public int hashCode() {
         int result = id != null ? id.hashCode() : 0;
-        result = 31 * result + owningApplication.hashCode();
-        result = 31 * result + eventTypes.hashCode();
-        result = 31 * result + consumerGroup.hashCode();
-        result = 31 * result + createdAt.hashCode();
+        result = 31 * result + (owningApplication != null ? owningApplication.hashCode() : 0);
+        result = 31 * result + (eventTypes != null ? eventTypes.hashCode() : 0);
+        result = 31 * result + (consumerGroup != null ? consumerGroup.hashCode() : 0);
+        result = 31 * result + (createdAt != null ? createdAt.hashCode() : 0);
+        result = 31 * result + (startFrom != null ? startFrom.hashCode() : 0);
         return result;
     }
 }
