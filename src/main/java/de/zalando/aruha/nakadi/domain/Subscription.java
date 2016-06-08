@@ -29,10 +29,13 @@ public class Subscription {
     @Size(min = 1, max = 1)
     private Set<String> eventTypes;
 
+    @NotNull
     private String consumerGroup = "none";
 
+    @NotNull
     private DateTime createdAt = new DateTime(DateTimeZone.UTC);
 
+    @NotNull
     private InitialPosition startFrom = END;
 
     public String getId() {

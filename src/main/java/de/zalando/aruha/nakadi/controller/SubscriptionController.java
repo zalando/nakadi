@@ -68,7 +68,7 @@ public class SubscriptionController {
                 final String errorMessage = "Failed to create subscription, event type(s) not found: '" +
                         StringUtils.join(noneExistingEventTypes, "','") + "'";
                 LOG.debug(errorMessage);
-                create(NOT_FOUND, errorMessage, nativeWebRequest);
+                return create(NOT_FOUND, errorMessage, nativeWebRequest);
             }
 
             // generate subscription id and try to create subscription in DB
