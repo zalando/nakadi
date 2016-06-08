@@ -3,12 +3,10 @@ package de.zalando.aruha.nakadi.webservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
-import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.Subscription;
-import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.apache.http.HttpStatus;
 import org.junit.Test;
 
@@ -27,7 +25,6 @@ public class SubscriptionAT extends BaseAT {
 
     private static final String ENDPOINT = "/subscriptions";
     private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-    private static final JsonTestHelper jsonHelper = new JsonTestHelper(mapper);
 
     @Test
     public void testSubscriptionCreation() throws IOException {
@@ -45,7 +42,7 @@ public class SubscriptionAT extends BaseAT {
         response
                 .then()
                 .statusCode(HttpStatus.SC_CREATED)
-                .contentType(ContentType.JSON)
+                .contentType(JSON)
                 .body("owning_application", equalTo("app"))
                 .body("event_types", containsInAnyOrder(ImmutableSet.of(eventType.getName()).toArray()))
                 .body("consumer_group", not(isEmptyString()))
@@ -67,7 +64,7 @@ public class SubscriptionAT extends BaseAT {
         response
                 .then()
                 .statusCode(HttpStatus.SC_OK)
-                .contentType(ContentType.JSON);
+                .contentType(JSON);
 
         // check that second time already existing subscription was returned
         final Subscription subSecond = mapper.readValue(response.print(), Subscription.class);
