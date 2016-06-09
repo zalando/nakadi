@@ -178,13 +178,7 @@ paths:
       description: |
         Creates a new `EventType`.
 
-        **Implementation note:** The creation of an EventType implicitly creates the structures in
-        the backing messaging implementation needed for the reception and persistence of the
-        Events. Considering that at this time only Kafka is used, this corresponds to the creation
-        of a Topic. If so desired, clients can interact directly with the topic using the low level
-        API (for existing restrictions see the corresponding methods on the topic-api).
-
-        The fields enrichment-strategies and partition-resolution-strategy
+        The fields validation-strategies, enrichment-strategies and partition-resolution-strategy
         have all an effect on the incoming Event of this EventType. For its impacts on the reception
         of events please consult the Event submission API methods.
 
