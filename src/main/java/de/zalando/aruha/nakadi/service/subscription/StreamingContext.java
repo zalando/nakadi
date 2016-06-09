@@ -78,14 +78,16 @@ public class StreamingContext implements SubscriptionStreamer {
 
     @Override
     public void stream() throws InterruptedException {
-        currentState = new State() {
-            @Override
-            public void onEnter() {
-            }
-        };
+        streamInternal(new StartingState());
+    }
+
+    void streamInternal(final State firstState) throws InterruptedException {
+        // Because all the work is processed inside one thread, there is no need in
+        // additional lock.
+        currentState = new StreamCreatedState(this);
 
         // Add first task - switch to starting state.
-        switchState(new StartingState());
+        switchState(firstState);
 
         while (null != currentState) {
             final Runnable task = taskQueue.poll(1, TimeUnit.MINUTES);
@@ -156,6 +158,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     private void rebalance() {
+<<<<<<< HEAD
         if (null != clientListChanges) {
             clientListChanges.refresh();
             zkClient.runLocked(() -> {
@@ -165,6 +168,30 @@ public class StreamingContext implements SubscriptionStreamer {
                     zkClient.incrementTopology();
                 }
             });
+=======
+        zkClient.lock(() -> {
+            final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
+            if (changeset != null && changeset.length > 0) {
+                Stream.of(changeset).forEach(zkClient::updatePartitionConfiguration);
+                zkClient.incrementTopology();
+            }
+        });
+    }
+
+    public void onZkException(final Exception e) {
+        LOG.error("ZK exception occurred, switching to CleanupState", e);
+        switchState(new CleanupState(this, e));
+        if (e instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public void onKafkaException(final Exception e) {
+        LOG.error("Kafka exception occurred, switching to CleanupState", e);
+        switchState(new CleanupState(this, e));
+        if (e instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
+>>>>>>> ARUHA-215 Streaming context test
         }
     }
 }
