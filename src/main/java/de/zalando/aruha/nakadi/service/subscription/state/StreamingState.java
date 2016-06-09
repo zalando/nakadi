@@ -119,8 +119,8 @@ class StreamingState extends State {
             this.context.addTask(this::streamToOutput);
         }
         // Yep, no timeout. All waits are in kafka.
-        // It works because only one pollDataFromKafka task is present in queue each time. Poll process will stop when this state
-        // will be changed to any other state.
+        // It works because only one pollDataFromKafka task is present in queue each time. Poll process will stop
+        // when this state will be changed to any other state.
         this.context.addTask(this::pollDataFromKafka);
     }
 
@@ -296,6 +296,10 @@ class StreamingState extends State {
                             k -> new TopicPartition(k.topic, Integer.valueOf(k.partition))));
             // Ignore order
             kafkaConsumer.assign(new ArrayList<>(kafkaKeys.values()));
+            // Check if offsets are available in kafka
+            kafkaConsumer.seekToBeginning(kafkaKeys.values().toArray(new TopicPartition[kafkaKeys.size()]));
+            kafkaKeys.forEach((key, kafka) -> offsets.get(key).ensureDataAvailable(kafkaConsumer.position(kafka)));
+            //
             kafkaKeys.forEach((k, v) -> kafkaConsumer.seek(v, offsets.get(k).getSentOffset()));
             offsets.values().forEach(PartitionData::clearEvents);
         }

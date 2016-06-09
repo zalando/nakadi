@@ -59,6 +59,26 @@ class PartitionData {
         return keepAlivesInARow;
     }
 
+    /**
+     * Ensures, that last commit and last send positions corresponds to offsets available in kafka.
+     * The situation is possible whenever old subscriptions are stared. commit offset is N, but kafka
+     * already deleted all the data with offsets > N (for example [N, M]). One need to start streaming with
+     * new positions, and update commit offset as well (because it could happened that there are no messages to
+     * stream according to window size)
+     *
+     * @param position First position available in kafka
+     */
+    void ensureDataAvailable(final long position) {
+        if (position > commitOffset) {
+            LOG.warn("Oldest kafka position is " + position + " and commit offset is " + commitOffset + ", updating");
+            commitOffset = position;
+        }
+        if (position > sentOffset) {
+            LOG.warn("Oldest kafka position is " + position + " and sent offset is " + commitOffset + ", updating");
+            sentOffset = position;
+        }
+    }
+
     static class CommitResult {
         final boolean seekOnKafka;
         final long commitedCount;
