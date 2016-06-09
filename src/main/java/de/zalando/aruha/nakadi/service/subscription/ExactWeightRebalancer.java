@@ -49,7 +49,7 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
         }
 
         if (!unassignedPartitions.isEmpty()) {
-            // 3. Assign partitions to any nodes who are waiting for it, calculate new hash.
+            // 3. Assign partitions to any nodes who are waiting for it.
             final List<Partition> result = new ArrayList<>();
             for (int idx = 0; idx < activeClientIds.size(); ++idx) {
                 final String clientId = activeClientIds.get(idx);
@@ -72,7 +72,7 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
                                 result.add(toMove.toState(Partition.State.ASSIGNED, clientId, null));
                             }
                         }
-                    } else { // ASSIGNED
+                    } else { // REASSIGNING
                         if (activeClientIds.contains(toMove.getSession())) {
                             // Taking from existing client.
                             result.add(toMove.toState(Partition.State.REASSIGNING, toMove.getSession(), clientId));
