@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory;
 class PartitionData {
     private final ZKSubscription subscription;
     private final NavigableMap<Long, String> nakadiEvents = new TreeMap<>();
-    private Long commitOffset;
-    private Long sentOffset;
+    private long commitOffset;
+    private long sentOffset;
     private long lastSendMillis;
     private int keepAlivesInARow;
     private static final Logger LOG = LoggerFactory.getLogger(PartitionData.class);
@@ -24,7 +24,7 @@ class PartitionData {
     }
 
     SortedMap<Long, String> takeEventsToStream(final long currentTimeMillis, final int batchSize, final long batchTimeoutMillis) {
-        if (nakadiEvents.size() >= batchSize || (currentTimeMillis - lastSendMillis) > batchTimeoutMillis) {
+        if (nakadiEvents.size() >= batchSize || (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis) {
             lastSendMillis = currentTimeMillis;
             return extract(batchSize);
         } else {
@@ -32,7 +32,7 @@ class PartitionData {
         }
     }
 
-    Long getSentOffset() {
+    long getSentOffset() {
         return sentOffset;
     }
 
@@ -42,7 +42,7 @@ class PartitionData {
 
     private SortedMap<Long, String> extract(final int count) {
         final SortedMap<Long, String> result = new TreeMap<>();
-        for (int i = 0; i < Math.min(count, nakadiEvents.size()); ++i) {
+        for (int i = 0; i < count && !nakadiEvents.isEmpty(); ++i) {
             final Long offset = nakadiEvents.firstKey();
             result.put(offset, nakadiEvents.remove(offset));
         }
@@ -94,6 +94,7 @@ class PartitionData {
         if (offset > sentOffset) {
             LOG.error("Commit in future: current: " + sentOffset + ", commited " + commitOffset + " will skip sending obsolete data");
             seekKafka = true;
+            sentOffset = offset;
         }
         final long commited;
         if (offset >= commitOffset) {
