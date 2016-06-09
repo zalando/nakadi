@@ -48,6 +48,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.rebalancer = rebalancer;
         this.timer = timer;
         this.zkClient = zkClient;
+        this.currentState = null;
         this.kafkaClient = kafkaClient;
         this.kafkaPollTimeout = kafkaPollTimeout;
     }
@@ -84,7 +85,11 @@ public class StreamingContext implements SubscriptionStreamer {
     void streamInternal(final State firstState) throws InterruptedException {
         // Because all the work is processed inside one thread, there is no need in
         // additional lock.
-        currentState = new StreamCreatedState(this);
+        currentState = new State(this) {
+            @Override
+            public void onEnter() {
+            }
+        };
 
         // Add first task - switch to starting state.
         switchState(firstState);
@@ -158,7 +163,6 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     private void rebalance() {
-<<<<<<< HEAD
         if (null != clientListChanges) {
             clientListChanges.refresh();
             zkClient.runLocked(() -> {
@@ -168,30 +172,6 @@ public class StreamingContext implements SubscriptionStreamer {
                     zkClient.incrementTopology();
                 }
             });
-=======
-        zkClient.lock(() -> {
-            final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
-            if (changeset != null && changeset.length > 0) {
-                Stream.of(changeset).forEach(zkClient::updatePartitionConfiguration);
-                zkClient.incrementTopology();
-            }
-        });
-    }
-
-    public void onZkException(final Exception e) {
-        LOG.error("ZK exception occurred, switching to CleanupState", e);
-        switchState(new CleanupState(this, e));
-        if (e instanceof InterruptedException) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    public void onKafkaException(final Exception e) {
-        LOG.error("Kafka exception occurred, switching to CleanupState", e);
-        switchState(new CleanupState(this, e));
-        if (e instanceof InterruptedException) {
-            Thread.currentThread().interrupt();
->>>>>>> ARUHA-215 Streaming context test
         }
     }
 }
