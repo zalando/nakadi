@@ -295,7 +295,7 @@ paths:
         The name field cannot be changed. Attempting to do so will result in a 422 failure.
 
         At this moment changes in the schema are not supported and will produce a 422
-        failure. (TODO: define conditions for backwards compatible extensions in the schema)
+        failure. (todo: define conditions for backwards compatible extensions in the schema)
       parameters:
         - name: name
           in: path
@@ -345,11 +345,15 @@ paths:
       security:
         - oauth2: ['nakadi.config.write']
       description: |
-        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of
-        this `EventType` will also be removed.  **Note**: Kafka's topic deletion happens
-        asynchronously with respect to this DELETE call; therefore creation of an equally named
-        `EventType` before the underlying topic deletion is complete will not succeed (failure is a
-        409 Conflic).
+        Deletes an `EventType` identified by its name. All events in the `EventType`'s stream' will
+        also be removed. **Note**: deletion happens asynchronously, which has the following
+        consequences:
+         
+         * Creation of an equally named `EventType` before the underlying topic deletion is complete
+         might not succeed (failure is a 409 Conflict).
+ 
+         * Events in the stream may be visible for a short period of time before being removed.
+
       parameters:
         - name: name
           in: path
