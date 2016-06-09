@@ -502,8 +502,10 @@ paths:
         `EventStreamBatch` contains a chunk of Events and a `Cursor` pointing to the **end** of the
         chunk (i.e. last delivered Event). The cursor might specify the offset with the symbolic
         value `BEGIN`, which will open the stream starting from the oldest available offset in the
-        partition.  Currently this format is the only one supported by the system, but in the future
-        other MIME types will be supported (like `application/event-stream`).
+        partition.
+
+        Currently the `application/x-json-stream` format is the only one supported by the system,
+        but in the future other media types may be supported.
 
         If streaming for several distinct partitions, each one is an independent `EventStreamBatch`.
 
