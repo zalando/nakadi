@@ -70,6 +70,12 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
     }
 
     static int[] splitByWeight(final int itemCount, final int[] weigths) {
+        if (itemCount < weigths.length) {
+            throw new IllegalArgumentException("Can not rebalance " + itemCount + " onto " + weigths.length);
+        }
+        if (IntStream.of(weigths).filter(w -> w <= 0).findAny().isPresent()) {
+            throw new IllegalArgumentException("Weight can not be below zero: " + Arrays.toString(weigths));
+        }
         final int totalWeight = IntStream.of(weigths).sum();
         final int fixed = itemCount / totalWeight;
         final int[] result = IntStream.of(weigths).map(w -> fixed * w).toArray();
