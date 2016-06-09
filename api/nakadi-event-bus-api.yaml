@@ -2,9 +2,7 @@ swagger: '2.0'
 info:
   title: Nakadi Event Bus API Definition
   description: |
-    -----------
-    Definitions
-    -----------
+
     Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient
     API.  In doing this, Nakadi abstracts away, as much as possible, details of the backing
     messaging infrastructure. The single currently supported messaging infrastructure is Kafka
@@ -60,34 +58,35 @@ info:
     short term plan to be included.*
 
 
-    Scope and status of this document
+    Scope and status of the API
     ---------------------------------
 
-    The present API specification is in **draft** state and is subject to change.
+    The API specification is in **draft** state and is subject to change.
 
-    In this document, ready for review are included:
+    In this document, you'll find:
+    
     * The Schema Registry API, including configuration possibilities for the Schema, Validation,
     Enrichment and Partitioning of Events, and their effects on reception of Events.
 
-    * The stantardised event format (see definition of Event, BusinessEvent and DataChangeEvent)
-    (Note: at a later moment this will be configurable and not be inherent part of this API).
+    * The existing event format (see definition of Event, BusinessEvent and DataChangeEvent)
+    (Note: in the future this is planned to be configurable and not an inherent part of this API).
 
-    * Unmanaged API (low level).
-
-    Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not
-    included in this version of this specification.
+    * Unmanaged API: provides low level access to an event stream with information that allows
+      consumers to detect their position for each partition in the stream via a `Cursor`.
 
     Notable omissions here are:
 
-    * The contract between Nakadi and clients in the context of the high-level API (i.e. the process
-    for clients to establish subscriptions).
+    * The Managed (or "high level") API: this will be a contract between Nakadi and consumers to
+    allow the latter to establish subscriptions and have offset information managed by the Nakadi
+    service.
 
-    * Enrichment procedure.
+    * Enrichment options. Enrichment is currently limited to metadata enrichment for the business
+      and data change types, but the API is designed to allow more options.
 
-    * Security scopes (OAuth) for the different operations
+    * More extensive security scopes (OAuth) for the different operations in the API.
 
-    * Explicit control of (in case of Kafka as underlying messaging broker) topic's creation
-    parameters (number of partitions, retention times, etc), as well as their modification.
+    * Explicit control of an event type's creation parameters (the number of partitions, retention
+      times, etc), as well as their modification.
 
 
   version: '0.5.1'
