@@ -92,7 +92,6 @@ class PartitionData {
     CommitResult onCommitOffset(final Long offset) {
         boolean seekKafka = false;
         if (offset > sentOffset) {
-            // TODO: Handle this situation! Need to reconfigure kafka consumer, otherwise sending process will hang up.
             LOG.error("Commit in future: current: " + sentOffset + ", commited " + commitOffset + " will skip sending obsolete data");
             seekKafka = true;
         }
@@ -101,8 +100,6 @@ class PartitionData {
             commited = offset - commitOffset;
             commitOffset = offset;
         } else {
-            // TODO: Handle this situation! Need to reconfigure kafka consumer, otherwise streaming will continue from current position
-            // Ignore rollback.
             LOG.error("Commits in past are evil!: Commiting in " + offset + " while current commit is " + commitOffset);
             seekKafka = true;
             commitOffset = offset;
