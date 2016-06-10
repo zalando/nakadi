@@ -1,5 +1,7 @@
 package de.zalando.aruha.nakadi.service.subscription.model;
 
+import java.util.Collection;
+
 public class Partition {
     public static class PartitionKey {
         public final String topic;
@@ -55,6 +57,41 @@ public class Partition {
 
     public Partition toState(final State state, final String session, final String nextSession) {
         return new Partition(key, session, nextSession, state);
+    }
+
+    public Partition moveToSessionId(final String sessionId, final Collection<String> existingSessionIds) {
+        switch (state) {
+            case UNASSIGNED:
+                return toState(State.ASSIGNED, sessionId, null);
+            case ASSIGNED:
+                if (sessionId.equals(this.session) || !existingSessionIds.contains(this.session)) {
+                    return toState(State.ASSIGNED, sessionId, null);
+                } else {
+                    return toState(State.REASSIGNING, this.session, sessionId);
+                }
+            case REASSIGNING:
+                if (!existingSessionIds.contains(this.session)) {
+                    return toState(State.ASSIGNED, sessionId, null);
+                } else {
+                    return toState(State.REASSIGNING, this.session, sessionId);
+                }
+            default:
+                throw new IllegalStateException("Unsupported current state " + state);
+        }
+    }
+
+    public boolean mustBeRebalanced(final Collection<String> activeSessionIds) {
+        switch (state) {
+            case UNASSIGNED:
+                return true;
+            case ASSIGNED:
+                return !activeSessionIds.contains(session);
+            case REASSIGNING:
+                return !activeSessionIds.contains(session) || !activeSessionIds.contains(nextSession);
+            default:
+                throw new IllegalStateException("State of partition " + state + " is not supported");
+        }
+
     }
 
     public PartitionKey getKey() {

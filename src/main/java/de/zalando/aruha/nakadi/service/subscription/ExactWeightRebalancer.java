@@ -15,72 +15,51 @@ import java.util.stream.Stream;
 class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partition[]> {
     @Override
     public Partition[] apply(final Session[] sessions, final Partition[] currentPartitions) {
-        final Map<String, Session> activeClients = Stream.of(sessions).collect(Collectors.toMap(c -> c.id, c -> c));
-        // sorted client ids.
-        final List<String> activeClientIds = activeClients.keySet().stream().sorted().collect(Collectors.toList());
+        final Map<String, Session> activeSessions = Stream.of(sessions).collect(Collectors.toMap(c -> c.id, c -> c));
+        // sorted session ids.
+        final List<String> activeSessionIds = activeSessions.keySet().stream().sorted().collect(Collectors.toList());
         // the main part of rebalance - calculate count for each partition.
-        final int[] partitionsPerClient = splitByWeight(
+        final int[] partitionsPerSession = splitByWeight(
                 currentPartitions.length,
-                activeClientIds.stream().mapToInt(c -> activeClients.get(c).weight).toArray());
+                activeSessionIds.stream().mapToInt(c -> activeSessions.get(c).weight).toArray());
 
-        // Stage 1. Select partitions that are not assigned to any EXISTING client.
-        final Set<Partition> unassignedPartitions = Stream.of(currentPartitions)
-                .filter(p -> Partition.State.UNASSIGNED.equals(p.getState()) || !activeClients.containsKey(p.getSessionOrNextSession()) || !activeClients.containsKey(p.getSession()))
+        // Stage 1. Select partitions that are not assigned to any EXISTING session.
+        final Set<Partition> toRebalance = Stream.of(currentPartitions)
+                .filter(p -> p.mustBeRebalanced(activeSessionIds))
                 .collect(Collectors.toSet());
 
-        // State 2. Remove partitions from clients that have too many of them.
-        // 2.1. collect information per client.
+        // State 2. Remove partitions from sessions that have too many of them.
+        // 2.1. collect information per session.
         final Map<String, List<Partition>> partitions = Stream.of(currentPartitions)
-                .filter(p -> !unassignedPartitions.contains(p))
+                .filter(p -> !toRebalance.contains(p))
                 .collect(Collectors.groupingBy(Partition::getSessionOrNextSession));
         // 2.2. Remove
-        for (int idx = 0; idx < activeClientIds.size(); ++idx) {
-            final String clientId = activeClientIds.get(idx);
-            final int suggestedCount = partitionsPerClient[idx];
-            int toTake = (partitions.containsKey(clientId) ? partitions.get(clientId).size() : 0) - suggestedCount;
+        for (int idx = 0; idx < activeSessionIds.size(); ++idx) {
+            final String sessionId = activeSessionIds.get(idx);
+            final int suggestedCount = partitionsPerSession[idx];
+            int toTake = (partitions.containsKey(sessionId) ? partitions.get(sessionId).size() : 0) - suggestedCount;
             while (toTake > 0) {
-                final List<Partition> candidates = partitions.get(clientId);
+                final List<Partition> candidates = partitions.get(sessionId);
                 final Partition toTakeItem = candidates.stream().filter(p -> p.getState() == Partition.State.REASSIGNING).findAny().orElse(
                         candidates.get(candidates.size() - 1));
                 candidates.remove(toTakeItem);
-                unassignedPartitions.add(toTakeItem);
+                toRebalance.add(toTakeItem);
                 toTake -= 1;
             }
         }
 
-        if (!unassignedPartitions.isEmpty()) {
+        if (!toRebalance.isEmpty()) {
             // 3. Assign partitions to any nodes who are waiting for it.
             final List<Partition> result = new ArrayList<>();
-            for (int idx = 0; idx < activeClientIds.size(); ++idx) {
-                final String clientId = activeClientIds.get(idx);
+            for (int idx = 0; idx < activeSessionIds.size(); ++idx) {
+                final String sessionId = activeSessionIds.get(idx);
 
-                final int suggestedCount = partitionsPerClient[idx];
-                final int currentCount = partitions.containsKey(clientId) ? partitions.get(clientId).size() : 0;
+                final int suggestedCount = partitionsPerSession[idx];
+                final int currentCount = partitions.containsKey(sessionId) ? partitions.get(sessionId).size() : 0;
                 for (int i = 0; i < suggestedCount - currentCount; ++i) {
-                    final Partition toMove = unassignedPartitions.iterator().next();
-                    unassignedPartitions.remove(toMove);
-
-                    if (toMove.getState() == Partition.State.UNASSIGNED) {
-                        result.add(toMove.toState(Partition.State.ASSIGNED, clientId, null));
-                    } else if (toMove.getState() == Partition.State.ASSIGNED) {
-                        if (toMove.getSession().equals(clientId)) {
-                            result.add(toMove.toState(Partition.State.ASSIGNED, clientId, null));
-                        } else {
-                            if (activeClientIds.contains(toMove.getSession())) {
-                                result.add(toMove.toState(Partition.State.REASSIGNING, toMove.getSession(), clientId));
-                            } else {
-                                result.add(toMove.toState(Partition.State.ASSIGNED, clientId, null));
-                            }
-                        }
-                    } else { // REASSIGNING
-                        if (activeClientIds.contains(toMove.getSession())) {
-                            // Taking from existing client.
-                            result.add(toMove.toState(Partition.State.REASSIGNING, toMove.getSession(), clientId));
-                        } else {
-                            // Client was dead, directly start streaming
-                            result.add(toMove.toState(Partition.State.ASSIGNED, clientId, null));
-                        }
-                    }
+                    final Partition toMove = toRebalance.iterator().next();
+                    toRebalance.remove(toMove);
+                    result.add(toMove.moveToSessionId(sessionId, activeSessionIds));
                 }
             }
             return result.toArray(new Partition[result.size()]);
