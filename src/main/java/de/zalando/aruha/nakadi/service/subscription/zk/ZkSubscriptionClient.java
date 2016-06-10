@@ -4,13 +4,8 @@ import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import java.util.Collection;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public interface ZkSubscriptionClient {
-
-    interface ZKSubscription {
-        void cancel();
-    }
 
     /**
      * Makes runLocked on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}

@@ -8,15 +8,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,87 +192,22 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         }
     }
 
-    private class ZKSessionListChanges implements ZKSubscription, Watcher {
-        private final Runnable runnable;
-        private final AtomicBoolean canceled = new AtomicBoolean(false);
-
-        private ZKSessionListChanges(final Runnable runnable) {
-            this.runnable = runnable;
-        }
-
-        final ZKSubscription init() {
-            set();
-            return this;
-        }
-
-        protected void setInternal() throws Exception {
-            curatorFramework.getChildren().usingWatcher(this).forPath(getSubscriptionPath("/clients"));
-        }
-
-        private void set() {
-            try {
-                setInternal();
-            } catch (final Exception e) {
-                throw new SubscriptionWrappedException(e);
-            }
-        }
-
-        @Override
-        public void cancel() {
-            log.info("Cancelling subscription for func " + runnable.hashCode());
-            canceled.set(true);
-        }
-
-        @Override
-        public void process(final WatchedEvent watchedEvent) {
-            if (!canceled.get()) {
-                runnable.run();
-                set();
-            }
-        }
-    }
-
     @Override
     public ZKSubscription subscribeForSessionListChanges(final Runnable listener) {
         log.info("subscribeForSessionListChanges: " + listener.hashCode());
-        return new ZKSessionListChanges(listener).init();
-    }
-
-    private class ZKTopologyChanges extends ZKSessionListChanges {
-
-        private ZKTopologyChanges(final Runnable runnable) {
-            super(runnable);
-        }
-
-        @Override
-        protected void setInternal() throws Exception {
-            curatorFramework.getData().usingWatcher(this).forPath(getSubscriptionPath("/topology"));
-        }
+        return ChangeListener.forChildren(curatorFramework, getSubscriptionPath("/sessions"), listener);
     }
 
     @Override
     public ZKSubscription subscribeForTopologyChanges(final Runnable onTopologyChanged) {
         log.info("subscribeForTopologyChanges");
-        return new ZKTopologyChanges(onTopologyChanged).init();
-    }
-
-    private class ZKOffsetChanges extends ZKSessionListChanges {
-        private final String key;
-
-        private ZKOffsetChanges(final Runnable runnable, final String key) {
-            super(runnable);
-            this.key = key;
-        }
-
-        @Override
-        protected void setInternal() throws Exception {
-            curatorFramework.getData().usingWatcher(this).forPath(key);
-        }
+        return ChangeListener.forData(curatorFramework, getSubscriptionPath("/topology"), onTopologyChanged);
     }
 
     @Override
     public ZKSubscription subscribeForOffsetChanges(final Partition.PartitionKey key, final Runnable commitListener) {
-        return new ZKOffsetChanges(commitListener, getPartitionPath(key) + "/offset").init();
+        log.info("subscribeForOffsetChanges");
+        return ChangeListener.forData(curatorFramework, getPartitionPath(key) + "/offset", commitListener);
     }
 
     @Override

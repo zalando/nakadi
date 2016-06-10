@@ -5,6 +5,7 @@ import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import de.zalando.aruha.nakadi.service.subscription.state.CleanupState;
 import de.zalando.aruha.nakadi.service.subscription.state.StartingState;
 import de.zalando.aruha.nakadi.service.subscription.state.State;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZKSubscription;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -28,7 +29,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
 
     private State currentState;
-    private ZkSubscriptionClient.ZKSubscription clientListChanges;
+    private ZKSubscription clientListChanges;
 
     private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
 
@@ -155,12 +156,15 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     private void rebalance() {
-        zkClient.runLocked(() -> {
-            final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
-            if (changeset != null && changeset.length > 0) {
-                Stream.of(changeset).forEach(zkClient::updatePartitionConfiguration);
-                zkClient.incrementTopology();
-            }
-        });
+        if (null != clientListChanges) {
+            clientListChanges.refresh();
+            zkClient.runLocked(() -> {
+                final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
+                if (changeset != null && changeset.length > 0) {
+                    Stream.of(changeset).forEach(zkClient::updatePartitionConfiguration);
+                    zkClient.incrementTopology();
+                }
+            });
+        }
     }
 }

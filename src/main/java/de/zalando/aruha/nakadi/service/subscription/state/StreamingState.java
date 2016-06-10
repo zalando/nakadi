@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.service.subscription.state;
 
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
-import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZKSubscription;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class StreamingState extends State {
-    private ZkSubscriptionClient.ZKSubscription topologyChangeSubscription;
+    private ZKSubscription topologyChangeSubscription;
     private Consumer<String, String> kafkaConsumer;
     private final Map<Partition.PartitionKey, PartitionData> offsets = new HashMap<>();
     // Maps partition barrier when releasing must be completed or stream will be closed.
@@ -45,7 +45,7 @@ class StreamingState extends State {
         // Subscribe for topology changes.
         this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
         // and call directly
-        topologyChanged();
+        reactNoTopologyChange();
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
@@ -214,6 +214,13 @@ class StreamingState extends State {
         if (!isCurrent()) {
             return;
         }
+        if (null != topologyChangeSubscription) {
+            topologyChangeSubscription.refresh();
+        }
+        reactNoTopologyChange();
+    }
+
+    private void reactNoTopologyChange() {
         getZk().runLocked(() -> {
             final Partition[] assignedPartitions = Stream.of(getZk().listPartitions())
                     .filter(p -> getSessionId().equals(p.getSession()))
@@ -302,7 +309,7 @@ class StreamingState extends State {
 
     private void addToStreaming(final Partition partition) {
         offsets.put(partition.getKey(), new PartitionData(
-                getZk().subscribeForOffsetChanges(partition.getKey(), () -> offsetChanged(partition.getKey())),
+                getZk().subscribeForOffsetChanges(partition.getKey(), () -> addTask(() -> offsetChanged(partition.getKey()))),
                 getZk().getOffset(partition.getKey())));
     }
 
@@ -320,26 +327,25 @@ class StreamingState extends State {
     }
 
     private void offsetChanged(final Partition.PartitionKey key) {
-        addTask(() -> {
-            if (offsets.containsKey(key)) {
-                final long offset = getZk().getOffset(key);
-                final PartitionData data = offsets.get(key);
-                final PartitionData.CommitResult commitResult = data.onCommitOffset(offset);
-                if (commitResult.seekOnKafka) {
-                    reconfigureKafkaConsumer(true);
-                }
-                if (commitResult.commitedCount > 0) {
-                    commitedEvents += commitResult.commitedCount;
-                    this.lastCommitMillis = System.currentTimeMillis();
-                }
-                if (null != getParameters().streamLimitEvents && getParameters().streamLimitEvents <= commitedEvents) {
-                    shutdownGracefully();
-                }
-                if (releasingPartitions.containsKey(key) && data.isCommited()) {
-                    reassignCommited();
-                }
+        if (offsets.containsKey(key)) {
+            final PartitionData data = offsets.get(key);
+            data.getSubscription().refresh();
+            final long offset = getZk().getOffset(key);
+            final PartitionData.CommitResult commitResult = data.onCommitOffset(offset);
+            if (commitResult.seekOnKafka) {
+                reconfigureKafkaConsumer(true);
             }
-        });
+            if (commitResult.commitedCount > 0) {
+                commitedEvents += commitResult.commitedCount;
+                this.lastCommitMillis = System.currentTimeMillis();
+            }
+            if (null != getParameters().streamLimitEvents && getParameters().streamLimitEvents <= commitedEvents) {
+                shutdownGracefully();
+            }
+            if (releasingPartitions.containsKey(key) && data.isCommited()) {
+                reassignCommited();
+            }
+        }
     }
 
     private void removeFromStreaming(final Partition.PartitionKey key) {

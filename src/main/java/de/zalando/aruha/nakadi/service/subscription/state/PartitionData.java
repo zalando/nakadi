@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.service.subscription.state;
 
-import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZKSubscription;
 import java.util.NavigableMap;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class PartitionData {
-    private final ZkSubscriptionClient.ZKSubscription subscription;
+    private final ZKSubscription subscription;
     private final NavigableMap<Long, String> nakadiEvents = new TreeMap<>();
     private Long commitOffset;
     private Long sentOffset;
@@ -16,7 +16,7 @@ class PartitionData {
     private int keepAlivesInARow;
     private static final Logger LOG = LoggerFactory.getLogger(PartitionData.class);
 
-    PartitionData(final ZkSubscriptionClient.ZKSubscription subscription, final Long commitOffset) {
+    PartitionData(final ZKSubscription subscription, final Long commitOffset) {
         this.subscription = subscription;
         this.commitOffset = commitOffset;
         this.sentOffset = commitOffset;
@@ -134,7 +134,7 @@ class PartitionData {
         return sentOffset - commitOffset;
     }
 
-    public ZkSubscriptionClient.ZKSubscription getSubscription() {
+    public ZKSubscription getSubscription() {
         return subscription;
     }
 }

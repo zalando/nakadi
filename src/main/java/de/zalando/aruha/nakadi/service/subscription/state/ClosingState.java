@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.service.subscription.state;
 
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
-import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZKSubscription;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,9 +15,9 @@ import org.slf4j.LoggerFactory;
 
 class ClosingState extends State {
     private final Map<Partition.PartitionKey, Long> uncommitedOffsets;
-    private final Map<Partition.PartitionKey, ZkSubscriptionClient.ZKSubscription> listeners = new HashMap<>();
+    private final Map<Partition.PartitionKey, ZKSubscription> listeners = new HashMap<>();
     private final long lastCommitMillis;
-    private ZkSubscriptionClient.ZKSubscription topologyListener;
+    private ZKSubscription topologyListener;
     private static final Logger LOG = LoggerFactory.getLogger(ClosingState.class);
 
     ClosingState(final Map<Partition.PartitionKey, Long> uncommitedOffsets, final long lastCommitMillis) {
@@ -50,7 +50,9 @@ class ClosingState extends State {
                 }
             }, timeToWaitMillis, TimeUnit.MILLISECONDS);
             topologyListener = getZk().subscribeForTopologyChanges(() -> addTask(this::onTopologyChanged));
-            onTopologyChanged();
+            reactOnTopologyChange();
+        } else {
+            switchState(new CleanupState());
         }
     }
 
@@ -58,6 +60,11 @@ class ClosingState extends State {
         if (!isCurrent()) {
             return;
         }
+        topologyListener.refresh();
+        reactOnTopologyChange();
+    }
+
+    private void reactOnTopologyChange() {
         final Map<Partition.PartitionKey, Partition> partitions = new HashMap<>();
         getZk().runLocked(() -> Stream.of(getZk().listPartitions())
                 .filter(p -> getSessionId().equals(p.getSession()))
@@ -89,7 +96,14 @@ class ClosingState extends State {
         listeners.put(
                 key,
                 getZk().subscribeForOffsetChanges(
-                        key, () -> addTask(() -> this.reactOnOffset(key))));
+                        key, () -> addTask(() -> this.offsetChanged(key))));
+        reactOnOffset(key);
+    }
+
+    private void offsetChanged(final Partition.PartitionKey key) {
+        if (listeners.containsKey(key)) {
+            listeners.get(key).refresh();
+        }
         reactOnOffset(key);
     }
 
@@ -114,7 +128,7 @@ class ClosingState extends State {
         RuntimeException exceptionCaught = null;
         for (final Partition.PartitionKey partitionKey : keys) {
             uncommitedOffsets.remove(partitionKey);
-            final ZkSubscriptionClient.ZKSubscription listener = listeners.remove(partitionKey);
+            final ZKSubscription listener = listeners.remove(partitionKey);
             if (null != listener) {
                 try {
                     listener.cancel();
