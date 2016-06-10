@@ -314,6 +314,21 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenCreateSuccessfullyWithJsonSchemaThen201() throws Exception {
+        final String et = Resources.toString(Resources.getResource("sample-event-type-json-schema.json"),
+                Charsets.UTF_8);
+
+        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+
+        Mockito.doNothing().when(topicRepository).createTopic(eq("WithJsonSchema"), any(EventTypeStatistics.class));
+
+        postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
+
+        verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
+        verify(topicRepository, times(1)).createTopic(eq("WithJsonSchema"), any(EventTypeStatistics.class));
+    }
+
+    @Test
     public void whenTopicCreationFailsRemoveEventTypeFromRepositoryAnd500() throws Exception {
 
         final EventType et = buildDefaultEventType();

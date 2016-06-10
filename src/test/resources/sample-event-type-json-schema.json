@@ -1,0 +1,17 @@
+{
+    "name": "WithJsonSchema",
+    "owning_application": "article-producer",
+    "category": "undefined",
+    "schema": {
+        "type": "json_schema",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "foo": {
+                    "type": "string"
+                }
+            },
+            "required": ["foo"]
+        }
+    }
+}
