@@ -1250,6 +1250,8 @@ definitions:
 
           To have a generic, undefined schema it is possible to define the schema as `"schema":
           "{\"additionalProperties\": true}"`.
+
+          If type of schema is JSON_SCHEMA then schema can be passed as json object for convenience.
     required:
       - type
       - schema
