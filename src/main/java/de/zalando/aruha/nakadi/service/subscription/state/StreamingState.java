@@ -122,10 +122,7 @@ class StreamingState extends State {
     private long getMessagesAllowedToSend() {
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
         final long allowDueWindowSize = getParameters().windowSizeMessages - unconfirmed;
-        if (null == getParameters().streamLimitEvents) {
-            return allowDueWindowSize;
-        }
-        return Math.min(allowDueWindowSize, getParameters().streamLimitEvents - this.sentEvents);
+        return getParameters().getMessagesAllowedToSend(allowDueWindowSize, this.sentEvents);
     }
 
     private void checkBatchTimeouts() {
@@ -339,7 +336,7 @@ class StreamingState extends State {
                 commitedEvents += commitResult.commitedCount;
                 this.lastCommitMillis = System.currentTimeMillis();
             }
-            if (null != getParameters().streamLimitEvents && getParameters().streamLimitEvents <= commitedEvents) {
+            if (getParameters().isStreamLimitReached(commitedEvents)) {
                 shutdownGracefully();
             }
             if (releasingPartitions.containsKey(key) && data.isCommited()) {

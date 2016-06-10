@@ -97,7 +97,7 @@ public class SubscriptionStreamController {
             @RequestParam(value = "window_size", required = false, defaultValue = "100") final int windowSize,
             @RequestParam(value = "commit_timeout", required = false, defaultValue = "30") final int commitTimeout,
             @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
-            @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
+            @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
             @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
             @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,

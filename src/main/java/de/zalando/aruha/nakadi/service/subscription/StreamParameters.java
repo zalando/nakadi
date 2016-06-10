@@ -11,7 +11,7 @@ public class StreamParameters {
     /**
      * Maximum number of events that could be sent in session
      */
-    public final Integer streamLimitEvents;
+    private final Long streamLimitEvents;
     /**
      * Timeout for collecting {@code batchLimitEvents} events. If not collected - send either not full batch
      * or keep alive message.
@@ -34,7 +34,7 @@ public class StreamParameters {
     public final long commitTimeoutMillis;
 
     private StreamParameters(
-            final int batchLimitEvents, final Integer streamLimitEvents, final long batchTimeoutMillis,
+            final int batchLimitEvents, final Long streamLimitEvents, final long batchTimeoutMillis,
             final Long streamTimeoutMillis, final Integer batchKeepAliveIterations, final int windowSizeMessages,
             final long commitTimeoutMillis) {
         this.batchLimitEvents = batchLimitEvents;
@@ -46,9 +46,20 @@ public class StreamParameters {
         this.commitTimeoutMillis = commitTimeoutMillis;
     }
 
+    public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {
+        if (streamLimitEvents != null) {
+            return Math.max(0, Math.min(limit, streamLimitEvents - sentSoFar));
+        }
+        return limit;
+    }
+
+    public boolean isStreamLimitReached(final long commitedEvents) {
+        return null != streamLimitEvents && streamLimitEvents <= commitedEvents;
+    }
+
     public static StreamParameters of(
             final int batchLimitEvents,
-            final Integer streamLimitEvents,
+            final Long streamLimitEvents,
             final long batchTimeoutSeconds,
             final Long streamTimeoutSeconds,
             final Integer batchKeepAliveIterations,
