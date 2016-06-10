@@ -18,8 +18,10 @@ import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -46,6 +48,9 @@ public class NakadiConfig {
     @Autowired
     private EventTypeCache eventTypeCache;
 
+    @Autowired
+    private ZookeeperConfig zookeeperConfig;
+
     @Bean
     public TaskExecutor taskExecutor() {
         return new SimpleAsyncTaskExecutor();
@@ -64,6 +69,11 @@ public class NakadiConfig {
                 return METRIC_REGISTRY;
             }
         };
+    }
+
+    @Bean
+    public FeatureToggleService featureToggleService() {
+        return new FeatureToggleService(zookeeperConfig.zooKeeperHolder());
     }
 
     @Bean
