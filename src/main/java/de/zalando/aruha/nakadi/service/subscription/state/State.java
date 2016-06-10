@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
 public abstract class State {
     private StreamingContext context;
 
-    public final void setContext(final StreamingContext context) {
+    public void setContext(final StreamingContext context) {
         this.context = context;
     }
 
@@ -26,6 +26,7 @@ public abstract class State {
     protected long getKafkaPollTimeout() {
         return context.getKafkaPollTimeout();
     }
+
     protected StreamParameters getParameters() {
         return context.getParameters();
     }

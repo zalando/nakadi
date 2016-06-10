@@ -85,7 +85,7 @@ public class StreamingContext implements SubscriptionStreamer {
     void streamInternal(final State firstState) throws InterruptedException {
         // Because all the work is processed inside one thread, there is no need in
         // additional lock.
-        currentState = new State(this) {
+        currentState = new State() {
             @Override
             public void onEnter() {
             }

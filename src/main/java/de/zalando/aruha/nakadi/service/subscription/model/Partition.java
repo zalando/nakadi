@@ -72,6 +72,8 @@ public class Partition {
             case REASSIGNING:
                 if (!existingSessionIds.contains(this.session)) {
                     return toState(State.ASSIGNED, sessionId, null);
+                } else if (this.session.equals(sessionId)) {
+                    return toState(State.ASSIGNED, sessionId, null);
                 } else {
                     return toState(State.REASSIGNING, this.session, sessionId);
                 }
@@ -119,6 +121,6 @@ public class Partition {
 
     @Override
     public String toString() {
-        return  key + "->" + state + ":" + session + "->" + nextSession;
+        return key + "->" + state + ":" + session + "->" + nextSession;
     }
 }

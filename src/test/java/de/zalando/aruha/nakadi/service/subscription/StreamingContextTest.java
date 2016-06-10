@@ -37,7 +37,7 @@ public class StreamingContextTest {
 
         final StreamingContext ctx = createTestContext(caughtException::set);
 
-        final State killerState = new State(ctx) {
+        final State killerState = new State() {
             @Override
             public void onEnter() {
                 throw killerException;
@@ -63,9 +63,17 @@ public class StreamingContextTest {
         final StreamingContext ctx = createTestContext(null);
         final boolean[] onEnterCalls = new boolean[]{false, false};
         final boolean[] onExitCalls = new boolean[]{false, false};
-        final State state1 = new State(ctx) {
+        final boolean[] contextsSet = new boolean[]{false, false};
+        final State state1 = new State() {
+            @Override
+            public void setContext(final StreamingContext context) {
+                super.setContext(context);
+                contextsSet[0] = null != context;
+            }
+
             @Override
             public void onEnter() {
+                Assert.assertTrue(contextsSet[0]);
                 onEnterCalls[0] = true;
                 throw new RuntimeException(); // trigger stop.
             }
@@ -75,11 +83,18 @@ public class StreamingContextTest {
                 onExitCalls[0] = true;
             }
         };
-        final State state2 = new State(ctx) {
+        final State state2 = new State() {
+            @Override
+            public void setContext(final StreamingContext context) {
+                super.setContext(context);
+                contextsSet[1] = true;
+            }
+
             @Override
             public void onEnter() {
+                Assert.assertTrue(contextsSet[1]);
                 onEnterCalls[1] = true;
-                context.switchState(state1);
+                switchState(state1);
             }
 
             @Override
@@ -89,6 +104,7 @@ public class StreamingContextTest {
         };
 
         ctx.streamInternal(state2);
+        Assert.assertArrayEquals(new boolean[]{true, true}, contextsSet);
         Assert.assertArrayEquals(new boolean[]{true, true}, onEnterCalls);
         // Check that onExit called even if onEnter throws exception.
         Assert.assertArrayEquals(new boolean[]{true, true}, onExitCalls);
