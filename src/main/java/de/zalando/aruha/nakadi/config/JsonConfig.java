@@ -112,7 +112,7 @@ public class JsonConfig {
             return valueOf((Class<? extends Enum>) type.getRawClass(), jp.getValueAsString());
         }
 
-        static <T extends Enum<T>> T valueOf(final Class<T> enumClass, final String s) throws JsonMappingException {
+        private static <T extends Enum<T>> T valueOf(final Class<T> enumClass, final String s) throws JsonMappingException {
             try {
                 return Enum.valueOf(enumClass, s.toUpperCase());
             } catch (final IllegalArgumentException e) {
