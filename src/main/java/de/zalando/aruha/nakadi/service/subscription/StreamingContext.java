@@ -5,7 +5,6 @@ import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import de.zalando.aruha.nakadi.service.subscription.state.CleanupState;
 import de.zalando.aruha.nakadi.service.subscription.state.StartingState;
 import de.zalando.aruha.nakadi.service.subscription.state.State;
-import de.zalando.aruha.nakadi.service.subscription.state.StreamCreatedState;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -17,12 +16,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class StreamingContext implements SubscriptionStreamer {
-    public final StreamParameters parameters;
-    public final Session session;
-    public final ZkSubscriptionClient zkClient;
-    public final KafkaClient kafkaClient;
-    public final SubscriptionOutput out;
-    public final long kafkaPollTimeout;
+    private final StreamParameters parameters;
+    private final Session session;
+    private final ZkSubscriptionClient zkClient;
+    private final KafkaClient kafkaClient;
+    private final SubscriptionOutput out;
+    private final long kafkaPollTimeout;
 
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
@@ -48,19 +47,44 @@ public class StreamingContext implements SubscriptionStreamer {
         this.rebalancer = rebalancer;
         this.timer = timer;
         this.zkClient = zkClient;
-        this.currentState = new StreamCreatedState(this);
         this.kafkaClient = kafkaClient;
         this.kafkaPollTimeout = kafkaPollTimeout;
     }
 
+    public StreamParameters getParameters() {
+        return parameters;
+    }
+
+    public ZkSubscriptionClient getZkClient() {
+        return zkClient;
+    }
+
+    public String getSessionId() {
+        return session.getId();
+    }
+
+    public KafkaClient getKafkaClient() {
+        return kafkaClient;
+    }
+
+    public SubscriptionOutput getOut() {
+        return out;
+    }
+
+    public long getKafkaPollTimeout() {
+        return kafkaPollTimeout;
+    }
+
     @Override
     public void stream() throws InterruptedException {
-        // Because all the work is processed inside one thread, there is no need in
-        // additional lock.
-        currentState = new StreamCreatedState(this);
+        currentState = new State() {
+            @Override
+            public void onEnter() {
+            }
+        };
 
         // Add first task - switch to starting state.
-        switchState(new StartingState(this));
+        switchState(new StartingState());
 
         while (null != currentState) {
             final Runnable task = taskQueue.poll(1, TimeUnit.MINUTES);
@@ -68,7 +92,7 @@ public class StreamingContext implements SubscriptionStreamer {
                 task.run();
             } catch (final RuntimeException ex) {
                 LOG.error("Failed to process task " + task + ", code carefully!", ex);
-                switchState(new CleanupState(this, ex));
+                switchState(new CleanupState(ex));
             }
         }
     }
@@ -85,6 +109,7 @@ public class StreamingContext implements SubscriptionStreamer {
             currentState = newState;
             if (null != currentState) {
                 LOG.info("Switching state to " + currentState.getClass().getSimpleName());
+                currentState.setContext(this);
                 currentState.onEnter();
             } else {
                 LOG.info("No next state found, dying");
@@ -119,11 +144,11 @@ public class StreamingContext implements SubscriptionStreamer {
         }
     }
 
-    public boolean isInState(State state) {
+    public boolean isInState(final State state) {
         return currentState == state;
     }
 
-    public void addTask(Runnable task) {
+    public void addTask(final Runnable task) {
         taskQueue.offer(task);
     }
 
@@ -132,7 +157,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     private void rebalance() {
-        zkClient.lock(() -> {
+        zkClient.runLocked(() -> {
             final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
             if (changeset != null && changeset.length > 0) {
                 Stream.of(changeset).forEach(zkClient::updatePartitionConfiguration);
@@ -141,17 +166,17 @@ public class StreamingContext implements SubscriptionStreamer {
         });
     }
 
-    public void onZkException(Exception e) {
+    public void onZkException(final Exception e) {
         LOG.error("ZK exception occurred, switching to CleanupState", e);
-        switchState(new CleanupState(this, e));
+        switchState(new CleanupState(e));
         if (e instanceof InterruptedException) {
             Thread.currentThread().interrupt();
         }
     }
 
-    public void onKafkaException(Exception e) {
+    public void onKafkaException(final Exception e) {
         LOG.error("Kafka exception occured, switching to CleanupState", e);
-        switchState(new CleanupState(this, e));
+        switchState(new CleanupState(e));
         if (e instanceof InterruptedException) {
             Thread.currentThread().interrupt();
         }

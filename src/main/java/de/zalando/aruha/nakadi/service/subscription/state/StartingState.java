@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.service.subscription.state;
 
 import de.zalando.aruha.nakadi.exceptions.NoStreamingSlotsAvailable;
-import de.zalando.aruha.nakadi.service.subscription.StreamingContext;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import java.io.IOException;
@@ -11,13 +10,9 @@ import org.slf4j.LoggerFactory;
 public class StartingState extends State {
     private static final Logger LOG = LoggerFactory.getLogger(StartingState.class);
 
-    public StartingState(final StreamingContext context) {
-        super(context);
-    }
-
     @Override
     public void onEnter() {
-        context.zkClient.lock(this::createSubscriptionLocked);
+        getZk().runLocked(this::createSubscriptionLocked);
     }
 
     /**
@@ -29,32 +24,32 @@ public class StartingState extends State {
      */
     private void createSubscriptionLocked() {
         // check that subscription initialized in zk.
-        if (context.zkClient.createSubscription()) {
+        if (getZk().createSubscription()) {
             // if not - create subscription node etc.
-            context.zkClient.fillEmptySubscription(context.kafkaClient.getSubscriptionOffsets());
+            getZk().fillEmptySubscription(getKafka().getSubscriptionOffsets());
         } else {
-            final Session[] sessions = context.zkClient.listSessions();
-            final Partition[] partitions = context.zkClient.listPartitions();
+            final Session[] sessions = getZk().listSessions();
+            final Partition[] partitions = getZk().listPartitions();
             if (sessions == null || partitions == null) {
-                context.switchState(new CleanupState(context));
+                switchState(new CleanupState());
                 return;
             }
             if (sessions.length >= partitions.length) {
-                context.switchState(new CleanupState(context, new NoStreamingSlotsAvailable(partitions.length)));
+                switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                 return;
             }
         }
 
-        if (!context.registerSession()) {
-            context.switchState(new CleanupState(context));
+        if (!registerSession()) {
+            switchState(new CleanupState());
             return;
         }
         try {
-            context.out.onInitialized();
-            context.switchState(new StreamingState(context));
+            getOut().onInitialized();
+            switchState(new StreamingState());
         } catch (final IOException e) {
             LOG.error("Failed to notify of initialization. Switch to cleanup directly", e);
-            context.switchState(new CleanupState(context, e));
+            switchState(new CleanupState(e));
         }
     }
 }

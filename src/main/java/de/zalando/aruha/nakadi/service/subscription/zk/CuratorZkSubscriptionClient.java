@@ -43,19 +43,19 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public void lock(final Runnable function) {
-        log.info("Taking lock for " + function.hashCode());
+    public void runLocked(final Runnable function) {
+        log.info("Taking runLocked for " + function.hashCode());
         try {
             lock.acquire();
             log.debug("Lock taken " + function.hashCode());
             try {
                 function.run();
             } finally {
-                log.info("Releasing lock for " + function.hashCode());
+                log.info("Releasing runLocked for " + function.hashCode());
                 try {
                     lock.release();
                 } catch (final Exception e) {
-                    log.error("Failed to release lock", e);
+                    log.error("Failed to release runLocked", e);
                     throw e;
                 }
                 log.debug("Lock released " + function.hashCode());
@@ -314,8 +314,8 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     public boolean registerSession(final Session session) {
         log.info("Registering session " + session);
         try {
-            final String clientPath = getSubscriptionPath("/sessions/" + session.id);
-            curatorFramework.create().withMode(CreateMode.EPHEMERAL).forPath(clientPath, String.valueOf(session.weight).getBytes(CHARSET));
+            final String clientPath = getSubscriptionPath("/sessions/" + session.getId());
+            curatorFramework.create().withMode(CreateMode.EPHEMERAL).forPath(clientPath, String.valueOf(session.getWeight()).getBytes(CHARSET));
             return true;
         } catch (final Exception e) {
             exceptionListener.accept(e);
@@ -326,7 +326,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     @Override
     public void unregisterSession(final Session session) {
         try {
-            curatorFramework.delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.id));
+            curatorFramework.delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
         } catch (final Exception e) {
             exceptionListener.accept(e);
         }

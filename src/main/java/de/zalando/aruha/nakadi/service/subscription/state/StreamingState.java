@@ -1,9 +1,8 @@
 package de.zalando.aruha.nakadi.service.subscription.state;
 
 import de.zalando.aruha.nakadi.service.EventStream;
-import de.zalando.aruha.nakadi.service.subscription.StreamingContext;
-import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,27 +38,23 @@ class StreamingState extends State {
 
     private static final Logger LOG = LoggerFactory.getLogger(StreamingState.class);
 
-    StreamingState(final StreamingContext context) {
-        super(context);
-    }
-
     @Override
     public void onEnter() {
         // Create kafka consumer
-        this.kafkaConsumer = context.kafkaClient.createKafkaConsumer();
+        this.kafkaConsumer = getKafka().createKafkaConsumer();
         // Subscribe for topology changes.
-        this.topologyChangeSubscription = context.zkClient.subscribeForTopologyChanges(() -> context.addTask(this::topologyChanged));
+        this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
         // and call directly
         topologyChanged();
-        this.context.addTask(this::pollDataFromKafka);
-        this.context.scheduleTask(this::checkBatchTimeouts, context.parameters.batchTimeoutMillis, TimeUnit.MILLISECONDS);
+        addTask(this::pollDataFromKafka);
+        scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
-        if (null != context.parameters.streamTimeoutMillis) {
-            this.context.scheduleTask(this::shutdownGracefully, context.parameters.streamTimeoutMillis, TimeUnit.MILLISECONDS);
+        if (null != getParameters().streamTimeoutMillis) {
+            scheduleTask(this::shutdownGracefully, getParameters().streamTimeoutMillis, TimeUnit.MILLISECONDS);
         }
 
         this.lastCommitMillis = System.currentTimeMillis();
-        this.context.scheduleTask(this::checkCommitTimeout, context.parameters.commitTimeoutMillis, TimeUnit.MILLISECONDS);
+        scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     private void checkCommitTimeout() {
@@ -70,14 +65,14 @@ class StreamingState extends State {
         final boolean hasUncommited = offsets.values().stream().filter(d -> !d.isCommited()).findAny().isPresent();
         if (hasUncommited) {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
-            if (millisFromLastCommit >= context.parameters.commitTimeoutMillis) {
+            if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
                 LOG.info("Commit timeout reached, shutting down");
                 shutdownGracefully();
             } else {
-                context.scheduleTask(this::checkCommitTimeout, context.parameters.commitTimeoutMillis - millisFromLastCommit, TimeUnit.MILLISECONDS);
+                scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis - millisFromLastCommit, TimeUnit.MILLISECONDS);
             }
         } else {
-            context.scheduleTask(this::checkCommitTimeout, context.parameters.commitTimeoutMillis, TimeUnit.MILLISECONDS);
+            scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -89,9 +84,9 @@ class StreamingState extends State {
                 .filter(e -> !e.getValue().isCommited())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
         if (uncommited.isEmpty()) {
-            context.switchState(new CleanupState(context));
+            switchState(new CleanupState());
         } else {
-            context.switchState(new ClosingState(context, uncommited, lastCommitMillis));
+            switchState(new ClosingState(uncommited, lastCommitMillis));
         }
     }
 
@@ -102,10 +97,10 @@ class StreamingState extends State {
         }
         if (kafkaConsumer.assignment().isEmpty() || pollPaused) {
             // Small optimization not to waste CPU while not yet assigned to any partitions
-            this.context.scheduleTask(this::pollDataFromKafka, context.kafkaPollTimeout, TimeUnit.MILLISECONDS);
+            scheduleTask(this::pollDataFromKafka, getKafkaPollTimeout(), TimeUnit.MILLISECONDS);
             return;
         }
-        final ConsumerRecords<String, String> records = kafkaConsumer.poll(context.kafkaPollTimeout);
+        final ConsumerRecords<String, String> records = kafkaConsumer.poll(getKafkaPollTimeout());
         if (!records.isEmpty()) {
             for (final TopicPartition tp : records.partitions()) {
                 final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition()));
@@ -116,21 +111,21 @@ class StreamingState extends State {
                     }
                 }
             }
-            this.context.addTask(this::streamToOutput);
+            addTask(this::streamToOutput);
         }
         // Yep, no timeout. All waits are in kafka.
         // It works because only one pollDataFromKafka task is present in queue each time. Poll process will stop
         // when this state will be changed to any other state.
-        this.context.addTask(this::pollDataFromKafka);
+        addTask(this::pollDataFromKafka);
     }
 
     private long getMessagesAllowedToSend() {
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
-        final long allowDueWindowSize = context.parameters.windowSizeMessages - unconfirmed;
-        if (null == context.parameters.streamLimitEvents) {
+        final long allowDueWindowSize = getParameters().windowSizeMessages - unconfirmed;
+        if (null == getParameters().streamLimitEvents) {
             return allowDueWindowSize;
         }
-        return Math.min(allowDueWindowSize, context.parameters.streamLimitEvents - this.sentEvents);
+        return Math.min(allowDueWindowSize, getParameters().streamLimitEvents - this.sentEvents);
     }
 
     private void checkBatchTimeouts() {
@@ -139,13 +134,13 @@ class StreamingState extends State {
         }
         streamToOutput();
         final OptionalLong lastSent = offsets.values().stream().mapToLong(PartitionData::getLastSendMillis).min();
-        final long nextCall = lastSent.orElse(System.currentTimeMillis()) + context.parameters.batchTimeoutMillis;
+        final long nextCall = lastSent.orElse(System.currentTimeMillis()) + getParameters().batchTimeoutMillis;
         final long delta = nextCall - System.currentTimeMillis();
         if (delta > 0) {
-            context.scheduleTask(this::checkBatchTimeouts, delta, TimeUnit.MILLISECONDS);
+            scheduleTask(this::checkBatchTimeouts, delta, TimeUnit.MILLISECONDS);
         } else {
             LOG.debug("Probably acting too slow, stream timeouts are constantly rescheduled");
-            context.addTask(this::checkBatchTimeouts);
+            addTask(this::checkBatchTimeouts);
         }
     }
 
@@ -159,8 +154,8 @@ class StreamingState extends State {
         for (final Map.Entry<Partition.PartitionKey, PartitionData> e : offsets.entrySet()) {
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
-                    Math.min(context.parameters.batchLimitEvents, freeSlots),
-                    context.parameters.batchTimeoutMillis))) {
+                    Math.min(getParameters().batchLimitEvents, freeSlots),
+                    getParameters().batchTimeoutMillis))) {
                 flushData(e.getKey(), toSend);
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
@@ -170,10 +165,10 @@ class StreamingState extends State {
             }
         }
         pollPaused = getMessagesAllowedToSend() <= 0;
-        if (null != context.parameters.batchKeepAliveIterations) {
+        if (null != getParameters().batchKeepAliveIterations) {
             final boolean allPartitionsReachedKeepAliveLimit = offsets.values().stream()
                     .map(PartitionData::getKeepAlivesInARow)
-                    .allMatch(v -> v >= context.parameters.batchKeepAliveIterations);
+                    .allMatch(v -> v >= getParameters().batchKeepAliveIterations);
             if (allPartitionsReachedKeepAliveLimit) {
                 shutdownGracefully();
             }
@@ -187,9 +182,9 @@ class StreamingState extends State {
                 new ArrayList<>(data.values()),
                 Optional.empty());
         try {
-            context.out.streamData(evt.getBytes(EventStream.UTF8));
+            getOut().streamData(evt.getBytes(EventStream.UTF8));
         } catch (final IOException e) {
-            LOG.error("Failed to write data to output. Session: " + context.session, e);
+            LOG.error("Failed to write data to output. Session: " + getSessionId(), e);
             shutdownGracefully();
         }
     }
@@ -219,11 +214,11 @@ class StreamingState extends State {
         if (!isCurrent()) {
             return;
         }
-        context.zkClient.lock(() -> {
-            final Partition[] assignedPartitions = Stream.of(context.zkClient.listPartitions())
-                    .filter(p -> context.session.id.equals(p.getSession()))
+        getZk().runLocked(() -> {
+            final Partition[] assignedPartitions = Stream.of(getZk().listPartitions())
+                    .filter(p -> getSessionId().equals(p.getSession()))
                     .toArray(Partition[]::new);
-            context.addTask(() -> refreshTopologyUnlocked(assignedPartitions));
+            addTask(() -> refreshTopologyUnlocked(assignedPartitions));
         });
     }
 
@@ -267,9 +262,9 @@ class StreamingState extends State {
 
     private void addPartitionToReassigned(final Partition.PartitionKey partitionKey) {
         final long currentTime = System.currentTimeMillis();
-        final long barrier = currentTime + context.parameters.commitTimeoutMillis;
+        final long barrier = currentTime + getParameters().commitTimeoutMillis;
         releasingPartitions.put(partitionKey, barrier);
-        context.scheduleTask(() -> barrierOnRebalanceReached(partitionKey), context.parameters.commitTimeoutMillis, TimeUnit.MILLISECONDS);
+        scheduleTask(() -> barrierOnRebalanceReached(partitionKey), getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     private void barrierOnRebalanceReached(final Partition.PartitionKey pk) {
@@ -281,7 +276,7 @@ class StreamingState extends State {
             shutdownGracefully();
         } else {
             // Schedule again, probably something happened (ex. rebalance twice)
-            context.scheduleTask(() -> barrierOnRebalanceReached(pk), releasingPartitions.get(pk) - currentTime, TimeUnit.MILLISECONDS);
+            scheduleTask(() -> barrierOnRebalanceReached(pk), releasingPartitions.get(pk) - currentTime, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -307,8 +302,8 @@ class StreamingState extends State {
 
     private void addToStreaming(final Partition partition) {
         offsets.put(partition.getKey(), new PartitionData(
-                context.zkClient.subscribeForOffsetChanges(partition.getKey(), o -> offsetChanged(partition.getKey(), o)),
-                context.zkClient.getOffset(partition.getKey())));
+                getZk().subscribeForOffsetChanges(partition.getKey(), o -> offsetChanged(partition.getKey(), o)),
+                getZk().getOffset(partition.getKey())));
     }
 
     private void reassignCommited() {
@@ -319,13 +314,13 @@ class StreamingState extends State {
             try {
                 keysToRelease.forEach(this::removeFromStreaming);
             } finally {
-                context.zkClient.lock(() -> context.zkClient.transfer(context.session.id, keysToRelease));
+                getZk().runLocked(() -> getZk().transfer(getSessionId(), keysToRelease));
             }
         }
     }
 
     private void offsetChanged(final Partition.PartitionKey key, final Long offset) {
-        context.addTask(() -> {
+        addTask(() -> {
             if (offsets.containsKey(key)) {
                 final PartitionData data = offsets.get(key);
                 final PartitionData.CommitResult commitResult = data.onCommitOffset(offset);
@@ -336,7 +331,7 @@ class StreamingState extends State {
                     commitedEvents += commitResult.commitedCount;
                     this.lastCommitMillis = System.currentTimeMillis();
                 }
-                if (null != context.parameters.streamLimitEvents && context.parameters.streamLimitEvents <= commitedEvents) {
+                if (null != getParameters().streamLimitEvents && getParameters().streamLimitEvents <= commitedEvents) {
                     shutdownGracefully();
                 }
                 if (releasingPartitions.containsKey(key) && data.isCommited()) {

@@ -15,13 +15,14 @@ import java.util.stream.Stream;
 class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partition[]> {
     @Override
     public Partition[] apply(final Session[] sessions, final Partition[] currentPartitions) {
-        final Map<String, Session> activeSessions = Stream.of(sessions).collect(Collectors.toMap(c -> c.id, c -> c));
+        final Map<String, Integer> activeSessionWeights = Stream.of(sessions)
+                .collect(Collectors.toMap(Session::getId, Session::getWeight));
         // sorted session ids.
-        final List<String> activeSessionIds = activeSessions.keySet().stream().sorted().collect(Collectors.toList());
+        final List<String> activeSessionIds = activeSessionWeights.keySet().stream().sorted().collect(Collectors.toList());
         // the main part of rebalance - calculate count for each partition.
         final int[] partitionsPerSession = splitByWeight(
                 currentPartitions.length,
-                activeSessionIds.stream().mapToInt(c -> activeSessions.get(c).weight).toArray());
+                activeSessionIds.stream().mapToInt(activeSessionWeights::get).toArray());
 
         // Stage 1. Select partitions that are not assigned to any EXISTING session.
         final Set<Partition> toRebalance = Stream.of(currentPartitions)

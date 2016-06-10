@@ -112,11 +112,11 @@ public class SubscriptionStreamController {
                         StreamParameters.of(batchLimit, streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit, windowSize, commitTimeout),
                         output);
                 streamer.stream();
-            } catch (final NoSuchSubscriptionException e) {
-                output.onException(e);
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
                 Thread.currentThread().interrupt();
+            } catch (final Exception e) {
+                output.onException(e);
             } finally {
                 outputStream.close();
             }

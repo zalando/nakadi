@@ -3,13 +3,21 @@ package de.zalando.aruha.nakadi.service.subscription.model;
 import java.util.UUID;
 
 public class Session {
-    public final String id;
-    public final int weight;
+    private final String id;
+    private final int weight;
 
     public Session(final String id, final int weight) {
         assert null != id;
         this.id = id;
         this.weight = weight;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public int getWeight() {
+        return weight;
     }
 
     @Override

@@ -13,13 +13,13 @@ public interface ZkSubscriptionClient {
     }
 
     /**
-     * Makes lock on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}
-     * Lock is created as an ephemeral node, so it will be deleted if nakadi go down. After obtaining lock, provided
-     * function will be called under subscription lock
+     * Makes runLocked on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}
+     * Lock is created as an ephemeral node, so it will be deleted if nakadi go down. After obtaining runLocked, provided
+     * function will be called under subscription runLocked
      *
-     * @param function Function to call in context of lock.
+     * @param function Function to call in context of runLocked.
      */
-    void lock(Runnable function);
+    void runLocked(Runnable function);
 
     /**
      * Creates subscription node in zookeeper on path /nakadi/subscriptions/{subscriptionId}

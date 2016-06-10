@@ -37,7 +37,7 @@ public class SubscriptionStreamerFactory {
             final StreamParameters streamParameters,
             final SubscriptionOutput output) throws NoSuchSubscriptionException {
 
-        // Make it here to trigger subscription not found exception earlier.
+        // Hit database to check subscription existence.
         final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
         // Generate session

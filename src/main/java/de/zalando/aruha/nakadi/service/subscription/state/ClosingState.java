@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.service.subscription.state;
 
-import de.zalando.aruha.nakadi.service.subscription.StreamingContext;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import java.util.Collection;
@@ -21,8 +20,7 @@ class ClosingState extends State {
     private ZkSubscriptionClient.ZKSubscription topologyListener;
     private static final Logger LOG = LoggerFactory.getLogger(ClosingState.class);
 
-    ClosingState(final StreamingContext context, final Map<Partition.PartitionKey, Long> uncommitedOffsets, final long lastCommitMillis) {
-        super(context);
+    ClosingState(final Map<Partition.PartitionKey, Long> uncommitedOffsets, final long lastCommitMillis) {
         this.uncommitedOffsets = uncommitedOffsets;
         this.lastCommitMillis = lastCommitMillis;
     }
@@ -44,14 +42,14 @@ class ClosingState extends State {
 
     @Override
     public void onEnter() {
-        final long timeToWaitMillis = context.parameters.commitTimeoutMillis - (System.currentTimeMillis() - lastCommitMillis);
+        final long timeToWaitMillis = getParameters().commitTimeoutMillis - (System.currentTimeMillis() - lastCommitMillis);
         if (timeToWaitMillis > 0) {
-            context.scheduleTask(() -> {
+            scheduleTask(() -> {
                 if (isCurrent()) {
-                    context.switchState(new CleanupState(context));
+                    switchState(new CleanupState());
                 }
             }, timeToWaitMillis, TimeUnit.MILLISECONDS);
-            topologyListener = context.zkClient.subscribeForTopologyChanges(() -> context.addTask(this::onTopologyChanged));
+            topologyListener = getZk().subscribeForTopologyChanges(() -> addTask(this::onTopologyChanged));
             onTopologyChanged();
         }
     }
@@ -61,8 +59,8 @@ class ClosingState extends State {
             return;
         }
         final Map<Partition.PartitionKey, Partition> partitions = new HashMap<>();
-        context.zkClient.lock(() -> Stream.of(context.zkClient.listPartitions())
-                .filter(p -> context.session.id.equals(p.getSession()))
+        getZk().runLocked(() -> Stream.of(getZk().listPartitions())
+                .filter(p -> getSessionId().equals(p.getSession()))
                 .forEach(p -> partitions.put(p.getKey(), p)));
         final Set<Partition.PartitionKey> freeRightNow = new HashSet<>();
         final Set<Partition.PartitionKey> addListeners = new HashSet<>();
@@ -90,9 +88,9 @@ class ClosingState extends State {
     private void registerListener(final Partition.PartitionKey key) {
         listeners.put(
                 key,
-                context.zkClient.subscribeForOffsetChanges(
-                        key, newOffset -> context.addTask(() -> this.reactOnOffset(key, newOffset))));
-        reactOnOffset(key, context.zkClient.getOffset(key));
+                getZk().subscribeForOffsetChanges(
+                        key, newOffset -> addTask(() -> this.reactOnOffset(key, newOffset))));
+        reactOnOffset(key, getZk().getOffset(key));
     }
 
     private void reactOnOffset(final Partition.PartitionKey key, final Long newOffset) {
@@ -107,7 +105,7 @@ class ClosingState extends State {
 
     private void tryCompleteState() {
         if (isCurrent() && uncommitedOffsets.isEmpty()) {
-            context.switchState(new CleanupState(context));
+            switchState(new CleanupState());
         }
     }
 
@@ -125,7 +123,7 @@ class ClosingState extends State {
                 }
             }
         }
-        context.zkClient.lock(() -> context.zkClient.transfer(context.session.id, keys));
+        getZk().runLocked(() -> getZk().transfer(getSessionId(), keys));
         if (null != exceptionCaught) {
             throw exceptionCaught;
         }

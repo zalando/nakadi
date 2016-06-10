@@ -231,7 +231,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public Map<String, Long> materializePositions(final String topicId, String position) throws ServiceUnavailableException {
+    public Map<String, Long> materializePositions(final String topicId, final String position) throws ServiceUnavailableException {
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
             final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
                     .partitionsFor(topicId)
@@ -243,7 +243,7 @@ public class KafkaTopicRepository implements TopicRepository {
             } else if (position.equals(Cursor.AFTER_NEWEST_OFFSET)) {
                 consumer.seekToEnd(kafkaTPs);
             } else {
-                throw new ServiceUnavailableException("Bad offset specification " + position + " for topic " + topicId);
+                throw new IllegalArgumentException("Bad offset specification " + position + " for topic " + topicId);
             }
             return Stream.of(kafkaTPs).collect(Collectors.toMap(
                     tp -> String.valueOf(tp.partition()),

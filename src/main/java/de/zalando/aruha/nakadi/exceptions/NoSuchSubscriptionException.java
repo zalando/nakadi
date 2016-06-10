@@ -7,7 +7,7 @@ public class NoSuchSubscriptionException extends NakadiException {
         super(message);
     }
 
-    public NoSuchSubscriptionException(String msg, Exception cause) {
+    public NoSuchSubscriptionException(final String msg, final Exception cause) {
         super(msg, cause);
     }
 
