@@ -9,6 +9,6 @@ public class NoStreamingSlotsAvailable extends NakadiException {
 
     @Override
     protected Response.StatusType getStatus() {
-        return Response.Status.BAD_REQUEST;
+        return Response.Status.CONFLICT;
     }
 }

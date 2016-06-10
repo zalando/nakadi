@@ -65,9 +65,9 @@ public class SubscriptionStreamController {
                 headersSent = true;
                 try {
                     if (ex instanceof NakadiException) {
-                        writeProblemResponse(Response.Status.BAD_REQUEST, ((NakadiException) ex).getProblemMessage());
+                        writeProblemResponse(((NakadiException) ex).asProblem());
                     } else {
-                        writeProblemResponse(Response.Status.SERVICE_UNAVAILABLE, "Failed to continue streaming");
+                        writeProblemResponse(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, "Failed to continue streaming"));
                     }
                 } catch (final IOException e) {
                     LOG.error("Failed to write exception to response", e);
@@ -77,10 +77,10 @@ public class SubscriptionStreamController {
             }
         }
 
-        void writeProblemResponse(final Response.StatusType statusCode, final String message) throws IOException {
-            response.setStatus(statusCode.getStatusCode());
+        void writeProblemResponse(final Problem problem) throws IOException {
+            response.setStatus(problem.getStatus().getStatusCode());
             response.setContentType("application/problem+json");
-            jsonMapper.writer().writeValue(out, Problem.valueOf(statusCode, message));
+            jsonMapper.writer().writeValue(out, problem);
         }
 
         @Override
