@@ -6,6 +6,8 @@ import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,6 +17,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Set;
+import java.util.UUID;
 
 import static com.google.common.collect.Sets.newTreeSet;
 
@@ -26,10 +29,13 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         super(jdbcTemplate, objectMapper);
     }
 
-    public void saveSubscription(final Subscription subscription) throws InternalNakadiException,
+    public void createSubscription(final Subscription subscription) throws InternalNakadiException,
             DuplicatedSubscriptionException {
 
         try {
+            subscription.setId(UUID.randomUUID().toString());
+            subscription.setCreatedAt(new DateTime(DateTimeZone.UTC));
+
             jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
                     subscription.getId(),
                     jsonMapper.writer().writeValueAsString(subscription));

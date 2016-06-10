@@ -1,23 +1,20 @@
 package de.zalando.aruha.nakadi.domain;
 
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.newTreeSet;
-import static de.zalando.aruha.nakadi.domain.Subscription.InitialPosition.END;
 
 public class Subscription {
 
-    public enum InitialPosition {
-        BEGIN,
-        END
-    }
+    public static String POSITION_BEGIN = "BEGIN";
+    public static String POSITION_END = "END";
 
     @Nullable
     private String id;
@@ -32,11 +29,12 @@ public class Subscription {
     @NotNull
     private String consumerGroup = "none";
 
-    @NotNull
-    private DateTime createdAt = new DateTime(DateTimeZone.UTC);
+    @Nullable
+    private DateTime createdAt;
 
     @NotNull
-    private InitialPosition startFrom = END;
+    @Pattern(regexp = "^(BEGIN|END)$", message = "value not allowed, possible values are: 'BEGIN', 'END'" )
+    private String startFrom = POSITION_END;
 
     public String getId() {
         return id;
@@ -78,11 +76,11 @@ public class Subscription {
         this.createdAt = createdAt;
     }
 
-    public InitialPosition getStartFrom() {
+    public String getStartFrom() {
         return startFrom;
     }
 
-    public void setStartFrom(final InitialPosition startFrom) {
+    public void setStartFrom(final String startFrom) {
         this.startFrom = startFrom;
     }
 
@@ -91,9 +89,12 @@ public class Subscription {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final Subscription that = (Subscription) o;
-        return id != null ? id.equals(that.id) : that.id == null && owningApplication.equals(that.owningApplication) &&
-                eventTypes.equals(that.eventTypes) && consumerGroup.equals(that.consumerGroup) &&
-                createdAt.equals(that.createdAt) && startFrom.equals(that.startFrom);
+        return id != null ? id.equals(that.id) : that.id == null
+                && owningApplication.equals(that.owningApplication)
+                && eventTypes.equals(that.eventTypes)
+                && consumerGroup.equals(that.consumerGroup)
+                && (createdAt != null ? createdAt.equals(that.createdAt) : that.createdAt == null
+                && startFrom.equals(that.startFrom));
     }
 
     @Override

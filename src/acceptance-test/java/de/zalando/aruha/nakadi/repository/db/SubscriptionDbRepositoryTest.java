@@ -36,7 +36,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     public void whenCreateSubscriptionThenOk() throws Exception {
 
         final Subscription subscription = createSubscription();
-        repository.saveSubscription(subscription);
+        repository.createSubscription(subscription);
 
         final int rows = template.queryForObject("SELECT count(*) FROM zn_data.subscription", Integer.class);
         assertThat("Number of rows should be 1", rows, equalTo(1));
@@ -54,11 +54,10 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     public void whenCreateSubscriptionWithDuplicatedKeyParamsThenDuplicatedSubscriptionException() throws Exception {
 
         final Subscription subscription = createSubscription();
-        repository.saveSubscription(subscription);
+        repository.createSubscription(subscription);
 
-        // set another id to subscription but keep the same key properties
-        subscription.setId(randomUUID().toString());
-        repository.saveSubscription(subscription);
+        // try to create subscription second time
+        repository.createSubscription(subscription);
     }
 
     @Test

@@ -72,8 +72,7 @@ public class SubscriptionController {
             }
 
             // generate subscription id and try to create subscription in DB
-            subscription.setId(UUID.randomUUID().toString());
-            subscriptionRepository.saveSubscription(subscription);
+            subscriptionRepository.createSubscription(subscription);
             return new ResponseEntity<>(subscription, HttpStatus.CREATED);
 
         } catch (final DuplicatedSubscriptionException e) {
