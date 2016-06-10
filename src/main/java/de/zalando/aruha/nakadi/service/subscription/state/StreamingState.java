@@ -302,7 +302,7 @@ class StreamingState extends State {
 
     private void addToStreaming(final Partition partition) {
         offsets.put(partition.getKey(), new PartitionData(
-                getZk().subscribeForOffsetChanges(partition.getKey(), o -> offsetChanged(partition.getKey(), o)),
+                getZk().subscribeForOffsetChanges(partition.getKey(), () -> offsetChanged(partition.getKey())),
                 getZk().getOffset(partition.getKey())));
     }
 
@@ -319,9 +319,10 @@ class StreamingState extends State {
         }
     }
 
-    private void offsetChanged(final Partition.PartitionKey key, final Long offset) {
+    private void offsetChanged(final Partition.PartitionKey key) {
         addTask(() -> {
             if (offsets.containsKey(key)) {
+                final long offset = getZk().getOffset(key);
                 final PartitionData data = offsets.get(key);
                 final PartitionData.CommitResult commitResult = data.onCommitOffset(offset);
                 if (commitResult.seekOnKafka) {

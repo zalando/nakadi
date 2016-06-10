@@ -58,8 +58,8 @@ public abstract class State {
         context.addTask(task);
     }
 
-    protected boolean registerSession() {
-        return context.registerSession();
+    protected void registerSession() {
+        context.registerSession();
     }
 
     protected void unregisterSession() {

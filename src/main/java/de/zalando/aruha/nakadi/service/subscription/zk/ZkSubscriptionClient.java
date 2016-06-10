@@ -98,21 +98,21 @@ public interface ZkSubscriptionClient {
      */
     ZKSubscription subscribeForTopologyChanges(Runnable listener);
 
-    ZKSubscription subscribeForOffsetChanges(Partition.PartitionKey key, Consumer<Long> commitListener);
+    ZKSubscription subscribeForOffsetChanges(Partition.PartitionKey key, Runnable commitListener);
 
     /**
      * Returns current offset value for specified partition key.
      * @param key Key to get offset for
      * @return commit offset
      */
-    Long getOffset(Partition.PartitionKey key);
+    long getOffset(Partition.PartitionKey key);
 
     /**
      * Registers client connection using session id in /nakadi/subscriptions/{subscriptionId}/sessions/{session.id} and value {{session.weight}}
      *
      * @param session Session to register.
      */
-    boolean registerSession(Session session);
+    void registerSession(Session session);
 
     void unregisterSession(Session session);
 

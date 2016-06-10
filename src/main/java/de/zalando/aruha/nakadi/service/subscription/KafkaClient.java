@@ -12,15 +12,10 @@ import java.util.function.Consumer;
 public class KafkaClient {
     private final Subscription subscription;
     private final KafkaTopicRepository topicRepository;
-    private Consumer<Exception> exceptionListener;
 
     KafkaClient(final Subscription subscription, final KafkaTopicRepository topicRepository) {
         this.subscription = subscription;
         this.topicRepository = topicRepository;
-    }
-
-    void setExceptionListener(final Consumer<Exception> exceptionListener) {
-        this.exceptionListener = exceptionListener;
     }
 
     public Map<Partition.PartitionKey, Long> getSubscriptionOffsets() {
@@ -33,8 +28,7 @@ public class KafkaClient {
             }
             return offsets;
         } catch (final NakadiException e) {
-            exceptionListener.accept(e);
-            return null;
+            throw new SubscriptionWrappedException(e);
         }
     }
 

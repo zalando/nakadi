@@ -36,34 +36,18 @@ public class SubscriptionStreamerFactory {
             final String subscriptionId,
             final StreamParameters streamParameters,
             final SubscriptionOutput output) throws NoSuchSubscriptionException {
-
-        // Hit database to check subscription existence.
         final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
-        // Generate session
-        final Session session = Session.generate(1);
-
-        // Create curator zk client
-        final CuratorZkSubscriptionClient zkClient = new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get());
-
-        final KafkaClient kafkaClient = new KafkaClient(subscription, topicRepository);
-
         // Create streaming context
-        final StreamingContext streamer = new StreamingContext(
+        return new StreamingContext(
                 output,
                 streamParameters,
-                session,
+                Session.generate(1),
                 executorService,
-                zkClient,
-                kafkaClient,
+                new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get()),
+                new KafkaClient(subscription, topicRepository),
                 new ExactWeightRebalancer(),
                 kafkaPollTimeout);
-
-        // register exception listener to die fast on zookeeper exceptions.
-        zkClient.setExceptionListener(streamer::onZkException);
-        kafkaClient.setExceptionListener(streamer::onKafkaException);
-
-        return streamer;
     }
 
 }

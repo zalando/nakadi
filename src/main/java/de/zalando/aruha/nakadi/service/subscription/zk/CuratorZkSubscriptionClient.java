@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.service.subscription.zk;
 
+import de.zalando.aruha.nakadi.service.subscription.SubscriptionWrappedException;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import java.nio.charset.Charset;
@@ -29,17 +30,11 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private final String subscriptionId;
     private final Logger log;
 
-    private Consumer<Exception> exceptionListener;
-
     public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework) {
         this.subscriptionId = subscriptionId;
         this.curatorFramework = curatorFramework;
         this.lock = new InterProcessSemaphoreMutex(curatorFramework, "/nakadi/locks/subscription_" + subscriptionId);
         this.log = LoggerFactory.getLogger("zk." + subscriptionId);
-    }
-
-    public void setExceptionListener(final Consumer<Exception> exceptionListener) {
-        this.exceptionListener = exceptionListener;
     }
 
     @Override
@@ -61,7 +56,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 log.debug("Lock released " + function.hashCode());
             }
         } catch (final Exception e) {
-            exceptionListener.accept(e);
+            throw new SubscriptionWrappedException(e);
         }
     }
 
@@ -87,17 +82,12 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 return !state.equals(STATE_INITIALIZED);
             }
         } catch (final Exception e) {
-            exceptionListener.accept(e);
+            throw new SubscriptionWrappedException(e);
         }
-        return false;
     }
 
     @Override
     public void fillEmptySubscription(final Map<Partition.PartitionKey, Long> partitionToOffset) {
-        if (null == partitionToOffset) {
-            log.error("Illegal partition offsets, won't create anything");
-            return;
-        }
         try {
             log.info("Creating sessions root");
             if (null != curatorFramework.checkExists().forPath(getSubscriptionPath("/sessions"))) {
@@ -131,7 +121,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             log.info("updating state");
             curatorFramework.setData().forPath(getSubscriptionPath("/state"), STATE_INITIALIZED.getBytes(CHARSET));
         } catch (final Exception e) {
-            exceptionListener.accept(e);
+            throw new SubscriptionWrappedException(e);
         }
     }
 
@@ -159,7 +149,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                     getPartitionPath(partition.getKey()),
                     serializeNode(partition.getSession(), partition.getNextSession(), partition.getState()));
         } catch (final Exception e) {
-            exceptionListener.accept(e);
+            throw new SubscriptionWrappedException(e);
         }
     }
 
@@ -170,7 +160,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             final Integer curVersion = Integer.parseInt(new String(curatorFramework.getData().forPath(getSubscriptionPath("/topology")), CHARSET));
             curatorFramework.setData().forPath(getSubscriptionPath("/topology"), String.valueOf(curVersion + 1).getBytes(CHARSET));
         } catch (final Exception e) {
-            exceptionListener.accept(e);
+            throw new SubscriptionWrappedException(e);
         }
     }
 
@@ -187,8 +177,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             }
             return partitions.toArray(new Partition[partitions.size()]);
         } catch (final Exception e) {
-            exceptionListener.accept(e);
-            return null;
+            throw new SubscriptionWrappedException(e);
         }
     }
 
@@ -203,8 +192,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             }
             return sessions.toArray(new Session[sessions.size()]);
         } catch (final Exception e) {
-            exceptionListener.accept(e);
-            return null;
+            throw new SubscriptionWrappedException(e);
         }
     }
 
@@ -225,13 +213,11 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             curatorFramework.getChildren().usingWatcher(this).forPath(getSubscriptionPath("/clients"));
         }
 
-        private boolean set() {
+        private void set() {
             try {
                 setInternal();
-                return true;
             } catch (final Exception e) {
-                exceptionListener.accept(e);
-                return false;
+                throw new SubscriptionWrappedException(e);
             }
         }
 
@@ -289,37 +275,27 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public ZKSubscription subscribeForOffsetChanges(final Partition.PartitionKey key, final Consumer<Long> commitListener) {
-        final String zkKey = getPartitionPath(key) + "/offset";
-        return new ZKOffsetChanges(() -> {
-            try {
-                commitListener.accept(Long.parseLong(new String(curatorFramework.getData().forPath(zkKey), CHARSET)));
-            } catch (Exception e) {
-                exceptionListener.accept(e);
-            }
-        }, zkKey).init();
+    public ZKSubscription subscribeForOffsetChanges(final Partition.PartitionKey key, final Runnable commitListener) {
+        return new ZKOffsetChanges(commitListener, getPartitionPath(key) + "/offset").init();
     }
 
     @Override
-    public Long getOffset(final Partition.PartitionKey key) {
+    public long getOffset(final Partition.PartitionKey key) {
         try {
             return Long.parseLong(new String(curatorFramework.getData().forPath(getPartitionPath(key)), CHARSET));
         } catch (final Exception e) {
-            exceptionListener.accept(e);
-            return null;
+            throw new SubscriptionWrappedException(e);
         }
     }
 
     @Override
-    public boolean registerSession(final Session session) {
+    public void registerSession(final Session session) {
         log.info("Registering session " + session);
         try {
             final String clientPath = getSubscriptionPath("/sessions/" + session.getId());
             curatorFramework.create().withMode(CreateMode.EPHEMERAL).forPath(clientPath, String.valueOf(session.getWeight()).getBytes(CHARSET));
-            return true;
         } catch (final Exception e) {
-            exceptionListener.accept(e);
-            return false;
+            throw new SubscriptionWrappedException(e);
         }
     }
 
@@ -328,7 +304,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         try {
             curatorFramework.delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
         } catch (final Exception e) {
-            exceptionListener.accept(e);
+            throw new SubscriptionWrappedException(e);
         }
     }
 
@@ -350,7 +326,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 incrementTopology();
             }
         } catch (final Exception e) {
-            exceptionListener.accept(e);
+            throw new SubscriptionWrappedException(e);
         }
     }
 }

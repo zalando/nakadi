@@ -40,10 +40,8 @@ public class StartingState extends State {
             }
         }
 
-        if (!registerSession()) {
-            switchState(new CleanupState());
-            return;
-        }
+        registerSession();
+
         try {
             getOut().onInitialized();
             switchState(new StreamingState());

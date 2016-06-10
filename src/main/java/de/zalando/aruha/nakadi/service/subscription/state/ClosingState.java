@@ -89,14 +89,15 @@ class ClosingState extends State {
         listeners.put(
                 key,
                 getZk().subscribeForOffsetChanges(
-                        key, newOffset -> addTask(() -> this.reactOnOffset(key, newOffset))));
-        reactOnOffset(key, getZk().getOffset(key));
+                        key, () -> addTask(() -> this.reactOnOffset(key))));
+        reactOnOffset(key);
     }
 
-    private void reactOnOffset(final Partition.PartitionKey key, final Long newOffset) {
+    private void reactOnOffset(final Partition.PartitionKey key) {
         if (!isCurrent()) {
             return;
         }
+        final long newOffset = getZk().getOffset(key);
         if (uncommitedOffsets.containsKey(key) && uncommitedOffsets.get(key) <= newOffset) {
             freePartitions(Collections.singletonList(key));
         }

@@ -90,6 +90,9 @@ public class StreamingContext implements SubscriptionStreamer {
             final Runnable task = taskQueue.poll(1, TimeUnit.MINUTES);
             try {
                 task.run();
+            } catch (final SubscriptionWrappedException ex) {
+                LOG.error("Failed to process task " + task + ", will rethrow original error", ex);
+                switchState(new CleanupState(ex.getSourceException()));
             } catch (final RuntimeException ex) {
                 LOG.error("Failed to process task " + task + ", code carefully!", ex);
                 switchState(new CleanupState(ex));
@@ -117,19 +120,14 @@ public class StreamingContext implements SubscriptionStreamer {
         });
     }
 
-    public boolean registerSession() {
+    public void registerSession() {
         LOG.info("Registering session " + session);
-        final boolean sessionRegistered = zkClient.registerSession(session);
-        if (sessionRegistered) {
-            // Session registered successfully.
+        zkClient.registerSession(session);
+        // Install rebalance hook on client list change.
+        clientListChanges = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
 
-            // Install rebalance hook on client list change.
-            clientListChanges = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
-
-            // Invoke rebalance directly
-            addTask(this::rebalance);
-        }
-        return sessionRegistered;
+        // Invoke rebalance directly
+        addTask(this::rebalance);
     }
 
     public void unregisterSession() {
@@ -165,21 +163,4 @@ public class StreamingContext implements SubscriptionStreamer {
             }
         });
     }
-
-    public void onZkException(final Exception e) {
-        LOG.error("ZK exception occurred, switching to CleanupState", e);
-        switchState(new CleanupState(e));
-        if (e instanceof InterruptedException) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    public void onKafkaException(final Exception e) {
-        LOG.error("Kafka exception occured, switching to CleanupState", e);
-        switchState(new CleanupState(e));
-        if (e instanceof InterruptedException) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
 }
