@@ -5,7 +5,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 
 import java.nio.charset.Charset;
 
@@ -18,10 +18,13 @@ public class CursorsCommitService {
 
     private final ZooKeeperHolder zkHolder;
     private final TopicRepository topicRepository;
+    private final ZooKeeperLockFactory zkLockFactory;
 
-    public CursorsCommitService(final ZooKeeperHolder zkHolder, final TopicRepository topicRepository) {
+    public CursorsCommitService(final ZooKeeperHolder zkHolder, final TopicRepository topicRepository,
+                                final ZooKeeperLockFactory zkLockFactory) {
         this.zkHolder = zkHolder;
         this.topicRepository = topicRepository;
+        this.zkLockFactory = zkLockFactory;
     }
 
     public boolean commitCursor(final String subscriptionId, final String eventType, final Cursor cursor)
@@ -29,9 +32,6 @@ public class CursorsCommitService {
 
         final String offsetPath = format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset",
                 subscriptionId, eventType, cursor.getPartition());
-
-        final InterProcessSemaphoreMutex lock = new InterProcessSemaphoreMutex(zkHolder.get(), offsetPath);
-
         try {
             return runLocked(() -> {
                 final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET);
@@ -41,7 +41,7 @@ public class CursorsCommitService {
                 } else {
                     return false;
                 }
-            }, lock);
+            }, zkLockFactory.createLock(offsetPath));
         } catch (Exception e) {
             throw new ServiceUnavailableException("Error communicating with zookeeper", e);
         }
