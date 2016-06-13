@@ -204,7 +204,7 @@ class StreamingState extends State {
         }
     }
 
-    private void topologyChanged() {
+    void topologyChanged() {
         if (!isCurrent()) {
             return;
         }
@@ -223,7 +223,7 @@ class StreamingState extends State {
         });
     }
 
-    private void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
+    void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
         if (!isCurrent()) {
             return;
         }
@@ -257,8 +257,22 @@ class StreamingState extends State {
                 .forEach(this::addToStreaming);
         // 5. Check if something can be released right now
         reassignCommitted();
+
         // 6. Reconfigure kafka consumer
         reconfigureKafkaConsumer(false);
+
+        logPartitionAssignment("Topology refreshed");
+    }
+
+    private void logPartitionAssignment(final String reason) {
+        if (getLog().isInfoEnabled()) {
+            getLog().info("{}. Streaming partitions: [{}]. Reassigning partitions: [{}]",
+                    reason,
+                    offsets.keySet().stream().filter(p -> !releasingPartitions.containsKey(p))
+                            .map(Partition.PartitionKey::toString).collect(Collectors.joining(",")),
+                    releasingPartitions.keySet().stream().map(Partition.PartitionKey::toString)
+                            .collect(Collectors.joining(", ")));
+        }
     }
 
     private void addPartitionToReassigned(final Partition.PartitionKey partitionKey) {
@@ -272,6 +286,7 @@ class StreamingState extends State {
         if (!isCurrent() || !releasingPartitions.containsKey(pk)) {
             return;
         }
+        getLog().info("Checking barrier to transfer partition {}", pk);
         final long currentTime = System.currentTimeMillis();
         if (currentTime >= releasingPartitions.get(pk)) {
             shutdownGracefully("barrier on reassigning partition reached for " + pk + ", current time: " + currentTime + ", barrier: " + releasingPartitions.get(pk));
@@ -323,7 +338,7 @@ class StreamingState extends State {
         }
     }
 
-    private void offsetChanged(final Partition.PartitionKey key) {
+    void offsetChanged(final Partition.PartitionKey key) {
         if (offsets.containsKey(key)) {
             final PartitionData data = offsets.get(key);
             data.getSubscription().refresh();
@@ -341,6 +356,7 @@ class StreamingState extends State {
             }
             if (releasingPartitions.containsKey(key) && data.isCommitted()) {
                 reassignCommitted();
+                logPartitionAssignment("New offset received for releasing partition " + key);
             }
         }
     }

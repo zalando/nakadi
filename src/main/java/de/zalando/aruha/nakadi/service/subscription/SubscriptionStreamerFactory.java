@@ -38,16 +38,19 @@ public class SubscriptionStreamerFactory {
             final SubscriptionOutput output) throws NoSuchSubscriptionException {
         final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
+        final Session session = Session.generate(1);
+        final String loggingPath = "subscription." + subscriptionId + "." + session.getId();
         // Create streaming context
         return new StreamingContext(
                 output,
                 streamParameters,
-                Session.generate(1),
+                session,
                 executorService,
-                new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get()),
+                new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get(), loggingPath),
                 new KafkaClient(subscription, topicRepository),
                 new ExactWeightRebalancer(),
-                kafkaPollTimeout);
+                kafkaPollTimeout,
+                loggingPath);
     }
 
 }

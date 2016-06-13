@@ -13,9 +13,9 @@ public abstract class State {
     private StreamingContext context;
     private Logger log;
 
-    public void setContext(final StreamingContext context) {
+    public void setContext(final StreamingContext context, final String loggingPath) {
         this.context = context;
-        this.log = LoggerFactory.getLogger("streaming." + context.getSessionId() + "." + this.getClass().getSimpleName());
+        this.log = LoggerFactory.getLogger(loggingPath + "." + this.getClass().getSimpleName());
     }
 
     public Logger getLog() {

@@ -12,7 +12,7 @@ public class StreamingContextTest {
     private static StreamingContext createTestContext(final Consumer<Exception> onException) {
         final SubscriptionOutput output = new SubscriptionOutput() {
             @Override
-            public void onInitialized() throws IOException {
+            public void onInitialized(final String ignore) throws IOException {
             }
 
             @Override
@@ -28,7 +28,7 @@ public class StreamingContextTest {
             }
         };
 
-        return new StreamingContext(output, null, Session.generate(1), null, null, null, null, 0);
+        return new StreamingContext(output, null, Session.generate(1), null, null, null, null, 0, "stream");
     }
 
     @Test
@@ -67,8 +67,8 @@ public class StreamingContextTest {
         final boolean[] contextsSet = new boolean[]{false, false};
         final State state1 = new State() {
             @Override
-            public void setContext(final StreamingContext context) {
-                super.setContext(context);
+            public void setContext(final StreamingContext context, final String tmp) {
+                super.setContext(context, tmp);
                 contextsSet[0] = null != context;
             }
 
@@ -86,8 +86,8 @@ public class StreamingContextTest {
         };
         final State state2 = new State() {
             @Override
-            public void setContext(final StreamingContext context) {
-                super.setContext(context);
+            public void setContext(final StreamingContext context, final String tmp) {
+                super.setContext(context, tmp);
                 contextsSet[1] = true;
             }
 

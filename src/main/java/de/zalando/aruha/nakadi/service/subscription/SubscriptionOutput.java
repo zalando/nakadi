@@ -3,7 +3,7 @@ package de.zalando.aruha.nakadi.service.subscription;
 import java.io.IOException;
 
 public interface SubscriptionOutput {
-    void onInitialized() throws IOException;
+    void onInitialized(String sessionId) throws IOException;
 
     void onException(Exception ex);
 
