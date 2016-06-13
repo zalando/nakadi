@@ -24,7 +24,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 
 import javax.validation.Valid;
 import java.util.List;
-import java.util.UUID;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;

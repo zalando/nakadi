@@ -5,6 +5,7 @@ import org.joda.time.DateTime;
 public class Subscription extends SubscriptionBase {
 
     public Subscription() {
+        super();
     }
 
     public Subscription(final String id, final DateTime createdAt, final SubscriptionBase subscriptionBase) {
