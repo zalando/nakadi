@@ -28,6 +28,8 @@ public class StreamingContext implements SubscriptionStreamer {
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
 
+    private final String loggingPath;
+
     private State currentState;
     private ZKSubscription clientListChanges;
 
@@ -41,7 +43,8 @@ public class StreamingContext implements SubscriptionStreamer {
             final ZkSubscriptionClient zkClient,
             final KafkaClient kafkaClient,
             final BiFunction<Session[], Partition[], Partition[]> rebalancer,
-            final long kafkaPollTimeout) {
+            final long kafkaPollTimeout,
+            final String loggingPath) {
         this.out = out;
         this.parameters = parameters;
         this.session = session;
@@ -51,7 +54,8 @@ public class StreamingContext implements SubscriptionStreamer {
         this.currentState = null;
         this.kafkaClient = kafkaClient;
         this.kafkaPollTimeout = kafkaPollTimeout;
-        this.log = LoggerFactory.getLogger("streaming." + session.getId());
+        this.loggingPath = loggingPath + ".stream";
+        this.log = LoggerFactory.getLogger(loggingPath);
     }
 
     public StreamParameters getParameters() {
@@ -121,7 +125,7 @@ public class StreamingContext implements SubscriptionStreamer {
             currentState = newState;
             if (null != currentState) {
                 log.info("Switching state to " + currentState.getClass().getSimpleName());
-                currentState.setContext(this);
+                currentState.setContext(this, loggingPath);
                 currentState.onEnter();
             } else {
                 log.info("No next state found, dying");
@@ -130,7 +134,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void registerSession() {
-        log.info("Registering session " + session);
+        log.info("Registering session {}", session);
         zkClient.registerSession(session);
         // Install rebalance hook on client list change.
         clientListChanges = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
@@ -140,7 +144,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void unregisterSession() {
-        log.info("Unregistering session " + session);
+        log.info("Unregistering session {}", session);
         if (null != clientListChanges) {
             try {
                 clientListChanges.cancel();

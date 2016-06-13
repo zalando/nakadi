@@ -2,7 +2,6 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
-import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import de.zalando.aruha.nakadi.service.subscription.StreamParameters;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionOutput;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionStreamer;
@@ -49,11 +48,12 @@ public class SubscriptionStreamController {
         }
 
         @Override
-        public void onInitialized() throws IOException {
+        public void onInitialized(final String sessionId) throws IOException {
             if (!headersSent) {
                 headersSent = true;
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
+                response.setHeader("X-Nakadi-SessionId", sessionId);
                 out.flush();
             }
         }
@@ -102,7 +102,6 @@ public class SubscriptionStreamController {
             @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             final NativeWebRequest request, final HttpServletResponse response) throws IOException {
-
         return outputStream -> {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);

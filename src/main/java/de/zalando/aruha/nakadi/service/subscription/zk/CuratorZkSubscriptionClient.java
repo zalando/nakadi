@@ -26,11 +26,11 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private final String subscriptionId;
     private final Logger log;
 
-    public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework) {
+    public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework, final String loggingPath) {
         this.subscriptionId = subscriptionId;
         this.curatorFramework = curatorFramework;
         this.lock = new InterProcessSemaphoreMutex(curatorFramework, "/nakadi/locks/subscription_" + subscriptionId);
-        this.log = LoggerFactory.getLogger("zk." + subscriptionId);
+        this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
 
     @Override
@@ -51,6 +51,8 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 }
                 log.debug("Lock released " + function.hashCode());
             }
+        } catch (final SubscriptionWrappedException e) {
+            throw e;
         } catch (final Exception e) {
             throw new SubscriptionWrappedException(e);
         }

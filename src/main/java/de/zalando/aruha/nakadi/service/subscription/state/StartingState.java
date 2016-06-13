@@ -41,7 +41,7 @@ public class StartingState extends State {
         registerSession();
 
         try {
-            getOut().onInitialized();
+            getOut().onInitialized(getSessionId());
             switchState(new StreamingState());
         } catch (final IOException e) {
             getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
