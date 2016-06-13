@@ -6,12 +6,20 @@ import de.zalando.aruha.nakadi.service.subscription.StreamingContext;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionOutput;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class State {
     private StreamingContext context;
+    private Logger log;
 
     public void setContext(final StreamingContext context) {
         this.context = context;
+        this.log = LoggerFactory.getLogger("streaming." + context.getSessionId() + "." + this.getClass().getSimpleName());
+    }
+
+    public Logger getLog() {
+        return log;
     }
 
     public abstract void onEnter();

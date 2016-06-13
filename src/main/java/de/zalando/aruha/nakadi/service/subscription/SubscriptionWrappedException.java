@@ -4,6 +4,7 @@ public class SubscriptionWrappedException extends RuntimeException {
     private final Exception sourceException;
 
     public SubscriptionWrappedException(final Exception sourceException) {
+        super(sourceException);
         this.sourceException = sourceException;
     }
 

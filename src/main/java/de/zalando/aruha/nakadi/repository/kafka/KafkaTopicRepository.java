@@ -20,6 +20,7 @@ import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import java.util.Arrays;
 import java.util.stream.Stream;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
@@ -233,11 +234,13 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public Map<String, Long> materializePositions(final String topicId, final String position) throws ServiceUnavailableException {
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+
             final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
                     .partitionsFor(topicId)
                     .stream()
                     .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
                     .toArray(org.apache.kafka.common.TopicPartition[]::new);
+            consumer.assign(Arrays.asList(kafkaTPs));
             if (position.equals(Cursor.BEFORE_OLDEST_OFFSET)) {
                 consumer.seekToBeginning(kafkaTPs);
             } else if (position.equals(Cursor.AFTER_NEWEST_OFFSET)) {

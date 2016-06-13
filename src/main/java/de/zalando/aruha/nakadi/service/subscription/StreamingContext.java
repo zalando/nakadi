@@ -31,7 +31,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private State currentState;
     private ZKSubscription clientListChanges;
 
-    private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
+    private final Logger log;
 
     StreamingContext(
             final SubscriptionOutput out,
@@ -51,6 +51,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.currentState = null;
         this.kafkaClient = kafkaClient;
         this.kafkaPollTimeout = kafkaPollTimeout;
+        this.log = LoggerFactory.getLogger("streaming." + session.getId());
     }
 
     public StreamParameters getParameters() {
@@ -99,10 +100,10 @@ public class StreamingContext implements SubscriptionStreamer {
             try {
                 task.run();
             } catch (final SubscriptionWrappedException ex) {
-                LOG.error("Failed to process task " + task + ", will rethrow original error", ex);
+                log.error("Failed to process task " + task + ", will rethrow original error", ex);
                 switchState(new CleanupState(ex.getSourceException()));
             } catch (final RuntimeException ex) {
-                LOG.error("Failed to process task " + task + ", code carefully!", ex);
+                log.error("Failed to process task " + task + ", code carefully!", ex);
                 switchState(new CleanupState(ex));
             }
         }
@@ -111,25 +112,25 @@ public class StreamingContext implements SubscriptionStreamer {
     public void switchState(final State newState) {
         this.addTask(() -> {
             if (currentState != null) {
-                LOG.info("Switching state from " + currentState.getClass().getSimpleName());
+                log.info("Switching state from " + currentState.getClass().getSimpleName());
                 currentState.onExit();
             } else {
-                LOG.info("Connection died, no new state switches available");
+                log.info("Connection died, no new state switches available");
                 return;
             }
             currentState = newState;
             if (null != currentState) {
-                LOG.info("Switching state to " + currentState.getClass().getSimpleName());
+                log.info("Switching state to " + currentState.getClass().getSimpleName());
                 currentState.setContext(this);
                 currentState.onEnter();
             } else {
-                LOG.info("No next state found, dying");
+                log.info("No next state found, dying");
             }
         });
     }
 
     public void registerSession() {
-        LOG.info("Registering session " + session);
+        log.info("Registering session " + session);
         zkClient.registerSession(session);
         // Install rebalance hook on client list change.
         clientListChanges = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
@@ -139,7 +140,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public void unregisterSession() {
-        LOG.info("Unregistering session " + session);
+        log.info("Unregistering session " + session);
         if (null != clientListChanges) {
             try {
                 clientListChanges.cancel();

@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.service.subscription;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 public class StreamParameters {
     /**
@@ -55,6 +56,13 @@ public class StreamParameters {
 
     public boolean isStreamLimitReached(final long commitedEvents) {
         return null != streamLimitEvents && streamLimitEvents <= commitedEvents;
+    }
+
+    public boolean isKeepAliveLimitReached(final IntStream keepAlive) {
+        if (null == this.batchKeepAliveIterations) {
+            return false;
+        }
+        return keepAlive.allMatch(v -> v >= batchKeepAliveIterations);
     }
 
     public static StreamParameters of(

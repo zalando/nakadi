@@ -10,18 +10,26 @@ import org.slf4j.LoggerFactory;
 class PartitionData {
     private final ZKSubscription subscription;
     private final NavigableMap<Long, String> nakadiEvents = new TreeMap<>();
+    private final Logger log;
+
     private long commitOffset;
     private long sentOffset;
     private long lastSendMillis;
-    private int keepAlivesInARow;
-    private static final Logger LOG = LoggerFactory.getLogger(PartitionData.class);
+    private int keepAliveInARow;
 
     PartitionData(final ZKSubscription subscription, final Long commitOffset) {
+        this(subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class));
+    }
+
+    PartitionData(final ZKSubscription subscription, final Long commitOffset, final Logger log) {
         this.subscription = subscription;
+        this.log = log;
+
         this.commitOffset = commitOffset;
         this.sentOffset = commitOffset;
         this.lastSendMillis = System.currentTimeMillis();
     }
+
 
     SortedMap<Long, String> takeEventsToStream(final long currentTimeMillis, final int batchSize, final long batchTimeoutMillis) {
         if (nakadiEvents.size() >= batchSize || (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis) {
@@ -48,15 +56,15 @@ class PartitionData {
         }
         if (!result.isEmpty()) {
             this.sentOffset = result.lastKey();
-            this.keepAlivesInARow = 0;
+            this.keepAliveInARow = 0;
         } else {
-            this.keepAlivesInARow += 1;
+            this.keepAliveInARow += 1;
         }
         return result;
     }
 
-    int getKeepAlivesInARow() {
-        return keepAlivesInARow;
+    int getKeepAliveInARow() {
+        return keepAliveInARow;
     }
 
     /**
@@ -70,52 +78,55 @@ class PartitionData {
      */
     void ensureDataAvailable(final long position) {
         if (position > commitOffset) {
-            LOG.warn("Oldest kafka position is " + position + " and commit offset is " + commitOffset + ", updating");
+            log.warn("Oldest kafka position is {} and commit offset is {}, updating", position, commitOffset);
             commitOffset = position;
         }
         if (position > sentOffset) {
-            LOG.warn("Oldest kafka position is " + position + " and sent offset is " + commitOffset + ", updating");
+            log.warn("Oldest kafka position is {} and sent offset is {}, updating", position, commitOffset);
             sentOffset = position;
         }
     }
 
     static class CommitResult {
         final boolean seekOnKafka;
-        final long commitedCount;
+        final long committedCount;
 
-        private CommitResult(final boolean seekOnKafka, final long commitedCount) {
+        private CommitResult(final boolean seekOnKafka, final long committedCount) {
             this.seekOnKafka = seekOnKafka;
-            this.commitedCount = commitedCount;
+            this.committedCount = committedCount;
         }
     }
 
     CommitResult onCommitOffset(final Long offset) {
         boolean seekKafka = false;
         if (offset > sentOffset) {
-            LOG.error("Commit in future: current: " + sentOffset + ", commited " + commitOffset + " will skip sending obsolete data");
+            log.error("Commit in future: current: {}, committed {} will skip sending obsolete data", sentOffset, commitOffset);
             seekKafka = true;
             sentOffset = offset;
         }
-        final long commited;
+        final long committed;
         if (offset >= commitOffset) {
-            commited = offset - commitOffset;
+            committed = offset - commitOffset;
             commitOffset = offset;
         } else {
-            LOG.error("Commits in past are evil!: Commiting in " + offset + " while current commit is " + commitOffset);
+            log.error("Commits in past are evil!: Committing in {} while current commit is {}", offset, commitOffset);
             seekKafka = true;
             commitOffset = offset;
             sentOffset = commitOffset;
-            commited = 0;
+            committed = 0;
         }
         while (nakadiEvents.floorKey(commitOffset) != null) {
             nakadiEvents.pollFirstEntry();
         }
-        return new CommitResult(seekKafka, commited);
+        return new CommitResult(seekKafka, committed);
     }
 
-    void addEvent(final long offset, final String event) {
+    void addEventFromKafka(final long offset, final String event) {
         if (offset > (sentOffset + nakadiEvents.size() + 1)) {
-            LOG.warn("Adding event that is too far from last sent. Dunno how it happend, but it is.");
+            log.warn(
+                    "Adding event from kafka that is too far from last sent. " +
+                            "Dunno how it happened, but it is. Sent offset: {}, Commit offset: {}, Adding offset: {}",
+                    sentOffset, commitOffset, offset);
         }
         nakadiEvents.put(offset, event);
     }
@@ -124,7 +135,7 @@ class PartitionData {
         nakadiEvents.clear();
     }
 
-    boolean isCommited() {
+    boolean isCommitted() {
         return sentOffset <= commitOffset;
     }
 
