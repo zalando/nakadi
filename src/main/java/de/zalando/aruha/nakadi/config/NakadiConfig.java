@@ -18,13 +18,18 @@ import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import de.zalando.aruha.nakadi.service.CursorsCommitService;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import java.lang.management.ManagementFactory;
+
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -41,6 +46,9 @@ public class NakadiConfig {
 
     @Autowired
     private TopicRepository topicRepository;
+
+    @Autowired
+    private ZooKeeperHolder zooKeeperHolder;
 
     @Autowired
     private EventTypeCache eventTypeCache;
@@ -74,6 +82,17 @@ public class NakadiConfig {
     @Bean
     public VersionController versionController() {
         return new VersionController(jsonConfig.jacksonObjectMapper());
+    }
+
+    @Bean
+    @Profile("!test")
+    public FeatureToggleService featureToggleService() {
+        return new FeatureToggleService(zooKeeperHolder);
+    }
+
+    @Bean
+    public CursorsCommitService cursorsCommitService() {
+        return new CursorsCommitService(zooKeeperHolder, topicRepository);
     }
 
     @Bean

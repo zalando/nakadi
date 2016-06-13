@@ -47,4 +47,6 @@ public interface TopicRepository {
     EventConsumer createEventConsumer(String topic, List<Cursor> cursors) throws NakadiException, InvalidCursorException;
 
     int compareOffsets(String firstOffset, String secondOffset) throws InternalNakadiException;
+
+    void validateCommitCursors(String topic, List<Cursor> cursors) throws InvalidCursorException;
 }

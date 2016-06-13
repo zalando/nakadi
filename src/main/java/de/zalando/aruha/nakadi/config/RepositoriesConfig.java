@@ -7,7 +7,6 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
-import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
 import de.zalando.aruha.nakadi.validation.EventMetadataValidationStrategy;
 import de.zalando.aruha.nakadi.validation.ValidationStrategy;
@@ -17,7 +16,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
@@ -29,18 +27,10 @@ public class RepositoriesConfig {
     private JsonConfig jsonConfig;
 
     @Autowired
-    private Environment environment;
-
-    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private ZookeeperConfig zookeeperConfig;
-
-    @Bean
-    public FeatureToggleService featureToggleService() {
-        return new FeatureToggleService(zookeeperConfig.zooKeeperHolder());
-    }
 
     @Bean
     public EventTypeCache eventTypeCache() throws Exception {

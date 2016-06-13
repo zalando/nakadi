@@ -12,7 +12,6 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
-import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
@@ -348,13 +347,7 @@ public class KafkaTopicRepository implements TopicRepository {
         final List<TopicPartition> partitions = listPartitions(topic);
 
         for (final Cursor cursor : cursors) {
-            if (cursor.getPartition() == null) {
-                throw  new InvalidCursorException(NULL_PARTITION, cursor);
-            }
-
-            if (cursor.getOffset() == null) {
-                throw new InvalidCursorException(NULL_OFFSET, cursor);
-            }
+            validateCursorForNulls(cursor);
 
             final TopicPartition topicPartition = partitions
                         .stream()
@@ -378,6 +371,30 @@ public class KafkaTopicRepository implements TopicRepository {
             } catch (final NumberFormatException e) {
                 throw new InvalidCursorException(INVALID_FORMAT, cursor);
             }
+        }
+    }
+
+    public void validateCommitCursors(final String topic, final List<Cursor> cursors) throws InvalidCursorException {
+        final List<String> partitions = this.listPartitionNames(topic);
+        for (final Cursor cursor : cursors) {
+            validateCursorForNulls(cursor);
+            if (!partitions.contains(cursor.getPartition())) {
+                throw new InvalidCursorException(PARTITION_NOT_FOUND, cursor);
+            }
+            try {
+                fromNakadiCursor(cursor);
+            } catch (final NumberFormatException e) {
+                throw new InvalidCursorException(INVALID_FORMAT, cursor);
+            }
+        }
+    }
+
+    private void validateCursorForNulls(final Cursor cursor) throws InvalidCursorException {
+        if (cursor.getPartition() == null) {
+            throw  new InvalidCursorException(NULL_PARTITION, cursor);
+        }
+        if (cursor.getOffset() == null) {
+            throw new InvalidCursorException(NULL_OFFSET, cursor);
         }
     }
 

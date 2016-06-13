@@ -19,6 +19,8 @@ import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
 import static org.hamcrest.Matchers.isOneOf;
 import static org.hamcrest.Matchers.not;
+
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -129,6 +131,13 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
+        public FeatureToggleService featureToggleService() {
+            final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+            when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
+            return featureToggleService;
+        }
+
+        @Bean
         public ZooKeeperHolder mockZKHolder() {
             return mock(ZooKeeperHolder.class);
         }
@@ -159,7 +168,8 @@ public abstract class AuthenticationTest {
             new Endpoint(GET, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/event-types/foo/partitions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
-            new Endpoint(GET, "/subscriptions/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
+            new Endpoint(GET, "/subscriptions/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(PUT, "/subscriptions/foo/cursors", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
 
     protected static final List<Endpoint> endpointsForUidScope = ImmutableList.of(
             new Endpoint(GET, "/metrics", TOKEN_WITH_UID_SCOPE),
