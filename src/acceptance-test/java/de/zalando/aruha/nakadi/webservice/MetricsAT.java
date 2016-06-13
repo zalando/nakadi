@@ -8,7 +8,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 public class MetricsAT extends BaseAT {
 
-    @Test(timeout = 5000)
+    @Test(timeout = 10000)
     public void whenGetMetricsThenStructureIsOk() {
         given()
                 .when()

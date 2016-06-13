@@ -2,12 +2,14 @@ package de.zalando.aruha.nakadi.utils;
 
 import java.io.IOException;
 
+import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import org.apache.commons.io.IOUtils;
 
 import org.json.JSONObject;
@@ -18,7 +20,12 @@ import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.validation.Errors;
+import org.springframework.validation.FieldError;
+import org.zalando.problem.Problem;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 public class TestUtils {
@@ -124,5 +131,13 @@ public class TestUtils {
         return standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), createMessageConverter())
                 .build();
+    }
+
+    public static Problem invalidProblem(final String field, final String description) {
+        final FieldError[] fieldErrors = {new FieldError("", field, description)};
+
+        final Errors errors = mock(Errors.class);
+        when(errors.getAllErrors()).thenReturn(Arrays.asList(fieldErrors));
+        return new ValidationProblem(errors);
     }
 }
