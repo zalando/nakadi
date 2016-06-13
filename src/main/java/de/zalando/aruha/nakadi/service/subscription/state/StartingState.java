@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class StartingState extends State {
-    private static final Logger LOG = LoggerFactory.getLogger(StartingState.class);
-
     @Override
     public void onEnter() {
         getZk().runLocked(this::createSubscriptionLocked);
@@ -46,7 +44,7 @@ public class StartingState extends State {
             getOut().onInitialized();
             switchState(new StreamingState());
         } catch (final IOException e) {
-            LOG.error("Failed to notify of initialization. Switch to cleanup directly", e);
+            getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
             switchState(new CleanupState(e));
         }
     }

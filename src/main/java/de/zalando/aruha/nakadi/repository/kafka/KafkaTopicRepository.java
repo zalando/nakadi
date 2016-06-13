@@ -235,6 +235,7 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public Map<String, Long> materializePositions(final String topicId, final String position) throws ServiceUnavailableException {
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+
             final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
                     .partitionsFor(topicId)
                     .stream()

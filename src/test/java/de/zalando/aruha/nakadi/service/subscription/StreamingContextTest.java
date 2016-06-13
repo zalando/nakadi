@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.service.subscription;
 
+import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import de.zalando.aruha.nakadi.service.subscription.state.State;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,7 +28,7 @@ public class StreamingContextTest {
             }
         };
 
-        return new StreamingContext(output, null, null, null, null, null, null, 0);
+        return new StreamingContext(output, null, Session.generate(1), null, null, null, null, 0);
     }
 
     @Test

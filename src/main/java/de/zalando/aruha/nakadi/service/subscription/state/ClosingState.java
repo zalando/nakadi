@@ -18,7 +18,6 @@ class ClosingState extends State {
     private final Map<Partition.PartitionKey, ZKSubscription> listeners = new HashMap<>();
     private final long lastCommitMillis;
     private ZKSubscription topologyListener;
-    private static final Logger LOG = LoggerFactory.getLogger(ClosingState.class);
 
     ClosingState(final Map<Partition.PartitionKey, Long> uncommitedOffsets, final long lastCommitMillis) {
         this.uncommitedOffsets = uncommitedOffsets;
@@ -134,7 +133,7 @@ class ClosingState extends State {
                     listener.cancel();
                 } catch (final RuntimeException ex) {
                     exceptionCaught = ex;
-                    LOG.error("Failed to cancel offsets listener" + listener, ex);
+                    getLog().error("Failed to cancel offsets listener {}", listener, ex);
                 }
             }
         }

@@ -219,7 +219,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     @Override
     public long getOffset(final Partition.PartitionKey key) {
         try {
-            return Long.parseLong(new String(curatorFramework.getData().forPath(getPartitionPath(key)), CHARSET));
+            return Long.parseLong(new String(curatorFramework.getData().forPath(getPartitionPath(key) + "/offset"), CHARSET));
         } catch (final Exception e) {
             throw new SubscriptionWrappedException(e);
         }
