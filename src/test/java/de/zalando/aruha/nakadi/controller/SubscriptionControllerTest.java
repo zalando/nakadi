@@ -9,6 +9,7 @@ import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -52,7 +53,11 @@ public class SubscriptionControllerTest {
     public SubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
 
-        final SubscriptionController controller = new SubscriptionController(subscriptionRepository, eventTypeRepository);
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+        when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
+
+        final SubscriptionController controller = new SubscriptionController(subscriptionRepository,
+                eventTypeRepository, featureToggleService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
 

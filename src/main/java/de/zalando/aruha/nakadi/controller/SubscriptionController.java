@@ -9,6 +9,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,16 +41,24 @@ public class SubscriptionController {
 
     private final EventTypeRepository eventTypeRepository;
 
+    private final FeatureToggleService featureToggleService;
+
     @Autowired
     public SubscriptionController(final SubscriptionDbRepository subscriptionRepository,
-                                  final EventTypeRepository eventTypeRepository) {
+                                  final EventTypeRepository eventTypeRepository,
+                                  final FeatureToggleService featureToggleService) {
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
+        this.featureToggleService = featureToggleService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors, final NativeWebRequest nativeWebRequest) {
+
+        if (!featureToggleService.isFeatureEnabled("high_level_api")) {
+            return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
+        }
         if (errors.hasErrors()) {
             return create(new ValidationProblem(errors), nativeWebRequest);
         }
