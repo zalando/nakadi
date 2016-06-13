@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
@@ -25,9 +26,6 @@ import java.util.Set;
 import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.isEmptyString;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -65,39 +63,41 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenPostValidSubscriptionThenOk() throws Exception {
-        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\"myET\"]}";
+        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
+        final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
+        when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
 
-        postSubscriptionAsJson(subscription)
+        postSubscription(subscriptionBase)
                 .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(jsonPath("$.owning_application", equalTo("app")))
                 .andExpect(jsonPath("$.event_types", containsInAnyOrder(ImmutableSet.of("myET").toArray())))
                 .andExpect(jsonPath("$.consumer_group", equalTo("none")))
-//                .andExpect(jsonPath("$.created_at", startsWith(new DateTime(DateTimeZone.UTC).toString("YYYY-MM-dd"))))
-//                .andExpect(jsonPath("$.id", not(isEmptyString())))
+                .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
+                .andExpect(jsonPath("$.id", equalTo("123")))
                 .andExpect(jsonPath("$.start_from", equalTo("END")));
     }
 
     @Test
     public void whenOwningApplicationIsNullThenUnprocessableEntity() throws Exception {
-        final Subscription subscription = createSubscription(null, ImmutableSet.of("myET"));
+        final SubscriptionBase subscriptionBase = createSubscription(null, ImmutableSet.of("myET"));
         final Problem expectedProblem = invalidProblem("owning_application", "may not be null");
-        checkForProblem(postSubscription(subscription), expectedProblem);
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
     public void whenEventTypesIsEmptyThenUnprocessableEntity() throws Exception {
-        final Subscription subscription = createSubscription("app", ImmutableSet.of());
+        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of());
         final Problem expectedProblem = invalidProblem("event_types", "size must be between 1 and 1");
-        checkForProblem(postSubscription(subscription), expectedProblem);
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
     // this test method will fail when we implement consuming from multiple event types
     public void whenMoreThanOneEventTypeThenUnprocessableEntity() throws Exception {
-        final Subscription subscription = createSubscription("app", ImmutableSet.of("myET", "secondET"));
+        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET", "secondET"));
         final Problem expectedProblem = invalidProblem("event_types", "size must be between 1 and 1");
-        checkForProblem(postSubscription(subscription), expectedProblem);
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
@@ -108,29 +108,36 @@ public class SubscriptionControllerTest {
     }
 
     @Test
+    public void whenWrongStartFromThenUnprocessableEntity() throws Exception {
+        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
+        subscriptionBase.setStartFrom("MIDDLE");
+        final Problem expectedProblem = invalidProblem("start_from",
+                "value not allowed, possible values are: 'BEGIN', 'END'");
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
+    }
+
+    @Test
     public void whenEventTypeDoesNotExistThenNotFound() throws Exception {
-        final Subscription subscription = createSubscription("app", ImmutableSet.of("myET"));
+        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
         when(eventTypeRepository.findByName("myET")).thenThrow(new NoSuchEventTypeException(""));
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND,
                 "Failed to create subscription, event type(s) not found: 'myET'");
 
-        checkForProblem(postSubscription(subscription), expectedProblem);
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
     public void whenSubscriptionExistsThenReturnIt() throws Exception {
-        final Subscription subscription = createSubscription("app", ImmutableSet.of("myET"));
+        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
         doThrow(new DuplicatedSubscriptionException("", null)).when(subscriptionRepository).createSubscription(any());
 
-        final Subscription existingSubscription = createSubscription("app", ImmutableSet.of("myET"));
-        existingSubscription.setId("123");
+        final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
         existingSubscription.setStartFrom(Subscription.POSITION_BEGIN);
-        existingSubscription.setCreatedAt(new DateTime(DateTimeZone.UTC));
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
 
-        postSubscription(subscription)
+        postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))));
@@ -143,15 +150,15 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
-    private Subscription createSubscription(final String owningApplication, final Set<String> eventTypes) {
-        final Subscription subscription = new Subscription();
-        subscription.setOwningApplication(owningApplication);
-        subscription.setEventTypes(eventTypes);
-        return subscription;
+    private SubscriptionBase createSubscription(final String owningApplication, final Set<String> eventTypes) {
+        final SubscriptionBase subscriptionBase = new SubscriptionBase();
+        subscriptionBase.setOwningApplication(owningApplication);
+        subscriptionBase.setEventTypes(eventTypes);
+        return subscriptionBase;
     }
 
-    private ResultActions postSubscription(final Subscription subscription) throws Exception {
-        return postSubscriptionAsJson(objectMapper.writeValueAsString(subscription));
+    private ResultActions postSubscription(final SubscriptionBase subscriptionBase) throws Exception {
+        return postSubscriptionAsJson(objectMapper.writeValueAsString(subscriptionBase));
     }
 
     private ResultActions postSubscriptionAsJson(final String subscription) throws Exception {

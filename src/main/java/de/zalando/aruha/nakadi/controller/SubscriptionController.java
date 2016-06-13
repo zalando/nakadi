@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
@@ -48,7 +49,7 @@ public class SubscriptionController {
     }
 
     @RequestMapping(method = RequestMethod.POST)
-    public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final Subscription subscription,
+    public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors, final NativeWebRequest nativeWebRequest) {
         if (errors.hasErrors()) {
             return create(new ValidationProblem(errors), nativeWebRequest);
@@ -57,7 +58,7 @@ public class SubscriptionController {
         try {
             // check that event types exist
             final List<String> noneExistingEventTypes = newArrayList();
-            for (final String etName : subscription.getEventTypes()) {
+            for (final String etName : subscriptionBase.getEventTypes()) {
                 try {
                     eventTypeRepository.findByName(etName);
                 } catch (NoSuchEventTypeException e) {
@@ -72,15 +73,15 @@ public class SubscriptionController {
             }
 
             // generate subscription id and try to create subscription in DB
-            subscriptionRepository.createSubscription(subscription);
+            final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
             return new ResponseEntity<>(subscription, HttpStatus.CREATED);
 
         } catch (final DuplicatedSubscriptionException e) {
             try {
                 // if the subscription with such parameters already exists - return it instead of creating a new one
                 final Subscription existingSubscription = subscriptionRepository.getSubscription(
-                        subscription.getOwningApplication(), subscription.getEventTypes(),
-                        subscription.getConsumerGroup());
+                        subscriptionBase.getOwningApplication(), subscriptionBase.getEventTypes(),
+                        subscriptionBase.getConsumerGroup());
                 return new ResponseEntity<>(existingSubscription, HttpStatus.OK);
 
             } catch (final NakadiException ex) {
