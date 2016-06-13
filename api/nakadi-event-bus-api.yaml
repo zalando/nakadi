@@ -747,6 +747,158 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /subscriptions:
+    post:
+      tags:
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        This endpoint creates a subscription for EventTypes. The subscription is needed to be able to consume
+        events from EventTypes in a high level way when Nakadi stores the offsets and manages the rebalancing of
+        consuming clients.
+        The subscription is identified by its key parameters (owning_application, event_types, use_case). If this
+        endpoint is invoked several times with the same key subscription properties in body - the subscription will be
+        created only once and for all other calls it will just return the subscription that was already created.
+      parameters:
+        - name: subscription
+          in: body
+          description: Subscription to create
+          schema:
+            $ref: '#/definitions/Subscription'
+          required: true
+      responses:
+        '200':
+          description: |
+            Subscription for such parameters already exists. Returns subscription object that already existed.
+          schema:
+            $ref: '#/definitions/Subscription'
+        '201':
+          description: Subscription was successfuly created. Returns subscription object that was created.
+          schema:
+            $ref: '#/definitions/Subscription'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: EventType(s) not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+
+
+  /subscriptions/{subscription_id}/cursors:
+    get:
+      tags:
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Exposes the currently committed offsets of a subscription.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+      responses:
+        '200':
+          description: Ok
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cursor'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+    put:
+      tags:
+        - managed-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Endpoint for committing offsets of the subscription. The offsets are per partition of EventType. One can use
+        this endpoint to commit the offsets for any of the partitions that are part of this subscription.
+        With every commit the offsets can only increase so it is not possible to commit offset that is lower than
+        already committed offset for the appropriate partition; if such request is made - it will not have any effect
+        on the committed offsets.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+        - name: cursors
+          in: body
+          description: Cursors with offsets to commit.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cursor'
+          required: true
+      responses:
+        '200':
+          description: Offsets were committed
+        '204':
+          description: No Content. The cursors which were tried to be committed are older than already committed ones.
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Client is not authorized to perform this operation
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
+          schema:
+            $ref: '#/definitions/Problem'
+
+
   '/registry/validation-strategies':
     get:
       tags:
@@ -1091,6 +1243,60 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Event'
+
+  Subscription:
+    description: |
+      Subscription is a high level consumption unit. Subscriptions allow applications to easily scale the number of
+      clients by managing consumed event offsets and distributing load between instances.
+      The key properties that identify subscription are 'owning_application', 'event_types' and 'use_case'.
+      It's not possible to have two different subscriptions with these properties being the same.
+    properties:
+      id:
+        type: string
+        description: |
+          Id of subscription that was created. Is generated by Nakadi, should not be specified when creating
+          subscription.
+      created_at:
+        type: string
+        description: |
+          Timestamp of creation of the subscription. Is generated by Nakadi, should not be specified when creating
+          subscription.
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      owning_application:
+        type: string
+        example: 'price-service'
+        description: The id of application owning the subscription.
+      event_types:
+        type: array
+        items:
+          type: string
+        description: |
+          EventTypes to subscribe to.
+          The order is not important. Subscriptions that differ only be the order of EventTypes will be considered
+          the same and will have the same id.
+          * Currently only subscription to a single EventType is supported. Subscriptions with more than one EventType
+          in event_types property will be rejected.
+      use_case:
+        type: string
+        example: 'read-product-updates'
+        description: |
+          The value describing the use case of this subscription.
+          In general that is an additional identifier used to differ subscriptions having the same owning_application
+          and event_types.
+        default: 'none'
+      read_from:
+        type: string
+        enum:
+          - BEGIN
+          - END
+        description: |
+          Position to start reading events from. BEGIN - read from the oldest available event. END - read from the most
+          recent offset.
+        default: 'END'
+    required:
+      - owning_application
+      - event_types
 
   EventType:
     description: An event type defines the schema and its runtime properties.
