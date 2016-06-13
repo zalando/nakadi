@@ -7,6 +7,7 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
@@ -45,5 +46,5 @@ public interface TopicRepository {
 
     EventConsumer createEventConsumer(String topic, List<Cursor> cursors) throws NakadiException, InvalidCursorException;
 
-
+    int compareOffsets(String firstOffset, String secondOffset) throws InternalNakadiException;
 }

@@ -12,6 +12,7 @@ import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
+import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
@@ -330,6 +331,16 @@ public class KafkaTopicRepository implements TopicRepository {
         }
 
         return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, settings.getKafkaPollTimeoutMs());
+    }
+
+    public int compareOffsets(final String firstOffset, final String secondOffset) {
+        try {
+            final long first = toKafkaOffset(firstOffset);
+            final long second = toKafkaOffset(secondOffset);
+            return Long.compare(first, second);
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException("Incorrect offset format, should be long", e);
+        }
     }
 
     private void validateCursors(final String topic, final List<Cursor> cursors) throws ServiceUnavailableException,
