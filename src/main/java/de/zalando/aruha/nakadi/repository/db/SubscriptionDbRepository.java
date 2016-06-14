@@ -3,9 +3,12 @@ package de.zalando.aruha.nakadi.repository.db;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,6 +18,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Set;
+import java.util.UUID;
 
 import static com.google.common.collect.Sets.newTreeSet;
 
@@ -26,13 +30,19 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         super(jdbcTemplate, objectMapper);
     }
 
-    public void saveSubscription(final Subscription subscription) throws InternalNakadiException,
+    public Subscription createSubscription(final SubscriptionBase subscriptionBase) throws InternalNakadiException,
             DuplicatedSubscriptionException {
 
         try {
+            final String newId = UUID.randomUUID().toString();
+            final DateTime createdAt = new DateTime(DateTimeZone.UTC);
+            final Subscription subscription = new Subscription(newId, createdAt, subscriptionBase);
+
             jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
                     subscription.getId(),
                     jsonMapper.writer().writeValueAsString(subscription));
+
+            return subscription;
         } catch (final JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during persistence of event type", e);
         } catch (final DuplicateKeyException e) {

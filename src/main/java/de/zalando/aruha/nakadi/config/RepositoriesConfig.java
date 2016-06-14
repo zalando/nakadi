@@ -35,25 +35,24 @@ public class RepositoriesConfig {
     @Bean
     public EventTypeCache eventTypeCache() throws Exception {
         final CuratorFramework client = zookeeperConfig.zooKeeperHolder().get();
-        final EventTypeCache cache = new EventTypeCache(dbRepo(), client);
 
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
         ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
 
-        return new EventTypeCache(dbRepo(), client);
+        return new EventTypeCache(eventTypeDBRepository(), client);
     }
 
     @Bean
     public EventTypeRepository eventTypeRepository() throws Exception {
-        return new CachingEventTypeRepository(dbRepo(), eventTypeCache());
-    }
-
-    private EventTypeRepository dbRepo() {
-        return new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
+        return new CachingEventTypeRepository(eventTypeDBRepository(), eventTypeCache());
     }
 
     @Bean
-    public SubscriptionDbRepository subscriptionsRepository() {
+    public SubscriptionDbRepository subscriptionRepository() {
         return new SubscriptionDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
+    }
+
+    private EventTypeRepository eventTypeDBRepository() {
+        return new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
     }
 }
