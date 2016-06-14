@@ -1,31 +1,22 @@
 package de.zalando.aruha.nakadi.domain;
 
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 
-import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-import java.util.Collections;
-import java.util.Set;
+public class Subscription extends SubscriptionBase {
 
-import static com.google.common.collect.Sets.newTreeSet;
+    public Subscription() {
+        super();
+    }
 
-public class Subscription {
+    public Subscription(final String id, final DateTime createdAt, final SubscriptionBase subscriptionBase) {
+        super(subscriptionBase);
+        this.id = id;
+        this.createdAt = createdAt;
+    }
 
-    @Nullable
     private String id;
 
-    @NotNull
-    private String owningApplication;
-
-    @NotNull
-    @Size(min = 1, max = 1)
-    private Set<String> eventTypes;
-
-    private String consumerGroup = "none";
-
-    private DateTime createdAt = new DateTime(DateTimeZone.UTC);
+    private DateTime createdAt;
 
     public String getId() {
         return id;
@@ -33,30 +24,6 @@ public class Subscription {
 
     public void setId(final String id) {
         this.id = id;
-    }
-
-    public String getOwningApplication() {
-        return owningApplication;
-    }
-
-    public void setOwningApplication(final String owningApplication) {
-        this.owningApplication = owningApplication;
-    }
-
-    public Set<String> getEventTypes() {
-        return Collections.unmodifiableSet(eventTypes);
-    }
-
-    public void setEventTypes(final Set<String> eventTypes) {
-        this.eventTypes = newTreeSet(eventTypes);
-    }
-
-    public String getConsumerGroup() {
-        return consumerGroup;
-    }
-
-    public void setConsumerGroup(final String consumerGroup) {
-        this.consumerGroup = consumerGroup;
     }
 
     public DateTime getCreatedAt() {
@@ -72,16 +39,13 @@ public class Subscription {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final Subscription that = (Subscription) o;
-        return id != null ? id.equals(that.id) : that.id == null && owningApplication.equals(that.owningApplication) &&
-                eventTypes.equals(that.eventTypes) && consumerGroup.equals(that.consumerGroup) && createdAt.equals(that.createdAt);
+        return super.equals(that) && id.equals(that.id) && createdAt.equals(that.createdAt);
     }
 
     @Override
     public int hashCode() {
-        int result = id != null ? id.hashCode() : 0;
-        result = 31 * result + owningApplication.hashCode();
-        result = 31 * result + eventTypes.hashCode();
-        result = 31 * result + consumerGroup.hashCode();
+        int result = super.hashCode();
+        result = 31 * result + id.hashCode();
         result = 31 * result + createdAt.hashCode();
         return result;
     }

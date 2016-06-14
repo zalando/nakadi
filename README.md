@@ -57,6 +57,9 @@ The project also provides compatability with the [STUPS project](https://stups.i
 
 * Support for different streaming technologies and engines. Nakadi currently uses [Apache Kafka](http://kafka.apache.org/) as its broker, but other providers (such as Kinesis) will be possible. 
 
+More detailed information can be found on the [manual](http://zalando.github.io/nakadi-manual/). 
+
+
 ## Quickstart
 
 You can run the project locally using [Docker](https://www.docker.com/).

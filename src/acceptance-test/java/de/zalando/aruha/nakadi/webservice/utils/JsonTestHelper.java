@@ -23,10 +23,10 @@ public class JsonTestHelper {
     }
 
     public static List<Map<String, String>> asMapsList(final String body) throws IOException {
-        return jsonMapper.<List<Map<String, String>>>readValue(body, LIST_OF_MAPS_REF);
+        return jsonMapper.readValue(body, LIST_OF_MAPS_REF);
     }
 
     public static Map<String, String> asMap(final String body) throws IOException {
-        return jsonMapper.<Map<String, String>>readValue(body, MAP_REF);
+        return jsonMapper.readValue(body, MAP_REF);
     }
 }
