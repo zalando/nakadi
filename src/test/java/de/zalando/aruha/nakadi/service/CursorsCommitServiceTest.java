@@ -1,8 +1,12 @@
 package de.zalando.aruha.nakadi.service;
 
+import com.google.common.collect.ImmutableSet;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import org.apache.curator.framework.CuratorFramework;
@@ -11,8 +15,10 @@ import org.apache.curator.framework.api.SetDataBuilder;
 import org.apache.curator.framework.recipes.locks.InterProcessLock;
 import org.junit.Before;
 import org.junit.Test;
+import org.parboiled.common.ImmutableList;
 
 import java.nio.charset.Charset;
+import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -27,6 +33,8 @@ import static org.mockito.Mockito.when;
 public class CursorsCommitServiceTest {
 
     public static final Charset CHARSET = Charset.forName("UTF-8");
+    public static final String NEW_OFFSET = "newOffset";
+    public static final List<Cursor> DUMMY_CURSORS = ImmutableList.of(new Cursor("p1", NEW_OFFSET));
 
     private TopicRepository topicRepository;
     private CursorsCommitService cursorsCommitService;
@@ -34,7 +42,7 @@ public class CursorsCommitServiceTest {
     private SetDataBuilder setDataBuilder;
 
     @Before
-    public void before() {
+    public void before() throws NoSuchSubscriptionException {
         final CuratorFramework curatorFramework = mock(CuratorFramework.class);
         getDataBuilder = mock(GetDataBuilder.class);
         when(curatorFramework.getData()).thenReturn(getDataBuilder);
@@ -50,15 +58,21 @@ public class CursorsCommitServiceTest {
         final InterProcessLock lock = mock(InterProcessLock.class);
         when(zkLockFactory.createLock(any())).thenReturn(lock);
 
-        cursorsCommitService = new CursorsCommitService(zkHolder, topicRepository, zkLockFactory);
+        final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+        final Subscription subscription = new Subscription();
+        subscription.setEventTypes(ImmutableSet.of("my-et"));
+        when(subscriptionRepository.getSubscription(any())).thenReturn(subscription);
+
+        cursorsCommitService = new CursorsCommitService(zkHolder, topicRepository, subscriptionRepository,
+                zkLockFactory);
     }
 
     @Test
     public void whenCommitCursorsThenTrue() throws Exception {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
-        when(topicRepository.compareOffsets("newOffset", "oldOffset")).thenReturn(1);
+        when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(1);
 
-        final boolean committed = cursorsCommitService.commitCursor("sid", "my-et", new Cursor("p1", "newOffset"));
+        final boolean committed = cursorsCommitService.commitCursors("sid", DUMMY_CURSORS);
 
         assertThat(committed, is(true));
         verify(setDataBuilder, times(1))
@@ -68,9 +82,9 @@ public class CursorsCommitServiceTest {
     @Test
     public void whenCommitOldCursorsThenFalse() throws Exception {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
-        when(topicRepository.compareOffsets("newOffset", "oldOffset")).thenReturn(-1);
+        when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(-1);
 
-        final boolean committed = cursorsCommitService.commitCursor("sid", "my-et", new Cursor("p1", "newOffset"));
+        final boolean committed = cursorsCommitService.commitCursors("sid", DUMMY_CURSORS);
 
         assertThat(committed, is(false));
         verify(setDataBuilder, never()).forPath(any(), any());
@@ -79,6 +93,6 @@ public class CursorsCommitServiceTest {
     @Test(expected = ServiceUnavailableException.class)
     public void whenExceptionThenServiceUnavailableException() throws Exception {
         when(getDataBuilder.forPath(any())).thenThrow(new Exception());
-        cursorsCommitService.commitCursor("sid", "my-et", new Cursor("p1", "newOffset"));
+        cursorsCommitService.commitCursors("sid", DUMMY_CURSORS);
     }
 }

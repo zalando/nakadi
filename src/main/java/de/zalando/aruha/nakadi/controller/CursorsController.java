@@ -1,12 +1,9 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.service.CursorsCommitService;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,18 +28,12 @@ import static org.zalando.problem.spring.web.advice.Responses.create;
 @RestController
 public class CursorsController {
 
-    private final SubscriptionDbRepository subscriptionRepository;
-    private final TopicRepository topicRepository;
     private final CursorsCommitService cursorsCommitService;
     private final FeatureToggleService featureToggleService;
 
     @Autowired
-    public CursorsController(final SubscriptionDbRepository subscriptionRepository,
-                             final TopicRepository topicRepository,
-                             final CursorsCommitService cursorsCommitService,
+    public CursorsController(final CursorsCommitService cursorsCommitService,
                              final FeatureToggleService featureToggleService) {
-        this.subscriptionRepository = subscriptionRepository;
-        this.topicRepository = topicRepository;
         this.cursorsCommitService = cursorsCommitService;
         this.featureToggleService = featureToggleService;
     }
@@ -56,15 +47,7 @@ public class CursorsController {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
         try {
-            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            final String eventType = subscription.getEventTypes().iterator().next();
-
-            topicRepository.validateCommitCursors(eventType, cursors);
-
-            boolean allCommitted = true;
-            for (final Cursor cursor : cursors) {
-                allCommitted = allCommitted && cursorsCommitService.commitCursor(subscriptionId, eventType, cursor);
-            }
+            boolean allCommitted = cursorsCommitService.commitCursors(subscriptionId, cursors);
             return allCommitted ? ok().build() : noContent().build();
 
         } catch (final NoSuchSubscriptionException | ServiceUnavailableException e) {

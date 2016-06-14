@@ -2,16 +2,12 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.CursorError;
-import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.service.CursorsCommitService;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
@@ -29,7 +25,6 @@ import java.util.List;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -47,8 +42,6 @@ public class CursorsControllerTest {
     private static final ImmutableList<Cursor> DUMMY_CURSORS =
             ImmutableList.of(new Cursor("0", "10"), new Cursor("1", "10"));
 
-    private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
-    private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final CursorsCommitService cursorsCommitService = mock(CursorsCommitService.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
@@ -60,37 +53,32 @@ public class CursorsControllerTest {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
-        final CursorsController controller = new CursorsController(subscriptionRepository,
-                topicRepository, cursorsCommitService, featureToggleService);
+        final CursorsController controller = new CursorsController(cursorsCommitService, featureToggleService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .build();
-
-        final Subscription dummySubscription = new Subscription();
-        dummySubscription.setEventTypes(ImmutableSet.of("my-et"));
-        when(subscriptionRepository.getSubscription(SUBSCRIPTION_ID)).thenReturn(dummySubscription);
     }
 
     @Test
     public void whenCommitValidCursorsThenOk() throws Exception {
-        when(cursorsCommitService.commitCursor(any(), any(), any())).thenReturn(true);
+        when(cursorsCommitService.commitCursors(any(), any())).thenReturn(true);
         putCursors(DUMMY_CURSORS)
                 .andExpect(status().isOk());
     }
 
     @Test
     public void whenCommitOldCursorsThenNoContent() throws Exception {
-        when(cursorsCommitService.commitCursor(any(), any(), any())).thenReturn(false);
+        when(cursorsCommitService.commitCursors(any(), any())).thenReturn(false);
         putCursors(DUMMY_CURSORS)
                 .andExpect(status().isNoContent());
     }
 
     @Test
     public void whenNoSubscriptionThenNotFound() throws Exception {
-        when(subscriptionRepository.getSubscription(SUBSCRIPTION_ID))
+        when(cursorsCommitService.commitCursors(any(), any()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
@@ -99,7 +87,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenServiceUnavailableExceptionThenServiceUnavailable() throws Exception {
-        when(cursorsCommitService.commitCursor(any(), any(), any()))
+        when(cursorsCommitService.commitCursors(any(), any()))
                 .thenThrow(new ServiceUnavailableException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy-message");
 
@@ -108,8 +96,9 @@ public class CursorsControllerTest {
 
     @Test
     public void whenInvalidCursorExceptionThenUnprocessableEntity() throws Exception {
-        doThrow(new InvalidCursorException(CursorError.NULL_PARTITION, new Cursor(null, null)))
-                .when(topicRepository).validateCommitCursors(any(), any());
+        when(cursorsCommitService.commitCursors(any(), any()))
+                .thenThrow((new InvalidCursorException(CursorError.NULL_PARTITION, new Cursor(null, null))));
+
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "partition must not be null");
 
         checkForProblem(putCursors(DUMMY_CURSORS), expectedProblem);

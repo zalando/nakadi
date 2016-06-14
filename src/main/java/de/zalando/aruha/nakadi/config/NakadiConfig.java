@@ -18,6 +18,7 @@ import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
+import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import de.zalando.aruha.nakadi.service.CursorsCommitService;
@@ -47,6 +48,9 @@ public class NakadiConfig {
 
     @Autowired
     private TopicRepository topicRepository;
+
+    @Autowired
+    private SubscriptionDbRepository subscriptionRepository;
 
     @Autowired
     private ZooKeeperHolder zooKeeperHolder;
@@ -98,7 +102,8 @@ public class NakadiConfig {
 
     @Bean
     public CursorsCommitService cursorsCommitService() {
-        return new CursorsCommitService(zooKeeperHolder, topicRepository, zooKeeperLockFactory());
+        return new CursorsCommitService(zooKeeperHolder, topicRepository, subscriptionRepository,
+                zooKeeperLockFactory());
     }
 
     @Bean
