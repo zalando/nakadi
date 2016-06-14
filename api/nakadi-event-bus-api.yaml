@@ -317,7 +317,7 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-          The flow id of the request, which is written into the logs and passed to called
+            The flow id of the request, which is written into the logs and passed to called
             services. Helpful for operational troubleshooting and log analysis.
           type: string
           format: flow-id
@@ -455,7 +455,7 @@ paths:
           description: All events in the batch have been successfully published.
         '207':
           description: |
-          At least one event has failed to be submitted. The batch might be partially submitted.
+            At least one event has failed to be submitted. The batch might be partially submitted.
           schema:
             type: array
             items:
