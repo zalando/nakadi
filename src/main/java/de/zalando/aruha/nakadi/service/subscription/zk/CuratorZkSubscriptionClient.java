@@ -65,6 +65,12 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
+    public boolean isSubscriptionCreated() throws Exception {
+        final Stat stat = curatorFramework.checkExists().forPath(getSubscriptionPath(""));
+        return stat != null;
+    }
+
+    @Override
     public boolean createSubscription() {
         try {
             final String statePath = getSubscriptionPath("/state");

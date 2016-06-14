@@ -10,9 +10,16 @@ import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperLockFactory;
+import de.zalando.aruha.nakadi.service.subscription.KafkaClient;
+import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFactory;
+import de.zalando.aruha.nakadi.service.subscription.model.Partition;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 import static java.text.MessageFormat.format;
@@ -25,14 +32,21 @@ public class CursorsCommitService {
     private final TopicRepository topicRepository;
     private final SubscriptionDbRepository subscriptionRepository;
     private final ZooKeeperLockFactory zkLockFactory;
+    private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
+    private final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory;
 
-    public CursorsCommitService(final ZooKeeperHolder zkHolder, final TopicRepository topicRepository,
+    public CursorsCommitService(final ZooKeeperHolder zkHolder,
+                                final TopicRepository topicRepository,
                                 final SubscriptionDbRepository subscriptionRepository,
-                                final ZooKeeperLockFactory zkLockFactory) {
+                                final ZooKeeperLockFactory zkLockFactory,
+                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
+                                final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory) {
         this.zkHolder = zkHolder;
         this.topicRepository = topicRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.zkLockFactory = zkLockFactory;
+        this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
+        this.subscriptionKafkaClientFactory = subscriptionKafkaClientFactory;
     }
 
     public boolean commitCursors(final String subscriptionId, final List<Cursor> cursors)
@@ -41,6 +55,7 @@ public class CursorsCommitService {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         final String eventType = subscription.getEventTypes().iterator().next();
 
+        createSubscriptionInZkIfNeeded(subscription);
         topicRepository.validateCommitCursors(eventType, cursors);
 
         boolean allCommitted = true;
@@ -69,6 +84,36 @@ public class CursorsCommitService {
             throw new InvalidCursorException(CursorError.INVALID_FORMAT, cursor);
         } catch (Exception e) {
             throw new ServiceUnavailableException("Error communicating with zookeeper", e);
+        }
+    }
+
+    private void createSubscriptionInZkIfNeeded(final Subscription subscription) throws ServiceUnavailableException {
+
+        final ZkSubscriptionClient subscriptionClient =
+                zkSubscriptionClientFactory.createZkSubscriptionClient(subscription.getId());
+        final AtomicReference<Exception> atomicReference = new AtomicReference<>();
+
+        try {
+            if (!subscriptionClient.isSubscriptionCreated()) {
+                subscriptionClient.runLocked(() -> {
+                    try {
+                        if (!subscriptionClient.isSubscriptionCreated() && subscriptionClient.createSubscription()) {
+                            final KafkaClient kafkaClient = subscriptionKafkaClientFactory.createKafkaClient(subscription);
+                            final Map<Partition.PartitionKey, Long> subscriptionOffsets =
+                                    kafkaClient.getSubscriptionOffsets();
+
+                            subscriptionClient.fillEmptySubscription(subscriptionOffsets);
+                        }
+                    } catch (Exception e) {
+                        atomicReference.set(e);
+                    }
+                });
+            }
+        } catch (Exception e) {
+            atomicReference.set(e);
+        }
+        if (atomicReference.get() != null) {
+            throw new ServiceUnavailableException("Error communicating with zookeeper", atomicReference.get());
         }
     }
 

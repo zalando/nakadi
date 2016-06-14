@@ -26,6 +26,8 @@ import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import java.lang.management.ManagementFactory;
 
+import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFactory;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
@@ -101,9 +103,19 @@ public class NakadiConfig {
     }
 
     @Bean
+    public ZkSubscriptionClientFactory zkSubscriptionClientFactory() {
+        return new ZkSubscriptionClientFactory(zooKeeperHolder);
+    }
+
+    @Bean
+    public SubscriptionKafkaClientFactory subscriptionKafkaClientFactory() {
+        return new SubscriptionKafkaClientFactory(topicRepository);
+    }
+
+    @Bean
     public CursorsCommitService cursorsCommitService() {
         return new CursorsCommitService(zooKeeperHolder, topicRepository, subscriptionRepository,
-                zooKeeperLockFactory());
+                zooKeeperLockFactory(), zkSubscriptionClientFactory(), subscriptionKafkaClientFactory());
     }
 
     @Bean
