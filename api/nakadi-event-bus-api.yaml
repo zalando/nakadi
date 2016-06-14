@@ -182,10 +182,15 @@ paths:
         have all an effect on the incoming Event of this EventType. For its impacts on the reception
         of events please consult the Event submission API methods.
 
-        * TBD Enrichment strategy
+        * Validation strategies define an array of validation stategies to be evaluated on reception
+        of an `Event` of this `EventType`. Details of usage can be found in this external document
+
+          - http://zalando.github.io/nakadi-manual/
+
+        * Enrichment strategy. (todo: define this part of the API).
 
         * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only
-        json-schema is supported.
+        the value `json-schema` is supported, representing JSON Schema draft 04.
 
         Following conditions are enforced. Not meeting them will fail the request with the indicated
         status (details are provided in the Problem object):
