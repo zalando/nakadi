@@ -752,10 +752,8 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the enrichment strategies supported by this installation of Nakadi.
-
-        If the EventType creation is to have special enrichments (besides the default), one can
-        consult over this method the available possibilities.
+        Lists all of the enrichment strategies supported by this Nakadi installation. Special or
+        custom strategies besides the defaults will be listed here.
       responses:
         '200':
           description: Returns a list of all enrichment strategies known to Nakadi
@@ -778,12 +776,10 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the partition resolution strategies supported by this installation of Nakadi.
+        Lists all of the partition resolution strategies supported by this installation of Nakadi. 
+        Special or custom strategies besides the defaults will be listed here.
 
-        If the EventType creation is to have a specific partition strategy (other than the default),
-        one can consult over this method the available possibilities.
-
-        Nakadi offers currently, out of the box, the following strategies:
+        Nakadi currently offers these inbuilt strategies:
 
         - `random`: Resolution of the target partition happens randomly (events are evenly
           distributed on the topic's partitions).
