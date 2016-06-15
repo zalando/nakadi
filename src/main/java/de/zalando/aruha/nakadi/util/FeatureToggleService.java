@@ -10,6 +10,8 @@ public class FeatureToggleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(FeatureToggleService.class);
 
+    public static final String FEATURE_HIGH_LEVEL_API = "high_level_api";
+
     @Value("${nakadi.featureToggle.enableAll}")
     private boolean forceEnableAll;
 
