@@ -69,7 +69,7 @@ public class EventStreamController {
             @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
             @RequestParam(value = "stream_limit", required = false, defaultValue = "0") final int streamLimit,
             @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
-            @RequestParam(value = "stream_timeout", required = false, defaultValue = "0") final int streamTimeout,
+            @RequestParam(value = "stream_timeout", required = false, defaultValue = "60") final int streamTimeout,
             @RequestParam(value = "stream_keep_alive_limit", required = false, defaultValue = "0") final int streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
             final NativeWebRequest request, final HttpServletResponse response) throws IOException {

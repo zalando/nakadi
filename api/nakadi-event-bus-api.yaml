@@ -590,7 +590,7 @@ paths:
           in: query
           description: |
             Maximum time in seconds a stream will live before being interrupted.
-            If 0 or unspecified will stream indefinitely.
+            If value is zero, streams indefinitely.
 
             If this timeout is reached, any pending messages (in the sense of `stream_limit`) will
             be flushed to the client.
@@ -599,7 +599,7 @@ paths:
           type: number
           format: int32
           required: false
-          default: 0
+          default: 60
         - name: stream_keep_alive_limit
           in: query
           description: |
