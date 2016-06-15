@@ -8,7 +8,7 @@ import com.jayway.restassured.response.Response;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.Subscription;
-import de.zalando.aruha.nakadi.webservice.utils.ZooKeeperUtils;
+import de.zalando.aruha.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
 import org.junit.Test;
@@ -99,7 +99,7 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
 
         // check that offset is actually committed to Zookeeper
-        final CuratorFramework curator = ZooKeeperUtils.createCurator(zookeeperUrl);
+        final CuratorFramework curator = ZookeeperTestUtils.createCurator(zookeeperUrl);
         String committedOffset = getCommittedOffsetFromZk(eventType, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
 
