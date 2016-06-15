@@ -1126,7 +1126,7 @@ definitions:
           fields that are not defined on the incoming Event.
 
           For event types in categories 'business' or 'data' it's mandatory to use
-          METADATA_ENRICHMENT strategy. For 'undefined' event types it's not possible to use this
+          metadata_enrichment strategy. For 'undefined' event types it's not possible to use this
           strategy, since metadata field is not required.
 
           See documentation for the write operation for details on behaviour in case of unsuccessful
@@ -1135,7 +1135,7 @@ definitions:
         items:
           type: string
           enum:
-            - METADATA_ENRICHMENT
+            - metadata_enrichment
 
       partition_strategy:
         description: |
@@ -1192,9 +1192,9 @@ definitions:
       type:
         type: string
         enum:
-          - JSON_SCHEMA
+          - json_schema
         description: |
-          The type of schema definition. Currently only JSON_SCHEMA v4 is supported, but in the
+          The type of schema definition. Currently only json_schema (JSON Schema v04) is supported, but in the
           future there could be others.
       schema:
         type: string
