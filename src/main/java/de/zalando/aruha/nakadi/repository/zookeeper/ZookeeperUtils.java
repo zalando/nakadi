@@ -14,8 +14,8 @@ public class ZookeeperUtils {
     }
 
     public static <V> V runLocked(final Callable<V> callable, final InterProcessLock lock) throws Exception {
+        lock.acquire();
         try {
-            lock.acquire();
             return callable.call();
         } finally {
             try {
