@@ -8,7 +8,6 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.EventPublishingStep;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
-import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -21,6 +20,8 @@ import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+
+import java.util.Arrays;
 import java.util.stream.Stream;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
@@ -239,6 +240,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     .stream()
                     .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
                     .toArray(org.apache.kafka.common.TopicPartition[]::new);
+            consumer.assign(Arrays.asList(kafkaTPs));
             if (position.equals(Cursor.BEFORE_OLDEST_OFFSET)) {
                 consumer.seekToBeginning(kafkaTPs);
             } else if (position.equals(Cursor.AFTER_NEWEST_OFFSET)) {
