@@ -1152,16 +1152,6 @@ definitions:
         description: |
           The schema for this EventType. Submitted events will be validated against it.
 
-      data_key_fields:
-        type: array
-        items:
-          type: string
-        description: |
-          Indicators of the path of the properties that constitute the primary key (identifier) of
-          the data within this Event.  If set MUST be a valid required field as defined in the
-          schema.  (TBD should be required? Is applicable only to both Business and DataChange
-          Events?)
-
       partition_key_fields:
         type: array
         items:
