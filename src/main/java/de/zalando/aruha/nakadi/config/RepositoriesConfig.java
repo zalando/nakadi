@@ -17,7 +17,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
@@ -27,9 +26,6 @@ public class RepositoriesConfig {
 
     @Autowired
     private JsonConfig jsonConfig;
-
-    @Autowired
-    private Environment environment;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
