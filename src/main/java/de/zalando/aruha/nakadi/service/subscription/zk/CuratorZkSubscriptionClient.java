@@ -26,12 +26,17 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private final String subscriptionId;
     private final Logger log;
 
+    public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework) {
+        this(subscriptionId, curatorFramework, CuratorZkSubscriptionClient.class.getName());
+    }
+
     public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework, final String loggingPath) {
         this.subscriptionId = subscriptionId;
         this.curatorFramework = curatorFramework;
         this.lock = new InterProcessSemaphoreMutex(curatorFramework, "/nakadi/locks/subscription_" + subscriptionId);
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
+
 
     @Override
     public void runLocked(final Runnable function) {
