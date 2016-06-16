@@ -870,14 +870,12 @@ paths:
           type: integer
           format: int32
           required: false
-          default: 60
-        - name: max_window_size
+          default: 30
+        - name: window_size
           in: query
           description: |
             The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
-            state and commit comes - the stream will continue.
-            Specifying 0 for this property will make the max uncommitted event count unlimited (the stream
-            will never be paused).
+            state and commit comes - the stream will continue. Minimal window size is 1.
           type: integer
           format: int32
           required: false
