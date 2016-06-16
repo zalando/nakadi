@@ -1,12 +1,14 @@
 SenzaInfo:
   StackName: "{{Arguments.StackName}}"
   Parameters:
-    - DockerImage:
+    - DockerTag:
         Description: "Name of the Docker image providing Nakadi."
     - StackName:
         Description: "Name of the Cloud Formation Stack"
     - ApplicationId:
         Description: "Application id"
+    - ApplicationVersion:
+        Description: "Application version"
         Default: "nakadi"
     - MintBucket:
         Description: "Name of the mint bucket to use for this application"
@@ -79,13 +81,13 @@ SenzaComponents:
       AssociatePublicIpAddress: false
       TaupageConfig:
         application_id: "{{Arguments.ApplicationId}}"
-        application_version: "{{SenzaInfo.StackVersion}}"
+        application_version: "{{Arguments.ApplicationVersion}}"
         application_logrotate_interval: hourly
         application_logrotate_size: 50M
         application_logrotate_rotate: 4
         mint_bucket: "{{Arguments.MintBucket}}"
         runtime: Docker
-        source: "{{Arguments.DockerImage}}"
+        source: "{{Arguments.DockerTag}}:{{Arguments.ApplicationVersion}}"
         health_check_path: /health
         ports:
           8080: 8080
