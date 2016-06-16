@@ -792,7 +792,8 @@ paths:
 
         - `hash`: Resolution of the partition follows the computation of a hash from the value of
           the fields indicated in the EventType's `partition_key_fields`, guaranteeing that Events
-          with same values on those fields end in the same partition.
+          with same values on those fields end in the same partition. Given the event type's category
+          is DataChangeEvent, field path is considered relative to "data".
       responses:
         '200':
           description: Returns a list of all partitioning strategies known to Nakadi
@@ -1158,7 +1159,7 @@ definitions:
           type: string
         description: |
           Required when 'partition_resolution_strategy' is set to 'hash'. Must be absent otherwise.
-          Indicates the fields used for evaluatiion the partition of Events of this type.
+          Indicates the fields used for evaluation the partition of Events of this type.
 
           If set it MUST be a valid required field as defined in the schema.
 

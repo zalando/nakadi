@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
@@ -35,7 +36,7 @@ public class TestUtils {
 
     private static final Random RANDOM = new Random();
 
-    private TestUtils() { }
+    private static final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
 
     public static String randomUUID() {
         return UUID.randomUUID().toString();
@@ -121,6 +122,11 @@ public class TestUtils {
     public static JSONObject buildBusinessEvent() throws IOException {
         final String json = Resources.toString(Resources.getResource("sample-business-event.json"), Charsets.UTF_8);
         return new JSONObject(json);
+    }
+
+    public static EventType loadEventType(final String filename) throws IOException {
+        final String json = readFile(filename);
+        return objectMapper.readValue(json, EventType.class);
     }
 
     public static MappingJackson2HttpMessageConverter createMessageConverter() {

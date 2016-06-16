@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.partitioning;
 
+import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
 import de.zalando.aruha.nakadi.exceptions.InvalidPartitionKeyFieldsException;
@@ -28,6 +29,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
             final int hashValue = partitionKeyFields.stream()
                     // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
                     // a string first and then use hashCode()
+                    .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? "data." + pkf : pkf)
                     .map(wrapFunction(okf -> traversableJsonEvent.get(okf).toString().hashCode()))
                     .mapToInt(hc -> hc)
                     .sum();
