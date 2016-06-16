@@ -17,8 +17,11 @@ import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.HASH_STRATE
 import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
 import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STRATEGY;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
+import static de.zalando.aruha.nakadi.utils.TestUtils.loadEventType;
+import static de.zalando.aruha.nakadi.utils.TestUtils.readFile;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.Is.is;
 import static org.mockito.Matchers.any;
 
 public class PartitionResolverTest {
@@ -76,6 +79,15 @@ public class PartitionResolverTest {
         eventType.setPartitionStrategy(HASH_STRATEGY);
 
         partitionResolver.validate(eventType);
+    }
+
+    @Test
+    public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
+        final EventType eventType = loadEventType("de/zalando/aruha/nakadi/domain/event-type.with.partition-key-fields.json");
+        eventType.setPartitionStrategy(HASH_STRATEGY);
+        final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
+
+        assertThat(partitionResolver.resolvePartition(eventType, event), is(notNullValue()));
     }
 
     @Test(expected = InvalidEventTypeException.class)
