@@ -8,6 +8,7 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.EventPublishingStep;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
+import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -242,9 +243,9 @@ public class KafkaTopicRepository implements TopicRepository {
                     .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
                     .toArray(org.apache.kafka.common.TopicPartition[]::new);
             consumer.assign(Arrays.asList(kafkaTPs));
-            if (position.equals(Cursor.BEFORE_OLDEST_OFFSET)) {
+            if (position.equals(Subscription.POSITION_BEGIN)) {
                 consumer.seekToBeginning(kafkaTPs);
-            } else if (position.equals(Cursor.AFTER_NEWEST_OFFSET)) {
+            } else if (position.equals(Subscription.POSITION_END)) {
                 consumer.seekToEnd(kafkaTPs);
             } else {
                 throw new IllegalArgumentException("Bad offset specification " + position + " for topic " + topicId);

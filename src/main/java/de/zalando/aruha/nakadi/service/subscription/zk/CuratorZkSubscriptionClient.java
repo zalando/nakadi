@@ -41,6 +41,8 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     public void runLocked(final Runnable function) {
         log.info("Taking lock for " + function.hashCode());
         try {
+            Exception releaseException = null;
+
             lock.acquire();
             log.debug("Lock taken " + function.hashCode());
             try {
@@ -51,9 +53,12 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                     lock.release();
                 } catch (final Exception e) {
                     log.error("Failed to release lock", e);
-                    throw e;
+                    releaseException = e;
                 }
                 log.debug("Lock released " + function.hashCode());
+            }
+            if (releaseException != null) {
+                throw releaseException;
             }
         } catch (final SubscriptionWrappedException e) {
             throw e;

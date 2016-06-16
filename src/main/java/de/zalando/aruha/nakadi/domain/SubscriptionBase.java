@@ -10,8 +10,8 @@ import static com.google.common.collect.Sets.newTreeSet;
 
 public class SubscriptionBase {
 
-    public static String POSITION_BEGIN = "BEGIN";
-    public static String POSITION_END = "END";
+    public static final String POSITION_BEGIN = "BEGIN";
+    public static final String POSITION_END = "END";
 
     @NotNull
     private String owningApplication;
