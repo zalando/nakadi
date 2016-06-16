@@ -17,6 +17,14 @@ public interface ZkSubscriptionClient {
     void runLocked(Runnable function);
 
     /**
+     * Checks if path /nakadi/subscriptions/{subscriptionId} exists in zookeeper
+     *
+     * @return true if exists, false otherwise
+     * @throws Exception
+     */
+    boolean isSubscriptionCreated() throws Exception;
+
+    /**
      * Creates subscription node in zookeeper on path /nakadi/subscriptions/{subscriptionId}
      *
      * @return true if subscription was created. False if subscription already present. To operate on this value

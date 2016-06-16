@@ -54,6 +54,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers(GET, "/event-types/*/partitions/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/event-types/*/events/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/subscriptions/*/events/**").access(hasScope(eventStreamReadScope))
+                    .antMatchers(PUT, "/subscriptions/*/cursors/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(POST, "/event-types/*/events/**").access(hasScope(eventStreamWriteScope))
                     .antMatchers(DELETE, "/event-types/*/**").access(hasScope(nakadiAdminScope))
                     .antMatchers(POST, "/event-types/**").access(hasScope(eventTypeWriteScope))

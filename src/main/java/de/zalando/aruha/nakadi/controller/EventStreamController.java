@@ -5,7 +5,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.domain.CursorError;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
@@ -153,8 +152,7 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getProblemMessage());
             }
             catch (final InvalidCursorException e) {
-                final String errorMessage = invalidCursorMessage(e.getError(), e.getCursor());
-                writeProblemResponse(response, outputStream, PRECONDITION_FAILED, errorMessage);
+                writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             }
             catch (final Exception e) {
                 LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
@@ -174,23 +172,6 @@ public class EventStreamController {
                 }
             }
         };
-    }
-
-    private String invalidCursorMessage(final CursorError error, final Cursor cursor) {
-        switch (error) {
-            case PARTITION_NOT_FOUND:
-                return "non existing partition " + cursor.getPartition();
-            case EMPTY_PARTITION:
-                return "partition " + cursor.getPartition() + " is empty";
-            case UNAVAILABLE:
-                return "offset " + cursor.getOffset() + " for partition " + cursor.getPartition() + " is unavailable";
-            case NULL_OFFSET:
-                return "offset must not be null";
-            case NULL_PARTITION:
-                return "partition must not be null";
-            default:
-                return "invalid offset " + cursor.getOffset() + " for partition " + cursor.getPartition();
-        }
     }
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,

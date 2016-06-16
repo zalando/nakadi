@@ -20,6 +20,8 @@ import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+
+import java.util.Arrays;
 import java.util.stream.Stream;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
@@ -238,6 +240,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     .stream()
                     .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
                     .toArray(org.apache.kafka.common.TopicPartition[]::new);
+            consumer.assign(Arrays.asList(kafkaTPs));
             if (position.equals(Cursor.BEFORE_OLDEST_OFFSET)) {
                 consumer.seekToBeginning(kafkaTPs);
             } else if (position.equals(Cursor.AFTER_NEWEST_OFFSET)) {
@@ -332,18 +335,22 @@ public class KafkaTopicRepository implements TopicRepository {
         return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, settings.getKafkaPollTimeoutMs());
     }
 
+    public int compareOffsets(final String firstOffset, final String secondOffset) {
+        try {
+            final long first = toKafkaOffset(firstOffset);
+            final long second = toKafkaOffset(secondOffset);
+            return Long.compare(first, second);
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException("Incorrect offset format, should be long", e);
+        }
+    }
+
     private void validateCursors(final String topic, final List<Cursor> cursors) throws ServiceUnavailableException,
             InvalidCursorException {
         final List<TopicPartition> partitions = listPartitions(topic);
 
         for (final Cursor cursor : cursors) {
-            if (cursor.getPartition() == null) {
-                throw  new InvalidCursorException(NULL_PARTITION, cursor);
-            }
-
-            if (cursor.getOffset() == null) {
-                throw new InvalidCursorException(NULL_OFFSET, cursor);
-            }
+            validateCursorForNulls(cursor);
 
             final TopicPartition topicPartition = partitions
                         .stream()
@@ -367,6 +374,30 @@ public class KafkaTopicRepository implements TopicRepository {
             } catch (final NumberFormatException e) {
                 throw new InvalidCursorException(INVALID_FORMAT, cursor);
             }
+        }
+    }
+
+    public void validateCommitCursors(final String topic, final List<Cursor> cursors) throws InvalidCursorException {
+        final List<String> partitions = this.listPartitionNames(topic);
+        for (final Cursor cursor : cursors) {
+            validateCursorForNulls(cursor);
+            if (!partitions.contains(cursor.getPartition())) {
+                throw new InvalidCursorException(PARTITION_NOT_FOUND, cursor);
+            }
+            try {
+                fromNakadiCursor(cursor);
+            } catch (final NumberFormatException e) {
+                throw new InvalidCursorException(INVALID_FORMAT, cursor);
+            }
+        }
+    }
+
+    private void validateCursorForNulls(final Cursor cursor) throws InvalidCursorException {
+        if (cursor.getPartition() == null) {
+            throw  new InvalidCursorException(NULL_PARTITION, cursor);
+        }
+        if (cursor.getOffset() == null) {
+            throw new InvalidCursorException(NULL_OFFSET, cursor);
         }
     }
 
