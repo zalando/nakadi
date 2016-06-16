@@ -12,6 +12,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class EventValidation {
+
+    public static final String DATA_CHANGE_WRAP_FIELD = "data";
+
     public static EventTypeValidator forType(final EventType eventType) {
         final EventTypeValidator etv = new EventTypeValidator(eventType);
 
@@ -52,7 +55,7 @@ public class EventValidation {
         properties.put("data_type", new JSONObject().put("type", "string"));
         properties.put("data_op", new JSONObject().put("type", "string")
                 .put("enum", Arrays.asList(new String[] { "C", "U", "D", "S" })));
-        properties.put("data", schema);
+        properties.put(DATA_CHANGE_WRAP_FIELD, schema);
 
         wrapper.put("additionalProperties", false);
 

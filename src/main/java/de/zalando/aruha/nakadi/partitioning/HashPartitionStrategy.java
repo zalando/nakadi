@@ -5,6 +5,7 @@ import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
 import de.zalando.aruha.nakadi.exceptions.InvalidPartitionKeyFieldsException;
 import de.zalando.aruha.nakadi.util.JsonPathAccess;
+import de.zalando.aruha.nakadi.validation.EventValidation;
 import org.json.JSONObject;
 
 import java.util.List;
@@ -13,6 +14,8 @@ import static de.zalando.aruha.nakadi.exceptions.ExceptionWrapper.wrapFunction;
 import static java.lang.Math.abs;
 
 public class HashPartitionStrategy implements PartitionStrategy {
+
+    private final String DATA_PATH_PREFIX = EventValidation.DATA_CHANGE_WRAP_FIELD + ".";
 
     @Override
     public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions) throws InvalidPartitionKeyFieldsException {
@@ -29,7 +32,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
             final int hashValue = partitionKeyFields.stream()
                     // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
                     // a string first and then use hashCode()
-                    .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? "data." + pkf : pkf)
+                    .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? DATA_PATH_PREFIX + pkf : pkf)
                     .map(wrapFunction(okf -> traversableJsonEvent.get(okf).toString().hashCode()))
                     .mapToInt(hc -> hc)
                     .sum();
