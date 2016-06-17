@@ -63,27 +63,20 @@ public class Partition {
     }
 
     /**
-     *
+     * Creates new Partition object that must be moved to session with id {@code sessionId}.
      * @param sessionId Session id to move to. It must be guaranteed that existingSessionIds do not contain sessionId.
-     * @param existingSessionIds
-     * @return
+     * @param existingSessionIds List of currently available session ids.
+     * @return new Partition object with changed sessionId, nextSessionId, state values.
      */
     public Partition moveToSessionId(final String sessionId, final Collection<String> existingSessionIds) {
         switch (state) {
             case UNASSIGNED:
                 return toState(State.ASSIGNED, sessionId, null);
             case ASSIGNED:
-                if (sessionId.equals(this.session)) { // ??
+            case REASSIGNING:
+                if (sessionId.equals(this.session)) { // Just to be compliant with all possible cases.
                     return toState(State.ASSIGNED, sessionId, null);
                 } else if (!existingSessionIds.contains(this.session)) {
-                    return toState(State.ASSIGNED, sessionId, null);
-                } else {
-                    return toState(State.REASSIGNING, this.session, sessionId);
-                }
-            case REASSIGNING:
-                if (!existingSessionIds.contains(this.session)) {
-                    return toState(State.ASSIGNED, sessionId, null);
-                } else if (this.session.equals(sessionId)) {
                     return toState(State.ASSIGNED, sessionId, null);
                 } else {
                     return toState(State.REASSIGNING, this.session, sessionId);
