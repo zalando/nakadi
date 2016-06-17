@@ -2,9 +2,7 @@ swagger: '2.0'
 info:
   title: Nakadi Event Bus API Definition
   description: |
-    -----------
-    Definitions
-    -----------
+
     Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient
     API.  In doing this, Nakadi abstracts away, as much as possible, details of the backing
     messaging infrastructure. The single currently supported messaging infrastructure is Kafka
@@ -60,34 +58,35 @@ info:
     short term plan to be included.*
 
 
-    Scope and status of this document
+    Scope and status of the API
     ---------------------------------
 
-    The present API specification is in **draft** state and is subject to change.
+    The API specification is in **draft** state and is subject to change.
 
-    In this document, ready for review are included:
+    In this document, you'll find:
+    
     * The Schema Registry API, including configuration possibilities for the Schema, Validation,
     Enrichment and Partitioning of Events, and their effects on reception of Events.
 
-    * The stantardised event format (see definition of Event, BusinessEvent and DataChangeEvent)
-    (Note: at a later moment this will be configurable and not be inherent part of this API).
+    * The existing event format (see definition of Event, BusinessEvent and DataChangeEvent)
+    (Note: in the future this is planned to be configurable and not an inherent part of this API).
 
-    * Unmanaged API (low level).
-
-    Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not
-    included in this version of this specification.
+    * Unmanaged API: provides low level access to an event stream with information that allows
+      consumers to detect their position for each partition in the stream via a `Cursor`.
 
     Notable omissions here are:
 
-    * The contract between Nakadi and clients in the context of the high-level API (i.e. the process
-    for clients to establish subscriptions).
+    * The Managed (or "high level") API: this will be a contract between Nakadi and consumers to
+    allow the latter to establish subscriptions and have offset information managed by the Nakadi
+    service.
 
-    * Enrichment procedure.
+    * Enrichment options. Enrichment is currently limited to metadata enrichment for the business
+      and data change types, but the API is designed to allow more options.
 
-    * Security scopes (OAuth) for the different operations
+    * More extensive security scopes (OAuth) for the different operations in the API.
 
-    * Explicit control of (in case of Kafka as underlying messaging broker) topic's creation
-    parameters (number of partitions, retention times, etc), as well as their modification.
+    * Explicit control of an event type's creation parameters (the number of partitions, retention
+      times, etc), as well as their modification.
 
 
   version: '0.5.1'
@@ -179,20 +178,19 @@ paths:
       description: |
         Creates a new `EventType`.
 
-        **Implementation note:** The creation of an EventType implicitly creates the structures in
-        the backing messaging implementation needed for the reception and persistence of the
-        Events. Considering that at this time only Kafka is used, this corresponds to the creation
-        of a Topic. If so desired, clients can interact directly with the topic using the low level
-        API (for existing restrictions see the corresponding methods on the topic-api).
-
-        The fields enrichment-strategies and partition-resolution-strategy
+        The fields validation-strategies, enrichment-strategies and partition-resolution-strategy
         have all an effect on the incoming Event of this EventType. For its impacts on the reception
         of events please consult the Event submission API methods.
 
-        * TBD Enrichment strategy
+        * Validation strategies define an array of validation stategies to be evaluated on reception
+        of an `Event` of this `EventType`. Details of usage can be found in this external document
+
+          - http://zalando.github.io/nakadi-manual/
+
+        * Enrichment strategy. (todo: define this part of the API).
 
         * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only
-        json-schema is supported.
+        the value `json-schema` is supported, representing JSON Schema draft 04.
 
         Following conditions are enforced. Not meeting them will fail the request with the indicated
         status (details are provided in the Problem object):
@@ -297,7 +295,7 @@ paths:
         The name field cannot be changed. Attempting to do so will result in a 422 failure.
 
         At this moment changes in the schema are not supported and will produce a 422
-        failure. (TODO: define conditions for backwards compatible extensions in the schema)
+        failure. (todo: define conditions for backwards compatible extensions in the schema)
       parameters:
         - name: name
           in: path
@@ -347,11 +345,15 @@ paths:
       security:
         - oauth2: ['nakadi.config.write']
       description: |
-        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of
-        this `EventType` will also be removed.  **Note**: Kafka's topic deletion happens
-        asynchronously with respect to this DELETE call; therefore creation of an equally named
-        `EventType` before the underlying topic deletion is complete will not succeed (failure is a
-        409 Conflic).
+        Deletes an `EventType` identified by its name. All events in the `EventType`'s stream' will
+        also be removed. **Note**: deletion happens asynchronously, which has the following
+        consequences:
+         
+         * Creation of an equally named `EventType` before the underlying topic deletion is complete
+         might not succeed (failure is a 409 Conflict).
+ 
+         * Events in the stream may be visible for a short period of time before being removed.
+
       parameters:
         - name: name
           in: path
@@ -500,8 +502,10 @@ paths:
         `EventStreamBatch` contains a chunk of Events and a `Cursor` pointing to the **end** of the
         chunk (i.e. last delivered Event). The cursor might specify the offset with the symbolic
         value `BEGIN`, which will open the stream starting from the oldest available offset in the
-        partition.  Currently this format is the only one supported by the system, but in the future
-        other MIME types will be supported (like `application/event-stream`).
+        partition.
+
+        Currently the `application/x-json-stream` format is the only one supported by the system,
+        but in the future other media types may be supported.
 
         If streaming for several distinct partitions, each one is an independent `EventStreamBatch`.
 
@@ -748,10 +752,8 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the enrichment strategies supported by this installation of Nakadi.
-
-        If the EventType creation is to have special enrichments (besides the default), one can
-        consult over this method the available possibilities.
+        Lists all of the enrichment strategies supported by this Nakadi installation. Special or
+        custom strategies besides the defaults will be listed here.
       responses:
         '200':
           description: Returns a list of all enrichment strategies known to Nakadi
@@ -774,12 +776,10 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the partition resolution strategies supported by this installation of Nakadi.
+        Lists all of the partition resolution strategies supported by this installation of Nakadi. 
+        Special or custom strategies besides the defaults will be listed here.
 
-        If the EventType creation is to have a specific partition strategy (other than the default),
-        one can consult over this method the available possibilities.
-
-        Nakadi offers currently, out of the box, the following strategies:
+        Nakadi currently offers these inbuilt strategies:
 
         - `random`: Resolution of the target partition happens randomly (events are evenly
           distributed on the topic's partitions).
@@ -1070,26 +1070,14 @@ definitions:
       name:
         type: string
         description: |
-          Name of this EventType. Encodes the owner/responsible for this EventType.
-
-          The name for the EventType SHOULD follow the pattern, but is not enforced
-          'stups_owning_application.event-type', for example 'gizig.price-change'.
-
-          The components of the name are:
-
-          * Organization: the organizational unit where the team is located; can be omitted.
-
-          * Team name: name of the team responsible for owning application; can be omitted.
-
-          * Owning application: SHOULD match the field owning_application; indicates
-
-          * EventType name: name of this EventType; SHOULD end in ChangeEvent for DataChangeEvents;
-          MUST be in the past tense for BusinessEvents.
-
-          (TBD: how to deal with organizational changes? Should be reflected on the name of the
-          EventType?  Isn't it better to omit [organization:team] completely?)
+          Name of this EventType. The name is constrained by a regular expression.
+          
+          Note: the name can encode the owner/responsible for this EventType and ideally should
+          follow a common pattern that makes it easy to read an understand, but this level of
+          structure is not enforced. For example a team name and data type can be used such as
+          'acme-team.price-change'.        
         pattern: '[a-zA-Z][-0-9a-zA-Z_]*(\.[a-zA-Z][-0-9a-zA-Z_]*)*'
-        example: order.ORDER_CANCELLED
+        example: order.order_cancelled, acme-platform.users  
       owning_application:
         type: string
         description: |
