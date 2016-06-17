@@ -6,6 +6,7 @@ import de.zalando.aruha.nakadi.service.subscription.StreamParameters;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionOutput;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionStreamer;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionStreamerFactory;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import java.io.IOException;
 import java.io.OutputStream;
 import javax.servlet.http.HttpServletResponse;
@@ -28,11 +29,14 @@ public class SubscriptionStreamController {
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
 
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
+    private final FeatureToggleService featureToggleService;
     private final ObjectMapper jsonMapper;
 
+
     @Autowired
-    public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory, final ObjectMapper objectMapper) {
+    public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory, final FeatureToggleService featureToggleService, final ObjectMapper objectMapper) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
+        this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
     }
 
@@ -104,6 +108,12 @@ public class SubscriptionStreamController {
             final NativeWebRequest request, final HttpServletResponse response) throws IOException {
 
         return outputStream -> {
+
+            if (!featureToggleService.isFeatureEnabled(FeatureToggleService.FEATURE_HIGH_LEVEL_API)) {
+                response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
+                return;
+            }
+
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
