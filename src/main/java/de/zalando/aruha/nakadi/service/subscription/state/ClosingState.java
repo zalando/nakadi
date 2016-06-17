@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class ClosingState extends State {
     private final Map<Partition.PartitionKey, Long> uncommitedOffsets;
@@ -43,11 +41,7 @@ class ClosingState extends State {
     public void onEnter() {
         final long timeToWaitMillis = getParameters().commitTimeoutMillis - (System.currentTimeMillis() - lastCommitMillis);
         if (timeToWaitMillis > 0) {
-            scheduleTask(() -> {
-                if (isCurrent()) {
-                    switchState(new CleanupState());
-                }
-            }, timeToWaitMillis, TimeUnit.MILLISECONDS);
+            scheduleTask(() -> switchState(new CleanupState()), timeToWaitMillis, TimeUnit.MILLISECONDS);
             topologyListener = getZk().subscribeForTopologyChanges(() -> addTask(this::onTopologyChanged));
             reactOnTopologyChange();
         } else {
@@ -56,18 +50,19 @@ class ClosingState extends State {
     }
 
     private void onTopologyChanged() {
-        if (!isCurrent()) {
-            return;
-        }
         topologyListener.refresh();
         reactOnTopologyChange();
     }
 
     private void reactOnTopologyChange() {
+
+        // Collect current partitions state from Zk
         final Map<Partition.PartitionKey, Partition> partitions = new HashMap<>();
         getZk().runLocked(() -> Stream.of(getZk().listPartitions())
                 .filter(p -> getSessionId().equals(p.getSession()))
                 .forEach(p -> partitions.put(p.getKey(), p)));
+        // Select which partitions need to be freed from this session
+        // Ithere
         final Set<Partition.PartitionKey> freeRightNow = new HashSet<>();
         final Set<Partition.PartitionKey> addListeners = new HashSet<>();
         for (final Partition p : partitions.values()) {
@@ -107,9 +102,6 @@ class ClosingState extends State {
     }
 
     private void reactOnOffset(final Partition.PartitionKey key) {
-        if (!isCurrent()) {
-            return;
-        }
         final long newOffset = getZk().getOffset(key);
         if (uncommitedOffsets.containsKey(key) && uncommitedOffsets.get(key) <= newOffset) {
             freePartitions(Collections.singletonList(key));
@@ -118,7 +110,7 @@ class ClosingState extends State {
     }
 
     private void tryCompleteState() {
-        if (isCurrent() && uncommitedOffsets.isEmpty()) {
+        if (uncommitedOffsets.isEmpty()) {
             switchState(new CleanupState());
         }
     }

@@ -1,5 +1,7 @@
 package de.zalando.aruha.nakadi.service.subscription.state;
 
+import de.zalando.aruha.nakadi.service.subscription.StreamingContext;
+
 public class CleanupState extends State {
     private final Exception exception;
 
@@ -21,7 +23,7 @@ public class CleanupState extends State {
             try {
                 unregisterSession();
             } finally {
-                switchState(null);
+                switchState(StreamingContext.DEAD_STATE);
             }
         }
     }

@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.service.subscription.zk;
 
-import de.zalando.aruha.nakadi.service.subscription.SubscriptionWrappedException;
+import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.WatchedEvent;
@@ -37,7 +37,7 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
                 registered.set(true);
                 setInternal();
             } catch (final Exception e) {
-                throw new SubscriptionWrappedException(e);
+                throw new ExceptionWrapper(e);
             }
         }
     }

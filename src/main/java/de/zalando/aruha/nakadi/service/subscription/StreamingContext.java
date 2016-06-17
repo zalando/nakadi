@@ -1,8 +1,10 @@
 package de.zalando.aruha.nakadi.service.subscription;
 
+import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import de.zalando.aruha.nakadi.service.subscription.state.CleanupState;
+import de.zalando.aruha.nakadi.service.subscription.state.DummyState;
 import de.zalando.aruha.nakadi.service.subscription.state.StartingState;
 import de.zalando.aruha.nakadi.service.subscription.state.State;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZKSubscription;
@@ -30,8 +32,10 @@ public class StreamingContext implements SubscriptionStreamer {
 
     private final String loggingPath;
 
-    private State currentState;
+    private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
+
+    public static final State DEAD_STATE = new DummyState();
 
     private final Logger log;
 
@@ -51,7 +55,6 @@ public class StreamingContext implements SubscriptionStreamer {
         this.rebalancer = rebalancer;
         this.timer = timer;
         this.zkClient = zkClient;
-        this.currentState = null;
         this.kafkaClient = kafkaClient;
         this.kafkaPollTimeout = kafkaPollTimeout;
         this.loggingPath = loggingPath + ".stream";
@@ -88,24 +91,19 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     void streamInternal(final State firstState) throws InterruptedException {
-        // Because all the work is processed inside one thread, there is no need in
-        // additional lock.
-        currentState = new State() {
-            @Override
-            public void onEnter() {
-            }
-        };
-
         // Add first task - switch to starting state.
         switchState(firstState);
 
-        while (null != currentState) {
-            final Runnable task = taskQueue.poll(1, TimeUnit.MINUTES);
+        while (currentState != DEAD_STATE) {
+            // Wait forever
+            final Runnable task = taskQueue.poll(1, TimeUnit.HOURS);
             try {
-                task.run();
-            } catch (final SubscriptionWrappedException ex) {
+                if (task != null) {
+                    task.run();
+                }
+            } catch (final ExceptionWrapper ex) {
                 log.error("Failed to process task " + task + ", will rethrow original error", ex);
-                switchState(new CleanupState(ex.getSourceException()));
+                switchState(new CleanupState(ex.getWrapped()));
             } catch (final RuntimeException ex) {
                 log.error("Failed to process task " + task + ", code carefully!", ex);
                 switchState(new CleanupState(ex));
@@ -115,32 +113,22 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void switchState(final State newState) {
         this.addTask(() -> {
-            if (currentState != null) {
-                log.info("Switching state from " + currentState.getClass().getSimpleName());
-                currentState.onExit();
-            } else {
-                log.info("Connection died, no new state switches available");
-                return;
-            }
+            log.info("Switching state from " + currentState.getClass().getSimpleName());
+            currentState.onExit();
+
             currentState = newState;
-            if (null != currentState) {
-                log.info("Switching state to " + currentState.getClass().getSimpleName());
-                currentState.setContext(this, loggingPath);
-                currentState.onEnter();
-            } else {
-                log.info("No next state found, dying");
-            }
+
+            log.info("Switching state to " + currentState.getClass().getSimpleName());
+            currentState.setContext(this, loggingPath);
+            currentState.onEnter();
         });
     }
 
     public void registerSession() {
         log.info("Registering session {}", session);
-        zkClient.registerSession(session);
         // Install rebalance hook on client list change.
         clientListChanges = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
-
-        // Invoke rebalance directly
-        addTask(this::rebalance);
+        zkClient.registerSession(session);
     }
 
     public void unregisterSession() {
@@ -179,4 +167,5 @@ public class StreamingContext implements SubscriptionStreamer {
             });
         }
     }
+
 }

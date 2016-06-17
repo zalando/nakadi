@@ -1,11 +1,11 @@
 package de.zalando.aruha.nakadi.service.subscription;
 
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,7 +27,7 @@ public class KafkaClient {
             }
             return offsets;
         } catch (final NakadiException e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 

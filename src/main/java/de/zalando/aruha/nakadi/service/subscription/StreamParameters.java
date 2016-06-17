@@ -12,7 +12,7 @@ public class StreamParameters {
     /**
      * Maximum number of events that could be sent in session
      */
-    private final Long streamLimitEvents;
+    private final Optional<Long> streamLimitEvents;
     /**
      * Timeout for collecting {@code batchLimitEvents} events. If not collected - send either not full batch
      * or keep alive message.
@@ -21,12 +21,12 @@ public class StreamParameters {
     /**
      * Stream time to live
      */
-    public final Long streamTimeoutMillis;
+    public final Optional<Long> streamTimeoutMillis;
     /**
      * If count of keepAliveIterations in a row for each batch is reached - stream is closed.
      * Works only if set.
      */
-    public final Integer batchKeepAliveIterations;
+    private final Optional<Integer> batchKeepAliveIterations;
 
     // Applies to stream, number of messages to send to clients
     public final int windowSizeMessages;
@@ -39,30 +39,24 @@ public class StreamParameters {
             final Long streamTimeoutMillis, final Integer batchKeepAliveIterations, final int windowSizeMessages,
             final long commitTimeoutMillis) {
         this.batchLimitEvents = batchLimitEvents;
-        this.streamLimitEvents = streamLimitEvents;
+        this.streamLimitEvents = Optional.ofNullable(streamLimitEvents);
         this.batchTimeoutMillis = batchTimeoutMillis;
-        this.streamTimeoutMillis = streamTimeoutMillis;
-        this.batchKeepAliveIterations = batchKeepAliveIterations;
+        this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutMillis);
+        this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
         this.windowSizeMessages = windowSizeMessages;
         this.commitTimeoutMillis = commitTimeoutMillis;
     }
 
     public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {
-        if (streamLimitEvents != null) {
-            return Math.max(0, Math.min(limit, streamLimitEvents - sentSoFar));
-        }
-        return limit;
+        return streamLimitEvents.map(v -> Math.max(0, Math.min(limit, v - sentSoFar))).orElse(limit);
     }
 
     public boolean isStreamLimitReached(final long commitedEvents) {
-        return null != streamLimitEvents && streamLimitEvents <= commitedEvents;
+        return streamLimitEvents.map(v -> v <= commitedEvents).orElse(false);
     }
 
     public boolean isKeepAliveLimitReached(final IntStream keepAlive) {
-        if (null == this.batchKeepAliveIterations) {
-            return false;
-        }
-        return keepAlive.allMatch(v -> v >= batchKeepAliveIterations);
+        return batchKeepAliveIterations.map(it -> keepAlive.allMatch(v -> v >= it)).orElse(false);
     }
 
     public static StreamParameters of(

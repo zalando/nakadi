@@ -42,25 +42,18 @@ class StreamingState extends State {
         // Subscribe for topology changes.
         this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
         // and call directly
-        reactNoTopologyChange();
+        reactOnTopologyChange();
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
-        if (null != getParameters().streamTimeoutMillis) {
-            scheduleTask(
-                    () -> this.shutdownGracefully("Stream timeout reached"),
-                    getParameters().streamTimeoutMillis,
-                    TimeUnit.MILLISECONDS);
-        }
+        getParameters().streamTimeoutMillis.ifPresent(
+                timeout -> scheduleTask(() ->this.shutdownGracefully("Stream timeout reached"), timeout, TimeUnit.MICROSECONDS));
 
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     private void checkCommitTimeout() {
-        if (!isCurrent()) {
-            return;
-        }
         final long currentMillis = System.currentTimeMillis();
         final boolean hasUncommitted = offsets.values().stream().filter(d -> !d.isCommitted()).findAny().isPresent();
         if (hasUncommitted) {
@@ -76,10 +69,6 @@ class StreamingState extends State {
     }
 
     private void shutdownGracefully(final String reason) {
-        if (!isCurrent()) {
-            getLog().warn("Can't shut down gracefully ({}), because state has changed", reason);
-            return;
-        }
         getLog().info("Shutting down gracefully. Reason: {}", reason);
         final Map<Partition.PartitionKey, Long> uncommitted = offsets.entrySet().stream()
                 .filter(e -> !e.getValue().isCommitted())
@@ -92,10 +81,6 @@ class StreamingState extends State {
     }
 
     private void pollDataFromKafka() {
-        if (!isCurrent() || null == kafkaConsumer) {
-            getLog().info("Poll process from kafka is stopped, because state is switched or switching");
-            return;
-        }
         if (kafkaConsumer.assignment().isEmpty() || pollPaused) {
             // Small optimization not to waste CPU while not yet assigned to any partitions
             scheduleTask(this::pollDataFromKafka, getKafkaPollTimeout(), TimeUnit.MILLISECONDS);
@@ -127,9 +112,6 @@ class StreamingState extends State {
     }
 
     private void checkBatchTimeouts() {
-        if (!isCurrent()) {
-            return;
-        }
         streamToOutput();
         final OptionalLong lastSent = offsets.values().stream().mapToLong(PartitionData::getLastSendMillis).min();
         final long nextCall = lastSent.orElse(System.currentTimeMillis()) + getParameters().batchTimeoutMillis;
@@ -143,9 +125,6 @@ class StreamingState extends State {
     }
 
     private void streamToOutput() {
-        if (!isCurrent()) {
-            return;
-        }
         final long currentTimeMillis = System.currentTimeMillis();
         int freeSlots = (int) getMessagesAllowedToSend();
         SortedMap<Long, String> toSend;
@@ -205,16 +184,13 @@ class StreamingState extends State {
     }
 
     void topologyChanged() {
-        if (!isCurrent()) {
-            return;
-        }
         if (null != topologyChangeSubscription) {
             topologyChangeSubscription.refresh();
         }
-        reactNoTopologyChange();
+        reactOnTopologyChange();
     }
 
-    private void reactNoTopologyChange() {
+    private void reactOnTopologyChange() {
         getZk().runLocked(() -> {
             final Partition[] assignedPartitions = Stream.of(getZk().listPartitions())
                     .filter(p -> getSessionId().equals(p.getSession()))
@@ -224,9 +200,6 @@ class StreamingState extends State {
     }
 
     void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
-        if (!isCurrent()) {
-            return;
-        }
         final Map<Partition.PartitionKey, Partition> newAssigned = Stream.of(assignedPartitions)
                 .filter(p -> p.getState() == Partition.State.ASSIGNED)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
@@ -283,7 +256,7 @@ class StreamingState extends State {
     }
 
     private void barrierOnRebalanceReached(final Partition.PartitionKey pk) {
-        if (!isCurrent() || !releasingPartitions.containsKey(pk)) {
+        if (!releasingPartitions.containsKey(pk)) {
             return;
         }
         getLog().info("Checking barrier to transfer partition {}", pk);
@@ -297,11 +270,15 @@ class StreamingState extends State {
     }
 
     private void reconfigureKafkaConsumer(final boolean forceSeek) {
-        final Set<Partition.PartitionKey> currentAssignment = kafkaConsumer.assignment().stream()
+        final Set<Partition.PartitionKey> currentKafkaAssignment = kafkaConsumer.assignment().stream()
                 .map(tp -> new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition())))
                 .collect(Collectors.toSet());
-        if (!currentAssignment.equals(offsets.keySet()) || forceSeek) {
-            final Map<Partition.PartitionKey, TopicPartition> kafkaKeys = offsets.keySet().stream().collect(
+
+        final Set<Partition.PartitionKey> currentNakadiAssignment = offsets.keySet().stream()
+                .filter(o -> !this.releasingPartitions.containsKey(o))
+                .collect(Collectors.toSet());
+        if (!currentKafkaAssignment.equals(currentNakadiAssignment) || forceSeek) {
+            final Map<Partition.PartitionKey, TopicPartition> kafkaKeys = currentNakadiAssignment.stream().collect(
                     Collectors.toMap(
                             k -> k,
                             k -> new TopicPartition(k.topic, Integer.valueOf(k.partition))));

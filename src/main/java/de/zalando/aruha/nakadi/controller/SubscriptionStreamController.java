@@ -102,6 +102,7 @@ public class SubscriptionStreamController {
             @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             final NativeWebRequest request, final HttpServletResponse response) throws IOException {
+
         return outputStream -> {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);

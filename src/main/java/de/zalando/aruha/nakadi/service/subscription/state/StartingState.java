@@ -28,10 +28,6 @@ public class StartingState extends State {
         } else {
             final Session[] sessions = getZk().listSessions();
             final Partition[] partitions = getZk().listPartitions();
-            if (sessions == null || partitions == null) {
-                switchState(new CleanupState());
-                return;
-            }
             if (sessions.length >= partitions.length) {
                 switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                 return;

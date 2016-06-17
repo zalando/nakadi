@@ -35,7 +35,15 @@ public class StreamingStateTest {
         zkMock = Mockito.mock(ZkSubscriptionClient.class);
         Mockito.when(contextMock.getZkClient()).thenReturn(zkMock);
 
-        final StreamParameters spMock = Mockito.mock(StreamParameters.class);
+        final StreamParameters spMock = StreamParameters.of(
+                1000,
+                100L,
+                100,
+                100L,
+                100,
+                100,
+                100
+        );
         Mockito.when(contextMock.getParameters()).thenReturn(spMock);
 
         state.setContext(contextMock, "test");

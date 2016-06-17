@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.service.subscription.model;
 
 import java.util.Collection;
+import javax.annotation.Nullable;
 
 public class Partition {
     public static class PartitionKey {
@@ -44,7 +45,9 @@ public class Partition {
     }
 
     private final PartitionKey key;
+    @Nullable
     private final String session;
+    @Nullable
     private final String nextSession;
     private final State state;
 
@@ -59,12 +62,20 @@ public class Partition {
         return new Partition(key, session, nextSession, state);
     }
 
+    /**
+     *
+     * @param sessionId Session id to move to. It must be guaranteed that existingSessionIds do not contain sessionId.
+     * @param existingSessionIds
+     * @return
+     */
     public Partition moveToSessionId(final String sessionId, final Collection<String> existingSessionIds) {
         switch (state) {
             case UNASSIGNED:
                 return toState(State.ASSIGNED, sessionId, null);
             case ASSIGNED:
-                if (sessionId.equals(this.session) || !existingSessionIds.contains(this.session)) {
+                if (sessionId.equals(this.session)) { // ??
+                    return toState(State.ASSIGNED, sessionId, null);
+                } else if (!existingSessionIds.contains(this.session)) {
                     return toState(State.ASSIGNED, sessionId, null);
                 } else {
                     return toState(State.REASSIGNING, this.session, sessionId);
