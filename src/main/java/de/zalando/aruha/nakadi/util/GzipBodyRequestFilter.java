@@ -80,7 +80,7 @@ public class GzipBodyRequestFilter implements Filter {
 
         private final InputStream inputStream;
 
-        public GzipServletInputStream(InputStream inputStream) throws IOException {
+        public GzipServletInputStream(final InputStream inputStream) throws IOException {
             this.inputStream = new GZIPInputStream(inputStream);
         }
 
