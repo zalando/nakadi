@@ -50,11 +50,13 @@ public class GzipBodyRequestFilter implements Filter {
     }
 
     @Override
-    public void destroy() {
+    public void init(final FilterConfig filterConfig) throws ServletException {
+        // filter is stateless, nothing to init
     }
 
     @Override
-    public void init(final FilterConfig filterConfig) throws ServletException {
+    public void destroy() {
+        // filter is stateless, nothing to destroy
     }
 
 
@@ -81,6 +83,7 @@ public class GzipBodyRequestFilter implements Filter {
         private final InputStream inputStream;
 
         public GzipServletInputStream(final InputStream inputStream) throws IOException {
+            super();
             this.inputStream = new GZIPInputStream(inputStream);
         }
 
