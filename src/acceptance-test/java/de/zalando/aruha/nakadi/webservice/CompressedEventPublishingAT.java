@@ -4,9 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.apache.http.HttpStatus;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.zalando.problem.Problem;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,10 +20,12 @@ import static de.zalando.aruha.nakadi.utils.TestUtils.buildEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_ENCODING;
+import static javax.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
 
 public class CompressedEventPublishingAT extends BaseAT {
 
     private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
+    private static final JsonTestHelper jsonHelper = new JsonTestHelper(mapper);
 
     @Test
     public void whenSubmitCompressedBodyWithGzipEncodingThenOk() throws IOException {
@@ -36,6 +40,19 @@ public class CompressedEventPublishingAT extends BaseAT {
                 .post(format("/event-types/{0}/events", eventType.getName()))
                 .then()
                 .statusCode(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void whenGetWithGzipEncodingThenNotAcceptable() throws IOException {
+
+        final Problem expectedProblem = Problem.valueOf(NOT_ACCEPTABLE,
+                "GET method doesn't support gzip content encoding");
+        given()
+                .header(CONTENT_ENCODING, "gzip")
+                .get("/event-types")
+                .then()
+                .body(jsonHelper.matchesObject(expectedProblem))
+                .statusCode(HttpStatus.SC_NOT_ACCEPTABLE);
     }
 
     private EventType createEventTypeWithSchema() throws JsonProcessingException {

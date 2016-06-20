@@ -52,7 +52,8 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Bean
     public FilterRegistrationBean gzipBodyRequestFilter() {
-        return createFilterRegistrationBean(new GzipBodyRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 2);
+        return createFilterRegistrationBean(
+                new GzipBodyRequestFilter(jsonConfig.jacksonObjectMapper()), Ordered.HIGHEST_PRECEDENCE + 2);
     }
 
     @Bean

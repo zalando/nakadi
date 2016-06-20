@@ -1,7 +1,9 @@
 package de.zalando.aruha.nakadi.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.problem.Problem;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -13,19 +15,28 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
+import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 
 import static javax.ws.rs.HttpMethod.POST;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_ENCODING;
+import static javax.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
 
 public class GzipBodyRequestFilter implements Filter {
 
     private static final Logger LOG = LoggerFactory.getLogger(GzipBodyRequestFilter.class);
+
+    private final ObjectMapper objectMapper;
+
+    public GzipBodyRequestFilter(final ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public final void doFilter(final ServletRequest servletRequest, final ServletResponse servletResponse,
@@ -39,12 +50,24 @@ public class GzipBodyRequestFilter implements Filter {
                 .orElse(false);
 
         if (isGzipped && !POST.equals(request.getMethod())) {
-            throw new IllegalStateException(request.getMethod() + " method doesn't support gzip content encoding");
+            reportNotAcceptableError((HttpServletResponse) servletResponse, request);
+            return;
         }
         else if (isGzipped) {
             request = new GzipServletRequestWrapper(request);
         }
         chain.doFilter(request, servletResponse);
+    }
+
+    private void reportNotAcceptableError(final HttpServletResponse response, final HttpServletRequest request)
+            throws IOException {
+
+        response.setStatus(NOT_ACCEPTABLE.getStatusCode());
+        final PrintWriter writer = response.getWriter();
+        final Problem problem = Problem.valueOf(NOT_ACCEPTABLE,
+                request.getMethod() + " method doesn't support gzip content encoding");
+        writer.write(objectMapper.writeValueAsString(problem));
+        writer.close();
     }
 
     @Override
