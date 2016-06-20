@@ -13,7 +13,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,9 +32,8 @@ public class GzipBodyRequestFilter implements Filter {
                                final FilterChain chain) throws IOException, ServletException {
 
         HttpServletRequest request = (HttpServletRequest) servletRequest;
-        final HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-        boolean isGzipped = Optional
+        final boolean isGzipped = Optional
                 .ofNullable(request.getHeader(CONTENT_ENCODING))
                 .map(encoding -> encoding.contains("gzip"))
                 .orElse(false);
@@ -46,7 +44,7 @@ public class GzipBodyRequestFilter implements Filter {
         else if (isGzipped) {
             request = new GzipServletRequestWrapper(request);
         }
-        chain.doFilter(request, response);
+        chain.doFilter(request, servletResponse);
     }
 
     @Override
@@ -101,7 +99,7 @@ public class GzipBodyRequestFilter implements Filter {
         public boolean isFinished() {
             try {
                 return inputStream.available() == 0;
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 LOG.error("Error occurred when reading request input stream", e);
                 return false;
             }
