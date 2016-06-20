@@ -47,12 +47,12 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Bean
     public FilterRegistrationBean flowIdRequestFilter() {
-        return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 2);
+        return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 1);
     }
 
     @Bean
     public FilterRegistrationBean gzipBodyRequestFilter() {
-        return createFilterRegistrationBean(new GzipBodyRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 1);
+        return createFilterRegistrationBean(new GzipBodyRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 2);
     }
 
     @Bean
