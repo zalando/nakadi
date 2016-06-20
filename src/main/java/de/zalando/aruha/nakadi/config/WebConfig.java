@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
 import de.zalando.aruha.nakadi.util.FlowIdRequestFilter;
+import de.zalando.aruha.nakadi.util.GzipBodyRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import javax.servlet.Filter;
 import java.util.List;
 
 import static de.zalando.aruha.nakadi.config.NakadiConfig.METRIC_REGISTRY;
@@ -45,18 +47,18 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Bean
     public FilterRegistrationBean flowIdRequestFilter() {
-        final FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean();
-        filterRegistrationBean.setFilter(new FlowIdRequestFilter());
-        filterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
-        return filterRegistrationBean;
+        return createFilterRegistrationBean(new FlowIdRequestFilter(), Ordered.HIGHEST_PRECEDENCE + 1);
+    }
+
+    @Bean
+    public FilterRegistrationBean gzipBodyRequestFilter() {
+        return createFilterRegistrationBean(
+                new GzipBodyRequestFilter(jsonConfig.jacksonObjectMapper()), Ordered.HIGHEST_PRECEDENCE + 2);
     }
 
     @Bean
     public FilterRegistrationBean monitoringRequestFilter() {
-        final FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean();
-        filterRegistrationBean.setFilter(new MonitoringRequestFilter(METRIC_REGISTRY));
-        filterRegistrationBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
-        return filterRegistrationBean;
+        return createFilterRegistrationBean(new MonitoringRequestFilter(METRIC_REGISTRY), Ordered.HIGHEST_PRECEDENCE);
     }
 
     @Bean
@@ -85,6 +87,13 @@ public class WebConfig extends WebMvcConfigurationSupport {
         final RequestMappingHandlerMapping handlerMapping = super.requestMappingHandlerMapping();
         handlerMapping.setUseSuffixPatternMatch(false);
         return handlerMapping;
+    }
+
+    private FilterRegistrationBean createFilterRegistrationBean(final Filter filter, final int order) {
+        final FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean();
+        filterRegistrationBean.setFilter(filter);
+        filterRegistrationBean.setOrder(order);
+        return filterRegistrationBean;
     }
 
 }
