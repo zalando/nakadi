@@ -21,7 +21,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.problem.Problem;
 
-import javax.ws.rs.core.Response;
 import java.util.Set;
 
 import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
@@ -38,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class SubscriptionControllerTest {
@@ -122,11 +122,11 @@ public class SubscriptionControllerTest {
     }
 
     @Test
-    public void whenEventTypeDoesNotExistThenNotFound() throws Exception {
+    public void whenEventTypeDoesNotExistThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
         when(eventTypeRepository.findByName("myET")).thenThrow(new NoSuchEventTypeException(""));
 
-        final Problem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND,
+        final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "Failed to create subscription, event type(s) not found: 'myET'");
 
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);

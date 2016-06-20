@@ -28,7 +28,7 @@ import java.util.List;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -77,7 +77,7 @@ public class SubscriptionController {
                 final String errorMessage = "Failed to create subscription, event type(s) not found: '" +
                         StringUtils.join(noneExistingEventTypes, "','") + "'";
                 LOG.debug(errorMessage);
-                return create(NOT_FOUND, errorMessage, nativeWebRequest);
+                return create(UNPROCESSABLE_ENTITY, errorMessage, nativeWebRequest);
             }
 
             // generate subscription id and try to create subscription in DB
