@@ -1,4 +1,5 @@
 .cache
 __pycache__
 .coverage
+scm-source.json
 *.pyc

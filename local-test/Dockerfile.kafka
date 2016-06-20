@@ -1,4 +1,4 @@
-FROM zalando/openjdk:8u45-b14-6
+FROM registry.opensource.zalan.do/stups/openjdk:8u91-b14-1-22
 
 ENV KAFKA_VERSION="0.8.2.1" SCALA_VERSION="2.10"
 ENV KAFKA_IMG="kafka_${SCALA_VERSION}-${KAFKA_VERSION}"
