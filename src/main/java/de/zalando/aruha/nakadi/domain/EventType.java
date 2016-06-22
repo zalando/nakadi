@@ -44,7 +44,7 @@ public class EventType {
 
     @Valid
     @Nullable
-    private EventTypeStatistics defaultStatistic;
+    private EventTypeStatistics defaultStatistics;
 
     public String getName() { return name; }
 
@@ -86,12 +86,12 @@ public class EventType {
         this.schema = schema;
     }
 
-    public EventTypeStatistics getDefaultStatistic() {
-        return defaultStatistic;
+    public EventTypeStatistics getDefaultStatistics() {
+        return defaultStatistics;
     }
 
-    public void setDefaultStatistic(final EventTypeStatistics defaultStatistic) {
-        this.defaultStatistic = defaultStatistic;
+    public void setDefaultStatistics(final EventTypeStatistics defaultStatistics) {
+        this.defaultStatistics = defaultStatistics;
     }
 
     public List<String> getPartitionKeyFields() {

@@ -291,7 +291,7 @@ public class EventTypeControllerTest {
         statistics.setMessagesPerMinute(1000);
         statistics.setReadParallelism(1);
         statistics.setWriteParallelism(2);
-        defaultEventType.setDefaultStatistic(statistics);
+        defaultEventType.setDefaultStatistics(statistics);
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
         verify(topicRepository, times(1)).createTopic(eq(defaultEventType.getName()), eq(statistics));
     }
