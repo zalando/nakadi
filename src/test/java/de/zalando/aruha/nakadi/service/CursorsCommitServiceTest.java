@@ -25,6 +25,7 @@ import org.junit.Test;
 import java.nio.charset.Charset;
 import java.util.List;
 
+import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Matchers.any;
@@ -39,6 +40,9 @@ import static org.mockito.Mockito.when;
 public class CursorsCommitServiceTest {
 
     public static final Charset CHARSET = Charset.forName("UTF-8");
+
+    public static final String SID = "sid";
+    public static final String MY_ET = "my-et";
     public static final String NEW_OFFSET = "newOffset";
     public static final List<Cursor> DUMMY_CURSORS = ImmutableList.of(new Cursor("p1", NEW_OFFSET));
 
@@ -68,7 +72,7 @@ public class CursorsCommitServiceTest {
 
         final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
         final Subscription subscription = new Subscription();
-        subscription.setEventTypes(ImmutableSet.of("my-et"));
+        subscription.setEventTypes(ImmutableSet.of(MY_ET));
         when(subscriptionRepository.getSubscription(any())).thenReturn(subscription);
 
         final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
@@ -89,11 +93,27 @@ public class CursorsCommitServiceTest {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(1);
 
-        final boolean committed = cursorsCommitService.commitCursors("sid", DUMMY_CURSORS);
+        final boolean committed = cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
 
         assertThat(committed, is(true));
-        verify(setDataBuilder, times(1))
-                .forPath(eq("/nakadi/subscriptions/sid/topics/my-et/p1/offset"), eq("newOffset".getBytes(CHARSET)));
+        verify(setDataBuilder, times(1)).forPath(eq(offsetPath("p1")), eq("newOffset".getBytes(CHARSET)));
+    }
+
+    @Test
+    public void whenFirstCursorIsNotCommittedThenNextCursorsAreNotSkipped() throws Exception {
+        when(getDataBuilder.forPath(offsetPath("p1"))).thenReturn("p1currentOffset".getBytes(CHARSET));
+        when(getDataBuilder.forPath(offsetPath("p2"))).thenReturn("p2currentOffset".getBytes(CHARSET));
+
+        when(topicRepository.compareOffsets("p1offset", "p1currentOffset")).thenReturn(-1);
+        when(topicRepository.compareOffsets("p2offset", "p2currentOffset")).thenReturn(1);
+
+        final ImmutableList<Cursor> cursors = ImmutableList.of(
+                new Cursor("p1", "p1offset"), new Cursor("p2", "p2offset"));
+
+        final boolean committed = cursorsCommitService.commitCursors(SID, cursors);
+
+        assertThat(committed, is(false));
+        verify(setDataBuilder, times(1)).forPath(eq(offsetPath("p2")), eq("p2offset".getBytes(CHARSET)));
     }
 
     @Test
@@ -101,7 +121,7 @@ public class CursorsCommitServiceTest {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(-1);
 
-        final boolean committed = cursorsCommitService.commitCursors("sid", DUMMY_CURSORS);
+        final boolean committed = cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
 
         assertThat(committed, is(false));
         verify(setDataBuilder, never()).forPath(any(), any());
@@ -110,7 +130,7 @@ public class CursorsCommitServiceTest {
     @Test(expected = ServiceUnavailableException.class)
     public void whenExceptionThenServiceUnavailableException() throws Exception {
         when(getDataBuilder.forPath(any())).thenThrow(new Exception());
-        cursorsCommitService.commitCursors("sid", DUMMY_CURSORS);
+        cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
     }
 
     @Test
@@ -129,8 +149,12 @@ public class CursorsCommitServiceTest {
         final ImmutableMap<Partition.PartitionKey, Long> offsets = ImmutableMap.of();
         when(kafkaClient.getSubscriptionOffsets()).thenReturn(offsets);
 
-        final boolean committed = cursorsCommitService.commitCursors("sid", DUMMY_CURSORS);
+        final boolean committed = cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
         assertThat(committed, is(true));
         verify(zkSubscriptionClient, times(1)).fillEmptySubscription(eq(offsets));
+    }
+
+    private String offsetPath(final String partition) {
+        return format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset", SID, MY_ET, partition);
     }
 }
