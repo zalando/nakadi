@@ -39,12 +39,12 @@ import static org.mockito.Mockito.when;
 
 public class CursorsCommitServiceTest {
 
-    public static final Charset CHARSET = Charset.forName("UTF-8");
+    private static final Charset CHARSET = Charset.forName("UTF-8");
 
-    public static final String SID = "sid";
-    public static final String MY_ET = "my-et";
-    public static final String NEW_OFFSET = "newOffset";
-    public static final List<Cursor> DUMMY_CURSORS = ImmutableList.of(new Cursor("p1", NEW_OFFSET));
+    private static final String SID = "sid";
+    private static final String MY_ET = "my-et";
+    private static final String NEW_OFFSET = "newOffset";
+    private static final List<Cursor> DUMMY_CURSORS = ImmutableList.of(new Cursor("p1", NEW_OFFSET));
 
     private TopicRepository topicRepository;
     private CursorsCommitService cursorsCommitService;
