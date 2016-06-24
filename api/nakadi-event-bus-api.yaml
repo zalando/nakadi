@@ -115,6 +115,20 @@ securityDefinitions:
         Grants access for consuming Event streams.
 
 paths:
+  /metrics:
+    get:
+      tags:
+        - monitoring
+      summary: Get monitoring metrics
+      responses:
+        '200':
+          description: Ok
+          schema:
+            $ref: '#/definitions/Metrics'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
   /event-types:
     get:
       tags:
@@ -842,6 +856,11 @@ definitions:
       - type
       - title
       - status
+
+  Metrics:
+    type: object
+    description: |
+      Object containing application metrics.
 
   Partition:
     description: |
