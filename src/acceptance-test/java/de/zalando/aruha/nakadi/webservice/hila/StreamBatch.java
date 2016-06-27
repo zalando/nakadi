@@ -7,6 +7,7 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import javax.annotation.concurrent.Immutable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -14,11 +15,11 @@ import static java.util.Collections.unmodifiableList;
 public class StreamBatch {
 
     private Cursor cursor;
-    private List<Map> events = ImmutableList.of();
+    private List<Map> events;
 
     public StreamBatch(@JsonProperty("cursor") final Cursor cursor, @JsonProperty("events") final List<Map> events) {
         this.cursor = cursor;
-        this.events = events;
+        this.events = Optional.ofNullable(events).orElse(ImmutableList.of());
     }
 
     public Cursor getCursor() {
