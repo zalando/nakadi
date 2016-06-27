@@ -29,6 +29,10 @@ public class StreamBatch {
         return unmodifiableList(events);
     }
 
+    public static StreamBatch singleEventBatch(final String partition, final String offset, final Map event) {
+        return new StreamBatch(new Cursor(partition, offset), ImmutableList.of(event));
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;

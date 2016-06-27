@@ -143,12 +143,12 @@ public class TestUtils {
         return new ValidationProblem(errors);
     }
 
-    public static <T> void waitFor(final Runnable runnable) {
+    public static void waitFor(final Runnable runnable) {
         waitFor(runnable, 10000, 500);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> void waitFor(final Runnable runnable, final int timeout, final int interval) {
+    public static void waitFor(final Runnable runnable, final int timeout, final int interval) {
         executeWithRetry(
                 runnable,
                 new RetryForSpecifiedTimeStrategy<Void>(timeout)
