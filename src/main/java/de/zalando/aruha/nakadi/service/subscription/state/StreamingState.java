@@ -288,7 +288,7 @@ class StreamingState extends State {
             kafkaConsumer.seekToBeginning(kafkaKeys.values().toArray(new TopicPartition[kafkaKeys.size()]));
             kafkaKeys.forEach((key, kafka) -> offsets.get(key).ensureDataAvailable(kafkaConsumer.position(kafka)));
             //
-            kafkaKeys.forEach((k, v) -> kafkaConsumer.seek(v, offsets.get(k).getSentOffset()));
+            kafkaKeys.forEach((k, v) -> kafkaConsumer.seek(v, offsets.get(k).getSentOffset() + 1));
             offsets.values().forEach(PartitionData::clearEvents);
         }
     }

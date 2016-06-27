@@ -30,9 +30,10 @@ class PartitionData {
         this.lastSendMillis = System.currentTimeMillis();
     }
 
-
     SortedMap<Long, String> takeEventsToStream(final long currentTimeMillis, final int batchSize, final long batchTimeoutMillis) {
-        if (nakadiEvents.size() >= batchSize || (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis) {
+        final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
+        final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
+        if (countReached || timeReached) {
             lastSendMillis = currentTimeMillis;
             return extract(batchSize);
         } else {
@@ -77,11 +78,11 @@ class PartitionData {
      * @param position First position available in kafka
      */
     void ensureDataAvailable(final long position) {
-        if (position > commitOffset) {
+        if (position > commitOffset + 1) {
             log.warn("Oldest kafka position is {} and commit offset is {}, updating", position, commitOffset);
             commitOffset = position;
         }
-        if (position > sentOffset) {
+        if (position > sentOffset + 1) {
             log.warn("Oldest kafka position is {} and sent offset is {}, updating", position, commitOffset);
             sentOffset = position;
         }
