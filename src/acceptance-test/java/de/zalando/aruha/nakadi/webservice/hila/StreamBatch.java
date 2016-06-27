@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import de.zalando.aruha.nakadi.domain.Cursor;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,8 @@ public class StreamBatch {
     private Cursor cursor;
     private List<Map> events;
 
-    public StreamBatch(@JsonProperty("cursor") final Cursor cursor, @JsonProperty("events") final List<Map> events) {
+    public StreamBatch(@JsonProperty("cursor") final Cursor cursor,
+                       @Nullable @JsonProperty("events") final List<Map> events) {
         this.cursor = cursor;
         this.events = Optional.ofNullable(events).orElse(ImmutableList.of());
     }
