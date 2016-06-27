@@ -15,8 +15,8 @@ import static java.util.Collections.unmodifiableList;
 @Immutable
 public class StreamBatch {
 
-    private Cursor cursor;
-    private List<Map> events;
+    private final Cursor cursor;
+    private final List<Map> events;
 
     public StreamBatch(@JsonProperty("cursor") final Cursor cursor,
                        @Nullable @JsonProperty("events") final List<Map> events) {
