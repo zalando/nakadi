@@ -23,7 +23,7 @@ public class KafkaClient {
         try {
             for (final String eventType : subscription.getEventTypes()) {
                 topicRepository.materializePositions(eventType, subscription.getStartFrom()).entrySet().forEach(
-                        e -> offsets.put(new Partition.PartitionKey(eventType, e.getKey()), e.getValue()));
+                        e -> offsets.put(new Partition.PartitionKey(eventType, e.getKey()), e.getValue() - 1));
             }
             return offsets;
         } catch (final NakadiException e) {

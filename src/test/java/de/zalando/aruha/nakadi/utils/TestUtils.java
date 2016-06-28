@@ -12,6 +12,7 @@ import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import org.apache.commons.io.IOUtils;
 
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.json.JSONObject;
 
 import de.zalando.aruha.nakadi.domain.EventCategory;
@@ -24,6 +25,7 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.zalando.problem.Problem;
 
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -139,5 +141,18 @@ public class TestUtils {
         final Errors errors = mock(Errors.class);
         when(errors.getAllErrors()).thenReturn(Arrays.asList(fieldErrors));
         return new ValidationProblem(errors);
+    }
+
+    public static void waitFor(final Runnable runnable) {
+        waitFor(runnable, 10000, 500);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void waitFor(final Runnable runnable, final int timeout, final int interval) {
+        executeWithRetry(
+                runnable,
+                new RetryForSpecifiedTimeStrategy<Void>(timeout)
+                        .withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(interval));
     }
 }
