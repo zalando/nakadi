@@ -824,7 +824,8 @@ paths:
         '200':
           description: Offsets were committed
         '204':
-          description: No Content. The cursors which were tried to be committed are older than already committed ones.
+          description: |
+            No Content. At least one cursor which was tried to be committed is older or equal to already committed one.
         '401':
           description: Client is not authenticated
           schema:
@@ -1301,6 +1302,15 @@ definitions:
           creating subscription.
         format: date-time
         example: '1996-12-19T16:39:57-08:00'
+      read_from:
+        type: string
+        enum:
+          - BEGIN
+          - END
+        description: |
+          Position to start reading events from. BEGIN - read from the oldest available event. END - read from the most
+          recent offset.
+        default: 'END'
 
     required:
       - owning_application
