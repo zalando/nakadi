@@ -60,7 +60,8 @@ public class CursorsCommitService {
 
         boolean allCommitted = true;
         for (final Cursor cursor : cursors) {
-            allCommitted = allCommitted && commitCursor(subscriptionId, eventType, cursor);
+            final boolean cursorCommitted = commitCursor(subscriptionId, eventType, cursor);
+            allCommitted = allCommitted && cursorCommitted;
         }
         return allCommitted;
     }
