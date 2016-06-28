@@ -45,7 +45,7 @@ public class NakadiTestUtils {
         final SubscriptionBase subscription = new SubscriptionBase();
         subscription.setEventTypes(eventTypes);
         subscription.setOwningApplication("my_app");
-        subscription.setStartFrom(SubscriptionBase.POSITION_BEGIN);
+        subscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
         Response response = given()
                 .body(mapper.writeValueAsString(subscription))
                 .contentType(JSON)

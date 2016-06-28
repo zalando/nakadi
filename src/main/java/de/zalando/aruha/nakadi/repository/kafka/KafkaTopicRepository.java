@@ -9,6 +9,7 @@ import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.EventPublishingStep;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -234,7 +235,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public Map<String, Long> materializePositions(final String topicId, final String position) throws ServiceUnavailableException {
+    public Map<String, Long> materializePositions(final String topicId, final SubscriptionBase.InitialPosition position)
+            throws ServiceUnavailableException {
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
 
             final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
@@ -243,9 +245,9 @@ public class KafkaTopicRepository implements TopicRepository {
                     .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
                     .toArray(org.apache.kafka.common.TopicPartition[]::new);
             consumer.assign(Arrays.asList(kafkaTPs));
-            if (position.equals(Subscription.POSITION_BEGIN)) {
+            if (position == SubscriptionBase.InitialPosition.BEGIN) {
                 consumer.seekToBeginning(kafkaTPs);
-            } else if (position.equals(Subscription.POSITION_END)) {
+            } else if (position == SubscriptionBase.InitialPosition.END) {
                 consumer.seekToEnd(kafkaTPs);
             } else {
                 throw new IllegalArgumentException("Bad offset specification " + position + " for topic " + topicId);
