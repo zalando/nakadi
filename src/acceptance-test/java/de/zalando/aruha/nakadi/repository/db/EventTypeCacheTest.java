@@ -1,8 +1,6 @@
 package de.zalando.aruha.nakadi.repository.db;
 
-import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import org.apache.curator.RetryPolicy;
@@ -16,6 +14,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.fail;
@@ -51,7 +50,7 @@ public class EventTypeCacheTest {
     public void onCreatedAddNewChildrenZNode() throws Exception {
         final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        final EventType et = buildEventType();
+        final EventType et = buildDefaultEventType();
 
         etc.created(et.getName());
 
@@ -62,7 +61,7 @@ public class EventTypeCacheTest {
     public void whenUpdatedSetChildrenZNodeValue() throws Exception {
         final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        final EventType et = buildEventType();
+        final EventType et = buildDefaultEventType();
 
         client
                 .create()
@@ -80,7 +79,7 @@ public class EventTypeCacheTest {
     public void whenRemovedThenDeleteZNodeValue() throws Exception {
         final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        final EventType et = buildEventType();
+        final EventType et = buildDefaultEventType();
 
         client
                 .create()
@@ -97,7 +96,7 @@ public class EventTypeCacheTest {
     public void loadsFromDbOnCacheMissTest() throws Exception {
         final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        final EventType et = buildEventType();
+        final EventType et = buildDefaultEventType();
 
         Mockito
                 .doReturn(et)
@@ -115,7 +114,7 @@ public class EventTypeCacheTest {
     public void invalidateCacheOnUpdate() throws Exception {
         final EventTypeCache etc = new EventTypeCache(dbRepo, client);
 
-        final EventType et = buildEventType();
+        final EventType et = buildDefaultEventType();
 
         Mockito
                 .doReturn(et)
@@ -139,19 +138,5 @@ public class EventTypeCacheTest {
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
 
-    }
-
-    private EventType buildEventType() {
-        final EventTypeSchema schema = new EventTypeSchema();
-        final EventType eventType = new EventType();
-
-        schema.setSchema("{ \"price\": 1000 }");
-        schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
-
-        eventType.setName("event-name");
-        eventType.setCategory(EventCategory.BUSINESS);
-        eventType.setSchema(schema);
-
-        return eventType;
     }
 }
