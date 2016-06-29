@@ -28,6 +28,7 @@ import static de.zalando.aruha.nakadi.webservice.utils.NakadiTestUtils.publishEv
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
+import static java.util.stream.IntStream.rangeClosed;
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -51,8 +52,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 30000)
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
-        IntStream
-                .rangeClosed(0, 3)
+        rangeClosed(0, 3)
                 .forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo" + x + "\"}"));
 
         // create session, read from subscription and wait for events to be sent
@@ -149,8 +149,17 @@ public class HilaAT extends BaseAT {
         final Set<String> clientBPartitions = getUniquePartitionsStreamedToClient(clientB);
         assertThat(clientBPartitions, hasSize(4));
 
-        // check that partitions for clients are different
+        // check that different partitions were streamed to different clients
         assertThat(intersection(clientAPartitionsAfterRebalance, clientBPartitions), hasSize(0));
+    }
+
+    @Test(timeout = 30000)
+    public void whenWindowSizeIsSetItIsRespected() throws Exception {
+        range(0, 10).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "window_size=5&batch_limit=100&batch_timeout")
+                .start();
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {
