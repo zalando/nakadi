@@ -6,9 +6,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.CursorError;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
@@ -50,13 +53,17 @@ public class EventStreamController {
     private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
 
+    private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
     private final ObjectMapper jsonMapper;
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
 
-    public EventStreamController(final TopicRepository topicRepository, final ObjectMapper jsonMapper,
-                                 final EventStreamFactory eventStreamFactory, final MetricRegistry metricRegistry) {
+    public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
+                                 final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
+                                 final MetricRegistry metricRegistry) {
+
+        this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
@@ -84,13 +91,9 @@ public class EventStreamController {
                 consumerCounter.inc();
 
                 @SuppressWarnings("UnnecessaryLocalVariable")
-                final String topic = eventTypeName;
+                final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+                final String topic = eventType.getTopic();
 
-                // validate parameters
-                if (!topicRepository.topicExists(topic)) {
-                    writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
-                    return;
-                }
                 if (streamLimit != 0 && streamLimit < batchLimit) {
                     writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY,
                             "stream_limit can't be lower than batch_limit");
@@ -147,6 +150,9 @@ public class EventStreamController {
                 outputStream.flush(); // Flush status code to client
 
                 eventStream.streamEvents();
+            }
+            catch (final NoSuchEventTypeException e) {
+                writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
             }
             catch (final NakadiException e) {
                 LOG.error("Error while trying to stream events. Respond with SERVICE_UNAVAILABLE.", e);
