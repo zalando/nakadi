@@ -93,6 +93,11 @@ public class TestUtils {
         return Long.toString(randomULong());
     }
 
+    public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName) throws IOException {
+        final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
+        return json.replace("NAME_PLACEHOLDER", eventTypeName);
+    }
+
     public static String resourceAsString(final String resourceName, final Class clazz) throws IOException {
         return IOUtils.toString(clazz.getResourceAsStream(resourceName));
     }
@@ -100,6 +105,7 @@ public class TestUtils {
     public static EventType buildEventType(final String name, final JSONObject schema) {
         final EventType et = new EventType();
         et.setName(name);
+        et.setTopic(randomUUID());
 
         final EventTypeSchema ets = new EventTypeSchema();
         ets.setType(EventTypeSchema.Type.JSON_SCHEMA);

@@ -16,6 +16,7 @@ import org.springframework.jdbc.support.rowset.SqlRowSet;
 import java.io.IOException;
 import java.util.List;
 
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -37,20 +38,21 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenCreateNewEventTypePersistItInTheDatabase() throws Exception {
-        EventType eventType = buildEventType();
+        EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
 
         final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
         assertThat("Number of rows should increase", rows, equalTo(1));
 
-        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
+        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_topic, et_event_type_object FROM zn_data.event_type");
         rs.next();
 
-        assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
+        assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
+        assertThat("Topic is persisted", rs.getString(2), equalTo(eventType.getTopic()));
 
         ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-        EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
+        EventType persisted = mapper.readValue(rs.getString(3), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
@@ -60,7 +62,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test(expected = DuplicatedEventTypeNameException.class)
     public void whenCreateDuplicatedNamesThrowAnError() throws Exception {
-        EventType eventType = buildEventType();
+        EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
         repository.saveEventType(eventType);
@@ -68,9 +70,8 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenEventExistsFindByNameReturnsSomething() throws Exception {
-        EventType eventType1 = buildEventType();
-        EventType eventType2 = buildEventType();
-        eventType2.setName("event-name-2");
+        EventType eventType1 = buildDefaultEventType();
+        EventType eventType2 = buildDefaultEventType();
 
         insertEventType(eventType1);
         insertEventType(eventType2);
@@ -80,6 +81,16 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat(persistedEventType, notNullValue());
     }
 
+    @Test(expected =  org.springframework.dao.DuplicateKeyException.class)
+    public void validatesUniquenessOfTopic() throws Exception {
+        final EventType eventType1 = buildDefaultEventType();
+        final EventType eventType2 = buildDefaultEventType();
+        eventType2.setTopic(eventType1.getTopic());
+
+        insertEventType(eventType1);
+        insertEventType(eventType2);
+    }
+
     @Test(expected = NoSuchEventTypeException.class)
     public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException, NoSuchEventTypeException {
         repository.findByName("inexisting-name");
@@ -87,7 +98,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenUpdateExistingEventTypeItUpdates() throws NakadiException, DuplicatedEventTypeNameException, IOException, NoSuchEventTypeException {
-        EventType eventType = buildEventType();
+        EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
 
@@ -99,7 +110,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
         rs.next();
 
-        assertThat("Name is persisted", rs.getString(1), equalTo("event-name"));
+        assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
 
         ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
         EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
@@ -114,9 +125,8 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenListExistingEventTypesAreListed() throws NakadiException, DuplicatedEventTypeNameException {
-        EventType eventType1 = buildEventType();
-        EventType eventType2 = buildEventType();
-        eventType2.setName("event-name-2");
+        EventType eventType1 = buildDefaultEventType();
+        EventType eventType2 = buildDefaultEventType();
 
         repository.saveEventType(eventType1);
         repository.saveEventType(eventType2);
@@ -128,7 +138,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenRemoveThenDeleteFromDatabase() throws Exception {
-        EventType eventType = buildEventType();
+        EventType eventType = buildDefaultEventType();
         insertEventType(eventType);
 
         repository.removeEventType(eventType.getName());
@@ -138,24 +148,10 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     private void insertEventType(EventType eventType) throws Exception {
-        String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_event_type_object) VALUES (?, to_json(?::json))";
+        String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, to_json(?::json))";
         template.update(insertSQL,
                 eventType.getName(),
+                eventType.getTopic(),
                 mapper.writer().writeValueAsString(eventType));
     }
-
-    private EventType buildEventType() {
-        final EventTypeSchema schema = new EventTypeSchema();
-        final EventType eventType = new EventType();
-
-        schema.setSchema("{ \"price\": 1000 }");
-        schema.setType(EventTypeSchema.Type.JSON_SCHEMA);
-
-        eventType.setName("event-name");
-        eventType.setCategory(EventCategory.UNDEFINED);
-        eventType.setSchema(schema);
-
-        return eventType;
-    }
-
 }
