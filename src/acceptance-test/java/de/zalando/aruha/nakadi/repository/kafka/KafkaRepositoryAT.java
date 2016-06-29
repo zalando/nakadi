@@ -1,40 +1,35 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
+import de.zalando.aruha.nakadi.domain.BatchItem;
+import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import de.zalando.aruha.nakadi.utils.TestUtils;
+import de.zalando.aruha.nakadi.webservice.BaseAT;
+import org.apache.curator.CuratorZookeeperClient;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.PartitionInfo;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.json.JSONObject;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-
 import static org.hamcrest.MatcherAssert.assertThat;
-
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
-
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import de.zalando.aruha.nakadi.domain.BatchItem;
-import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
-import org.apache.curator.CuratorZookeeperClient;
-import org.apache.curator.framework.CuratorFramework;
-
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.PartitionInfo;
-
-import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-
-import org.json.JSONObject;
-import org.junit.Before;
-import org.junit.Test;
-
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import de.zalando.aruha.nakadi.utils.TestUtils;
-import de.zalando.aruha.nakadi.webservice.BaseAT;
-import org.mockito.Mockito;
 
 public class KafkaRepositoryAT extends BaseAT {
 
@@ -45,6 +40,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private KafkaTestHelper kafkaHelper;
     private KafkaTopicRepository kafkaTopicRepository;
     private String topicName;
+    protected static final String TEST_TOPIC = UUID.randomUUID().toString();
 
     @Before
     public void setup() {

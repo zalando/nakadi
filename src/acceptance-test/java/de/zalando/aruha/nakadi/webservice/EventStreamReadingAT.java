@@ -35,7 +35,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     private static final String TEST_PARTITION = "0";
     private static final String DUMMY_EVENT = "Dummy";
-    private static final String STREAM_ENDPOINT = createStreamEndpointUrl(TEST_TOPIC);
+    private static final String STREAM_ENDPOINT = createStreamEndpointUrl(EVENT_TYPE_NAME);
     private static final String SEPARATOR = "\n";
 
     private final ObjectMapper jsonMapper = new ObjectMapper();
@@ -45,7 +45,7 @@ public class EventStreamReadingAT extends BaseAT {
     private List<Cursor> kafkaInitialNextOffsets;
 
     @Before
-    public void setUp() throws InterruptedException, JsonProcessingException {
+    public void setUp() throws IOException {
         kafkaHelper = new KafkaTestHelper(kafkaUrl);
         initialCursors = kafkaHelper.getOffsetsToReadFromLatest(TEST_TOPIC);
         kafkaInitialNextOffsets = kafkaHelper.getNextOffsets(TEST_TOPIC);

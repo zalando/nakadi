@@ -77,25 +77,6 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenPOSTEventTypeAndTopicExistsThenConflict() throws JsonProcessingException {
-
-        // ARRANGE //
-        final EventType eventType = buildDefaultEventType();
-        final String body = mapper.writer().writeValueAsString(eventType);
-
-        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(kafkaUrl);
-        kafkaHelper.createTopic(eventType.getName(), zookeeperUrl);
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(CONFLICT,
-                "EventType with name " + eventType.getName() + " already exists (or wasn't completely removed yet)");
-
-        // ACT //
-        given().body(body).header("accept", "application/json").contentType(JSON).when().post(ENDPOINT)
-               // ASSERT //
-               .then().body(jsonHelper.matchesObject(expectedProblem)).statusCode(HttpStatus.SC_CONFLICT);
-    }
-
-    @Test
     public void whenDELETEEventTypeThenOK() throws JsonProcessingException {
 
         // ARRANGE //
