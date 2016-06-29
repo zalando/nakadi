@@ -48,4 +48,12 @@ public class StreamBatch {
     public int hashCode() {
         return 31 * cursor.hashCode() + events.hashCode();
     }
+
+    @Override
+    public String toString() {
+        return "StreamBatch{" +
+                "cursor=" + cursor +
+                ", events=" + events +
+                '}';
+    }
 }
