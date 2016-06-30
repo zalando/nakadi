@@ -153,13 +153,22 @@ public class HilaAT extends BaseAT {
         assertThat(intersection(clientAPartitionsAfterRebalance, clientBPartitions), hasSize(0));
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 15000)
     public void whenWindowSizeIsSetItIsRespected() throws Exception {
+
         range(0, 10).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "window_size=5&batch_limit=100&batch_timeout")
+                .create(URL, subscription.getId(), "window_size=5")
                 .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
+
+        final Cursor lastBatchCursor = client.getBatches().get(client.getBatches().size() - 1).getCursor();
+        commitCursors(subscription.getId(), ImmutableList.of(lastBatchCursor));
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(10)));
+
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {
