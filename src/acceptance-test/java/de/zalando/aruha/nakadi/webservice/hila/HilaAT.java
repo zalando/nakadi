@@ -14,7 +14,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.IntStream;
 
 import static com.google.common.collect.Sets.intersection;
 import static de.zalando.aruha.nakadi.utils.TestUtils.waitFor;
@@ -156,7 +155,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 15000)
     public void whenWindowSizeIsSetItIsRespected() throws Exception {
 
-        range(0, 10).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "window_size=5")
@@ -169,6 +168,25 @@ public class HilaAT extends BaseAT {
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(10)));
 
+        final Cursor cursor = client.getBatches().get(client.getBatches().size() - 4).getCursor();
+        commitCursors(subscription.getId(), ImmutableList.of(cursor));
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(12)));
+    }
+
+    @Test(timeout = 15000)
+    public void whenCommitTimeoutReachedSessionIsClosed() throws Exception {
+
+        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "commit_timeout=3")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+
+        Thread.sleep(5000);
+        assertThat(client.isRunning(), is(false));
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {
