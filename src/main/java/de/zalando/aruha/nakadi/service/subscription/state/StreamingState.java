@@ -47,7 +47,7 @@ class StreamingState extends State {
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() ->this.shutdownGracefully("Stream timeout reached"), timeout, TimeUnit.MICROSECONDS));
+                timeout -> scheduleTask(() ->this.shutdownGracefully("Stream timeout reached"), timeout, TimeUnit.MILLISECONDS));
 
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
