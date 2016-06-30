@@ -147,12 +147,16 @@ public class TestUtils {
         waitFor(runnable, 10000, 500);
     }
 
+    public static void waitFor(final Runnable runnable, final int timeoutMs) {
+        waitFor(runnable, timeoutMs, 500);
+    }
+
     @SuppressWarnings("unchecked")
-    public static void waitFor(final Runnable runnable, final int timeout, final int interval) {
+    public static void waitFor(final Runnable runnable, final int timeoutMs, final int intervalMs) {
         executeWithRetry(
                 runnable,
-                new RetryForSpecifiedTimeStrategy<Void>(timeout)
+                new RetryForSpecifiedTimeStrategy<Void>(timeoutMs)
                         .withExceptionsThatForceRetry(AssertionError.class)
-                        .withWaitBetweenEachTry(interval));
+                        .withWaitBetweenEachTry(intervalMs));
     }
 }

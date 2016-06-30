@@ -184,9 +184,26 @@ public class HilaAT extends BaseAT {
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+        waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);
+    }
 
-        Thread.sleep(5000);
-        assertThat(client.isRunning(), is(false));
+    @Test(timeout = 15000)
+    public void whenStreamTimeoutReachedSessionIsClosed() throws Exception {
+
+        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "stream_timeout=3")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+
+        // to check that stream_timeout works we need to commit everything we consumed, in other case
+        // Nakadi will wait for commit the amount of time defined by commit_timeout
+        final Cursor lastBatchCursor = client.getBatches().get(client.getBatches().size() - 1).getCursor();
+        commitCursors(subscription.getId(), ImmutableList.of(lastBatchCursor));
+
+        waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {
