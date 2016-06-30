@@ -153,7 +153,7 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 15000)
-    public void whenWindowSizeIsSetItIsRespected() throws Exception {
+    public void whenWindowSizeIsSetItIsConsidered() throws Exception {
 
         range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
@@ -174,17 +174,17 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(12)));
     }
 
-    @Test(timeout = 15000)
+    @Test(timeout = 10000)
     public void whenCommitTimeoutReachedSessionIsClosed() throws Exception {
 
         publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "commit_timeout=3")
+                .create(URL, subscription.getId(), "commit_timeout=1")
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
-        waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);
+        waitFor(() -> assertThat(client.isRunning(), is(false)), 3000);
     }
 
     @Test(timeout = 15000)
@@ -204,6 +204,27 @@ public class HilaAT extends BaseAT {
         commitCursors(subscription.getId(), ImmutableList.of(lastBatchCursor));
 
         waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);
+    }
+
+    @Test(timeout = 10000)
+    public void whenBatchLimitAndTimeoutAreSetTheyAreConsidered() throws Exception {
+
+        range(0, 12).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(3)));
+
+        assertThat(client.getBatches().get(0).getEvents(), hasSize(5));
+        assertThat(client.getBatches().get(0).getCursor().getOffset(), is("4"));
+
+        assertThat(client.getBatches().get(1).getEvents(), hasSize(5));
+        assertThat(client.getBatches().get(1).getCursor().getOffset(), is("9"));
+
+        assertThat(client.getBatches().get(2).getEvents(), hasSize(2));
+        assertThat(client.getBatches().get(2).getCursor().getOffset(), is("11"));
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {
