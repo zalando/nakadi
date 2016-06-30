@@ -327,6 +327,7 @@ class StreamingState extends State {
             if (commitResult.committedCount > 0) {
                 committedEvents += commitResult.committedCount;
                 this.lastCommitMillis = System.currentTimeMillis();
+                streamToOutput();
             }
             if (getParameters().isStreamLimitReached(committedEvents)) {
                 shutdownGracefully("Stream limit in events reached: " + committedEvents);
