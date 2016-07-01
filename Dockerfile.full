@@ -1,0 +1,44 @@
+FROM registry.opensource.zalan.do/stups/openjdk:8u91-b14-1-22
+
+MAINTAINER Team Aruha, team-aruha@zalando.de
+
+ENV LNG="en_US" ENCODING="UTF-8"
+ENV LANG="${LNG}.${ENCODING}"
+ENV LC_ALL="${LANG}"
+ENV PGVERSION="9.5"
+
+ENV KAFKA_VERSION="0.9.0.0" SCALA_VERSION="2.11"
+ENV KAFKA_IMG="kafka_${SCALA_VERSION}-${KAFKA_VERSION}"
+ENV KAFKA_DIR="/opt/${KAFKA_IMG}"
+
+# the script is used here to make it possible to use the same script in travis-ci.org
+ADD full-docker-image/install-local-storages.sh /
+RUN bash /install-local-storages.sh
+RUN rm /install-local-storages.sh
+
+ADD full-docker-image/start-local-storages.sh ${KAFKA_DIR}/
+RUN chmod 777 ${KAFKA_DIR}/start-local-storages.sh
+
+ADD full-docker-image/full-start.sh /
+RUN chmod 777 /full-start.sh
+
+# Add all the bootstrap database files to the image to be able to execute
+ADD database /database-bootstrap/database/
+
+ADD full-docker-image/bootstrap.sql /database-bootstrap/
+
+
+WORKDIR /
+
+ADD build/libs/nakadi.jar nakadi.jar
+ADD scm-source.json /scm-source.json
+
+EXPOSE 8080
+
+# run the server when a container based on this image is being run
+ENTRYPOINT /full-start.sh
+
+# To build the image use the following command:
+#   docker build -t full-nakadi --file Dockerfile.full .
+# To run it use
+#   docker run -e "NAKADI_OAUTH2_MODE=OFF" -e "NAKADI_FEATURETOGGLE_ENABLEALL=true" -P -i -t -d --name full-nakadi-local full-nakadi

@@ -21,7 +21,7 @@ def dockerContainerName = "nakadi-local"
 
 def storagesContainerName = "local-storages"
 
-/* config parameters */
+/* config for standard docker image */
 def dockerImageName = "$dockerGroup/$dockerApplicationName"
 if (project.hasProperty("dockerImageName")) {
     dockerImageName = project.property("dockerImageName")
@@ -31,6 +31,18 @@ if (project.hasProperty("dockerImageVersion")) {
     dockerImageVersion = project.property("dockerImageVersion")
 }
 def dockerImageTag = "$dockerImageName:$dockerImageVersion"
+
+/* config for full docker image */
+def fullDockerImageName = "$dockerGroup/full-$dockerApplicationName"
+if (project.hasProperty("fullDockerImageName")) {
+    fullDockerImageName = project.property("fullDockerImageName")
+}
+def fullDockerImageVersion = "AUTOBUILD"
+if (project.hasProperty("fullDockerImageVersion")) {
+    fullDockerImageVersion = project.property("fullDockerImageVersion")
+}
+def fullDockerImageTag = "$fullDockerImageName:$fullDockerImageVersion"
+
 
 
 def dockerBuildTimeout = 300
@@ -89,7 +101,7 @@ jar {
 }
 
 configurations {
-    all*.exclude module : 'spring-boot-starter-logging'
+    all*.exclude module: 'spring-boot-starter-logging'
     integrationTestCompile.extendsFrom testCompile
     integrationTestRuntime.extendsFrom testRuntime
     acceptanceTestCompile.extendsFrom testCompile
@@ -129,7 +141,7 @@ dependencies {
 
     // misc
     compile 'org.apache.httpcomponents:httpclient:4.5.1'
-    compile ('org.zalando.stups:stups-spring-oauth2-server:1.0.10') {
+    compile('org.zalando.stups:stups-spring-oauth2-server:1.0.10') {
         exclude module: "httpclient"
     }
     compile 'org.zalando:jackson-datatype-problem:0.5.0'
@@ -155,7 +167,7 @@ dependencies {
 
     // json
     compile 'org.everit.json:org.everit.json.schema:1.2.0'
-    compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.4.0') {
+    compile('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.4.0') {
         exclude module: "json"
     }
 
@@ -245,7 +257,7 @@ def getSqlInstance(db) {
     groovy.sql.Sql.newInstance(db.url, 'nakadi', db.password, db.driverClassName)
 }
 
-def runMakeStorages(target, options="", timeout=15) {
+def runMakeStorages(target, options = "", timeout = 15) {
     execAndWait("make " + options + " --directory local-storages " + target, timeout)
 }
 
@@ -307,6 +319,17 @@ task buildDockerImage {
         println "Building docker image with tag: $dockerImageTag"
         if (execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout) != 0) {
             throw new GradleException("docker build failed.")
+        }
+    }
+    outputs.upToDateWhen { false }
+}
+
+task buildFullDockerImage {
+    dependsOn bootRepackage, generateScmSourceJson
+    doLast {
+        println "Building full docker image with tag: $fullDockerImageTag"
+        if (execAndWait("docker build -t " + fullDockerImageTag + " --file Dockerfile.full .", dockerBuildTimeout) != 0) {
+            throw new GradleException("full docker build failed.")
         }
     }
     outputs.upToDateWhen { false }

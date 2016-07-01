@@ -446,6 +446,8 @@ Some other useful tasks are:
 - `./gradlew startDockerContainer`: start the docker containers (and download images if needed)
 - `./gradlew stopAndRemoveDockerContainer`: shutdown the docker processes
 - `./gradlew startStoragesInDocker`: start the storage container (handy for running Nakadi directly or in your IDE)
+- `./gradlew buildFullDockerImage`: creates a single docker image containing all relevant components to run it standalone. Find more information in `full-docker-image/README.md`.
+
 
 For working with an IDE, the `eclipse` IDE task is available and you'll be able to import the `build.gradle` into Intellij IDEA directly.
 
