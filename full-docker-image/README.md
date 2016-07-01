@@ -11,10 +11,10 @@ image into your integration tests for Nakadi.
 
 Go to the project root and call `./gradlew buildFullDockerImage`. By default this shall create a Docker image with the
 name `aruha/full-nakadi:AUTOBUILD`. You can change this by specifying one or more of the following parameters (being set
-by adding `-D<parameter>=<value>` to the `gradlew` call):
+by adding `-P<parameter>=<value>` to the `gradlew` call):
 
-- fullDockerImageName
-- fullDockerImageVersion
+- `fullDockerImageName`
+- `fullDockerImageVersion`
 
 The docker image name will be like `$fullDockerImageName:$fullDockerImageVersion`.
 
