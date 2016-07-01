@@ -39,7 +39,7 @@ def loadYaml() {
     org.yaml.snakeyaml.DumperOptions options = new org.yaml.snakeyaml.DumperOptions();
     options.setDefaultFlowStyle(org.yaml.snakeyaml.DumperOptions.FlowStyle.BLOCK);
     def yaml = new org.yaml.snakeyaml.Yaml(options)
-    def file = new File("src/main/resources/application.yml").text
+    def file = file("src/main/resources/application.yml").text
     def cfg = (Map) yaml.load(file)
     return cfg
 }
