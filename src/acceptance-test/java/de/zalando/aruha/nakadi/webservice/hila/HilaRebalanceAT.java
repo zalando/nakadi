@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.intersection;
@@ -25,6 +26,7 @@ import static java.util.stream.IntStream.range;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 
 public class HilaRebalanceAT extends BaseAT {
 
@@ -67,7 +69,7 @@ public class HilaRebalanceAT extends BaseAT {
 
         // create second session for the same subscription
         final TestStreamingClient clientB = TestStreamingClient
-                .create(URL, subscription.getId(), "")
+                .create(URL, subscription.getId(), "stream_limit=20")
                 .start();
 
         // wait for rebalance process to start
@@ -76,7 +78,7 @@ public class HilaRebalanceAT extends BaseAT {
         // write 5 more events to each partition
         range(0, 40)
                 .forEach(x -> publishBusinessEventWithUserDefinedPartition(
-                        eventType.getName(), "blahAgain" + x, String.valueOf(x % 8)));
+                        eventType.getName(), "blah_" + x, String.valueOf(x % 8)));
 
         // wait till all event arrive
         waitFor(() -> assertThat(clientB.getBatches(), hasSize(20)));
@@ -92,6 +94,41 @@ public class HilaRebalanceAT extends BaseAT {
 
         // check that different partitions were streamed to different clients
         assertThat(intersection(clientAPartitionsAfterRebalance, clientBPartitions), hasSize(0));
+
+        // commit what we consumed, as clientB has already consumed what was required by stream_limit - it should
+        // be closed right after everything is committed
+        final List<Cursor> lastCursors = getLastCursorsForPartitions(clientA, clientAPartitionsAfterRebalance);
+        lastCursors.addAll(getLastCursorsForPartitions(clientB, clientBPartitions));
+        commitCursors(subscription.getId(), lastCursors);
+        waitFor(() -> assertThat(clientB.isRunning(), is(false)));
+
+        // wait for rebalance process to start
+        Thread.sleep(1000);
+
+        // write 5 more events to each partition
+        range(0, 40)
+                .forEach(x -> publishBusinessEventWithUserDefinedPartition(
+                        eventType.getName(), "blah__" + x, String.valueOf(x % 8)));
+
+        // check that after second rebalance all events were consumed by first client
+        waitFor(() -> assertThat(clientA.getBatches(), hasSize(100)));
+    }
+
+    public List<Cursor> getLastCursorsForPartitions(final TestStreamingClient client, final Set<String> partitions) {
+        if (!client.getBatches().isEmpty()) {
+            return partitions.stream()
+                    .map(partition ->
+                            client.getBatches()
+                            .stream()
+                            .filter(batch -> batch.getCursor().getPartition().equals(partition))
+                            .reduce((a1, a2) -> a2)
+                            .map(StreamBatch::getCursor))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(toList());
+        } else {
+            throw new IllegalStateException();
+        }
     }
 
     private Set<String> getUniquePartitionsStreamedToClient(final TestStreamingClient client) {
