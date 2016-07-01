@@ -136,11 +136,9 @@ public class HilaRebalanceAT extends BaseAT {
     public List<Cursor> getLastCursorsForPartitions(final TestStreamingClient client, final Set<String> partitions) {
         if (!client.getBatches().isEmpty()) {
             return partitions.stream()
-                    .map(partition ->
-                            client.getBatches()
-                            .stream()
+                    .map(partition -> client.getBatches().stream()
                             .filter(batch -> batch.getCursor().getPartition().equals(partition))
-                            .reduce((a1, a2) -> a2)
+                            .reduce((batch1, batch2) -> batch2)
                             .map(StreamBatch::getCursor))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
