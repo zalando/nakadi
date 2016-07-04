@@ -7,6 +7,9 @@ import java.util.Map;
 
 @Immutable
 public class EventStreamConfig {
+
+    private static int BATCH_FLUSH_TIMEOUT_DEFAULT = 30;
+
     private final String topic;
     private final Map<String, String> cursors;
     private final int batchLimit;
@@ -15,7 +18,7 @@ public class EventStreamConfig {
     private final int streamTimeout;
     private final int streamKeepAliveLimit;
 
-    public EventStreamConfig(final String topic, final Map<String, String> cursors, final int batchLimit,
+    private EventStreamConfig(final String topic, final Map<String, String> cursors, final int batchLimit,
                              final int streamLimit, final int batchTimeout, final int streamTimeout,
                              final int streamKeepAliveLimit) {
         this.topic = topic;
@@ -101,7 +104,7 @@ public class EventStreamConfig {
         private Map<String, String> cursors = ImmutableMap.of();
         private int batchLimit = 0;
         private int streamLimit = 0;
-        private int batchTimeout = 0;
+        private int batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
         private int streamTimeout = 0;
         private int streamKeepAliveLimit = 0;
 
@@ -126,7 +129,11 @@ public class EventStreamConfig {
         }
 
         public Builder withBatchTimeout(final int batchTimeout) {
-            this.batchTimeout = batchTimeout;
+            if (batchTimeout <= 0) {
+                this.batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
+            } else {
+                this.batchTimeout = batchTimeout;
+            }
             return this;
         }
 

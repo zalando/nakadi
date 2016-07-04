@@ -106,9 +106,7 @@ public class EventStreamController {
                 List<Cursor> cursors = null;
                 if (cursorsStr != null) {
                     try {
-                        cursors = jsonMapper.<List<Cursor>>readValue(cursorsStr,
-                                new TypeReference<ArrayList<Cursor>>() {
-                                });
+                        cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {});
                     } catch (final IOException e) {
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr + ". Respond with BAD_REQUEST.", e);
@@ -136,8 +134,15 @@ public class EventStreamController {
                                 Cursor::getPartition,
                                 Cursor::getOffset));
 
-                final EventStreamConfig streamConfig = new EventStreamConfig(topic, streamCursors, batchLimit,
-                        streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
+                final EventStreamConfig streamConfig = EventStreamConfig.builder()
+                        .withTopic(topic)
+                        .withCursors(streamCursors)
+                        .withBatchLimit(batchLimit)
+                        .withStreamLimit(streamLimit)
+                        .withBatchTimeout(batchTimeout)
+                        .withStreamTimeout(streamTimeout)
+                        .withStreamKeepAliveLimit(streamKeepAliveLimit)
+                        .build();
 
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
