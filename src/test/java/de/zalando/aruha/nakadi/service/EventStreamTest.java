@@ -202,7 +202,7 @@ public class EventStreamTest {
                         "1", "0",
                         "2", "0"))
                 .withBatchLimit(2)
-                .withBatchTimeout(1)
+                .withBatchTimeout(30)
                 .withStreamTimeout(1)
                 .build();
 
