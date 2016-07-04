@@ -190,7 +190,7 @@ public class EventStreamTest {
                 ));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 10000)
     public void whenReadFromMultiplePartitionsThenGroupedInBatchesAccordingToPartition()
             throws NakadiException, IOException, InterruptedException {
 
