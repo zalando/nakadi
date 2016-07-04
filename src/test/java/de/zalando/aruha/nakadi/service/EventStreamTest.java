@@ -99,6 +99,7 @@ public class EventStreamTest {
                 .withTopic(TOPIC)
                 .withCursors(ImmutableMap.of("0", "0"))
                 .withBatchLimit(1)
+                .withBatchTimeout(1)
                 .withStreamKeepAliveLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
@@ -201,7 +202,7 @@ public class EventStreamTest {
                         "1", "0",
                         "2", "0"))
                 .withBatchLimit(2)
-                .withBatchTimeout(30)
+                .withBatchTimeout(1)
                 .withStreamTimeout(1)
                 .build();
 
