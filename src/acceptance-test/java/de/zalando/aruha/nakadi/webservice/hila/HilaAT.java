@@ -10,16 +10,23 @@ import de.zalando.aruha.nakadi.webservice.BaseAT;
 import de.zalando.aruha.nakadi.webservice.utils.TestStreamingClient;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
-import java.util.stream.IntStream;
+import java.text.MessageFormat;
 
+import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.waitFor;
 import static de.zalando.aruha.nakadi.webservice.hila.StreamBatch.singleEventBatch;
 import static de.zalando.aruha.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static de.zalando.aruha.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static de.zalando.aruha.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
-import static de.zalando.aruha.nakadi.webservice.utils.NakadiTestUtils.publishMessage;
+import static de.zalando.aruha.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
+import static java.text.MessageFormat.format;
+import static java.util.stream.IntStream.range;
+import static java.util.stream.IntStream.rangeClosed;
+import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -43,9 +50,8 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 30000)
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
-        IntStream
-                .rangeClosed(0, 3)
-                .forEach(x -> publishMessage(eventType.getName(), "{\"blah\":\"foo" + x + "\"}"));
+        rangeClosed(0, 3)
+                .forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo" + x + "\"}"));
 
         // create session, read from subscription and wait for events to be sent
         final TestStreamingClient client = TestStreamingClient
@@ -72,7 +78,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 5000)
     public void whenCommitVeryFirstEventThenOk() throws Exception {
-        publishMessage(eventType.getName(), "{\"blah\":\"foo\"}");
+        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
 
         // create session, read from subscription and wait for events to be sent
         final TestStreamingClient client = TestStreamingClient
@@ -83,6 +89,90 @@ public class HilaAT extends BaseAT {
         // commit and check that status is 200
         final int commitResult = commitCursors(subscription.getId(), ImmutableList.of(new Cursor("0", "0")));
         assertThat(commitResult, equalTo(SC_OK));
+    }
+
+    @Test(timeout = 15000)
+    public void whenWindowSizeIsSetItIsConsidered() throws Exception {
+
+        range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "window_size=5")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
+
+        Cursor cursorToCommit = client.getBatches().get(4).getCursor();
+        commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit));
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(10)));
+
+        cursorToCommit = client.getBatches().get(6).getCursor();
+        commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit));
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(12)));
+    }
+
+    @Test(timeout = 10000)
+    public void whenCommitTimeoutReachedSessionIsClosed() throws Exception {
+
+        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "commit_timeout=1")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+        waitFor(() -> assertThat(client.isRunning(), is(false)), 3000);
+    }
+
+    @Test(timeout = 15000)
+    public void whenStreamTimeoutReachedSessionIsClosed() throws Exception {
+
+        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "stream_timeout=3")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+
+        // to check that stream_timeout works we need to commit everything we consumed, in other case
+        // Nakadi will first wait till commit_timeout exceeds
+        final Cursor lastBatchCursor = client.getBatches().get(client.getBatches().size() - 1).getCursor();
+        commitCursors(subscription.getId(), ImmutableList.of(lastBatchCursor));
+
+        waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);
+    }
+
+    @Test(timeout = 10000)
+    public void whenBatchLimitAndTimeoutAreSetTheyAreConsidered() throws Exception {
+
+        range(0, 12).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(3)));
+
+        assertThat(client.getBatches().get(0).getEvents(), hasSize(5));
+        assertThat(client.getBatches().get(0).getCursor().getOffset(), is("4"));
+
+        assertThat(client.getBatches().get(1).getEvents(), hasSize(5));
+        assertThat(client.getBatches().get(1).getCursor().getOffset(), is("9"));
+
+        assertThat(client.getBatches().get(2).getEvents(), hasSize(2));
+        assertThat(client.getBatches().get(2).getCursor().getOffset(), is("11"));
+    }
+
+    @Test(timeout = 5000)
+    public void whenThereAreNoEmptySlotsThenConflict() throws Exception {
+        TestStreamingClient.create(URL, subscription.getId(), "").start();
+        given()
+                .get(format("/subscriptions/{0}/events", subscription.getId()))
+                .then()
+                .statusCode(SC_CONFLICT);
     }
 
 }
