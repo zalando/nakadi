@@ -1,0 +1,49 @@
+version: '2'
+services:
+
+  nakadi:
+    build: .
+    restart: always
+    ports:
+     - "8080:8080"
+    depends_on:
+     - postgres
+     - zookeeper
+     - kafka
+    environment:
+      NAKADI_OAUTH2_MODE: "OFF"
+      NAKADI_FEATURETOGGLE_ENABLEALL: "true"
+    links:
+      - zookeeper:zk #fix this
+      - postgres:postgres #fix this
+      - kafka:kafka #fix this
+
+  postgres:
+    image: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d" # fix this
+    environment:
+      POSTGRES_USER: nakadi_app
+      POSTGRES_PASSWORD: nakadi
+      POSTGRES_DB: local_nakadi_db
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: wurstmeister/kafka
+    links:
+      - zookeeper:zk #fix this
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka #fix this
+      KAFKA_ZOOKEEPER_CONNECT: zk:2181 #fix this
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
