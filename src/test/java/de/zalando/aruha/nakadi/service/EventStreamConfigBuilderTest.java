@@ -43,4 +43,24 @@ public class EventStreamConfigBuilderTest {
         assertThat(config.getBatchTimeout(), is(29));
     }
 
+    @Test(expected = UnprocessableEntityException.class)
+    public void streamLimitLessThenBatchLimit() throws UnprocessableEntityException {
+        EventStreamConfig
+                .builder()
+                .withTopic("test")
+                .withBatchLimit(10)
+                .withStreamLimit(1)
+                .build();
+    }
+
+    @Test(expected = UnprocessableEntityException.class)
+    public void streamTimeoutLessThenBatchTimeout() throws UnprocessableEntityException {
+        EventStreamConfig
+                .builder()
+                .withTopic("test")
+                .withBatchTimeout(10)
+                .withStreamTimeout(1)
+                .build();
+    }
+
 }

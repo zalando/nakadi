@@ -76,8 +76,6 @@ public class EventStreamController {
                 @SuppressWarnings("UnnecessaryLocalVariable")
                 final String topic = eventTypeName;
 
-
-
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
                     writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
@@ -122,7 +120,6 @@ public class EventStreamController {
                         .collect(Collectors.toMap(
                                 Cursor::getPartition,
                                 Cursor::getOffset));
-
 
                 final EventStreamConfig streamConfig = builder
                         .withCursors(streamCursors)
