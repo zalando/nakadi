@@ -39,7 +39,7 @@ public class BatchItem {
         this.response.setStep(step);
     }
 
-    synchronized public void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
+    public synchronized void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
         this.response.setPublishingStatus(publishingStatus);
         this.response.setDetail(detail);
     }

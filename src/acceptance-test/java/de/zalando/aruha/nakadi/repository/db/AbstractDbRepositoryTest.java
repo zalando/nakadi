@@ -18,9 +18,9 @@ public abstract class AbstractDbRepositoryTest {
     protected ObjectMapper mapper;
     protected String repositoryTable;
 
-    private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
-    private static final String username = "nakadi_app";
-    private static final String password = "nakadi";
+    private static final String POSTGRESQL_URL = "jdbc:postgresql://localhost:5432/local_nakadi_db";
+    private static final String USERNAME = "nakadi_app";
+    private static final String PASSWORD = "nakadi";
 
     public AbstractDbRepositoryTest(final String repositoryTable) {
         this.repositoryTable = repositoryTable;
@@ -30,7 +30,7 @@ public abstract class AbstractDbRepositoryTest {
     public void setUp() {
         try {
             mapper = (new JsonConfig()).jacksonObjectMapper();
-            final DataSource datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
+            final DataSource datasource = new DriverManagerDataSource(POSTGRESQL_URL, USERNAME, PASSWORD);
             template = new JdbcTemplate(datasource);
             connection = datasource.getConnection();
             clearRepositoryTable();
