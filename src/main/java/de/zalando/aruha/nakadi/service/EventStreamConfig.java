@@ -3,6 +3,7 @@ package de.zalando.aruha.nakadi.service;
 import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.Map;
 
@@ -123,21 +124,21 @@ public class EventStreamConfig {
             return this;
         }
 
-        public Builder withBatchLimit(final Integer batchLimit) {
+        public Builder withBatchLimit(@Nullable final Integer batchLimit) {
             if (batchLimit != null) {
                 this.batchLimit = batchLimit;
             }
             return this;
         }
 
-        public Builder withStreamLimit(final Integer streamLimit) {
+        public Builder withStreamLimit(@Nullable final Integer streamLimit) {
             if (streamLimit != null) {
                 this.streamLimit = streamLimit;
             }
             return this;
         }
 
-        public Builder withBatchTimeout(final Integer batchTimeout) {
+        public Builder withBatchTimeout(@Nullable final Integer batchTimeout) {
             if (batchTimeout != null) {
                 if (batchTimeout == 0) {
                     this.batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
@@ -148,14 +149,14 @@ public class EventStreamConfig {
             return this;
         }
 
-        public Builder withStreamTimeout(final Integer streamTimeout) {
+        public Builder withStreamTimeout(@Nullable final Integer streamTimeout) {
             if (streamTimeout != null) {
                 this.streamTimeout = streamTimeout;
             }
             return this;
         }
 
-        public Builder withStreamKeepAliveLimit(final Integer streamKeepAliveLimit) {
+        public Builder withStreamKeepAliveLimit(@Nullable final Integer streamKeepAliveLimit) {
             if (streamKeepAliveLimit != null) {
                 this.streamKeepAliveLimit = streamKeepAliveLimit;
             }

@@ -4,8 +4,6 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import de.zalando.aruha.nakadi.Operations;
-
 public class OperationsIT {
 
     private Operations operations = new Operations();
