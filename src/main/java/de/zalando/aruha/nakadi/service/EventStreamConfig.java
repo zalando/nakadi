@@ -10,11 +10,11 @@ import java.util.Map;
 @Immutable
 public class EventStreamConfig {
 
-    private static int BATCH_LIMIT_DEFAULT = 1;
-    private static int STREAM_LIMIT_DEFAULT = 0;
-    private static int BATCH_FLUSH_TIMEOUT_DEFAULT = 30;
-    private static int STREAM_TIMEOUT_DEFAULT = 60;
-    private static int STREAM_KEEP_ALIVE_LIMIT_DEFAULT = 0;
+    private static final int BATCH_LIMIT_DEFAULT = 1;
+    private static final int STREAM_LIMIT_DEFAULT = 0;
+    private static final int BATCH_FLUSH_TIMEOUT_DEFAULT = 30;
+    private static final int STREAM_TIMEOUT_DEFAULT = 60;
+    private static final int STREAM_KEEP_ALIVE_LIMIT_DEFAULT = 0;
 
     private final String topic;
     private final Map<String, String> cursors;
