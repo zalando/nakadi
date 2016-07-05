@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
+import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
 
 import javax.annotation.concurrent.Immutable;
 import java.util.Map;
@@ -8,7 +9,11 @@ import java.util.Map;
 @Immutable
 public class EventStreamConfig {
 
+    private static int BATCH_LIMIT_DEFAULT = 1;
+    private static int STREAM_LIMIT_DEFAULT = 0;
     private static int BATCH_FLUSH_TIMEOUT_DEFAULT = 30;
+    private static int STREAM_TIMEOUT_DEFAULT = 60;
+    private static int STREAM_KEEP_ALIVE_LIMIT_DEFAULT = 0;
 
     private final String topic;
     private final Map<String, String> cursors;
@@ -102,11 +107,11 @@ public class EventStreamConfig {
 
         private String topic = null;
         private Map<String, String> cursors = ImmutableMap.of();
-        private int batchLimit = 0;
-        private int streamLimit = 0;
+        private int batchLimit = BATCH_LIMIT_DEFAULT;
+        private int streamLimit = STREAM_LIMIT_DEFAULT;
         private int batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
-        private int streamTimeout = 0;
-        private int streamKeepAliveLimit = 0;
+        private int streamTimeout = STREAM_TIMEOUT_DEFAULT;
+        private int streamKeepAliveLimit = STREAM_KEEP_ALIVE_LIMIT_DEFAULT;
 
         public Builder withTopic(final String topic) {
             this.topic = topic;
@@ -118,43 +123,55 @@ public class EventStreamConfig {
             return this;
         }
 
-        public Builder withBatchLimit(final int batchLimit) {
-            this.batchLimit = batchLimit;
-            return this;
-        }
-
-        public Builder withStreamLimit(final int streamLimit) {
-            this.streamLimit = streamLimit;
-            return this;
-        }
-
-        public Builder withBatchTimeout(final int batchTimeout) {
-            if (batchTimeout <= 0) {
-                this.batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
-            } else {
-                this.batchTimeout = batchTimeout;
+        public Builder withBatchLimit(final Integer batchLimit) {
+            if (batchLimit != null) {
+                this.batchLimit = batchLimit;
             }
             return this;
         }
 
-        public Builder withStreamTimeout(final int streamTimeout) {
-            this.streamTimeout = streamTimeout;
+        public Builder withStreamLimit(final Integer streamLimit) {
+            if (streamLimit != null) {
+                this.streamLimit = streamLimit;
+            }
             return this;
         }
 
-        public Builder withStreamKeepAliveLimit(final int streamKeepAliveLimit) {
-            this.streamKeepAliveLimit = streamKeepAliveLimit;
+        public Builder withBatchTimeout(final Integer batchTimeout) {
+            if (batchTimeout != null) {
+                if (batchTimeout == 0) {
+                    this.batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
+                } else {
+                    this.batchTimeout = batchTimeout;
+                }
+            }
             return this;
         }
 
-        public EventStreamConfig build() {
+        public Builder withStreamTimeout(final Integer streamTimeout) {
+            if (streamTimeout != null) {
+                this.streamTimeout = streamTimeout;
+            }
+            return this;
+        }
+
+        public Builder withStreamKeepAliveLimit(final Integer streamKeepAliveLimit) {
+            if (streamKeepAliveLimit != null) {
+                this.streamKeepAliveLimit = streamKeepAliveLimit;
+            }
+            return this;
+        }
+
+        public EventStreamConfig build() throws UnprocessableEntityException {
             if (topic == null) {
                 throw new IllegalStateException("Topic should be specified");
+            } else if (streamLimit != 0 && streamLimit < batchLimit) {
+                throw new UnprocessableEntityException("stream_limit can't be lower than batch_limit");
+            } else if (streamTimeout != 0 && streamTimeout < batchTimeout) {
+                throw new UnprocessableEntityException("stream_timeout can't be lower than batch_flush_timeout");
             }
-            if (batchLimit == 0) {
-                throw new IllegalStateException("Batch limit should be specified");
-            }
-            return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
+            return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout,
+                    streamKeepAliveLimit);
         }
     }
 

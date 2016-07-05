@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.service;
 
+import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
 import org.junit.Test;
 
 import static org.hamcrest.core.Is.is;
@@ -8,7 +9,7 @@ import static org.junit.Assert.assertThat;
 public class EventStreamConfigBuilderTest {
 
     @Test
-    public void batchLimitZeroValueTest() {
+    public void batchLimitZeroValueTest() throws UnprocessableEntityException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withTopic("test")
@@ -20,7 +21,7 @@ public class EventStreamConfigBuilderTest {
     }
 
     @Test
-    public void batchLimitDefaultValueTest() {
+    public void batchLimitDefaultValueTest() throws UnprocessableEntityException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withTopic("test")
@@ -31,7 +32,7 @@ public class EventStreamConfigBuilderTest {
     }
 
     @Test
-    public void batchLimitSpecifiedValueTest() {
+    public void batchLimitSpecifiedValueTest() throws UnprocessableEntityException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withTopic("test")
