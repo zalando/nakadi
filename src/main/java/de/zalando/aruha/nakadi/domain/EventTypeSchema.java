@@ -4,7 +4,7 @@ import javax.validation.constraints.NotNull;
 
 public class EventTypeSchema {
 
-    public static enum Type {
+    public enum Type {
         JSON_SCHEMA
     }
 

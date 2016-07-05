@@ -202,7 +202,7 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture()))
                 .thenReturn(eventStreamMock);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 0, 0, 1, 1, 0,
+        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 1, 0, 1, 1, 0,
                 null, requestMock, responseMock);
         responseBody.writeTo(new ByteArrayOutputStream());
 
@@ -300,7 +300,7 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 0, 0, 0, 0, 0, null,
+        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE, 1, 0, 0, 0, 0, null,
                 requestMock, responseMock);
 
 

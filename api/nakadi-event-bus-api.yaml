@@ -466,8 +466,7 @@ paths:
           description: |
             Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
 
-            * If 0 or unspecified will buffer Events indefinitely and flush on reaching of
-            `batch_flush_timeout`.
+            * If 0 will buffer Events indefinitely and flush on reaching of `batch_flush_timeout`.
           type: integer
           format: int32
           required: false

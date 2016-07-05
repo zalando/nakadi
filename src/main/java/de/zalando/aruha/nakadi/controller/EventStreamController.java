@@ -41,8 +41,6 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class EventStreamController {
@@ -66,11 +64,11 @@ public class EventStreamController {
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("name") final String eventTypeName,
-            @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
-            @RequestParam(value = "stream_limit", required = false, defaultValue = "0") final int streamLimit,
-            @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
-            @RequestParam(value = "stream_timeout", required = false, defaultValue = "60") final int streamTimeout,
-            @RequestParam(value = "stream_keep_alive_limit", required = false, defaultValue = "0") final int streamKeepAliveLimit,
+            @Nullable @RequestParam(value = "batch_limit", required = false) final Integer batchLimit,
+            @Nullable @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
+            @Nullable @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
+            @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
+            @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
             final NativeWebRequest request, final HttpServletResponse response) throws IOException {
 
@@ -91,24 +89,19 @@ public class EventStreamController {
                     writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
                     return;
                 }
-                if (streamLimit != 0 && streamLimit < batchLimit) {
-                    writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY,
-                            "stream_limit can't be lower than batch_limit");
-                    return;
-                }
-                if (streamTimeout != 0 && streamTimeout < batchTimeout) {
-                    writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY,
-                            "stream_timeout can't be lower than batch_flush_timeout");
-                    return;
-                }
+                EventStreamConfig.Builder builder = EventStreamConfig.builder()
+                        .withTopic(topic)
+                        .withBatchLimit(batchLimit)
+                        .withStreamLimit(streamLimit)
+                        .withBatchTimeout(batchTimeout)
+                        .withStreamTimeout(streamTimeout)
+                        .withStreamKeepAliveLimit(streamKeepAliveLimit);
 
                 // deserialize cursors
                 List<Cursor> cursors = null;
                 if (cursorsStr != null) {
                     try {
-                        cursors = jsonMapper.<List<Cursor>>readValue(cursorsStr,
-                                new TypeReference<ArrayList<Cursor>>() {
-                                });
+                        cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {});
                     } catch (final IOException e) {
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr + ". Respond with BAD_REQUEST.", e);
@@ -136,8 +129,9 @@ public class EventStreamController {
                                 Cursor::getPartition,
                                 Cursor::getOffset));
 
-                final EventStreamConfig streamConfig = new EventStreamConfig(topic, streamCursors, batchLimit,
-                        streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
+                final EventStreamConfig streamConfig = builder
+                        .withCursors(streamCursors)
+                        .build();
 
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
@@ -150,7 +144,7 @@ public class EventStreamController {
             }
             catch (final NakadiException e) {
                 LOG.error("Error while trying to stream events. Respond with SERVICE_UNAVAILABLE.", e);
-                writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getProblemMessage());
+                writeProblemResponse(response, outputStream, e.asProblem());
             }
             catch (final InvalidCursorException e) {
                 final String errorMessage = invalidCursorMessage(e.getError(), e.getCursor());
@@ -195,8 +189,13 @@ public class EventStreamController {
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
                                       final Response.StatusType statusCode, final String message) throws IOException {
-        response.setStatus(statusCode.getStatusCode());
+        writeProblemResponse(response, outputStream, Problem.valueOf(statusCode, message));
+    }
+
+    private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
+                                      Problem problem) throws IOException {
+        response.setStatus(problem.getStatus().getStatusCode());
         response.setContentType("application/problem+json");
-        jsonMapper.writer().writeValue(outputStream, Problem.valueOf(statusCode, message));
+        jsonMapper.writer().writeValue(outputStream, problem);
     }
 }
