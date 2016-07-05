@@ -1,29 +1,26 @@
 package de.zalando.aruha.nakadi.utils;
 
-import java.io.IOException;
-
-import java.util.Arrays;
-import java.util.Random;
-import java.util.UUID;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
-import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import org.apache.commons.io.IOUtils;
-
-import org.json.JSONObject;
-
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
+import de.zalando.aruha.nakadi.problem.ValidationProblem;
+import org.apache.commons.io.IOUtils;
+import org.json.JSONObject;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.zalando.problem.Problem;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Random;
+import java.util.UUID;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -36,7 +33,7 @@ public class TestUtils {
 
     private static final Random RANDOM = new Random();
 
-    private static final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
 
     public static String randomUUID() {
         return UUID.randomUUID().toString();
@@ -126,7 +123,7 @@ public class TestUtils {
 
     public static EventType loadEventType(final String filename) throws IOException {
         final String json = readFile(filename);
-        return objectMapper.readValue(json, EventType.class);
+        return OBJECT_MAPPER.readValue(json, EventType.class);
     }
 
     public static MappingJackson2HttpMessageConverter createMessageConverter() {

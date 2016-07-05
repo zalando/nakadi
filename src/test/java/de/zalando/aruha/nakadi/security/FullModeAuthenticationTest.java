@@ -13,8 +13,8 @@ public class FullModeAuthenticationTest extends AuthenticationTest {
 
     @Test
     public void fullAuthMode() throws Exception {
-        endpoints.forEach(this::checkHasOnlyAccessByNeededScope);
-        endpointsForUidScope.forEach(this::checkHasAccessByUidScope);
+        ENDPOINTS.forEach(this::checkHasOnlyAccessByNeededScope);
+        ENDPOINTS_FOR_UID_SCOPE.forEach(this::checkHasAccessByUidScope);
     }
 
     private void checkHasAccessByUidScope(final Endpoint endpoint) {
