@@ -162,8 +162,7 @@ public class EventStreamTest {
                 .withTopic(TOPIC)
                 .withCursors(ImmutableMap.of("0", "0"))
                 .withBatchLimit(1)
-                .withBatchTimeout(1)
-                .withStreamTimeout(1)
+                .withStreamLimit(4)
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
