@@ -127,7 +127,7 @@ public class EventStreamControllerTest {
                 .withCursors(ImmutableMap.of("0", "0"))
                 .withStreamKeepAliveLimit(0)
                 .withStreamLimit(0)
-                .withStreamTimeout(60)
+                .withStreamTimeout(0)
                 .build();
         // we have to retry here as mockMvc exits at the very beginning, before the body starts streaming
         executeWithRetry(() -> assertThat(configCaptor.getValue(), equalTo(expectedConfig)),

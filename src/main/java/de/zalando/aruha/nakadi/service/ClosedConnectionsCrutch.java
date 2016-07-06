@@ -3,6 +3,7 @@ package de.zalando.aruha.nakadi.service;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.net.InetAddresses;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -150,21 +151,28 @@ public class ClosedConnectionsCrutch {
     private final Map<ConnectionInfo, List<BooleanSupplier>> listeners = new HashMap<>();
     private final SortedSet<ListenerInfo> toAdd = new TreeSet<>();
     private final Meter meterClosed;
+    private final FeatureToggleService featureToggleService;
     private static final Logger LOG = LoggerFactory.getLogger(ClosedConnectionsCrutch.class);
     private static final long DELAY_MILLIS = 100;
 
+    private static final String FEATURE_NAME = "close_crutch";
     @Autowired
     public ClosedConnectionsCrutch(
             @Value("${server.port}") final int port,
-            final MetricRegistry metricRegistry) {
+            final MetricRegistry metricRegistry,
+            final FeatureToggleService featureToggleService) {
         this.port = port;
         this.meterClosed = metricRegistry.meter("nakadi.close_crutch.closed");
+        this.featureToggleService = featureToggleService;
     }
 
     public void listenForConnectionClose(
             final InetAddress address,
             final int port,
             final BooleanSupplier onCloseListener) {
+        if (!featureToggleService.isFeatureEnabled(FEATURE_NAME)) {
+            return;
+        }
         LOG.debug("Listening for connection to close using crutch (" + address + ":" + port + ")");
         final Date now = new Date();
         synchronized (this) {
@@ -174,6 +182,9 @@ public class ClosedConnectionsCrutch {
 
     @Scheduled(fixedDelay = 1000)
     public void refresh() throws IOException {
+        if (!featureToggleService.isFeatureEnabled(FEATURE_NAME)) {
+            return;
+        }
         final long selector = System.currentTimeMillis() - DELAY_MILLIS;
         synchronized (this) {
             final Iterator<ListenerInfo> it = toAdd.iterator();
