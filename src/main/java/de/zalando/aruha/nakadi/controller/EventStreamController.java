@@ -6,9 +6,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.CursorError;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
@@ -34,6 +36,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
@@ -54,13 +57,17 @@ public class EventStreamController {
     private final ObjectMapper jsonMapper;
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
+    private final EventTypeRepository eventTypeRepository;
 
     public EventStreamController(final TopicRepository topicRepository, final ObjectMapper jsonMapper,
-                                 final EventStreamFactory eventStreamFactory, final MetricRegistry metricRegistry) {
+                                 final EventStreamFactory eventStreamFactory, final MetricRegistry metricRegistry,
+                                 EventTypeRepository eventTypeRepository)
+    {
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
+        this.eventTypeRepository = eventTypeRepository;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
@@ -88,6 +95,11 @@ public class EventStreamController {
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
+                    Optional<EventType> eventTypeO = eventTypeRepository.findByNameO(eventTypeName);
+                    if (eventTypeO.isPresent()) {
+                        writeProblemResponse(response, outputStream,INTERNAL_SERVER_ERROR, "topic is absent in kafka");
+                        return;
+                    }
                     writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
                     return;
                 }

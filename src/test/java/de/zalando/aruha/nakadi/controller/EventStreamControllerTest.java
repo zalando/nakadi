@@ -8,11 +8,13 @@ import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.CursorError;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
@@ -31,12 +33,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.LinkedList;
+import java.util.Optional;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -66,6 +70,8 @@ public class EventStreamControllerTest {
 
     private static final String TEST_EVENT_TYPE = "test";
 
+    private static final EventType DUMMY_EVENT_TYPE = new EventType();
+
     private NativeWebRequest requestMock;
     private HttpServletResponse responseMock;
     private TopicRepository topicRepositoryMock;
@@ -75,6 +81,7 @@ public class EventStreamControllerTest {
     private EventStreamController controller;
     private JsonTestHelper jsonHelper;
     private MetricRegistry metricRegistry;
+    private EventTypeRepository eventTypeRepository;
 
     @Before
     public void setup() {
@@ -85,8 +92,9 @@ public class EventStreamControllerTest {
         eventStreamFactoryMock = mock(EventStreamFactory.class);
 
         metricRegistry = new MetricRegistry();
+        eventTypeRepository = mock(EventTypeRepository.class);
         controller = new EventStreamController(topicRepositoryMock, objectMapper,
-                eventStreamFactoryMock, metricRegistry);
+                eventStreamFactoryMock, metricRegistry, eventTypeRepository);
 
         requestMock = mock(NativeWebRequest.class);
         responseMock = mock(HttpServletResponse.class);
@@ -132,11 +140,23 @@ public class EventStreamControllerTest {
     @Test
     public void whenTopicNotExistsThenTopicNotFound() throws IOException, NakadiException {
         when(topicRepositoryMock.topicExists(eq("not-existing"))).thenReturn(false);
-
+        when(eventTypeRepository.findByNameO(eq("not-existing"))).thenReturn(Optional.empty());
         final StreamingResponseBody responseBody = controller.streamEvents("not-existing", 0, 0, 0, 0, 0, null,
                 requestMock, responseMock);
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+    }
+
+    @Test
+    public void whenTopicInconsistentThenInternalServerError() throws IOException, NakadiException {
+        when(topicRepositoryMock.topicExists(eq("not-existing"))).thenReturn(false);
+        when(eventTypeRepository.findByNameO(eq("not-existing"))).thenReturn(Optional.of(DUMMY_EVENT_TYPE));
+
+        final StreamingResponseBody responseBody = controller.streamEvents("not-existing", 0, 0, 0, 0, 0, null,
+                requestMock, responseMock);
+
+        final ThrowableProblem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
