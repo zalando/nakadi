@@ -110,7 +110,7 @@ public class EventStreamController {
                     writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
                     return;
                 }
-                EventStreamConfig.Builder builder = EventStreamConfig.builder()
+                final EventStreamConfig.Builder builder = EventStreamConfig.builder()
                         .withTopic(topic)
                         .withBatchLimit(batchLimit)
                         .withStreamLimit(streamLimit)
