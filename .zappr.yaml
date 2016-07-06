@@ -1,0 +1,15 @@
+approvals:
+  minimum: 1
+  ignore: pr_opener
+  pattern: "^([aA][cC][kK]|[lL][gG][tT][mM]|👌|:ok_hand:|👍|:\\+1:|:thumbsup:|:shipit:)$"
+  veto:
+    pattern: "^([vV][eE][tT][oO]|🙅|:no_good:|💩|:hankey:|:poop:|:shit:|👎|:-1:|:thumbsdown:)$"
+  from:
+    users:
+      - adyach
+      - antban
+      - jkliff
+      - rcillo
+      - v-stepanov
+      - v1ctor
+      - valgog
