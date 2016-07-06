@@ -3,7 +3,6 @@ services:
 
   nakadi:
     build: .
-    restart: always
     ports:
      - "8080:8080"
     depends_on:
@@ -13,19 +12,23 @@ services:
     environment:
       NAKADI_OAUTH2_MODE: "OFF"
       NAKADI_FEATURETOGGLE_ENABLEALL: "true"
+      NAKADI_ZOOKEEPER_BROKERS: zookeeper:2181
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/local_nakadi_db
+      SPRING_DATASOURCE_USERNAME: nakadi
+      SPRING_DATASOURCE_PASSWORD: nakadi
     links:
-      - zookeeper:zk #fix this
-      - postgres:postgres #fix this
-      - kafka:kafka #fix this
+      - zookeeper
+      - postgres
+      - kafka
 
   postgres:
     image: postgres
     ports:
       - "5432:5432"
     volumes:
-      - "./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d" # fix this
+      - "./database/nakadi:/docker-entrypoint-initdb.d"
     environment:
-      POSTGRES_USER: nakadi_app
+      POSTGRES_USER: nakadi
       POSTGRES_PASSWORD: nakadi
       POSTGRES_DB: local_nakadi_db
 
@@ -37,13 +40,13 @@ services:
   kafka:
     image: wurstmeister/kafka
     links:
-      - zookeeper:zk #fix this
+      - zookeeper
     ports:
       - "9092:9092"
     depends_on:
       - zookeeper
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: kafka #fix this
-      KAFKA_ZOOKEEPER_CONNECT: zk:2181 #fix this
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

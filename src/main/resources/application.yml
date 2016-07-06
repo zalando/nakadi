@@ -14,7 +14,7 @@ logging:
     de.zalando.aruha.nakadi: DEBUG
 spring:
   datasource:
-    url: jdbc:postgresql://postgres:5432/local_nakadi_db
+    url: jdbc:postgresql://localhost:5432/local_nakadi_db
     username: nakadi_app
     password: nakadi
     driverClassName: org.postgresql.Driver
@@ -42,7 +42,7 @@ nakadi:
       timeoutMs: 10000
   zookeeper:
     kafkaNamespace:
-    brokers: zk:2181
+    brokers: 127.0.0.1:2181
 #    exhibitor:
 #      brokers: 127.0.0.1,127.0.0.2
 #      port: 8181
