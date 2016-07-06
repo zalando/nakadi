@@ -13,6 +13,7 @@ public class FeatureToggleService {
 
     private final boolean forceEnableAll;
     private final ZooKeeperHolder zkHolder;
+    private final TimeBasedCache<Feature, Boolean> cachedValues = new TimeBasedCache<>(5000);
 
     public FeatureToggleService(final boolean forceEnableAll, final ZooKeeperHolder zkHolder) {
         this.forceEnableAll = forceEnableAll;
@@ -23,13 +24,18 @@ public class FeatureToggleService {
         if (forceEnableAll) {
             return feature.getDefault();
         }
+        return cachedValues.getOrCalculate(feature, this::isFeatureEnabledInZk);
+    }
+
+    private Boolean isFeatureEnabledInZk(final Feature feature) {
         try {
             final Stat stat = zkHolder.get().checkExists().forPath(PREFIX + feature.getId());
             return stat != null;
-        } catch (Exception e) {
+        } catch (final Exception e) {
             LOG.warn("Error occurred when checking if feature '" + feature.getId() + "' is toggled", e);
-            return false;
+            return feature.getDefault();
         }
+
     }
 
     public enum Feature {
