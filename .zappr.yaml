@@ -1,9 +1,9 @@
 approvals:
   minimum: 1
   ignore: pr_opener
-  pattern: "^([aA][cC][kK]|[lL][gG][tT][mM]|👌|:ok_hand:|👍|:\\+1:|:thumbsup:|:shipit:)$"
+  pattern: "^(👍|:\\+1:|:thumbsup:|:shipit:)$"
   veto:
-    pattern: "^([vV][eE][tT][oO]|🙅|:no_good:|💩|:hankey:|:poop:|:shit:|👎|:-1:|:thumbsdown:)$"
+    pattern: "^(👎|:-1:|:thumbsdown:)$"
   from:
     users:
       - adyach
