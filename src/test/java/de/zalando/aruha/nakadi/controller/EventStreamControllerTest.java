@@ -17,10 +17,13 @@ import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
+import java.net.InetAddress;
+import javax.servlet.http.HttpServletRequest;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Before;
 import org.junit.Test;
@@ -95,10 +98,14 @@ public class EventStreamControllerTest {
         eventStreamFactoryMock = mock(EventStreamFactory.class);
 
         metricRegistry = new MetricRegistry();
-        controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
-                eventStreamFactoryMock, metricRegistry);
+        controller = new EventStreamController(topicRepositoryMock, topicRepositoryMock, objectMapper,
+                eventStreamFactoryMock, metricRegistry, mock(ClosedConnectionsCrutch.class));
 
         requestMock = mock(NativeWebRequest.class);
+        final HttpServletRequest httpRequestMock = mock(HttpServletRequest.class);
+        when(requestMock.getNativeRequest()).thenReturn(httpRequestMock);
+        when(httpRequestMock.getRemoteAddr()).thenReturn(InetAddress.getLoopbackAddress().getHostAddress());
+        when(httpRequestMock.getRemotePort()).thenReturn(12345);
         responseMock = mock(HttpServletResponse.class);
     }
 
@@ -268,7 +275,7 @@ public class EventStreamControllerTest {
         verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
                 eq(streamConfig));
-        verify(eventStreamMock, times(1)).streamEvents();
+        verify(eventStreamMock, times(1)).streamEvents(any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
     }
@@ -302,9 +309,11 @@ public class EventStreamControllerTest {
 
         // block to simulate the streaming until thread is interrupted
         Mockito.doAnswer(invocation -> {
-            while (!Thread.interrupted()) { Thread.sleep(100); }
+            while (!Thread.interrupted()) {
+                Thread.sleep(100);
+            }
             return null;
-        }).when(eventStream).streamEvents();
+        }).when(eventStream).streamEvents(any());
         when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server
@@ -316,7 +325,7 @@ public class EventStreamControllerTest {
         final Counter counter = metricRegistry.counter(metricNameFor(TEST_EVENT_TYPE_NAME, EventStreamController.CONSUMERS_COUNT_METRIC_NAME));
 
         // create clients...
-        for (int i=0; i<3; i++) {
+        for (int i = 0; i < 3; i++) {
             final Thread client = new Thread(() -> {
                 try {
                     responseBody.writeTo(new ByteArrayOutputStream());
@@ -330,7 +339,9 @@ public class EventStreamControllerTest {
             Thread.sleep(500);
 
             executeWithRetry(
-                    () -> {assertThat(counter.getCount(), equalTo((long) clients.size()));},
+                    () -> {
+                        assertThat(counter.getCount(), equalTo((long) clients.size()));
+                    },
                     retryForSpecifiedTimeOf(duration("5s"))
             );
 

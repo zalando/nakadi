@@ -19,6 +19,7 @@ import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
+import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,9 +72,9 @@ public class NakadiConfig {
     }
 
     @Bean
-    public EventStreamController eventStreamController() {
+    public EventStreamController eventStreamController(final ClosedConnectionsCrutch closedConnectionsCrutch) {
         return new EventStreamController(eventTypeRepository, topicRepository, jsonConfig.jacksonObjectMapper(),
-                eventStreamFactory(), METRIC_REGISTRY);
+                eventStreamFactory(), METRIC_REGISTRY, closedConnectionsCrutch);
     }
 
     @Bean

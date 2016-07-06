@@ -31,24 +31,24 @@ public class EventTypeMetrics {
         publishingTimer = metricRegistry.timer(metricNameFor(eventTypeName, "publishing"));
     }
 
-    public void reportSizing(int eventsPerBatch, int totalEventSize) {
+    public void reportSizing(final int eventsPerBatch, final int totalEventSize) {
         eventsPerBatchHistogram.update(eventsPerBatch);
         eventCountMeter.mark(eventsPerBatch);
         averageEventSizeInBytesHistogram.update(eventsPerBatch == 0 ? 0 : totalEventSize / eventsPerBatch);
     }
 
-    public void incrementResponseCount(int code) {
+    public void incrementResponseCount(final int code) {
         statusCodeMeter.computeIfAbsent(code,
                 key -> metricRegistry.meter(metricNameFor(eventTypeName, "publishing." + code)))
                 .mark();
     }
 
-    public void updateTiming(long startingNanos, long currentNanos) {
+    public void updateTiming(final long startingNanos, final long currentNanos) {
         publishingTimer.update(currentNanos - startingNanos, TimeUnit.NANOSECONDS);
     }
 
     @VisibleForTesting
-    public long getResponseCount(int code) {
+    public long getResponseCount(final int code) {
         return Optional.ofNullable(statusCodeMeter.get(code)).map(Meter::getCount).orElse(-1L);
     }
 }
