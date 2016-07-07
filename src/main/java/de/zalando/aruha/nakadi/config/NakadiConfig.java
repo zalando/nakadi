@@ -11,9 +11,9 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
+import de.zalando.aruha.nakadi.controller.VersionController;
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.enrichment.EnrichmentsRegistry;
-import de.zalando.aruha.nakadi.controller.VersionController;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
@@ -21,7 +21,6 @@ import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
-import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -88,10 +87,9 @@ public class NakadiConfig {
     }
 
     @Bean
-    public Enrichment enrichment() { return new Enrichment(new EnrichmentsRegistry()); }
-
-    @Bean
-    public UUIDGenerator uuidGenerator() { return new UUIDGenerator(); }
+    public Enrichment enrichment() {
+        return new Enrichment(new EnrichmentsRegistry());
+    }
 
     @Bean
     public PartitionResolver partitionResolver() {

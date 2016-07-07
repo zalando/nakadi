@@ -7,6 +7,7 @@ import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
+import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.springframework.dao.DuplicateKeyException;
@@ -18,23 +19,25 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Set;
-import java.util.UUID;
 
 import static com.google.common.collect.Sets.newTreeSet;
 
 public class SubscriptionDbRepository extends AbstractDbRepository {
 
     private final SubscriptionMapper rowMapper = new SubscriptionMapper();
+    private final UUIDGenerator uuidGenerator;
 
-    public SubscriptionDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper) {
+    public SubscriptionDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper,
+                                    final UUIDGenerator uuidGenerator) {
         super(jdbcTemplate, objectMapper);
+        this.uuidGenerator = uuidGenerator;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase) throws InternalNakadiException,
             DuplicatedSubscriptionException {
 
         try {
-            final String newId = UUID.randomUUID().toString();
+            final String newId = uuidGenerator.randomUUID().toString();
             final DateTime createdAt = new DateTime(DateTimeZone.UTC);
             final Subscription subscription = new Subscription(newId, createdAt, subscriptionBase);
 

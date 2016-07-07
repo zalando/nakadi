@@ -18,7 +18,6 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -39,7 +38,6 @@ public class KafkaRepositoryAT extends BaseAT {
     private KafkaTestHelper kafkaHelper;
     private KafkaTopicRepository kafkaTopicRepository;
     private String topicName;
-    protected static final String TEST_TOPIC = UUID.randomUUID().toString();
 
     @Before
     public void setup() {
