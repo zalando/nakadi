@@ -38,6 +38,8 @@ import javax.validation.Valid;
 import java.util.List;
 import java.util.Objects;
 
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -79,7 +81,7 @@ public class EventTypeController {
                                              final Errors errors,
                                              final NativeWebRequest nativeWebRequest)
     {
-        if (featureToggleService.isFeatureEnabled("disable_event_type_creation")) {
+        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
         if (errors.hasErrors()) {
@@ -116,7 +118,7 @@ public class EventTypeController {
     public ResponseEntity<?> deleteEventType(@PathVariable("name") final String eventTypeName,
                                              final NativeWebRequest nativeWebRequest)
     {
-        if (featureToggleService.isFeatureEnabled("disable_event_type_deletion")) {
+        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
         try {

@@ -27,6 +27,7 @@ import javax.validation.Valid;
 import java.util.List;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -56,7 +57,7 @@ public class SubscriptionController {
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors, final NativeWebRequest nativeWebRequest) {
 
-        if (!featureToggleService.isFeatureEnabled("high_level_api")) {
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
         if (errors.hasErrors()) {

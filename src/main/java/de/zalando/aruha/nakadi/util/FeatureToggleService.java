@@ -19,16 +19,33 @@ public class FeatureToggleService {
         this.zkHolder = zkHolder;
     }
 
-    public boolean isFeatureEnabled(final String feature) {
+    public boolean isFeatureEnabled(final Feature feature) {
         if (forceEnableAll) {
             return true;
         }
         try {
-            final Stat stat = zkHolder.get().checkExists().forPath("/nakadi/feature_toggle/" + feature);
+            final Stat stat = zkHolder.get().checkExists().forPath("/nakadi/feature_toggle/" + feature.getId());
             return stat != null;
         } catch (Exception e) {
-            LOG.warn("Error occurred when checking if feature '" + feature + "' is toggled", e);
+            LOG.warn("Error occurred when checking if feature '" + feature.getId() + "' is toggled", e);
             return false;
+        }
+    }
+
+    public static class Feature {
+
+        public static final Feature DISABLE_EVENT_TYPE_CREATION = new Feature("disable_event_type_creation");
+        public static final Feature DISABLE_EVENT_TYPE_DELETION = new Feature("disable_event_type_deletion");
+        public static final Feature HIGH_LEVEL_API = new Feature("high_level_api");
+
+        private final String id;
+
+        private Feature(String id) {
+            this.id = id;
+        }
+
+        public String getId() {
+            return id;
         }
     }
 }

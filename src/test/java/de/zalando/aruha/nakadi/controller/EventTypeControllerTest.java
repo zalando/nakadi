@@ -78,7 +78,7 @@ public class EventTypeControllerTest {
 
         mockMvc = standaloneSetup(controller).setMessageConverters(new StringHttpMessageConverter(),
                 jackson2HttpMessageConverter).build();
-        doReturn(false).when(featureToggleService).isFeatureEnabled(any(String.class));
+        doReturn(false).when(featureToggleService).isFeatureEnabled(any(FeatureToggleService.Feature.class));
     }
 
     @Test
