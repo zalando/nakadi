@@ -1,0 +1,15 @@
+approvals:
+  minimum: 1
+  ignore: pr_opener
+  pattern: "^(👍|:\\+1:|:thumbsup:|:shipit:)$"
+  veto:
+    pattern: "^(👎|:-1:|:thumbsdown:)$"
+  from:
+    users:
+      - adyach
+      - antban
+      - jkliff
+      - rcillo
+      - v-stepanov
+      - v1ctor
+      - valgog

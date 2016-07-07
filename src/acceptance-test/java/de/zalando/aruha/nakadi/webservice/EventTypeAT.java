@@ -31,13 +31,13 @@ import static org.hamcrest.core.IsEqual.equalTo;
 public class EventTypeAT extends BaseAT {
 
     private static final String ENDPOINT = "/event-types";
-    private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-    private static final JsonTestHelper jsonHelper = new JsonTestHelper(mapper);
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
 
     @Test
     public void whenGETThenListsEventTypes() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
-        final String body = mapper.writer().writeValueAsString(eventType);
+        final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT).then().statusCode(
             HttpStatus.SC_CREATED);
@@ -50,7 +50,7 @@ public class EventTypeAT extends BaseAT {
     public void whenPOSTValidEventTypeThenOk() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
 
-        final String body = mapper.writer().writeValueAsString(eventType);
+        final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).when().post(ENDPOINT).then()
                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
@@ -68,7 +68,7 @@ public class EventTypeAT extends BaseAT {
     public void whenPUTValidEventTypeThenOK() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
 
-        final String body = mapper.writer().writeValueAsString(eventType);
+        final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
 
@@ -81,7 +81,7 @@ public class EventTypeAT extends BaseAT {
 
         // ARRANGE //
         final EventType eventType = buildDefaultEventType();
-        final String body = mapper.writer().writeValueAsString(eventType);
+        final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
 
@@ -91,7 +91,7 @@ public class EventTypeAT extends BaseAT {
         // ASSERT //
         when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
 
-        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(kafkaUrl);
+        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
         assertThat(allTopics, not(hasItem(eventType.getName())));
     }

@@ -92,7 +92,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test(expected = NoSuchEventTypeException.class)
-    public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException, NoSuchEventTypeException {
+    public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException {
         repository.findByName("inexisting-name");
     }
 

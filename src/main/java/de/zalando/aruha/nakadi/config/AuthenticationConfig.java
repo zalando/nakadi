@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
@@ -38,7 +37,7 @@ public class AuthenticationConfig {
         }
 
         @Override
-        public OAuth2Authentication loadAuthentication(final String accessToken) throws AuthenticationException, InvalidTokenException {
+        public OAuth2Authentication loadAuthentication(final String accessToken) throws AuthenticationException {
             final Timer.Context context = timer.time();
             try {
                 return super.loadAuthentication(accessToken);

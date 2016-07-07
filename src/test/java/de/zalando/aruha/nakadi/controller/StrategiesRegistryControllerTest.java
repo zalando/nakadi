@@ -14,11 +14,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 public class StrategiesRegistryControllerTest {
 
-    private static final MockMvc mockMvc = mockMvcForController(new StrategiesRegistryController());
+    private static final MockMvc MOCK_MVC = mockMvcForController(new StrategiesRegistryController());
 
     @Test
     public void canExposePartitionStrategies() throws Exception {
-        mockMvc.perform(get("/registry/partition-strategies"))
+        MOCK_MVC.perform(get("/registry/partition-strategies"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(ALL_PARTITION_STRATEGIES.size())));
@@ -26,7 +26,7 @@ public class StrategiesRegistryControllerTest {
 
     @Test
     public void canExposeEnrichmentStrategies() throws Exception {
-        mockMvc.perform(get("/registry/enrichment-strategies"))
+        MOCK_MVC.perform(get("/registry/enrichment-strategies"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(content().string("[\"metadata_enrichment\"]"));

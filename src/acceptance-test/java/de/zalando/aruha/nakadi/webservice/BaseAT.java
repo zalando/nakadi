@@ -18,8 +18,8 @@ public abstract class BaseAT {
     protected static final int PORT = 8080;
     protected static final String URL = "http://localhost:" + PORT;
 
-    protected static final String zookeeperUrl = "localhost:2181";
-    protected static final String kafkaUrl = "localhost:9092";
+    protected static final String ZOOKEEPER_URL = "localhost:2181";
+    protected static final String KAFKA_URL = "localhost:9092";
 
     private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
     private static final String username = "nakadi_app";

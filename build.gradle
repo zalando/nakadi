@@ -7,6 +7,7 @@ apply plugin: 'application'
 apply plugin: 'spring-boot'
 apply plugin: "jacoco"
 apply plugin: 'findbugs'
+apply plugin: 'checkstyle'
 // if this is applied, include scala dependencies (see below)
 // apply plugin: 'scala'
 
@@ -158,7 +159,7 @@ dependencies {
     compile 'org.apache.curator:curator-recipes:2.9.1'
 
     // json
-    compile 'org.everit.json:org.everit.json.schema:1.2.0'
+    compile 'org.everit.json:org.everit.json.schema:1.3.0'
     compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.4.0') {
         exclude module: "json"
     }
@@ -426,3 +427,7 @@ jacocoTestReport {
 check.dependsOn jacocoTestReport
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
+
+checkstyle {
+    configFile = new File(rootDir, "checkstyle.xml")
+}

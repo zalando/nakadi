@@ -12,7 +12,7 @@ public class MetadataValidator implements EventValidator {
         return Optional
                 .ofNullable(event.optJSONObject("metadata"))
                 .map(metadata -> metadata.optString("occurred_at"))
-                .flatMap(occurredAt -> checkDateTime(occurredAt));
+                .flatMap(this::checkDateTime);
     }
 
     private Optional<ValidationError> checkDateTime(final String occurredAt) {

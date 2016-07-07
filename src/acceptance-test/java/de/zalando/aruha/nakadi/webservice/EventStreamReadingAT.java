@@ -45,8 +45,8 @@ public class EventStreamReadingAT extends BaseAT {
     private List<Cursor> kafkaInitialNextOffsets;
 
     @Before
-    public void setUp() throws IOException {
-        kafkaHelper = new KafkaTestHelper(kafkaUrl);
+    public void setUp() throws InterruptedException, JsonProcessingException {
+        kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         initialCursors = kafkaHelper.getOffsetsToReadFromLatest(TEST_TOPIC);
         kafkaInitialNextOffsets = kafkaHelper.getNextOffsets(TEST_TOPIC);
         xNakadiCursors = jsonMapper.writeValueAsString(initialCursors);
