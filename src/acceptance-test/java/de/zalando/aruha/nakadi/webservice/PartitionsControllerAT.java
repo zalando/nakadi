@@ -34,7 +34,7 @@ public class PartitionsControllerAT extends BaseAT {
 
     @Before
     public void before() {
-        kafkaHelper = new KafkaTestHelper(kafkaUrl);
+        kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         actualTopics = kafkaHelper.createConsumer().listTopics();
     }
 

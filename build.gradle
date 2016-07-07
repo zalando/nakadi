@@ -7,6 +7,7 @@ apply plugin: 'application'
 apply plugin: 'spring-boot'
 apply plugin: "jacoco"
 apply plugin: 'findbugs'
+apply plugin: 'checkstyle'
 // if this is applied, include scala dependencies (see below)
 // apply plugin: 'scala'
 
@@ -426,3 +427,7 @@ jacocoTestReport {
 check.dependsOn jacocoTestReport
 check.dependsOn integrationTest
 integrationTest.mustRunAfter test
+
+checkstyle {
+    configFile = new File(rootDir, "checkstyle.xml")
+}

@@ -14,7 +14,7 @@ public class BasicModeAuthenticationTest extends AuthenticationTest {
 
     @Test
     public void basicAuthMode() throws Exception {
-        Stream.concat(endpoints.stream(), endpointsForUidScope.stream()).forEach(this::checkHasOnlyAccessByUidScope);
+        Stream.concat(ENDPOINTS.stream(), ENDPOINTS_FOR_UID_SCOPE.stream()).forEach(this::checkHasOnlyAccessByUidScope);
     }
 
     private void checkHasOnlyAccessByUidScope(final Endpoint endpoint) {

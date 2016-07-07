@@ -10,10 +10,10 @@ import static java.util.Optional.ofNullable;
 
 public abstract class RealEnvironmentAT extends BaseAT {
 
-    protected final Optional<String> OAUTH_TOKEN;
+    protected final Optional<String> oauthToken;
 
     public RealEnvironmentAT() {
-        OAUTH_TOKEN = ofNullable(System.getenv("NAKADI_OAUTH_TOKEN"));
+        oauthToken = ofNullable(System.getenv("NAKADI_OAUTH_TOKEN"));
 
         RestAssured.baseURI = ofNullable(System.getenv("NAKADI_BASE_URL"))
                 .orElse(RestAssured.DEFAULT_URI);
@@ -24,7 +24,7 @@ public abstract class RealEnvironmentAT extends BaseAT {
 
     protected RequestSpecification requestSpec() {
         final RequestSpecification requestSpec = given();
-        OAUTH_TOKEN.ifPresent(token -> requestSpec.header("Authorization", "Bearer " + token));
+        oauthToken.ifPresent(token -> requestSpec.header("Authorization", "Bearer " + token));
         return requestSpec;
     }
 

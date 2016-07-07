@@ -81,12 +81,12 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test(expected = NoSuchEventTypeException.class)
-    public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException, NoSuchEventTypeException {
+    public void whenEventDoesntExistsFindByNameReturnsNothing() throws NakadiException {
         repository.findByName("inexisting-name");
     }
 
     @Test
-    public void whenUpdateExistingEventTypeItUpdates() throws NakadiException, DuplicatedEventTypeNameException, IOException, NoSuchEventTypeException {
+    public void whenUpdateExistingEventTypeItUpdates() throws NakadiException, IOException {
         EventType eventType = buildEventType();
 
         repository.saveEventType(eventType);
@@ -113,7 +113,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenListExistingEventTypesAreListed() throws NakadiException, DuplicatedEventTypeNameException {
+    public void whenListExistingEventTypesAreListed() throws NakadiException {
         EventType eventType1 = buildEventType();
         EventType eventType2 = buildEventType();
         eventType2.setName("event-name-2");
