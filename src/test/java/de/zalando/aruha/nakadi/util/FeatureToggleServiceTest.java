@@ -30,7 +30,7 @@ public class FeatureToggleServiceTest {
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(curatorFramework);
 
-        featureToggleService = new FeatureToggleService(zkHolder);
+        featureToggleService = new FeatureToggleService(false, zkHolder);
     }
 
     @Test
