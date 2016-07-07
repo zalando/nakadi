@@ -1,6 +1,8 @@
 package de.zalando.aruha.nakadi.controller;
 
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
 
+import java.util.Optional;
+
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -22,9 +27,11 @@ public class PartitionsController {
     private static final Logger LOG = LoggerFactory.getLogger(PartitionsController.class);
 
     private final TopicRepository topicRepository;
+    private final EventTypeRepository eventTypeRepository;
 
-    public PartitionsController(final TopicRepository topicRepository) {
+    public PartitionsController(final TopicRepository topicRepository, EventTypeRepository eventTypeRepository) {
         this.topicRepository = topicRepository;
+        this.eventTypeRepository = eventTypeRepository;
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
@@ -37,8 +44,11 @@ public class PartitionsController {
 
             if (topicRepository.topicExists(topic)) {
                 return ok().body(topicRepository.listPartitions(topic));
-            }
-            else {
+            } else {
+                Optional<EventType> eventTypeO = eventTypeRepository.findByNameO(eventTypeName);
+                if (eventTypeO.isPresent()) {
+                    return create(Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka"), request);
+                }
                 return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
             }
         }
@@ -58,6 +68,10 @@ public class PartitionsController {
             final String topic = eventTypeName;
 
             if (!topicRepository.topicExists(topic)) {
+                Optional<EventType> eventTypeO = eventTypeRepository.findByNameO(eventTypeName);
+                if (eventTypeO.isPresent()) {
+                    return create(Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka"), request);
+                }
                 return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
             }
             else if (!topicRepository.partitionExists(topic, partition)) {
