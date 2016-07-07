@@ -5,14 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
-import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.apache.http.HttpStatus;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
 
 import java.util.Set;
 
@@ -21,7 +18,6 @@ import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.resourceAsString;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
@@ -32,7 +28,6 @@ public class EventTypeAT extends BaseAT {
 
     private static final String ENDPOINT = "/event-types";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
-    private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
 
     @Test
     public void whenGETThenListsEventTypes() throws JsonProcessingException {

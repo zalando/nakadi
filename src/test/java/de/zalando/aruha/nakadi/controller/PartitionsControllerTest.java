@@ -46,9 +46,7 @@ public class PartitionsControllerTest {
             TEST_TOPIC_PARTITION_0,
             TEST_TOPIC_PARTITION_1);
 
-    private static final String DUMMY_MESSAGE = "dummy message";
-
-    private static final EventType eventType = TestUtils.buildDefaultEventType();
+    private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
 
     private EventTypeRepository eventTypeRepositoryMock;
 
@@ -76,8 +74,8 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenListPartitionsThenOk() throws Exception {
-        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(eventType);
-        when(topicRepositoryMock.listPartitions(eq(eventType.getTopic()))).thenReturn(TEST_TOPIC_PARTITIONS);
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.listPartitions(eq(EVENT_TYPE.getTopic()))).thenReturn(TEST_TOPIC_PARTITIONS);
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
@@ -109,9 +107,9 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionThenOk() throws Exception {
-        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(eventType);
-        when(topicRepositoryMock.partitionExists(eq(eventType.getTopic()), eq(TEST_PARTITION))).thenReturn(true);
-        when(topicRepositoryMock.getPartition(eq(eventType.getTopic()), eq(TEST_PARTITION))).thenReturn(TEST_TOPIC_PARTITION_0);
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.partitionExists(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION))).thenReturn(true);
+        when(topicRepositoryMock.getPartition(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION))).thenReturn(TEST_TOPIC_PARTITION_0);
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
@@ -132,8 +130,8 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionForWrongPartitionThenNotFound() throws Exception {
-        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(eventType);
-        when(topicRepositoryMock.partitionExists(eq(eventType.getTopic()), eq(UNKNOWN_PARTITION))).thenReturn(false);
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.partitionExists(eq(EVENT_TYPE.getTopic()), eq(UNKNOWN_PARTITION))).thenReturn(false);
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "partition not found");
 
         mockMvc.perform(

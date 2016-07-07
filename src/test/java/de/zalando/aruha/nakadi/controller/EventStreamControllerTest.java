@@ -68,7 +68,7 @@ public class EventStreamControllerTest {
 
     private static final String TEST_EVENT_TYPE_NAME = "test";
     private static final String TEST_TOPIC = "test-topic";
-    private static final EventType eventType = new EventType();
+    private static final EventType EVENT_TYPE = new EventType();
 
     private NativeWebRequest requestMock;
     private HttpServletResponse responseMock;
@@ -82,15 +82,16 @@ public class EventStreamControllerTest {
     private MetricRegistry metricRegistry;
 
     @Before
-    public void setup() {
-        eventType.setName(TEST_EVENT_TYPE_NAME);
-        eventType.setTopic(TEST_TOPIC);
+    public void setup() throws NakadiException {
+        EVENT_TYPE.setName(TEST_EVENT_TYPE_NAME);
+        EVENT_TYPE.setTopic(TEST_TOPIC);
 
         objectMapper = new JsonConfig().jacksonObjectMapper();
         jsonHelper = new JsonTestHelper(objectMapper);
 
         eventTypeRepository = mock(EventTypeRepository.class);
         topicRepositoryMock = mock(TopicRepository.class);
+        when(topicRepositoryMock.topicExists(TEST_TOPIC)).thenReturn(true);
         eventStreamFactoryMock = mock(EventStreamFactory.class);
 
         metricRegistry = new MetricRegistry();
@@ -109,7 +110,7 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture()))
                 .thenReturn(eventStreamMock);
 
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(eventType);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         final MockMvc mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
@@ -151,7 +152,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenStreamLimitLowerThanBatchLimitThenUnprocessableEntity() throws NakadiException, IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(eventType);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 20, 10, 0, 0, 0, null,
                 requestMock, responseMock);
@@ -163,7 +164,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenStreamTimeoutLowerThanBatchTimeoutThenUnprocessableEntity() throws NakadiException, IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(eventType);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 20, 10, 0, null,
                 requestMock, responseMock);
@@ -175,7 +176,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenWrongCursorsFormatThenBadRequest() throws NakadiException, IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(eventType);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
         final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0,
                 "cursors_with_wrong_format", requestMock, responseMock);
@@ -187,7 +188,7 @@ public class EventStreamControllerTest {
     @Test
     public void whenInvalidCursorsThenPreconditionFailed() throws Exception {
         final Cursor cursor = new Cursor("0", "0");
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(eventType);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(cursor))))
                 .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
@@ -200,7 +201,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenNoCursorsThenLatestOffsetsAreUsed() throws NakadiException, IOException {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(eventType);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         final ImmutableList<TopicPartition> tps = ImmutableList.of(
                 new TopicPartition(TEST_TOPIC, "0", "12", "87"),
                 new TopicPartition(TEST_TOPIC, "1", "5", "34"));
@@ -227,7 +228,7 @@ public class EventStreamControllerTest {
     @Test
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(eventType);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
 
@@ -296,7 +297,7 @@ public class EventStreamControllerTest {
 
     @Test
     public void reportCurrentNumberOfConsumers() throws Exception {
-        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(eventType);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         final EventStream eventStream = mock(EventStream.class);
 
         // block to simulate the streaming until thread is interrupted

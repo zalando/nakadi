@@ -27,9 +27,6 @@ import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.common.base.Charsets;
-import com.google.common.io.Resources;
-
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
 

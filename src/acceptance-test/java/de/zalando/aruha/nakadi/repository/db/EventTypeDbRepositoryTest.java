@@ -3,12 +3,11 @@ package de.zalando.aruha.nakadi.repository.db;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventCategory;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -97,7 +96,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenUpdateExistingEventTypeItUpdates() throws NakadiException, DuplicatedEventTypeNameException, IOException, NoSuchEventTypeException {
+    public void whenUpdateExistingEventTypeItUpdates() throws NakadiException, IOException {
         EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
@@ -124,7 +123,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenListExistingEventTypesAreListed() throws NakadiException, DuplicatedEventTypeNameException {
+    public void whenListExistingEventTypesAreListed() throws NakadiException {
         EventType eventType1 = buildDefaultEventType();
         EventType eventType2 = buildDefaultEventType();
 
