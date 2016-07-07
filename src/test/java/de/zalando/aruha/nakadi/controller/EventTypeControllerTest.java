@@ -18,6 +18,7 @@ import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -42,6 +43,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -64,17 +66,19 @@ public class EventTypeControllerTest {
     private final Enrichment enrichment = mock(Enrichment.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
+    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
     public EventTypeControllerTest() throws Exception {
 
         final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository,
-                partitionResolver, enrichment);
+                partitionResolver, enrichment, featureToggleService);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
 
         mockMvc = standaloneSetup(controller).setMessageConverters(new StringHttpMessageConverter(),
                 jackson2HttpMessageConverter).build();
+        doReturn(false).when(featureToggleService).isFeatureEnabled(any(String.class));
     }
 
     @Test
