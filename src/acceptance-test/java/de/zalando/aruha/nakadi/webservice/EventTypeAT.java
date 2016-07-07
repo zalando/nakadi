@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.repository.db.AbstractDbRepositoryTest;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.apache.http.HttpStatus;
@@ -23,9 +24,7 @@ import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.resourceAsString;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.*;
 import static org.hamcrest.core.IsEqual.equalTo;
 
 public class EventTypeAT extends BaseAT {
@@ -117,11 +116,11 @@ public class EventTypeAT extends BaseAT {
 
     @After
     public void tearDown() {
-        final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
-        final String username = "nakadi_app";
-        final String password = "nakadi";
-
-        final DriverManagerDataSource datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
+        final DriverManagerDataSource datasource = new DriverManagerDataSource(
+                AbstractDbRepositoryTest.POSTGRES_URL,
+                AbstractDbRepositoryTest.POSTGRES_USER,
+                AbstractDbRepositoryTest.POSTGRES_PWD
+        );
         final JdbcTemplate template = new JdbcTemplate(datasource);
 
         template.execute("DELETE FROM zn_data.event_type");
