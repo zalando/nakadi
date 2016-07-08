@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.service;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.net.InetAddresses;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
@@ -172,6 +173,7 @@ public class ClosedConnectionsCrutch {
         return result;
     }
 
+    @VisibleForTesting
     Map<ConnectionInfo, ConnectionState> getCurrentConnections(final InputStream in) throws IOException {
         final Map<ConnectionInfo, ConnectionState> connectionToState = new HashMap<>();
         try (final BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
@@ -225,6 +227,7 @@ public class ClosedConnectionsCrutch {
             }
             return new InetAddress[]{result};
         } else {
+            ArrayUtils.reverse(data);
             return new InetAddress[]{InetAddress.getByAddress(data)};
         }
     }
