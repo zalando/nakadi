@@ -12,12 +12,12 @@ before_script:
   - sudo /etc/init.d/postgresql stop
   - pip install --user codecov
   - curl http://www.jpm4j.org/install/script | sudo sh
-  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
+#  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
+  - gradle clean build --stacktrace
+  - docker-compose up
 
 env:
   - TEST_SUITE="travis_wait gradle check --stacktrace"   # unit tests
-  - TEST_SUITE="travis_wait gradle clean build --stacktrace"
-  - TEST_SUITE="travis_wait docker-compose up"
   - TEST_SUITE="gradle acceptanceTest --stacktrace"  # acceptance tests
 
 # run test suits in parallel
@@ -26,3 +26,6 @@ script: "$TEST_SUITE"
 after_success:
   - codecov
   - codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
+
+after_script:
+  - docker-compose down
