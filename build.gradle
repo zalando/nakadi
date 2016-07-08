@@ -52,14 +52,6 @@ repositories {
 }
 
 sourceSets {
-    integrationTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/integration-test/java')
-        }
-        resources.srcDir file('src/integration-test/resources')
-    }
 
     acceptanceTest {
         java {
@@ -91,8 +83,6 @@ jar {
 
 configurations {
     all*.exclude module : 'spring-boot-starter-logging'
-    integrationTestCompile.extendsFrom testCompile
-    integrationTestRuntime.extendsFrom testRuntime
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
     pgsql
@@ -345,11 +335,6 @@ task stopAndRemoveDockerContainer(type: Exec) {
             "for c in `docker ps -qaf name=$dockerContainerName`; do docker rm -f \$c; done"
 }
 
-task integrationTest(type: Test) {
-    testClassesDir = sourceSets.integrationTest.output.classesDir
-    classpath = sourceSets.integrationTest.runtimeClasspath
-}
-
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
@@ -390,12 +375,6 @@ test {
     }
 }
 
-integrationTest {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-}
-
 acceptanceTest {
     testLogging {
         events "passed", "skipped", "failed"
@@ -425,8 +404,6 @@ jacocoTestReport {
 }
 
 check.dependsOn jacocoTestReport
-check.dependsOn integrationTest
-integrationTest.mustRunAfter test
 
 checkstyle {
     configFile = new File(rootDir, "checkstyle.xml")
