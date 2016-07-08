@@ -4,31 +4,54 @@ import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 
 public class FeatureToggleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(FeatureToggleService.class);
 
-    @Value("${nakadi.featureToggle.enableAll}")
-    private boolean forceEnableAll;
+    private static final String PREFIX = "/nakadi/feature_toggle/";
 
+    private final boolean forceEnableAll;
     private final ZooKeeperHolder zkHolder;
 
-    public FeatureToggleService(final ZooKeeperHolder zkHolder) {
+    public FeatureToggleService(final boolean forceEnableAll, final ZooKeeperHolder zkHolder) {
+        this.forceEnableAll = forceEnableAll;
         this.zkHolder = zkHolder;
     }
 
-    public boolean isFeatureEnabled(final String feature) {
+    public boolean isFeatureEnabled(final Feature feature) {
         if (forceEnableAll) {
-            return true;
+            return feature.getDefault();
         }
         try {
-            final Stat stat = zkHolder.get().checkExists().forPath("/nakadi/feature_toggle/" + feature);
+            final Stat stat = zkHolder.get().checkExists().forPath(PREFIX + feature.getId());
             return stat != null;
         } catch (Exception e) {
-            LOG.warn("Error occurred when checking if feature '" + feature + "' is toggled", e);
+            LOG.warn("Error occurred when checking if feature '" + feature.getId() + "' is toggled", e);
             return false;
+        }
+    }
+
+    public enum Feature {
+
+        DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation", false),
+        DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion", false),
+        HIGH_LEVEL_API("high_level_api", true);
+
+        private final String id;
+        private final boolean defaultValue;
+
+        Feature(String id, boolean defaultValue) {
+            this.id = id;
+            this.defaultValue = defaultValue;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public boolean getDefault() {
+            return defaultValue;
         }
     }
 }

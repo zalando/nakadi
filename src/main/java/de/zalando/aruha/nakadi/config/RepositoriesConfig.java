@@ -14,6 +14,7 @@ import de.zalando.aruha.nakadi.validation.EventMetadataValidationStrategy;
 import de.zalando.aruha.nakadi.validation.ValidationStrategy;
 import org.apache.curator.framework.CuratorFramework;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -35,13 +36,13 @@ public class RepositoriesConfig {
     private ZookeeperConfig zookeeperConfig;
 
     @Bean
-    public UUIDGenerator uuidGenerator() {
-        return new UUIDGenerator();
+    public FeatureToggleService featureToggleService(@Value("${nakadi.featureToggle.enableAll}") boolean forceEnableAll) {
+        return new FeatureToggleService(forceEnableAll, zookeeperConfig.zooKeeperHolder());
     }
 
     @Bean
-    public FeatureToggleService featureToggleService() {
-        return new FeatureToggleService(zookeeperConfig.zooKeeperHolder());
+    public UUIDGenerator uuidGenerator() {
+        return new UUIDGenerator();
     }
 
     @Bean
