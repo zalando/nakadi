@@ -34,9 +34,9 @@ env:
     - DOCKER_VERSION="1.11.1-0~precise"
     - DOCKER_COMPOSE_VERSION="1.7.1"
   matrix:
-    - TEST_SUITE="gradle checkstyle --stacktrace"         # checkstyle
-    - TEST_SUITE="gradle check --stacktrace"              # unit tests
-    - TEST_SUITE="gradle fullAcceptanceTest --stacktrace" # acceptances tests
+    - CHECKSTYLE="gradle checkstyle --stacktrace"
+    - UNIT_TESTS="gradle check --stacktrace"
+    - ACCEPTANCE_TESTS="gradle fullAcceptanceTest --stacktrace"
 
 # run test suits in parallel
 script: "$TEST_SUITE"
