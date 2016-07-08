@@ -12,6 +12,7 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
+import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -129,6 +130,11 @@ public abstract class AuthenticationTest {
         @Bean
         public SubscriptionDbRepository subscriptionRepository() {
             return mock(SubscriptionDbRepository.class);
+        }
+
+        @Bean
+        public UUIDGenerator uuidGenerator() {
+            return new UUIDGenerator();
         }
 
         @Bean

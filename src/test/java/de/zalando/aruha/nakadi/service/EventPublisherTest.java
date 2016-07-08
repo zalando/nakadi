@@ -56,7 +56,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getName()), any());
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
     }
 
     @Test
@@ -70,7 +70,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getName()), any());
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
     }
 
     @Test

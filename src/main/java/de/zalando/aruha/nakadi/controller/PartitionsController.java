@@ -1,6 +1,9 @@
 package de.zalando.aruha.nakadi.controller;
 
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +24,11 @@ public class PartitionsController {
 
     private static final Logger LOG = LoggerFactory.getLogger(PartitionsController.class);
 
+    private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
 
-    public PartitionsController(final TopicRepository topicRepository) {
+    public PartitionsController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository) {
+        this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
     }
 
@@ -32,15 +37,12 @@ public class PartitionsController {
                                             final NativeWebRequest request) {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         try {
-            @SuppressWarnings("UnnecessaryLocalVariable")
-            final String topic = eventTypeName;
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
-            if (topicRepository.topicExists(topic)) {
-                return ok().body(topicRepository.listPartitions(topic));
-            }
-            else {
-                return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
-            }
+            return ok().body(topicRepository.listPartitions(eventType.getTopic()));
+        }
+        catch (final NoSuchEventTypeException e) {
+            return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
         }
         catch (final NakadiException e) {
             LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
@@ -54,18 +56,18 @@ public class PartitionsController {
                                           final NativeWebRequest request) {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         try {
-            @SuppressWarnings("UnnecessaryLocalVariable")
-            final String topic = eventTypeName;
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+            final String topic = eventType.getTopic();
 
-            if (!topicRepository.topicExists(topic)) {
-                return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
-            }
-            else if (!topicRepository.partitionExists(topic, partition)) {
+            if (!topicRepository.partitionExists(topic, partition)) {
                 return create(Problem.valueOf(NOT_FOUND, "partition not found"), request);
             }
             else {
                 return ok().body(topicRepository.getPartition(topic, partition));
             }
+        }
+        catch (final NoSuchEventTypeException e) {
+            return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
         }
         catch (final NakadiException e) {
             LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);

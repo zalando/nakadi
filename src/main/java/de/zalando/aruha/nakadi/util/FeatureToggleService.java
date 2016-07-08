@@ -36,8 +36,7 @@ public class FeatureToggleService {
 
         DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation", false),
         DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion", false),
-        HIGH_LEVEL_API("high_level_api", true),
-        ;
+        HIGH_LEVEL_API("high_level_api", true);
 
         private final String id;
         private final boolean defaultValue;
