@@ -228,22 +228,27 @@ task pushDockerImage {
     }
 }
 
-task dockerComposeUp(type: Exec) {
-//    commandLine "bash", "-c", "docker-compose up -d"
-    commandLine "bash", "-c", "echo ---dockerComposeUp"
+task startNakadi(type: Exec) {
+    dependsOn build
+    commandLine "bash", "-c", "docker-compose up -d --build"
     doLast {
-        // wait till application is up (health check is successful)
-        int result = 1
-        while (result != 0) {
-            result = execAndWait('curl http://localhost:8080/health')
-            sleep(1000L)
-        }
+        long start = System.currentTimeMillis()
+        waitForNakadi()
+        println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
     }
-    outputs.upToDateWhen { false }
 }
 
-task dockerComposeDown(type: Exec) {
+task stopNakadi(type: Exec) {
     commandLine "bash", "-c", "docker-compose down"
+}
+
+def waitForNakadi() {
+    // wait till application is up (health check is successful)
+    int result = 1
+    while (result != 0) {
+        result = execAndWait('curl http://localhost:8080/health')
+        sleep(1000L)
+    }
 }
 
 def execAndWait(command, timeoutInSeconds = 15) {
@@ -255,9 +260,8 @@ def execAndWait(command, timeoutInSeconds = 15) {
 }
 
 task fullAcceptanceTest(type: GradleBuild) {
-    dependsOn build, dockerComposeUp
-    tasks = ['acceptanceTest']
-//    finalizedBy dockerComposeDown
+    tasks = ['startNakadi', 'acceptanceTest']
+    finalizedBy stopNakadi
 }
 
 task integrationTest(type: Test) {
