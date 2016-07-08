@@ -1,5 +1,3 @@
-import java.util.concurrent.TimeUnit
-
 apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
@@ -7,8 +5,6 @@ apply plugin: 'application'
 apply plugin: 'spring-boot'
 apply plugin: "jacoco"
 apply plugin: 'findbugs'
-// if this is applied, include scala dependencies (see below)
-// apply plugin: 'scala'
 
 group 'de.zalando.aruha'
 sourceCompatibility = 1.8
@@ -17,9 +13,6 @@ targetCompatibility = 1.8
 mainClassName = 'de.zalando.aruha.nakadi.Application'
 def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
-def dockerContainerName = "nakadi-local"
-
-def storagesContainerName = "local-storages"
 
 /* config parameters */
 def dockerImageName = "$dockerGroup/$dockerApplicationName"
@@ -32,19 +25,7 @@ if (project.hasProperty("dockerImageVersion")) {
 }
 def dockerImageTag = "$dockerImageName:$dockerImageVersion"
 
-
 def dockerBuildTimeout = 300
-
-def loadYaml() {
-    org.yaml.snakeyaml.DumperOptions options = new org.yaml.snakeyaml.DumperOptions();
-    options.setDefaultFlowStyle(org.yaml.snakeyaml.DumperOptions.FlowStyle.BLOCK);
-    def yaml = new org.yaml.snakeyaml.Yaml(options)
-    def file = new File("src/main/resources/application.yml").text
-    def cfg = (Map) yaml.load(file)
-    return cfg
-}
-
-def application_config = loadYaml()
 
 repositories {
     mavenCentral()
@@ -164,10 +145,6 @@ dependencies {
     }
     compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.0'
 
-    // scala dependencies
-    //compile 'org.scala-lang:scala-library:2.11.6'
-    //testCompile 'org.scalatest:scalatest_2.11:2.2.4'
-
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile('junit:junit:4.12') {
@@ -197,84 +174,6 @@ tasks.withType(FindBugs) {
         xml.enabled = false
         html.enabled = true
     }
-}
-
-task cleanDb << {
-    def sql = getSqlInstance(application_config["spring"]["datasource"])
-
-    sql.execute('TRUNCATE zn_data.event_type')
-
-    sql.close()
-}
-
-task dbBootstrap << {
-    def db = application_config["spring"]["datasource"]
-
-    def sql = getSqlInstance(db)
-
-    def sqlFileList = getSortedSqlFiles()
-
-    sqlFileList.each {
-        println 'Running script: ' + it
-        String sqlString = it.text
-        sql.execute(sqlString)
-    }
-
-    sql.execute("RESET ROLE")
-
-    sql.execute("CREATE ROLE " + db['username'] + " WITH LOGIN PASSWORD '" + db['password'] + "'")
-
-    sql.execute("GRANT zalando_nakadi_data_writer TO " + db['username'])
-
-    sql.close()
-}
-
-def getSortedSqlFiles() {
-    def sqlFileList = []
-    new File('database').eachFileRecurse(groovy.io.FileType.FILES) {
-        if (it.name.endsWith('.sql')) {
-            sqlFileList << it
-        }
-    }
-
-    sqlFileList.sort()
-}
-
-def getSqlInstance(db) {
-    // This is needed to get postgreSQL driver onto the Groovy/Gradle classpath
-    configurations.pgsql.each { file ->
-        println "Adding URL: $file"
-        gradle.class.classLoader.addURL(file.toURI().toURL())
-    }
-
-    groovy.sql.Sql.newInstance(db.url, 'nakadi', db.password, db.driverClassName)
-}
-
-def runMakeStorages(target, options="", timeout=15) {
-    execAndWait("make " + options + " --directory local-storages " + target, timeout)
-}
-
-task stopAndRemoveStoragesInDocker {
-    doLast {
-        runMakeStorages("stop-and-remove", "", dockerBuildTimeout)
-    }
-    outputs.upToDateWhen { false }
-}
-
-task startStoragesInDockerBound() {
-    finalizedBy dbBootstrap
-    doLast {
-        runMakeStorages("run", "PUBLISH_NAKADI_PORT=\"-p 8080:8080\"", dockerBuildTimeout)
-    }
-    outputs.upToDateWhen { false }
-}
-
-task startStoragesInDocker() {
-    finalizedBy dbBootstrap
-    doLast {
-        runMakeStorages("run", "", dockerBuildTimeout)
-    }
-    outputs.upToDateWhen { false }
 }
 
 task generateScmSourceJson() {
@@ -327,23 +226,6 @@ task pushDockerImage {
     }
 }
 
-task removeOldDockerContainer(type: Exec) {
-    commandLine "bash", "-c",
-            "for c in `docker ps -qaf name=$dockerContainerName`; do docker rm -f \$c; done"
-}
-
-task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_MODE=OFF\" -e \"NAKADI_FEATURETOGGLE_ENABLEALL=true\" " +
-            "--net container:$storagesContainerName --name $dockerContainerName -i -t -d $dockerImageTag"
-    dependsOn buildDockerImage, removeOldDockerContainer, startStoragesInDockerBound
-}
-
-task stopAndRemoveDockerContainer(type: Exec) {
-    dependsOn stopAndRemoveStoragesInDocker
-    commandLine "bash", "-c",
-            "for c in `docker ps -qaf name=$dockerContainerName`; do docker rm -f \$c; done"
-}
-
 task integrationTest(type: Test) {
     testClassesDir = sourceSets.integrationTest.output.classesDir
     classpath = sourceSets.integrationTest.runtimeClasspath
@@ -352,35 +234,6 @@ task integrationTest(type: Test) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
-}
-
-def execAndWait(command, timeoutInSeconds = 15) {
-    println "Running command: " + command
-    ProcessBuilder pb = new ProcessBuilder(["bash", "-c", command]).inheritIO();
-    Process proc = pb.start();
-    proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS);
-    return proc.exitValue()
-}
-
-task startDockerContainerAndWait() {
-    // start app with docker
-    dependsOn startDockerContainer
-
-    doLast {
-        // wait till application is up (health check is successful)
-        int result = 1
-        while (result != 0) {
-            result = execAndWait('curl http://localhost:8080/health')
-            sleep(1000L)
-        }
-    }
-    outputs.upToDateWhen { false }
-}
-
-task fullAcceptanceTest(type: GradleBuild) {
-    dependsOn startDockerContainerAndWait
-    tasks = ['acceptanceTest']
-    finalizedBy cleanDb, stopAndRemoveStoragesInDocker, stopAndRemoveDockerContainer
 }
 
 test {

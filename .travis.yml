@@ -16,7 +16,9 @@ before_script:
 
 env:
   - TEST_SUITE="travis_wait gradle check --stacktrace"   # unit tests
-  - TEST_SUITE="gradle fullAcceptanceTest --stacktrace"  # acceptance tests
+  - TEST_SUITE="travis_wait gradle clean build --stacktrace"
+  - TEST_SUITE="travis_wait docker-compose up"
+  - TEST_SUITE="gradle acceptanceTest --stacktrace"  # acceptance tests
 
 # run test suits in parallel
 script: "$TEST_SUITE"
