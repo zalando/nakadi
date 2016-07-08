@@ -19,6 +19,8 @@ import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
@@ -100,9 +102,16 @@ public class TestUtils {
     }
 
     public static EventType buildEventType(final String name, final JSONObject schema) {
+        return buildEventType(name, schema, Collections.emptyList());
+    }
+
+    public static EventType buildEventType(final String name, final JSONObject schema, List<String>
+                                           partitionKeyFields)
+    {
         final EventType et = new EventType();
         et.setName(name);
         et.setTopic(randomUUID());
+        et.setPartitionKeyFields(partitionKeyFields);
 
         final EventTypeSchema ets = new EventTypeSchema();
         ets.setType(EventTypeSchema.Type.JSON_SCHEMA);
@@ -117,6 +126,8 @@ public class TestUtils {
     public static EventType buildDefaultEventType() {
         return buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"));
     }
+
+
 
     public static String readFile(final String filename) throws IOException {
         return Resources.toString(Resources.getResource(filename), Charsets.UTF_8);

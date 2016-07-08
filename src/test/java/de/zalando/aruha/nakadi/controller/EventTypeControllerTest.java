@@ -20,7 +20,6 @@ import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
-import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -35,11 +34,14 @@ import org.zalando.problem.ThrowableProblem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
+import java.util.Collections;
 import java.util.UUID;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
@@ -237,7 +239,7 @@ public class EventTypeControllerTest {
     @Test
     public void whenDeleteNoneExistingEventTypeThen404() throws Exception {
 
-        final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy message");
 
         Mockito.doThrow(new NoSuchEventTypeException("dummy message")).when(eventTypeRepository).findByName(
@@ -264,9 +266,23 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenCreateEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
+
+        final EventType eventType = buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"),
+                Collections.singletonList("blabla"));
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        Mockito.doThrow(new TopicDeletionException("dummy message", null)).when(topicRepository).deleteTopic(
+                eventType.getTopic());
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
-        final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
 
         Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
@@ -426,7 +442,7 @@ public class EventTypeControllerTest {
 
     @Test
     public void askingForANonExistingEventTypeResultsIn404() throws Exception {
-        final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = randomValidEventTypeName();
         when(eventTypeRepository.findByName(anyString())).thenThrow(new NoSuchEventTypeException(
                 String.format("EventType '%s' does not exist.", eventTypeName)));
 

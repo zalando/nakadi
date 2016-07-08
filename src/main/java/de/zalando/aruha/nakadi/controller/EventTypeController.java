@@ -38,6 +38,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
@@ -190,6 +191,13 @@ public class EventTypeController {
 
             if (hasReservedField(eventType, schemaAsJson, "metadata")) {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
+            }
+
+            List<String> absentFields = eventType.getPartitionKeyFields().stream()
+                    .filter(field -> !hasReservedField(eventType, schemaAsJson, field))
+                    .collect(Collectors.toList());
+            if (!absentFields.isEmpty()) {
+                throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
             }
 
             SchemaLoader.load(schemaAsJson);
