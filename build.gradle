@@ -230,6 +230,7 @@ task pushDockerImage {
 
 task dockerComposeUp(type: Exec) {
 //    commandLine "bash", "-c", "docker-compose up -d"
+    commandLine "bash", "-c", "ping -t1 localhost"
     doLast {
         // wait till application is up (health check is successful)
         int result = 1
