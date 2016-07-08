@@ -3,16 +3,18 @@ sudo: required
 language: java
 
 jdk:
-#  - openjdk8
-   - oraclejdk8
+  - openjdk8
 
 services:
   - docker
 
+addons:
+  hostname: localhost
+
 before_install:
   # buffer overflow https://github.com/travis-ci/travis-ci/issues/5227
   # optionally check the content *before*
-#  - cat /etc/hosts
+  - cat /etc/hosts
 #  - sudo hostname "$(hostname | cut -c1-63)"
 #  - sed -e "s/^\\(127\\.0\\.0\\.1.*\\)/\\1 $(hostname | cut -c1-63)/" /etc/hosts | sudo tee /etc/hosts
 #  - cat /etc/hosts
