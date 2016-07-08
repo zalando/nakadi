@@ -30,10 +30,12 @@ before_script:
 #  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
 
 env:
-  - DOCKER_VERSION="1.11.1-0~precise"
-  - DOCKER_COMPOSE_VERSION="1.7.1"
-  - TEST_SUITE="gradle checkstyle --stacktrace"  # checkstyle
-  - TEST_SUITE="gradle fullTest --stacktrace"  # unit tests + acceptances tests
+  global:
+    - DOCKER_VERSION="1.11.1-0~precise"
+    - DOCKER_COMPOSE_VERSION="1.7.1"
+  matrix:
+    - TEST_SUITE="gradle checkstyle --stacktrace"  # checkstyle
+    - TEST_SUITE="gradle fullTest --stacktrace"  # unit tests + acceptances tests
 
 # run test suits in parallel
 script: "$TEST_SUITE"
