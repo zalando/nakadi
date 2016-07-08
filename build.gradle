@@ -408,3 +408,7 @@ check.dependsOn jacocoTestReport
 checkstyle {
     configFile = new File(rootDir, "checkstyle.xml")
 }
+
+task checkstyle {
+    dependsOn checkstyleMain, checkstyleTest
+}
