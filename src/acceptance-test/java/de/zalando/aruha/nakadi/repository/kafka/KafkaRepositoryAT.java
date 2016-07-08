@@ -20,8 +20,12 @@ import java.util.List;
 import java.util.Map;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.core.IsCollectionContaining.hasItem;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -52,17 +56,17 @@ public class KafkaRepositoryAT extends BaseAT {
 
         // ASSERT //
         executeWithRetry(() -> {
-                final Map<String, List<PartitionInfo>> topics = getAllTopics();
-                assertThat(topics.keySet(), hasItem(topicName));
+                    final Map<String, List<PartitionInfo>> topics = getAllTopics();
+                    assertThat(topics.keySet(), hasItem(topicName));
 
-                final List<PartitionInfo> partitionInfos = topics.get(topicName);
-                assertThat(partitionInfos, hasSize(defaultPartitionCount));
+                    final List<PartitionInfo> partitionInfos = topics.get(topicName);
+                    assertThat(partitionInfos, hasSize(defaultPartitionCount));
 
-                partitionInfos.stream().forEach(pInfo ->
-                        assertThat(pInfo.replicas(), arrayWithSize(defaultReplicaFactor)));
-            },
-            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                .withWaitBetweenEachTry(500));
+                    partitionInfos.stream().forEach(pInfo ->
+                            assertThat(pInfo.replicas(), arrayWithSize(defaultReplicaFactor)));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 20000)
@@ -73,18 +77,22 @@ public class KafkaRepositoryAT extends BaseAT {
         kafkaHelper.createTopic(topicName, zookeeperUrl);
 
         // wait for topic to be created
-        executeWithRetry(() -> { return getAllTopics().containsKey(topicName); },
-            new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false).withWaitBetweenEachTry(
-                500));
+        executeWithRetry(() -> {
+                    return getAllTopics().containsKey(topicName);
+                },
+                new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false).withWaitBetweenEachTry(
+                        500));
 
         // ACT //
         kafkaTopicRepository.deleteTopic(topicName);
 
         // ASSERT //
         // check that topic was deleted
-        executeWithRetry(() -> { assertThat(getAllTopics().keySet(), not(hasItem(topicName))); },
-            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                    .withWaitBetweenEachTry(500));
+        executeWithRetry(() -> {
+                    assertThat(getAllTopics().keySet(), not(hasItem(topicName)));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 10000)

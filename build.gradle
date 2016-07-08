@@ -228,14 +228,18 @@ task pushDockerImage {
     }
 }
 
-task startNakadi(type: Exec) {
-    dependsOn build
+task initNakadi(type: Exec) {
     commandLine "bash", "-c", "docker-compose up -d --build"
     doLast {
+        println "Waiting for Nakadi to start up"
         long start = System.currentTimeMillis()
         waitForNakadi()
         println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
     }
+}
+
+task startNakadi(type: GradleBuild) {
+    tasks = ['clean', 'bootRepackage', 'initNakadi']
 }
 
 task stopNakadi(type: Exec) {
@@ -259,8 +263,13 @@ def execAndWait(command, timeoutInSeconds = 15) {
     return proc.exitValue()
 }
 
+task fullTest(type: GradleBuild) {
+    tasks = ['clean', 'build', 'initNakadi', 'acceptanceTest']
+    finalizedBy stopNakadi
+}
+
 task fullAcceptanceTest(type: GradleBuild) {
-    tasks = ['startNakadi', 'acceptanceTest']
+    tasks = ['clean', 'bootRepackage', 'initNakadi', 'acceptanceTest']
     finalizedBy stopNakadi
 }
 

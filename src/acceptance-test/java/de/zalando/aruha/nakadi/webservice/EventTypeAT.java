@@ -23,8 +23,10 @@ import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.resourceAsString;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.core.IsEqual.equalTo;
 
 public class EventTypeAT extends BaseAT {
