@@ -1,6 +1,11 @@
 package de.zalando.aruha.nakadi.util;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,16 +13,28 @@ import org.slf4j.LoggerFactory;
 public class FeatureToggleService {
 
     private static final Logger LOG = LoggerFactory.getLogger(FeatureToggleService.class);
+    public static final String CLOSE_CONNECTIONS_WITH_CRUTCH = "close_crutch";
 
     private static final String PREFIX = "/nakadi/feature_toggle/";
 
     private final boolean forceEnableAll;
     private final ZooKeeperHolder zkHolder;
-    private final TimeBasedCache<Feature, Boolean> cachedValues = new TimeBasedCache<>(5000);
+    private final LoadingCache<Feature, Boolean> cache;
 
     public FeatureToggleService(final boolean forceEnableAll, final ZooKeeperHolder zkHolder) {
         this.forceEnableAll = forceEnableAll;
         this.zkHolder = zkHolder;
+
+        cache = CacheBuilder.newBuilder()
+                .maximumSize(100)
+                .expireAfterWrite(5, TimeUnit.SECONDS)
+                .build(new CacheLoader<Feature, Boolean>() {
+                    @Override
+                    public Boolean load(final Feature key) throws Exception {
+                        return isFeatureEnabledInZk(key);
+                    }
+                });
+
     }
 
     public boolean isFeatureEnabled(final Feature feature) {
@@ -35,7 +52,6 @@ public class FeatureToggleService {
             LOG.warn("Error occurred when checking if feature '" + feature.getId() + "' is toggled", e);
             return feature.getDefault();
         }
-
     }
 
     public enum Feature {

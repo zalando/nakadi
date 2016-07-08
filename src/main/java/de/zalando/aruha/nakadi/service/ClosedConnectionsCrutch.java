@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.service;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.net.InetAddresses;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import java.io.BufferedReader;
@@ -15,20 +16,14 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.StringTokenizer;
-import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.ArrayUtils;
@@ -37,9 +32,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-@Service
+@Component
 public class ClosedConnectionsCrutch {
     /**
      * List of allowed connection states
@@ -111,51 +106,13 @@ public class ClosedConnectionsCrutch {
         }
     }
 
-    static class ListenerInfo implements Comparable<ListenerInfo> {
-        private final Date addedAt;
-        private final ConnectionInfo connectionInfo;
-        private final BooleanSupplier callback;
-
-        public ListenerInfo(final Date addedAt, final ConnectionInfo connectionInfo, final BooleanSupplier callback) {
-            this.addedAt = addedAt;
-            this.connectionInfo = connectionInfo;
-            this.callback = callback;
-        }
-
-        @Override
-        public int compareTo(final ListenerInfo o) {
-            return addedAt.compareTo(o.addedAt);
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            final ListenerInfo that = (ListenerInfo) o;
-
-            if (addedAt != that.addedAt) return false;
-            if (!connectionInfo.equals(that.connectionInfo)) return false;
-            return callback.equals(that.callback);
-
-        }
-
-        @Override
-        public int hashCode() {
-            final long value = addedAt.getTime();
-            return (int) (value ^ (value >>> 32));
-        }
-    }
-
     private final int port;
     private final Map<ConnectionInfo, List<BooleanSupplier>> listeners = new HashMap<>();
-    private final SortedSet<ListenerInfo> toAdd = new TreeSet<>();
+    private final Map<ConnectionInfo, List<BooleanSupplier>> toAdd = new HashMap<>();
     private final Meter meterClosed;
     private final FeatureToggleService featureToggleService;
     private static final Logger LOG = LoggerFactory.getLogger(ClosedConnectionsCrutch.class);
-    private static final long DELAY_MILLIS = 100;
 
-    private static final String FEATURE_NAME = "close_crutch";
     @Autowired
     public ClosedConnectionsCrutch(
             @Value("${server.port}") final int port,
@@ -170,48 +127,36 @@ public class ClosedConnectionsCrutch {
             final InetAddress address,
             final int port,
             final BooleanSupplier onCloseListener) {
-        if (!featureToggleService.isFeatureEnabled(FEATURE_NAME)) {
+        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.CLOSE_CONNECTIONS_WITH_CRUTCH)) {
             return;
         }
         LOG.debug("Listening for connection to close using crutch (" + address + ":" + port + ")");
-        final Date now = new Date();
-        synchronized (this) {
-            toAdd.add(new ListenerInfo(now, new ConnectionInfo(address, port), onCloseListener));
+        synchronized (toAdd) {
+            toAdd.computeIfAbsent(new ConnectionInfo(address, port), tmp -> new ArrayList<>()).add(onCloseListener);
         }
     }
 
     @Scheduled(fixedDelay = 1000)
     public void refresh() throws IOException {
-        if (!featureToggleService.isFeatureEnabled(FEATURE_NAME)) {
+        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.CLOSE_CONNECTIONS_WITH_CRUTCH)) {
             return;
         }
-        final long selector = System.currentTimeMillis() - DELAY_MILLIS;
-        synchronized (this) {
-            final Iterator<ListenerInfo> it = toAdd.iterator();
-            while (it.hasNext()) {
-                final ListenerInfo first = it.next();
-                if (first.addedAt.getTime() >= selector) {
-                    break;
-                }
-                listeners.computeIfAbsent(first.connectionInfo, info -> new ArrayList<>()).add(first.callback);
-                it.remove();
-            }
+        synchronized (toAdd) {
+            toAdd.forEach((conn, toAddListeners) -> {
+                listeners.computeIfAbsent(conn, c -> new ArrayList<>()).addAll(toAddListeners);
+            });
+            toAdd.clear();
         }
         final Map<ConnectionInfo, ConnectionState> currentConnections = readAllConnectionStates();
-        final Set<ConnectionInfo> keys = new HashSet<>(listeners.keySet());
-        final AtomicInteger closedCount = new AtomicInteger();
-        for (final ConnectionInfo key : keys) {
-            if (CLOSED_STATES.contains(currentConnections.getOrDefault(key, ConnectionState.TCP_CLOSE))) {
-                LOG.info("Notifying about connection close via crutch: " + key);
-                listeners.remove(key).forEach(callable -> {
-                    if (callable.getAsBoolean()) {
-                        closedCount.incrementAndGet();
-                    }
-                });
-            }
-        }
-        if (closedCount.get() > 0) {
-            meterClosed.mark(closedCount.get());
+        final long closedCount =
+                new HashSet<>(listeners.keySet()).stream()
+                        .filter(key -> CLOSED_STATES.contains(currentConnections.getOrDefault(key, ConnectionState.TCP_CLOSE)))
+                        .mapToLong(key -> {
+                            LOG.info("Notifying about connection close via crutch: " + key);
+                            return listeners.remove(key).stream().filter(BooleanSupplier::getAsBoolean).count();
+                        }).sum();
+        if (closedCount > 0) {
+            meterClosed.mark(closedCount);
         }
     }
 
@@ -254,10 +199,10 @@ public class ClosedConnectionsCrutch {
 
                     // read connection state
                     final ConnectionState connectionState = ConnectionState.fromCode(tokenizer.nextToken());
-                    for (final InetAddress tmp : remoteAddresses) {
-                        connectionToState.put(new ConnectionInfo(tmp, remotePort), connectionState);
-                    }
-                } catch (DecoderException | RuntimeException ex) {
+                    Stream.of(remoteAddresses)
+                            .map(address -> new ConnectionInfo(address, remotePort))
+                            .forEach(info -> connectionToState.put(info, connectionState));
+                } catch (final DecoderException | RuntimeException ex) {
                     LOG.error("Failed to parse line, skipping: " + line, ex);
                 }
             }
@@ -265,7 +210,7 @@ public class ClosedConnectionsCrutch {
         return connectionToState;
     }
 
-    static InetAddress[] restoreAddresses(final String address) throws DecoderException, UnknownHostException {
+    private static InetAddress[] restoreAddresses(final String address) throws DecoderException, UnknownHostException {
         final byte[] data = Hex.decodeHex(address.toCharArray());
         if (data.length == 16) {
             // /proc/net/tcp6 contains addresses in strange manner - each 4 bytes are rotated, so we need to rotate it back
@@ -284,11 +229,10 @@ public class ClosedConnectionsCrutch {
         }
     }
 
-    private static final Set<ConnectionState> CLOSED_STATES = Arrays.asList(
+    private static final Set<ConnectionState> CLOSED_STATES = ImmutableSet.of(
             ConnectionState.TCP_TIME_WAIT,
             ConnectionState.TCP_CLOSE_WAIT,
             ConnectionState.TCP_LAST_ACK,
             ConnectionState.TCP_CLOSING,
-            ConnectionState.TCP_CLOSE)
-            .stream().collect(Collectors.toSet());
+            ConnectionState.TCP_CLOSE);
 }

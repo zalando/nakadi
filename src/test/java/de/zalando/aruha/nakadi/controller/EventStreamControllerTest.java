@@ -339,9 +339,7 @@ public class EventStreamControllerTest {
             Thread.sleep(500);
 
             executeWithRetry(
-                    () -> {
-                        assertThat(counter.getCount(), equalTo((long) clients.size()));
-                    },
+                    () -> assertThat(counter.getCount(), equalTo((long) clients.size())),
                     retryForSpecifiedTimeOf(duration("5s"))
             );
 

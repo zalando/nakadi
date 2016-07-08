@@ -120,7 +120,7 @@ public class EventStreamTest {
         // if something goes wrong - the test should fail with a timeout
     }
 
-    @Test(timeout = 3000)
+    @Test(timeout = 5000)
     public void whenKeepAliveLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
