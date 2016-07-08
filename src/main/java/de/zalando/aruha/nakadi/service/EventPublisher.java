@@ -130,7 +130,7 @@ public class EventPublisher {
 
     private void submit(final List<BatchItem> batch, final EventType eventType) throws EventPublishingException {
         // there is no need to group by partition since its already done by kafka client
-        topicRepository.syncPostBatch(eventType.getName(), batch);
+        topicRepository.syncPostBatch(eventType.getTopic(), batch);
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,

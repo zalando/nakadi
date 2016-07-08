@@ -3,11 +3,14 @@ package de.zalando.aruha.nakadi.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
-import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
+import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -43,7 +46,9 @@ public class PartitionsControllerTest {
             TEST_TOPIC_PARTITION_0,
             TEST_TOPIC_PARTITION_1);
 
-    private static final String DUMMY_MESSAGE = "dummy message";
+    private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
+
+    private EventTypeRepository eventTypeRepositoryMock;
 
     private TopicRepository topicRepositoryMock;
 
@@ -56,9 +61,10 @@ public class PartitionsControllerTest {
         final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
         jsonHelper = new JsonTestHelper(objectMapper);
 
+        eventTypeRepositoryMock = mock(EventTypeRepository.class);
         topicRepositoryMock = mock(TopicRepository.class);
 
-        final PartitionsController controller = new PartitionsController(topicRepositoryMock);
+        final PartitionsController controller = new PartitionsController(eventTypeRepositoryMock, topicRepositoryMock);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
@@ -68,8 +74,8 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenListPartitionsThenOk() throws Exception {
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.listPartitions(eq(TEST_EVENT_TYPE))).thenReturn(TEST_TOPIC_PARTITIONS);
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.listPartitions(eq(EVENT_TYPE.getTopic()))).thenReturn(TEST_TOPIC_PARTITIONS);
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
@@ -79,7 +85,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenListPartitionsForWrongTopicThenNotFound() throws Exception {
-        when(topicRepositoryMock.topicExists(eq(UNKNOWN_EVENT_TYPE))).thenReturn(false);
+        when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE)).thenThrow(NoSuchEventTypeException.class);
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
 
         mockMvc.perform(
@@ -90,10 +96,9 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenListPartitionsAndNakadiExceptionThenServiceUnavaiable() throws Exception {
-        final NakadiException nakadiException = new ServiceUnavailableException("", DUMMY_MESSAGE, null);
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(nakadiException);
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenThrow(ServiceUnavailableException.class);
 
-        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, DUMMY_MESSAGE);
+        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, null);
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
                 .andExpect(status().isServiceUnavailable())
@@ -102,9 +107,9 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionThenOk() throws Exception {
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.partitionExists(eq(TEST_EVENT_TYPE), eq(TEST_PARTITION))).thenReturn(true);
-        when(topicRepositoryMock.getPartition(eq(TEST_EVENT_TYPE), eq(TEST_PARTITION))).thenReturn(TEST_TOPIC_PARTITION_0);
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.partitionExists(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION))).thenReturn(true);
+        when(topicRepositoryMock.getPartition(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION))).thenReturn(TEST_TOPIC_PARTITION_0);
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
@@ -114,7 +119,7 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionForWrongTopicThenNotFound() throws Exception {
-        when(topicRepositoryMock.topicExists(eq(UNKNOWN_EVENT_TYPE))).thenReturn(false);
+        when(eventTypeRepositoryMock.findByName(UNKNOWN_EVENT_TYPE)).thenThrow(NoSuchEventTypeException.class);
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
 
         mockMvc.perform(
@@ -125,8 +130,8 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionForWrongPartitionThenNotFound() throws Exception {
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenReturn(true);
-        when(topicRepositoryMock.partitionExists(eq(TEST_EVENT_TYPE), eq(UNKNOWN_PARTITION))).thenReturn(false);
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.partitionExists(eq(EVENT_TYPE.getTopic()), eq(UNKNOWN_PARTITION))).thenReturn(false);
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "partition not found");
 
         mockMvc.perform(
@@ -137,10 +142,9 @@ public class PartitionsControllerTest {
 
     @Test
     public void whenGetPartitionAndNakadiExceptionThenServiceUnavaiable() throws Exception {
-        final NakadiException nakadiException = new ServiceUnavailableException("", DUMMY_MESSAGE, null);
-        when(topicRepositoryMock.topicExists(eq(TEST_EVENT_TYPE))).thenThrow(nakadiException);
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenThrow(ServiceUnavailableException.class);
 
-        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, DUMMY_MESSAGE);
+        final ThrowableProblem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, null);
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isServiceUnavailable())

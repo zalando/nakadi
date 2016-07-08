@@ -35,7 +35,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     private static final String TEST_PARTITION = "0";
     private static final String DUMMY_EVENT = "Dummy";
-    private static final String STREAM_ENDPOINT = createStreamEndpointUrl(TEST_TOPIC);
+    private static final String STREAM_ENDPOINT = createStreamEndpointUrl(EVENT_TYPE_NAME);
     private static final String SEPARATOR = "\n";
 
     private final ObjectMapper jsonMapper = new ObjectMapper();

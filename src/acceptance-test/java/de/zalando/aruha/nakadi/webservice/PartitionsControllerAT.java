@@ -41,7 +41,7 @@ public class PartitionsControllerAT extends BaseAT {
     @Test
     public void whenListPartitionsThenOk() throws IOException {
         // ACT //
-        final Response response = when().get(String.format("/event-types/%s/partitions", TEST_TOPIC));
+        final Response response = when().get(String.format("/event-types/%s/partitions", EVENT_TYPE_NAME));
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
@@ -75,7 +75,7 @@ public class PartitionsControllerAT extends BaseAT {
     public void whenListPartitionsAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
         // ACT //
-        final String url = String.format("/event-types/%s/partitions", TEST_TOPIC);
+        final String url = String.format("/event-types/%s/partitions", EVENT_TYPE_NAME);
         final List<Map<String, String>> partitionsInfoBefore = asMapsList(get(url).print());
 
         writeMessageToPartition(0);
@@ -90,7 +90,7 @@ public class PartitionsControllerAT extends BaseAT {
     @Test
     public void whenGetPartitionThenOk() throws IOException {
         // ACT //
-        final Response response = when().get(String.format("/event-types/%s/partitions/0", TEST_TOPIC));
+        final Response response = when().get(String.format("/event-types/%s/partitions/0", EVENT_TYPE_NAME));
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
@@ -110,7 +110,7 @@ public class PartitionsControllerAT extends BaseAT {
     @Test
     public void whenGetPartitionThenPartitionNotFound() throws IOException {
         when()
-                .get(String.format("/event-types/%s/partitions/43766", TEST_TOPIC))
+                .get(String.format("/event-types/%s/partitions/43766", EVENT_TYPE_NAME))
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
@@ -121,7 +121,7 @@ public class PartitionsControllerAT extends BaseAT {
     public void whenGetPartitionAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
         // ACT //
-        final String url = String.format("/event-types/%s/partitions/0", TEST_TOPIC);
+        final String url = String.format("/event-types/%s/partitions/0", EVENT_TYPE_NAME);
         final Map<String, String> partitionInfoBefore = asMap(get(url).print());
 
         writeMessageToPartition(0);

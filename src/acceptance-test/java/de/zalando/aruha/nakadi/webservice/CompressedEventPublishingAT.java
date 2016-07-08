@@ -62,7 +62,9 @@ public class CompressedEventPublishingAT extends BaseAT {
         given()
                 .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
-                .post("/event-types");
+                .post("/event-types")
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
         return eventType;
     }
 

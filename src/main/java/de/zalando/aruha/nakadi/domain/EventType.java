@@ -21,6 +21,9 @@ public class EventType {
     @Size(min = 1, max = 255, message = "the length of the name must be >= 1 and <= 255")
     private String name;
 
+    @JsonIgnore
+    private String topic;
+
     @NotNull
     private String owningApplication;
 
@@ -110,4 +113,7 @@ public class EventType {
         this.enrichmentStrategies = enrichmentStrategies;
     }
 
+    public String getTopic() { return topic; }
+
+    public void setTopic(final String topic) { this.topic = topic; }
 }
