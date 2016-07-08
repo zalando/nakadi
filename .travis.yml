@@ -10,7 +10,7 @@ services:
 
 before_install:
   - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/1.7.1/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
 
@@ -19,13 +19,11 @@ before_script:
   - pip install --user codecov
   - curl http://www.jpm4j.org/install/script | sudo sh
 #  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
-  - gradle clean build --stacktrace
-  - docker-compose up
 
 env:
-  DOCKER_COMPOSE_VERSION: 1.7.1
+  - DOCKER_COMPOSE_VERSION=""
   - TEST_SUITE="travis_wait gradle check --stacktrace"   # unit tests
-  - TEST_SUITE="gradle acceptanceTest --stacktrace"  # acceptance tests
+  - TEST_SUITE="gradle fullAcceptanceTest --stacktrace"  # acceptance tests
 
 # run test suits in parallel
 script: "$TEST_SUITE"

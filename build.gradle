@@ -1,3 +1,5 @@
+import java.util.concurrent.TimeUnit
+
 apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
@@ -224,6 +226,37 @@ task pushDockerImage {
             throw new GradleException("docker push failed.")
         }
     }
+}
+
+task dockerComposeUp(type: Exec) {
+    commandLine "bash", "-c", "docker-compose up -d"
+    doLast {
+        // wait till application is up (health check is successful)
+        int result = 1
+        while (result != 0) {
+            result = execAndWait('curl http://localhost:8080/health')
+            sleep(1000L)
+        }
+    }
+    outputs.upToDateWhen { false }
+}
+
+task dockerComposeDown(type: Exec) {
+    commandLine "bash", "-c", "docker-compose down"
+}
+
+def execAndWait(command, timeoutInSeconds = 15) {
+    println "Running command: " + command
+    ProcessBuilder pb = new ProcessBuilder(["bash", "-c", command]).inheritIO();
+    Process proc = pb.start();
+    proc.waitFor(timeoutInSeconds, TimeUnit.SECONDS);
+    return proc.exitValue()
+}
+
+task fullAcceptanceTest(type: GradleBuild) {
+    dependsOn build, dockerComposeUp
+    tasks = ['acceptanceTest']
+    finalizedBy dockerComposeDown
 }
 
 task integrationTest(type: Test) {
