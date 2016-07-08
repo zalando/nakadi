@@ -257,7 +257,7 @@ def execAndWait(command, timeoutInSeconds = 15) {
 task fullAcceptanceTest(type: GradleBuild) {
     dependsOn build, dockerComposeUp
     tasks = ['acceptanceTest']
-    finalizedBy dockerComposeDown
+//    finalizedBy dockerComposeDown
 }
 
 task integrationTest(type: Test) {
