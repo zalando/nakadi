@@ -32,16 +32,17 @@ public class FeatureToggleService {
         }
     }
 
-    public static class Feature {
+    public enum Feature {
 
-        public static final Feature DISABLE_EVENT_TYPE_CREATION = new Feature("disable_event_type_creation", false);
-        public static final Feature DISABLE_EVENT_TYPE_DELETION = new Feature("disable_event_type_deletion", false);
-        public static final Feature HIGH_LEVEL_API = new Feature("high_level_api", true);
+        DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation", false),
+        DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion", false),
+        HIGH_LEVEL_API("high_level_api", true),
+        ;
 
         private final String id;
         private final boolean defaultValue;
 
-        private Feature(String id, boolean defaultValue) {
+        Feature(String id, boolean defaultValue) {
             this.id = id;
             this.defaultValue = defaultValue;
         }
