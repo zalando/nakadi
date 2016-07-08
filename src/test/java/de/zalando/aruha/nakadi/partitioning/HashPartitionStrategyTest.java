@@ -39,9 +39,9 @@ public class HashPartitionStrategyTest {
     private static final String DELIMITER = "#";
     private static final String[] PARTITIONS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7"};
 
-    private static List<JSONObject> EVENT_SAMPLES_A = null;
-    private static List<JSONObject> EVENT_SAMPLES_B = null;
-    private static List<JSONObject> EVENT_SAMPLES_C = null;
+    private static List<JSONObject> eventSamplesA = null;
+    private static List<JSONObject> eventSamplesB = null;
+    private static List<JSONObject> eventSamplesC = null;
 
     private final HashPartitionStrategy strategy = new HashPartitionStrategy();
     private final EventType simpleEventType;
@@ -61,13 +61,13 @@ public class HashPartitionStrategyTest {
 
     @Test
     @Ignore("This might be useful to play around with for future implementations of PartitionStrategies")
-    public void partitionsAreEvenlyDistributed_usingRandomEvents() {
+    public void partitionsAreEvenlyDistributedUsingRandomEvents() {
         // This is a probabilistic test.
         // The probability that it fails is approx. 0.577%
 
         fillPartitionsWithRandomEvents(simpleEventType, partitions, 10000);
 
-        final double[] eventDistribution = partitions.stream().map(p -> p.size()).mapToDouble(value -> value * 1.0).toArray();
+        final double[] eventDistribution = partitions.stream().map(List::size).mapToDouble(value -> value * 1.0).toArray();
         final double variance = calculateVarianceOfUniformDistribution(eventDistribution);
 
         assertThat(variance, lessThan(1.5));
@@ -77,15 +77,15 @@ public class HashPartitionStrategyTest {
     public void partitionsAreEvenlyDistributed() throws IOException {
         loadEventSamples();
 
-        assertThat("Event sample set A is not evenly distributed with strategy", varianceForEvents(EVENT_SAMPLES_A), lessThan(1.5));
-        assertThat("Event sample set B is not evenly distributed with strategy", varianceForEvents(EVENT_SAMPLES_B), lessThan(1.5));
-        assertThat("Event sample set C is not evenly distributed with strategy", varianceForEvents(EVENT_SAMPLES_C), lessThan(1.5));
+        assertThat("Event sample set A is not evenly distributed with strategy", varianceForEvents(eventSamplesA), lessThan(1.5));
+        assertThat("Event sample set B is not evenly distributed with strategy", varianceForEvents(eventSamplesB), lessThan(1.5));
+        assertThat("Event sample set C is not evenly distributed with strategy", varianceForEvents(eventSamplesC), lessThan(1.5));
     }
 
     private double varianceForEvents(final List<JSONObject> events) {
         fillPartitionsWithEvents(simpleEventType, partitions, events);
 
-        final double[] eventDistribution = partitions.stream().map(p -> p.size()).mapToDouble(value -> value * 1.0).toArray();
+        final double[] eventDistribution = partitions.stream().map(List::size).mapToDouble(value -> value * 1.0).toArray();
         return calculateVarianceOfUniformDistribution(eventDistribution);
     }
 
@@ -143,15 +143,15 @@ public class HashPartitionStrategyTest {
     }
 
     private double calculateVarianceOfUniformDistribution(final double[] samples) {
-        final double x_sum = stream(samples).sum();
-        final double x_pow2_sum = stream(samples).map(d -> pow(d, 2)).sum();
+        final double xSum = stream(samples).sum();
+        final double xPow2Sum = stream(samples).map(d -> pow(d, 2)).sum();
 
-        final double n = x_sum;
+        final double n = xSum;
 
         final double expectedValue = (n / samples.length);
 
 
-        final double variance = (1.0 / n) * (x_pow2_sum - (1.0 / n) * pow(x_sum, 2));
+        final double variance = (1.0 / n) * (xPow2Sum - (1.0 / n) * pow(xSum, 2));
         return abs(variance - expectedValue);
     }
 
@@ -227,14 +227,14 @@ public class HashPartitionStrategyTest {
     }
 
     private void loadEventSamples() throws IOException {
-        if (EVENT_SAMPLES_A == null) {
-            EVENT_SAMPLES_A = loadEventSampleSet("events.10000.A.txt");
+        if (eventSamplesA == null) {
+            eventSamplesA = loadEventSampleSet("events.10000.A.txt");
         }
-        if (EVENT_SAMPLES_B == null) {
-            EVENT_SAMPLES_B = loadEventSampleSet("events.10000.B.txt");
+        if (eventSamplesB == null) {
+            eventSamplesB = loadEventSampleSet("events.10000.B.txt");
         }
-        if (EVENT_SAMPLES_C == null) {
-            EVENT_SAMPLES_C = loadEventSampleSet("events.10000.C.txt");
+        if (eventSamplesC == null) {
+            eventSamplesC = loadEventSampleSet("events.10000.C.txt");
         }
     }
 

@@ -4,16 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.repository.db.AbstractDbRepositoryTest;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
-import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.apache.http.HttpStatus;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
 
 import java.util.Set;
 
@@ -22,23 +18,21 @@ import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.resourceAsString;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
 
 public class EventTypeAT extends BaseAT {
 
     private static final String ENDPOINT = "/event-types";
-    private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-    private static final JsonTestHelper jsonHelper = new JsonTestHelper(mapper);
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
     @Test
     public void whenGETThenListsEventTypes() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
-        final String body = mapper.writer().writeValueAsString(eventType);
+        final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT).then().statusCode(
             HttpStatus.SC_CREATED);
@@ -51,7 +45,7 @@ public class EventTypeAT extends BaseAT {
     public void whenPOSTValidEventTypeThenOk() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
 
-        final String body = mapper.writer().writeValueAsString(eventType);
+        final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).when().post(ENDPOINT).then()
                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
@@ -69,7 +63,7 @@ public class EventTypeAT extends BaseAT {
     public void whenPUTValidEventTypeThenOK() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
 
-        final String body = mapper.writer().writeValueAsString(eventType);
+        final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
 
@@ -78,30 +72,11 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenPOSTEventTypeAndTopicExistsThenConflict() throws JsonProcessingException {
-
-        // ARRANGE //
-        final EventType eventType = buildDefaultEventType();
-        final String body = mapper.writer().writeValueAsString(eventType);
-
-        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(kafkaUrl);
-        kafkaHelper.createTopic(eventType.getName(), zookeeperUrl);
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(CONFLICT,
-                "EventType with name " + eventType.getName() + " already exists (or wasn't completely removed yet)");
-
-        // ACT //
-        given().body(body).header("accept", "application/json").contentType(JSON).when().post(ENDPOINT)
-               // ASSERT //
-               .then().body(jsonHelper.matchesObject(expectedProblem)).statusCode(HttpStatus.SC_CONFLICT);
-    }
-
-    @Test
     public void whenDELETEEventTypeThenOK() throws JsonProcessingException {
 
         // ARRANGE //
         final EventType eventType = buildDefaultEventType();
-        final String body = mapper.writer().writeValueAsString(eventType);
+        final String body = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
 
@@ -111,7 +86,7 @@ public class EventTypeAT extends BaseAT {
         // ASSERT //
         when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
 
-        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(kafkaUrl);
+        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
         assertThat(allTopics, not(hasItem(eventType.getName())));
     }
@@ -119,9 +94,9 @@ public class EventTypeAT extends BaseAT {
     @After
     public void tearDown() {
         final DriverManagerDataSource datasource = new DriverManagerDataSource(
-                AbstractDbRepositoryTest.POSTGRES_URL,
-                AbstractDbRepositoryTest.POSTGRES_USER,
-                AbstractDbRepositoryTest.POSTGRES_PWD
+                POSTGRES_URL,
+                POSTGRES_USER,
+                POSTGRES_PWD
         );
         final JdbcTemplate template = new JdbcTemplate(datasource);
 

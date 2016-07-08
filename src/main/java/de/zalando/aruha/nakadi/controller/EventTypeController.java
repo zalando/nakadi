@@ -16,9 +16,8 @@ import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
-import java.util.List;
-import java.util.Objects;
-import javax.validation.Valid;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
+import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
@@ -28,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import static org.springframework.http.ResponseEntity.status;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,6 +34,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Objects;
+
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
+import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -48,16 +54,23 @@ public class EventTypeController {
     private final TopicRepository topicRepository;
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
+    private final FeatureToggleService featureToggleService;
+    private final UUIDGenerator uuidGenerator;
 
     @Autowired
     public EventTypeController(final EventTypeRepository eventTypeRepository,
                                final TopicRepository topicRepository,
                                final PartitionResolver partitionResolver,
-                               final Enrichment enrichment) {
+                               final Enrichment enrichment,
+                               final FeatureToggleService featureToggleService,
+                               final UUIDGenerator uuidGenerator)
+    {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
+        this.featureToggleService = featureToggleService;
+        this.uuidGenerator = uuidGenerator;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -70,17 +83,22 @@ public class EventTypeController {
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> createEventType(@Valid @RequestBody final EventType eventType,
                                              final Errors errors,
-                                             final NativeWebRequest nativeWebRequest) {
+                                             final NativeWebRequest nativeWebRequest)
+    {
+        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
+            return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
+        }
         if (errors.hasErrors()) {
             return create(new ValidationProblem(errors), nativeWebRequest);
         }
 
         try {
+            assignTopic(eventType);
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(eventType.getName(), eventType.getDefaultStatistics());
+            topicRepository.createTopic(eventType.getTopic(), eventType.getDefaultStatistics());
             return status(HttpStatus.CREATED).build();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
@@ -90,7 +108,7 @@ public class EventTypeController {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
 
             try {
-                eventTypeRepository.removeEventType(eventType.getName());
+                eventTypeRepository.removeEventType(eventType.getTopic());
             } catch (final NakadiException e1) {
                 return create(e.asProblem(), nativeWebRequest);
             }
@@ -103,10 +121,15 @@ public class EventTypeController {
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteEventType(@PathVariable("name") final String eventTypeName,
-                                             final NativeWebRequest nativeWebRequest) {
+                                             final NativeWebRequest nativeWebRequest)
+    {
+        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)) {
+            return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
+        }
         try {
+            EventType eventType = eventTypeRepository.findByName(eventTypeName);
             eventTypeRepository.removeEventType(eventTypeName);
-            topicRepository.deleteTopic(eventTypeName);
+            topicRepository.deleteTopic(eventType.getTopic());
             return status(HttpStatus.OK).build();
         } catch (final NoSuchEventTypeException e) {
             LOG.warn("Tried to remove EventType " + eventTypeName + " that doesn't exist", e);
@@ -175,6 +198,10 @@ public class EventTypeController {
         } catch (final SchemaException e) {
             throw new InvalidEventTypeException("schema must be a valid json-schema");
         }
+    }
+
+    private void assignTopic(final EventType eventType) {
+        eventType.setTopic(uuidGenerator.randomUUID().toString());
     }
 
     private boolean hasReservedField(final EventType eventType, final JSONObject schemaAsJson, final String field) {

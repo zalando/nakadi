@@ -17,27 +17,27 @@ before_install:
   - sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
   - sudo apt-get update
   - sudo apt-key update
-  - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install docker-engine=1.11.1-0~precise
+  - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install docker-engine=${DOCKER_VERSION}
   - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/1.7.1/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
 
 before_script:
   - sudo /etc/init.d/postgresql stop
   - pip install --user codecov
-  - curl http://www.jpm4j.org/install/script | sudo sh
+#  - curl http://www.jpm4j.org/install/script | sudo sh
 #  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
 
 env:
-  - TEST_SUITE="gradle fullTest --stacktrace"  # acceptance tests
+  - DOCKER_VERSION="1.11.1-0~precise"
+  - DOCKER_COMPOSE_VERSION="1.7.1"
+  - TEST_SUITE="gradle checkstyle --stacktrace"  # checkstyle
+  - TEST_SUITE="gradle fullTest --stacktrace"  # unit tests + acceptances tests
 
 # run test suits in parallel
 script: "$TEST_SUITE"
 
 after_success:
   - codecov
-  - codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
-
-after_script:
-  - docker-compose down
+#  - codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml

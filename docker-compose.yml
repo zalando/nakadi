@@ -11,7 +11,7 @@ services:
      - kafka
     environment:
       NAKADI_OAUTH2_MODE: "OFF"
-      NAKADI_FEATURETOGGLE_ENABLEALL: "true"
+      NAKADI_FEATURETOGGLE_DEFAULT: "true"
       NAKADI_ZOOKEEPER_BROKERS: localhost:2181
       SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/local_nakadi_db
       SPRING_DATASOURCE_USERNAME: nakadi

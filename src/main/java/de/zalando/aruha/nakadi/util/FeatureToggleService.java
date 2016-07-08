@@ -1,34 +1,23 @@
 package de.zalando.aruha.nakadi.util;
 
-import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.apache.zookeeper.data.Stat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+public interface FeatureToggleService {
+    boolean isFeatureEnabled(final Feature feature);
 
-public class FeatureToggleService {
+    enum Feature {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FeatureToggleService.class);
+        CONNECTION_CLOSE_CRUTCH("close_crutch"),
+        DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation"),
+        DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion"),
+        HIGH_LEVEL_API("high_level_api");
 
-    @Value("${nakadi.featureToggle.enableAll}")
-    private boolean forceEnableAll;
+        private final String id;
 
-    private final ZooKeeperHolder zkHolder;
-
-    public FeatureToggleService(final ZooKeeperHolder zkHolder) {
-        this.zkHolder = zkHolder;
-    }
-
-    public boolean isFeatureEnabled(final String feature) {
-        if (forceEnableAll) {
-            return true;
+        Feature(final String id) {
+            this.id = id;
         }
-        try {
-            final Stat stat = zkHolder.get().checkExists().forPath("/nakadi/feature_toggle/" + feature);
-            return stat != null;
-        } catch (Exception e) {
-            LOG.warn("Error occurred when checking if feature '" + feature + "' is toggled", e);
-            return false;
+
+        public String getId() {
+            return id;
         }
     }
 }

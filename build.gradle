@@ -7,6 +7,7 @@ apply plugin: 'application'
 apply plugin: 'spring-boot'
 apply plugin: "jacoco"
 apply plugin: 'findbugs'
+apply plugin: 'checkstyle'
 
 group 'de.zalando.aruha'
 sourceCompatibility = 1.8
@@ -34,15 +35,6 @@ repositories {
 }
 
 sourceSets {
-    integrationTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/integration-test/java')
-        }
-        resources.srcDir file('src/integration-test/resources')
-    }
-
     acceptanceTest {
         java {
             compileClasspath += main.output + test.output
@@ -73,8 +65,6 @@ jar {
 
 configurations {
     all*.exclude module : 'spring-boot-starter-logging'
-    integrationTestCompile.extendsFrom testCompile
-    integrationTestRuntime.extendsFrom testRuntime
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
     pgsql
@@ -264,7 +254,7 @@ def execAndWait(command, timeoutInSeconds = 15) {
 }
 
 task fullTest(type: GradleBuild) {
-    tasks = ['clean', 'build', 'initNakadi', 'acceptanceTest']
+    tasks = ['clean', 'bootRepackage', 'initNakadi', 'test', 'acceptanceTest']
     finalizedBy stopNakadi
 }
 
@@ -273,23 +263,12 @@ task fullAcceptanceTest(type: GradleBuild) {
     finalizedBy stopNakadi
 }
 
-task integrationTest(type: Test) {
-    testClassesDir = sourceSets.integrationTest.output.classesDir
-    classpath = sourceSets.integrationTest.runtimeClasspath
-}
-
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
 }
 
 test {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-}
-
-integrationTest {
     testLogging {
         events "passed", "skipped", "failed"
     }
@@ -310,7 +289,7 @@ bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
     environment 'NAKADI_OAUTH2_MODE', 'OFF'
-    environment 'NAKADI_FEATURETOGGLE_ENABLEALL', 'true'
+    environment 'NAKADI_FEATURETOGGLE_DEFAULT', 'true'
 }
 
 run {
@@ -324,5 +303,11 @@ jacocoTestReport {
 }
 
 check.dependsOn jacocoTestReport
-check.dependsOn integrationTest
-integrationTest.mustRunAfter test
+
+checkstyle {
+    configFile = new File(rootDir, "checkstyle.xml")
+}
+
+task checkstyle {
+    dependsOn checkstyleMain, checkstyleTest
+}

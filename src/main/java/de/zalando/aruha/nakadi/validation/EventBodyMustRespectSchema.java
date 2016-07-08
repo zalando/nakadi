@@ -22,7 +22,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
 
     public static final String NAME = "schema-validation";
 
-    private static final Function<OverrideDefinition, QualifiedJSONSchemaValidator> toQualifiedJSONSchemaValidator =
+    private static final Function<OverrideDefinition, QualifiedJSONSchemaValidator> TO_QUALIFIED_JSON_SCHEMA_VALIDATOR =
         t -> {
         final JSONSchemaValidator jsv = new JSONSchemaValidator(t.getEffectiveSchema());
         return new QualifiedJSONSchemaValidator(t.getQualifier(), jsv);
@@ -65,7 +65,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
                                                                                  SchemaValidationOverrides.class)
                                                                              .getOverrides().stream()
                                                                              .map(enhanceWithQualifiedSchema)
-                                                                             .map(toQualifiedJSONSchemaValidator)
+                                                                             .map(TO_QUALIFIED_JSON_SCHEMA_VALIDATOR)
                                                                              .collect(Collectors.toList());
 
         return new QualifiedJSONSchemaValidationChain(qualifiedValidators, defaultSchemaValidator);

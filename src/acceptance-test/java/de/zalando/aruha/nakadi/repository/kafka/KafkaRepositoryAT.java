@@ -20,19 +20,19 @@ import java.util.List;
 import java.util.Map;
 
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.core.IsCollectionContaining.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class KafkaRepositoryAT extends BaseAT {
 
-    private static final int defaultPartitionCount = 8;
-    private static final int defaultReplicaFactor = 1;
+    private static final int DEFAULT_PARTITION_COUNT = 8;
+    private static final int DEFAULT_REPLICA_FACTOR = 1;
 
     private KafkaRepositorySettings repositorySettings;
     private KafkaTestHelper kafkaHelper;
@@ -42,7 +42,7 @@ public class KafkaRepositoryAT extends BaseAT {
     @Before
     public void setup() {
         repositorySettings = createRepositorySettings();
-        kafkaHelper = new KafkaTestHelper(kafkaUrl);
+        kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         kafkaTopicRepository = createKafkaTopicRepository();
         topicName = TestUtils.randomValidEventTypeName();
     }
@@ -56,17 +56,17 @@ public class KafkaRepositoryAT extends BaseAT {
 
         // ASSERT //
         executeWithRetry(() -> {
-                    final Map<String, List<PartitionInfo>> topics = getAllTopics();
-                    assertThat(topics.keySet(), hasItem(topicName));
+                final Map<String, List<PartitionInfo>> topics = getAllTopics();
+                assertThat(topics.keySet(), hasItem(topicName));
 
-                    final List<PartitionInfo> partitionInfos = topics.get(topicName);
-                    assertThat(partitionInfos, hasSize(defaultPartitionCount));
+                final List<PartitionInfo> partitionInfos = topics.get(topicName);
+                assertThat(partitionInfos, hasSize(DEFAULT_PARTITION_COUNT));
 
-                    partitionInfos.stream().forEach(pInfo ->
-                            assertThat(pInfo.replicas(), arrayWithSize(defaultReplicaFactor)));
-                },
-                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                        .withWaitBetweenEachTry(500));
+                partitionInfos.stream().forEach(pInfo ->
+                        assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
+            },
+            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 20000)
@@ -74,25 +74,21 @@ public class KafkaRepositoryAT extends BaseAT {
     public void whenDeleteTopicThenTopicIsDeleted() throws Exception {
 
         // ARRANGE //
-        kafkaHelper.createTopic(topicName, zookeeperUrl);
+        kafkaHelper.createTopic(topicName, ZOOKEEPER_URL);
 
         // wait for topic to be created
-        executeWithRetry(() -> {
-                    return getAllTopics().containsKey(topicName);
-                },
-                new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false).withWaitBetweenEachTry(
-                        500));
+        executeWithRetry(() -> { return getAllTopics().containsKey(topicName); },
+            new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false).withWaitBetweenEachTry(
+                500));
 
         // ACT //
         kafkaTopicRepository.deleteTopic(topicName);
 
         // ASSERT //
         // check that topic was deleted
-        executeWithRetry(() -> {
-                    assertThat(getAllTopics().keySet(), not(hasItem(topicName)));
-                },
-                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                        .withWaitBetweenEachTry(500));
+        executeWithRetry(() -> { assertThat(getAllTopics().keySet(), not(hasItem(topicName))); },
+            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                    .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 10000)
@@ -100,7 +96,7 @@ public class KafkaRepositoryAT extends BaseAT {
         final List<BatchItem> items = new ArrayList<>();
         final JSONObject event = new JSONObject();
         final String topicId = TestUtils.randomValidEventTypeName();
-        kafkaHelper.createTopic(topicId, zookeeperUrl);
+        kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
 
         for (int i = 0; i < 10; i++) {
             final BatchItem item = new BatchItem(event);
@@ -122,7 +118,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
     private KafkaTopicRepository createKafkaTopicRepository() {
         final CuratorZookeeperClient zookeeperClient = mock(CuratorZookeeperClient.class);
-        when(zookeeperClient.getCurrentConnectionString()).thenReturn(zookeeperUrl);
+        when(zookeeperClient.getCurrentConnectionString()).thenReturn(ZOOKEEPER_URL);
 
         final CuratorFramework curatorFramework = mock(CuratorFramework.class);
         when(curatorFramework.getZookeeperClient()).thenReturn(zookeeperClient);
@@ -142,8 +138,8 @@ public class KafkaRepositoryAT extends BaseAT {
 
     private KafkaRepositorySettings createRepositorySettings() {
         final KafkaRepositorySettings settings = new KafkaRepositorySettings();
-        settings.setDefaultTopicPartitionCount(defaultPartitionCount);
-        settings.setDefaultTopicReplicaFactor(defaultReplicaFactor);
+        settings.setDefaultTopicPartitionCount(DEFAULT_PARTITION_COUNT);
+        settings.setDefaultTopicReplicaFactor(DEFAULT_REPLICA_FACTOR);
         settings.setKafkaSendTimeoutMs(10000);
         settings.setDefaultTopicRetentionMs(100000000);
         settings.setDefaultTopicRotationMs(50000000);

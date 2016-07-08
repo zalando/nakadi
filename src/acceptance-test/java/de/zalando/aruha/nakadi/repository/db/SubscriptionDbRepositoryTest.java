@@ -9,6 +9,7 @@ import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
+import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Before;
@@ -35,7 +36,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     @Before
     public void setUp() {
         super.setUp();
-        repository = new SubscriptionDbRepository(template, mapper);
+        repository = new SubscriptionDbRepository(template, mapper, new UUIDGenerator());
     }
 
     @Test

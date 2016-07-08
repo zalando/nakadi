@@ -1,20 +1,18 @@
 package de.zalando.aruha.nakadi.repository.zookeeper;
 
-import java.util.Arrays;
-import java.util.Collection;
-
-import javax.annotation.PostConstruct;
-
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.ensemble.EnsembleProvider;
 import org.apache.curator.ensemble.exhibitor.DefaultExhibitorRestClient;
 import org.apache.curator.ensemble.exhibitor.ExhibitorRestClient;
 import org.apache.curator.ensemble.exhibitor.Exhibitors;
-import org.apache.curator.ensemble.exhibitor.Exhibitors.BackupConnectionStringProvider;
 import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+
+import javax.annotation.PostConstruct;
+import java.util.Arrays;
+import java.util.Collection;
 
 public class ZooKeeperHolder {
 
@@ -55,13 +53,7 @@ public class ZooKeeperHolder {
         EnsembleProvider ensembleProvider;
         if (exhibitorAddresses != null) {
             final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddresses.split("\\s*,\\s*"));
-            final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort,
-                    new BackupConnectionStringProvider() {
-                        @Override
-                        public String getBackupConnectionString() throws Exception {
-                            return zookeeperBrokers + zookeeperKafkaNamespace;
-                        }
-                    });
+            final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort, () -> zookeeperBrokers + zookeeperKafkaNamespace);
             final ExhibitorRestClient exhibitorRestClient = new DefaultExhibitorRestClient();
             ensembleProvider = new ExhibitorEnsembleProvider(exhibitors,
                     exhibitorRestClient, "/exhibitor/v1/cluster/list", 300000, retryPolicy);

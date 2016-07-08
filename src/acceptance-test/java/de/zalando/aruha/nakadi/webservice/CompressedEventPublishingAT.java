@@ -24,8 +24,8 @@ import static javax.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
 
 public class CompressedEventPublishingAT extends BaseAT {
 
-    private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-    private static final JsonTestHelper jsonHelper = new JsonTestHelper(mapper);
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
 
     @Test
     public void whenSubmitCompressedBodyWithGzipEncodingThenOk() throws IOException {
@@ -51,7 +51,7 @@ public class CompressedEventPublishingAT extends BaseAT {
                 .header(CONTENT_ENCODING, "gzip")
                 .get("/event-types")
                 .then()
-                .body(jsonHelper.matchesObject(expectedProblem))
+                .body(JSON_HELPER.matchesObject(expectedProblem))
                 .statusCode(HttpStatus.SC_NOT_ACCEPTABLE);
     }
 
@@ -60,9 +60,11 @@ public class CompressedEventPublishingAT extends BaseAT {
                 new JSONObject("{\"type\": \"object\", \"properties\": {\"blah\": {\"type\": \"string\"}}, " +
                         "\"required\": [\"blah\"]}"));
         given()
-                .body(mapper.writeValueAsString(eventType))
+                .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
-                .post("/event-types");
+                .post("/event-types")
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
         return eventType;
     }
 

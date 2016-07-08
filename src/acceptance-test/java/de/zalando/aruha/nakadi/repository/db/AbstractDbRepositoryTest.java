@@ -11,16 +11,16 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import static de.zalando.aruha.nakadi.webservice.BaseAT.POSTGRES_PWD;
+import static de.zalando.aruha.nakadi.webservice.BaseAT.POSTGRES_URL;
+import static de.zalando.aruha.nakadi.webservice.BaseAT.POSTGRES_USER;
+
 public abstract class AbstractDbRepositoryTest {
 
     protected JdbcTemplate template;
     protected Connection connection;
     protected ObjectMapper mapper;
     protected String repositoryTable;
-
-    public static final String POSTGRES_URL = "jdbc:postgresql://localhost:5432/local_nakadi_db";
-    public static final String POSTGRES_USER = "nakadi";
-    public static final String POSTGRES_PWD = "nakadi";
 
     public AbstractDbRepositoryTest(final String repositoryTable) {
         this.repositoryTable = repositoryTable;

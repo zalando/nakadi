@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class EventStream {
         this.config = config;
     }
 
-    public void streamEvents() {
+    public void streamEvents(final AtomicBoolean connectionReady) {
         try {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
@@ -52,7 +53,7 @@ public class EventStream {
             final long start = currentTimeMillis();
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
 
-            while (true) {
+            while (connectionReady.get()) {
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
 
                 if (eventOrEmpty.isPresent()) {
@@ -131,8 +132,7 @@ public class EventStream {
                 .collect(Collectors.toMap(identity(), valueFunction));
     }
 
-    private String createStreamEvent(final String partition, final String offset, final List<String> events,
-            final Optional<String> topology) {
+    private String createStreamEvent(final String partition, final String offset, final List<String> events) {
         final StringBuilder builder = new StringBuilder().append("{\"cursor\":{\"partition\":\"").append(partition)
                                                          .append("\",\"offset\":\"").append(offset).append("\"}");
         if (!events.isEmpty()) {
@@ -149,7 +149,7 @@ public class EventStream {
             throws IOException {
         // create stream event batch for current partition and send it; if there were
         // no events, it will be just a keep-alive
-        final String streamEvent = createStreamEvent(partition, offset, currentBatch, Optional.empty());
+        final String streamEvent = createStreamEvent(partition, offset, currentBatch);
         outputStream.write(streamEvent.getBytes(UTF8));
         outputStream.flush();
     }

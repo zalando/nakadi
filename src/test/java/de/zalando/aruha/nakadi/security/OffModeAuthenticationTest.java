@@ -13,7 +13,7 @@ public class OffModeAuthenticationTest extends AuthenticationTest {
 
     @Test
     public void offAuthMode() {
-        Stream.concat(endpoints.stream(), endpointsForUidScope.stream())
+        Stream.concat(ENDPOINTS.stream(), ENDPOINTS_FOR_UID_SCOPE.stream())
                 .forEach(this::checkHasCorrectResponseStatus);
     }
 

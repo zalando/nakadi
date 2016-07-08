@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.webservice;
 
+import static de.zalando.aruha.nakadi.utils.TestUtils.getEventTypeJsonFromFile;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 import static org.hamcrest.Matchers.notNullValue;
@@ -26,9 +27,6 @@ import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.common.base.Charsets;
-import com.google.common.io.Resources;
-
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
 
@@ -46,8 +44,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     @Before
     public void before() throws IOException {
-        eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json");
-        eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json");
+        eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", TEST_EVENT_TYPE);
+        eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", TEST_EVENT_TYPE);
     }
 
     @SuppressWarnings("unchecked")
@@ -122,11 +120,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private RequestSpecification jsonRequestSpec() {
         return requestSpec().header("accept", "application/json").contentType(JSON);
-    }
-
-    private String getEventTypeJsonFromFile(final String resourceName) throws IOException {
-        final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
-        return json.replace("NAME_PLACEHOLDER", TEST_EVENT_TYPE);
     }
 
     private static String timeString() {
