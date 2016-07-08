@@ -66,10 +66,10 @@ public class EventTypeControllerTest {
     private final Enrichment enrichment = mock(Enrichment.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
-    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
     public EventTypeControllerTest() throws Exception {
 
+        FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, featureToggleService);
 
@@ -78,7 +78,7 @@ public class EventTypeControllerTest {
 
         mockMvc = standaloneSetup(controller).setMessageConverters(new StringHttpMessageConverter(),
                 jackson2HttpMessageConverter).build();
-        doReturn(false).when(featureToggleService).isFeatureEnabled(any(FeatureToggleService.Feature.class));
+        doReturn(false).when(featureToggleService).isFeatureEnabled(any());
     }
 
     @Test

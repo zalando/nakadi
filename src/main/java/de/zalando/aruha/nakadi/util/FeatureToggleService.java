@@ -14,7 +14,7 @@ public class FeatureToggleService {
     private final boolean forceEnableAll;
     private final ZooKeeperHolder zkHolder;
 
-    public FeatureToggleService(boolean forceEnableAll, final ZooKeeperHolder zkHolder) {
+    public FeatureToggleService(final boolean forceEnableAll, final ZooKeeperHolder zkHolder) {
         this.forceEnableAll = forceEnableAll;
         this.zkHolder = zkHolder;
     }
