@@ -128,7 +128,7 @@ public class ClosedConnectionsCrutch {
             final InetAddress address,
             final int port,
             final BooleanSupplier onCloseListener) {
-        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.CLOSE_CONNECTIONS_WITH_CRUTCH)) {
+        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.CONNECTION_CLOSE_CRUTCH)) {
             return;
         }
         LOG.debug("Listening for connection to close using crutch (" + address + ":" + port + ")");
@@ -139,7 +139,7 @@ public class ClosedConnectionsCrutch {
 
     @Scheduled(fixedDelay = 1000)
     public void refresh() throws IOException {
-        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.CLOSE_CONNECTIONS_WITH_CRUTCH)) {
+        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.CONNECTION_CLOSE_CRUTCH)) {
             return;
         }
         synchronized (toAdd) {

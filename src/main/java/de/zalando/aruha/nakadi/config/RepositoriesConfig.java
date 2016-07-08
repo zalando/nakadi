@@ -8,6 +8,8 @@ import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
+import de.zalando.aruha.nakadi.util.FeatureToggleServiceDefault;
+import de.zalando.aruha.nakadi.util.FeatureToggleServiceZk;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
 import de.zalando.aruha.nakadi.validation.EventMetadataValidationStrategy;
@@ -36,8 +38,12 @@ public class RepositoriesConfig {
     private ZookeeperConfig zookeeperConfig;
 
     @Bean
-    public FeatureToggleService featureToggleService(@Value("${nakadi.featureToggle.enableAll}") boolean forceEnableAll) {
-        return new FeatureToggleService(forceEnableAll, zookeeperConfig.zooKeeperHolder());
+    public FeatureToggleService featureToggleService(@Value("${nakadi.featureToggle.default}") final boolean forceDefault) {
+        if (forceDefault) {
+            return new FeatureToggleServiceDefault();
+        } else {
+            return new FeatureToggleServiceZk(zookeeperConfig.zooKeeperHolder());
+        }
     }
 
     @Bean

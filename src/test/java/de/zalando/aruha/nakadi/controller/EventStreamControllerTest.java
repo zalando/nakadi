@@ -98,7 +98,7 @@ public class EventStreamControllerTest {
         eventStreamFactoryMock = mock(EventStreamFactory.class);
 
         metricRegistry = new MetricRegistry();
-        controller = new EventStreamController(topicRepositoryMock, topicRepositoryMock, objectMapper,
+        controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
                 eventStreamFactoryMock, metricRegistry, mock(ClosedConnectionsCrutch.class));
 
         requestMock = mock(NativeWebRequest.class);

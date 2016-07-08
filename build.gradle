@@ -334,7 +334,7 @@ task removeOldDockerContainer(type: Exec) {
 }
 
 task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_MODE=OFF\" -e \"NAKADI_FEATURETOGGLE_ENABLEALL=true\" " +
+    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_MODE=OFF\" -e \"NAKADI_FEATURETOGGLE_DEFAULT=true\" " +
             "--net container:$storagesContainerName --name $dockerContainerName -i -t -d $dockerImageTag"
     dependsOn buildDockerImage, removeOldDockerContainer, startStoragesInDockerBound
 }
@@ -411,7 +411,7 @@ bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
     environment 'NAKADI_OAUTH2_MODE', 'OFF'
-    environment 'NAKADI_FEATURETOGGLE_ENABLEALL', 'true'
+    environment 'NAKADI_FEATURETOGGLE_DEFAULT', 'true'
 }
 
 run {
