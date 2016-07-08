@@ -21,7 +21,6 @@ before_script:
 #  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
 
 env:
-  - DOCKER_COMPOSE_VERSION=""
   - TEST_SUITE="travis_wait gradle check --stacktrace"   # unit tests
   - TEST_SUITE="gradle fullAcceptanceTest --stacktrace"  # acceptance tests
 
