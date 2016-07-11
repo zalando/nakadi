@@ -2,10 +2,12 @@ package de.zalando.aruha.nakadi.service.subscription.state;
 
 import de.zalando.aruha.nakadi.service.subscription.StreamingContext;
 
+import javax.annotation.Nullable;
+
 public class CleanupState extends State {
     private final Exception exception;
 
-    public CleanupState(final Exception e) {
+    public CleanupState(@Nullable final Exception e) {
         this.exception = e;
     }
 

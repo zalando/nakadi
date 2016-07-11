@@ -108,14 +108,17 @@ public class Partition {
         return state;
     }
 
+    @Nullable
     public String getSession() {
         return session;
     }
 
+    @Nullable
     public String getNextSession() {
         return nextSession;
     }
 
+    @Nullable
     public String getSessionOrNextSession() {
         if (state == State.REASSIGNING) {
             return nextSession;
