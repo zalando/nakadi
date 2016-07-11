@@ -55,7 +55,10 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity postEventInternal(String eventTypeName, String eventsAsString, NativeWebRequest nativeWebRequest, EventTypeMetrics eventTypeMetrics) {
+    private ResponseEntity postEventInternal(final String eventTypeName,
+                                             final String eventsAsString,
+                                             final NativeWebRequest nativeWebRequest,
+                                             final EventTypeMetrics eventTypeMetrics) {
         final long startingNanos = System.nanoTime();
         try {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
@@ -66,7 +69,7 @@ public class EventPublishingController {
             return response(publisher.publish(eventsAsJsonObjects, eventTypeName));
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
-            return create(crateProblem(e), nativeWebRequest);
+            return processJSONException(e, nativeWebRequest);
         } catch (final NoSuchEventTypeException e) {
             LOG.debug("Event type not found.", e);
             return create(e.asProblem(), nativeWebRequest);
@@ -78,7 +81,14 @@ public class EventPublishingController {
         }
     }
 
-    private ThrowableProblem crateProblem(JSONException e) {
+    private ResponseEntity processJSONException(final JSONException e, final NativeWebRequest nativeWebRequest) {
+        if (e.getCause() == null) {
+            return create(crateProblem(e), nativeWebRequest);
+        }
+        return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
+    }
+
+    private ThrowableProblem crateProblem(final JSONException e) {
         return Problem.valueOf(Response.Status.BAD_REQUEST, e.getMessage());
     }
 
