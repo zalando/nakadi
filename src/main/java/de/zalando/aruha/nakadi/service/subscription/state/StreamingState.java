@@ -81,6 +81,9 @@ class StreamingState extends State {
     }
 
     private void pollDataFromKafka() {
+        if (kafkaConsumer == null) {
+            throw new IllegalStateException("kafkaConsumer should not be null when calling pollDataFromKafka method");
+        }
         if (kafkaConsumer.assignment().isEmpty() || pollPaused) {
             // Small optimization not to waste CPU while not yet assigned to any partitions
             scheduleTask(this::pollDataFromKafka, getKafkaPollTimeout(), TimeUnit.MILLISECONDS);
@@ -90,12 +93,9 @@ class StreamingState extends State {
         if (!records.isEmpty()) {
             for (final TopicPartition tp : records.partitions()) {
                 final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition()));
-                final PartitionData pd = offsets.get(pk);
-                if (null != pd) {
-                    for (final ConsumerRecord<String, String> record : records.records(tp)) {
-                        pd.addEventFromKafka(record.offset(), record.value());
-                    }
-                }
+                Optional.ofNullable(offsets.get(pk))
+                        .ifPresent(pd -> records.records(tp).stream()
+                                .forEach(record -> pd.addEventFromKafka(record.offset(), record.value())));
             }
             addTask(this::streamToOutput);
         }
@@ -270,6 +270,9 @@ class StreamingState extends State {
     }
 
     private void reconfigureKafkaConsumer(final boolean forceSeek) {
+        if (kafkaConsumer == null) {
+            throw new IllegalStateException("kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
+        }
         final Set<Partition.PartitionKey> currentKafkaAssignment = kafkaConsumer.assignment().stream()
                 .map(tp -> new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition())))
                 .collect(Collectors.toSet());

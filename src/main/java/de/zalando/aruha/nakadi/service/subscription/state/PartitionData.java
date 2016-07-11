@@ -7,6 +7,8 @@ import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 class PartitionData {
     private final ZKSubscription subscription;
     private final NavigableMap<Long, String> nakadiEvents = new TreeMap<>();
@@ -30,6 +32,7 @@ class PartitionData {
         this.lastSendMillis = System.currentTimeMillis();
     }
 
+    @Nullable
     SortedMap<Long, String> takeEventsToStream(final long currentTimeMillis, final int batchSize, final long batchTimeoutMillis) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;

@@ -50,6 +50,9 @@ class ClosingState extends State {
     }
 
     private void onTopologyChanged() {
+        if (topologyListener == null) {
+            throw new IllegalStateException("topologyListener should not be null when calling onTopologyChanged method");
+        }
         topologyListener.refresh();
         reactOnTopologyChange();
     }
