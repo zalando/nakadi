@@ -10,13 +10,10 @@ import de.zalando.aruha.nakadi.webservice.BaseAT;
 import de.zalando.aruha.nakadi.webservice.utils.TestStreamingClient;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
-import java.text.MessageFormat;
 
 import static com.jayway.restassured.RestAssured.given;
-import static com.jayway.restassured.http.ContentType.JSON;
 import static de.zalando.aruha.nakadi.utils.TestUtils.waitFor;
 import static de.zalando.aruha.nakadi.webservice.hila.StreamBatch.singleEventBatch;
 import static de.zalando.aruha.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
@@ -166,9 +163,14 @@ public class HilaAT extends BaseAT {
         assertThat(client.getBatches().get(2).getCursor().getOffset(), is("11"));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 10000)
     public void whenThereAreNoEmptySlotsThenConflict() throws Exception {
-        TestStreamingClient.create(URL, subscription.getId(), "").start();
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_flush_timeout=1");
+        client.start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+
         given()
                 .get(format("/subscriptions/{0}/events", subscription.getId()))
                 .then()
