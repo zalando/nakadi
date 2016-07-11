@@ -15,22 +15,22 @@ import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public abstract class BaseAT {
 
+    public static final String POSTGRES_URL = "jdbc:postgresql://localhost:5432/local_nakadi_db";
+    public static final String POSTGRES_USER = "nakadi";
+    public static final String POSTGRES_PWD = "nakadi";
+
     protected static final int PORT = 8080;
     protected static final String URL = "http://localhost:" + PORT;
 
     protected static final String ZOOKEEPER_URL = "localhost:2181";
     protected static final String KAFKA_URL = "localhost:9092";
 
-    private static final String POSTGRESQL_URL = "jdbc:postgresql://localhost:5432/local_nakadi_db";
-    private static final String USERNAME = "nakadi_app";
-    private static final String PASSWORD = "nakadi";
-
     protected static final String EVENT_TYPE_NAME = "test-event-type-name";
     protected static final String TEST_TOPIC = "test-topic";
     protected static final int PARTITIONS_NUM = 8;
 
     private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
-            new DriverManagerDataSource(POSTGRESQL_URL, USERNAME, PASSWORD));
+            new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final EventTypeDbRepository EVENT_TYPE_REPO = new EventTypeDbRepository(JDBC_TEMPLATE, MAPPER);
 

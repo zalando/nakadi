@@ -65,29 +65,31 @@ You can run the project locally using [Docker](https://www.docker.com/).
 
 ### Running a Server
 
-From the project's home directory you can install and start a Nakadi container via Gradle:
+From the project's home directory you can start Nakadi via Gradle:
 
 ```sh
-./gradlew startDockerContainer
+./gradlew startNakadi
 ```
 
-This will start a docker container for the Nakadi server and another container 
-with its PostgreSQL, Kafka and Zookeeper dependencies. The ports 8080 (Nakadi), 
-5432 (PostgreSQL), 9092 (Kafka) and 2181 (Zookeeper) are to allow the services 
-to communicate with each other and must not be used by other applications.
+This will build the project and run docker compose with 4 services:
+
+- Nakadi (8080)
+- PostgreSQL (5432)
+- Kafka (9092)
+- Zookeeper (2181)
 
 ### Stopping a Server
 
 To stop the running Nakadi:
 
 ```sh
-./gradlew stopAndRemoveDockerContainer
+./gradlew stopNakadi
 ```
 
-### Mac OS Docker Settings 
+### Mac OS Docker Settings
 
-Since Docker for Mac OS runs inside Virtual Box, you will  want to expose 
-some ports first to allow Nakadi to access its dependencies -
+Since Docker for Mac OS runs inside Virtual Box, you will  want to expose
+some ports first to allow Nakadi to access its dependencies:
 
 ```sh
 docker-machine ssh default \
@@ -97,15 +99,15 @@ docker-machine ssh default \
 -L 2181:localhost:2181
 ```
 
-Alternatively you can set up port forwarding on the "default" machine through 
-its network settings in the VirtualBox UI. If you get the message "Is the 
-docker daemon running on this host?" but you know Docker and VirtualBox are 
-running, you might want to run this command - 
+Alternatively you can set up port forwarding on the "default" machine through
+its network settings in the VirtualBox UI. If you get the message "Is the
+docker daemon running on this host?" but you know Docker and VirtualBox are
+running, you might want to run this command:
 
 ```sh
 eval "$(docker-machine env default)"
 ```
-
+Note: Docker Beta for Mac OS (1.12.0-rc3-beta18) currently is not supported due to the bug in networking host configuration.
 
 ## API Overview and Usage
 
