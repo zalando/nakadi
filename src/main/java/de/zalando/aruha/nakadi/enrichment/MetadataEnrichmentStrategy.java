@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.enrichment;
 
+import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.util.FlowIdUtils;
@@ -10,13 +11,14 @@ import org.json.JSONObject;
 
 public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     @Override
-    public void enrich(final JSONObject event, final EventType eventType) throws EnrichmentException {
+    public void enrich(final BatchItem batchItem, final EventType eventType) throws EnrichmentException {
         try {
-            final JSONObject metadata = event.getJSONObject("metadata");
+            final JSONObject metadata = batchItem.getEvent().getJSONObject("metadata");
 
             setReceivedAt(metadata);
             setEventTypeName(metadata, eventType);
             setFlowId(metadata);
+            setPartiotion(metadata, batchItem);
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);
         }
@@ -33,5 +35,9 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
     private void setReceivedAt(final JSONObject metadata) {
         final DateTime dateTime = new DateTime(DateTimeZone.UTC);
         metadata.put("received_at", dateTime.toString());
+    }
+
+    public void setPartiotion(final JSONObject partiotion, final BatchItem batchItem) {
+        partiotion.put("partition", batchItem.getPartition());
     }
 }

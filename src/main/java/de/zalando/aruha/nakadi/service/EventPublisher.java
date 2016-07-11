@@ -54,20 +54,20 @@ public class EventPublisher {
 
         try {
             validate(batch, eventType);
-            enrich(batch, eventType);
             partition(batch, eventType);
+            enrich(batch, eventType);
             submit(batch, eventType);
 
             return ok(batch);
         } catch (final EventValidationException e) {
             LOG.debug("Event validation error: {}", e.getMessage());
             return aborted(EventPublishingStep.VALIDATING, batch);
-        } catch (EnrichmentException e) {
-            LOG.debug("Event enrichment error: {}", e.getMessage());
-            return aborted(EventPublishingStep.ENRICHING, batch);
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
             return aborted(EventPublishingStep.PARTITIONING, batch);
+        } catch (EnrichmentException e) {
+            LOG.debug("Event enrichment error: {}", e.getMessage());
+            return aborted(EventPublishingStep.ENRICHING, batch);
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
@@ -75,13 +75,12 @@ public class EventPublisher {
     }
 
     private void enrich(final List<BatchItem> batch, final EventType eventType) throws EnrichmentException {
-        for (BatchItem item : batch) {
+        for (final BatchItem batchItem : batch) {
             try {
-                item.setStep(EventPublishingStep.ENRICHING);
-                enrichment.enrich(item.getEvent(), eventType);
+                batchItem.setStep(EventPublishingStep.ENRICHING);
+                enrichment.enrich(batchItem, eventType);
             } catch (EnrichmentException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
-
+                batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
             }
         }

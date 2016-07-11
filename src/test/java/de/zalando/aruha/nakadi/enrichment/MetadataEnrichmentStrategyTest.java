@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildBusinessEvent;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
+import static de.zalando.aruha.nakadi.utils.TestUtils.createBatch;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyString;
@@ -26,7 +27,7 @@ public class MetadataEnrichmentStrategyTest {
 
         try {
             DateTimeUtils.setCurrentMillisFixed(0);
-            strategy.enrich(event, eventType);
+            strategy.enrich(createBatch(event), eventType);
         } finally {
             DateTimeUtils.setCurrentMillisSystem();
         }
@@ -41,7 +42,7 @@ public class MetadataEnrichmentStrategyTest {
 
         event.remove("metadata");
 
-        strategy.enrich(event, eventType);
+        strategy.enrich(createBatch(event), eventType);
     }
 
     @Test
@@ -51,7 +52,7 @@ public class MetadataEnrichmentStrategyTest {
 
         assertThat(event.getJSONObject("metadata").optString("event_type"), isEmptyString());
 
-        strategy.enrich(event, eventType);
+        strategy.enrich(createBatch(event), eventType);
 
         assertThat(event.getJSONObject("metadata").getString("event_type"), equalTo(eventType.getName()));
     }
@@ -65,7 +66,7 @@ public class MetadataEnrichmentStrategyTest {
 
         final String flowId = randomString();
         FlowIdUtils.push(flowId);
-        strategy.enrich(event, eventType);
+        strategy.enrich(createBatch(event), eventType);
 
         assertThat(event.getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
     }
