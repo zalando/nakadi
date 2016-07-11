@@ -45,20 +45,19 @@ public class Partition {
     }
 
     private final PartitionKey key;
-    @Nullable
     private final String session;
-    @Nullable
     private final String nextSession;
     private final State state;
 
-    public Partition(final PartitionKey key, final String session, final String nextSession, final State state) {
+    public Partition(final PartitionKey key, @Nullable final String session, @Nullable final String nextSession,
+                     final State state) {
         this.key = key;
         this.session = session;
         this.nextSession = nextSession;
         this.state = state;
     }
 
-    public Partition toState(final State state, final String session, final String nextSession) {
+    public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
         return new Partition(key, session, nextSession, state);
     }
 

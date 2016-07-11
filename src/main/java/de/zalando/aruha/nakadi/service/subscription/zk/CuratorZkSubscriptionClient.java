@@ -17,8 +17,11 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private static final String STATE_INITIALIZED = "INITIALIZED";
+    private static final String NO_SESSION = "";
     private static final Charset CHARSET = Charset.forName("UTF-8");
 
     private final CuratorFramework curatorFramework;
@@ -134,10 +137,11 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         }
     }
 
-    private static byte[] serializeNode(final String session, final String nextSession, final Partition.State state) {
+    private static byte[] serializeNode(@Nullable final String session, @Nullable final String nextSession,
+                                        final Partition.State state) {
         return Stream.of(
-                session == null ? "" : session,
-                nextSession == null ? "" : nextSession,
+                session == null ? NO_SESSION : session,
+                nextSession == null ? NO_SESSION : nextSession,
                 state.name()).collect(Collectors.joining(":")).getBytes(CHARSET);
     }
 
@@ -145,8 +149,8 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         final String[] parts = new String(data, CHARSET).split(":");
         return new Partition(
                 key,
-                parts[0].isEmpty() ? null : parts[0],
-                parts[1].isEmpty() ? null : parts[1],
+                NO_SESSION.equals(parts[0]) ? null : parts[0],
+                NO_SESSION.equals(parts[1]) ? null : parts[1],
                 Partition.State.valueOf(parts[2]));
     }
 
