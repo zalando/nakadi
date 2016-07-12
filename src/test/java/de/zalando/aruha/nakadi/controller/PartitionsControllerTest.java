@@ -21,6 +21,7 @@ import org.zalando.problem.ThrowableProblem;
 
 import java.util.List;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.eq;
@@ -75,6 +76,7 @@ public class PartitionsControllerTest {
     @Test
     public void whenListPartitionsThenOk() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
         when(topicRepositoryMock.listPartitions(eq(EVENT_TYPE.getTopic()))).thenReturn(TEST_TOPIC_PARTITIONS);
 
         mockMvc.perform(
@@ -95,6 +97,18 @@ public class PartitionsControllerTest {
     }
 
     @Test
+    public void whenListPartitionsForWrongTopicThenInternalServerError() throws Exception {
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(false);
+        final ThrowableProblem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka");
+
+        mockMvc.perform(
+                get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+    }
+
+    @Test
     public void whenListPartitionsAndNakadiExceptionThenServiceUnavaiable() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenThrow(ServiceUnavailableException.class);
 
@@ -108,6 +122,7 @@ public class PartitionsControllerTest {
     @Test
     public void whenGetPartitionThenOk() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
         when(topicRepositoryMock.partitionExists(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION))).thenReturn(true);
         when(topicRepositoryMock.getPartition(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION))).thenReturn(TEST_TOPIC_PARTITION_0);
 
@@ -131,12 +146,25 @@ public class PartitionsControllerTest {
     @Test
     public void whenGetPartitionForWrongPartitionThenNotFound() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
         when(topicRepositoryMock.partitionExists(eq(EVENT_TYPE.getTopic()), eq(UNKNOWN_PARTITION))).thenReturn(false);
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "partition not found");
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, UNKNOWN_PARTITION)))
                 .andExpect(status().isNotFound())
+                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+    }
+
+    @Test
+    public void whenGetPartitionForWrongTopicThenInternalServerError() throws Exception {
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(false);
+        final ThrowableProblem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka");
+
+        mockMvc.perform(
+                get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, UNKNOWN_PARTITION)))
+                .andExpect(status().isInternalServerError())
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
