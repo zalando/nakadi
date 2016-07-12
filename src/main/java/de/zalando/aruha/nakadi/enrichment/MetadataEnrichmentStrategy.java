@@ -37,7 +37,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         metadata.put("received_at", dateTime.toString());
     }
 
-    public void setPartition(final JSONObject partiotion, final BatchItem batchItem) {
-        partiotion.put("partition", batchItem.getPartition());
+    public void setPartition(final JSONObject partition, final BatchItem batchItem) {
+        partition.put("partition", batchItem.getPartition());
     }
 }
