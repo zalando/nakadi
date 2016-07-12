@@ -272,10 +272,20 @@ public class EventTypeControllerTest {
                 Collections.singletonList("blabla"));
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        Mockito.doThrow(new TopicDeletionException("dummy message", null)).when(topicRepository).deleteTopic(
-                eventType.getTopic());
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void whenPUTEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
+
+        final EventType eventType = buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"),
+                Collections.singletonList("blabla"));
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+
+        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
     }
 

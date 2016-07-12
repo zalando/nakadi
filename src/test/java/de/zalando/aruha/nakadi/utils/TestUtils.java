@@ -106,9 +106,7 @@ public class TestUtils {
         return buildEventType(name, schema, Collections.emptyList());
     }
 
-    public static EventType buildEventType(final String name, final JSONObject schema, List<String>
-                                           partitionKeyFields)
-    {
+    public static EventType buildEventType(final String name, final JSONObject schema, final List<String> partitionKeyFields) {
         final EventType et = new EventType();
         et.setName(name);
         et.setTopic(randomUUID());

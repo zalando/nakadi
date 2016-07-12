@@ -185,6 +185,23 @@ public class EventTypeController {
         }
     }
 
+    private void validatePartitionKeys(final EventType eventType) throws InvalidEventTypeException {
+        try {
+            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+
+            List<String> absentFields = eventType.getPartitionKeyFields().stream()
+                    .filter(field -> !hasReservedField(eventType, schemaAsJson, field))
+                    .collect(Collectors.toList());
+            if (!absentFields.isEmpty()) {
+                throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
+            }
+        } catch (final JSONException e) {
+            throw new InvalidEventTypeException("schema must be a valid json");
+        } catch (final SchemaException e) {
+            throw new InvalidEventTypeException("schema must be a valid json-schema");
+        }
+    }
+
     private void validateSchema(final EventType eventType) throws InvalidEventTypeException {
         try {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
@@ -193,12 +210,7 @@ public class EventTypeController {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            List<String> absentFields = eventType.getPartitionKeyFields().stream()
-                    .filter(field -> !hasReservedField(eventType, schemaAsJson, field))
-                    .collect(Collectors.toList());
-            if (!absentFields.isEmpty()) {
-                throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
-            }
+            validatePartitionKeys(eventType);
 
             SchemaLoader.load(schemaAsJson);
         } catch (final JSONException e) {
@@ -223,6 +235,7 @@ public class EventTypeController {
         final EventType existingEventType = eventTypeRepository.findByName(name);
 
         validateName(name, eventType);
+        validatePartitionKeys(eventType);
         validateSchemaChange(eventType, existingEventType);
         eventType.setDefaultStatistics(
                 validateStatisticsUpdate(existingEventType.getDefaultStatistics(), eventType.getDefaultStatistics()));
