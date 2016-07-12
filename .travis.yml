@@ -27,8 +27,8 @@ before_install:
 before_script:
   - sudo /etc/init.d/postgresql stop
   - pip install --user codecov
-#  - curl http://www.jpm4j.org/install/script | sudo sh
-#  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
+  - curl http://www.jpm4j.org/install/script | sudo sh
+  - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
 
 env:
   global:
@@ -44,4 +44,4 @@ script: "$TEST_SUITE"
 
 after_success:
   - codecov
-#  - codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
+  - codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
