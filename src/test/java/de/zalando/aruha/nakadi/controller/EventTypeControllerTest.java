@@ -15,6 +15,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
+import de.zalando.aruha.nakadi.managers.EventTypeManager;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -35,9 +36,11 @@ import org.zalando.problem.ThrowableProblem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
+import java.util.Optional;
 import java.util.UUID;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
+import static de.zalando.aruha.nakadi.utils.TestUtils.OWNING_APPLICATION;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -74,16 +77,20 @@ public class EventTypeControllerTest {
 
     public EventTypeControllerTest() throws Exception {
 
-        final EventTypeController controller = new EventTypeController(eventTypeRepository, topicRepository,
-                partitionResolver, enrichment, featureToggleService, uuid);
+        final EventTypeManager eventTypeManager = new EventTypeManager(eventTypeRepository, topicRepository,
+                partitionResolver, enrichment, uuid);
+
+        final EventTypeController controller = new EventTypeController(eventTypeManager, eventTypeRepository,
+                featureToggleService);
 
         Mockito.doReturn(randomUUID).when(uuid).randomUUID();
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
 
-        mockMvc = standaloneSetup(controller).setMessageConverters(new StringHttpMessageConverter(),
-                jackson2HttpMessageConverter).build();
+        mockMvc = standaloneSetup(controller)
+                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .build();
         doReturn(false).when(featureToggleService).isFeatureEnabled(any());
     }
 
@@ -224,6 +231,7 @@ public class EventTypeControllerTest {
         final EventType eventType = buildDefaultEventType();
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         Mockito.doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
 
         Mockito.doNothing().when(topicRepository).deleteTopic(eventType.getTopic());
@@ -238,14 +246,10 @@ public class EventTypeControllerTest {
     public void whenDeleteNoneExistingEventTypeThen404() throws Exception {
 
         final String eventTypeName = TestUtils.randomValidEventTypeName();
-        final Problem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy message");
-
-        Mockito.doThrow(new NoSuchEventTypeException("dummy message")).when(eventTypeRepository).findByName(
-                eventTypeName);
+        Mockito.doReturn(Optional.empty()).when(eventTypeRepository).findByNameO(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isNotFound())
-                                      .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                                              .string(matchesProblem(expectedProblem)));
+                                      .andExpect(content().contentType("application/problem+json"));
     }
 
     @Test
@@ -255,6 +259,7 @@ public class EventTypeControllerTest {
         final EventType eventType = buildDefaultEventType();
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         Mockito.doThrow(new TopicDeletionException("dummy message", null)).when(topicRepository).deleteTopic(
             eventType.getTopic());
 
@@ -271,6 +276,7 @@ public class EventTypeControllerTest {
 
         Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
             eventTypeName);
+        Mockito.doReturn(Optional.of(buildDefaultEventType())).when(eventTypeRepository).findByNameO(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
                                       .andExpect(content().contentType("application/problem+json")).andExpect(content()
@@ -498,7 +504,7 @@ public class EventTypeControllerTest {
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName));
+        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(() -> OWNING_APPLICATION));
     }
 
     private ResultActions postEventType(final EventType eventType) throws Exception {
@@ -523,8 +529,7 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(final String content, final String name) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name).contentType(APPLICATION_JSON)
                                                                                         .content(content);
-
-        return mockMvc.perform(requestBuilder);
+        return mockMvc.perform(requestBuilder.principal(() -> OWNING_APPLICATION));
     }
 
     private SameJSONAs<? super String> matchesProblem(final Problem expectedProblem) throws JsonProcessingException {

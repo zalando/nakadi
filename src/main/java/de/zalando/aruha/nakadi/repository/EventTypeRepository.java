@@ -6,6 +6,7 @@ import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface EventTypeRepository {
 
@@ -18,4 +19,14 @@ public interface EventTypeRepository {
     List<EventType> list();
 
     void removeEventType(String name) throws InternalNakadiException, NoSuchEventTypeException;
+
+    default Optional<EventType> findByNameO(String eventTypeName) throws InternalNakadiException {
+        try {
+            return Optional.of(findByName(eventTypeName));
+        } catch (NoSuchEventTypeException e) {
+            return Optional.empty();
+        } catch (InternalNakadiException e) {
+            throw e;
+        }
+    }
 }

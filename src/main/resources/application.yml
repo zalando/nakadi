@@ -50,6 +50,7 @@ nakadi:
     connectionTimeoutMs: 10000
   oauth2:
     mode: BASIC
+    defaultClientId: test
     tokenInfoUrl: https://example.com/tokeninfo
     clientId: stups_aruha-event-store-poc
     scopes:

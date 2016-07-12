@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
+import de.zalando.aruha.nakadi.security.ClientIdResolver;
 import de.zalando.aruha.nakadi.util.FlowIdRequestFilter;
 import de.zalando.aruha.nakadi.util.GzipBodyRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.http.converter.xml.SourceHttpMessageConverter;
 import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -33,6 +35,9 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Autowired
     private JsonConfig jsonConfig;
+
+    @Autowired
+    private SecuritySettings securitySettings;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -80,6 +85,11 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
         converters.add(mappingJackson2HttpMessageConverter());
         super.configureMessageConverters(converters);
+    }
+
+    @Override
+    protected void addArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
+        argumentResolvers.add(new ClientIdResolver(securitySettings));
     }
 
     @Override
