@@ -11,16 +11,16 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import static de.zalando.aruha.nakadi.webservice.BaseAT.POSTGRES_PWD;
+import static de.zalando.aruha.nakadi.webservice.BaseAT.POSTGRES_URL;
+import static de.zalando.aruha.nakadi.webservice.BaseAT.POSTGRES_USER;
+
 public abstract class AbstractDbRepositoryTest {
 
     protected JdbcTemplate template;
     protected Connection connection;
     protected ObjectMapper mapper;
     protected String repositoryTable;
-
-    private static final String postgresqlUrl = "jdbc:postgresql://localhost:5432/local_nakadi_db";
-    private static final String username = "nakadi_app";
-    private static final String password = "nakadi";
 
     public AbstractDbRepositoryTest(final String repositoryTable) {
         this.repositoryTable = repositoryTable;
@@ -30,7 +30,7 @@ public abstract class AbstractDbRepositoryTest {
     public void setUp() {
         try {
             mapper = (new JsonConfig()).jacksonObjectMapper();
-            final DataSource datasource = new DriverManagerDataSource(postgresqlUrl, username, password);
+            final DataSource datasource = new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD);
             template = new JdbcTemplate(datasource);
             connection = datasource.getConnection();
             clearRepositoryTable();

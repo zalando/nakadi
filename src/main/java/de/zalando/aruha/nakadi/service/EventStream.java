@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class EventStream {
         this.config = config;
     }
 
-    public void streamEvents() {
+    public void streamEvents(final AtomicBoolean connectionReady) {
         try {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
@@ -52,7 +53,7 @@ public class EventStream {
             final long start = currentTimeMillis();
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
 
-            while (true) {
+            while (connectionReady.get()) {
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
 
                 if (eventOrEmpty.isPresent()) {

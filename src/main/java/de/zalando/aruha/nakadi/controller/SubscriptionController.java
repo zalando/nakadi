@@ -27,9 +27,10 @@ import javax.validation.Valid;
 import java.util.List;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.FEATURE_HIGH_LEVEL_API;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -57,7 +58,7 @@ public class SubscriptionController {
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors, final NativeWebRequest nativeWebRequest) {
 
-        if (!featureToggleService.isFeatureEnabled(FEATURE_HIGH_LEVEL_API)) {
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
         if (errors.hasErrors()) {
@@ -78,7 +79,7 @@ public class SubscriptionController {
                 final String errorMessage = "Failed to create subscription, event type(s) not found: '" +
                         StringUtils.join(noneExistingEventTypes, "','") + "'";
                 LOG.debug(errorMessage);
-                return create(NOT_FOUND, errorMessage, nativeWebRequest);
+                return create(UNPROCESSABLE_ENTITY, errorMessage, nativeWebRequest);
             }
 
             // generate subscription id and try to create subscription in DB

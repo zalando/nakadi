@@ -2,21 +2,23 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.io.InputStream;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
-import org.junit.Test;
 
 public class KafkaPartitionsCalculatorTest {
 
-    private static final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
 
     public static KafkaPartitionsCalculator buildTest() throws IOException {
-        return KafkaPartitionsCalculator.load(objectMapper, "t2.large", getTestStream());
+        return KafkaPartitionsCalculator.load(OBJECT_MAPPER, "t2.large", getTestStream());
     }
 
     private static InputStream getTestStream() {
@@ -25,13 +27,13 @@ public class KafkaPartitionsCalculatorTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testLoadFailForUnknownName() throws IOException {
-        KafkaPartitionsCalculator.load(objectMapper, "null", getTestStream());
+        KafkaPartitionsCalculator.load(OBJECT_MAPPER, "null", getTestStream());
     }
 
     @Test
     public void testLoadCorrectForCorrectName() throws IOException {
         for (final String name : new String[]{"t2.large", "c4.xlarge"}) {
-            final KafkaPartitionsCalculator calculatorMap = KafkaPartitionsCalculator.load(objectMapper, name, getTestStream());
+            final KafkaPartitionsCalculator calculatorMap = KafkaPartitionsCalculator.load(OBJECT_MAPPER, name, getTestStream());
             assertThat(calculatorMap, notNullValue());
         }
     }

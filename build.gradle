@@ -7,8 +7,7 @@ apply plugin: 'application'
 apply plugin: 'spring-boot'
 apply plugin: "jacoco"
 apply plugin: 'findbugs'
-// if this is applied, include scala dependencies (see below)
-// apply plugin: 'scala'
+apply plugin: 'checkstyle'
 
 group 'de.zalando.aruha'
 sourceCompatibility = 1.8
@@ -17,9 +16,6 @@ targetCompatibility = 1.8
 mainClassName = 'de.zalando.aruha.nakadi.Application'
 def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
-def dockerContainerName = "nakadi-local"
-
-def storagesContainerName = "local-storages"
 
 /* config parameters */
 def dockerImageName = "$dockerGroup/$dockerApplicationName"
@@ -32,34 +28,13 @@ if (project.hasProperty("dockerImageVersion")) {
 }
 def dockerImageTag = "$dockerImageName:$dockerImageVersion"
 
-
 def dockerBuildTimeout = 300
-
-def loadYaml() {
-    org.yaml.snakeyaml.DumperOptions options = new org.yaml.snakeyaml.DumperOptions();
-    options.setDefaultFlowStyle(org.yaml.snakeyaml.DumperOptions.FlowStyle.BLOCK);
-    def yaml = new org.yaml.snakeyaml.Yaml(options)
-    def file = new File("src/main/resources/application.yml").text
-    def cfg = (Map) yaml.load(file)
-    return cfg
-}
-
-def application_config = loadYaml()
 
 repositories {
     mavenCentral()
 }
 
 sourceSets {
-    integrationTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/integration-test/java')
-        }
-        resources.srcDir file('src/integration-test/resources')
-    }
-
     acceptanceTest {
         java {
             compileClasspath += main.output + test.output
@@ -90,8 +65,6 @@ jar {
 
 configurations {
     all*.exclude module : 'spring-boot-starter-logging'
-    integrationTestCompile.extendsFrom testCompile
-    integrationTestRuntime.extendsFrom testRuntime
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
     pgsql
@@ -158,15 +131,11 @@ dependencies {
     compile 'org.apache.curator:curator-recipes:2.9.1'
 
     // json
-    compile 'org.everit.json:org.everit.json.schema:1.2.0'
+    compile 'org.everit.json:org.everit.json.schema:1.3.0'
     compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.4.0') {
         exclude module: "json"
     }
     compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.0'
-
-    // scala dependencies
-    //compile 'org.scala-lang:scala-library:2.11.6'
-    //testCompile 'org.scalatest:scalatest_2.11:2.2.4'
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
@@ -197,84 +166,6 @@ tasks.withType(FindBugs) {
         xml.enabled = false
         html.enabled = true
     }
-}
-
-task cleanDb << {
-    def sql = getSqlInstance(application_config["spring"]["datasource"])
-
-    sql.execute('TRUNCATE zn_data.event_type')
-
-    sql.close()
-}
-
-task dbBootstrap << {
-    def db = application_config["spring"]["datasource"]
-
-    def sql = getSqlInstance(db)
-
-    def sqlFileList = getSortedSqlFiles()
-
-    sqlFileList.each {
-        println 'Running script: ' + it
-        String sqlString = it.text
-        sql.execute(sqlString)
-    }
-
-    sql.execute("RESET ROLE")
-
-    sql.execute("CREATE ROLE " + db['username'] + " WITH LOGIN PASSWORD '" + db['password'] + "'")
-
-    sql.execute("GRANT zalando_nakadi_data_writer TO " + db['username'])
-
-    sql.close()
-}
-
-def getSortedSqlFiles() {
-    def sqlFileList = []
-    new File('database').eachFileRecurse(groovy.io.FileType.FILES) {
-        if (it.name.endsWith('.sql')) {
-            sqlFileList << it
-        }
-    }
-
-    sqlFileList.sort()
-}
-
-def getSqlInstance(db) {
-    // This is needed to get postgreSQL driver onto the Groovy/Gradle classpath
-    configurations.pgsql.each { file ->
-        println "Adding URL: $file"
-        gradle.class.classLoader.addURL(file.toURI().toURL())
-    }
-
-    groovy.sql.Sql.newInstance(db.url, 'nakadi', db.password, db.driverClassName)
-}
-
-def runMakeStorages(target, options="", timeout=15) {
-    execAndWait("make " + options + " --directory local-storages " + target, timeout)
-}
-
-task stopAndRemoveStoragesInDocker {
-    doLast {
-        runMakeStorages("stop-and-remove", "", dockerBuildTimeout)
-    }
-    outputs.upToDateWhen { false }
-}
-
-task startStoragesInDockerBound() {
-    finalizedBy dbBootstrap
-    doLast {
-        runMakeStorages("run", "PUBLISH_NAKADI_PORT=\"-p 8080:8080\"", dockerBuildTimeout)
-    }
-    outputs.upToDateWhen { false }
-}
-
-task startStoragesInDocker() {
-    finalizedBy dbBootstrap
-    doLast {
-        runMakeStorages("run", "", dockerBuildTimeout)
-    }
-    outputs.upToDateWhen { false }
 }
 
 task generateScmSourceJson() {
@@ -327,31 +218,31 @@ task pushDockerImage {
     }
 }
 
-task removeOldDockerContainer(type: Exec) {
-    commandLine "bash", "-c",
-            "for c in `docker ps -qaf name=$dockerContainerName`; do docker rm -f \$c; done"
+task initNakadi(type: Exec) {
+    commandLine "bash", "-c", "docker-compose up -d --build"
+    doLast {
+        println "Waiting for Nakadi to start up"
+        long start = System.currentTimeMillis()
+        waitForNakadi()
+        println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
+    }
 }
 
-task startDockerContainer(type: Exec) {
-    commandLine "bash", "-c", "docker run -e \"NAKADI_OAUTH2_MODE=OFF\" -e \"NAKADI_FEATURETOGGLE_ENABLEALL=true\" " +
-            "--net container:$storagesContainerName --name $dockerContainerName -i -t -d $dockerImageTag"
-    dependsOn buildDockerImage, removeOldDockerContainer, startStoragesInDockerBound
+task startNakadi(type: GradleBuild) {
+    tasks = ['clean', 'bootRepackage', 'initNakadi']
 }
 
-task stopAndRemoveDockerContainer(type: Exec) {
-    dependsOn stopAndRemoveStoragesInDocker
-    commandLine "bash", "-c",
-            "for c in `docker ps -qaf name=$dockerContainerName`; do docker rm -f \$c; done"
+task stopNakadi(type: Exec) {
+    commandLine "bash", "-c", "docker-compose down"
 }
 
-task integrationTest(type: Test) {
-    testClassesDir = sourceSets.integrationTest.output.classesDir
-    classpath = sourceSets.integrationTest.runtimeClasspath
-}
-
-task acceptanceTest(type: Test) {
-    testClassesDir = sourceSets.acceptanceTest.output.classesDir
-    classpath = sourceSets.acceptanceTest.runtimeClasspath
+def waitForNakadi() {
+    // wait till application is up (health check is successful)
+    int result = 1
+    while (result != 0) {
+        result = execAndWait('curl http://localhost:8080/health')
+        sleep(1000L)
+    }
 }
 
 def execAndWait(command, timeoutInSeconds = 15) {
@@ -362,34 +253,22 @@ def execAndWait(command, timeoutInSeconds = 15) {
     return proc.exitValue()
 }
 
-task startDockerContainerAndWait() {
-    // start app with docker
-    dependsOn startDockerContainer
-
-    doLast {
-        // wait till application is up (health check is successful)
-        int result = 1
-        while (result != 0) {
-            result = execAndWait('curl http://localhost:8080/health')
-            sleep(1000L)
-        }
-    }
-    outputs.upToDateWhen { false }
+task fullTest(type: GradleBuild) {
+    tasks = ['clean', 'bootRepackage', 'initNakadi', 'test', 'acceptanceTest']
+    finalizedBy stopNakadi
 }
 
 task fullAcceptanceTest(type: GradleBuild) {
-    dependsOn startDockerContainerAndWait
-    tasks = ['acceptanceTest']
-    finalizedBy cleanDb, stopAndRemoveStoragesInDocker, stopAndRemoveDockerContainer
+    tasks = ['clean', 'bootRepackage', 'initNakadi', 'acceptanceTest']
+    finalizedBy stopNakadi
+}
+
+task acceptanceTest(type: Test) {
+    testClassesDir = sourceSets.acceptanceTest.output.classesDir
+    classpath = sourceSets.acceptanceTest.runtimeClasspath
 }
 
 test {
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-}
-
-integrationTest {
     testLogging {
         events "passed", "skipped", "failed"
     }
@@ -410,7 +289,7 @@ bootRun {
     addResources = false
     main = 'de.zalando.aruha.nakadi.Application'
     environment 'NAKADI_OAUTH2_MODE', 'OFF'
-    environment 'NAKADI_FEATURETOGGLE_ENABLEALL', 'true'
+    environment 'NAKADI_FEATURETOGGLE_DEFAULT', 'true'
 }
 
 run {
@@ -424,5 +303,11 @@ jacocoTestReport {
 }
 
 check.dependsOn jacocoTestReport
-check.dependsOn integrationTest
-integrationTest.mustRunAfter test
+
+checkstyle {
+    configFile = new File(rootDir, "checkstyle.xml")
+}
+
+task checkstyle {
+    dependsOn checkstyleMain, checkstyleTest
+}

@@ -2,9 +2,7 @@ swagger: '2.0'
 info:
   title: Nakadi Event Bus API Definition
   description: |
-    -----------
-    Definitions
-    -----------
+
     Nakadi at its core aims at being a generic and content-agnostic event broker with a convenient
     API.  In doing this, Nakadi abstracts away, as much as possible, details of the backing
     messaging infrastructure. The single currently supported messaging infrastructure is Kafka
@@ -60,37 +58,38 @@ info:
     short term plan to be included.*
 
 
-    Scope and status of this document
+    Scope and status of the API
     ---------------------------------
 
-    The present API specification is in **draft** state and is subject to change.
+    The API specification is in **draft** state and is subject to change.
 
-    In this document, ready for review are included:
+    In this document, you'll find:
+    
     * The Schema Registry API, including configuration possibilities for the Schema, Validation,
     Enrichment and Partitioning of Events, and their effects on reception of Events.
 
-    * The stantardised event format (see definition of Event, BusinessEvent and DataChangeEvent)
-    (Note: at a later moment this will be configurable and not be inherent part of this API).
+    * The existing event format (see definition of Event, BusinessEvent and DataChangeEvent)
+    (Note: in the future this is planned to be configurable and not an inherent part of this API).
 
-    * Unmanaged API (low level).
-
-    Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not
-    included in this version of this specification.
+    * Unmanaged API: provides low level access to an event stream with information that allows
+      consumers to detect their position for each partition in the stream via a `Cursor`.
 
     Notable omissions here are:
 
-    * The contract between Nakadi and clients in the context of the high-level API (i.e. the process
-    for clients to establish subscriptions).
+    * The Managed (or "high level") API: this will be a contract between Nakadi and consumers to
+    allow the latter to establish subscriptions and have offset information managed by the Nakadi
+    service.
 
-    * Enrichment procedure.
+    * Enrichment options. Enrichment is currently limited to metadata enrichment for the business
+      and data change types, but the API is designed to allow more options.
 
-    * Security scopes (OAuth) for the different operations
+    * More extensive security scopes (OAuth) for the different operations in the API.
 
-    * Explicit control of (in case of Kafka as underlying messaging broker) topic's creation
-    parameters (number of partitions, retention times, etc), as well as their modification.
+    * Explicit control of an event type's creation parameters (the number of partitions, retention
+      times, etc), as well as their modification.
 
 
-  version: '0.5.1'
+  version: '0.6.0'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
@@ -130,14 +129,6 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
   /event-types:
     get:
       tags:
@@ -162,15 +153,6 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
-
     post:
       tags:
         - schema-registry-api
@@ -179,24 +161,19 @@ paths:
       description: |
         Creates a new `EventType`.
 
-        **Implementation note:** The creation of an EventType implicitly creates the structures in
-        the backing messaging implementation needed for the reception and persistence of the
-        Events. Considering that at this time only Kafka is used, this corresponds to the creation
-        of a Topic. If so desired, clients can interact directly with the topic using the low level
-        API (for existing restrictions see the corresponding methods on the topic-api).
-
         The fields validation-strategies, enrichment-strategies and partition-resolution-strategy
         have all an effect on the incoming Event of this EventType. For its impacts on the reception
         of events please consult the Event submission API methods.
 
         * Validation strategies define an array of validation stategies to be evaluated on reception
-        of an `Event` of this `EventType`. Details of usage can be found in an external document
-        (TBD link to document).
+        of an `Event` of this `EventType`. Details of usage can be found in this external document
 
-        * TBD Enrichment strategy
+          - http://zalando.github.io/nakadi-manual/
+
+        * Enrichment strategy. (todo: define this part of the API).
 
         * The schema of an `EventType` is defined as an `EventTypeSchema`. Currently only
-        json-schema is supported.
+        the value `json-schema` is supported, representing JSON Schema draft 04.
 
         Following conditions are enforced. Not meeting them will fail the request with the indicated
         status (details are provided in the Problem object):
@@ -207,7 +184,7 @@ paths:
         * Using `EventTypeSchema.type` other than json-schema or passing a `EventTypeSchema.schema`
         that is invalid with respect to the schema's type. Rejects with 422 Unprocessable entity.
 
-        * Referring any of Validation, Enrichment or Partition strategies that does not exist or
+        * Referring any Enrichment or Partition strategies that do not exist or
         whose parametrization is deemed invalid. Rejects with 422 Unprocessable entity.
 
         Nakadi MIGHT impose necessary schema, validation and enrichment minimal configurations that
@@ -238,15 +215,6 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
-
 
   /event-types/{name}:
     get:
@@ -276,18 +244,6 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '404':
-          description: EventType not found
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
 
     put:
       tags:
@@ -301,7 +257,7 @@ paths:
         The name field cannot be changed. Attempting to do so will result in a 422 failure.
 
         At this moment changes in the schema are not supported and will produce a 422
-        failure. (TODO: define conditions for backwards compatible extensions in the schema)
+        failure. (todo: define conditions for backwards compatible extensions in the schema)
       parameters:
         - name: name
           in: path
@@ -317,7 +273,7 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-          The flow id of the request, which is written into the logs and passed to called
+            The flow id of the request, which is written into the logs and passed to called
             services. Helpful for operational troubleshooting and log analysis.
           type: string
           format: flow-id
@@ -328,34 +284,25 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '404':
-          description: EventType not found.
-          schema:
-              $ref: '#/definitions/Problem'
         '422':
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
-
     delete:
       tags:
         - schema-registry-api
       security:
         - oauth2: ['nakadi.config.write']
       description: |
-        Deletes an `EventType` identified by its name. The underlying Kafka topic and all events of
-        this `EventType` will also be removed.  **Note**: Kafka's topic deletion happens
-        asynchronously with respect to this DELETE call; therefore creation of an equally named
-        `EventType` before the underlying topic deletion is complete will not succeed (failure is a
-        409 Conflic).
+        Deletes an `EventType` identified by its name. All events in the `EventType`'s stream' will
+        also be removed. **Note**: deletion happens asynchronously, which has the following
+        consequences:
+         
+         * Creation of an equally named `EventType` before the underlying topic deletion is complete
+         might not succeed (failure is a 409 Conflict).
+ 
+         * Events in the stream may be visible for a short period of time before being removed.
+
       parameters:
         - name: name
           in: path
@@ -376,22 +323,6 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '403':
-          description: Client is not authorized to perform this operation
-          schema:
-            $ref: '#/definitions/Problem'
-        '404':
-          description: EventType not found.
-          schema:
-              $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
 
   /event-types/{name}/events:
     post:
@@ -407,7 +338,7 @@ paths:
         validation, enrichment and partition. The steps performed on reception of incoming message
         are:
 
-        1. Every validation rule specified in the `EventType` will be checked in order against the
+        1. Every validation rule specified for the `EventType` will be checked in order against the
         incoming Events. Validation rules are evaluated in the order they are defined and the Event
         is **rejected** in the first case of failure. If the offending validation rule provides
         information about the violation it will be included in the `BatchItemResponse`.  If the
@@ -455,27 +386,15 @@ paths:
           description: All events in the batch have been successfully published.
         '207':
           description: |
-          At least one event has failed to be submitted. The batch might be partially submitted.
+            At least one event has failed to be submitted. The batch might be partially submitted.
           schema:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
-        '400':
-          description: Bad request
-          schema:
-            $ref: '#/definitions/Problem'
         '401':
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '404':
-          description: EventType not found.
-          schema:
-              $ref: '#/definitions/Problem'
-        '405':
-          description: Not allowed.
-          schema:
-              $ref: '#/definitions/Problem'
         '422':
           description: |
             At least one event failed to be validated, enriched or partitioned. None were submitted.
@@ -483,14 +402,6 @@ paths:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
     get:
       tags:
         - stream-api
@@ -504,8 +415,10 @@ paths:
         `EventStreamBatch` contains a chunk of Events and a `Cursor` pointing to the **end** of the
         chunk (i.e. last delivered Event). The cursor might specify the offset with the symbolic
         value `BEGIN`, which will open the stream starting from the oldest available offset in the
-        partition.  Currently this format is the only one supported by the system, but in the future
-        other MIME types will be supported (like `application/event-stream`).
+        partition.
+
+        Currently the `application/x-json-stream` format is the only one supported by the system,
+        but in the future other media types may be supported.
 
         If streaming for several distinct partitions, each one is an independent `EventStreamBatch`.
 
@@ -553,8 +466,7 @@ paths:
           description: |
             Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
 
-            * If 0 or unspecified will buffer Events indefinitely and flush on reaching of
-            `batch_flush_timeout`.
+            * If 0 will buffer Events indefinitely and flush on reaching of `batch_flush_timeout`.
           type: integer
           format: int32
           required: false
@@ -590,7 +502,7 @@ paths:
           in: query
           description: |
             Maximum time in seconds a stream will live before being interrupted.
-            If 0 or unspecified will stream indefinitely.
+            If value is zero, streams indefinitely.
 
             If this timeout is reached, any pending messages (in the sense of `stream_limit`) will
             be flushed to the client.
@@ -599,7 +511,7 @@ paths:
           type: number
           format: int32
           required: false
-          default: 0
+          default: 60
         - name: stream_keep_alive_limit
           in: query
           description: |
@@ -625,28 +537,12 @@ paths:
             Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
           schema:
             $ref: '#/definitions/EventStreamBatch'
-        '400':
-          description: Bad syntax
-          schema:
-            $ref: '#/definitions/Problem'
         '401':
           description: Not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '404':
-          description: EventType not found
-          schema:
-            $ref: '#/definitions/Problem'
         '422':
           description: Unprocessable entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Internal Server Error. Details are provided on the returned `Problem`.
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -685,16 +581,8 @@ paths:
             description: An array of `Partition`s
             items:
               $ref: '#/definitions/Partition'
-        '404':
-          description: EventType not found
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
+        '401':
+          description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
 
@@ -734,53 +622,14 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '404':
-          description: Not found
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
-
-  '/registry/validation-strategies':
-    get:
-      tags:
-        - schema-registry-api
-      description: |
-        Lists all of the validation strategies supported by this installation of Nakadi.
-
-        If the EventType creation is to have special validations (besides the default), one can
-        consult over this method the available possibilities.
-      responses:
-        '200':
-          description: Returns a list of all validation strategies known to Nakadi
-          schema:
-            type: array
-            items:
-              type: string
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
 
   '/registry/enrichment-strategies':
     get:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the enrichment strategies supported by this installation of Nakadi.
-
-        If the EventType creation is to have special enrichments (besides the default), one can
-        consult over this method the available possibilities.
+        Lists all of the enrichment strategies supported by this Nakadi installation. Special or
+        custom strategies besides the defaults will be listed here.
       responses:
         '200':
           description: Returns a list of all enrichment strategies known to Nakadi
@@ -788,27 +637,20 @@ paths:
             type: array
             items:
               type: string
-        '500':
-          description: Server error
+        '401':
+          description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
-
 
   '/registry/partition-strategies':
     get:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the partition resolution strategies supported by this installation of Nakadi.
+        Lists all of the partition resolution strategies supported by this installation of Nakadi. 
+        Special or custom strategies besides the defaults will be listed here.
 
-        If the EventType creation is to have a specific partition strategy (other than the default),
-        one can consult over this method the available possibilities.
-
-        Nakadi offers currently, out of the box, the following strategies:
+        Nakadi currently offers these inbuilt strategies:
 
         - `random`: Resolution of the target partition happens randomly (events are evenly
           distributed on the topic's partitions).
@@ -821,7 +663,8 @@ paths:
 
         - `hash`: Resolution of the partition follows the computation of a hash from the value of
           the fields indicated in the EventType's `partition_key_fields`, guaranteeing that Events
-          with same values on those fields end in the same partition.
+          with same values on those fields end in the same partition. Given the event type's category
+          is DataChangeEvent, field path is considered relative to "data".
       responses:
         '200':
           description: Returns a list of all partitioning strategies known to Nakadi
@@ -829,8 +672,8 @@ paths:
             type: array
             items:
               type: string
-        '500':
-          description: Server error
+        '401':
+          description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
 
@@ -856,7 +699,6 @@ definitions:
 
       For concrete examples of what will be enforced by Nakadi see the objects BusinessEvent and
       DataChangeEvent below.
-    additionalProperties: true
 
   EventMetadata:
     type: object
@@ -864,127 +706,116 @@ definitions:
       Metadata for this Event.
 
       Contains commons fields for both Business and DataChange Events. Most are enriched by Nakadi
-      upon reception, but they in general MIGHT be set by the client.
+      upon reception, but they in general MIGHT be set by the client.  
     properties:
-      metadata:
-        type: object
-        properties:
-          eid:
-            description: |
-              Identifier of this Event.
+      eid:
+        description: |
+          Identifier of this Event.
 
-              Clients MUST generate this value and it SHOULD be guaranteed to be unique from the
-              perspective of the producer. Consumers MIGHT use this value to assert uniqueness of
-              reception of the Event.
-            type: string
-            format: uuid
-            example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
-          event_type:
-            description: |
-              The EventType of this Event. This is enriched by Nakadi on reception of the Event
-              based on the endpoint where the Producer sent the Event to.
+          Clients MUST generate this value and it SHOULD be guaranteed to be unique from the
+          perspective of the producer. Consumers MIGHT use this value to assert uniqueness of
+          reception of the Event.
+        type: string
+        format: uuid
+        example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+      event_type:
+        description: |
+          The EventType of this Event. This is enriched by Nakadi on reception of the Event
+          based on the endpoint where the Producer sent the Event to.
 
-              If provided MUST match the endpoint. Failure to do so will cause rejection of the
-              Event.
-            type: string
-            example: 'pennybags.payment-business-event'
-          occurred_at:
-            description: |
-              Timestamp of creation of the Event generated by the producer.
-            type: string
-            format: date-time
-            example: '1996-12-19T16:39:57-08:00'
-          received_at:
-            type: string
-            description: |
-              Timestamp of the reception of the Event by Nakadi. This is enriched upon reception of
-              the Event.
-              If set by the producer Event will be rejected.
-            format: date-time
-            example: '1996-12-19T16:39:57-08:00'
-          parent_eids:
-            type: array
-            items:
-              type: string
-              format: uuid
-              description: |
-                Event identifier of the Event that caused the generation of this Event.
-                Set by the producer.
-              example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
-          flow_id:
-            description: |
-              The flow-id of the producer of this Event. As this is usually a HTTP header, this is
-              enriched from the header into the metadata by Nakadi to avoid clients having to
-              explicitly copy this.
-            type: string
-            example: 'JAh6xH4OQhCJ9PutIV_RYw'
-          partition:
-            description: |
-              Indicates the partition assigned to this Event.
+          If provided MUST match the endpoint. Failure to do so will cause rejection of the
+          Event.
+        type: string
+        example: 'pennybags.payment-business-event'
+      occurred_at:
+        description: |
+          Timestamp of creation of the Event generated by the producer.
+        type: string
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      received_at:
+        type: string
+        description: |
+          Timestamp of the reception of the Event by Nakadi. This is enriched upon reception of
+          the Event.
+          If set by the producer Event will be rejected.
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      parent_eids:
+        type: array
+        items:
+          type: string
+          format: uuid
+          description: |
+            Event identifier of the Event that caused the generation of this Event.
+            Set by the producer.
+          example: '105a76d8-db49-4144-ace7-e683e8f4ba46'
+      flow_id:
+        description: |
+          The flow-id of the producer of this Event. As this is usually a HTTP header, this is
+          enriched from the header into the metadata by Nakadi to avoid clients having to
+          explicitly copy this.
+        type: string
+        example: 'JAh6xH4OQhCJ9PutIV_RYw'
+      partition:
+        description: |
+          Indicates the partition assigned to this Event.
 
-              Required to be set by the client if partition strategy of the EventType is
-              'user_defined'.
-            type: string
-            example: '0'
-        required:
-          - eid
-          - occurred_at
-
-        additionalProperties: false
-
+          Required to be set by the client if partition strategy of the EventType is
+          'user_defined'.
+        type: string
+        example: '0'
     required:
-      - metadata
+      - eid
+      - occurred_at
 
   BusinessEvent:
-    type: object
     description: |
       A Business Event.
 
-      Usually represents a status transition in a Business process.
-    allOf:
-      - $ref: '#/definitions/EventMetadata'
-    additionalProperties: true
-
-  DataChangeEventQualifier:
-    type: object
-    description: |
-      Indicators of a `DataChangeEvent`'s referred data type and the type of operations done on
-      them.
-
-    properties:
-      data_type:
-        type: string
-        example: 'pennybags:order'
-      data_op:
-        type: string
-        enum: ['C', 'U', 'D', 'S']
-        description: |
-          The type of operation executed on the entity.
-          * C: Creation
-          * U: Update
-          * D: Deletion
-          * S: Snapshot
-    required:
-      - data_type
-      - data_op
+      Usually represents a status transition in a Business process.    
+    allOf:  
+      - $ref: '#/definitions/Event'
+      - type: object
+        properties:
+          metadata:
+              $ref: '#/definitions/EventMetadata'
+        required:
+            - metadata
 
   DataChangeEvent:
-    type: object
     description: |
       A Data change Event.
 
-      Represents a change on a resource.
+      Represents a change on a resource. Also contains indicators for the data 
+      type and the type of operation performed.
     allOf:
-      - $ref: '#/definitions/DataChangeEventQualifier'
-      - $ref: '#/definitions/EventMetadata'
-    properties:
-      data:
-        type: object
-        description: |
-            The payload of the type
-    required:
-        - data
-    additionalProperties: false
+      - $ref: '#/definitions/Event'
+      - type: object        
+        properties:
+          data_type:
+            type: string
+            example: 'pennybags:order'
+          data_op:
+            type: string
+            enum: ['C', 'U', 'D', 'S']
+            description: |
+              The type of operation executed on the entity.
+              * C: Creation
+              * U: Update
+              * D: Deletion
+              * S: Snapshot
+          metadata:
+            $ref: '#/definitions/EventMetadata'
+          data:
+            type: object
+            description: |
+                The payload of the type
+        required:
+            - data
+            - metadata
+            - data_type
+            - data_op
 
   Problem:
     type: object
@@ -1027,6 +858,8 @@ definitions:
 
   Metrics:
     type: object
+    description: |
+      Object containing application metrics.
 
   Partition:
     description: |
@@ -1098,26 +931,14 @@ definitions:
       name:
         type: string
         description: |
-          Name of this EventType. Encodes the owner/responsible for this EventType.
-
-          The name for the EventType SHOULD follow the pattern, but is not enforced
-          'stups_owning_application.event-type', for example 'gizig.price-change'.
-
-          The components of the name are:
-
-          * Organization: the organizational unit where the team is located; can be omitted.
-
-          * Team name: name of the team responsible for owning application; can be omitted.
-
-          * Owning application: SHOULD match the field owning_application; indicates
-
-          * EventType name: name of this EventType; SHOULD end in ChangeEvent for DataChangeEvents;
-          MUST be in the past tense for BusinessEvents.
-
-          (TBD: how to deal with organizational changes? Should be reflected on the name of the
-          EventType?  Isn't it better to omit [organization:team] completely?)
+          Name of this EventType. The name is constrained by a regular expression.
+          
+          Note: the name can encode the owner/responsible for this EventType and ideally should
+          follow a common pattern that makes it easy to read an understand, but this level of
+          structure is not enforced. For example a team name and data type can be used such as
+          'acme-team.price-change'.        
         pattern: '[a-zA-Z][-0-9a-zA-Z_]*(\.[a-zA-Z][-0-9a-zA-Z_]*)*'
-        example: order.ORDER_CANCELLED
+        example: order.order_cancelled, acme-platform.users  
       owning_application:
         type: string
         description: |
@@ -1133,12 +954,11 @@ definitions:
           Defines the category of this EventType.
 
           The value set will influence, if not set otherwise, the default set of
-          validation-strategies, enrichment-strategies, and the effective schema for validation in
+          validations, enrichment-strategies, and the effective schema for validation in
           the following way:
 
           - `undefined`: No predefined changes apply. The effective schema for the validation is
-            exactly the same as the `EventTypeSchema`.  Default validation_strategy for this
-            `EventType` is `['schema-validation']`.
+            exactly the same as the `EventTypeSchema`.
 
           - `data`: Events of this category will be DataChangeEvents. The effective schema during
             the validation contains `metadata`, and adds fields `data_op` and `data_type`. The
@@ -1147,23 +967,7 @@ definitions:
           - `business`: Events of this category will be BusinessEvents. The effective schema for
             validation contains `metadata` and any additionally defined properties passed in the
             `EventTypeSchema` directly on top level of the Event. If name conflicts arise, creation
-            of this EventType will be rejected.  Default validation_strategy for this `EventType` is
-            `['schema-validation']`.
-
-      validation_strategies:
-        description: |
-          Determines the validation that has to be executed upon reception of Events of this
-          type. Events are rejected if any of the rules fail (see details of Problem response on the
-          Event publishing methods).
-
-          Rule evaluation order is the same as in this array.
-
-          If not explicitly set, default value will respect the definition of the
-          `EventType.category`.
-        type: array
-        items:
-          type: string
-        default: ['schema-validation']
+            of this EventType will be rejected. 
 
       enrichment_strategies:
         description: |
@@ -1172,7 +976,7 @@ definitions:
           fields that are not defined on the incoming Event.
 
           For event types in categories 'business' or 'data' it's mandatory to use
-          METADATA_ENRICHMENT strategy. For 'undefined' event types it's not possible to use this
+          metadata_enrichment strategy. For 'undefined' event types it's not possible to use this
           strategy, since metadata field is not required.
 
           See documentation for the write operation for details on behaviour in case of unsuccessful
@@ -1181,7 +985,7 @@ definitions:
         items:
           type: string
           enum:
-            - METADATA_ENRICHMENT
+            - metadata_enrichment
 
       partition_strategy:
         description: |
@@ -1193,20 +997,9 @@ definitions:
 
       schema:
         type: object
-        allOf:
-          - $ref: '#/definitions/EventTypeSchema'
+        $ref: '#/definitions/EventTypeSchema'
         description: |
           The schema for this EventType. Submitted events will be validated against it.
-
-      data_key_fields:
-        type: array
-        items:
-          type: string
-        description: |
-          Indicators of the path of the properties that constitute the primary key (identifier) of
-          the data within this Event.  If set MUST be a valid required field as defined in the
-          schema.  (TBD should be required? Is applicable only to both Business and DataChange
-          Events?)
 
       partition_key_fields:
         type: array
@@ -1214,14 +1007,13 @@ definitions:
           type: string
         description: |
           Required when 'partition_resolution_strategy' is set to 'hash'. Must be absent otherwise.
-          Indicates the fields used for evaluatiion the partition of Events of this type.
+          Indicates the fields used for evaluation the partition of Events of this type.
 
           If set it MUST be a valid required field as defined in the schema.
 
       default_statistics:
         type: object
-        allOf:
-          - $ref: '#/definitions/EventTypeStatistics'
+        $ref: '#/definitions/EventTypeStatistics'
         description: |
           Statistics of this EventType used for optimization purposes. Internal use of these values
           might change over time.
@@ -1238,12 +1030,13 @@ definitions:
       type:
         type: string
         enum:
-          - JSON_SCHEMA
+          - json_schema
         description: |
-          The type of schema definition. Currently only JSON_SCHEMA v4 is supported, but in the
+          The type of schema definition. Currently only json_schema (JSON Schema v04) is supported, but in the
           future there could be others.
       schema:
         type: string
+        $ref: '#/definitions/EventTypeSchema'
         description: |
           The schema as string in the syntax defined in the field type. Failure to respect the
           syntax will fail any operation on an EventType.

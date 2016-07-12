@@ -5,13 +5,21 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.CursorError;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
+import java.net.InetAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -40,8 +48,6 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
-import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @RestController
 public class EventStreamController {
@@ -49,32 +55,45 @@ public class EventStreamController {
     private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
 
+    private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
     private final ObjectMapper jsonMapper;
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
+    private final ClosedConnectionsCrutch closedConnectionsCrutch;
 
-    public EventStreamController(final TopicRepository topicRepository, final ObjectMapper jsonMapper,
-                                 final EventStreamFactory eventStreamFactory, final MetricRegistry metricRegistry) {
+    public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
+                                 final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
+                                 final MetricRegistry metricRegistry, final ClosedConnectionsCrutch closedConnectionsCrutch) {
+
+        this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
+        this.closedConnectionsCrutch = closedConnectionsCrutch;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("name") final String eventTypeName,
-            @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
-            @RequestParam(value = "stream_limit", required = false, defaultValue = "0") final int streamLimit,
-            @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
-            @RequestParam(value = "stream_timeout", required = false, defaultValue = "0") final int streamTimeout,
-            @RequestParam(value = "stream_keep_alive_limit", required = false, defaultValue = "0") final int streamKeepAliveLimit,
+            @Nullable @RequestParam(value = "batch_limit", required = false) final Integer batchLimit,
+            @Nullable @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
+            @Nullable @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
+            @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
+            @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
             final NativeWebRequest request, final HttpServletResponse response) throws IOException {
 
         return outputStream -> {
 
+            final AtomicBoolean connectionReady = new AtomicBoolean(true);
+            final HttpServletRequest httpRequest = ((HttpServletRequest)request.getNativeRequest());
+
+            closedConnectionsCrutch.listenForConnectionClose(
+                    InetAddress.getByName(httpRequest.getRemoteAddr()),
+                    httpRequest.getRemotePort(),
+                    () -> connectionReady.compareAndSet(true, false));
             Counter consumerCounter = null;
             EventConsumer eventConsumer = null;
 
@@ -83,31 +102,27 @@ public class EventStreamController {
                 consumerCounter.inc();
 
                 @SuppressWarnings("UnnecessaryLocalVariable")
-                final String topic = eventTypeName;
+                final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+                final String topic = eventType.getTopic();
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
                     writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
                     return;
                 }
-                if (streamLimit != 0 && streamLimit < batchLimit) {
-                    writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY,
-                            "stream_limit can't be lower than batch_limit");
-                    return;
-                }
-                if (streamTimeout != 0 && streamTimeout < batchTimeout) {
-                    writeProblemResponse(response, outputStream, UNPROCESSABLE_ENTITY,
-                            "stream_timeout can't be lower than batch_flush_timeout");
-                    return;
-                }
+                final EventStreamConfig.Builder builder = EventStreamConfig.builder()
+                        .withTopic(topic)
+                        .withBatchLimit(batchLimit)
+                        .withStreamLimit(streamLimit)
+                        .withBatchTimeout(batchTimeout)
+                        .withStreamTimeout(streamTimeout)
+                        .withStreamKeepAliveLimit(streamKeepAliveLimit);
 
                 // deserialize cursors
                 List<Cursor> cursors = null;
                 if (cursorsStr != null) {
                     try {
-                        cursors = jsonMapper.<List<Cursor>>readValue(cursorsStr,
-                                new TypeReference<ArrayList<Cursor>>() {
-                                });
+                        cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {});
                     } catch (final IOException e) {
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr + ". Respond with BAD_REQUEST.", e);
@@ -135,8 +150,9 @@ public class EventStreamController {
                                 Cursor::getPartition,
                                 Cursor::getOffset));
 
-                final EventStreamConfig streamConfig = new EventStreamConfig(topic, streamCursors, batchLimit,
-                        streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit);
+                final EventStreamConfig streamConfig = builder
+                        .withCursors(streamCursors)
+                        .build();
 
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
@@ -145,11 +161,14 @@ public class EventStreamController {
 
                 outputStream.flush(); // Flush status code to client
 
-                eventStream.streamEvents();
+                eventStream.streamEvents(connectionReady);
+            }
+            catch (final NoSuchEventTypeException e) {
+                writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
             }
             catch (final NakadiException e) {
                 LOG.error("Error while trying to stream events. Respond with SERVICE_UNAVAILABLE.", e);
-                writeProblemResponse(response, outputStream, SERVICE_UNAVAILABLE, e.getProblemMessage());
+                writeProblemResponse(response, outputStream, e.asProblem());
             }
             catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
@@ -159,6 +178,7 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             }
             finally {
+                connectionReady.set(false);
                 if (consumerCounter != null) {
                     consumerCounter.dec();
                 }
@@ -176,8 +196,13 @@ public class EventStreamController {
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
                                       final Response.StatusType statusCode, final String message) throws IOException {
-        response.setStatus(statusCode.getStatusCode());
+        writeProblemResponse(response, outputStream, Problem.valueOf(statusCode, message));
+    }
+
+    private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
+                                      Problem problem) throws IOException {
+        response.setStatus(problem.getStatus().getStatusCode());
         response.setContentType("application/problem+json");
-        jsonMapper.writer().writeValue(outputStream, Problem.valueOf(statusCode, message));
+        jsonMapper.writer().writeValue(outputStream, problem);
     }
 }

@@ -15,7 +15,7 @@ logging:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
-    username: nakadi_app
+    username: nakadi
     password: nakadi
     driverClassName: org.postgresql.Driver
     initialSize: 2
@@ -33,7 +33,7 @@ nakadi:
       rotationMs: 86400000 # 1 day
   stream:
     timeoutMs: 31536000000 # 1 year :-P
-  featureToggle.enableAll: false
+  featureToggle.default: false
   kafka:
     instanceType: t2.large
     poll:

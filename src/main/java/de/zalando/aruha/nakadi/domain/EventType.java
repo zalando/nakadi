@@ -21,6 +21,9 @@ public class EventType {
     @Size(min = 1, max = 255, message = "the length of the name must be >= 1 and <= 255")
     private String name;
 
+    @JsonIgnore
+    private String topic;
+
     @NotNull
     private String owningApplication;
 
@@ -44,7 +47,7 @@ public class EventType {
 
     @Valid
     @Nullable
-    private EventTypeStatistics defaultStatistic;
+    private EventTypeStatistics defaultStatistics;
 
     public String getName() { return name; }
 
@@ -86,12 +89,12 @@ public class EventType {
         this.schema = schema;
     }
 
-    public EventTypeStatistics getDefaultStatistic() {
-        return defaultStatistic;
+    public EventTypeStatistics getDefaultStatistics() {
+        return defaultStatistics;
     }
 
-    public void setDefaultStatistic(final EventTypeStatistics defaultStatistic) {
-        this.defaultStatistic = defaultStatistic;
+    public void setDefaultStatistics(final EventTypeStatistics defaultStatistics) {
+        this.defaultStatistics = defaultStatistics;
     }
 
     public List<String> getPartitionKeyFields() {
@@ -110,4 +113,7 @@ public class EventType {
         this.enrichmentStrategies = enrichmentStrategies;
     }
 
+    public String getTopic() { return topic; }
+
+    public void setTopic(final String topic) { this.topic = topic; }
 }

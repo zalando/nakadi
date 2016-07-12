@@ -21,7 +21,7 @@ import java.util.concurrent.ExecutionException;
 
 public class EventTypeCache {
 
-    public final String ZKNODE_PATH = "/nakadi/event_types";
+    public static final String ZKNODE_PATH = "/nakadi/event_types";
 
     private final LoadingCache<String, EventType> eventTypeCache;
     private final LoadingCache<String, EventTypeValidator> validatorCache;
@@ -68,7 +68,7 @@ public class EventTypeCache {
                     .creatingParentsIfNeeded()
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(path, new byte[0]);
-        } catch (KeeperException.NodeExistsException e) {
+        } catch (KeeperException.NodeExistsException expected) {
             // silently do nothing since it's already been tracked
         }
     }
@@ -86,7 +86,7 @@ public class EventTypeCache {
                     .creatingParentsIfNeeded()
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(ZKNODE_PATH);
-        } catch (KeeperException.NodeExistsException e) {
+        } catch (KeeperException.NodeExistsException expected) {
             // silently do nothing since it means that the node is already there
         }
     }
