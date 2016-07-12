@@ -160,7 +160,7 @@ public class StreamingContext implements SubscriptionStreamer {
             clientListChanges.refresh();
             zkClient.runLocked(() -> {
                 final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
-                if (changeset != null && changeset.length > 0) {
+                if (changeset.length > 0) {
                     Stream.of(changeset).forEach(zkClient::updatePartitionConfiguration);
                     zkClient.incrementTopology();
                 }

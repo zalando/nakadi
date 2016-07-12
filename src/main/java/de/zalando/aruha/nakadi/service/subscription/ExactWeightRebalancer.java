@@ -65,7 +65,7 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
             }
             return result.toArray(new Partition[result.size()]);
         } else {
-            return null;
+            return new Partition[0];
         }
     }
 

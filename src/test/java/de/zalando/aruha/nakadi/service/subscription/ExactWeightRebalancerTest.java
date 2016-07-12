@@ -8,6 +8,9 @@ import java.util.stream.Stream;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.emptyArray;
+
 public class ExactWeightRebalancerTest {
 
     @Test(expected = IllegalArgumentException.class)
@@ -47,28 +50,31 @@ public class ExactWeightRebalancerTest {
         final Session[] sessions = new Session[]{
                 new Session("0", 1),
                 new Session("1", 1)};
-        Assert.assertNull(rebalancer.apply(sessions,
+        assertThat(rebalancer.apply(sessions,
                 new Partition[] {
                         new Partition(new Partition.PartitionKey("0", "0"), "0", null, Partition.State.ASSIGNED),
                         new Partition(new Partition.PartitionKey("0", "1"), "1", null, Partition.State.ASSIGNED),
                         new Partition(new Partition.PartitionKey("1", "0"), "1", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("1", "1"), "0", null, Partition.State.ASSIGNED)}));
+                        new Partition(new Partition.PartitionKey("1", "1"), "0", null, Partition.State.ASSIGNED)}),
+                emptyArray());
 
         // 2. Data contains reassinging
-        Assert.assertNull(rebalancer.apply(sessions,
+        assertThat(rebalancer.apply(sessions,
                 new Partition[] {
                         new Partition(new Partition.PartitionKey("0", "0"), "0", null, Partition.State.ASSIGNED),
                         new Partition(new Partition.PartitionKey("0", "1"), "0", "1", Partition.State.REASSIGNING),
                         new Partition(new Partition.PartitionKey("1", "0"), "1", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("1", "1"), "0", null, Partition.State.ASSIGNED)}));
+                        new Partition(new Partition.PartitionKey("1", "1"), "0", null, Partition.State.ASSIGNED)}),
+                emptyArray());
 
         // 3. Data contains only reassinging
-        Assert.assertNull(rebalancer.apply(sessions,
+        assertThat(rebalancer.apply(sessions,
                 new Partition[] {
                         new Partition(new Partition.PartitionKey("0", "0"), "0", "1", Partition.State.REASSIGNING),
                         new Partition(new Partition.PartitionKey("0", "1"), "0", "1", Partition.State.REASSIGNING),
                         new Partition(new Partition.PartitionKey("1", "0"), "1", "0", Partition.State.REASSIGNING),
-                        new Partition(new Partition.PartitionKey("1", "1"), "1", "0", Partition.State.REASSIGNING)}));
+                        new Partition(new Partition.PartitionKey("1", "1"), "1", "0", Partition.State.REASSIGNING)}),
+                emptyArray());
     }
 
     @Test
@@ -81,7 +87,6 @@ public class ExactWeightRebalancerTest {
                         new Partition(new Partition.PartitionKey("1", "0"), "1", null, Partition.State.ASSIGNED),
                         new Partition(new Partition.PartitionKey("1", "1"), "0", null, Partition.State.ASSIGNED)});
 
-        Assert.assertNotNull(changeset);
         Assert.assertEquals(3, changeset.length);
         // All partitions must be in assigned state
         Assert.assertFalse(Stream.of(changeset).filter(p -> p.getState() != Partition.State.ASSIGNED).findAny().isPresent());
@@ -104,7 +109,6 @@ public class ExactWeightRebalancerTest {
                         new Partition(new Partition.PartitionKey("0", "1"), "1", null, Partition.State.ASSIGNED),
                         new Partition(new Partition.PartitionKey("1", "0"), "2", null, Partition.State.ASSIGNED),
                         new Partition(new Partition.PartitionKey("1", "1"), "2", null, Partition.State.ASSIGNED)});
-        Assert.assertNotNull(changeset);
         Assert.assertEquals(1, changeset.length);
         final Partition changed = changeset[0];
         Assert.assertTrue(changed.getKey().equals(new Partition.PartitionKey("1", "0")) || changed.getKey().equals(new Partition.PartitionKey("1", "1")));
@@ -123,7 +127,6 @@ public class ExactWeightRebalancerTest {
                             new Partition(new Partition.PartitionKey("0", "1"), "1", null, Partition.State.ASSIGNED),
                             new Partition(new Partition.PartitionKey("1", "0"), "2", null, Partition.State.REASSIGNING),
                             new Partition(new Partition.PartitionKey("1", "1"), "2", null, Partition.State.ASSIGNED)});
-            Assert.assertNotNull(changeset);
             Assert.assertEquals(1, changeset.length);
             final Partition changed = changeset[0];
             Assert.assertEquals(new Partition.PartitionKey("1", "0"), changed.getKey());
@@ -139,7 +142,6 @@ public class ExactWeightRebalancerTest {
                             new Partition(new Partition.PartitionKey("0", "1"), "1", null, Partition.State.ASSIGNED),
                             new Partition(new Partition.PartitionKey("1", "0"), "2", null, Partition.State.ASSIGNED),
                             new Partition(new Partition.PartitionKey("1", "1"), "2", null, Partition.State.REASSIGNING)});
-            Assert.assertNotNull(changeset);
             Assert.assertEquals(1, changeset.length);
             final Partition changed = changeset[0];
             Assert.assertEquals(new Partition.PartitionKey("1", "1"), changed.getKey());

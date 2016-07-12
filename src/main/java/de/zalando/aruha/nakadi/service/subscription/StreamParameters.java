@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.service.subscription;
 
+import javax.annotation.Nullable;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -35,9 +36,9 @@ public class StreamParameters {
     public final long commitTimeoutMillis;
 
     private StreamParameters(
-            final int batchLimitEvents, final Long streamLimitEvents, final long batchTimeoutMillis,
-            final Long streamTimeoutMillis, final Integer batchKeepAliveIterations, final int windowSizeMessages,
-            final long commitTimeoutMillis) {
+            final int batchLimitEvents, @Nullable final Long streamLimitEvents, final long batchTimeoutMillis,
+            @Nullable final Long streamTimeoutMillis, @Nullable final Integer batchKeepAliveIterations,
+            final int windowSizeMessages, final long commitTimeoutMillis) {
         this.batchLimitEvents = batchLimitEvents;
         this.streamLimitEvents = Optional.ofNullable(streamLimitEvents);
         this.batchTimeoutMillis = batchTimeoutMillis;
