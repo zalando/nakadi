@@ -60,11 +60,11 @@ public class PartitionTest {
                 new Partition(pk, "T", "x", REASSIGNING),
                 new Partition(pk, "T", "T1", REASSIGNING))
                 .forEach(testPartition -> {
-                    testPartition.moveToSessionId("T", validSessions);
-                    assertSame(pk, testPartition.getKey());
-                    assertEquals(ASSIGNED, testPartition.getState());
-                    assertEquals("T", testPartition.getSession());
-                    assertNull(testPartition.getNextSession());
+                    final Partition movedPartition = testPartition.moveToSessionId("T", validSessions);
+                    assertSame(pk, movedPartition.getKey());
+                    assertEquals(ASSIGNED, movedPartition.getState());
+                    assertEquals("T", movedPartition.getSession());
+                    assertNull(movedPartition.getNextSession());
                 });
     }
 
