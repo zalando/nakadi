@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.enrichment;
 
+import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.util.FlowIdUtils;
@@ -69,5 +70,18 @@ public class MetadataEnrichmentStrategyTest {
         strategy.enrich(createBatch(event), eventType);
 
         assertThat(event.getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
+    }
+
+    @Test
+    public void setPartition() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+        final String partition = randomString();
+        final BatchItem batch = createBatch(event);
+        batch.setPartition(partition);
+
+        strategy.enrich(batch, eventType);
+
+        assertThat(event.getJSONObject("metadata").getString("partition"), equalTo(partition));
     }
 }
