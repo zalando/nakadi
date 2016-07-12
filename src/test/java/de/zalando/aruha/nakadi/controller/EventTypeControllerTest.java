@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.config.SecuritySettings;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
@@ -19,6 +20,7 @@ import de.zalando.aruha.nakadi.managers.EventTypeManager;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.security.ClientIdResolver;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import de.zalando.aruha.nakadi.utils.TestUtils;
@@ -88,8 +90,12 @@ public class EventTypeControllerTest {
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
 
+        SecuritySettings settings = mock(SecuritySettings.class);
+        doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
+        doReturn(OWNING_APPLICATION).when(settings).getDefaultClientId();
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setCustomArgumentResolvers(new ClientIdResolver(settings))
                 .build();
         doReturn(false).when(featureToggleService).isFeatureEnabled(any());
     }
@@ -529,7 +535,7 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(final String content, final String name) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name).contentType(APPLICATION_JSON)
                                                                                         .content(content);
-        return mockMvc.perform(requestBuilder.principal(() -> OWNING_APPLICATION));
+        return mockMvc.perform(requestBuilder.param("client_id", OWNING_APPLICATION));
     }
 
     private SameJSONAs<? super String> matchesProblem(final Problem expectedProblem) throws JsonProcessingException {
