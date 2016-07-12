@@ -28,7 +28,6 @@ import java.util.List;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
-import static de.zalando.aruha.nakadi.util.FeatureToggleService.FEATURE_HIGH_LEVEL_API;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;

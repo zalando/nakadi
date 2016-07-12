@@ -30,12 +30,10 @@ import java.lang.management.ManagementFactory;
 
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFactory;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
-import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -94,12 +92,6 @@ public class NakadiConfig {
     @Bean
     public VersionController versionController() {
         return new VersionController(jsonConfig.jacksonObjectMapper());
-    }
-
-    @Bean
-    @Profile("!test")
-    public FeatureToggleService featureToggleService() {
-        return new FeatureToggleService(zooKeeperHolder);
     }
 
     @Bean
