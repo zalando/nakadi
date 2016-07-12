@@ -15,7 +15,7 @@ logging:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
-    username: nakadi_app
+    username: nakadi
     password: nakadi
     driverClassName: org.postgresql.Driver
     initialSize: 2
