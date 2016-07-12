@@ -83,12 +83,12 @@ public class EventPublishingController {
 
     private ResponseEntity processJSONException(final JSONException e, final NativeWebRequest nativeWebRequest) {
         if (e.getCause() == null) {
-            return create(crateProblem(e), nativeWebRequest);
+            return create(createProblem(e), nativeWebRequest);
         }
         return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
     }
 
-    private ThrowableProblem crateProblem(final JSONException e) {
+    private ThrowableProblem createProblem(final JSONException e) {
         return Problem.valueOf(Response.Status.BAD_REQUEST, e.getMessage());
     }
 
