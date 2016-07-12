@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.service;
 
+import de.zalando.aruha.nakadi.domain.BatchFactory;
 import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.BatchItemResponse;
 import de.zalando.aruha.nakadi.domain.EventPublishResult;
@@ -23,7 +24,6 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -50,7 +50,7 @@ public class EventPublisher {
     public EventPublishResult publish(final JSONArray events, final String eventTypeName) throws NoSuchEventTypeException,
             InternalNakadiException {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-        final List<BatchItem> batch = initBatch(events);
+        final List<BatchItem> batch = BatchFactory.from(events);
 
         try {
             validate(batch, eventType);
@@ -90,15 +90,6 @@ public class EventPublisher {
         return batch.stream()
                 .map(BatchItem::getResponse)
                 .collect(Collectors.toList());
-    }
-
-    private List<BatchItem> initBatch(final JSONArray events) {
-        final List<BatchItem> batch = new ArrayList<>(events.length());
-        for (int i = 0; i < events.length(); i++) {
-            batch.add(new BatchItem(events.getJSONObject(i)));
-        }
-
-        return batch;
     }
 
     private void partition(final List<BatchItem> batch, final EventType eventType) throws PartitioningException {

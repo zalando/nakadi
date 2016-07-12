@@ -177,12 +177,14 @@ public class EventPublisherTest {
         final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType, event);
-        mockFaultEnrichment(eventType, event);
+        mockFaultEnrichment();
 
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+        verify(cache, times(1)).getValidator(eventType.getName());
         verify(partitionResolver, times(1)).resolvePartition(eventType, event);
+        verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
@@ -190,10 +192,9 @@ public class EventPublisherTest {
     public void whenEnrichmentFailsThenSubsequentItemsAreAborted() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(2);
-        final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType);
-        mockFaultEnrichment(eventType, event);
+        mockFaultEnrichment();
 
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
@@ -208,6 +209,8 @@ public class EventPublisherTest {
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
         assertThat(second.getStep(), equalTo(EventPublishingStep.PARTITIONING));
         assertThat(second.getDetail(), is(isEmptyString()));
+
+        verify(enrichment, times(1)).enrich(any(), any());
     }
 
     private void mockFailedPublishing() throws Exception {
@@ -224,7 +227,7 @@ public class EventPublisherTest {
                 .resolvePartition(eventType, event);
     }
 
-    private void mockFaultEnrichment(final EventType eventType, final JSONObject event) throws EnrichmentException {
+    private void mockFaultEnrichment() throws EnrichmentException {
         Mockito
                 .doThrow(new EnrichmentException("enrichment error"))
                 .when(enrichment)
