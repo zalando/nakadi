@@ -83,7 +83,7 @@ public class CursorsCommitService {
             }, zkLockFactory.createLock(offsetPath));
         } catch (final IllegalArgumentException e) {
             throw new InvalidCursorException(CursorError.INVALID_FORMAT, cursor);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new ServiceUnavailableException("Error communicating with zookeeper", e);
         }
     }

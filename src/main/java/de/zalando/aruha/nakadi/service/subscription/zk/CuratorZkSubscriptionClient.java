@@ -1,6 +1,6 @@
 package de.zalando.aruha.nakadi.service.subscription.zk;
 
-import de.zalando.aruha.nakadi.service.subscription.SubscriptionWrappedException;
+import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import java.nio.charset.Charset;
@@ -17,8 +17,11 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private static final String STATE_INITIALIZED = "INITIALIZED";
+    private static final String NO_SESSION = "";
     private static final Charset CHARSET = Charset.forName("UTF-8");
 
     private final CuratorFramework curatorFramework;
@@ -27,32 +30,43 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private final Logger log;
 
     public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework) {
+        this(subscriptionId, curatorFramework, CuratorZkSubscriptionClient.class.getName());
+    }
+
+    public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework, final String loggingPath) {
         this.subscriptionId = subscriptionId;
         this.curatorFramework = curatorFramework;
         this.lock = new InterProcessSemaphoreMutex(curatorFramework, "/nakadi/locks/subscription_" + subscriptionId);
-        this.log = LoggerFactory.getLogger("zk." + subscriptionId);
+        this.log = LoggerFactory.getLogger(loggingPath + ".zk");
     }
 
     @Override
     public void runLocked(final Runnable function) {
-        log.info("Taking runLocked for " + function.hashCode());
+        log.info("Taking lock for " + function.hashCode());
         try {
+            Exception releaseException = null;
+
             lock.acquire();
             log.debug("Lock taken " + function.hashCode());
             try {
                 function.run();
             } finally {
-                log.info("Releasing runLocked for " + function.hashCode());
+                log.info("Releasing lock for " + function.hashCode());
                 try {
                     lock.release();
                 } catch (final Exception e) {
-                    log.error("Failed to release runLocked", e);
-                    throw e;
+                    log.error("Failed to release lock", e);
+                    releaseException = e;
                 }
                 log.debug("Lock released " + function.hashCode());
             }
+            if (releaseException != null) {
+                throw releaseException;
+            }
+        } catch (final ExceptionWrapper e) {
+            throw e;
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -84,7 +98,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 return !state.equals(STATE_INITIALIZED);
             }
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -105,7 +119,6 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(getSubscriptionPath("/topics"));
 
             log.info("Creating partitions");
-            int counter = 0;
             for (final Map.Entry<Partition.PartitionKey, Long> p : partitionToOffset.entrySet()) {
                 final String partitionPath = getPartitionPath(p.getKey());
                 curatorFramework.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(
@@ -114,23 +127,21 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(
                         partitionPath + "/offset",
                         (String.valueOf(p.getValue())).getBytes(CHARSET));
-                if (++counter % 100 == 0) {
-                    log.info("Created " + counter + " so far");
-                }
             }
             log.info("creating topology node");
             curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(getSubscriptionPath("/topology"), "0".getBytes(CHARSET));
             log.info("updating state");
             curatorFramework.setData().forPath(getSubscriptionPath("/state"), STATE_INITIALIZED.getBytes(CHARSET));
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
-    private static byte[] serializeNode(final String session, final String nextSession, final Partition.State state) {
+    private static byte[] serializeNode(@Nullable final String session, @Nullable final String nextSession,
+                                        final Partition.State state) {
         return Stream.of(
-                session == null ? "" : session,
-                nextSession == null ? "" : nextSession,
+                session == null ? NO_SESSION : session,
+                nextSession == null ? NO_SESSION : nextSession,
                 state.name()).collect(Collectors.joining(":")).getBytes(CHARSET);
     }
 
@@ -138,8 +149,8 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         final String[] parts = new String(data, CHARSET).split(":");
         return new Partition(
                 key,
-                parts[0].isEmpty() ? null : parts[0],
-                parts[1].isEmpty() ? null : parts[1],
+                NO_SESSION.equals(parts[0]) ? null : parts[0],
+                NO_SESSION.equals(parts[1]) ? null : parts[1],
                 Partition.State.valueOf(parts[2]));
     }
 
@@ -151,7 +162,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                     getPartitionPath(partition.getKey()),
                     serializeNode(partition.getSession(), partition.getNextSession(), partition.getState()));
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -162,7 +173,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             final Integer curVersion = Integer.parseInt(new String(curatorFramework.getData().forPath(getSubscriptionPath("/topology")), CHARSET));
             curatorFramework.setData().forPath(getSubscriptionPath("/topology"), String.valueOf(curVersion + 1).getBytes(CHARSET));
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -179,7 +190,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             }
             return partitions.toArray(new Partition[partitions.size()]);
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -194,7 +205,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             }
             return sessions.toArray(new Session[sessions.size()]);
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -219,9 +230,9 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     @Override
     public long getOffset(final Partition.PartitionKey key) {
         try {
-            return Long.parseLong(new String(curatorFramework.getData().forPath(getPartitionPath(key)), CHARSET));
+            return Long.parseLong(new String(curatorFramework.getData().forPath(getPartitionPath(key) + "/offset"), CHARSET));
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -232,7 +243,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             final String clientPath = getSubscriptionPath("/sessions/" + session.getId());
             curatorFramework.create().withMode(CreateMode.EPHEMERAL).forPath(clientPath, String.valueOf(session.getWeight()).getBytes(CHARSET));
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -241,7 +252,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         try {
             curatorFramework.delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 
@@ -263,7 +274,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 incrementTopology();
             }
         } catch (final Exception e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 }

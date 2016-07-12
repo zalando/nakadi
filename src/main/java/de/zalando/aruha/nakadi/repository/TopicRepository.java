@@ -3,6 +3,7 @@ package de.zalando.aruha.nakadi.repository;
 import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
+import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -38,7 +39,8 @@ public interface TopicRepository {
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
-    Map<String, Long> materializePositions(final String topicId, String position) throws ServiceUnavailableException;
+    Map<String, Long> materializePositions(String topicId, SubscriptionBase.InitialPosition position)
+            throws ServiceUnavailableException;
 
     List<String> listPartitionNames(final String topicId);
 

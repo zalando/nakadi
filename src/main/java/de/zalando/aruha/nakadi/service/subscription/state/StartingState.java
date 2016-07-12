@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class StartingState extends State {
-    private static final Logger LOG = LoggerFactory.getLogger(StartingState.class);
-
     @Override
     public void onEnter() {
         getZk().runLocked(this::createSubscriptionLocked);
@@ -30,10 +28,6 @@ public class StartingState extends State {
         } else {
             final Session[] sessions = getZk().listSessions();
             final Partition[] partitions = getZk().listPartitions();
-            if (sessions == null || partitions == null) {
-                switchState(new CleanupState());
-                return;
-            }
             if (sessions.length >= partitions.length) {
                 switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                 return;
@@ -43,10 +37,10 @@ public class StartingState extends State {
         registerSession();
 
         try {
-            getOut().onInitialized();
+            getOut().onInitialized(getSessionId());
             switchState(new StreamingState());
         } catch (final IOException e) {
-            LOG.error("Failed to notify of initialization. Switch to cleanup directly", e);
+            getLog().error("Failed to notify of initialization. Switch to cleanup directly", e);
             switchState(new CleanupState(e));
         }
     }

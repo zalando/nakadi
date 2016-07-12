@@ -1,7 +1,9 @@
 package de.zalando.aruha.nakadi.service.subscription;
 
+import javax.annotation.Nullable;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 public class StreamParameters {
     /**
@@ -11,7 +13,7 @@ public class StreamParameters {
     /**
      * Maximum number of events that could be sent in session
      */
-    public final Integer streamLimitEvents;
+    private final Optional<Long> streamLimitEvents;
     /**
      * Timeout for collecting {@code batchLimitEvents} events. If not collected - send either not full batch
      * or keep alive message.
@@ -20,12 +22,12 @@ public class StreamParameters {
     /**
      * Stream time to live
      */
-    public final Long streamTimeoutMillis;
+    public final Optional<Long> streamTimeoutMillis;
     /**
      * If count of keepAliveIterations in a row for each batch is reached - stream is closed.
      * Works only if set.
      */
-    public final Integer batchKeepAliveIterations;
+    private final Optional<Integer> batchKeepAliveIterations;
 
     // Applies to stream, number of messages to send to clients
     public final int windowSizeMessages;
@@ -34,21 +36,33 @@ public class StreamParameters {
     public final long commitTimeoutMillis;
 
     private StreamParameters(
-            final int batchLimitEvents, final Integer streamLimitEvents, final long batchTimeoutMillis,
-            final Long streamTimeoutMillis, final Integer batchKeepAliveIterations, final int windowSizeMessages,
-            final long commitTimeoutMillis) {
+            final int batchLimitEvents, @Nullable final Long streamLimitEvents, final long batchTimeoutMillis,
+            @Nullable final Long streamTimeoutMillis, @Nullable final Integer batchKeepAliveIterations,
+            final int windowSizeMessages, final long commitTimeoutMillis) {
         this.batchLimitEvents = batchLimitEvents;
-        this.streamLimitEvents = streamLimitEvents;
+        this.streamLimitEvents = Optional.ofNullable(streamLimitEvents);
         this.batchTimeoutMillis = batchTimeoutMillis;
-        this.streamTimeoutMillis = streamTimeoutMillis;
-        this.batchKeepAliveIterations = batchKeepAliveIterations;
+        this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutMillis);
+        this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
         this.windowSizeMessages = windowSizeMessages;
         this.commitTimeoutMillis = commitTimeoutMillis;
     }
 
+    public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {
+        return streamLimitEvents.map(v -> Math.max(0, Math.min(limit, v - sentSoFar))).orElse(limit);
+    }
+
+    public boolean isStreamLimitReached(final long commitedEvents) {
+        return streamLimitEvents.map(v -> v <= commitedEvents).orElse(false);
+    }
+
+    public boolean isKeepAliveLimitReached(final IntStream keepAlive) {
+        return batchKeepAliveIterations.map(it -> keepAlive.allMatch(v -> v >= it)).orElse(false);
+    }
+
     public static StreamParameters of(
             final int batchLimitEvents,
-            final Integer streamLimitEvents,
+            final Long streamLimitEvents,
             final long batchTimeoutSeconds,
             final Long streamTimeoutSeconds,
             final Integer batchKeepAliveIterations,

@@ -1,8 +1,10 @@
 package de.zalando.aruha.nakadi.service.subscription;
 
+import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import de.zalando.aruha.nakadi.service.subscription.state.CleanupState;
+import de.zalando.aruha.nakadi.service.subscription.state.DummyState;
 import de.zalando.aruha.nakadi.service.subscription.state.StartingState;
 import de.zalando.aruha.nakadi.service.subscription.state.State;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZKSubscription;
@@ -28,10 +30,14 @@ public class StreamingContext implements SubscriptionStreamer {
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
 
-    private State currentState;
+    private final String loggingPath;
+
+    private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
 
-    private static final Logger LOG = LoggerFactory.getLogger(StreamingContext.class);
+    public static final State DEAD_STATE = new DummyState();
+
+    private final Logger log;
 
     StreamingContext(
             final SubscriptionOutput out,
@@ -41,7 +47,8 @@ public class StreamingContext implements SubscriptionStreamer {
             final ZkSubscriptionClient zkClient,
             final KafkaClient kafkaClient,
             final BiFunction<Session[], Partition[], Partition[]> rebalancer,
-            final long kafkaPollTimeout) {
+            final long kafkaPollTimeout,
+            final String loggingPath) {
         this.out = out;
         this.parameters = parameters;
         this.session = session;
@@ -50,6 +57,8 @@ public class StreamingContext implements SubscriptionStreamer {
         this.zkClient = zkClient;
         this.kafkaClient = kafkaClient;
         this.kafkaPollTimeout = kafkaPollTimeout;
+        this.loggingPath = loggingPath + ".stream";
+        this.log = LoggerFactory.getLogger(loggingPath);
     }
 
     public StreamParameters getParameters() {
@@ -78,24 +87,25 @@ public class StreamingContext implements SubscriptionStreamer {
 
     @Override
     public void stream() throws InterruptedException {
-        currentState = new State() {
-            @Override
-            public void onEnter() {
-            }
-        };
+        streamInternal(new StartingState());
+    }
 
+    void streamInternal(final State firstState) throws InterruptedException {
         // Add first task - switch to starting state.
-        switchState(new StartingState());
+        switchState(firstState);
 
-        while (null != currentState) {
-            final Runnable task = taskQueue.poll(1, TimeUnit.MINUTES);
+        while (currentState != DEAD_STATE) {
+            // Wait forever
+            final Runnable task = taskQueue.poll(1, TimeUnit.HOURS);
             try {
-                task.run();
-            } catch (final SubscriptionWrappedException ex) {
-                LOG.error("Failed to process task " + task + ", will rethrow original error", ex);
-                switchState(new CleanupState(ex.getSourceException()));
+                if (task != null) {
+                    task.run();
+                }
+            } catch (final ExceptionWrapper ex) {
+                log.error("Failed to process task " + task + ", will rethrow original error", ex);
+                switchState(new CleanupState(ex.getWrapped()));
             } catch (final RuntimeException ex) {
-                LOG.error("Failed to process task " + task + ", code carefully!", ex);
+                log.error("Failed to process task " + task + ", code carefully!", ex);
                 switchState(new CleanupState(ex));
             }
         }
@@ -103,36 +113,26 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void switchState(final State newState) {
         this.addTask(() -> {
-            if (currentState != null) {
-                LOG.info("Switching state from " + currentState.getClass().getSimpleName());
-                currentState.onExit();
-            } else {
-                LOG.info("Connection died, no new state switches available");
-                return;
-            }
+            log.info("Switching state from " + currentState.getClass().getSimpleName());
+            currentState.onExit();
+
             currentState = newState;
-            if (null != currentState) {
-                LOG.info("Switching state to " + currentState.getClass().getSimpleName());
-                currentState.setContext(this);
-                currentState.onEnter();
-            } else {
-                LOG.info("No next state found, dying");
-            }
+
+            log.info("Switching state to " + currentState.getClass().getSimpleName());
+            currentState.setContext(this, loggingPath);
+            currentState.onEnter();
         });
     }
 
     public void registerSession() {
-        LOG.info("Registering session " + session);
-        zkClient.registerSession(session);
+        log.info("Registering session {}", session);
         // Install rebalance hook on client list change.
         clientListChanges = zkClient.subscribeForSessionListChanges(() -> addTask(this::rebalance));
-
-        // Invoke rebalance directly
-        addTask(this::rebalance);
+        zkClient.registerSession(session);
     }
 
     public void unregisterSession() {
-        LOG.info("Unregistering session " + session);
+        log.info("Unregistering session {}", session);
         if (null != clientListChanges) {
             try {
                 clientListChanges.cancel();
@@ -160,11 +160,12 @@ public class StreamingContext implements SubscriptionStreamer {
             clientListChanges.refresh();
             zkClient.runLocked(() -> {
                 final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
-                if (changeset != null && changeset.length > 0) {
+                if (changeset.length > 0) {
                     Stream.of(changeset).forEach(zkClient::updatePartitionConfiguration);
                     zkClient.incrementTopology();
                 }
             });
         }
     }
+
 }

@@ -2,11 +2,11 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
-import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import de.zalando.aruha.nakadi.service.subscription.StreamParameters;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionOutput;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionStreamer;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionStreamerFactory;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import java.io.IOException;
 import java.io.OutputStream;
 import javax.servlet.http.HttpServletResponse;
@@ -29,11 +29,14 @@ public class SubscriptionStreamController {
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
 
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
+    private final FeatureToggleService featureToggleService;
     private final ObjectMapper jsonMapper;
 
+
     @Autowired
-    public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory, final ObjectMapper objectMapper) {
+    public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory, final FeatureToggleService featureToggleService, final ObjectMapper objectMapper) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
+        this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
     }
 
@@ -49,11 +52,12 @@ public class SubscriptionStreamController {
         }
 
         @Override
-        public void onInitialized() throws IOException {
+        public void onInitialized(final String sessionId) throws IOException {
             if (!headersSent) {
                 headersSent = true;
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
+                response.setHeader("X-Nakadi-SessionId", sessionId);
                 out.flush();
             }
         }
@@ -97,13 +101,19 @@ public class SubscriptionStreamController {
             @RequestParam(value = "window_size", required = false, defaultValue = "100") final int windowSize,
             @RequestParam(value = "commit_timeout", required = false, defaultValue = "30") final int commitTimeout,
             @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
-            @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
+            @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
             @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
             @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             final NativeWebRequest request, final HttpServletResponse response) throws IOException {
 
         return outputStream -> {
+
+            if (!featureToggleService.isFeatureEnabled(FeatureToggleService.FEATURE_HIGH_LEVEL_API)) {
+                response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
+                return;
+            }
+
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {

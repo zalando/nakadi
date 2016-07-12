@@ -7,7 +7,6 @@ public class Session {
     private final int weight;
 
     public Session(final String id, final int weight) {
-        assert null != id;
         this.id = id;
         this.weight = weight;
     }
@@ -31,10 +30,7 @@ public class Session {
         if (o == null || getClass() != o.getClass()) return false;
 
         final Session session = (Session) o;
-
-        if (weight != session.weight) return false;
-        return id.equals(session.id);
-
+        return weight == session.getWeight() && id.equals(session.getId());
     }
 
     @Override

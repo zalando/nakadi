@@ -20,7 +20,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class StreamingState extends State {
@@ -33,10 +32,8 @@ class StreamingState extends State {
     private final Map<Partition.PartitionKey, Long> releasingPartitions = new HashMap<>();
     private boolean pollPaused = false;
     private long lastCommitMillis;
-    private long commitedEvents = 0;
+    private long committedEvents = 0;
     private long sentEvents = 0;
-
-    private static final Logger LOG = LoggerFactory.getLogger(StreamingState.class);
 
     @Override
     public void onEnter() {
@@ -45,29 +42,24 @@ class StreamingState extends State {
         // Subscribe for topology changes.
         this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
         // and call directly
-        reactNoTopologyChange();
+        reactOnTopologyChange();
         addTask(this::pollDataFromKafka);
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
-        if (null != getParameters().streamTimeoutMillis) {
-            scheduleTask(this::shutdownGracefully, getParameters().streamTimeoutMillis, TimeUnit.MILLISECONDS);
-        }
+        getParameters().streamTimeoutMillis.ifPresent(
+                timeout -> scheduleTask(() ->this.shutdownGracefully("Stream timeout reached"), timeout, TimeUnit.MILLISECONDS));
 
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     private void checkCommitTimeout() {
-        if (!isCurrent()) {
-            return;
-        }
         final long currentMillis = System.currentTimeMillis();
-        final boolean hasUncommited = offsets.values().stream().filter(d -> !d.isCommited()).findAny().isPresent();
-        if (hasUncommited) {
+        final boolean hasUncommitted = offsets.values().stream().filter(d -> !d.isCommitted()).findAny().isPresent();
+        if (hasUncommitted) {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
-                LOG.info("Commit timeout reached, shutting down");
-                shutdownGracefully();
+                shutdownGracefully("Commit timeout reached");
             } else {
                 scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis - millisFromLastCommit, TimeUnit.MILLISECONDS);
             }
@@ -76,24 +68,21 @@ class StreamingState extends State {
         }
     }
 
-    private void shutdownGracefully() {
-        if (!isCurrent()) {
-            return;
-        }
-        final Map<Partition.PartitionKey, Long> uncommited = offsets.entrySet().stream()
-                .filter(e -> !e.getValue().isCommited())
+    private void shutdownGracefully(final String reason) {
+        getLog().info("Shutting down gracefully. Reason: {}", reason);
+        final Map<Partition.PartitionKey, Long> uncommitted = offsets.entrySet().stream()
+                .filter(e -> !e.getValue().isCommitted())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
-        if (uncommited.isEmpty()) {
+        if (uncommitted.isEmpty()) {
             switchState(new CleanupState());
         } else {
-            switchState(new ClosingState(uncommited, lastCommitMillis));
+            switchState(new ClosingState(uncommitted, lastCommitMillis));
         }
     }
 
     private void pollDataFromKafka() {
-        if (!isCurrent() || null == kafkaConsumer) {
-            LOG.info("Poll process from kafka is stopped, because state is switched or switching");
-            return;
+        if (kafkaConsumer == null) {
+            throw new IllegalStateException("kafkaConsumer should not be null when calling pollDataFromKafka method");
         }
         if (kafkaConsumer.assignment().isEmpty() || pollPaused) {
             // Small optimization not to waste CPU while not yet assigned to any partitions
@@ -104,12 +93,9 @@ class StreamingState extends State {
         if (!records.isEmpty()) {
             for (final TopicPartition tp : records.partitions()) {
                 final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition()));
-                final PartitionData pd = offsets.get(pk);
-                if (null != pd) {
-                    for (final ConsumerRecord<String, String> record : records.records(tp)) {
-                        pd.addEvent(record.offset(), record.value());
-                    }
-                }
+                Optional.ofNullable(offsets.get(pk))
+                        .ifPresent(pd -> records.records(tp).stream()
+                                .forEach(record -> pd.addEventFromKafka(record.offset(), record.value())));
             }
             addTask(this::streamToOutput);
         }
@@ -122,16 +108,10 @@ class StreamingState extends State {
     private long getMessagesAllowedToSend() {
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
         final long allowDueWindowSize = getParameters().windowSizeMessages - unconfirmed;
-        if (null == getParameters().streamLimitEvents) {
-            return allowDueWindowSize;
-        }
-        return Math.min(allowDueWindowSize, getParameters().streamLimitEvents - this.sentEvents);
+        return getParameters().getMessagesAllowedToSend(allowDueWindowSize, this.sentEvents);
     }
 
     private void checkBatchTimeouts() {
-        if (!isCurrent()) {
-            return;
-        }
         streamToOutput();
         final OptionalLong lastSent = offsets.values().stream().mapToLong(PartitionData::getLastSendMillis).min();
         final long nextCall = lastSent.orElse(System.currentTimeMillis()) + getParameters().batchTimeoutMillis;
@@ -139,15 +119,12 @@ class StreamingState extends State {
         if (delta > 0) {
             scheduleTask(this::checkBatchTimeouts, delta, TimeUnit.MILLISECONDS);
         } else {
-            LOG.debug("Probably acting too slow, stream timeouts are constantly rescheduled");
+            getLog().debug("Probably acting too slow, stream timeouts are constantly rescheduled");
             addTask(this::checkBatchTimeouts);
         }
     }
 
     private void streamToOutput() {
-        if (!isCurrent()) {
-            return;
-        }
         final long currentTimeMillis = System.currentTimeMillis();
         int freeSlots = (int) getMessagesAllowedToSend();
         SortedMap<Long, String> toSend;
@@ -165,13 +142,9 @@ class StreamingState extends State {
             }
         }
         pollPaused = getMessagesAllowedToSend() <= 0;
-        if (null != getParameters().batchKeepAliveIterations) {
-            final boolean allPartitionsReachedKeepAliveLimit = offsets.values().stream()
-                    .map(PartitionData::getKeepAlivesInARow)
-                    .allMatch(v -> v >= getParameters().batchKeepAliveIterations);
-            if (allPartitionsReachedKeepAliveLimit) {
-                shutdownGracefully();
-            }
+        if (!offsets.isEmpty() &&
+                getParameters().isKeepAliveLimitReached(offsets.values().stream().mapToInt(PartitionData::getKeepAliveInARow))) {
+            shutdownGracefully("All partitions reached keepAlive limit");
         }
     }
 
@@ -184,8 +157,8 @@ class StreamingState extends State {
         try {
             getOut().streamData(evt.getBytes(EventStream.UTF8));
         } catch (final IOException e) {
-            LOG.error("Failed to write data to output. Session: " + getSessionId(), e);
-            shutdownGracefully();
+            getLog().error("Failed to write data to output.", e);
+            shutdownGracefully("Failed to write data to output");
         }
     }
 
@@ -195,7 +168,7 @@ class StreamingState extends State {
             try {
                 topologyChangeSubscription.cancel();
             } catch (final RuntimeException ex) {
-                LOG.warn("Failed to cancel topology subscription", ex);
+                getLog().warn("Failed to cancel topology subscription", ex);
             } finally {
                 topologyChangeSubscription = null;
                 new HashSet<>(offsets.keySet()).forEach(this::removeFromStreaming);
@@ -210,17 +183,14 @@ class StreamingState extends State {
         }
     }
 
-    private void topologyChanged() {
-        if (!isCurrent()) {
-            return;
-        }
+    void topologyChanged() {
         if (null != topologyChangeSubscription) {
             topologyChangeSubscription.refresh();
         }
-        reactNoTopologyChange();
+        reactOnTopologyChange();
     }
 
-    private void reactNoTopologyChange() {
+    private void reactOnTopologyChange() {
         getZk().runLocked(() -> {
             final Partition[] assignedPartitions = Stream.of(getZk().listPartitions())
                     .filter(p -> getSessionId().equals(p.getSession()))
@@ -229,10 +199,7 @@ class StreamingState extends State {
         });
     }
 
-    private void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
-        if (!isCurrent()) {
-            return;
-        }
+    void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
         final Map<Partition.PartitionKey, Partition> newAssigned = Stream.of(assignedPartitions)
                 .filter(p -> p.getState() == Partition.State.ASSIGNED)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
@@ -262,9 +229,23 @@ class StreamingState extends State {
                 .filter(p -> !offsets.containsKey(p.getKey()))
                 .forEach(this::addToStreaming);
         // 5. Check if something can be released right now
-        reassignCommited();
+        reassignCommitted();
+
         // 6. Reconfigure kafka consumer
         reconfigureKafkaConsumer(false);
+
+        logPartitionAssignment("Topology refreshed");
+    }
+
+    private void logPartitionAssignment(final String reason) {
+        if (getLog().isInfoEnabled()) {
+            getLog().info("{}. Streaming partitions: [{}]. Reassigning partitions: [{}]",
+                    reason,
+                    offsets.keySet().stream().filter(p -> !releasingPartitions.containsKey(p))
+                            .map(Partition.PartitionKey::toString).collect(Collectors.joining(",")),
+                    releasingPartitions.keySet().stream().map(Partition.PartitionKey::toString)
+                            .collect(Collectors.joining(", ")));
+        }
     }
 
     private void addPartitionToReassigned(final Partition.PartitionKey partitionKey) {
@@ -275,12 +256,13 @@ class StreamingState extends State {
     }
 
     private void barrierOnRebalanceReached(final Partition.PartitionKey pk) {
-        if (!isCurrent() || !releasingPartitions.containsKey(pk)) {
+        if (!releasingPartitions.containsKey(pk)) {
             return;
         }
+        getLog().info("Checking barrier to transfer partition {}", pk);
         final long currentTime = System.currentTimeMillis();
         if (currentTime >= releasingPartitions.get(pk)) {
-            shutdownGracefully();
+            shutdownGracefully("barrier on reassigning partition reached for " + pk + ", current time: " + currentTime + ", barrier: " + releasingPartitions.get(pk));
         } else {
             // Schedule again, probably something happened (ex. rebalance twice)
             scheduleTask(() -> barrierOnRebalanceReached(pk), releasingPartitions.get(pk) - currentTime, TimeUnit.MILLISECONDS);
@@ -288,11 +270,18 @@ class StreamingState extends State {
     }
 
     private void reconfigureKafkaConsumer(final boolean forceSeek) {
-        final Set<Partition.PartitionKey> currentAssignment = kafkaConsumer.assignment().stream()
+        if (kafkaConsumer == null) {
+            throw new IllegalStateException("kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
+        }
+        final Set<Partition.PartitionKey> currentKafkaAssignment = kafkaConsumer.assignment().stream()
                 .map(tp -> new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition())))
                 .collect(Collectors.toSet());
-        if (!currentAssignment.equals(offsets.keySet()) || forceSeek) {
-            final Map<Partition.PartitionKey, TopicPartition> kafkaKeys = offsets.keySet().stream().collect(
+
+        final Set<Partition.PartitionKey> currentNakadiAssignment = offsets.keySet().stream()
+                .filter(o -> !this.releasingPartitions.containsKey(o))
+                .collect(Collectors.toSet());
+        if (!currentKafkaAssignment.equals(currentNakadiAssignment) || forceSeek) {
+            final Map<Partition.PartitionKey, TopicPartition> kafkaKeys = currentNakadiAssignment.stream().collect(
                     Collectors.toMap(
                             k -> k,
                             k -> new TopicPartition(k.topic, Integer.valueOf(k.partition))));
@@ -302,20 +291,23 @@ class StreamingState extends State {
             kafkaConsumer.seekToBeginning(kafkaKeys.values().toArray(new TopicPartition[kafkaKeys.size()]));
             kafkaKeys.forEach((key, kafka) -> offsets.get(key).ensureDataAvailable(kafkaConsumer.position(kafka)));
             //
-            kafkaKeys.forEach((k, v) -> kafkaConsumer.seek(v, offsets.get(k).getSentOffset()));
+            kafkaKeys.forEach((k, v) -> kafkaConsumer.seek(v, offsets.get(k).getSentOffset() + 1));
             offsets.values().forEach(PartitionData::clearEvents);
         }
     }
 
     private void addToStreaming(final Partition partition) {
-        offsets.put(partition.getKey(), new PartitionData(
-                getZk().subscribeForOffsetChanges(partition.getKey(), () -> addTask(() -> offsetChanged(partition.getKey()))),
-                getZk().getOffset(partition.getKey())));
+        offsets.put(
+                partition.getKey(),
+                new PartitionData(
+                        getZk().subscribeForOffsetChanges(partition.getKey(), () -> addTask(() -> offsetChanged(partition.getKey()))),
+                        getZk().getOffset(partition.getKey()),
+                        LoggerFactory.getLogger("subscription." + getSessionId() + "." + partition.getKey())));
     }
 
-    private void reassignCommited() {
+    private void reassignCommitted() {
         final List<Partition.PartitionKey> keysToRelease = releasingPartitions.keySet().stream()
-                .filter(pk -> !offsets.containsKey(pk) || offsets.get(pk).isCommited())
+                .filter(pk -> !offsets.containsKey(pk) || offsets.get(pk).isCommitted())
                 .collect(Collectors.toList());
         if (!keysToRelease.isEmpty()) {
             try {
@@ -326,7 +318,7 @@ class StreamingState extends State {
         }
     }
 
-    private void offsetChanged(final Partition.PartitionKey key) {
+    void offsetChanged(final Partition.PartitionKey key) {
         if (offsets.containsKey(key)) {
             final PartitionData data = offsets.get(key);
             data.getSubscription().refresh();
@@ -335,31 +327,33 @@ class StreamingState extends State {
             if (commitResult.seekOnKafka) {
                 reconfigureKafkaConsumer(true);
             }
-            if (commitResult.commitedCount > 0) {
-                commitedEvents += commitResult.commitedCount;
+            if (commitResult.committedCount > 0) {
+                committedEvents += commitResult.committedCount;
                 this.lastCommitMillis = System.currentTimeMillis();
+                streamToOutput();
             }
-            if (null != getParameters().streamLimitEvents && getParameters().streamLimitEvents <= commitedEvents) {
-                shutdownGracefully();
+            if (getParameters().isStreamLimitReached(committedEvents)) {
+                shutdownGracefully("Stream limit in events reached: " + committedEvents);
             }
-            if (releasingPartitions.containsKey(key) && data.isCommited()) {
-                reassignCommited();
+            if (releasingPartitions.containsKey(key) && data.isCommitted()) {
+                reassignCommitted();
+                logPartitionAssignment("New offset received for releasing partition " + key);
             }
         }
     }
 
     private void removeFromStreaming(final Partition.PartitionKey key) {
-        LOG.info("Removing completely from streaming: " + key);
+        getLog().info("Removing partition {} from streaming", key);
         releasingPartitions.remove(key);
         final PartitionData data = offsets.remove(key);
         if (null != data) {
             try {
                 if (data.getUnconfirmed() > 0) {
-                    LOG.warn("Skipping commits: " + key + ", commit=" + (data.getSentOffset() - data.getUnconfirmed()) + ", sent=" + data.getSentOffset());
+                    getLog().warn("Skipping commits: {}, commit={}, sent={}", key, data.getSentOffset() - data.getUnconfirmed(), data.getSentOffset());
                 }
                 data.getSubscription().cancel();
             } catch (final RuntimeException ex) {
-                LOG.warn("Failed to cancel subscription, skipping exception", ex);
+                getLog().warn("Failed to cancel subscription, skipping exception", ex);
             }
         }
     }

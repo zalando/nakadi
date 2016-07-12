@@ -1,11 +1,11 @@
 package de.zalando.aruha.nakadi.service.subscription;
 
 import de.zalando.aruha.nakadi.domain.Subscription;
+import de.zalando.aruha.nakadi.exceptions.ExceptionWrapper;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,11 +23,11 @@ public class KafkaClient {
         try {
             for (final String eventType : subscription.getEventTypes()) {
                 topicRepository.materializePositions(eventType, subscription.getStartFrom()).entrySet().forEach(
-                        e -> offsets.put(new Partition.PartitionKey(eventType, e.getKey()), e.getValue()));
+                        e -> offsets.put(new Partition.PartitionKey(eventType, e.getKey()), e.getValue() - 1));
             }
             return offsets;
         } catch (final NakadiException e) {
-            throw new SubscriptionWrappedException(e);
+            throw new ExceptionWrapper(e);
         }
     }
 

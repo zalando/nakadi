@@ -8,6 +8,7 @@ public class ExceptionWrapper extends RuntimeException {
     private final Exception wrapped;
 
     public ExceptionWrapper(final Exception wrapped) {
+        super(wrapped);
         this.wrapped = wrapped;
     }
 

@@ -6,12 +6,20 @@ import de.zalando.aruha.nakadi.service.subscription.StreamingContext;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionOutput;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class State {
     private StreamingContext context;
+    private Logger log;
 
-    public final void setContext(final StreamingContext context) {
+    public void setContext(final StreamingContext context, final String loggingPath) {
         this.context = context;
+        this.log = LoggerFactory.getLogger(loggingPath + "." + this.getClass().getSimpleName());
+    }
+
+    public Logger getLog() {
+        return log;
     }
 
     public abstract void onEnter();
@@ -19,13 +27,14 @@ public abstract class State {
     public void onExit() {
     }
 
-    final boolean isCurrent() {
+    private boolean isCurrent() {
         return context.isInState(this);
     }
 
     protected long getKafkaPollTimeout() {
         return context.getKafkaPollTimeout();
     }
+
     protected StreamParameters getParameters() {
         return context.getParameters();
     }
@@ -51,11 +60,20 @@ public abstract class State {
     }
 
     public void scheduleTask(final Runnable task, final long timeout, final TimeUnit unit) {
-        context.scheduleTask(task, timeout, unit);
+        context.scheduleTask(linkTaskToState(task), timeout, unit);
     }
 
     public void addTask(final Runnable task) {
-        context.addTask(task);
+        context.addTask(linkTaskToState(task));
+    }
+
+    private Runnable linkTaskToState(final Runnable task) {
+        return () -> {
+            if (!isCurrent()) {
+                return;
+            }
+            task.run();
+        };
     }
 
     protected void registerSession() {
