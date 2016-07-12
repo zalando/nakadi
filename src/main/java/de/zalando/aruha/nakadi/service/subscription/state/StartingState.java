@@ -4,8 +4,6 @@ import de.zalando.aruha.nakadi.exceptions.NoStreamingSlotsAvailable;
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import java.io.IOException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StartingState extends State {
     @Override

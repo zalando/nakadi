@@ -1,15 +1,19 @@
 package de.zalando.aruha.nakadi.service.subscription;
 
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
+import de.zalando.aruha.nakadi.service.subscription.model.Partition.PartitionKey;
 import de.zalando.aruha.nakadi.service.subscription.model.Session;
-import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.Assert;
 import org.junit.Test;
 
+import static de.zalando.aruha.nakadi.service.subscription.model.Partition.State.ASSIGNED;
+import static de.zalando.aruha.nakadi.service.subscription.model.Partition.State.REASSIGNING;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyArray;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class ExactWeightRebalancerTest {
 
@@ -25,19 +29,19 @@ public class ExactWeightRebalancerTest {
 
     @Test
     public void splitByWeightMustCorrectlyWorkOnDifferentValues() {
-        Assert.assertArrayEquals(
+        assertArrayEquals(
                 new int[]{1, 1},
                 ExactWeightRebalancer.splitByWeight(2, new int[]{1, 1}));
-        Assert.assertArrayEquals(
+        assertArrayEquals(
                 new int[]{2, 1},
                 ExactWeightRebalancer.splitByWeight(3, new int[]{1, 1}));
-        Assert.assertArrayEquals(
+        assertArrayEquals(
                 new int[]{1, 2},
                 ExactWeightRebalancer.splitByWeight(3, new int[]{1, 2}));
-        Assert.assertArrayEquals(
+        assertArrayEquals(
                 new int[]{34, 33, 33},
                 ExactWeightRebalancer.splitByWeight(100, new int[]{1, 1, 1}));
-        Assert.assertArrayEquals(
+        assertArrayEquals(
                 new int[]{26, 25, 50},
                 ExactWeightRebalancer.splitByWeight(101, new int[]{1, 1, 2}));
     }
@@ -52,28 +56,28 @@ public class ExactWeightRebalancerTest {
                 new Session("1", 1)};
         assertThat(rebalancer.apply(sessions,
                 new Partition[] {
-                        new Partition(new Partition.PartitionKey("0", "0"), "0", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("0", "1"), "1", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("1", "0"), "1", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("1", "1"), "0", null, Partition.State.ASSIGNED)}),
+                        new Partition(new PartitionKey("0", "0"), "0", null, ASSIGNED),
+                        new Partition(new PartitionKey("0", "1"), "1", null, ASSIGNED),
+                        new Partition(new PartitionKey("1", "0"), "1", null, ASSIGNED),
+                        new Partition(new PartitionKey("1", "1"), "0", null, ASSIGNED)}),
                 emptyArray());
 
         // 2. Data contains reassinging
         assertThat(rebalancer.apply(sessions,
                 new Partition[] {
-                        new Partition(new Partition.PartitionKey("0", "0"), "0", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("0", "1"), "0", "1", Partition.State.REASSIGNING),
-                        new Partition(new Partition.PartitionKey("1", "0"), "1", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("1", "1"), "0", null, Partition.State.ASSIGNED)}),
+                        new Partition(new PartitionKey("0", "0"), "0", null, ASSIGNED),
+                        new Partition(new PartitionKey("0", "1"), "0", "1", REASSIGNING),
+                        new Partition(new PartitionKey("1", "0"), "1", null, ASSIGNED),
+                        new Partition(new PartitionKey("1", "1"), "0", null, ASSIGNED)}),
                 emptyArray());
 
         // 3. Data contains only reassinging
         assertThat(rebalancer.apply(sessions,
                 new Partition[] {
-                        new Partition(new Partition.PartitionKey("0", "0"), "0", "1", Partition.State.REASSIGNING),
-                        new Partition(new Partition.PartitionKey("0", "1"), "0", "1", Partition.State.REASSIGNING),
-                        new Partition(new Partition.PartitionKey("1", "0"), "1", "0", Partition.State.REASSIGNING),
-                        new Partition(new Partition.PartitionKey("1", "1"), "1", "0", Partition.State.REASSIGNING)}),
+                        new Partition(new PartitionKey("0", "0"), "0", "1", REASSIGNING),
+                        new Partition(new PartitionKey("0", "1"), "0", "1", REASSIGNING),
+                        new Partition(new PartitionKey("1", "0"), "1", "0", REASSIGNING),
+                        new Partition(new PartitionKey("1", "1"), "1", "0", REASSIGNING)}),
                 emptyArray());
     }
 
@@ -82,22 +86,21 @@ public class ExactWeightRebalancerTest {
         final Partition[] changeset = new ExactWeightRebalancer().apply(
                 new Session[]{new Session("1", 1), new Session("2", 1)},
                 new Partition[] {
-                        new Partition(new Partition.PartitionKey("0", "0"), "0", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("0", "1"), "0", "1", Partition.State.REASSIGNING),
-                        new Partition(new Partition.PartitionKey("1", "0"), "1", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("1", "1"), "0", null, Partition.State.ASSIGNED)});
+                        new Partition(new PartitionKey("0", "0"), "0", null, ASSIGNED),
+                        new Partition(new PartitionKey("0", "1"), "0", "1", REASSIGNING),
+                        new Partition(new PartitionKey("1", "0"), "1", null, ASSIGNED),
+                        new Partition(new PartitionKey("1", "1"), "0", null, ASSIGNED)});
 
-        Assert.assertEquals(3, changeset.length);
+        assertEquals(3, changeset.length);
         // All partitions must be in assigned state
-        Assert.assertFalse(Stream.of(changeset).filter(p -> p.getState() != Partition.State.ASSIGNED).findAny().isPresent());
+        assertFalse(Stream.of(changeset).filter(p -> p.getState() != ASSIGNED).findAny().isPresent());
         // All partitions must not have nextSessionId
-        Assert.assertFalse(Stream.of(changeset).filter(p -> p.getNextSession() != null).findAny().isPresent());
+        assertFalse(Stream.of(changeset).filter(p -> p.getNextSession() != null).findAny().isPresent());
 
-        final Map<Partition.PartitionKey, Partition> mapped = Stream.of(changeset).collect(Collectors.toMap(Partition::getKey, p -> p));
-        Assert.assertFalse(Stream.of(changeset).filter(p->p.getKey().equals(new Partition.PartitionKey("1", "0"))).findAny().isPresent());
-        Assert.assertEquals(1, Stream.of(changeset).filter(p -> p.getSession().equals("1")).count());
-        Assert.assertEquals(2, Stream.of(changeset).filter(p -> p.getSession().equals("2")).count());
-        Assert.assertFalse(Stream.of(changeset).filter(p -> p.getState() != Partition.State.ASSIGNED).findAny().isPresent());
+        assertFalse(Stream.of(changeset).filter(p->p.getKey().equals(new PartitionKey("1", "0"))).findAny().isPresent());
+        assertEquals(1, Stream.of(changeset).filter(p -> p.getSession().equals("1")).count());
+        assertEquals(2, Stream.of(changeset).filter(p -> p.getSession().equals("2")).count());
+        assertFalse(Stream.of(changeset).filter(p -> p.getState() != ASSIGNED).findAny().isPresent());
     }
 
     @Test
@@ -105,49 +108,32 @@ public class ExactWeightRebalancerTest {
         final Partition[] changeset = new ExactWeightRebalancer().apply(
                 new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
                 new Partition[] {
-                        new Partition(new Partition.PartitionKey("0", "0"), "1", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("0", "1"), "1", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("1", "0"), "2", null, Partition.State.ASSIGNED),
-                        new Partition(new Partition.PartitionKey("1", "1"), "2", null, Partition.State.ASSIGNED)});
-        Assert.assertEquals(1, changeset.length);
+                        new Partition(new PartitionKey("0", "0"), "1", null, ASSIGNED),
+                        new Partition(new PartitionKey("0", "1"), "1", null, ASSIGNED),
+                        new Partition(new PartitionKey("1", "0"), "2", null, ASSIGNED),
+                        new Partition(new PartitionKey("1", "1"), "2", null, ASSIGNED)});
+        assertEquals(1, changeset.length);
         final Partition changed = changeset[0];
-        Assert.assertTrue(changed.getKey().equals(new Partition.PartitionKey("1", "0")) || changed.getKey().equals(new Partition.PartitionKey("1", "1")));
-        Assert.assertEquals("2", changed.getSession());
-        Assert.assertEquals("3", changed.getNextSession());
-        Assert.assertEquals(Partition.State.REASSIGNING, changed.getState());
+        assertTrue(changed.getKey().equals(new PartitionKey("1", "0")) || changed.getKey().equals(new PartitionKey("1", "1")));
+        assertEquals("2", changed.getSession());
+        assertEquals("3", changed.getNextSession());
+        assertEquals(REASSIGNING, changed.getState());
     }
 
     @Test
-    public void rebalanceShoultTakeRebalancingPartitions() {
-        {
-            final Partition[] changeset = new ExactWeightRebalancer().apply(
-                    new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
-                    new Partition[] {
-                            new Partition(new Partition.PartitionKey("0", "0"), "1", null, Partition.State.ASSIGNED),
-                            new Partition(new Partition.PartitionKey("0", "1"), "1", null, Partition.State.ASSIGNED),
-                            new Partition(new Partition.PartitionKey("1", "0"), "2", null, Partition.State.REASSIGNING),
-                            new Partition(new Partition.PartitionKey("1", "1"), "2", null, Partition.State.ASSIGNED)});
-            Assert.assertEquals(1, changeset.length);
-            final Partition changed = changeset[0];
-            Assert.assertEquals(new Partition.PartitionKey("1", "0"), changed.getKey());
-            Assert.assertEquals("2", changed.getSession());
-            Assert.assertEquals("3", changed.getNextSession());
-            Assert.assertEquals(Partition.State.REASSIGNING, changed.getState());
-        }
-        {
-            final Partition[] changeset = new ExactWeightRebalancer().apply(
-                    new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
-                    new Partition[] {
-                            new Partition(new Partition.PartitionKey("0", "0"), "1", null, Partition.State.ASSIGNED),
-                            new Partition(new Partition.PartitionKey("0", "1"), "1", null, Partition.State.ASSIGNED),
-                            new Partition(new Partition.PartitionKey("1", "0"), "2", null, Partition.State.ASSIGNED),
-                            new Partition(new Partition.PartitionKey("1", "1"), "2", null, Partition.State.REASSIGNING)});
-            Assert.assertEquals(1, changeset.length);
-            final Partition changed = changeset[0];
-            Assert.assertEquals(new Partition.PartitionKey("1", "1"), changed.getKey());
-            Assert.assertEquals("2", changed.getSession());
-            Assert.assertEquals("3", changed.getNextSession());
-            Assert.assertEquals(Partition.State.REASSIGNING, changed.getState());
-        }
+    public void rebalanceShouldTakeRebalancingPartitions() {
+        final Partition[] changeset = new ExactWeightRebalancer().apply(
+                new Session[]{new Session("1", 1), new Session("2", 1), new Session("3", 1)},
+                new Partition[] {
+                        new Partition(new PartitionKey("0", "0"), "1", null, ASSIGNED),
+                        new Partition(new PartitionKey("0", "1"), "1", null, ASSIGNED),
+                        new Partition(new PartitionKey("1", "0"), "2", null, REASSIGNING),
+                        new Partition(new PartitionKey("1", "1"), "2", null, ASSIGNED)});
+        assertEquals(1, changeset.length);
+        final Partition changed = changeset[0];
+        assertEquals(new PartitionKey("1", "0"), changed.getKey());
+        assertEquals("2", changed.getSession());
+        assertEquals("3", changed.getNextSession());
+        assertEquals(REASSIGNING, changed.getState());
     }
 }

@@ -30,7 +30,7 @@ public class SubscriptionAT extends BaseAT {
     private static final String SUBSCRIPTIONS_URL = "/subscriptions";
     private static final String CURSORS_URL = "/subscriptions/{0}/cursors";
 
-    private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
     @Test
     public void testSubscriptionCreation() throws IOException {
@@ -57,7 +57,7 @@ public class SubscriptionAT extends BaseAT {
                 .body("start_from", not(isEmptyString()));
 
         // retrieve subscription object from response
-        final Subscription subFirst = mapper.readValue(response.print(), Subscription.class);
+        final Subscription subFirst = MAPPER.readValue(response.print(), Subscription.class);
 
         // when we try to create that subscription again - we should get status 200
         // and the subscription that already exists should be returned
@@ -73,7 +73,7 @@ public class SubscriptionAT extends BaseAT {
                 .contentType(JSON);
 
         // check that second time already existing subscription was returned
-        final Subscription subSecond = mapper.readValue(response.print(), Subscription.class);
+        final Subscription subSecond = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(subSecond, equalTo(subFirst));
     }
 
@@ -88,7 +88,7 @@ public class SubscriptionAT extends BaseAT {
                 .body(subscriptionJson)
                 .contentType(JSON)
                 .post(SUBSCRIPTIONS_URL);
-        final Subscription subscription = mapper.readValue(response.print(), Subscription.class);
+        final Subscription subscription = MAPPER.readValue(response.print(), Subscription.class);
 
         // commit offsets and expect 200
         given()
@@ -127,7 +127,7 @@ public class SubscriptionAT extends BaseAT {
     private EventType createEventType() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
         given()
-                .body(mapper.writeValueAsString(eventType))
+                .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
                 .post("/event-types");
         return eventType;

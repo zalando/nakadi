@@ -2,8 +2,13 @@ package de.zalando.aruha.nakadi.service.subscription.state;
 
 import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
-import org.junit.Assert;
 import org.junit.Test;
+
+import static java.lang.System.currentTimeMillis;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 public class PartitionDataTest {
 
@@ -12,10 +17,10 @@ public class PartitionDataTest {
         final PartitionData pd = new PartitionData(null, 100L);
         final PartitionData.CommitResult cr = pd.onCommitOffset(90L);
 
-        Assert.assertEquals(0L, cr.committedCount);
-        Assert.assertEquals(true, cr.seekOnKafka);
-        Assert.assertEquals(90L, pd.getSentOffset());
-        Assert.assertEquals(0L, pd.getUnconfirmed());
+        assertEquals(0L, cr.committedCount);
+        assertEquals(true, cr.seekOnKafka);
+        assertEquals(90L, pd.getSentOffset());
+        assertEquals(0L, pd.getUnconfirmed());
     }
 
     @Test
@@ -23,10 +28,10 @@ public class PartitionDataTest {
         final PartitionData pd = new PartitionData(null, 100L);
         final PartitionData.CommitResult cr = pd.onCommitOffset(110L);
 
-        Assert.assertEquals(10L, cr.committedCount);
-        Assert.assertEquals(true, cr.seekOnKafka);
-        Assert.assertEquals(110L, pd.getSentOffset());
-        Assert.assertEquals(0L, pd.getUnconfirmed());
+        assertEquals(10L, cr.committedCount);
+        assertEquals(true, cr.seekOnKafka);
+        assertEquals(110L, pd.getSentOffset());
+        assertEquals(0L, pd.getUnconfirmed());
     }
 
     @Test
@@ -36,13 +41,13 @@ public class PartitionDataTest {
             pd.addEventFromKafka(100L + i + 1, "test_" + i);
         }
         // Now say to it that it was sent
-        pd.takeEventsToStream(System.currentTimeMillis(), 1000, 0L);
-        Assert.assertEquals(100L, pd.getUnconfirmed());
+        pd.takeEventsToStream(currentTimeMillis(), 1000, 0L);
+        assertEquals(100L, pd.getUnconfirmed());
         for (long i = 0; i < 10; ++i) {
             final PartitionData.CommitResult cr = pd.onCommitOffset(110L + i * 10L);
-            Assert.assertEquals(10L, cr.committedCount);
-            Assert.assertFalse(cr.seekOnKafka);
-            Assert.assertEquals(90L - i * 10L, pd.getUnconfirmed());
+            assertEquals(10L, cr.committedCount);
+            assertFalse(cr.seekOnKafka);
+            assertEquals(90L - i * 10L, pd.getUnconfirmed());
         }
     }
 
@@ -54,34 +59,36 @@ public class PartitionDataTest {
         }
         pd.addEventFromKafka(201L, "fake");
         for (int i = 0; i < 10; ++i) {
-            final SortedMap<Long, String> data = pd.takeEventsToStream(System.currentTimeMillis(), 10, 0L);
-            Assert.assertEquals(10, data.size());
-            Assert.assertEquals((i + 1) * 10, pd.getUnconfirmed());
-            Assert.assertEquals(0, pd.getKeepAliveInARow());
-            Assert.assertEquals(100L + i * 10L + 1L, data.firstKey().longValue());
-            Assert.assertEquals(100L + i * 10L + 10L, data.lastKey().longValue());
-            data.forEach((k, v) -> Assert.assertEquals("test_" + k, v));
+            final SortedMap<Long, String> data = pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
+            assertNotNull(data);
+            assertEquals(10, data.size());
+            assertEquals((i + 1) * 10, pd.getUnconfirmed());
+            assertEquals(0, pd.getKeepAliveInARow());
+            assertEquals(100L + i * 10L + 1L, data.firstKey().longValue());
+            assertEquals(100L + i * 10L + 10L, data.lastKey().longValue());
+            data.forEach((k, v) -> assertEquals("test_" + k, v));
         }
-        final SortedMap<Long, String> data = pd.takeEventsToStream(System.currentTimeMillis(), 10, 0L);
-        Assert.assertEquals(1, data.size());
-        Assert.assertEquals(201L, data.firstKey().longValue());
-        Assert.assertEquals("fake", data.get(data.firstKey()));
-        Assert.assertEquals(0, pd.getKeepAliveInARow());
+        final SortedMap<Long, String> data = pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
+        assertNotNull(data);
+        assertEquals(1, data.size());
+        assertEquals(201L, data.firstKey().longValue());
+        assertEquals("fake", data.get(data.firstKey()));
+        assertEquals(0, pd.getKeepAliveInARow());
     }
 
     @Test
     public void keepAliveCountShouldIncreaseOnEachEmptyCall() {
         final PartitionData pd = new PartitionData(null, 100L);
         for (int i = 0; i < 100; ++i) {
-            pd.takeEventsToStream(System.currentTimeMillis(), 10, 0L);
-            Assert.assertEquals(i + 1, pd.getKeepAliveInARow());
+            pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
+            assertEquals(i + 1, pd.getKeepAliveInARow());
         }
         pd.addEventFromKafka(101L, "");
-        Assert.assertEquals(100, pd.getKeepAliveInARow());
-        pd.takeEventsToStream(System.currentTimeMillis(), 10, 0L);
-        Assert.assertEquals(0, pd.getKeepAliveInARow());
-        pd.takeEventsToStream(System.currentTimeMillis(), 10, 0L);
-        Assert.assertEquals(1, pd.getKeepAliveInARow());
+        assertEquals(100, pd.getKeepAliveInARow());
+        pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
+        assertEquals(0, pd.getKeepAliveInARow());
+        pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
+        assertEquals(1, pd.getKeepAliveInARow());
     }
 
     @Test
@@ -91,31 +98,26 @@ public class PartitionDataTest {
         for (int i = 0; i < 100; ++i) {
             pd.addEventFromKafka(i + 100L + 1, "test");
         }
-        {
-            final SortedMap<Long, String> data = pd.takeEventsToStream(System.currentTimeMillis(), 1000, timeout);
-            Assert.assertNull(data);
-            Assert.assertEquals(0, pd.getKeepAliveInARow());
-            Thread.sleep(timeout);
-        }
-        {
-            final SortedMap<Long, String> data = pd.takeEventsToStream(System.currentTimeMillis(), 1000, timeout);
-            Assert.assertNotNull(data);
-            Assert.assertEquals(100, data.size());
-        }
+        SortedMap<Long, String> data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
+        assertNull(data);
+        assertEquals(0, pd.getKeepAliveInARow());
+        Thread.sleep(timeout);
+
+        data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
+        assertNotNull(data);
+        assertEquals(100, data.size());
+
         for (int i = 100; i < 200; ++i) {
             pd.addEventFromKafka(i + 100L + 1, "test");
         }
-        {
-            final SortedMap<Long, String> data = pd.takeEventsToStream(System.currentTimeMillis(), 1000, timeout);
-            Assert.assertNull(data);
-            Assert.assertEquals(0, pd.getKeepAliveInARow());
-            Thread.sleep(timeout);
-        }
-        {
-            final SortedMap<Long, String> data = pd.takeEventsToStream(System.currentTimeMillis(), 1000, timeout);
-            Assert.assertNotNull(data);
-            Assert.assertEquals(100, data.size());
-        }
+        data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
+        assertNull(data);
+        assertEquals(0, pd.getKeepAliveInARow());
+        Thread.sleep(timeout);
+
+        data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
+        assertNotNull(data);
+        assertEquals(100, data.size());
     }
 
     @Test
@@ -125,7 +127,9 @@ public class PartitionDataTest {
         for (int i = 0; i < 100; ++i) {
             pd.addEventFromKafka(i + 100L + 1, "test");
         }
-        Assert.assertNull(pd.takeEventsToStream(System.currentTimeMillis(), 1000, timeout));
-        Assert.assertEquals(99, pd.takeEventsToStream(System.currentTimeMillis(), 99, timeout).size());
+        assertNull(pd.takeEventsToStream(currentTimeMillis(), 1000, timeout));
+        final SortedMap<Long, String> eventsToStream = pd.takeEventsToStream(currentTimeMillis(), 99, timeout);
+        assertNotNull(eventsToStream);
+        assertEquals(99, eventsToStream.size());
     }
 }

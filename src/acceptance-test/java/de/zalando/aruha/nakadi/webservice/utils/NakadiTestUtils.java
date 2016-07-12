@@ -30,7 +30,7 @@ import static java.text.MessageFormat.format;
 
 public class NakadiTestUtils {
 
-    private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
     public static EventType createEventType() throws JsonProcessingException {
         final EventType eventType = buildSimpleEventType();
@@ -40,7 +40,7 @@ public class NakadiTestUtils {
 
     public static void createEventTypeInNakadi(final EventType eventType) throws JsonProcessingException {
         given()
-                .body(mapper.writeValueAsString(eventType))
+                .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
                 .post("/event-types");
     }
@@ -94,15 +94,15 @@ public class NakadiTestUtils {
         subscription.setOwningApplication("my_app");
         subscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
         Response response = given()
-                .body(mapper.writeValueAsString(subscription))
+                .body(MAPPER.writeValueAsString(subscription))
                 .contentType(JSON)
                 .post("/subscriptions");
-        return mapper.readValue(response.print(), Subscription.class);
+        return MAPPER.readValue(response.print(), Subscription.class);
     }
 
     public static int commitCursors(final String subscriptionId, final List<Cursor> cursors) throws JsonProcessingException {
         return given()
-                .body(mapper.writeValueAsString(cursors))
+                .body(MAPPER.writeValueAsString(cursors))
                 .contentType(JSON)
                 .put(format("/subscriptions/{0}/cursors", subscriptionId))
                 .getStatusCode();
