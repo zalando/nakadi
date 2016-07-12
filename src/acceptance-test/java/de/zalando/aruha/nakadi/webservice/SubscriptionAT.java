@@ -99,7 +99,7 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
 
         // check that offset is actually committed to Zookeeper
-        final CuratorFramework curator = ZookeeperTestUtils.createCurator(zookeeperUrl);
+        final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
         String committedOffset = getCommittedOffsetFromZk(eventType, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
 

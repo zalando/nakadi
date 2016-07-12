@@ -19,7 +19,7 @@ import org.zalando.problem.Problem;
 
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.util.FeatureToggleService.FEATURE_HIGH_LEVEL_API;
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
@@ -43,7 +43,7 @@ public class CursorsController {
                                            @RequestBody final List<Cursor> cursors,
                                            final NativeWebRequest request) {
 
-        if (!featureToggleService.isFeatureEnabled(FEATURE_HIGH_LEVEL_API)) {
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
         try {

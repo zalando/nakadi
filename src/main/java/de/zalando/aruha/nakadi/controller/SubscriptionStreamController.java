@@ -24,6 +24,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.problem.Problem;
 
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+
 @RestController
 public class SubscriptionStreamController {
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
@@ -109,7 +111,7 @@ public class SubscriptionStreamController {
 
         return outputStream -> {
 
-            if (!featureToggleService.isFeatureEnabled(FeatureToggleService.FEATURE_HIGH_LEVEL_API)) {
+            if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
                 response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
                 return;
             }
