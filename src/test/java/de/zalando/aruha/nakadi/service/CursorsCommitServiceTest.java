@@ -4,8 +4,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import de.zalando.aruha.nakadi.domain.Cursor;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -25,6 +27,7 @@ import org.junit.Test;
 import java.nio.charset.Charset;
 import java.util.List;
 
+import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -75,6 +78,11 @@ public class CursorsCommitServiceTest {
         subscription.setEventTypes(ImmutableSet.of(MY_ET));
         when(subscriptionRepository.getSubscription(any())).thenReturn(subscription);
 
+        final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
+        final EventType eventType = buildDefaultEventType();
+        eventType.setTopic(MY_ET);
+        when(eventTypeRepository.findByName(MY_ET)).thenReturn(eventType);
+
         final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
@@ -85,7 +93,7 @@ public class CursorsCommitServiceTest {
         when(subscriptionKafkaClientFactory.createKafkaClient(any())).thenReturn(kafkaClient);
 
         cursorsCommitService = new CursorsCommitService(zkHolder, topicRepository, subscriptionRepository,
-                zkLockFactory, zkSubscriptionClientFactory, subscriptionKafkaClientFactory);
+                eventTypeRepository, zkLockFactory, zkSubscriptionClientFactory, subscriptionKafkaClientFactory);
     }
 
     @Test

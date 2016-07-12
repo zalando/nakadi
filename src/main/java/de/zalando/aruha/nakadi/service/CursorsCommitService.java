@@ -2,10 +2,13 @@ package de.zalando.aruha.nakadi.service;
 
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.CursorError;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -31,6 +34,7 @@ public class CursorsCommitService {
     private final ZooKeeperHolder zkHolder;
     private final TopicRepository topicRepository;
     private final SubscriptionDbRepository subscriptionRepository;
+    private final EventTypeRepository eventTypeRepository;
     private final ZooKeeperLockFactory zkLockFactory;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory;
@@ -38,29 +42,32 @@ public class CursorsCommitService {
     public CursorsCommitService(final ZooKeeperHolder zkHolder,
                                 final TopicRepository topicRepository,
                                 final SubscriptionDbRepository subscriptionRepository,
+                                final EventTypeRepository eventTypeRepository,
                                 final ZooKeeperLockFactory zkLockFactory,
                                 final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
                                 final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory) {
         this.zkHolder = zkHolder;
         this.topicRepository = topicRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.eventTypeRepository = eventTypeRepository;
         this.zkLockFactory = zkLockFactory;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
         this.subscriptionKafkaClientFactory = subscriptionKafkaClientFactory;
     }
 
     public boolean commitCursors(final String subscriptionId, final List<Cursor> cursors)
-            throws InvalidCursorException, NoSuchSubscriptionException, ServiceUnavailableException {
+            throws NakadiException, InvalidCursorException {
 
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        final String eventType = subscription.getEventTypes().iterator().next();
+        final String eventTypeName = subscription.getEventTypes().iterator().next();
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
         createSubscriptionInZkIfNeeded(subscription);
-        topicRepository.validateCommitCursors(eventType, cursors);
+        topicRepository.validateCommitCursors(eventType.getTopic(), cursors);
 
         boolean allCommitted = true;
         for (final Cursor cursor : cursors) {
-            final boolean cursorCommitted = commitCursor(subscriptionId, eventType, cursor);
+            final boolean cursorCommitted = commitCursor(subscriptionId, eventType.getTopic(), cursor);
             allCommitted = allCommitted && cursorCommitted;
         }
         return allCommitted;

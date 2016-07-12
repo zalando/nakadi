@@ -106,12 +106,12 @@ public class NakadiConfig {
 
     @Bean
     public SubscriptionKafkaClientFactory subscriptionKafkaClientFactory() {
-        return new SubscriptionKafkaClientFactory(topicRepository);
+        return new SubscriptionKafkaClientFactory(topicRepository, eventTypeRepository);
     }
 
     @Bean
     public CursorsCommitService cursorsCommitService() {
-        return new CursorsCommitService(zooKeeperHolder, topicRepository, subscriptionRepository,
+        return new CursorsCommitService(zooKeeperHolder, topicRepository, subscriptionRepository, eventTypeRepository,
                 zooKeeperLockFactory(), zkSubscriptionClientFactory(), subscriptionKafkaClientFactory());
     }
 

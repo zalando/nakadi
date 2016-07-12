@@ -81,6 +81,7 @@ public class SubscriptionAT extends BaseAT {
     public void testOffsetsCommit() throws Exception {
         // create event type in Nakadi
         final EventType eventType = createEventType();
+        final String topic = EVENT_TYPE_REPO.findByName(eventType.getName()).getTopic();
 
         // create subscription
         final String subscriptionJson = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() + "\"]}";
@@ -100,7 +101,7 @@ public class SubscriptionAT extends BaseAT {
 
         // check that offset is actually committed to Zookeeper
         final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
-        String committedOffset = getCommittedOffsetFromZk(eventType, subscription, "0", curator);
+        String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
 
         // commit lower offsets and expect 204
@@ -112,14 +113,14 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
         // check that committed offset in Zookeeper is not changed
-        committedOffset = getCommittedOffsetFromZk(eventType, subscription, "0", curator);
+        committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
     }
 
-    private String getCommittedOffsetFromZk(final EventType eventType, final Subscription subscription,
+    private String getCommittedOffsetFromZk(final String topic, final Subscription subscription,
                                             final String partition, final CuratorFramework curator) throws Exception {
         final String path = format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset", subscription.getId(),
-                eventType.getName(), partition);
+                topic, partition);
         final byte[] data = curator.getData().forPath(path);
         return new String(data, Charsets.UTF_8);
     }

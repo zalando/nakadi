@@ -2,8 +2,7 @@ package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
-import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
-import de.zalando.aruha.nakadi.exceptions.ServiceUnavailableException;
+import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.service.CursorsCommitService;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,7 +49,7 @@ public class CursorsController {
             boolean allCommitted = cursorsCommitService.commitCursors(subscriptionId, cursors);
             return allCommitted ? ok().build() : noContent().build();
 
-        } catch (final NoSuchSubscriptionException | ServiceUnavailableException e) {
+        } catch (final NakadiException e) {
             return create(e.asProblem(), request);
         } catch (InvalidCursorException e) {
             return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
