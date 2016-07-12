@@ -18,7 +18,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
             setReceivedAt(metadata);
             setEventTypeName(metadata, eventType);
             setFlowId(metadata);
-            setPartiotion(metadata, batchItem);
+            setPartition(metadata, batchItem);
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);
         }
@@ -37,7 +37,7 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
         metadata.put("received_at", dateTime.toString());
     }
 
-    public void setPartiotion(final JSONObject partiotion, final BatchItem batchItem) {
+    public void setPartition(final JSONObject partiotion, final BatchItem batchItem) {
         partiotion.put("partition", batchItem.getPartition());
     }
 }
