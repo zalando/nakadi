@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.BatchItem;
+import de.zalando.aruha.nakadi.domain.EventCategory;
+import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import org.apache.commons.io.IOUtils;
 
@@ -170,4 +174,9 @@ public class TestUtils {
                         .withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(intervalMs));
     }
+
+    public static BatchItem createBatch(JSONObject event) {
+        return new BatchItem(event);
+    }
+
 }

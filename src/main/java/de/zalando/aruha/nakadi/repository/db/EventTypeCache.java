@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 public class EventTypeCache {
 
     public static final String ZKNODE_PATH = "/nakadi/event_types";
+    public static final int CACHE_MAX_SIZE = 100000;
 
     private final LoadingCache<String, EventType> eventTypeCache;
     private final LoadingCache<String, EventTypeValidator> validatorCache;
@@ -134,7 +135,7 @@ public class EventTypeCache {
             }
         };
 
-        return CacheBuilder.newBuilder().maximumSize(100000).build(loader);
+        return CacheBuilder.newBuilder().maximumSize(CACHE_MAX_SIZE).build(loader);
     }
 
     private LoadingCache<String,EventType> setupInMemoryEventTypeCache(final EventTypeRepository eventTypeRepository) {
@@ -146,7 +147,7 @@ public class EventTypeCache {
             }
         };
 
-        return CacheBuilder.newBuilder().maximumSize(100000).build(loader);
+        return CacheBuilder.newBuilder().maximumSize(CACHE_MAX_SIZE).build(loader);
     }
 
     private String getZNodePath(final String eventTypeName) {
