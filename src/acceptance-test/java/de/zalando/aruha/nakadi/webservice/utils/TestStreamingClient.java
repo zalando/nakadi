@@ -17,7 +17,7 @@ import static java.text.MessageFormat.format;
 
 public class TestStreamingClient implements Runnable {
 
-    private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
     private final String baseUrl;
     private final String subscriptionId;
@@ -49,7 +49,7 @@ public class TestStreamingClient implements Runnable {
                 while (true) {
                     final String line = reader.readLine();
                     if (line != null) {
-                        final StreamBatch streamBatch = mapper.readValue(line, StreamBatch.class);
+                        final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
                         batches.add(streamBatch);
                     } else {
                         break;

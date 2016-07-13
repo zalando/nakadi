@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.service.subscription;
 
 import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -20,16 +21,19 @@ public class SubscriptionStreamerFactory {
     private final ZooKeeperHolder zkHolder;
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final KafkaTopicRepository topicRepository;
+    private final EventTypeRepository eventTypeRepository;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
     @Autowired
     public SubscriptionStreamerFactory(
             final ZooKeeperHolder zkHolder,
             final SubscriptionDbRepository subscriptionDbRepository,
-            final KafkaTopicRepository topicRepository) {
+            final KafkaTopicRepository topicRepository,
+            final EventTypeRepository eventTypeRepository) {
         this.zkHolder = zkHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.topicRepository = topicRepository;
+        this.eventTypeRepository = eventTypeRepository;
     }
 
     public SubscriptionStreamer build(
@@ -47,7 +51,7 @@ public class SubscriptionStreamerFactory {
                 session,
                 executorService,
                 new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get(), loggingPath),
-                new KafkaClient(subscription, topicRepository),
+                new KafkaClient(subscription, topicRepository, eventTypeRepository),
                 new ExactWeightRebalancer(),
                 kafkaPollTimeout,
                 loggingPath);

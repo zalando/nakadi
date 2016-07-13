@@ -30,12 +30,10 @@ import java.lang.management.ManagementFactory;
 
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFactory;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
-import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -97,12 +95,6 @@ public class NakadiConfig {
     }
 
     @Bean
-    @Profile("!test")
-    public FeatureToggleService featureToggleService() {
-        return new FeatureToggleService(zooKeeperHolder);
-    }
-
-    @Bean
     public ZooKeeperLockFactory zooKeeperLockFactory() {
         return new ZooKeeperLockFactory(zooKeeperHolder);
     }
@@ -114,12 +106,12 @@ public class NakadiConfig {
 
     @Bean
     public SubscriptionKafkaClientFactory subscriptionKafkaClientFactory() {
-        return new SubscriptionKafkaClientFactory(topicRepository);
+        return new SubscriptionKafkaClientFactory(topicRepository, eventTypeRepository);
     }
 
     @Bean
     public CursorsCommitService cursorsCommitService() {
-        return new CursorsCommitService(zooKeeperHolder, topicRepository, subscriptionRepository,
+        return new CursorsCommitService(zooKeeperHolder, topicRepository, subscriptionRepository, eventTypeRepository,
                 zooKeeperLockFactory(), zkSubscriptionClientFactory(), subscriptionKafkaClientFactory());
     }
 

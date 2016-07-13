@@ -30,7 +30,7 @@ public class SubscriptionAT extends BaseAT {
     private static final String SUBSCRIPTIONS_URL = "/subscriptions";
     private static final String CURSORS_URL = "/subscriptions/{0}/cursors";
 
-    private static final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
     @Test
     public void testSubscriptionCreation() throws IOException {
@@ -57,7 +57,7 @@ public class SubscriptionAT extends BaseAT {
                 .body("start_from", not(isEmptyString()));
 
         // retrieve subscription object from response
-        final Subscription subFirst = mapper.readValue(response.print(), Subscription.class);
+        final Subscription subFirst = MAPPER.readValue(response.print(), Subscription.class);
 
         // when we try to create that subscription again - we should get status 200
         // and the subscription that already exists should be returned
@@ -73,7 +73,7 @@ public class SubscriptionAT extends BaseAT {
                 .contentType(JSON);
 
         // check that second time already existing subscription was returned
-        final Subscription subSecond = mapper.readValue(response.print(), Subscription.class);
+        final Subscription subSecond = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(subSecond, equalTo(subFirst));
     }
 
@@ -81,6 +81,7 @@ public class SubscriptionAT extends BaseAT {
     public void testOffsetsCommit() throws Exception {
         // create event type in Nakadi
         final EventType eventType = createEventType();
+        final String topic = EVENT_TYPE_REPO.findByName(eventType.getName()).getTopic();
 
         // create subscription
         final String subscriptionJson = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() + "\"]}";
@@ -88,7 +89,7 @@ public class SubscriptionAT extends BaseAT {
                 .body(subscriptionJson)
                 .contentType(JSON)
                 .post(SUBSCRIPTIONS_URL);
-        final Subscription subscription = mapper.readValue(response.print(), Subscription.class);
+        final Subscription subscription = MAPPER.readValue(response.print(), Subscription.class);
 
         // commit offsets and expect 200
         given()
@@ -99,8 +100,8 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
 
         // check that offset is actually committed to Zookeeper
-        final CuratorFramework curator = ZookeeperTestUtils.createCurator(zookeeperUrl);
-        String committedOffset = getCommittedOffsetFromZk(eventType, subscription, "0", curator);
+        final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
+        String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
 
         // commit lower offsets and expect 204
@@ -112,14 +113,14 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
         // check that committed offset in Zookeeper is not changed
-        committedOffset = getCommittedOffsetFromZk(eventType, subscription, "0", curator);
+        committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
     }
 
-    private String getCommittedOffsetFromZk(final EventType eventType, final Subscription subscription,
+    private String getCommittedOffsetFromZk(final String topic, final Subscription subscription,
                                             final String partition, final CuratorFramework curator) throws Exception {
         final String path = format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset", subscription.getId(),
-                eventType.getName(), partition);
+                topic, partition);
         final byte[] data = curator.getData().forPath(path);
         return new String(data, Charsets.UTF_8);
     }
@@ -127,7 +128,7 @@ public class SubscriptionAT extends BaseAT {
     private EventType createEventType() throws JsonProcessingException {
         final EventType eventType = buildDefaultEventType();
         given()
-                .body(mapper.writeValueAsString(eventType))
+                .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
                 .post("/event-types");
         return eventType;
