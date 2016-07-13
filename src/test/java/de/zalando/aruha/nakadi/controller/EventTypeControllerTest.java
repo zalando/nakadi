@@ -16,7 +16,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
-import de.zalando.aruha.nakadi.managers.EventTypeService;
+import de.zalando.aruha.nakadi.services.EventTypeService;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
@@ -81,7 +81,7 @@ public class EventTypeControllerTest {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid);
 
-        final EventTypeController controller = new EventTypeController(eventTypeService, eventTypeRepository,
+        final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService);
 
         Mockito.doReturn(randomUUID).when(uuid).randomUUID();
@@ -89,7 +89,7 @@ public class EventTypeControllerTest {
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
 
-        final SecuritySettings settings = mock(SecuritySettings.class);
+        final SecuritySettings settings =  mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
         mockMvc = standaloneSetup(controller)

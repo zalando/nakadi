@@ -1,10 +1,9 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.managers.EventTypeService;
-import de.zalando.aruha.nakadi.managers.Result;
+import de.zalando.aruha.nakadi.services.EventTypeService;
+import de.zalando.aruha.nakadi.services.Result;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
-import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.security.Client;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.slf4j.Logger;
@@ -35,22 +34,19 @@ public class EventTypeController {
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);
 
     private final EventTypeService eventTypeService;
-    private final EventTypeRepository eventTypeRepository;
     private final FeatureToggleService featureToggleService;
 
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
-                               final EventTypeRepository eventTypeRepository,
                                final FeatureToggleService featureToggleService)
     {
         this.eventTypeService = eventTypeService;
-        this.eventTypeRepository = eventTypeRepository;
         this.featureToggleService = featureToggleService;
     }
 
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity<?> list() {
-        final List<EventType> eventTypes = eventTypeRepository.list();
+        final List<EventType> eventTypes = eventTypeService.list();
 
         return status(HttpStatus.OK).body(eventTypes);
     }

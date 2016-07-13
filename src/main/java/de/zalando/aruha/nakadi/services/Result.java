@@ -1,4 +1,4 @@
-package de.zalando.aruha.nakadi.managers;
+package de.zalando.aruha.nakadi.services;
 
 import org.zalando.problem.Problem;
 

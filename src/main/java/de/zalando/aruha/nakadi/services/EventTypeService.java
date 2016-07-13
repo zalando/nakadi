@@ -1,4 +1,4 @@
-package de.zalando.aruha.nakadi.managers;
+package de.zalando.aruha.nakadi.services;
 
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -48,6 +49,10 @@ public class EventTypeService {
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.uuidGenerator = uuidGenerator;
+    }
+
+    public List<EventType> list() {
+        return eventTypeRepository.list();
     }
 
     public Result<Void> create(final EventType eventType) {

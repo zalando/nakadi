@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
-import de.zalando.aruha.nakadi.managers.EventTypeService;
+import de.zalando.aruha.nakadi.services.EventTypeService;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
