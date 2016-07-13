@@ -1,4 +1,4 @@
-ALTER TABLE zn_data.event_type ADD COLUMN et_topic varchar(255) NOT NULL DEFAULT ''
+ALTER TABLE zn_data.event_type ADD COLUMN et_topic varchar(255) NOT NULL DEFAULT '';
 
 CREATE UNIQUE INDEX idx_et_topic ON zn_data.event_type (et_topic);
 
