@@ -107,7 +107,7 @@ public class EventStreamController {
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
-                    writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
+                    writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, "topic is absent in kafka");
                     return;
                 }
                 final EventStreamConfig.Builder builder = EventStreamConfig.builder()

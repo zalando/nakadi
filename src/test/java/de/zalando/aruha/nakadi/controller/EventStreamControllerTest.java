@@ -22,8 +22,6 @@ import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
-import java.net.InetAddress;
-import javax.servlet.http.HttpServletRequest;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,10 +36,12 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.problem.Problem;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.util.LinkedList;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
@@ -156,6 +156,19 @@ public class EventStreamControllerTest {
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
+
+    @Test
+    public void whenTopicNotExistsInKafkaThenInternalServerError() throws IOException, NakadiException {
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.topicExists(eq(TEST_TOPIC))).thenReturn(false);
+
+        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null,
+                requestMock, responseMock);
+
+        final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka");
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+    }
+
 
     @Test
     public void whenStreamLimitLowerThanBatchLimitThenUnprocessableEntity() throws NakadiException, IOException {
