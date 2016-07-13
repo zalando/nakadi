@@ -36,8 +36,8 @@ public class EventStreamTest {
     private static final String TOPIC = randomString();
     private static final String DUMMY = "DUMMY";
 
-    @Test(timeout = 10000)
-    public void whenNoExitConditionsThenStreamIsNotClosed() throws NakadiException, InterruptedException, IOException {
+    @Test(timeout = 15000)
+    public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableMap.of("0", "0"))
@@ -58,7 +58,7 @@ public class EventStreamTest {
         // simulation of client closing the connection: this will end the eventStream
         doThrow(new IOException()).when(outputStreamMock).flush();
 
-        Thread.sleep(3000);
+        Thread.sleep(5000);
         assertThat("The thread should be dead now, as we simulated that client closed connection",
                 thread.isAlive(), is(false));
         thread.join();

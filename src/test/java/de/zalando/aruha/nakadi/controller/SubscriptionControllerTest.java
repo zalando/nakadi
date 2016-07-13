@@ -14,6 +14,7 @@ import de.zalando.aruha.nakadi.utils.JsonTestHelper;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -80,7 +81,7 @@ public class SubscriptionControllerTest {
                 .andExpect(jsonPath("$.consumer_group", equalTo("none")))
                 .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
                 .andExpect(jsonPath("$.id", equalTo("123")))
-                .andExpect(jsonPath("$.start_from", equalTo("END")));
+                .andExpect(jsonPath("$.start_from", equalTo("end")));
     }
 
     @Test
@@ -113,12 +114,9 @@ public class SubscriptionControllerTest {
     }
 
     @Test
-    public void whenWrongStartFromThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
-        subscriptionBase.setStartFrom("MIDDLE");
-        final Problem expectedProblem = invalidProblem("start_from",
-                "value not allowed, possible values are: 'BEGIN', 'END'");
-        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
+    public void whenWrongStartFromThenBadRequest() throws Exception {
+        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\"myEt\"],\"start_from\":\"middle\"}";
+        postSubscriptionAsJson(subscription).andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
     }
 
     @Test
@@ -138,7 +136,7 @@ public class SubscriptionControllerTest {
         doThrow(new DuplicatedSubscriptionException("", null)).when(subscriptionRepository).createSubscription(any());
 
         final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
-        existingSubscription.setStartFrom(Subscription.POSITION_BEGIN);
+        existingSubscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
 
