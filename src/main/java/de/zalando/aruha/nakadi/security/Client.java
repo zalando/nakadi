@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.security;
 
 public interface Client {
 
-    Client OFF_MODE = client_id -> true;
+    Client PERMIT_ALL = client_id -> true;
 
     boolean is(String client_id);
 

@@ -42,7 +42,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
-import static de.zalando.aruha.nakadi.utils.TestUtils.OWNING_APPLICATION;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -92,7 +91,6 @@ public class EventTypeControllerTest {
 
         SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
-        doReturn(OWNING_APPLICATION).when(settings).getDefaultClientId();
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setCustomArgumentResolvers(new ClientResolver(settings))

@@ -30,10 +30,13 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
     public Client resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest request, WebDataBinderFactory binderFactory) throws Exception
     {
-        Optional<Client> principal = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName)
-                .map(Client.Authorized::new);
+        Optional<String> client_id = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+        if (client_id.filter(settings.getAdminClientId()::equals).isPresent()) {
+            return Client.PERMIT_ALL;
+        }
+        Optional<Client> principal = client_id.map(Client.Authorized::new);
         if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
-            return principal.orElseGet(() -> Client.OFF_MODE);
+            return principal.orElseGet(() -> Client.PERMIT_ALL);
         }
         return principal.orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
     }
