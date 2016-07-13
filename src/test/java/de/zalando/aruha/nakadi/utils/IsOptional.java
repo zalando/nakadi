@@ -18,11 +18,11 @@ public class IsOptional<T> extends TypeSafeMatcher<Optional<? extends T>> {
         return new IsOptional<>(true);
     }
 
-    public static <T> IsOptional<T> isValue(T value) {
+    public static <T> IsOptional<T> isValue(final T value) {
         return new IsOptional<T>(value);
     }
 
-    public static <T> IsOptional<T> matches(Matcher<T> matcher) {
+    public static <T> IsOptional<T> matches(final Matcher<T> matcher) {
         return new IsOptional<>(matcher);
     }
 
@@ -34,26 +34,26 @@ public class IsOptional<T> extends TypeSafeMatcher<Optional<? extends T>> {
     @Nonnull
     private final Optional<Matcher<T>> matcher;
 
-    private IsOptional(boolean someExpected) {
+    private IsOptional(final boolean someExpected) {
         this.someExpected = someExpected;
         this.expected = Optional.empty();
         this.matcher = Optional.empty();
     }
 
-    private IsOptional(T value) {
+    private IsOptional(final T value) {
         this.someExpected = true;
         this.expected = Optional.of(value);
         this.matcher = Optional.empty();
     }
 
-    private IsOptional(Matcher<T> matcher) {
+    private IsOptional(final Matcher<T> matcher) {
         this.someExpected = true;
         this.expected = Optional.empty();
         this.matcher = Optional.of(matcher);
     }
 
     @Override
-    public void describeTo(Description description) {
+    public void describeTo(final Description description) {
         if (!someExpected) {
             description.appendText("<Absent>");
         } else if (expected.isPresent()) {
@@ -68,7 +68,7 @@ public class IsOptional<T> extends TypeSafeMatcher<Optional<? extends T>> {
     }
 
     @Override
-    public boolean matchesSafely(Optional<? extends T> item) {
+    public boolean matchesSafely(final Optional<? extends T> item) {
         if (!someExpected) {
             return !item.isPresent();
         } else if (expected.isPresent()) {

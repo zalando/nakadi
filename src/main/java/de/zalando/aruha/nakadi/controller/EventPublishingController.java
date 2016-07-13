@@ -6,21 +6,23 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetrics;
 import de.zalando.aruha.nakadi.service.EventPublisher;
-import javax.ws.rs.core.Response;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import static org.springframework.http.ResponseEntity.status;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
+
+import javax.ws.rs.core.Response;
+
+import static org.springframework.http.ResponseEntity.status;
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -52,7 +54,10 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity postEventInternal(String eventTypeName, String eventsAsString, NativeWebRequest nativeWebRequest, EventTypeMetrics eventTypeMetrics) {
+    private ResponseEntity postEventInternal(final String eventTypeName, final String eventsAsString,
+                                             final NativeWebRequest nativeWebRequest,
+                                             final EventTypeMetrics eventTypeMetrics)
+    {
         final long startingNanos = System.nanoTime();
         try {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
