@@ -155,7 +155,6 @@ public class TestUtils {
         return new ValidationProblem(errors);
     }
 
-    public static BatchItem createBatch(final JSONObject event) {
     public static void waitFor(final Runnable runnable) {
         waitFor(runnable, 10000, 500);
     }
@@ -173,7 +172,7 @@ public class TestUtils {
                         .withWaitBetweenEachTry(intervalMs));
     }
 
-    public static BatchItem createBatch(JSONObject event) {
+    public static BatchItem createBatch(final JSONObject event) {
         return new BatchItem(event);
     }
 
