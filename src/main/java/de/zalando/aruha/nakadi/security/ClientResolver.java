@@ -12,30 +12,28 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import java.security.Principal;
 import java.util.Optional;
 
-public class ClientIdResolver implements HandlerMethodArgumentResolver {
-
-    private static final String CLIENT_ID = "client_id";
+public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private final SecuritySettings settings;
 
     @Autowired
-    public ClientIdResolver(SecuritySettings settings) {
+    public ClientResolver(SecuritySettings settings) {
         this.settings = settings;
     }
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
-        return parameter.getParameterType().isAssignableFrom(String.class) && parameter.hasParameterAnnotation(Client.class);
+        return parameter.getParameterType().isAssignableFrom(Client.class);
     }
 
     @Override
-    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
+    public Client resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest request, WebDataBinderFactory binderFactory) throws Exception
     {
-        Optional<String> principal = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+        Optional<Client> principal = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName)
+                .map(Client.Authorized::new);
         if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
-            return principal.orElseGet(() -> Optional.ofNullable(request.getParameter(CLIENT_ID))
-                    .orElse(settings.getDefaultClientId()));
+            return principal.orElseGet(() -> Client.OFF_MODE);
         }
         return principal.orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
     }

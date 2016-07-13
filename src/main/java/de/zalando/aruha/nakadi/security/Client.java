@@ -1,11 +1,23 @@
 package de.zalando.aruha.nakadi.security;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+public interface Client {
 
-@Target(ElementType.PARAMETER)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Client {
+    Client OFF_MODE = client_id -> true;
+
+    boolean is(String client_id);
+
+    class Authorized implements Client {
+
+        private final String client_id;
+
+        public Authorized(String client_id) {
+            this.client_id = client_id;
+        }
+
+        @Override
+        public boolean is(String client_id) {
+            return this.client_id.equals(client_id);
+        }
+    }
+
 }

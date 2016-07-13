@@ -15,6 +15,7 @@ import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.security.Client;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -27,9 +28,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Objects;
 import java.util.Optional;
 
-public class EventTypeManager {
+public class EventTypeService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(EventTypeManager.class);
+    private static final Logger LOG = LoggerFactory.getLogger(EventTypeService.class);
 
     private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
@@ -38,7 +39,7 @@ public class EventTypeManager {
     private final UUIDGenerator uuidGenerator;
 
     @Autowired
-    public EventTypeManager(EventTypeRepository eventTypeRepository, TopicRepository topicRepository,
+    public EventTypeService(EventTypeRepository eventTypeRepository, TopicRepository topicRepository,
                             PartitionResolver partitionResolver, Enrichment enrichment, UUIDGenerator uuidGenerator)
     {
         this.eventTypeRepository = eventTypeRepository;
@@ -76,12 +77,12 @@ public class EventTypeManager {
         }
     }
 
-    public Result<Void> delete(final String eventTypeName, final String clientId) {
+    public Result<Void> delete(final String eventTypeName, final Client client) {
         try {
             Optional<EventType> eventType = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
-            } else if (!eventType.get().getOwningApplication().equals(clientId)) {
+            } else if (!client.is(eventType.get().getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }
             eventTypeRepository.removeEventType(eventTypeName);
@@ -96,10 +97,10 @@ public class EventTypeManager {
         }
     }
 
-    public Result<Void> update(final String eventTypeName, final EventType eventType, final String clientId) {
+    public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
         try {
             EventType original = eventTypeRepository.findByName(eventTypeName);
-            if (!original.getOwningApplication().equals(clientId)) {
+            if (!client.is(original.getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }
             validateUpdate(eventTypeName, eventType);

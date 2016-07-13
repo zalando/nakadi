@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.managers.EventTypeManager;
+import de.zalando.aruha.nakadi.managers.EventTypeService;
 import de.zalando.aruha.nakadi.managers.Result;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
@@ -34,16 +34,16 @@ public class EventTypeController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);
 
-    private final EventTypeManager manager;
+    private final EventTypeService service;
     private final EventTypeRepository eventTypeRepository;
     private final FeatureToggleService featureToggleService;
 
     @Autowired
-    public EventTypeController(final EventTypeManager manager,
+    public EventTypeController(final EventTypeService service,
                                final EventTypeRepository eventTypeRepository,
                                final FeatureToggleService featureToggleService)
     {
-        this.manager = manager;
+        this.service = service;
         this.eventTypeRepository = eventTypeRepository;
         this.featureToggleService = featureToggleService;
     }
@@ -67,7 +67,7 @@ public class EventTypeController {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        Result<Void> result = manager.create(eventType);
+        Result<Void> result = service.create(eventType);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
@@ -77,13 +77,13 @@ public class EventTypeController {
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName,
                                     final NativeWebRequest request,
-                                    @Client String clientId)
+                                    Client client)
     {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
-        Result<Void> result = manager.delete(eventTypeName, clientId);
+        Result<Void> result = service.delete(eventTypeName, client);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
@@ -96,12 +96,12 @@ public class EventTypeController {
             @RequestBody @Valid final EventType eventType,
             final Errors errors,
             final NativeWebRequest request,
-            @Client String clientId)
+            Client client)
     {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
-        Result<Void> update = manager.update(name, eventType, clientId);
+        Result<Void> update = service.update(name, eventType, client);
         if (!update.isSuccessful()) {
             return Responses.create(update.getProblem(), request);
         }
@@ -110,7 +110,7 @@ public class EventTypeController {
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
     public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request) {
-        Result<EventType> result = manager.get(name);
+        Result<EventType> result = service.get(name);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }

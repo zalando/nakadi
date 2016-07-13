@@ -16,11 +16,11 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
-import de.zalando.aruha.nakadi.managers.EventTypeManager;
+import de.zalando.aruha.nakadi.managers.EventTypeService;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
-import de.zalando.aruha.nakadi.security.ClientIdResolver;
+import de.zalando.aruha.nakadi.security.ClientResolver;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import de.zalando.aruha.nakadi.utils.TestUtils;
@@ -79,10 +79,10 @@ public class EventTypeControllerTest {
 
     public EventTypeControllerTest() throws Exception {
 
-        final EventTypeManager eventTypeManager = new EventTypeManager(eventTypeRepository, topicRepository,
+        final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid);
 
-        final EventTypeController controller = new EventTypeController(eventTypeManager, eventTypeRepository,
+        final EventTypeController controller = new EventTypeController(eventTypeService, eventTypeRepository,
                 featureToggleService);
 
         Mockito.doReturn(randomUUID).when(uuid).randomUUID();
@@ -95,7 +95,7 @@ public class EventTypeControllerTest {
         doReturn(OWNING_APPLICATION).when(settings).getDefaultClientId();
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .setCustomArgumentResolvers(new ClientIdResolver(settings))
+                .setCustomArgumentResolvers(new ClientResolver(settings))
                 .build();
         doReturn(false).when(featureToggleService).isFeatureEnabled(any());
     }
@@ -510,7 +510,7 @@ public class EventTypeControllerTest {
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(() -> OWNING_APPLICATION));
+        return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }
 
     private ResultActions postEventType(final EventType eventType) throws Exception {
@@ -535,7 +535,7 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(final String content, final String name) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name).contentType(APPLICATION_JSON)
                                                                                         .content(content);
-        return mockMvc.perform(requestBuilder.param("client_id", OWNING_APPLICATION));
+        return mockMvc.perform(requestBuilder);
     }
 
     private SameJSONAs<? super String> matchesProblem(final Problem expectedProblem) throws JsonProcessingException {

@@ -61,7 +61,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // update event-type
         jsonRequestSpec().body(eventTypeBodyUpdate)
-                .param("client_id", "article-producer")
                 .when().put("/event-types/" + TEST_EVENT_TYPE).then().statusCode(OK
                 .value());
 
@@ -98,7 +97,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                                  + EVENT2 + "]}\n"));
 
         // delete event type
-        jsonRequestSpec().param("client_id", "my-app")
+        jsonRequestSpec()
                 .when().delete("/event-types/" + TEST_EVENT_TYPE)
                 .then().statusCode(OK.value());
 

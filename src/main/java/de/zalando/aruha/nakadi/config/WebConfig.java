@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
-import de.zalando.aruha.nakadi.security.ClientIdResolver;
+import de.zalando.aruha.nakadi.security.ClientResolver;
 import de.zalando.aruha.nakadi.util.FlowIdRequestFilter;
 import de.zalando.aruha.nakadi.util.GzipBodyRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,7 +89,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Override
     protected void addArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
-        argumentResolvers.add(new ClientIdResolver(securitySettings));
+        argumentResolvers.add(new ClientResolver(securitySettings));
     }
 
     @Override
