@@ -126,8 +126,6 @@ public class TestUtils {
         return buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"));
     }
 
-
-
     public static String readFile(final String filename) throws IOException {
         return Resources.toString(Resources.getResource(filename), Charsets.UTF_8);
     }
