@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.security;
 
 import de.zalando.aruha.nakadi.config.SecuritySettings;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.oauth2.common.exceptions.UnauthorizedUserException;
@@ -12,13 +13,17 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import java.security.Principal;
 import java.util.Optional;
 
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
+
 public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private final SecuritySettings settings;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
-    public ClientResolver(SecuritySettings settings) {
+    public ClientResolver(SecuritySettings settings, FeatureToggleService featureToggleService) {
         this.settings = settings;
+        this.featureToggleService = featureToggleService;
     }
 
     @Override
@@ -30,6 +35,10 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
     public Client resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest request, WebDataBinderFactory binderFactory) throws Exception
     {
+        if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)) {
+            return Client.PERMIT_ALL;
+        }
+        
         Optional<String> client_id = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
         if (client_id.filter(settings.getAdminClientId()::equals).isPresent()) {
             return Client.PERMIT_ALL;
