@@ -1,0 +1,1 @@
+UPDATE zn_data.event_type SET et_event_type_object = replace(et_event_type_object::text, 'default_statistic', 'default_statistics')::jsonb WHERE et_event_type_object::text LIKE '%default_statistic%';
