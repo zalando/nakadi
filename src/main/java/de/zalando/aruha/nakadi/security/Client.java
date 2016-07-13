@@ -8,15 +8,15 @@ public interface Client {
 
     class Authorized implements Client {
 
-        private final String client_id;
+        private final String clientId;
 
-        public Authorized(String client_id) {
-            this.client_id = client_id;
+        public Authorized(String clientId) {
+            this.clientId = clientId;
         }
 
         @Override
-        public boolean is(String client_id) {
-            return this.client_id.equals(client_id);
+        public boolean is(String clientId) {
+            return this.clientId.equals(clientId);
         }
     }
 
