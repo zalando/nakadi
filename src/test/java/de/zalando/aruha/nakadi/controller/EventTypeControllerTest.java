@@ -292,7 +292,7 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
 
-        deleteEventType(eventType.getName(), "alice").andExpect(status().isForbidden()).andExpect(content().string(""));
+        deleteEventType(eventType.getName(), "alice").andExpect(status().isForbidden());
     }
 
     @Test
@@ -574,8 +574,8 @@ public class EventTypeControllerTest {
         return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }
 
-    private ResultActions deleteEventType(final String eventTypeName, String client_id) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(new UserPrincipal(client_id)));
+    private ResultActions deleteEventType(final String eventTypeName, final String clientId) throws Exception {
+        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(new UserPrincipal(clientId)));
     }
 
     private ResultActions postEventType(final EventType eventType) throws Exception {
@@ -591,10 +591,10 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private ResultActions putEventType(final EventType eventType, final String name, final String client_id) throws Exception {
+    private ResultActions putEventType(final EventType eventType, final String name, final String clientId) throws Exception {
         final String content = objectMapper.writeValueAsString(eventType);
 
-        return putEventType(content, name, client_id);
+        return putEventType(content, name, clientId);
     }
 
     private ResultActions putEventType(final EventType eventType, final String name) throws Exception {
@@ -609,9 +609,9 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private ResultActions putEventType(final String content, final String name, final String client_id) throws Exception {
+    private ResultActions putEventType(final String content, final String name, final String clientId) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
-                .principal(new UserPrincipal(client_id))
+                .principal(new UserPrincipal(clientId))
                 .contentType(APPLICATION_JSON)
                 .content(content);
         return mockMvc.perform(requestBuilder);
