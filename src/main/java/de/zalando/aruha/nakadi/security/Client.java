@@ -4,7 +4,7 @@ public interface Client {
 
     Client PERMIT_ALL = clientId -> true;
 
-    boolean is(String client_id);
+    boolean is(String clientId);
 
     class Authorized implements Client {
 
