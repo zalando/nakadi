@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import com.sun.security.auth.UserPrincipal;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
 import de.zalando.aruha.nakadi.domain.EventType;
@@ -25,6 +26,7 @@ import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.json.JSONObject;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -42,6 +44,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -73,10 +76,13 @@ public class EventTypeControllerTest {
     private final UUIDGenerator uuid = mock(UUIDGenerator.class);
     private final UUID randomUUID = new UUIDGenerator().randomUUID();
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private final MockMvc mockMvc;
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+    private final SecuritySettings settings = mock(SecuritySettings.class);
 
-    public EventTypeControllerTest() throws Exception {
+    private MockMvc mockMvc;
+
+    @Before
+    public void init() throws Exception {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid);
@@ -89,14 +95,15 @@ public class EventTypeControllerTest {
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
 
-        final SecuritySettings settings =  mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
+        doReturn(false).when(featureToggleService).isFeatureEnabled(any());
+
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
-        doReturn(false).when(featureToggleService).isFeatureEnabled(any());
+
     }
 
     @Test
@@ -192,6 +199,33 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenPUTNotOwner403() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
+
+        putEventType(eventType, eventType.getName(), "alice")
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void whenPUTAdmin200() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
+
+        putEventType(eventType, eventType.getName(), "nakadi")
+                .andExpect(status().isOk());
+    }
+
+    @Test
     public void whenPOSTBusinessEventTypeMetadataThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
         eventType.getSchema().setSchema(
@@ -245,6 +279,34 @@ public class EventTypeControllerTest {
 
         verify(eventTypeRepository, times(1)).removeEventType(eventType.getName());
         verify(topicRepository, times(1)).deleteTopic(eventType.getTopic());
+    }
+
+    @Test
+    public void whenDeleteEventTypeThen403() throws Exception {
+
+        final EventType eventType = buildDefaultEventType();
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+
+        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
+
+        deleteEventType(eventType.getName(), "alice").andExpect(status().isForbidden()).andExpect(content().string(""));
+    }
+
+    @Test
+    public void whenDeleteEventTypeAdminThen200() throws Exception {
+
+        final EventType eventType = buildDefaultEventType();
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+
+        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
+
+        deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
     }
 
     @Test
@@ -512,6 +574,10 @@ public class EventTypeControllerTest {
         return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }
 
+    private ResultActions deleteEventType(final String eventTypeName, String client_id) throws Exception {
+        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(new UserPrincipal(client_id)));
+    }
+
     private ResultActions postEventType(final EventType eventType) throws Exception {
         final String content = objectMapper.writeValueAsString(eventType);
 
@@ -525,6 +591,12 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
+    private ResultActions putEventType(final EventType eventType, final String name, final String client_id) throws Exception {
+        final String content = objectMapper.writeValueAsString(eventType);
+
+        return putEventType(content, name, client_id);
+    }
+
     private ResultActions putEventType(final EventType eventType, final String name) throws Exception {
         final String content = objectMapper.writeValueAsString(eventType);
 
@@ -534,6 +606,14 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(final String content, final String name) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name).contentType(APPLICATION_JSON)
                                                                                         .content(content);
+        return mockMvc.perform(requestBuilder);
+    }
+
+    private ResultActions putEventType(final String content, final String name, final String client_id) throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
+                .principal(new UserPrincipal(client_id))
+                .contentType(APPLICATION_JSON)
+                .content(content);
         return mockMvc.perform(requestBuilder);
     }
 
