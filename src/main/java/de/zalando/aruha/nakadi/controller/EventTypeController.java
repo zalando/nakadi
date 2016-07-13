@@ -98,7 +98,7 @@ public class EventTypeController {
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(eventType.getTopic(), eventType.getDefaultStatistics());
+            topicRepository.createTopic(eventType.getTopic(), eventType.getDefaultStatistic());
             return status(HttpStatus.CREATED).build();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
@@ -216,8 +216,8 @@ public class EventTypeController {
 
         validateName(name, eventType);
         validateSchemaChange(eventType, existingEventType);
-        eventType.setDefaultStatistics(
-                validateStatisticsUpdate(existingEventType.getDefaultStatistics(), eventType.getDefaultStatistics()));
+        eventType.setDefaultStatistic(
+                validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
     }
 
     private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing, final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
