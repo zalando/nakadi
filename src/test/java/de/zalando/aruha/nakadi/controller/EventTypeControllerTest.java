@@ -17,7 +17,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.exceptions.TopicCreationException;
 import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.exceptions.UnprocessableEntityException;
-import de.zalando.aruha.nakadi.services.EventTypeService;
+import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;

@@ -1,8 +1,8 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.services.EventTypeService;
-import de.zalando.aruha.nakadi.services.Result;
+import de.zalando.aruha.nakadi.service.EventTypeService;
+import de.zalando.aruha.nakadi.service.Result;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.security.Client;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
