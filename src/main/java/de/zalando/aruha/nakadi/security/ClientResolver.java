@@ -13,6 +13,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import java.security.Principal;
 import java.util.Optional;
 
+import static de.zalando.aruha.nakadi.config.SecuritySettings.AuthMode.OFF;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 
 public class ClientResolver implements HandlerMethodArgumentResolver {
@@ -38,15 +39,13 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
 
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
-                || clientId.filter(settings.getAdminClientId()::equals).isPresent())
+                || clientId.filter(settings.getAdminClientId()::equals).isPresent()
+                || settings.getAuthMode() == OFF)
         {
             return Client.PERMIT_ALL;
         }
-        final Optional<Client> principal = clientId.map(Client.Authorized::new);
-        if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
-            return principal.orElseGet(() -> Client.PERMIT_ALL);
-        }
-        return principal.orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+        return clientId.map(Client.Authorized::new)
+                .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
 
     }
 

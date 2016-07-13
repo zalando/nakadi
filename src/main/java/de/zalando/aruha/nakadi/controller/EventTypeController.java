@@ -34,16 +34,16 @@ public class EventTypeController {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);
 
-    private final EventTypeService service;
+    private final EventTypeService eventTypeService;
     private final EventTypeRepository eventTypeRepository;
     private final FeatureToggleService featureToggleService;
 
     @Autowired
-    public EventTypeController(final EventTypeService service,
+    public EventTypeController(final EventTypeService eventTypeService,
                                final EventTypeRepository eventTypeRepository,
                                final FeatureToggleService featureToggleService)
     {
-        this.service = service;
+        this.eventTypeService = eventTypeService;
         this.eventTypeRepository = eventTypeRepository;
         this.featureToggleService = featureToggleService;
     }
@@ -67,7 +67,7 @@ public class EventTypeController {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        final Result<Void> result = service.create(eventType);
+        final Result<Void> result = eventTypeService.create(eventType);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
@@ -83,7 +83,7 @@ public class EventTypeController {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
-        final Result<Void> result = service.delete(eventTypeName, client);
+        final Result<Void> result = eventTypeService.delete(eventTypeName, client);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
@@ -101,7 +101,7 @@ public class EventTypeController {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
-        final Result<Void> update = service.update(name, eventType, client);
+        final Result<Void> update = eventTypeService.update(name, eventType, client);
         if (!update.isSuccessful()) {
             return Responses.create(update.getProblem(), request);
         }
@@ -110,7 +110,7 @@ public class EventTypeController {
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
     public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request) {
-        final Result<EventType> result = service.get(name);
+        final Result<EventType> result = eventTypeService.get(name);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }

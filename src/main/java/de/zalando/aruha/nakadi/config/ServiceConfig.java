@@ -10,10 +10,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class ManagersConfig {
+public class ServiceConfig {
 
     @Bean
-    public EventTypeService eventTypeManager(final EventTypeRepository eventTypeRepository,
+    public EventTypeService eventTypeService(final EventTypeRepository eventTypeRepository,
                                              final TopicRepository topicRepository,
                                              final PartitionResolver partitionResolver,
                                              final Enrichment enrichment,
