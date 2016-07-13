@@ -155,6 +155,7 @@ public class TestUtils {
         return new ValidationProblem(errors);
     }
 
+    public static BatchItem createBatch(final JSONObject event) {
     public static void waitFor(final Runnable runnable) {
         waitFor(runnable, 10000, 500);
     }

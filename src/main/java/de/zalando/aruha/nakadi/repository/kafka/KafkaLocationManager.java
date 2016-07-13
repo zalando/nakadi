@@ -66,7 +66,7 @@ class KafkaLocationManager {
         return brokers;
     }
 
-    private static String buildBootstrapServers(List<Broker> brokers) {
+    private static String buildBootstrapServers(final List<Broker> brokers) {
         final StringBuilder builder = new StringBuilder();
         brokers.stream().forEach(broker -> builder.append(broker).append(","));
         return builder.deleteCharAt(builder.length() - 1).toString();

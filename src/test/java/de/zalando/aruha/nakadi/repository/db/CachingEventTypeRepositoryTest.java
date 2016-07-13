@@ -63,7 +63,7 @@ public class CachingEventTypeRepositoryTest {
                 .when(cache)
                 .updated("event-name");
 
-        EventType original = mock(EventType.class);
+        final EventType original = mock(EventType.class);
 
         Mockito
                 .doReturn(original)
@@ -92,7 +92,7 @@ public class CachingEventTypeRepositoryTest {
                 .when(cache)
                 .removed("event-name");
 
-        EventType original = mock(EventType.class);
+        final EventType original = mock(EventType.class);
 
         Mockito
                 .doReturn(original)

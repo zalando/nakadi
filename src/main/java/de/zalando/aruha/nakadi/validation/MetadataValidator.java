@@ -17,7 +17,7 @@ public class MetadataValidator implements EventValidator {
 
     private Optional<ValidationError> checkDateTime(final String occurredAt) {
         try {
-            DateTimeFormatter dateFormatter = ISODateTimeFormat.dateTimeParser();
+            final DateTimeFormatter dateFormatter = ISODateTimeFormat.dateTimeParser();
             dateFormatter.parseDateTime(occurredAt);
 
             return Optional.empty();
