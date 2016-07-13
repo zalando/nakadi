@@ -1,6 +1,7 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.CursorError;
@@ -299,6 +300,29 @@ public class KafkaTopicRepositoryTest {
                 kafkaCursor(0, 41),
                 kafkaCursor(1, 100)
         )));
+    }
+
+    @Test
+    public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
+        kafkaTopicRepository.validateCommitCursors(MY_TOPIC, ImmutableList.of(cursor("0", "23")));
+    }
+
+    @Test
+    public void whenValidateInvalidCommitCursorsThenException() throws NakadiException {
+        ImmutableMap.of(
+                cursor(null, "1"), CursorError.NULL_PARTITION,
+                cursor("0", null), CursorError.NULL_OFFSET,
+                cursor("345", "1"), CursorError.PARTITION_NOT_FOUND,
+                cursor("0", "abc"), CursorError.INVALID_FORMAT)
+                .entrySet()
+                .stream()
+                .forEach(testCase -> {
+                    try {
+                        kafkaTopicRepository.validateCommitCursors(MY_TOPIC, ImmutableList.of(testCase.getKey()));
+                    } catch (final InvalidCursorException e) {
+                        assertThat(e.getError(), equalTo(testCase.getValue()));
+                    }
+                });
     }
 
     private void canListAllPartitionsOfTopic(final String topic) throws NakadiException {

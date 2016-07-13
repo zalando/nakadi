@@ -6,7 +6,7 @@ import javax.ws.rs.core.Response;
 
 public class InvalidEventTypeException extends NakadiException {
 
-    public InvalidEventTypeException(String message) {
+    public InvalidEventTypeException(final String message) {
         super(message);
     }
 

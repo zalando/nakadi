@@ -4,12 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.EventTypeSchema;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import org.apache.commons.io.IOUtils;
+
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.json.JSONObject;
+
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,6 +26,7 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.UUID;
 
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -149,4 +154,26 @@ public class TestUtils {
         when(errors.getAllErrors()).thenReturn(Arrays.asList(fieldErrors));
         return new ValidationProblem(errors);
     }
+
+    public static void waitFor(final Runnable runnable) {
+        waitFor(runnable, 10000, 500);
+    }
+
+    public static void waitFor(final Runnable runnable, final int timeoutMs) {
+        waitFor(runnable, timeoutMs, 500);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void waitFor(final Runnable runnable, final int timeoutMs, final int intervalMs) {
+        executeWithRetry(
+                runnable,
+                new RetryForSpecifiedTimeStrategy<Void>(timeoutMs)
+                        .withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(intervalMs));
+    }
+
+    public static BatchItem createBatch(final JSONObject event) {
+        return new BatchItem(event);
+    }
+
 }

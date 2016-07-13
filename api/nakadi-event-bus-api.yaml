@@ -1115,8 +1115,8 @@ definitions:
         enum:
           - none
           - validating
-          - enriching
           - partitioning
+          - enriching
           - publishing
         description: |
           Indicator of the step in the publishing process this Event reached.
@@ -1127,7 +1127,7 @@ definitions:
             be present only in the case of aborting the publishing during the validation of another
             (previous) Event.
 
-          - "validating", "enriching", "partitioning" and "publishing" indicate all the
+          - "validating", "partitioning", "enriching" and "publishing" indicate all the
             corresponding steps of the publishing process.
       detail:
         type: string

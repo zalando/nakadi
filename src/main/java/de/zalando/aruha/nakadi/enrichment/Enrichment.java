@@ -1,11 +1,11 @@
 package de.zalando.aruha.nakadi.enrichment;
 
+import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.EnrichmentStrategyDescriptor;
 import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
-import org.json.JSONObject;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -33,10 +33,10 @@ public class Enrichment {
         }
     }
 
-    public void enrich(JSONObject event, final EventType eventType) throws EnrichmentException {
+    public void enrich(final BatchItem batchItem, final EventType eventType) throws EnrichmentException {
         for (EnrichmentStrategyDescriptor descriptor : eventType.getEnrichmentStrategies()) {
-            EnrichmentStrategy strategy = getStrategy(descriptor);
-            strategy.enrich(event, eventType);
+            final EnrichmentStrategy strategy = getStrategy(descriptor);
+            strategy.enrich(batchItem, eventType);
         }
     }
 

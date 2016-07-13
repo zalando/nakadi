@@ -7,10 +7,19 @@ import com.google.common.collect.Multimap;
 import de.zalando.aruha.nakadi.Application;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
+import java.util.List;
+import java.util.Set;
+import javax.annotation.PostConstruct;
+import javax.servlet.Filter;
+import static org.hamcrest.Matchers.isOneOf;
+import static org.hamcrest.Matchers.not;
+
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.junit.Before;
@@ -35,14 +44,6 @@ import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import javax.annotation.PostConstruct;
-import javax.servlet.Filter;
-import java.util.List;
-import java.util.Set;
-
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
-import static org.hamcrest.Matchers.isOneOf;
-import static org.hamcrest.Matchers.not;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -118,18 +119,17 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public TopicRepository mockTopicRepository() {
-            return mock(TopicRepository.class);
-        }
-
-        @Bean
         public EventTypeRepository mockDbRepository() {
             return mock(EventTypeDbRepository.class);
         }
 
         @Bean
-        public SubscriptionDbRepository subscriptionRepository() {
+        public SubscriptionDbRepository mockSubscriptionDbRepo() {
             return mock(SubscriptionDbRepository.class);
+        }
+        @Bean
+        public EventTypeCache eventTypeCache() {
+            return mock(EventTypeCache.class);
         }
 
         @Bean
@@ -145,8 +145,13 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public EventTypeCache eventTypeCache() {
-            return mock(EventTypeCache.class);
+        public ZooKeeperHolder mockZKHolder() {
+            return mock(ZooKeeperHolder.class);
+        }
+
+        @Bean
+        public KafkaTopicRepository mockkafkaRepository() {
+            return mock(KafkaTopicRepository.class);
         }
     }
 
@@ -170,7 +175,9 @@ public abstract class AuthenticationTest {
             new Endpoint(GET, "/event-types/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/event-types/foo/partitions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
-            new Endpoint(POST, "/subscriptions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
+            new Endpoint(GET, "/subscriptions/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(POST, "/subscriptions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(PUT, "/subscriptions/foo/cursors", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
 
     protected static final List<Endpoint> ENDPOINTS_FOR_UID_SCOPE = ImmutableList.of(
             new Endpoint(GET, "/metrics", TOKEN_WITH_UID_SCOPE),

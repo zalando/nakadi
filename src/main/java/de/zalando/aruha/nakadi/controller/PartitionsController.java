@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -39,7 +40,11 @@ public class PartitionsController {
         try {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
-            return ok().body(topicRepository.listPartitions(eventType.getTopic()));
+            if (!topicRepository.topicExists(eventType.getTopic())) {
+                return create(Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka"), request);
+            } else {
+                return ok().body(topicRepository.listPartitions(eventType.getTopic()));
+            }
         }
         catch (final NoSuchEventTypeException e) {
             return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);
@@ -59,10 +64,11 @@ public class PartitionsController {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
             final String topic = eventType.getTopic();
 
-            if (!topicRepository.partitionExists(topic, partition)) {
+            if (!topicRepository.topicExists(topic)) {
+                return create(Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka"), request);
+            } else if (!topicRepository.partitionExists(topic, partition)) {
                 return create(Problem.valueOf(NOT_FOUND, "partition not found"), request);
-            }
-            else {
+            } else {
                 return ok().body(topicRepository.getPartition(topic, partition));
             }
         }

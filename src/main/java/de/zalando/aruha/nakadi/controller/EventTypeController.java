@@ -127,7 +127,7 @@ public class EventTypeController {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
         try {
-            EventType eventType = eventTypeRepository.findByName(eventTypeName);
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
             eventTypeRepository.removeEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.getTopic());
             return status(HttpStatus.OK).build();

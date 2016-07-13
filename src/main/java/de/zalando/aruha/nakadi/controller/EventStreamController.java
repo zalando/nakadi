@@ -5,7 +5,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.domain.CursorError;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
@@ -17,9 +16,6 @@ import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
 import de.zalando.aruha.nakadi.service.EventStream;
 import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
-import java.net.InetAddress;
-import java.util.concurrent.atomic.AtomicBoolean;
-import javax.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -34,13 +30,16 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
@@ -107,7 +106,7 @@ public class EventStreamController {
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
-                    writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
+                    writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, "topic is absent in kafka");
                     return;
                 }
                 final EventStreamConfig.Builder builder = EventStreamConfig.builder()
@@ -171,8 +170,7 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, e.asProblem());
             }
             catch (final InvalidCursorException e) {
-                final String errorMessage = invalidCursorMessage(e.getError(), e.getCursor());
-                writeProblemResponse(response, outputStream, PRECONDITION_FAILED, errorMessage);
+                writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             }
             catch (final Exception e) {
                 LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
@@ -195,30 +193,14 @@ public class EventStreamController {
         };
     }
 
-    private String invalidCursorMessage(final CursorError error, final Cursor cursor) {
-        switch (error) {
-            case PARTITION_NOT_FOUND:
-                return "non existing partition " + cursor.getPartition();
-            case EMPTY_PARTITION:
-                return "partition " + cursor.getPartition() + " is empty";
-            case UNAVAILABLE:
-                return "offset " + cursor.getOffset() + " for partition " + cursor.getPartition() + " is unavailable";
-            case NULL_OFFSET:
-                return "offset must not be null";
-            case NULL_PARTITION:
-                return "partition must not be null";
-            default:
-                return "invalid offset " + cursor.getOffset() + " for partition " + cursor.getPartition();
-        }
-    }
-
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
                                       final Response.StatusType statusCode, final String message) throws IOException {
         writeProblemResponse(response, outputStream, Problem.valueOf(statusCode, message));
     }
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
-                                      Problem problem) throws IOException {
+                                      final Problem problem) throws IOException
+    {
         response.setStatus(problem.getStatus().getStatusCode());
         response.setContentType("application/problem+json");
         jsonMapper.writer().writeValue(outputStream, problem);
