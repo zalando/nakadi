@@ -91,6 +91,7 @@ public class EventTypeControllerTest {
 
         SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
+        doReturn("nakadi").when(settings).getAdminClientId();
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))

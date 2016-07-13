@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.config;
 
 import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
 import de.zalando.aruha.nakadi.security.ClientResolver;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.FlowIdRequestFilter;
 import de.zalando.aruha.nakadi.util.GzipBodyRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Autowired
     private SecuritySettings securitySettings;
+
+    @Autowired
+    private FeatureToggleService featureToggleService;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
