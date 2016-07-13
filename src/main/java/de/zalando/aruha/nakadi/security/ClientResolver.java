@@ -38,7 +38,7 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)) {
             return Client.PERMIT_ALL;
         }
-        
+
         Optional<String> client_id = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
         if (client_id.filter(settings.getAdminClientId()::equals).isPresent()) {
             return Client.PERMIT_ALL;
