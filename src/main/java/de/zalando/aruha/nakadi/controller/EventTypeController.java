@@ -189,7 +189,7 @@ public class EventTypeController {
         try {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
-            List<String> absentFields = eventType.getPartitionKeyFields().stream()
+            final List<String> absentFields = eventType.getPartitionKeyFields().stream()
                     .filter(field -> !hasReservedField(eventType, schemaAsJson, field))
                     .collect(Collectors.toList());
             if (!absentFields.isEmpty()) {
