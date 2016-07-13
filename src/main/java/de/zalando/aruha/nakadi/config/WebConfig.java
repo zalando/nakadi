@@ -92,7 +92,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Override
-    protected void addArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
+    protected void addArgumentResolvers(final List<HandlerMethodArgumentResolver> argumentResolvers) {
         argumentResolvers.add(new ClientResolver(securitySettings, featureToggleService));
     }
 

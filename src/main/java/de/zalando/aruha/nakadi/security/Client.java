@@ -4,18 +4,18 @@ public interface Client {
 
     Client PERMIT_ALL = clientId -> true;
 
-    boolean is(String clientId);
+    boolean is(final String clientId);
 
     class Authorized implements Client {
 
         private final String clientId;
 
-        public Authorized(String clientId) {
+        public Authorized(final String clientId) {
             this.clientId = clientId;
         }
 
         @Override
-        public boolean is(String clientId) {
+        public boolean is(final String clientId) {
             return this.clientId.equals(clientId);
         }
     }

@@ -3,7 +3,8 @@ package de.zalando.aruha.nakadi.exceptions;
 import javax.ws.rs.core.Response;
 
 public class TopicCreationException extends NakadiException {
-    public TopicCreationException(String msg, Exception cause) {
+
+    public TopicCreationException(final String msg, final Exception cause) {
         super(msg, cause);
     }
 

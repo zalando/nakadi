@@ -67,7 +67,7 @@ public class EventTypeController {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        Result<Void> result = service.create(eventType);
+        final Result<Void> result = service.create(eventType);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
@@ -77,13 +77,13 @@ public class EventTypeController {
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName,
                                     final NativeWebRequest request,
-                                    Client client)
+                                    final Client client)
     {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
-        Result<Void> result = service.delete(eventTypeName, client);
+        final Result<Void> result = service.delete(eventTypeName, client);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
@@ -96,12 +96,12 @@ public class EventTypeController {
             @RequestBody @Valid final EventType eventType,
             final Errors errors,
             final NativeWebRequest request,
-            Client client)
+            final Client client)
     {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
-        Result<Void> update = service.update(name, eventType, client);
+        final Result<Void> update = service.update(name, eventType, client);
         if (!update.isSuccessful()) {
             return Responses.create(update.getProblem(), request);
         }
@@ -110,7 +110,7 @@ public class EventTypeController {
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
     public ResponseEntity<?> get(@PathVariable final String name, final NativeWebRequest request) {
-        Result<EventType> result = service.get(name);
+        final Result<EventType> result = service.get(name);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }

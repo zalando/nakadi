@@ -35,7 +35,7 @@ public class Enrichment {
 
     public void enrich(final BatchItem batchItem, final EventType eventType) throws EnrichmentException {
         for (EnrichmentStrategyDescriptor descriptor : eventType.getEnrichmentStrategies()) {
-            EnrichmentStrategy strategy = getStrategy(descriptor);
+            final EnrichmentStrategy strategy = getStrategy(descriptor);
             strategy.enrich(batchItem, eventType);
         }
     }

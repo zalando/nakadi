@@ -39,8 +39,9 @@ public class EventTypeService {
     private final UUIDGenerator uuidGenerator;
 
     @Autowired
-    public EventTypeService(EventTypeRepository eventTypeRepository, TopicRepository topicRepository,
-                            PartitionResolver partitionResolver, Enrichment enrichment, UUIDGenerator uuidGenerator)
+    public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
+                            final PartitionResolver partitionResolver, final Enrichment enrichment,
+                            final UUIDGenerator uuidGenerator)
     {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
@@ -79,7 +80,7 @@ public class EventTypeService {
 
     public Result<Void> delete(final String eventTypeName, final Client client) {
         try {
-            Optional<EventType> eventType = eventTypeRepository.findByNameO(eventTypeName);
+            final Optional<EventType> eventType = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
             } else if (!client.is(eventType.get().getOwningApplication())) {
@@ -99,7 +100,7 @@ public class EventTypeService {
 
     public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
         try {
-            EventType original = eventTypeRepository.findByName(eventTypeName);
+            final EventType original = eventTypeRepository.findByName(eventTypeName);
             if (!client.is(original.getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }

@@ -21,28 +21,28 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
     private final FeatureToggleService featureToggleService;
 
     @Autowired
-    public ClientResolver(SecuritySettings settings, FeatureToggleService featureToggleService) {
+    public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService) {
         this.settings = settings;
         this.featureToggleService = featureToggleService;
     }
 
     @Override
-    public boolean supportsParameter(MethodParameter parameter) {
+    public boolean supportsParameter(final MethodParameter parameter) {
         return parameter.getParameterType().isAssignableFrom(Client.class);
     }
 
     @Override
-    public Client resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                  NativeWebRequest request, WebDataBinderFactory binderFactory) throws Exception
+    public Client resolveArgument(final MethodParameter parameter, final ModelAndViewContainer mavContainer,
+                                  final NativeWebRequest request, final WebDataBinderFactory binderFactory) throws Exception
     {
-        Optional<String> client_id = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+        final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
 
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
-                || client_id.filter(settings.getAdminClientId()::equals).isPresent())
+                || clientId.filter(settings.getAdminClientId()::equals).isPresent())
         {
             return Client.PERMIT_ALL;
         }
-        Optional<Client> principal = client_id.map(Client.Authorized::new);
+        final Optional<Client> principal = clientId.map(Client.Authorized::new);
         if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
             return principal.orElseGet(() -> Client.PERMIT_ALL);
         }

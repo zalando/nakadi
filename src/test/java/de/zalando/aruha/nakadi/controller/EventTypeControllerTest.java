@@ -89,7 +89,7 @@ public class EventTypeControllerTest {
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
 
-        SecuritySettings settings = mock(SecuritySettings.class);
+        final SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
         mockMvc = standaloneSetup(controller)

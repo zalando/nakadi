@@ -22,7 +22,7 @@ public final class ExceptionHandling implements ProblemHandling {
     private static final Logger LOG = LoggerFactory.getLogger(ExceptionHandling.class);
 
     @Override
-    public String formatFieldName(String fieldName) {
+    public String formatFieldName(final String fieldName) {
         return CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, fieldName);
     }
 

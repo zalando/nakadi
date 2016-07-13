@@ -49,7 +49,7 @@ public class EventTypeCache {
             return eventTypeCache.get(name);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof NoSuchEventTypeException) {
-                NoSuchEventTypeException noSuchEventTypeException = (NoSuchEventTypeException) e.getCause();
+                final NoSuchEventTypeException noSuchEventTypeException = (NoSuchEventTypeException) e.getCause();
                 throw noSuchEventTypeException;
             } else {
                 throw new InternalNakadiException("Problem loading event type", e);
@@ -141,7 +141,7 @@ public class EventTypeCache {
     private LoadingCache<String,EventType> setupInMemoryEventTypeCache(final EventTypeRepository eventTypeRepository) {
         final CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
             public EventType load(final String key) throws Exception {
-                EventType eventType = eventTypeRepository.findByName(key);
+                final EventType eventType = eventTypeRepository.findByName(key);
                 created(key); // make sure that all event types are tracked in the remote cache
                 return eventType;
             }

@@ -24,11 +24,11 @@ public interface Result<T> {
         return new Success<>(value);
     }
 
-    static Result<Void> forbidden(String message) {
+    static Result<Void> forbidden(final String message) {
         return problem(Problem.valueOf(Response.Status.FORBIDDEN, message));
     }
 
-    static Result<Void> notFound(String message) {
+    static Result<Void> notFound(final String message) {
         return problem(Problem.valueOf(Response.Status.NOT_FOUND, message));
     }
 
@@ -36,7 +36,7 @@ public interface Result<T> {
 
         private final V value;
 
-        public Success(V value) {
+        public Success(final V value) {
             this.value = value;
         }
 
@@ -60,7 +60,7 @@ public interface Result<T> {
 
         private final Problem problem;
 
-        public Failure(Problem problem) {
+        public Failure(final Problem problem) {
             this.problem = problem;
         }
 
