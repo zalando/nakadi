@@ -7,7 +7,7 @@ public class NoSuchEventTypeException extends NakadiException {
         super(message);
     }
 
-    public NoSuchEventTypeException(String msg, Exception cause) {
+    public NoSuchEventTypeException(final String msg, final Exception cause) {
         super(msg, cause);
     }
 

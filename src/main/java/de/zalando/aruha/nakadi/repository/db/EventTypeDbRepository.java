@@ -64,7 +64,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
 
     private class EventTypeMapper implements RowMapper<EventType> {
         @Override
-        public EventType mapRow(ResultSet rs, int rowNum) throws SQLException {
+        public EventType mapRow(final ResultSet rs, final int rowNum) throws SQLException {
             try {
                 final EventType eventType = jsonMapper.readValue(rs.getString("et_event_type_object"), EventType.class);
                 eventType.setTopic(rs.getString("et_topic"));

@@ -2,8 +2,9 @@ package de.zalando.aruha.nakadi.security;
 
 
 import de.zalando.aruha.nakadi.config.SecuritySettings;
-import java.util.stream.Stream;
 import org.junit.Test;
+
+import java.util.stream.Stream;
 
 public class OffModeAuthenticationTest extends AuthenticationTest {
 
@@ -17,7 +18,7 @@ public class OffModeAuthenticationTest extends AuthenticationTest {
                 .forEach(this::checkHasCorrectResponseStatus);
     }
 
-    public void checkHasCorrectResponseStatus(Endpoint endpoint) {
+    public void checkHasCorrectResponseStatus(final Endpoint endpoint) {
         try {
             mockMvc.perform(endpoint.toRequestBuilder()).andExpect(STATUS_NOT_401_OR_403);
         } catch (Exception e) {
