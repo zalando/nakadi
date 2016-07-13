@@ -46,7 +46,7 @@ public class CursorsController {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
         try {
-            boolean allCommitted = cursorsCommitService.commitCursors(subscriptionId, cursors);
+            final boolean allCommitted = cursorsCommitService.commitCursors(subscriptionId, cursors);
             return allCommitted ? ok().build() : noContent().build();
 
         } catch (final NakadiException e) {
