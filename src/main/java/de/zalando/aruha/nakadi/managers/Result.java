@@ -4,7 +4,7 @@ import org.zalando.problem.Problem;
 
 import javax.ws.rs.core.Response;
 
-public interface  Result<T> {
+public interface Result<T> {
 
     boolean isSuccessful();
 
