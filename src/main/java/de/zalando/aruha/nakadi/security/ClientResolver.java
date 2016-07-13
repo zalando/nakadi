@@ -13,6 +13,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import java.security.Principal;
 import java.util.Optional;
 
+import static de.zalando.aruha.nakadi.config.SecuritySettings.AuthMode.OFF;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 
 public class ClientResolver implements HandlerMethodArgumentResolver {
@@ -35,18 +36,17 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
     public Client resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest request, WebDataBinderFactory binderFactory) throws Exception
     {
-        if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)) {
-            return Client.PERMIT_ALL;
-        }
+        return Optional.ofNullable(request.getUserPrincipal())
+                .map(Principal::getName)
+                .map(this::resolveClient)
+                .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+    }
 
-        final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
-        if (clientId.filter(settings.getAdminClientId()::equals).isPresent()) {
-            return Client.PERMIT_ALL;
-        }
-        final Optional<Client> principal = clientId.map(Client.Authorized::new);
-        if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
-            return principal.orElseGet(() -> Client.PERMIT_ALL);
-        }
-        return principal.orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+    private Client resolveClient(String clientId) {
+        return !featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
+                || settings.getAuthMode() == OFF
+                || settings.getAdminClientId().equals(clientId)
+                ? Client.PERMIT_ALL
+                : new Client.Authorized(clientId);
     }
 }
