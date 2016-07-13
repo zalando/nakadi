@@ -98,7 +98,7 @@ public class EventTypeController {
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(eventType.getName(), eventType.getDefaultStatistic());
+            topicRepository.createTopic(eventType.getTopic(), eventType.getDefaultStatistic());
             return status(HttpStatus.CREATED).build();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
