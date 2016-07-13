@@ -39,11 +39,11 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
             return Client.PERMIT_ALL;
         }
 
-        Optional<String> client_id = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+        final Optional<String> client_id = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
         if (client_id.filter(settings.getAdminClientId()::equals).isPresent()) {
             return Client.PERMIT_ALL;
         }
-        Optional<Client> principal = client_id.map(Client.Authorized::new);
+        final Optional<Client> principal = client_id.map(Client.Authorized::new);
         if (settings.getAuthMode() == SecuritySettings.AuthMode.OFF) {
             return principal.orElseGet(() -> Client.PERMIT_ALL);
         }
