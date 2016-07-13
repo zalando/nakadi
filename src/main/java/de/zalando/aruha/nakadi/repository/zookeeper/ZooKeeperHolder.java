@@ -26,7 +26,9 @@ public class ZooKeeperHolder {
 
     private CuratorFramework zooKeeper;
 
-    public ZooKeeperHolder(String zookeeperBrokers, String zookeeperKafkaNamespace, String exhibitorAddresses, Integer exhibitorPort) {
+    public ZooKeeperHolder(final String zookeeperBrokers, final String zookeeperKafkaNamespace,
+                           final String exhibitorAddresses, final Integer exhibitorPort)
+    {
         this.zookeeperBrokers = zookeeperBrokers;
         this.zookeeperKafkaNamespace = zookeeperKafkaNamespace;
         this.exhibitorAddresses = exhibitorAddresses;
@@ -35,8 +37,9 @@ public class ZooKeeperHolder {
 
     class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
 
-        public ExhibitorEnsembleProvider(Exhibitors exhibitors, ExhibitorRestClient restClient, String restUriPath,
-                int pollingMs, RetryPolicy retryPolicy) {
+        public ExhibitorEnsembleProvider(final Exhibitors exhibitors, final ExhibitorRestClient restClient,
+                                         final String restUriPath, final int pollingMs, final RetryPolicy retryPolicy)
+        {
             super(exhibitors, restClient, restUriPath, pollingMs, retryPolicy);
         }
 

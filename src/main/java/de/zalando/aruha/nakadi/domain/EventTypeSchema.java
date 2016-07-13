@@ -31,11 +31,11 @@ public class EventTypeSchema {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        EventTypeSchema that = (EventTypeSchema) o;
+        final EventTypeSchema that = (EventTypeSchema) o;
 
         if (type != that.type) return false;
         return schema.equals(that.schema);

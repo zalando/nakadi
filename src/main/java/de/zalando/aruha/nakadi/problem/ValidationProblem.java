@@ -18,7 +18,7 @@ public class ValidationProblem implements Problem {
     private static final URI TYPE = URI.create(TYPE_VALUE);
     private static final String TITLE = "Unprocessable Entity";
 
-    public ValidationProblem(Errors errors) {
+    public ValidationProblem(final Errors errors) {
         this.errors = errors;
     }
 

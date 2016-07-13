@@ -3,7 +3,8 @@ package de.zalando.aruha.nakadi.exceptions;
 import javax.ws.rs.core.Response;
 
 public class TopicDeletionException extends NakadiException {
-    public TopicDeletionException(String msg, Exception cause) {
+
+    public TopicDeletionException(final String msg, final Exception cause) {
         super(msg, cause);
     }
 

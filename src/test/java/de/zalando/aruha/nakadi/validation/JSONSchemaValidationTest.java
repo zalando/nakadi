@@ -107,7 +107,7 @@ public class JSONSchemaValidationTest {
 
         final JSONObject event = new JSONObject("{ \"foo\": \"bar\" }");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#: required key [metadata] not found"));
     }
@@ -119,7 +119,7 @@ public class JSONSchemaValidationTest {
 
         final JSONObject event = new JSONObject("{ \"data\": { \"foo\": \"bar\" } }");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#: 3 schema violations found\n#: required key [metadata] not found\n#: required key [data_op] not found\n#: required key [data_type] not found"));
     }
@@ -132,7 +132,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = dataChangeEvent();
         event.put("foo", "anything");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#: extraneous key [foo] is not permitted"));
     }
@@ -145,7 +145,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").put("event_type", "different-from-event-name");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#/metadata/event_type: different-from-event-name is not a valid enum value"));
     }
@@ -158,7 +158,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").remove("occurred_at");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#/metadata: required key [occurred_at] not found"));
     }
@@ -171,7 +171,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").put("occurred_at", "x");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error, isPresent());
     }
@@ -184,7 +184,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").put("occurred_at", "1996-60-15T16:39:57-08:00");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error, isPresent());
     }
@@ -197,7 +197,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").put("occurred_at", "1996-10-15T16:39:57.1245678+07:00");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error, isAbsent());
     }
@@ -210,7 +210,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").put("occurred_at", "1996-10-15T16:39:57+0800");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error, isAbsent());
     }
@@ -223,7 +223,7 @@ public class JSONSchemaValidationTest {
         final JSONObject event = businessEvent();
         event.getJSONObject("metadata").put("eid", "x");
 
-        Optional<ValidationError> error = EventValidation.forType(et).validate(event);
+        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#/metadata/eid: string [x] does not match pattern ^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"));
     }
