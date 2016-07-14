@@ -18,13 +18,16 @@ import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.curator.framework.api.GetDataBuilder;
 import org.apache.curator.framework.api.SetDataBuilder;
 import org.apache.curator.framework.recipes.locks.InterProcessLock;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.util.Assert;
 
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.List;
 
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -55,6 +58,7 @@ public class CursorsCommitServiceTest {
     private SetDataBuilder setDataBuilder;
     private ZkSubscriptionClient zkSubscriptionClient;
     private KafkaClient kafkaClient;
+    private GetChildrenBuilder getChildrenBuilder;
 
     @Before
     public void before() throws Exception {
@@ -63,6 +67,8 @@ public class CursorsCommitServiceTest {
         when(curatorFramework.getData()).thenReturn(getDataBuilder);
         setDataBuilder = mock(SetDataBuilder.class);
         when(curatorFramework.setData()).thenReturn(setDataBuilder);
+        getChildrenBuilder = mock(GetChildrenBuilder.class);
+        when(curatorFramework.getChildren()).thenReturn(getChildrenBuilder);
 
         final ZooKeeperHolder zkHolder = mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(curatorFramework);
@@ -160,6 +166,17 @@ public class CursorsCommitServiceTest {
         final boolean committed = cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
         assertThat(committed, is(true));
         verify(zkSubscriptionClient, times(1)).fillEmptySubscription(eq(offsets));
+    }
+
+    @Test
+    public void whenGetSubscriptionThenList() throws Exception {
+
+        when(getChildrenBuilder.forPath(any())).thenReturn(Arrays.asList("partition-1", "partition-2"));
+        when(getDataBuilder.forPath(offsetPath("partition-1"))).thenReturn("offset-1".getBytes(CHARSET));
+        when(getDataBuilder.forPath(offsetPath("partition-2"))).thenReturn("offset-2".getBytes(CHARSET));
+
+        final List<Cursor> actualResult = cursorsCommitService.getSubscriptionCursors(SID);
+        Assert.notEmpty(actualResult);
     }
 
     private String offsetPath(final String partition) {

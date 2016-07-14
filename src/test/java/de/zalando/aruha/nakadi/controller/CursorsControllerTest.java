@@ -18,6 +18,8 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.zalando.problem.Problem;
 
 import java.util.List;
@@ -46,11 +48,12 @@ public class CursorsControllerTest {
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
     private final JsonTestHelper jsonHelper;
+    final FeatureToggleService featureToggleService;
 
     public CursorsControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
 
-        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+        featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
         final CursorsController controller = new CursorsController(cursorsCommitService, featureToggleService);
@@ -108,6 +111,22 @@ public class CursorsControllerTest {
     public void whenBodyIsNotJsonThenBadRequest() throws Exception {
         putCursorsString("blah")
                 .andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
+    }
+
+    @Test
+    public void whenGetThenOK() throws Exception {
+        getCursors().andExpect(MockMvcResultMatchers.status().is(HttpStatus.OK.value()));
+    }
+
+    @Test
+    public void whenGetAndNoFeatureThenNotImplemented() throws Exception {
+        when(featureToggleService.isFeatureEnabled(any())).thenReturn(false);
+        getCursors().andExpect(MockMvcResultMatchers.status().is(HttpStatus.NOT_IMPLEMENTED.value()));
+    }
+
+    private ResultActions getCursors() throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.get("/subscriptions/" + SUBSCRIPTION_ID + "/cursors");
+        return mockMvc.perform(requestBuilder);
     }
 
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {

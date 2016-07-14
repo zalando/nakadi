@@ -20,16 +20,21 @@ import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 
 import java.nio.charset.Charset;
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 import static java.text.MessageFormat.format;
 
 public class CursorsCommitService {
 
-    private static final Charset CHARSET = Charset.forName("UTF-8");
+    private static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
+    private static final String PATH_ZK_OFFSET = "/nakadi/subscriptions/{0}/topics/{1}/{2}/offset";
+    private static final String PATH_ZK_PARTITIONS = "/nakadi/subscriptions/{0}/topics/{1}";
+    private static final String ERROR_COMMUNICATING_WITH_ZOOKEEPER = "Error communicating with zookeeper";
 
     private final ZooKeeperHolder zkHolder;
     private final TopicRepository topicRepository;
@@ -76,13 +81,12 @@ public class CursorsCommitService {
     private boolean commitCursor(final String subscriptionId, final String eventType, final Cursor cursor)
             throws ServiceUnavailableException, NoSuchSubscriptionException, InvalidCursorException {
 
-        final String offsetPath = format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset",
-                subscriptionId, eventType, cursor.getPartition());
+        final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, eventType, cursor.getPartition());
         try {
             return runLocked(() -> {
-                final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET);
+                final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
                 if (topicRepository.compareOffsets(cursor.getOffset(), currentOffset) > 0) {
-                    zkHolder.get().setData().forPath(offsetPath, cursor.getOffset().getBytes(CHARSET));
+                    zkHolder.get().setData().forPath(offsetPath, cursor.getOffset().getBytes(CHARSET_UTF8));
                     return true;
                 } else {
                     return false;
@@ -91,7 +95,7 @@ public class CursorsCommitService {
         } catch (final IllegalArgumentException e) {
             throw new InvalidCursorException(CursorError.INVALID_FORMAT, cursor);
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error communicating with zookeeper", e);
+            throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER, e);
         }
     }
 
@@ -112,16 +116,41 @@ public class CursorsCommitService {
 
                             subscriptionClient.fillEmptySubscription(subscriptionOffsets);
                         }
-                    } catch (Exception e) {
+                    } catch (final Exception e) {
                         atomicReference.set(e);
                     }
                 });
             }
-        } catch (Exception e) {
+        } catch (final Exception e) {
             atomicReference.set(e);
         }
         if (atomicReference.get() != null) {
-            throw new ServiceUnavailableException("Error communicating with zookeeper", atomicReference.get());
+            throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER, atomicReference.get());
+        }
+    }
+
+    public List<Cursor> getSubscriptionCursors(final String subscriptionId) throws NakadiException {
+        final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        final String eventTypeName = subscription.getEventTypes().iterator().next();
+        final String topic = eventTypeRepository.findByName(eventTypeName).getTopic();
+        final String partitionsPath = MessageFormat.format(PATH_ZK_PARTITIONS, subscriptionId, topic);
+
+        try {
+            return zkHolder.get().getChildren().forPath(partitionsPath).stream()
+                    .map(partition -> createCursor(subscriptionId, topic, partition))
+                    .collect(Collectors.toList());
+        } catch (final Exception e) {
+            throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER, e);
+        }
+    }
+
+    private Cursor createCursor(final String subscriptionId, final String topic, final String partition) {
+        try {
+            final String offsetPath = MessageFormat.format(PATH_ZK_OFFSET, subscriptionId, topic, partition);
+            final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
+            return new Cursor(partition, currentOffset);
+        } catch (final Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

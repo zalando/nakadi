@@ -14,15 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
+import org.zalando.problem.spring.web.advice.Responses;
 
 import java.util.List;
-
-import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
-import static org.springframework.http.ResponseEntity.noContent;
-import static org.springframework.http.ResponseEntity.ok;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
-import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
 public class CursorsController {
@@ -37,22 +33,34 @@ public class CursorsController {
         this.featureToggleService = featureToggleService;
     }
 
+    @RequestMapping(path = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.GET)
+    public ResponseEntity<?> getCursors(@PathVariable("subscriptionId") final String subscriptionId, final NativeWebRequest request) {
+        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.HIGH_LEVEL_API)) {
+            return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
+        }
+
+        try {
+            return ResponseEntity.status(HttpStatus.OK).body(cursorsCommitService.getSubscriptionCursors(subscriptionId));
+        } catch (final NakadiException e) {
+            return Responses.create(e.asProblem(), request);
+        }
+    }
+
     @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.PUT)
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                            @RequestBody final List<Cursor> cursors,
                                            final NativeWebRequest request) {
-
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
+        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.HIGH_LEVEL_API)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
+
         try {
             final boolean allCommitted = cursorsCommitService.commitCursors(subscriptionId, cursors);
-            return allCommitted ? ok().build() : noContent().build();
-
+            return allCommitted ? ResponseEntity.ok().build() : ResponseEntity.noContent().build();
         } catch (final NakadiException e) {
-            return create(e.asProblem(), request);
+            return Responses.create(e.asProblem(), request);
         } catch (InvalidCursorException e) {
-            return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
+            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, e.getMessage()), request);
         }
     }
 }
