@@ -41,7 +41,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -84,7 +86,7 @@ public class EventStreamControllerTest {
     private MetricRegistry metricRegistry;
 
     @Before
-    public void setup() throws NakadiException {
+    public void setup() throws NakadiException, UnknownHostException {
         EVENT_TYPE.setName(TEST_EVENT_TYPE_NAME);
         EVENT_TYPE.setTopic(TEST_TOPIC);
 
@@ -96,14 +98,18 @@ public class EventStreamControllerTest {
         when(topicRepositoryMock.topicExists(TEST_TOPIC)).thenReturn(true);
         eventStreamFactoryMock = mock(EventStreamFactory.class);
 
-        metricRegistry = new MetricRegistry();
-        controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
-                eventStreamFactoryMock, metricRegistry, mock(ClosedConnectionsCrutch.class));
-
         requestMock = mock(HttpServletRequest.class);
         when(requestMock.getRemoteAddr()).thenReturn(InetAddress.getLoopbackAddress().getHostAddress());
         when(requestMock.getRemotePort()).thenReturn(12345);
         responseMock = mock(HttpServletResponse.class);
+
+        metricRegistry = new MetricRegistry();
+
+        final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
+        when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
+
+        controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
+        eventStreamFactoryMock, metricRegistry, crutch);
     }
 
     @Test
