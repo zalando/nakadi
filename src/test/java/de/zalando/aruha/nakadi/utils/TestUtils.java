@@ -33,11 +33,13 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 public class TestUtils {
 
+    public static final String OWNING_APPLICATION = "event-producer-application";
+
     private static final String VALID_EVENT_TYPE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ";
+
     private static final String VALID_EVENT_BODY_CHARS = VALID_EVENT_TYPE_NAME_CHARS + " \t!@#$%^&*()=+-_";
 
     private static final Random RANDOM = new Random();
-
     private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
 
     public static String randomUUID() {
@@ -114,7 +116,7 @@ public class TestUtils {
         ets.setSchema(schema.toString());
         et.setSchema(ets);
         et.setCategory(EventCategory.UNDEFINED);
-        et.setOwningApplication("event-producer-application");
+        et.setOwningApplication(OWNING_APPLICATION);
 
         return et;
     }

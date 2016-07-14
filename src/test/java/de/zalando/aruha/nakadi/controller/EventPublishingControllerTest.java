@@ -5,12 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.domain.BatchItemResponse;
 import de.zalando.aruha.nakadi.domain.EventPublishResult;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.ABORTED;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.FAILED;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.SUBMITTED;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PARTITIONING;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PUBLISHING;
-import static de.zalando.aruha.nakadi.domain.EventPublishingStep.VALIDATING;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
@@ -18,23 +12,31 @@ import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetrics;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.utils.JsonTestHelper;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
 import org.json.JSONArray;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.mock;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.ABORTED;
+import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.FAILED;
+import static de.zalando.aruha.nakadi.domain.EventPublishingStatus.SUBMITTED;
+import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PARTITIONING;
+import static de.zalando.aruha.nakadi.domain.EventPublishingStep.PUBLISHING;
+import static de.zalando.aruha.nakadi.domain.EventPublishingStep.VALIDATING;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -83,7 +85,9 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenInvalidPostBodyThen400() throws Exception {
-        postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest());
+        final String expectedPayload = "{\"type\":\"http://httpstatus.es/400\",\"title\":\"Bad Request\",\"status\":400," +
+                "\"detail\":\"A JSONArray text must start with '[' at 1 [character 2 line 1]\"}";
+        postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest()).andExpect(content().string(expectedPayload));
     }
 
     @Test
