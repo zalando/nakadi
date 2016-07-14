@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 
@@ -54,10 +55,10 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity postEventInternal(final String eventTypeName, final String eventsAsString,
+    private ResponseEntity postEventInternal(final String eventTypeName,
+                                             final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
-                                             final EventTypeMetrics eventTypeMetrics)
-    {
+                                             final EventTypeMetrics eventTypeMetrics) {
         final long startingNanos = System.nanoTime();
         try {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
@@ -68,7 +69,7 @@ public class EventPublishingController {
             return response(publisher.publish(eventsAsJsonObjects, eventTypeName));
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
-            return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
+            return processJSONException(e, nativeWebRequest);
         } catch (final NoSuchEventTypeException e) {
             LOG.debug("Event type not found.", e);
             return create(e.asProblem(), nativeWebRequest);
@@ -78,6 +79,17 @@ public class EventPublishingController {
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
         }
+    }
+
+    private ResponseEntity processJSONException(final JSONException e, final NativeWebRequest nativeWebRequest) {
+        if (e.getCause() == null) {
+            return create(createProblem(e), nativeWebRequest);
+        }
+        return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
+    }
+
+    private ThrowableProblem createProblem(final JSONException e) {
+        return Problem.valueOf(Response.Status.BAD_REQUEST, e.getMessage());
     }
 
     private ResponseEntity response(final EventPublishResult result) {
