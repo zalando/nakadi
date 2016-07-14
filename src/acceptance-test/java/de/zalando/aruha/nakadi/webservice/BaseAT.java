@@ -44,7 +44,7 @@ public abstract class BaseAT {
         try {
             EVENT_TYPE_REPO.findByName(EVENT_TYPE_NAME);
         } catch (final NoSuchEventTypeException e) {
-            EventType eventType = buildDefaultEventType();
+            final EventType eventType = buildDefaultEventType();
             eventType.setName(EVENT_TYPE_NAME);
             eventType.setTopic(TEST_TOPIC);
             EVENT_TYPE_REPO.saveEventType(eventType);

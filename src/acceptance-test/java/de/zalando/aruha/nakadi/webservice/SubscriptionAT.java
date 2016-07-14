@@ -85,7 +85,7 @@ public class SubscriptionAT extends BaseAT {
 
         // create subscription
         final String subscriptionJson = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() + "\"]}";
-        Response response = given()
+        final Response response = given()
                 .body(subscriptionJson)
                 .contentType(JSON)
                 .post(SUBSCRIPTIONS_URL);
