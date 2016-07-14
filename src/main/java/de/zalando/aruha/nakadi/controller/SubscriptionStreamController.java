@@ -2,15 +2,22 @@ package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
+import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
 import de.zalando.aruha.nakadi.service.subscription.StreamParameters;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionOutput;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionStreamer;
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionStreamerFactory;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
+
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Response;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,13 +40,17 @@ public class SubscriptionStreamController {
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
     private final FeatureToggleService featureToggleService;
     private final ObjectMapper jsonMapper;
-
+    private final ClosedConnectionsCrutch closedConnectionsCrutch;
 
     @Autowired
-    public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory, final FeatureToggleService featureToggleService, final ObjectMapper objectMapper) {
+    public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
+                                        final FeatureToggleService featureToggleService,
+                                        final ObjectMapper objectMapper,
+                                        final ClosedConnectionsCrutch closedConnectionsCrutch) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
+        this.closedConnectionsCrutch = closedConnectionsCrutch;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -103,11 +114,11 @@ public class SubscriptionStreamController {
             @RequestParam(value = "window_size", required = false, defaultValue = "100") final int windowSize,
             @RequestParam(value = "commit_timeout", required = false, defaultValue = "30") final int commitTimeout,
             @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
-            @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
+            @Nullable @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
             @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
-            @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
-            @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
-            final NativeWebRequest request, final HttpServletResponse response) throws IOException {
+            @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
+            @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
+            final HttpServletRequest request, final HttpServletResponse response) throws IOException {
 
         return outputStream -> {
 
@@ -116,13 +127,14 @@ public class SubscriptionStreamController {
                 return;
             }
 
+            final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
+
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
-                streamer = subscriptionStreamerFactory.build(
-                        subscriptionId,
-                        StreamParameters.of(batchLimit, streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit, windowSize, commitTimeout),
-                        output);
+                final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
+                        streamTimeout, streamKeepAliveLimit, windowSize, commitTimeout);
+                streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output, connectionReady);
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);

@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 import org.apache.commons.codec.DecoderException;
@@ -34,6 +35,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import javax.servlet.http.HttpServletRequest;
 
 @Component
 public class ClosedConnectionsCrutch {
@@ -122,6 +125,17 @@ public class ClosedConnectionsCrutch {
         this.port = port;
         this.meterClosed = metricRegistry.meter("nakadi.close_crutch.closed");
         this.featureToggleService = featureToggleService;
+    }
+
+    public AtomicBoolean listenForConnectionClose(final HttpServletRequest request)
+            throws UnknownHostException {
+
+        final AtomicBoolean connectionReady = new AtomicBoolean(true);
+        listenForConnectionClose(
+                InetAddress.getByName(request.getRemoteAddr()),
+                request.getRemotePort(),
+                () -> connectionReady.compareAndSet(true, false));
+        return connectionReady;
     }
 
     public void listenForConnectionClose(

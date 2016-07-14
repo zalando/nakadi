@@ -32,7 +32,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.problem.Problem;
 
@@ -73,7 +72,7 @@ public class EventStreamControllerTest {
     private static final String TEST_TOPIC = "test-topic";
     private static final EventType EVENT_TYPE = new EventType();
 
-    private NativeWebRequest requestMock;
+    private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
     private TopicRepository topicRepositoryMock;
     private EventTypeRepository eventTypeRepository;
@@ -101,11 +100,9 @@ public class EventStreamControllerTest {
         controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
                 eventStreamFactoryMock, metricRegistry, mock(ClosedConnectionsCrutch.class));
 
-        requestMock = mock(NativeWebRequest.class);
-        final HttpServletRequest httpRequestMock = mock(HttpServletRequest.class);
-        when(requestMock.getNativeRequest()).thenReturn(httpRequestMock);
-        when(httpRequestMock.getRemoteAddr()).thenReturn(InetAddress.getLoopbackAddress().getHostAddress());
-        when(httpRequestMock.getRemotePort()).thenReturn(12345);
+        requestMock = mock(HttpServletRequest.class);
+        when(requestMock.getRemoteAddr()).thenReturn(InetAddress.getLoopbackAddress().getHostAddress());
+        when(requestMock.getRemotePort()).thenReturn(12345);
         responseMock = mock(HttpServletResponse.class);
     }
 

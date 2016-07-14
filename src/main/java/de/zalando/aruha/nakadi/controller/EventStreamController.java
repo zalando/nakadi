@@ -82,17 +82,11 @@ public class EventStreamController {
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
-            final NativeWebRequest request, final HttpServletResponse response) throws IOException {
+            final HttpServletRequest request, final HttpServletResponse response) throws IOException {
 
         return outputStream -> {
 
-            final AtomicBoolean connectionReady = new AtomicBoolean(true);
-            final HttpServletRequest httpRequest = ((HttpServletRequest)request.getNativeRequest());
-
-            closedConnectionsCrutch.listenForConnectionClose(
-                    InetAddress.getByName(httpRequest.getRemoteAddr()),
-                    httpRequest.getRemotePort(),
-                    () -> connectionReady.compareAndSet(true, false));
+            final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
             EventConsumer eventConsumer = null;
 

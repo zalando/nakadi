@@ -10,6 +10,8 @@ import de.zalando.aruha.nakadi.service.subscription.model.Session;
 import de.zalando.aruha.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,7 +41,8 @@ public class SubscriptionStreamerFactory {
     public SubscriptionStreamer build(
             final String subscriptionId,
             final StreamParameters streamParameters,
-            final SubscriptionOutput output) throws NoSuchSubscriptionException {
+            final SubscriptionOutput output,
+            final AtomicBoolean connectionReady) throws NoSuchSubscriptionException {
         final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
         final Session session = Session.generate(1);
@@ -54,7 +57,8 @@ public class SubscriptionStreamerFactory {
                 new KafkaClient(subscription, topicRepository, eventTypeRepository),
                 new ExactWeightRebalancer(),
                 kafkaPollTimeout,
-                loggingPath);
+                loggingPath,
+                connectionReady);
     }
 
 }

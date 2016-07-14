@@ -83,25 +83,29 @@ class StreamingState extends State {
         if (kafkaConsumer == null) {
             throw new IllegalStateException("kafkaConsumer should not be null when calling pollDataFromKafka method");
         }
-        if (kafkaConsumer.assignment().isEmpty() || pollPaused) {
-            // Small optimization not to waste CPU while not yet assigned to any partitions
-            scheduleTask(this::pollDataFromKafka, getKafkaPollTimeout(), TimeUnit.MILLISECONDS);
-            return;
-        }
-        final ConsumerRecords<String, String> records = kafkaConsumer.poll(getKafkaPollTimeout());
-        if (!records.isEmpty()) {
-            for (final TopicPartition tp : records.partitions()) {
-                final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition()));
-                Optional.ofNullable(offsets.get(pk))
-                        .ifPresent(pd -> records.records(tp).stream()
-                                .forEach(record -> pd.addEventFromKafka(record.offset(), record.value())));
+        if (isConnectionReady()) {
+            if (kafkaConsumer.assignment().isEmpty() || pollPaused) {
+                // Small optimization not to waste CPU while not yet assigned to any partitions
+                scheduleTask(this::pollDataFromKafka, getKafkaPollTimeout(), TimeUnit.MILLISECONDS);
+                return;
             }
-            addTask(this::streamToOutput);
+            final ConsumerRecords<String, String> records = kafkaConsumer.poll(getKafkaPollTimeout());
+            if (!records.isEmpty()) {
+                for (final TopicPartition tp : records.partitions()) {
+                    final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition()));
+                    Optional.ofNullable(offsets.get(pk))
+                            .ifPresent(pd -> records.records(tp).stream()
+                                    .forEach(record -> pd.addEventFromKafka(record.offset(), record.value())));
+                }
+                addTask(this::streamToOutput);
+            }
+            // Yep, no timeout. All waits are in kafka.
+            // It works because only one pollDataFromKafka task is present in queue each time. Poll process will stop
+            // when this state will be changed to any other state.
+            addTask(this::pollDataFromKafka);
+        } else {
+            shutdownGracefully("Hila connection closed via crutch");
         }
-        // Yep, no timeout. All waits are in kafka.
-        // It works because only one pollDataFromKafka task is present in queue each time. Poll process will stop
-        // when this state will be changed to any other state.
-        addTask(this::pollDataFromKafka);
     }
 
     private long getMessagesAllowedToSend() {
