@@ -48,7 +48,7 @@ public class CursorsControllerTest {
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final MockMvc mockMvc;
     private final JsonTestHelper jsonHelper;
-    final FeatureToggleService featureToggleService;
+    private final FeatureToggleService featureToggleService;
 
     public CursorsControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);

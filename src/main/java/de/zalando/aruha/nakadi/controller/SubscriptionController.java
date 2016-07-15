@@ -24,12 +24,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
-import javax.ws.rs.core.Response;
 import java.util.List;
+
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+import static org.zalando.problem.spring.web.advice.Responses.create;
 
 
 @RestController
@@ -57,11 +60,11 @@ public class SubscriptionController {
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors,
                                                      final NativeWebRequest request) {
-        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
+            return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
         if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
+            return create(new ValidationProblem(errors), request);
         }
 
         try {
@@ -71,11 +74,11 @@ public class SubscriptionController {
                 return new ResponseEntity<>(getExistingSubscription(subscriptionBase), HttpStatus.OK);
             } catch (final NakadiException ex) {
                 LOG.error("Error occurred during fetching existing subscription", ex);
-                return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, ex.getProblemMessage(), request);
+                return create(INTERNAL_SERVER_ERROR, ex.getProblemMessage(), request);
             }
         } catch (final InternalNakadiException e) {
             LOG.error("Error occurred during subscription creation", e);
-            return Responses.create(e.asProblem(), request);
+            return create(e.asProblem(), request);
         }
     }
 
@@ -85,7 +88,7 @@ public class SubscriptionController {
         if (!noneExistingEventTypes.isEmpty()) {
             final String errorMessage = createErrorMessage(noneExistingEventTypes);
             LOG.debug(errorMessage);
-            return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, errorMessage, request);
+            return create(UNPROCESSABLE_ENTITY, errorMessage, request);
         }
 
         // generate subscription id and try to create subscription in DB
@@ -114,7 +117,6 @@ public class SubscriptionController {
 
     private Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
             throws NoSuchSubscriptionException, InternalNakadiException {
-        // if the subscription with such parameters already exists - return it instead of creating a new one
         return subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
                 subscriptionBase.getEventTypes(),

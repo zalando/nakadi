@@ -137,14 +137,14 @@ public class CursorsCommitService {
 
         try {
             return zkHolder.get().getChildren().forPath(partitionsPath).stream()
-                    .map(partition -> createCursor(subscriptionId, topic, partition))
+                    .map(partition -> readCursor(subscriptionId, topic, partition))
                     .collect(Collectors.toList());
         } catch (final Exception e) {
             throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER, e);
         }
     }
 
-    private Cursor createCursor(final String subscriptionId, final String topic, final String partition) {
+    private Cursor readCursor(final String subscriptionId, final String topic, final String partition) throws RuntimeException {
         try {
             final String offsetPath = MessageFormat.format(PATH_ZK_OFFSET, subscriptionId, topic, partition);
             final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);

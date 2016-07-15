@@ -22,10 +22,9 @@ import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.curator.framework.api.GetDataBuilder;
 import org.apache.curator.framework.api.SetDataBuilder;
 import org.apache.curator.framework.recipes.locks.InterProcessLock;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.unitils.reflectionassert.ReflectionAssert;
-import org.unitils.reflectionassert.ReflectionComparatorMode;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -182,11 +181,7 @@ public class CursorsCommitServiceTest {
         when(getDataBuilder.forPath(offsetPath(partition2))).thenReturn(offset2.getBytes(CHARSET));
 
         final List<Cursor> actualResult = cursorsCommitService.getSubscriptionCursors(SID);
-        ReflectionAssert.assertReflectionEquals(
-                Arrays.asList(new Cursor(partition1, offset1), new Cursor(partition2, offset2)),
-                actualResult,
-                ReflectionComparatorMode.LENIENT_ORDER
-        );
+        Assert.assertEquals(Arrays.asList(new Cursor(partition1, offset1), new Cursor(partition2, offset2)), actualResult);
     }
 
     @Test(expected = ServiceUnavailableException.class)
