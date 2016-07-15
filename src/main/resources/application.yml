@@ -26,6 +26,7 @@ nakadi:
   topic:
     max:
       partitionNum: 8
+      retentionMs: 86400000 # 1 days
     default:
       partitionNum: 1
       replicaFactor: 1

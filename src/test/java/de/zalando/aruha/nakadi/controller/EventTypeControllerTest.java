@@ -8,6 +8,7 @@ import com.sun.security.auth.UserPrincipal;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeOptions;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -571,16 +572,12 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenDefaultOptionExistsItsPassed() throws Exception {
+    public void whenOptionsExistItsPassed() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
-        final EventTypeStatistics statistics = new EventTypeStatistics();
-        statistics.setMessageSize(100);
-        statistics.setMessagesPerMinute(1000);
-        statistics.setReadParallelism(1);
-        statistics.setWriteParallelism(2);
-        defaultEventType.setDefaultStatistic(statistics);
+        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+        eventTypeOptions.setRetentionTime(1000);
+        defaultEventType.setOptions(eventTypeOptions);
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
-        verify(topicRepository, times(1)).createTopic(anyString(), eq(statistics));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {

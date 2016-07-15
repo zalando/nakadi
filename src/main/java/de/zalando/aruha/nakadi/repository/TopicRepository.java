@@ -2,7 +2,7 @@ package de.zalando.aruha.nakadi.repository;
 
 import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
-import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
@@ -27,7 +27,7 @@ public interface TopicRepository {
 
     List<Topic> listTopics() throws NakadiException;
 
-    void createTopic(String topic, EventTypeStatistics defaultStatistics) throws TopicCreationException, DuplicatedEventTypeNameException;
+    void createTopic(EventType eventType) throws TopicCreationException, DuplicatedEventTypeNameException;
 
     void deleteTopic(String topic) throws TopicDeletionException;
 

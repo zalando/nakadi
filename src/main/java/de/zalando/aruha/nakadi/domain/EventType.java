@@ -51,8 +51,9 @@ public class EventType {
     @Nullable
     private EventTypeStatistics defaultStatistic;
 
+    @Valid
     @Nullable
-    private EventTypeOptions eventTypeOptions;
+    private EventTypeOptions options;
 
     public String getName() { return name; }
 
@@ -122,11 +123,11 @@ public class EventType {
 
     public void setTopic(final String topic) { this.topic = topic; }
 
-    public EventTypeOptions getEventTypeOptions() {
-        return eventTypeOptions;
+    public EventTypeOptions getOptions() {
+        return options;
     }
 
-    public void setEventTypeOptions(EventTypeOptions eventTypeOptions) {
-        this.eventTypeOptions = eventTypeOptions;
+    public void setOptions(EventTypeOptions options) {
+        this.options = options;
     }
 }

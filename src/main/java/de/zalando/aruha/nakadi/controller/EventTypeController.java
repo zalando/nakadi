@@ -1,17 +1,18 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeOptions;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.security.Client;
 import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.service.Result;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ValidationUtils;
+import org.springframework.validation.Validator;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,8 +30,6 @@ import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_
 @RestController
 @RequestMapping(value = "/event-types")
 public class EventTypeController {
-
-    private static final Logger LOG = LoggerFactory.getLogger(EventTypeController.class);
 
     private final EventTypeService eventTypeService;
     private final FeatureToggleService featureToggleService;
@@ -58,6 +57,9 @@ public class EventTypeController {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
+
+        ValidationUtils.invokeValidator(new EventTypeOptionsValidator(), eventType.getOptions(), errors);
+
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
@@ -110,5 +112,19 @@ public class EventTypeController {
             return Responses.create(result.getProblem(), request);
         }
         return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
+    }
+
+    class EventTypeOptionsValidator implements Validator {
+
+        @Override
+        public boolean supports(Class<?> clazz) {
+            return EventTypeOptions.class.equals(clazz);
+        }
+
+        @Override
+        public void validate(Object target, Errors errors) {
+            EventTypeOptions options = (EventTypeOptions) target;
+            errors.rejectValue("options", "options is empty");
+        }
     }
 }
