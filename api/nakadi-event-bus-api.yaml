@@ -881,6 +881,28 @@ paths:
           format: int32
           required: false
           default: 10000
+        - name: commit_mode
+          in: query
+          description: |
+            The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
+            state and commit comes - the stream will continue. Minimal window size is 1.
+          type: string
+          enum:
+            - commit_at_will
+          required: false
+          default: at_will
+        - name: commit_semantics
+          in: query
+          description: |
+            The semantics of commit.
+            - `per_partition` - Each partition is committed separatelly.
+            - `commit_all_before` -
+          type: string
+          enum:
+            - per_partition
+            - commit_all_before
+          required: false
+          default: at_will
 
         - $ref: '#/parameters/BatchLimit'
         - $ref: '#/parameters/StreamLimit'
@@ -1276,7 +1298,9 @@ definitions:
       owning_application:
         type: string
         example: 'gizig'
-        description: The id of application owning the subscription.
+        description: |
+          The id of application owning the subscription. The reading and modification of subscription will be limited
+          to this application id.
       event_types:
         type: array
         items:
@@ -1311,7 +1335,7 @@ definitions:
           - end
         description: |
           Position to start reading events from. "begin" - read from the oldest available event. "end" - read from the
-          most recent offset.
+          most recent offset. Applied in the moment when client starts reading from a subscription.
         default: 'end'
 
     required:
