@@ -18,8 +18,6 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.zalando.problem.Problem;
 
 import java.util.List;
@@ -30,6 +28,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -115,17 +114,17 @@ public class CursorsControllerTest {
 
     @Test
     public void whenGetThenOK() throws Exception {
-        getCursors().andExpect(MockMvcResultMatchers.status().is(HttpStatus.OK.value()));
+        getCursors().andExpect(status().is(HttpStatus.OK.value()));
     }
 
     @Test
     public void whenGetAndNoFeatureThenNotImplemented() throws Exception {
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(false);
-        getCursors().andExpect(MockMvcResultMatchers.status().is(HttpStatus.NOT_IMPLEMENTED.value()));
+        getCursors().andExpect(status().is(HttpStatus.NOT_IMPLEMENTED.value()));
     }
 
     private ResultActions getCursors() throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.get("/subscriptions/" + SUBSCRIPTION_ID + "/cursors");
+        final MockHttpServletRequestBuilder requestBuilder = get("/subscriptions/" + SUBSCRIPTION_ID + "/cursors");
         return mockMvc.perform(requestBuilder);
     }
 

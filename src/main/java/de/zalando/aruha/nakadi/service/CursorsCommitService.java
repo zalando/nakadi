@@ -20,7 +20,6 @@ import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 
 import java.nio.charset.Charset;
-import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -133,7 +132,7 @@ public class CursorsCommitService {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         final String eventTypeName = subscription.getEventTypes().iterator().next();
         final String topic = eventTypeRepository.findByName(eventTypeName).getTopic();
-        final String partitionsPath = MessageFormat.format(PATH_ZK_PARTITIONS, subscriptionId, topic);
+        final String partitionsPath = format(PATH_ZK_PARTITIONS, subscriptionId, topic);
 
         try {
             return zkHolder.get().getChildren().forPath(partitionsPath).stream()
@@ -146,7 +145,7 @@ public class CursorsCommitService {
 
     private Cursor readCursor(final String subscriptionId, final String topic, final String partition) throws RuntimeException {
         try {
-            final String offsetPath = MessageFormat.format(PATH_ZK_OFFSET, subscriptionId, topic, partition);
+            final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, topic, partition);
             final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
             return new Cursor(partition, currentOffset);
         } catch (final Exception e) {
