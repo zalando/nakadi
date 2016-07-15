@@ -1,19 +1,24 @@
 package de.zalando.aruha.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
@@ -83,21 +88,9 @@ public class SubscriptionAT extends BaseAT {
         final EventType eventType = createEventType();
         final String topic = EVENT_TYPE_REPO.findByName(eventType.getName()).getTopic();
 
-        // create subscription
-        final String subscriptionJson = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() + "\"]}";
-        Response response = given()
-                .body(subscriptionJson)
-                .contentType(JSON)
-                .post(SUBSCRIPTIONS_URL);
-        final Subscription subscription = MAPPER.readValue(response.print(), Subscription.class);
+        final Subscription subscription = createSubscription(eventType);
 
-        // commit offsets and expect 200
-        given()
-                .body("[{\"partition\":\"0\",\"offset\":\"25\"}]")
-                .contentType(JSON)
-                .put(format(CURSORS_URL, subscription.getId()))
-                .then()
-                .statusCode(HttpStatus.SC_OK);
+        commitCursors(subscription);
 
         // check that offset is actually committed to Zookeeper
         final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
@@ -115,6 +108,59 @@ public class SubscriptionAT extends BaseAT {
         // check that committed offset in Zookeeper is not changed
         committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
+    }
+
+    @Test
+    public void testGetSubscriptionCursors() throws IOException {
+        final EventType eventType = createEventType();
+        final Subscription subscription = createSubscription(eventType);
+        commitCursors(subscription);
+
+        List<Cursor> actualCursors = getSubscriptionCursors(subscription);
+        Assert.assertEquals(Arrays.asList(new Cursor("0", "25")), actualCursors);
+    }
+
+    @Test
+    public void testGetSubscriptionCursorsEmpty() throws IOException {
+        final EventType eventType = createEventType();
+        final Subscription subscription = createSubscription(eventType);
+
+        Assert.assertTrue(getSubscriptionCursors(subscription).isEmpty());
+    }
+
+    @Test
+    public void testGetSubscriptionNotFound() throws IOException {
+        final EventType eventType = createEventType();
+        createSubscription(eventType);
+
+        given()
+                .get(format(CURSORS_URL, "UNKNOWN_SUB_ID"))
+                .then()
+                .statusCode(HttpStatus.SC_NOT_FOUND);
+    }
+
+    private Subscription createSubscription(EventType eventType) throws IOException {
+        final String subscriptionJson = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() + "\"]}";
+        final Response response = given()
+                .body(subscriptionJson)
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL);
+        return MAPPER.readValue(response.print(), Subscription.class);
+    }
+
+    private void commitCursors(Subscription subscription) {
+        // commit offsets and expect 200
+        given()
+                .body("[{\"partition\":\"0\",\"offset\":\"25\"}]")
+                .contentType(JSON)
+                .put(format(CURSORS_URL, subscription.getId()))
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+    }
+
+    private List<Cursor> getSubscriptionCursors(Subscription subscription) throws IOException {
+        Response response = given().get(format(CURSORS_URL, subscription.getId()));
+        return MAPPER.readValue(response.print(), new TypeReference<List<Cursor>>() {});
     }
 
     private String getCommittedOffsetFromZk(final String topic, final Subscription subscription,

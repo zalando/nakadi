@@ -18,8 +18,12 @@ import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFacto
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
+import org.apache.zookeeper.KeeperException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,6 +34,7 @@ import static java.text.MessageFormat.format;
 
 public class CursorsCommitService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(CursorsCommitService.class);
     private static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
     private static final String PATH_ZK_OFFSET = "/nakadi/subscriptions/{0}/topics/{1}/{2}/offset";
     private static final String PATH_ZK_PARTITIONS = "/nakadi/subscriptions/{0}/topics/{1}";
@@ -138,7 +143,11 @@ public class CursorsCommitService {
             return zkHolder.get().getChildren().forPath(partitionsPath).stream()
                     .map(partition -> readCursor(subscriptionId, topic, partition))
                     .collect(Collectors.toList());
+        } catch (final KeeperException.NoNodeException nne) {
+            LOG.debug(nne.getMessage(), nne);
+            return Collections.emptyList();
         } catch (final Exception e) {
+            LOG.error(e.getMessage(), e);
             throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER, e);
         }
     }
