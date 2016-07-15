@@ -18,14 +18,9 @@ import static de.zalando.aruha.nakadi.config.NakadiConfig.METRIC_REGISTRY;
 public class AuthenticationConfig {
 
     @Bean
-    public ResourceServerTokenServices zalandoResourceTokenServices() {
+    public ResourceServerTokenServices zalandoResourceTokenServices(final SecuritySettings settings) {
         return new MeasuringTokenInfoResourceServerTokenServices(
-                securitySettings().getTokenInfoUrl(), securitySettings().getClientId(), METRIC_REGISTRY);
-    }
-
-    @Bean
-    public SecuritySettings securitySettings() {
-        return new SecuritySettings();
+                settings.getTokenInfoUrl(), settings.getClientId(), METRIC_REGISTRY);
     }
 
     public static class MeasuringTokenInfoResourceServerTokenServices extends TokenInfoResourceServerTokenServices {

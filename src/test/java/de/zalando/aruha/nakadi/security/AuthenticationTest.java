@@ -12,14 +12,7 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
-import java.util.List;
-import java.util.Set;
-import javax.annotation.PostConstruct;
-import javax.servlet.Filter;
-import static org.hamcrest.Matchers.isOneOf;
-import static org.hamcrest.Matchers.not;
-
+import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.junit.Before;
@@ -44,6 +37,14 @@ import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import javax.annotation.PostConstruct;
+import javax.servlet.Filter;
+import java.util.List;
+import java.util.Set;
+
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
+import static org.hamcrest.Matchers.isOneOf;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -147,6 +148,11 @@ public abstract class AuthenticationTest {
         @Bean
         public ZooKeeperHolder mockZKHolder() {
             return mock(ZooKeeperHolder.class);
+        }
+
+        @Bean
+        public EventTypeService eventTypeService() {
+            return mock(EventTypeService.class);
         }
 
         @Bean
