@@ -137,7 +137,7 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NOT_FOUND);
     }
 
-    private Subscription createSubscription(EventType eventType) throws IOException {
+    private Subscription createSubscription(final EventType eventType) throws IOException {
         final String subscriptionJson = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() + "\"]}";
         final Response response = given()
                 .body(subscriptionJson)
@@ -146,14 +146,14 @@ public class SubscriptionAT extends BaseAT {
         return MAPPER.readValue(response.print(), Subscription.class);
     }
 
-    private Response commitCursors(Subscription subscription, String cursor) {
+    private Response commitCursors(final Subscription subscription, final String cursor) {
         return given()
                 .body(cursor)
                 .contentType(JSON)
                 .put(format(CURSORS_URL, subscription.getId()));
     }
 
-    private List<Cursor> getSubscriptionCursors(Subscription subscription) throws IOException {
+    private List<Cursor> getSubscriptionCursors(final Subscription subscription) throws IOException {
         final Response response = given().get(format(CURSORS_URL, subscription.getId()));
         return MAPPER.readValue(response.print(), new TypeReference<List<Cursor>>() {});
     }
