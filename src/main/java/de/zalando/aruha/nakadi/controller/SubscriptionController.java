@@ -79,7 +79,7 @@ public class SubscriptionController {
         }
     }
 
-    private ResponseEntity<?> createSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase, final NativeWebRequest request)
+    private ResponseEntity<?> createSubscription(final SubscriptionBase subscriptionBase, final NativeWebRequest request)
             throws InternalNakadiException, DuplicatedSubscriptionException {
         final List<String> noneExistingEventTypes = checkExistingEventTypes(subscriptionBase);
         if (!noneExistingEventTypes.isEmpty()) {
@@ -93,7 +93,7 @@ public class SubscriptionController {
         return new ResponseEntity<>(subscription, HttpStatus.CREATED);
     }
 
-    private List<String> checkExistingEventTypes(@Valid @RequestBody final SubscriptionBase subscriptionBase) throws InternalNakadiException {
+    private List<String> checkExistingEventTypes(final SubscriptionBase subscriptionBase) throws InternalNakadiException {
         final List<String> noneExistingEventTypes = Lists.newArrayList();
         for (final String etName : subscriptionBase.getEventTypes()) {
             try {
@@ -112,7 +112,7 @@ public class SubscriptionController {
                 .append("'").toString();
     }
 
-    private Subscription getExistingSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase)
+    private Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
             throws NoSuchSubscriptionException, InternalNakadiException {
         // if the subscription with such parameters already exists - return it instead of creating a new one
         return subscriptionRepository.getSubscription(
