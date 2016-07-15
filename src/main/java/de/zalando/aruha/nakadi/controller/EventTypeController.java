@@ -8,6 +8,7 @@ import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.service.Result;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
@@ -23,6 +24,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Objects;
 
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
@@ -116,6 +118,12 @@ public class EventTypeController {
 
     class EventTypeOptionsValidator implements Validator {
 
+        @Value("${nakadi.topic.default.retentionMs}")
+        private long maxTopicRetentionMs;
+
+        @Value("${nakadi.topic.min.retentionMs}")
+        private long minTopicRetentionMs;
+
         @Override
         public boolean supports(Class<?> clazz) {
             return EventTypeOptions.class.equals(clazz);
@@ -124,7 +132,14 @@ public class EventTypeController {
         @Override
         public void validate(Object target, Errors errors) {
             EventTypeOptions options = (EventTypeOptions) target;
-            errors.rejectValue("options", "options is empty");
+            if (Objects.nonNull(options) && Objects.nonNull(options.getRetentionTime())) {
+                Long retentionTime = options.getRetentionTime();
+                if (retentionTime > maxTopicRetentionMs) {
+                    errors.rejectValue("retentionTime", "retentionTime can not be bigger than " + maxTopicRetentionMs);
+                } else if (retentionTime < minTopicRetentionMs) {
+                    errors.rejectValue("retentionTime", "retentionTime can not be less than " + minTopicRetentionMs);
+                }
+            }
         }
     }
 }

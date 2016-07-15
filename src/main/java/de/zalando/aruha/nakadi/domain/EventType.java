@@ -51,7 +51,6 @@ public class EventType {
     @Nullable
     private EventTypeStatistics defaultStatistic;
 
-    @Valid
     @Nullable
     private EventTypeOptions options;
 
