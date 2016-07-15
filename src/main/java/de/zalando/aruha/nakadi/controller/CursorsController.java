@@ -46,7 +46,8 @@ public class CursorsController {
         }
 
         try {
-            return status(OK).body(cursorsService.getSubscriptionCursors(subscriptionId));
+            final List<Cursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId);
+            return status(OK).body(cursors);
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
         }
