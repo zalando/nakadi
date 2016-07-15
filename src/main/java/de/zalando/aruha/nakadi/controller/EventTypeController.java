@@ -22,8 +22,6 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
