@@ -570,6 +570,19 @@ public class EventTypeControllerTest {
                 .andExpect(content().contentType("application/problem+json"));
     }
 
+    @Test
+    public void whenDefaultOptionExistsItsPassed() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+        final EventTypeStatistics statistics = new EventTypeStatistics();
+        statistics.setMessageSize(100);
+        statistics.setMessagesPerMinute(1000);
+        statistics.setReadParallelism(1);
+        statistics.setWriteParallelism(2);
+        defaultEventType.setDefaultStatistic(statistics);
+        postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
+        verify(topicRepository, times(1)).createTopic(anyString(), eq(statistics));
+    }
+
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
         return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }

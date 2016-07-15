@@ -3,14 +3,16 @@ package de.zalando.aruha.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.Lists;
 import de.zalando.aruha.nakadi.partitioning.PartitionStrategy;
-import java.util.ArrayList;
-import static java.util.Collections.unmodifiableList;
-import java.util.List;
+
 import javax.annotation.Nullable;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.util.Collections.unmodifiableList;
 
 public class EventType {
 
@@ -48,6 +50,9 @@ public class EventType {
     @Valid
     @Nullable
     private EventTypeStatistics defaultStatistic;
+
+    @Nullable
+    private EventTypeOptions eventTypeOptions;
 
     public String getName() { return name; }
 
@@ -116,4 +121,12 @@ public class EventType {
     public String getTopic() { return topic; }
 
     public void setTopic(final String topic) { this.topic = topic; }
+
+    public EventTypeOptions getEventTypeOptions() {
+        return eventTypeOptions;
+    }
+
+    public void setEventTypeOptions(EventTypeOptions eventTypeOptions) {
+        this.eventTypeOptions = eventTypeOptions;
+    }
 }
