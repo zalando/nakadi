@@ -46,6 +46,7 @@ import java.util.UUID;
 
 import static de.zalando.aruha.nakadi.domain.EventCategory.BUSINESS;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
@@ -88,7 +89,7 @@ public class EventTypeControllerTest {
     public void init() throws Exception {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
-                partitionResolver, enrichment, uuid);
+                partitionResolver, enrichment, uuid, featureToggleService);
 
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService);
@@ -101,6 +102,7 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
         doReturn(false).when(featureToggleService).isFeatureEnabled(any());
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_PARTITIONS_KEYS);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)

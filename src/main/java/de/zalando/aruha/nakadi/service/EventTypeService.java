@@ -16,6 +16,7 @@ import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.security.Client;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -30,6 +31,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
+
 public class EventTypeService {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeService.class);
@@ -39,17 +42,20 @@ public class EventTypeService {
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final UUIDGenerator uuidGenerator;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                             final PartitionResolver partitionResolver, final Enrichment enrichment,
-                            final UUIDGenerator uuidGenerator)
+                            final UUIDGenerator uuidGenerator,
+                            final FeatureToggleService featureToggleService)
     {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.uuidGenerator = uuidGenerator;
+        this.featureToggleService = featureToggleService;
     }
 
     public List<EventType> list() {
@@ -173,6 +179,9 @@ public class EventTypeService {
     }
 
     private void validatePartitionKeys(final EventType eventType) throws InvalidEventTypeException {
+        if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
+            return;
+        }
         try {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 

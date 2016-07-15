@@ -5,6 +5,7 @@ import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
+import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,8 +18,9 @@ public class ServiceConfig {
                                              final TopicRepository topicRepository,
                                              final PartitionResolver partitionResolver,
                                              final Enrichment enrichment,
-                                             final UUIDGenerator uuidGenerator)
+                                             final UUIDGenerator uuidGenerator,
+                                             final FeatureToggleService featureToggleService)
     {
-        return new EventTypeService(eventTypeRepository, topicRepository, partitionResolver, enrichment, uuidGenerator);
+        return new EventTypeService(eventTypeRepository, topicRepository, partitionResolver, enrichment, uuidGenerator, featureToggleService);
     }
 }
