@@ -183,6 +183,11 @@ public abstract class AuthenticationTest {
         public EventStreamFactory eventStreamFactory() {
             return mock(EventStreamFactory.class);
         }
+
+        @Bean
+        public ClientResolver clientResolver() {
+            return mock(ClientResolver.class);
+        }
     }
 
     protected static final ResultMatcher STATUS_NOT_401_OR_403 = status().is(not(
