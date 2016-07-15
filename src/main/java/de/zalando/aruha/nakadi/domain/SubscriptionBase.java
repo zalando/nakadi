@@ -1,7 +1,6 @@
 package de.zalando.aruha.nakadi.domain;
 
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.Set;
@@ -10,8 +9,10 @@ import static com.google.common.collect.Sets.newTreeSet;
 
 public class SubscriptionBase {
 
-    public static final String POSITION_BEGIN = "BEGIN";
-    public static final String POSITION_END = "END";
+    public enum InitialPosition {
+        BEGIN,
+        END
+    }
 
     @NotNull
     private String owningApplication;
@@ -24,8 +25,7 @@ public class SubscriptionBase {
     private String consumerGroup = "none";
 
     @NotNull
-    @Pattern(regexp = "^(BEGIN|END)$", message = "value not allowed, possible values are: 'BEGIN', 'END'" )
-    private String startFrom = POSITION_END;
+    private InitialPosition startFrom = InitialPosition.END;
 
     public SubscriptionBase() {
     }
@@ -61,11 +61,11 @@ public class SubscriptionBase {
         this.consumerGroup = consumerGroup;
     }
 
-    public String getStartFrom() {
+    public InitialPosition getStartFrom() {
         return startFrom;
     }
 
-    public void setStartFrom(final String startFrom) {
+    public void setStartFrom(final InitialPosition startFrom) {
         this.startFrom = startFrom;
     }
 

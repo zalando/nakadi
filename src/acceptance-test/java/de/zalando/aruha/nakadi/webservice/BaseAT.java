@@ -32,7 +32,7 @@ public abstract class BaseAT {
     private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
             new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
-    private static final EventTypeDbRepository EVENT_TYPE_REPO = new EventTypeDbRepository(JDBC_TEMPLATE, MAPPER);
+    protected static final EventTypeDbRepository EVENT_TYPE_REPO = new EventTypeDbRepository(JDBC_TEMPLATE, MAPPER);
 
     static {
         RestAssured.port = PORT;
@@ -44,7 +44,7 @@ public abstract class BaseAT {
         try {
             EVENT_TYPE_REPO.findByName(EVENT_TYPE_NAME);
         } catch (final NoSuchEventTypeException e) {
-            EventType eventType = buildDefaultEventType();
+            final EventType eventType = buildDefaultEventType();
             eventType.setName(EVENT_TYPE_NAME);
             eventType.setTopic(TEST_TOPIC);
             EVENT_TYPE_REPO.saveEventType(eventType);

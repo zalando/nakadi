@@ -88,7 +88,7 @@ public class EventTypeAT extends BaseAT {
 
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
-        assertThat(allTopics, not(hasItem(eventType.getName())));
+        assertThat(allTopics, not(hasItem(eventType.getTopic())));
     }
 
     @After

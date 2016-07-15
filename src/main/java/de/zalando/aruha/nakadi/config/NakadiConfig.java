@@ -19,9 +19,17 @@ import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
+import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperLockFactory;
+import de.zalando.aruha.nakadi.service.CursorsCommitService;
 import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
+import java.lang.management.ManagementFactory;
+
+import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFactory;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -29,8 +37,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
-
-import java.lang.management.ManagementFactory;
 
 @Configuration
 @EnableMetrics
@@ -44,6 +50,12 @@ public class NakadiConfig {
 
     @Autowired
     private TopicRepository topicRepository;
+
+    @Autowired
+    private SubscriptionDbRepository subscriptionRepository;
+
+    @Autowired
+    private ZooKeeperHolder zooKeeperHolder;
 
     @Autowired
     private EventTypeCache eventTypeCache;
@@ -80,6 +92,27 @@ public class NakadiConfig {
     @Bean
     public VersionController versionController() {
         return new VersionController(jsonConfig.jacksonObjectMapper());
+    }
+
+    @Bean
+    public ZooKeeperLockFactory zooKeeperLockFactory() {
+        return new ZooKeeperLockFactory(zooKeeperHolder);
+    }
+
+    @Bean
+    public ZkSubscriptionClientFactory zkSubscriptionClientFactory() {
+        return new ZkSubscriptionClientFactory(zooKeeperHolder);
+    }
+
+    @Bean
+    public SubscriptionKafkaClientFactory subscriptionKafkaClientFactory() {
+        return new SubscriptionKafkaClientFactory(topicRepository, eventTypeRepository);
+    }
+
+    @Bean
+    public CursorsCommitService cursorsCommitService() {
+        return new CursorsCommitService(zooKeeperHolder, topicRepository, subscriptionRepository, eventTypeRepository,
+                zooKeeperLockFactory(), zkSubscriptionClientFactory(), subscriptionKafkaClientFactory());
     }
 
     @Bean
