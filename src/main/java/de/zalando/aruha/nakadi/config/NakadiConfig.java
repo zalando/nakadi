@@ -22,7 +22,7 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperLockFactory;
-import de.zalando.aruha.nakadi.service.CursorsCommitService;
+import de.zalando.aruha.nakadi.service.CursorsService;
 import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
@@ -110,8 +110,8 @@ public class NakadiConfig {
     }
 
     @Bean
-    public CursorsCommitService cursorsCommitService() {
-        return new CursorsCommitService(zooKeeperHolder, topicRepository, subscriptionRepository, eventTypeRepository,
+    public CursorsService cursorsService() {
+        return new CursorsService(zooKeeperHolder, topicRepository, subscriptionRepository, eventTypeRepository,
                 zooKeeperLockFactory(), zkSubscriptionClientFactory(), subscriptionKafkaClientFactory());
     }
 

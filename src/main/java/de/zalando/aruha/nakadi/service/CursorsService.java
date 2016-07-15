@@ -32,9 +32,9 @@ import java.util.stream.Collectors;
 import static de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 import static java.text.MessageFormat.format;
 
-public class CursorsCommitService {
+public class CursorsService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(CursorsCommitService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
     private static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
     private static final String PATH_ZK_OFFSET = "/nakadi/subscriptions/{0}/topics/{1}/{2}/offset";
     private static final String PATH_ZK_PARTITIONS = "/nakadi/subscriptions/{0}/topics/{1}";
@@ -48,13 +48,13 @@ public class CursorsCommitService {
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory;
 
-    public CursorsCommitService(final ZooKeeperHolder zkHolder,
-                                final TopicRepository topicRepository,
-                                final SubscriptionDbRepository subscriptionRepository,
-                                final EventTypeRepository eventTypeRepository,
-                                final ZooKeeperLockFactory zkLockFactory,
-                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
-                                final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory) {
+    public CursorsService(final ZooKeeperHolder zkHolder,
+                          final TopicRepository topicRepository,
+                          final SubscriptionDbRepository subscriptionRepository,
+                          final EventTypeRepository eventTypeRepository,
+                          final ZooKeeperLockFactory zkLockFactory,
+                          final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
+                          final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory) {
         this.zkHolder = zkHolder;
         this.topicRepository = topicRepository;
         this.subscriptionRepository = subscriptionRepository;

@@ -3,7 +3,7 @@ package de.zalando.aruha.nakadi.controller;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.exceptions.InvalidCursorException;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
-import de.zalando.aruha.nakadi.service.CursorsCommitService;
+import de.zalando.aruha.nakadi.service.CursorsService;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -29,13 +29,13 @@ import static org.zalando.problem.spring.web.advice.Responses.create;
 @RestController
 public class CursorsController {
 
-    private final CursorsCommitService cursorsCommitService;
+    private final CursorsService cursorsService;
     private final FeatureToggleService featureToggleService;
 
     @Autowired
-    public CursorsController(final CursorsCommitService cursorsCommitService,
+    public CursorsController(final CursorsService cursorsService,
                              final FeatureToggleService featureToggleService) {
-        this.cursorsCommitService = cursorsCommitService;
+        this.cursorsService = cursorsService;
         this.featureToggleService = featureToggleService;
     }
 
@@ -46,7 +46,7 @@ public class CursorsController {
         }
 
         try {
-            return status(OK).body(cursorsCommitService.getSubscriptionCursors(subscriptionId));
+            return status(OK).body(cursorsService.getSubscriptionCursors(subscriptionId));
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
         }
@@ -61,7 +61,7 @@ public class CursorsController {
         }
 
         try {
-            final boolean allCommitted = cursorsCommitService.commitCursors(subscriptionId, cursors);
+            final boolean allCommitted = cursorsService.commitCursors(subscriptionId, cursors);
             return allCommitted ? ok().build() : noContent().build();
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);

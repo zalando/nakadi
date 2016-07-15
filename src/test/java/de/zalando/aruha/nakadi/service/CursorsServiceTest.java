@@ -43,7 +43,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class CursorsCommitServiceTest {
+public class CursorsServiceTest {
 
     private static final Charset CHARSET = Charset.forName("UTF-8");
 
@@ -53,7 +53,7 @@ public class CursorsCommitServiceTest {
     private static final List<Cursor> DUMMY_CURSORS = ImmutableList.of(new Cursor("p1", NEW_OFFSET));
 
     private TopicRepository topicRepository;
-    private CursorsCommitService cursorsCommitService;
+    private CursorsService cursorsService;
     private GetDataBuilder getDataBuilder;
     private SetDataBuilder setDataBuilder;
     private ZkSubscriptionClient zkSubscriptionClient;
@@ -98,7 +98,7 @@ public class CursorsCommitServiceTest {
         kafkaClient = mock(KafkaClient.class);
         when(subscriptionKafkaClientFactory.createKafkaClient(any())).thenReturn(kafkaClient);
 
-        cursorsCommitService = new CursorsCommitService(zkHolder, topicRepository, subscriptionRepository,
+        cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepository,
                 eventTypeRepository, zkLockFactory, zkSubscriptionClientFactory, subscriptionKafkaClientFactory);
     }
 
@@ -107,7 +107,7 @@ public class CursorsCommitServiceTest {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(1);
 
-        final boolean committed = cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
+        final boolean committed = cursorsService.commitCursors(SID, DUMMY_CURSORS);
 
         assertThat(committed, is(true));
         verify(setDataBuilder, times(1)).forPath(eq(offsetPath("p1")), eq("newOffset".getBytes(CHARSET)));
@@ -124,7 +124,7 @@ public class CursorsCommitServiceTest {
         final ImmutableList<Cursor> cursors = ImmutableList.of(
                 new Cursor("p1", "p1offset"), new Cursor("p2", "p2offset"));
 
-        final boolean committed = cursorsCommitService.commitCursors(SID, cursors);
+        final boolean committed = cursorsService.commitCursors(SID, cursors);
 
         assertThat(committed, is(false));
         verify(setDataBuilder, times(1)).forPath(eq(offsetPath("p2")), eq("p2offset".getBytes(CHARSET)));
@@ -135,7 +135,7 @@ public class CursorsCommitServiceTest {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(-1);
 
-        final boolean committed = cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
+        final boolean committed = cursorsService.commitCursors(SID, DUMMY_CURSORS);
 
         assertThat(committed, is(false));
         verify(setDataBuilder, never()).forPath(any(), any());
@@ -144,7 +144,7 @@ public class CursorsCommitServiceTest {
     @Test(expected = ServiceUnavailableException.class)
     public void whenExceptionThenServiceUnavailableException() throws Exception {
         when(getDataBuilder.forPath(any())).thenThrow(new Exception());
-        cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
+        cursorsService.commitCursors(SID, DUMMY_CURSORS);
     }
 
     @Test
@@ -163,7 +163,7 @@ public class CursorsCommitServiceTest {
         final ImmutableMap<Partition.PartitionKey, Long> offsets = ImmutableMap.of();
         when(kafkaClient.getSubscriptionOffsets()).thenReturn(offsets);
 
-        final boolean committed = cursorsCommitService.commitCursors(SID, DUMMY_CURSORS);
+        final boolean committed = cursorsService.commitCursors(SID, DUMMY_CURSORS);
         assertThat(committed, is(true));
         verify(zkSubscriptionClient, times(1)).fillEmptySubscription(eq(offsets));
     }
@@ -180,20 +180,20 @@ public class CursorsCommitServiceTest {
         when(getDataBuilder.forPath(offsetPath(partition1))).thenReturn(offset1.getBytes(CHARSET));
         when(getDataBuilder.forPath(offsetPath(partition2))).thenReturn(offset2.getBytes(CHARSET));
 
-        final List<Cursor> actualResult = cursorsCommitService.getSubscriptionCursors(SID);
+        final List<Cursor> actualResult = cursorsService.getSubscriptionCursors(SID);
         Assert.assertEquals(Arrays.asList(new Cursor(partition1, offset1), new Cursor(partition2, offset2)), actualResult);
     }
 
     @Test(expected = ServiceUnavailableException.class)
     public void whenGetSubscriptionCursorsExceptionThenServiceUnavailableException() throws Exception {
         when(getChildrenBuilder.forPath(any())).thenThrow(new Exception());
-        cursorsCommitService.getSubscriptionCursors(SID);
+        cursorsService.getSubscriptionCursors(SID);
     }
 
     @Test(expected = ServiceUnavailableException.class)
     public void whenGetSubscriptionCursorsRuntimeExceptionThenServiceUnavailableException() throws Exception {
         when(getDataBuilder.forPath(any())).thenThrow(new Exception());
-        cursorsCommitService.getSubscriptionCursors(SID);
+        cursorsService.getSubscriptionCursors(SID);
     }
 
     private String offsetPath(final String partition) {
