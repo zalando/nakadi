@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import de.zalando.aruha.nakadi.Application;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
+import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
@@ -158,6 +159,11 @@ public abstract class AuthenticationTest {
         @Bean
         public KafkaTopicRepository mockkafkaRepository() {
             return mock(KafkaTopicRepository.class);
+        }
+
+        @Bean
+        public MonitoringRequestFilter monitoringRequestFilter() {
+            return mock(MonitoringRequestFilter.class);
         }
     }
 
