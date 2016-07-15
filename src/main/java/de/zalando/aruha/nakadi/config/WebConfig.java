@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
+import com.codahale.metrics.MetricRegistry;
 import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
 import de.zalando.aruha.nakadi.security.ClientResolver;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
@@ -25,8 +26,6 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 
 import javax.servlet.Filter;
 import java.util.List;
-
-import static de.zalando.aruha.nakadi.config.NakadiConfig.METRIC_REGISTRY;
 
 @Configuration
 public class WebConfig extends WebMvcConfigurationSupport {
@@ -66,8 +65,8 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean monitoringRequestFilter() {
-        return createFilterRegistrationBean(new MonitoringRequestFilter(METRIC_REGISTRY), Ordered.HIGHEST_PRECEDENCE);
+    public FilterRegistrationBean monitoringRequestFilter(final MetricRegistry metricRegistry) {
+        return createFilterRegistrationBean(new MonitoringRequestFilter(metricRegistry), Ordered.HIGHEST_PRECEDENCE);
     }
 
     @Bean

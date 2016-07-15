@@ -22,12 +22,10 @@ import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperLockFactory;
-import de.zalando.aruha.nakadi.service.CursorsCommitService;
 import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
+import de.zalando.aruha.nakadi.service.CursorsCommitService;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
-import java.lang.management.ManagementFactory;
-
 import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFactory;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,12 +36,12 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.lang.management.ManagementFactory;
+
 @Configuration
 @EnableMetrics
 @EnableScheduling
 public class NakadiConfig {
-
-    public static final MetricRegistry METRIC_REGISTRY = createMetricRegistry();
 
     @Autowired
     private JsonConfig jsonConfig;
@@ -69,24 +67,26 @@ public class NakadiConfig {
     }
 
     @Bean
-    public ServletRegistrationBean servletRegistrationBean() {
-        return new ServletRegistrationBean(new MetricsServlet(METRIC_REGISTRY), "/metrics/*");
+    public ServletRegistrationBean servletRegistrationBean(final MetricRegistry metricRegistry) {
+        return new ServletRegistrationBean(new MetricsServlet(metricRegistry), "/metrics/*");
     }
 
     @Bean
-    public MetricsConfigurerAdapter metricsConfigurerAdapter() {
+    public MetricsConfigurerAdapter metricsConfigurerAdapter(final MetricRegistry metricRegistry) {
         return new MetricsConfigurerAdapter() {
             @Override
             public MetricRegistry getMetricRegistry() {
-                return METRIC_REGISTRY;
+                return metricRegistry;
             }
         };
     }
 
     @Bean
-    public EventStreamController eventStreamController(final ClosedConnectionsCrutch closedConnectionsCrutch) {
+    public EventStreamController eventStreamController(final ClosedConnectionsCrutch closedConnectionsCrutch,
+                                                       final MetricRegistry metricRegistry)
+    {
         return new EventStreamController(eventTypeRepository, topicRepository, jsonConfig.jacksonObjectMapper(),
-                eventStreamFactory(), METRIC_REGISTRY, closedConnectionsCrutch);
+                eventStreamFactory(), metricRegistry, closedConnectionsCrutch);
     }
 
     @Bean
@@ -141,16 +141,17 @@ public class NakadiConfig {
     }
 
     @Bean
-    public EventPublishingController eventPublishingController() {
-        return new EventPublishingController(eventPublisher(), eventTypeMetricRegistry());
+    public EventPublishingController eventPublishingController(final MetricRegistry metricRegistry) {
+        return new EventPublishingController(eventPublisher(), eventTypeMetricRegistry(metricRegistry));
     }
 
     @Bean
-    public EventTypeMetricRegistry eventTypeMetricRegistry() {
-        return new EventTypeMetricRegistry(METRIC_REGISTRY);
+    public EventTypeMetricRegistry eventTypeMetricRegistry(final MetricRegistry metricRegistry) {
+        return new EventTypeMetricRegistry(metricRegistry);
     }
 
-    private static MetricRegistry createMetricRegistry() {
+    @Bean
+    public MetricRegistry metricRegistry() {
         final MetricRegistry metricRegistry = new MetricRegistry();
 
         metricRegistry.register("jvm.gc", new GarbageCollectorMetricSet());
