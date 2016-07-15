@@ -93,7 +93,7 @@ public class NakadiTestUtils {
         subscription.setEventTypes(eventTypes);
         subscription.setOwningApplication("my_app");
         subscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
-        Response response = given()
+        final Response response = given()
                 .body(MAPPER.writeValueAsString(subscription))
                 .contentType(JSON)
                 .post("/subscriptions");

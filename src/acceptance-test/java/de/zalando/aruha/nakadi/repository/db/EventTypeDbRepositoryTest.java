@@ -37,21 +37,21 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenCreateNewEventTypePersistItInTheDatabase() throws Exception {
-        EventType eventType = buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
 
         final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
         assertThat("Number of rows should increase", rows, equalTo(1));
 
-        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_topic, et_event_type_object FROM zn_data.event_type");
+        final SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_topic, et_event_type_object FROM zn_data.event_type");
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
         assertThat("Topic is persisted", rs.getString(2), equalTo(eventType.getTopic()));
 
-        ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-        EventType persisted = mapper.readValue(rs.getString(3), EventType.class);
+        final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
+        final EventType persisted = mapper.readValue(rs.getString(3), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getName(), equalTo(eventType.getName()));
@@ -61,7 +61,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test(expected = DuplicatedEventTypeNameException.class)
     public void whenCreateDuplicatedNamesThrowAnError() throws Exception {
-        EventType eventType = buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
         repository.saveEventType(eventType);
@@ -69,13 +69,13 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenEventExistsFindByNameReturnsSomething() throws Exception {
-        EventType eventType1 = buildDefaultEventType();
-        EventType eventType2 = buildDefaultEventType();
+        final EventType eventType1 = buildDefaultEventType();
+        final EventType eventType2 = buildDefaultEventType();
 
         insertEventType(eventType1);
         insertEventType(eventType2);
 
-        EventType persistedEventType = repository.findByName(eventType2.getName());
+        final EventType persistedEventType = repository.findByName(eventType2.getName());
 
         assertThat(persistedEventType, notNullValue());
     }
@@ -97,7 +97,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenUpdateExistingEventTypeItUpdates() throws NakadiException, IOException {
-        EventType eventType = buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
 
         repository.saveEventType(eventType);
 
@@ -106,13 +106,13 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.update(eventType);
 
-        SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
+        final SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
 
-        ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
-        EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
+        final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
+        final EventType persisted = mapper.readValue(rs.getString(2), EventType.class);
 
         assertThat(persisted.getCategory(), equalTo(eventType.getCategory()));
         assertThat(persisted.getOwningApplication(), equalTo(eventType.getOwningApplication()));
@@ -124,20 +124,20 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenListExistingEventTypesAreListed() throws NakadiException {
-        EventType eventType1 = buildDefaultEventType();
-        EventType eventType2 = buildDefaultEventType();
+        final EventType eventType1 = buildDefaultEventType();
+        final EventType eventType2 = buildDefaultEventType();
 
         repository.saveEventType(eventType1);
         repository.saveEventType(eventType2);
 
-        List<EventType> eventTypes = repository.list();
+        final List<EventType> eventTypes = repository.list();
 
         assertThat(eventTypes, hasSize(2));
     }
 
     @Test
     public void whenRemoveThenDeleteFromDatabase() throws Exception {
-        EventType eventType = buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         insertEventType(eventType);
 
         repository.removeEventType(eventType.getName());
@@ -146,8 +146,8 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat("Number of rows should encrease", rows, equalTo(0));
     }
 
-    private void insertEventType(EventType eventType) throws Exception {
-        String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, to_json(?::json))";
+    private void insertEventType(final EventType eventType) throws Exception {
+        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, to_json(?::json))";
         template.update(insertSQL,
                 eventType.getName(),
                 eventType.getTopic(),

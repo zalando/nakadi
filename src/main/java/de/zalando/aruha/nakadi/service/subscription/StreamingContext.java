@@ -13,6 +13,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -25,6 +26,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final KafkaClient kafkaClient;
     private final SubscriptionOutput out;
     private final long kafkaPollTimeout;
+    private final AtomicBoolean connectionReady;
 
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
@@ -48,7 +50,8 @@ public class StreamingContext implements SubscriptionStreamer {
             final KafkaClient kafkaClient,
             final BiFunction<Session[], Partition[], Partition[]> rebalancer,
             final long kafkaPollTimeout,
-            final String loggingPath) {
+            final String loggingPath,
+            final AtomicBoolean connectionReady) {
         this.out = out;
         this.parameters = parameters;
         this.session = session;
@@ -59,6 +62,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.kafkaPollTimeout = kafkaPollTimeout;
         this.loggingPath = loggingPath + ".stream";
         this.log = LoggerFactory.getLogger(loggingPath);
+        this.connectionReady = connectionReady;
     }
 
     public StreamParameters getParameters() {
@@ -153,6 +157,10 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public void scheduleTask(final Runnable task, final long timeout, final TimeUnit unit) {
         timer.schedule(() -> this.addTask(task), timeout, unit);
+    }
+
+    public boolean isConnectionReady() {
+        return connectionReady.get();
     }
 
     private void rebalance() {
