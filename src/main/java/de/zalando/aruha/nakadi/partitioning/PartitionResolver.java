@@ -7,6 +7,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchPartitionStrategyException;
 import de.zalando.aruha.nakadi.exceptions.PartitioningException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class PartitionResolver {
 
     private final TopicRepository topicRepository;
 
+    @Autowired
     public PartitionResolver(final TopicRepository topicRepository) {
         this.topicRepository = topicRepository;
     }

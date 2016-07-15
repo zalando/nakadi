@@ -6,6 +6,7 @@ import de.zalando.aruha.nakadi.domain.EventCategory;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.exceptions.InvalidEventTypeException;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -13,6 +14,7 @@ import java.util.Set;
 public class Enrichment {
     private final EnrichmentsRegistry registry;
 
+    @Autowired
     public Enrichment(final EnrichmentsRegistry registry) {
         this.registry = registry;
     }

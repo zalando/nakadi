@@ -18,6 +18,7 @@ import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFacto
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.nio.charset.Charset;
 import java.util.List;
@@ -39,6 +40,7 @@ public class CursorsCommitService {
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory;
 
+    @Autowired
     public CursorsCommitService(final ZooKeeperHolder zkHolder,
                                 final TopicRepository topicRepository,
                                 final SubscriptionDbRepository subscriptionRepository,

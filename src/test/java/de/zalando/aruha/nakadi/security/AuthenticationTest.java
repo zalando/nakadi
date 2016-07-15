@@ -6,13 +6,16 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import de.zalando.aruha.nakadi.Application;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
-import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
+import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import de.zalando.aruha.nakadi.service.CursorsCommitService;
+import de.zalando.aruha.nakadi.service.EventPublisher;
+import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
@@ -162,8 +165,23 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public MonitoringRequestFilter monitoringRequestFilter() {
-            return mock(MonitoringRequestFilter.class);
+        public CursorsCommitService cursorsCommitService() {
+            return mock(CursorsCommitService.class);
+        }
+
+        @Bean
+        public EventPublisher eventPublisher() {
+            return mock(EventPublisher.class);
+        }
+
+        @Bean
+        public EventTypeMetricRegistry eventTypeMetricRegistry() {
+            return mock(EventTypeMetricRegistry.class);
+        }
+
+        @Bean
+        public EventStreamFactory eventStreamFactory() {
+            return mock(EventStreamFactory.class);
         }
     }
 
