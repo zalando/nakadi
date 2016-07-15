@@ -1,6 +1,5 @@
 package de.zalando.aruha.nakadi.config;
 
-import com.codahale.metrics.MetricRegistry;
 import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
 import de.zalando.aruha.nakadi.security.ClientResolver;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
@@ -30,17 +29,22 @@ import java.util.List;
 @Configuration
 public class WebConfig extends WebMvcConfigurationSupport {
 
-    @Value("${nakadi.stream.timeoutMs}")
-    private long nakadiStreamTimeout;
+    private final long nakadiStreamTimeout;
+    private final JsonConfig jsonConfig;
+    private final SecuritySettings securitySettings;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
-    private JsonConfig jsonConfig;
-
-    @Autowired
-    private SecuritySettings securitySettings;
-
-    @Autowired
-    private FeatureToggleService featureToggleService;
+    public WebConfig(@Value("${nakadi.stream.timeoutMs}") final long nakadiStreamTimeout,
+                     final JsonConfig jsonConfig,
+                     final SecuritySettings securitySettings,
+                     final FeatureToggleService featureToggleService)
+    {
+        this.nakadiStreamTimeout = nakadiStreamTimeout;
+        this.jsonConfig = jsonConfig;
+        this.securitySettings = securitySettings;
+        this.featureToggleService = featureToggleService;
+    }
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -65,8 +69,8 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean monitoringRequestFilter(final MetricRegistry metricRegistry) {
-        return createFilterRegistrationBean(new MonitoringRequestFilter(metricRegistry), Ordered.HIGHEST_PRECEDENCE);
+    public FilterRegistrationBean monitoringRequestFilter(final MonitoringRequestFilter monitoringRequestFilter) {
+        return createFilterRegistrationBean(monitoringRequestFilter, Ordered.HIGHEST_PRECEDENCE);
     }
 
     @Bean

@@ -3,6 +3,7 @@ package de.zalando.aruha.nakadi.metrics;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -17,6 +18,7 @@ public class MonitoringRequestFilter implements Filter {
     private final Timer httpConnectionsTimer;
     private final Counter openHttpConnectionsCounter;
 
+    @Autowired
     public MonitoringRequestFilter(final MetricRegistry metricRegistry) {
         openHttpConnectionsCounter = metricRegistry.counter(MetricUtils.NAKADI_PREFIX + "general.openSynchronousHttpConnections");
         httpConnectionsTimer = metricRegistry.timer(MetricUtils.NAKADI_PREFIX + "general.synchronousHttpConnections");
