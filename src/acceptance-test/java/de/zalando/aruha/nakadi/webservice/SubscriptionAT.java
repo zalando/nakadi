@@ -90,7 +90,9 @@ public class SubscriptionAT extends BaseAT {
 
         final Subscription subscription = createSubscription(eventType);
 
-        commitCursors(subscription);
+        commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"25\"}]")
+                .then()
+                .statusCode(HttpStatus.SC_OK);
 
         // check that offset is actually committed to Zookeeper
         final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
@@ -98,10 +100,7 @@ public class SubscriptionAT extends BaseAT {
         assertThat(committedOffset, equalTo("25"));
 
         // commit lower offsets and expect 204
-        given()
-                .body("[{\"partition\":\"0\",\"offset\":\"10\"}]")
-                .contentType(JSON)
-                .put(format(CURSORS_URL, subscription.getId()))
+        commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"10\"}]")
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
@@ -114,9 +113,11 @@ public class SubscriptionAT extends BaseAT {
     public void testGetSubscriptionCursors() throws IOException {
         final EventType eventType = createEventType();
         final Subscription subscription = createSubscription(eventType);
-        commitCursors(subscription);
+        commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"25\"}]")
+                .then()
+                .statusCode(HttpStatus.SC_OK);
 
-        List<Cursor> actualCursors = getSubscriptionCursors(subscription);
+        final List<Cursor> actualCursors = getSubscriptionCursors(subscription);
         Assert.assertEquals(Arrays.asList(new Cursor("0", "25")), actualCursors);
     }
 
@@ -130,9 +131,6 @@ public class SubscriptionAT extends BaseAT {
 
     @Test
     public void testGetSubscriptionNotFound() throws IOException {
-        final EventType eventType = createEventType();
-        createSubscription(eventType);
-
         given()
                 .get(format(CURSORS_URL, "UNKNOWN_SUB_ID"))
                 .then()
@@ -148,18 +146,15 @@ public class SubscriptionAT extends BaseAT {
         return MAPPER.readValue(response.print(), Subscription.class);
     }
 
-    private void commitCursors(Subscription subscription) {
-        // commit offsets and expect 200
-        given()
-                .body("[{\"partition\":\"0\",\"offset\":\"25\"}]")
+    private Response commitCursors(Subscription subscription, String cursor) {
+        return given()
+                .body(cursor)
                 .contentType(JSON)
-                .put(format(CURSORS_URL, subscription.getId()))
-                .then()
-                .statusCode(HttpStatus.SC_OK);
+                .put(format(CURSORS_URL, subscription.getId()));
     }
 
     private List<Cursor> getSubscriptionCursors(Subscription subscription) throws IOException {
-        Response response = given().get(format(CURSORS_URL, subscription.getId()));
+        final Response response = given().get(format(CURSORS_URL, subscription.getId()));
         return MAPPER.readValue(response.print(), new TypeReference<List<Cursor>>() {});
     }
 
