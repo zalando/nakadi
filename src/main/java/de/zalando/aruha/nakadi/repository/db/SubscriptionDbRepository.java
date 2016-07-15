@@ -10,6 +10,7 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchSubscriptionException;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -27,6 +28,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     private final SubscriptionMapper rowMapper = new SubscriptionMapper();
     private final UUIDGenerator uuidGenerator;
 
+    @Autowired
     public SubscriptionDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper,
                                     final UUIDGenerator uuidGenerator) {
         super(jdbcTemplate, objectMapper);

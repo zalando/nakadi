@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ class KafkaFactory {
     private final KafkaLocationManager kafkaLocationManager;
     private final KafkaProducer<String, String> kafkaProducer;
 
+    @Autowired
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager) {
         this.kafkaLocationManager = kafkaLocationManager;
         kafkaProducer = new KafkaProducer<>(kafkaLocationManager.getKafkaProducerProperties());

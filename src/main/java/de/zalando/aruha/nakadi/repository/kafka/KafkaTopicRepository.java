@@ -36,6 +36,7 @@ import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,7 @@ public class KafkaTopicRepository implements TopicRepository {
     private final KafkaRepositorySettings settings;
     private final KafkaPartitionsCalculator partitionsCalculator;
 
+    @Autowired
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
                                 final KafkaRepositorySettings settings, final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;

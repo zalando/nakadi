@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.repository.db;
 
+import de.zalando.aruha.nakadi.annotations.DB;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.InternalNakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
@@ -7,9 +8,12 @@ import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Primary;
 
 import java.util.List;
 
+@Primary
 public class CachingEventTypeRepository implements EventTypeRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(CachingEventTypeRepository.class);
@@ -18,8 +22,8 @@ public class CachingEventTypeRepository implements EventTypeRepository {
 
     private final EventTypeCache cache;
 
-    public CachingEventTypeRepository(final EventTypeRepository repository,
-                                      final EventTypeCache cache) {
+    @Autowired
+    public CachingEventTypeRepository(@DB final EventTypeRepository repository, final EventTypeCache cache) {
         this.repository = repository;
         this.cache = cache;
     }

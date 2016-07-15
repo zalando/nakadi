@@ -1,16 +1,14 @@
 package de.zalando.aruha.nakadi.config;
 
+import de.zalando.aruha.nakadi.annotations.DB;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
-import de.zalando.aruha.nakadi.repository.db.CachingEventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
-import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
-import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaConfig;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperConfig;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.FeatureToggleServiceDefault;
 import de.zalando.aruha.nakadi.util.FeatureToggleServiceZk;
-import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import de.zalando.aruha.nakadi.validation.EventBodyMustRespectSchema;
 import de.zalando.aruha.nakadi.validation.EventMetadataValidationStrategy;
 import de.zalando.aruha.nakadi.validation.ValidationStrategy;
@@ -34,47 +32,30 @@ public class RepositoriesConfig {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private ZookeeperConfig zookeeperConfig;
-
     @Bean
-    public FeatureToggleService featureToggleService(@Value("${nakadi.featureToggle.default}") final boolean forceDefault) {
+    public FeatureToggleService featureToggleService(@Value("${nakadi.featureToggle.default}") final boolean forceDefault,
+                                                     final ZooKeeperHolder zooKeeperHolder)
+    {
         if (forceDefault) {
             return new FeatureToggleServiceDefault();
         } else {
-            return new FeatureToggleServiceZk(zookeeperConfig.zooKeeperHolder());
+            return new FeatureToggleServiceZk(zooKeeperHolder);
         }
     }
 
     @Bean
-    public UUIDGenerator uuidGenerator() {
-        return new UUIDGenerator();
-    }
-
-    @Bean
-    public EventTypeCache eventTypeCache() {
-        final CuratorFramework client = zookeeperConfig.zooKeeperHolder().get();
+    public EventTypeCache eventTypeCache(final ZooKeeperHolder zooKeeperHolder,
+                                         @DB final EventTypeRepository eventTypeRepository)
+    {
+        final CuratorFramework client = zooKeeperHolder.get();
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema());
         ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
 
         try {
-            return new EventTypeCache(eventTypeDBRepository(), client);
+            return new EventTypeCache(eventTypeRepository, client);
         } catch (final Exception e) {
             throw new IllegalStateException("failed to create event type cache");
         }
     }
 
-    @Bean
-    public EventTypeRepository eventTypeRepository() {
-        return new CachingEventTypeRepository(eventTypeDBRepository(), eventTypeCache());
-    }
-
-    @Bean
-    public SubscriptionDbRepository subscriptionRepository() {
-        return new SubscriptionDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper(), uuidGenerator());
-    }
-
-    private EventTypeRepository eventTypeDBRepository() {
-        return new EventTypeDbRepository(jdbcTemplate, jsonConfig.jacksonObjectMapper());
-    }
 }
