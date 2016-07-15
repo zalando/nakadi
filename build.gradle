@@ -153,6 +153,7 @@ dependencies {
     testCompile 'com.jayway.jsonpath:json-path:2.2.0'
     testCompile 'org.echocat.jomon:runtime:1.6.2'
     testRuntime 'org.pegdown:pegdown:1.1.0'
+    testCompile 'org.unitils:unitils-core:3.4.2'
 }
 // end::dependencies[]
 

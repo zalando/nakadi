@@ -24,7 +24,8 @@ import org.apache.curator.framework.api.SetDataBuilder;
 import org.apache.curator.framework.recipes.locks.InterProcessLock;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.util.Assert;
+import org.unitils.reflectionassert.ReflectionAssert;
+import org.unitils.reflectionassert.ReflectionComparatorMode;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -169,14 +170,35 @@ public class CursorsCommitServiceTest {
     }
 
     @Test
-    public void whenGetSubscriptionThenList() throws Exception {
+    public void whenGetSubscriptionCursorsThenList() throws Exception {
+        final String partition1 = "partition-1";
+        final String partition2 = "partition-2";
+        final String offset1 = "offset-1";
+        final String offset2 = "offset-2";
+        final List<String> partitions = Arrays.asList(partition1, partition2);
 
-        when(getChildrenBuilder.forPath(any())).thenReturn(Arrays.asList("partition-1", "partition-2"));
-        when(getDataBuilder.forPath(offsetPath("partition-1"))).thenReturn("offset-1".getBytes(CHARSET));
-        when(getDataBuilder.forPath(offsetPath("partition-2"))).thenReturn("offset-2".getBytes(CHARSET));
+        when(getChildrenBuilder.forPath(any())).thenReturn(partitions);
+        when(getDataBuilder.forPath(offsetPath(partition1))).thenReturn(offset1.getBytes(CHARSET));
+        when(getDataBuilder.forPath(offsetPath(partition2))).thenReturn(offset2.getBytes(CHARSET));
 
         final List<Cursor> actualResult = cursorsCommitService.getSubscriptionCursors(SID);
-        Assert.notEmpty(actualResult);
+        ReflectionAssert.assertReflectionEquals(
+                Arrays.asList(new Cursor(partition1, offset1), new Cursor(partition2, offset2)),
+                actualResult,
+                ReflectionComparatorMode.LENIENT_ORDER
+        );
+    }
+
+    @Test(expected = ServiceUnavailableException.class)
+    public void whenGetSubscriptionCursorsExceptionThenServiceUnavailableException() throws Exception {
+        when(getChildrenBuilder.forPath(any())).thenThrow(new Exception());
+        cursorsCommitService.getSubscriptionCursors(SID);
+    }
+
+    @Test(expected = ServiceUnavailableException.class)
+    public void whenGetSubscriptionCursorsRuntimeExceptionThenServiceUnavailableException() throws Exception {
+        when(getDataBuilder.forPath(any())).thenThrow(new Exception());
+        cursorsCommitService.getSubscriptionCursors(SID);
     }
 
     private String offsetPath(final String partition) {
