@@ -31,6 +31,7 @@ import java.util.List;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
+import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -93,7 +94,7 @@ public class SubscriptionController {
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
-        return new ResponseEntity<>(subscription, HttpStatus.CREATED);
+        return status(HttpStatus.CREATED).body(subscription);
     }
 
     private List<String> checkExistingEventTypes(final SubscriptionBase subscriptionBase) throws InternalNakadiException {
