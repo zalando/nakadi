@@ -32,7 +32,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.problem.Problem;
 
@@ -42,7 +41,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.LinkedList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static de.zalando.aruha.nakadi.metrics.MetricUtils.metricNameFor;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -73,7 +74,7 @@ public class EventStreamControllerTest {
     private static final String TEST_TOPIC = "test-topic";
     private static final EventType EVENT_TYPE = new EventType();
 
-    private NativeWebRequest requestMock;
+    private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
     private TopicRepository topicRepositoryMock;
     private EventTypeRepository eventTypeRepository;
@@ -85,7 +86,7 @@ public class EventStreamControllerTest {
     private MetricRegistry metricRegistry;
 
     @Before
-    public void setup() throws NakadiException {
+    public void setup() throws NakadiException, UnknownHostException {
         EVENT_TYPE.setName(TEST_EVENT_TYPE_NAME);
         EVENT_TYPE.setTopic(TEST_TOPIC);
 
@@ -97,16 +98,18 @@ public class EventStreamControllerTest {
         when(topicRepositoryMock.topicExists(TEST_TOPIC)).thenReturn(true);
         eventStreamFactoryMock = mock(EventStreamFactory.class);
 
-        metricRegistry = new MetricRegistry();
-        controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
-                eventStreamFactoryMock, metricRegistry, mock(ClosedConnectionsCrutch.class));
-
-        requestMock = mock(NativeWebRequest.class);
-        final HttpServletRequest httpRequestMock = mock(HttpServletRequest.class);
-        when(requestMock.getNativeRequest()).thenReturn(httpRequestMock);
-        when(httpRequestMock.getRemoteAddr()).thenReturn(InetAddress.getLoopbackAddress().getHostAddress());
-        when(httpRequestMock.getRemotePort()).thenReturn(12345);
+        requestMock = mock(HttpServletRequest.class);
+        when(requestMock.getRemoteAddr()).thenReturn(InetAddress.getLoopbackAddress().getHostAddress());
+        when(requestMock.getRemotePort()).thenReturn(12345);
         responseMock = mock(HttpServletResponse.class);
+
+        metricRegistry = new MetricRegistry();
+
+        final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
+        when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
+
+        controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
+        eventStreamFactoryMock, metricRegistry, crutch);
     }
 
     @Test

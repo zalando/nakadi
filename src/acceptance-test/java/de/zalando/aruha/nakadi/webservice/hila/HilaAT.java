@@ -177,4 +177,23 @@ public class HilaAT extends BaseAT {
                 .statusCode(SC_CONFLICT);
     }
 
+    @Test(timeout = 10000)
+    public void whenConnectionIsClosedByClientNakadiRecognizesIt() throws Exception {
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_flush_timeout=1");
+        client.start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+
+        client.close();
+        Thread.sleep(2000);
+
+        final TestStreamingClient anotherClient = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_flush_timeout=1");
+        anotherClient.start();
+        // if we start to get data for another client it means that Nakadi recognized that first client closed
+        // connection (in other case it would not allow second client to connect because of lack of slots)
+        waitFor(() -> assertThat(anotherClient.getBatches(), hasSize(1)));
+    }
+
 }
