@@ -884,25 +884,40 @@ paths:
         - name: commit_mode
           in: query
           description: |
-            The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
-            state and commit comes - the stream will continue. Minimal window size is 1.
+            The commit mode that will be used for this stream. Possible values:
+
+            - `commit_at_will`: When you commit a batch that also automatically commits all previous batches.
+
+
+            - `commit_each`: this commit mode requires each batch to be committed in correct order. Committing a cursor
+            when the previous is not committed yet is not possible.
+
+            - `auto_commit`: everything that Nakadi sends to stream is considered to be committed. Be aware that with
+            this commit mode loosing of some events is very probable. So you should know what you are doing if you use
+            autocommit.
           type: string
           enum:
             - commit_at_will
+            - commit_each
+            - auto_commit
           required: false
-          default: at_will
+          default: commit_at_will
         - name: commit_semantics
           in: query
           description: |
-            The semantics of commit.
-            - `per_partition` - Each partition is committed separatelly.
-            - `commit_all_before` -
+            The semantics of commit that will be used for this sctream. Possible values:
+
+            - `per_partition`: Each partition is committed separatelly. Each cursor in a stream belongs to one of the
+            partitions of that stream; committing that cursor will commit the data only for that partition.
+
+            - `commit_all_before`: When you commit a cursor - all data in a stream before this cursor is
+            commited (doesn't matter to which partition it belongs)
           type: string
           enum:
             - per_partition
             - commit_all_before
           required: false
-          default: at_will
+          default: per_partition
 
         - $ref: '#/parameters/BatchLimit'
         - $ref: '#/parameters/StreamLimit'
