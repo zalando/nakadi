@@ -11,6 +11,7 @@ import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.service.CursorsCommitService;
@@ -117,13 +118,6 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public SecuritySettings mockSecuritySettings() {
-            final SecuritySettings settings = mock(SecuritySettings.class);
-            when(settings.getAuthMode()).thenReturn(authMode);
-            return settings;
-        }
-
-        @Bean
         public EventTypeRepository mockDbRepository() {
             return mock(EventTypeDbRepository.class);
         }
@@ -188,6 +182,12 @@ public abstract class AuthenticationTest {
         public ClientResolver clientResolver() {
             return mock(ClientResolver.class);
         }
+
+        @Bean
+        public KafkaLocationManager kafkaLocationManager() {
+            return mock(KafkaLocationManager.class);
+        }
+
     }
 
     protected static final ResultMatcher STATUS_NOT_401_OR_403 = status().is(not(
