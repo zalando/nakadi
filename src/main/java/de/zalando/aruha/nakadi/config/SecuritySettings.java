@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 
@@ -16,6 +17,7 @@ public class SecuritySettings {
     private AuthMode authMode;
     private String adminClientId;
 
+    @Autowired
     public SecuritySettings(@Value("${nakadi.oauth2.tokenInfoUrl}") final String tokenInfoUrl,
                             @Value("${nakadi.oauth2.clientId}") final String clientId,
                             @Value("${nakadi.oauth2.mode:BASIC}") final AuthMode authMode,
