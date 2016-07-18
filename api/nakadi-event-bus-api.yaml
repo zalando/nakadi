@@ -800,17 +800,21 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for committing offsets of the subscription. The offsets are per partition of EventType. One
-        can use this endpoint to commit the offsets for any of the partitions that are part of this
-        subscription.
-        With every commit the offsets can only increase so it is not possible to commit offset that is lower
-        than already committed offset for the appropriate partition; if such request is made - it will not
-        have any effect on the committed offsets.
+        Endpoint for committing offsets of the subscription.
+        The behavior of commit is specific to `commit_mode` and `commit_semantics` parameters of the session
+        that makes a commit. Please see details in subscription streaming endpoint specification.
       parameters:
         - name: subscription_id
           in: path
           type: string
           description: Id of subscription
+          required: true
+        - name: X-Nakadi-SessionId
+          in: header
+          type: string
+          description: |
+            Id of a session (client) which makes a commit. It is not possible to make a commit from a dead or
+            none-existing session. Also the session can't commit something which was not sent to it.
           required: true
         - name: cursors
           in: body
@@ -895,15 +899,17 @@ paths:
             - `commit_at_will`: client is free to choose how often he wants to commit. Of course the commit_timeout
             property should still be respected.
             When a batch is committed that also automatically commits all previous batches that were sent in a stream
-            (if the commit_semantics parameter is "per_partition" - that will commit all previous batches only for
+            (if the commit_semantics parameter is `per_partition` - that will commit all previous batches only for
             current partition).
 
-            - `commit_each`: this commit mode requires each batch to be committed, and it should be doen in correct
+            - `commit_each`: this commit mode requires each batch to be committed, and it should be done in correct
             order. Committing a cursor when the previous is not yet committed is not possible.
 
             - `auto_commit`: everything that Nakadi sends to stream is considered to be committed. No actions are
             required from client side to commit. Be aware that with this commit mode loosing of some events is very
             probable. So you should know what you are doing if you use autocommit.
+
+            Currently only `commit_at_will` is supported.
           type: string
           enum:
             - commit_at_will
@@ -955,6 +961,12 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: |
+            Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
+            already equals the maximal value - the total amount of this subscription partitions
           schema:
             $ref: '#/definitions/Problem'
         '422':
