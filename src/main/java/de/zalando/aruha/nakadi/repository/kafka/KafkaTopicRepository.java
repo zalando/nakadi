@@ -21,9 +21,6 @@ import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-
-import java.util.Arrays;
-import java.util.stream.Stream;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
@@ -37,13 +34,16 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static de.zalando.aruha.nakadi.domain.CursorError.EMPTY_PARTITION;
 import static de.zalando.aruha.nakadi.domain.CursorError.INVALID_FORMAT;
@@ -60,6 +60,7 @@ import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiParti
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 
+@Component
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);

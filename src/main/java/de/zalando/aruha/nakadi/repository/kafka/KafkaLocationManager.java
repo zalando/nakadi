@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.io.UnsupportedEncodingException;
@@ -15,16 +16,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-class KafkaLocationManager {
+@Component
+public class KafkaLocationManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaLocationManager.class);
 
     private static final String BROKERS_IDS_PATH = "/brokers/ids";
 
-    @Autowired
-    private ZooKeeperHolder zkFactory;
+    private final ZooKeeperHolder zkFactory;
 
     private Properties kafkaProperties;
+
+    @Autowired
+    public KafkaLocationManager(ZooKeeperHolder zkFactory) {
+        this.zkFactory = zkFactory;
+    }
 
     static class Broker {
         final String host;

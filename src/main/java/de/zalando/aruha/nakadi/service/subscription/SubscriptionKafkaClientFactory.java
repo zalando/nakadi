@@ -4,7 +4,9 @@ import de.zalando.aruha.nakadi.domain.Subscription;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
+@Component
 public class SubscriptionKafkaClientFactory {
 
     private final TopicRepository topicRepository;

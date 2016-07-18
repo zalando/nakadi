@@ -2,8 +2,9 @@ package de.zalando.aruha.nakadi.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-
+@Component
 public class SecuritySettings {
 
     public enum AuthMode {

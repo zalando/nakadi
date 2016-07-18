@@ -2,10 +2,12 @@ package de.zalando.aruha.nakadi.metrics;
 
 import com.codahale.metrics.MetricRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+@Component
 public class EventTypeMetricRegistry {
 
     private final ConcurrentMap<String, EventTypeMetrics> metricsPerEventType = new ConcurrentHashMap<>();

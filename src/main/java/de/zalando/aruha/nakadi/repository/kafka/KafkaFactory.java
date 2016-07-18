@@ -5,10 +5,12 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-class KafkaFactory {
+@Component
+public class KafkaFactory {
     private final KafkaLocationManager kafkaLocationManager;
     private final KafkaProducer<String, String> kafkaProducer;
 

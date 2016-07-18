@@ -2,8 +2,10 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-class KafkaRepositorySettings {
+@Component
+public class KafkaRepositorySettings {
 
     private final int maxTopicPartitionCount;
     private final int defaultTopicPartitionCount;

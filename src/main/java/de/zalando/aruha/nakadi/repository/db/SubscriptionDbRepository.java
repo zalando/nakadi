@@ -15,6 +15,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -23,6 +24,7 @@ import java.util.Set;
 
 import static com.google.common.collect.Sets.newTreeSet;
 
+@Component
 public class SubscriptionDbRepository extends AbstractDbRepository {
 
     private final SubscriptionMapper rowMapper = new SubscriptionMapper();
