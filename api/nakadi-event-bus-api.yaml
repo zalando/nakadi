@@ -16,9 +16,6 @@ info:
     * The **schema** of the Event of this EventType. The schema defines the accepted format of
     Events of an EventType and will be, if so desired, enforced by Nakadi. Usually Nakadi will
     respect the schema for the EventTypes in accordance to how an owning Application defines them.
-    **Note:** *Currently the specification of the schema must be pushed into Nakadi on EventType
-    creation; in the future, assuming that Applications will expose the schema for its owned
-    resources, Nakadi might support fetching the schema directly from them.*
 
     * The expected **validation** and **enrichment** procedures upon reception of an Event.
     Validation define conditions for the acceptance of the incoming Event and are strictly enforced
