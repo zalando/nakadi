@@ -253,6 +253,14 @@ def execAndWait(command, timeoutInSeconds = 15) {
     return proc.exitValue()
 }
 
+task startPZK(type: Exec) {
+    commandLine "bash", "-c", "docker-compose up -d postgres zookeeper kafka"
+}
+
+task stopPZK(type: Exec) {
+    commandLine "bash", "-c", "docker-compose down"
+}
+
 task fullTest(type: GradleBuild) {
     tasks = ['clean', 'bootRepackage', 'initNakadi', 'test', 'acceptanceTest']
     finalizedBy stopNakadi
