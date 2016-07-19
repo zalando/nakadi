@@ -813,7 +813,7 @@ paths:
           in: header
           type: string
           description: |
-            Id of a session (client) which makes a commit. It is not possible to make a commit from a dead or
+            Id of a session (client) which makes a commit. It is not possible to make a commit from a terminated or
             none-existing session. Also the session can't commit something which was not sent to it.
           required: true
         - name: cursors
@@ -894,7 +894,8 @@ paths:
         - name: commit_mode
           in: query
           description: |
-            The commit mode that will be used for this stream. Possible values:
+            The commit mode that will be used for this stream. Currently only `commit_at_will` is supported.
+            Possible values:
 
             - `commit_at_will`: client is free to choose how often he wants to commit. Of course the commit_timeout
             property should still be respected.
@@ -908,8 +909,6 @@ paths:
             - `auto_commit`: everything that Nakadi sends to stream is considered to be committed. No actions are
             required from client side to commit. Be aware that with this commit mode loosing of some events is very
             probable. So you should know what you are doing if you use autocommit.
-
-            Currently only `commit_at_will` is supported.
           type: string
           enum:
             - commit_at_will
@@ -920,7 +919,7 @@ paths:
         - name: commit_semantics
           in: query
           description: |
-            The semantics of commit that will be used for this sctream. Possible values:
+            The semantics of commit that will be used for this stream. Possible values:
 
             - `per_partition`: Each partition is committed separatelly. Each cursor in a stream belongs to one of the
             partitions of that stream; committing that cursor will commit the data only for that partition.
@@ -966,7 +965,7 @@ paths:
         '409':
           description: |
             Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
-            already equals the maximal value - the total amount of this subscription partitions
+            already equals the maximal value - the total amount of this subscription partitions.
           schema:
             $ref: '#/definitions/Problem'
         '422':
