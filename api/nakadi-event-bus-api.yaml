@@ -1128,6 +1128,13 @@ definitions:
           If set by the producer Event will be rejected.
         format: date-time
         example: '1996-12-19T16:39:57-08:00'
+      schema_version:
+        type: string
+        description: |
+          Version of the schema used for validating this event. This is enriched upon reception.
+          Clients consuming events should desserialize events only when differences between their
+          schema and the one used to validate (produce) the event differs on minor level, i.e. from
+          '1.1.0' to '1.2.0'.
       parent_eids:
         type: array
         items:
