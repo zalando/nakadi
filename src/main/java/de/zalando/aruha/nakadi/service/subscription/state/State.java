@@ -59,6 +59,10 @@ public abstract class State {
         context.switchState(newState);
     }
 
+    protected boolean isConnectionReady() {
+        return context.isConnectionReady();
+    }
+
     public void scheduleTask(final Runnable task, final long timeout, final TimeUnit unit) {
         context.scheduleTask(linkTaskToState(task), timeout, unit);
     }

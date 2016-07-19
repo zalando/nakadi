@@ -25,6 +25,7 @@ public class TestStreamingClient implements Runnable {
     private volatile boolean running;
 
     private final List<StreamBatch> batches;
+    private InputStream inputStream;
 
     public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params) {
         this.baseUrl = baseUrl;
@@ -42,8 +43,9 @@ public class TestStreamingClient implements Runnable {
     public void run() {
         try {
             final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
-            final InputStream inputStream = new URL(url).openStream();
+            inputStream = new URL(url).openStream();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            running = true;
 
             try {
                 while (true) {
@@ -72,13 +74,27 @@ public class TestStreamingClient implements Runnable {
 
     public TestStreamingClient start() {
         if (!running) {
-            running = true;
             batches.clear();
             final Thread thread = new Thread(this);
             thread.start();
             return this;
         } else {
             throw new IllegalStateException("Client has not yet finished with previous run");
+        }
+    }
+
+    public boolean close() {
+        if (running) {
+            try {
+                inputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                running = false;
+            }
+            return true;
+        } else {
+            return false;
         }
     }
 

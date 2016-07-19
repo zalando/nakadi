@@ -62,10 +62,10 @@ public class StreamParameters {
 
     public static StreamParameters of(
             final int batchLimitEvents,
-            final Long streamLimitEvents,
+            @Nullable final Long streamLimitEvents,
             final long batchTimeoutSeconds,
-            final Long streamTimeoutSeconds,
-            final Integer batchKeepAliveIterations,
+            @Nullable final Long streamTimeoutSeconds,
+            @Nullable final Integer batchKeepAliveIterations,
             final int windowSizeMessages,
             final long commitTimeoutSeconds) {
         return new StreamParameters(
