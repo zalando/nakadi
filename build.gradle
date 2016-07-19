@@ -253,11 +253,11 @@ def execAndWait(command, timeoutInSeconds = 15) {
     return proc.exitValue()
 }
 
-task startPZK(type: Exec) {
+task startStorages(type: Exec) {
     commandLine "bash", "-c", "docker-compose up -d postgres zookeeper kafka"
 }
 
-task stopPZK(type: Exec) {
+task stopStorages(type: Exec) {
     commandLine "bash", "-c", "docker-compose down"
 }
 
