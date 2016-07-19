@@ -444,13 +444,18 @@ Some other useful tasks are:
 
 - `./gradlew acceptanceTest`: run the ATs
 - `./gradlew fullAcceptanceTest`: run the ATs in the context of Docker
-- `./gradlew dbBootstrap`: set up the database
-- `./gradlew cleanDb`: clear down the database
-- `./gradlew startDockerContainer`: start the docker containers (and download images if needed)
-- `./gradlew stopAndRemoveDockerContainer`: shutdown the docker processes
-- `./gradlew startStoragesInDocker`: start the storage container (handy for running Nakadi directly or in your IDE)
+- `./gradlew startNakadi`: build Nakadi and start the docker-compose with necessary services (postgresql, zookeeper, kafka)
+- `./gradlew stopNakadi`: shutdown the docker-compose
 
 For working with an IDE, the `eclipse` IDE task is available and you'll be able to import the `build.gradle` into Intellij IDEA directly.
+
+### Development
+
+The development and debuging processes can be accomplished by starting docker-compose with necessary services:
+
+```sh
+docker-compose up postgres zookeeper kafka
+```
 
 ### Dependencies
 
