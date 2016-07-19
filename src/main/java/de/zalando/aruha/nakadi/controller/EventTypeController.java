@@ -1,19 +1,17 @@
 package de.zalando.aruha.nakadi.controller;
 
 import de.zalando.aruha.nakadi.domain.EventType;
-import de.zalando.aruha.nakadi.domain.EventTypeOptions;
 import de.zalando.aruha.nakadi.problem.ValidationProblem;
 import de.zalando.aruha.nakadi.security.Client;
 import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.service.Result;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
+import de.zalando.aruha.nakadi.validation.EventTypeOptionsValidator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
-import org.springframework.validation.Validator;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +22,6 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import java.util.List;
-import java.util.Objects;
 
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
@@ -35,13 +32,15 @@ public class EventTypeController {
 
     private final EventTypeService eventTypeService;
     private final FeatureToggleService featureToggleService;
+    private final EventTypeOptionsValidator eventTypeOptionsValidator;
 
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
-                               final FeatureToggleService featureToggleService)
-    {
+                               final FeatureToggleService featureToggleService,
+                               final EventTypeOptionsValidator eventTypeOptionsValidator) {
         this.eventTypeService = eventTypeService;
         this.featureToggleService = featureToggleService;
+        this.eventTypeOptionsValidator = eventTypeOptionsValidator;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -54,13 +53,12 @@ public class EventTypeController {
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> create(@Valid @RequestBody final EventType eventType,
                                     final Errors errors,
-                                    final NativeWebRequest request)
-    {
+                                    final NativeWebRequest request) {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
-        ValidationUtils.invokeValidator(new EventTypeOptionsValidator(), eventType.getOptions(), errors);
+        ValidationUtils.invokeValidator(eventTypeOptionsValidator, eventType.getOptions(), errors);
 
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
@@ -76,8 +74,7 @@ public class EventTypeController {
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName,
                                     final NativeWebRequest request,
-                                    final Client client)
-    {
+                                    final Client client) {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
@@ -95,8 +92,7 @@ public class EventTypeController {
             @RequestBody @Valid final EventType eventType,
             final Errors errors,
             final NativeWebRequest request,
-            final Client client)
-    {
+            final Client client) {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
@@ -116,30 +112,4 @@ public class EventTypeController {
         return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
     }
 
-    class EventTypeOptionsValidator implements Validator {
-
-        @Value("${nakadi.topic.default.retentionMs}")
-        private long maxTopicRetentionMs;
-
-        @Value("${nakadi.topic.min.retentionMs}")
-        private long minTopicRetentionMs;
-
-        @Override
-        public boolean supports(Class<?> clazz) {
-            return EventTypeOptions.class.equals(clazz);
-        }
-
-        @Override
-        public void validate(Object target, Errors errors) {
-            EventTypeOptions options = (EventTypeOptions) target;
-            if (Objects.nonNull(options) && Objects.nonNull(options.getRetentionTime())) {
-                Long retentionTime = options.getRetentionTime();
-                if (retentionTime > maxTopicRetentionMs) {
-                    errors.rejectValue("retentionTime", "retentionTime can not be bigger than " + maxTopicRetentionMs);
-                } else if (retentionTime < minTopicRetentionMs) {
-                    errors.rejectValue("retentionTime", "retentionTime can not be less than " + minTopicRetentionMs);
-                }
-            }
-        }
-    }
 }

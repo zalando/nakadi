@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
+import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import de.zalando.aruha.nakadi.webservice.BaseAT;
@@ -50,9 +51,10 @@ public class KafkaRepositoryAT extends BaseAT {
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() throws Exception {
-
+        EventType eventType = new EventType();
+        eventType.setName(topicName);
         // ACT //
-        kafkaTopicRepository.createTopic(topicName, null);
+        kafkaTopicRepository.createTopic(eventType);
 
         // ASSERT //
         executeWithRetry(() -> {

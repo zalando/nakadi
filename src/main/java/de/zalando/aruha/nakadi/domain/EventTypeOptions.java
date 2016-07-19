@@ -1,7 +1,10 @@
 package de.zalando.aruha.nakadi.domain;
 
+import javax.annotation.Nullable;
+
 public class EventTypeOptions {
 
+    @Nullable
     private Long retentionTime;
 
     public Long getRetentionTime() {
