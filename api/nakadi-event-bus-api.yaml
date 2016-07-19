@@ -70,26 +70,10 @@ info:
 
     * Unmanaged API (low level).
 
+    * Managed API (high level).
+
     Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
-
-    Notable omissions here are:
-
-    For the subscription API:
-
-    * Support for controlling, in the subscription API, specific delivery guarantees (at most once, at least once).
-    * negotiation of sessions' parameters
-    * auto commit mode (implying at most once)
-    * support for controlled replaying of subscriptions (for example the initial point of streaming)
-    * moment (creation of subscription or first stream) and offset (newest available or latest available) of initialization of cursors of subscription
-    *
-
-    relevant for managemnet of nakadi:
-    - low watermark tracking of each strams' window per session
-    - identificaton of each session (client id)
-
-    Other topics:
-    - multi event type streaming
 
 
   version: '0.5.1'
