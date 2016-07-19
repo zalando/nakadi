@@ -1622,7 +1622,6 @@ definitions:
           future there could be others.
       schema:
         type: string
-        $ref: '#/definitions/EventTypeSchema'
         description: |
           The schema as string in the syntax defined in the field type. Failure to respect the
           syntax will fail any operation on an EventType.
