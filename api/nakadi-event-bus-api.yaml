@@ -800,17 +800,21 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for committing offsets of the subscription. The offsets are per partition of EventType. One
-        can use this endpoint to commit the offsets for any of the partitions that are part of this
-        subscription.
-        With every commit the offsets can only increase so it is not possible to commit offset that is lower
-        than already committed offset for the appropriate partition; if such request is made - it will not
-        have any effect on the committed offsets.
+        Endpoint for committing offsets of the subscription.
+        The behavior of commit is specific to `commit_mode` and `commit_semantics` parameters of the session
+        that makes a commit. Please see details in subscription streaming endpoint specification.
       parameters:
         - name: subscription_id
           in: path
           type: string
           description: Id of subscription
+          required: true
+        - name: X-Nakadi-SessionId
+          in: header
+          type: string
+          description: |
+            Id of a session (client) which makes a commit. It is not possible to make a commit from a terminated or
+            none-existing session. Also the session can't commit something which was not sent to it.
           required: true
         - name: cursors
           in: body
@@ -859,8 +863,14 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        ---
-
+        Starts a new stream for reading events from this subscription. The data will be automatically rebalanced
+        between streams of one subscription. The minimal consumption unit is a partition, so it is possible to create as
+        many streams as the total number of partitions in event-types of this subscription. The rebalance currently
+        only operates with the number of partitions so the amount of data in event-types/partitions is not considered
+        during autorebalance.
+        The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
+        a stream. For details of how committing works see description of parameters `commit_mode`, `commit_semantics`
+        and the description of commit endpoint.
       parameters:
         - $ref: '#/parameters/SubscriptionId'
         - name: commit_timeout
@@ -881,6 +891,47 @@ paths:
           format: int32
           required: false
           default: 10000
+        - name: commit_mode
+          in: query
+          description: |
+            The commit mode that will be used for this stream. Currently only `commit_at_will` is supported.
+            Possible values:
+
+            - `commit_at_will`: client is free to choose how often he wants to commit. Of course the commit_timeout
+            property should still be respected.
+            When a batch is committed that also automatically commits all previous batches that were sent in a stream
+            (if the commit_semantics parameter is `per_partition` - that will commit all previous batches only for
+            current partition).
+
+            - `commit_each`: this commit mode requires each batch to be committed, and it should be done in correct
+            order. Committing a cursor when the previous is not yet committed is not possible.
+
+            - `auto_commit`: everything that Nakadi sends to stream is considered to be committed. No actions are
+            required from client side to commit. Be aware that with this commit mode loosing of some events is very
+            probable. So you should know what you are doing if you use autocommit.
+          type: string
+          enum:
+            - commit_at_will
+            - commit_each
+            - auto_commit
+          required: false
+          default: commit_at_will
+        - name: commit_semantics
+          in: query
+          description: |
+            The semantics of commit that will be used for this stream. Possible values:
+
+            - `per_partition`: Each partition is committed separatelly. Each cursor in a stream belongs to one of the
+            partitions of that stream; committing that cursor will commit the data only for that partition.
+
+            - `per_stream`: When you commit a cursor - all data in a stream before this cursor is
+            commited (doesn't matter to which partition it belongs)
+          type: string
+          enum:
+            - per_partition
+            - per_stream
+          required: false
+          default: per_partition
 
         - $ref: '#/parameters/BatchLimit'
         - $ref: '#/parameters/StreamLimit'
@@ -891,9 +942,14 @@ paths:
       responses:
         '200':
           description: |
-            ---
+            Ok. Stream started.
+            Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
           schema:
-            $ref: '#/definitions/Subscription'
+            $ref: '#/definitions/EventStreamBatch'
+          headers:
+            X-Nakadi-SessionId:
+              description: the session id of this stream. Should be used for committing data read by this stream.
+              type: string
         '401':
           description: Client is not authenticated
           schema:
@@ -904,6 +960,12 @@ paths:
             $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: |
+            Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
+            already equals the maximal value - the total amount of this subscription partitions.
           schema:
             $ref: '#/definitions/Problem'
         '422':
@@ -1276,7 +1338,9 @@ definitions:
       owning_application:
         type: string
         example: 'gizig'
-        description: The id of application owning the subscription.
+        description: |
+          The id of application owning the subscription. The reading and modification of subscription will be limited
+          to this application id.
       event_types:
         type: array
         items:
@@ -1311,7 +1375,7 @@ definitions:
           - end
         description: |
           Position to start reading events from. "begin" - read from the oldest available event. "end" - read from the
-          most recent offset.
+          most recent offset. Applied in the moment when client starts reading from a subscription.
         default: 'end'
 
     required:
