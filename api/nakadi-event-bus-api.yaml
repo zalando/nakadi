@@ -1592,6 +1592,11 @@ definitions:
 
   EventTypeSchema:
     properties:
+      version:
+        type: string
+        description: |
+          Automatically generated value based on semantic versioning. Should not be modified by clients.
+        default: '1.0.0'
       type:
         type: string
         enum:
