@@ -233,8 +233,7 @@ paths:
 
         The name field cannot be changed. Attempting to do so will result in a 422 failure.
 
-        At this moment changes in the schema are not supported and will produce a 422
-        failure. (todo: define conditions for backwards compatible extensions in the schema)
+        Modifications to the schema are constrained by the specified `compatibility_mode`.
       parameters:
         - name: name
           in: path
@@ -1500,11 +1499,42 @@ definitions:
         type: string
         default: 'random'
 
+      compatibility_mode:
+        description: |
+          The compatibility mode informs consumers streaming from this event type about which
+          guarantees they should expect regarding changes to the schema. Compatibility modes might
+          be promoted from 'none' to 'forwards' but never downgraded from 'forwards' to 'none' since
+          this would break the previously defined contract.
+
+          In the case of 'forwards' compatible event types, every change to the schema is guaranteed
+          not to break already existing consumers, given they ignore undefined fields.
+
+          On the other hand 'none' compatible event type can change it's schema in ways that would
+          make then incompatible with already existing consumers. So consumers should be aware of
+          major version changes and react accordingly, by not trying to parse these event based on
+          old schemas.
+
+          *TBD* A third compatibility mode, namely 'backwards', could be introduced in order to
+          allow for data to be parsed based on the latest defined schema. This mode is particularly
+          useful when loading all historical data for analysis. And finally, a 'full' compatibility
+          mode might also be introduced merging 'backwards' and 'forwards' modes.
+        type: string
+        enum:
+          - none
+          - forwards
+        default: forwards
+
       schema:
         type: object
         $ref: '#/definitions/EventTypeSchema'
         description: |
-          The schema for this EventType. Submitted events will be validated against it.
+          The most recent schema for this EventType. Submitted events will be validated against it.
+
+      schema_versions:
+        type: array
+        items:
+          type: string
+        description: List of references to previous schemas.
 
       partition_key_fields:
         type: array
