@@ -11,6 +11,7 @@ import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -25,6 +26,7 @@ import java.util.Set;
 import static com.google.common.collect.Sets.newTreeSet;
 
 @Component
+@Profile("!test")
 public class SubscriptionDbRepository extends AbstractDbRepository {
 
     private final SubscriptionMapper rowMapper = new SubscriptionMapper();

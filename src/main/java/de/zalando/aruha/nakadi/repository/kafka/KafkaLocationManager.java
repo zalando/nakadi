@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +31,7 @@ public class KafkaLocationManager {
     @Autowired
     public KafkaLocationManager(final ZooKeeperHolder zkFactory) {
         this.zkFactory = zkFactory;
+        this.kafkaProperties = buildKafkaProperties(fetchBrokers());
     }
 
     static class Broker {
@@ -86,11 +86,6 @@ public class KafkaLocationManager {
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         return props;
-    }
-
-    @PostConstruct
-    private void init() {
-        kafkaProperties = buildKafkaProperties(fetchBrokers());
     }
 
     @Scheduled(fixedDelay = 30000)
