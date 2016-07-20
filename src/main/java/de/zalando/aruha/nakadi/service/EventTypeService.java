@@ -62,7 +62,7 @@ public class EventTypeService {
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(eventType.getTopic(), eventType.getDefaultStatistic());
+            topicRepository.createTopic(eventType);
             return Result.ok();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
