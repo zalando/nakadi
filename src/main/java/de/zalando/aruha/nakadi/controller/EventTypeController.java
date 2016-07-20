@@ -25,6 +25,7 @@ import java.util.List;
 
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
+import static org.springframework.http.ResponseEntity.status;
 
 @RestController
 @RequestMapping(value = "/event-types")
@@ -47,7 +48,7 @@ public class EventTypeController {
     public ResponseEntity<?> list() {
         final List<EventType> eventTypes = eventTypeService.list();
 
-        return ResponseEntity.status(HttpStatus.OK).body(eventTypes);
+        return status(HttpStatus.OK).body(eventTypes);
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -68,7 +69,7 @@ public class EventTypeController {
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        return status(HttpStatus.CREATED).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
@@ -83,7 +84,7 @@ public class EventTypeController {
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
-        return ResponseEntity.status(HttpStatus.OK).build();
+        return status(HttpStatus.OK).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.PUT)
@@ -100,7 +101,7 @@ public class EventTypeController {
         if (!update.isSuccessful()) {
             return Responses.create(update.getProblem(), request);
         }
-        return ResponseEntity.status(HttpStatus.OK).build();
+        return status(HttpStatus.OK).build();
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.GET)
@@ -109,7 +110,7 @@ public class EventTypeController {
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
-        return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
+        return status(HttpStatus.OK).body(result.getValue());
     }
 
 }

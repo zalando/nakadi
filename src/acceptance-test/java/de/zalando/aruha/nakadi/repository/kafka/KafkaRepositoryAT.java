@@ -41,7 +41,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int DEFAULT_PARTITION_COUNT = 8;
     private static final int DEFAULT_REPLICA_FACTOR = 1;
     private static final Long RETENTION_TIME = 100L;
-    public static final Long DEFAULT_TOPIC_RETENTION_MS = 100000000L;
+    private static final Long DEFAULT_TOPIC_RETENTION_MS = 100000000L;
 
     private KafkaRepositorySettings repositorySettings;
     private KafkaTestHelper kafkaHelper;
@@ -161,9 +161,9 @@ public class KafkaRepositoryAT extends BaseAT {
                         .withWaitBetweenEachTry(500));
     }
 
-    private Long getTopicRetentionTime(String topic) {
+    private Long getTopicRetentionTime(final String topic) {
         final ZkUtils zkUtils = ZkUtils.apply(ZOOKEEPER_URL, 30000, 10000, false);
-        Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
+        final Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
         return Long.valueOf(topicConfig.getProperty("retention.ms"));
     }
 

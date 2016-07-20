@@ -130,35 +130,4 @@ public class EventType {
     public void setOptions(EventTypeOptions options) {
         this.options = options;
     }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-
-        EventType eventType = (EventType) o;
-
-        if (name != null ? !name.equals(eventType.name) : eventType.name != null) {
-            return false;
-        }
-        if (topic != null ? !topic.equals(eventType.topic) : eventType.topic != null) {
-            return false;
-        }
-
-        return owningApplication != null ? owningApplication.equals(eventType.owningApplication) : eventType.owningApplication == null;
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = name != null ? name.hashCode() : 0;
-        result = 31 * result + (topic != null ? topic.hashCode() : 0);
-        result = 31 * result + (owningApplication != null ? owningApplication.hashCode() : 0);
-        return result;
-    }
 }
