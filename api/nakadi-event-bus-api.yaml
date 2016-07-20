@@ -1096,7 +1096,8 @@ definitions:
       Additional parameters for tuning internal behavior of Nakadi.
     properties:
       retention_time:
-        type: long
+        type: integer
+        format: int64
         description: |
           Retention time for usage on Kafka's topic.
 
