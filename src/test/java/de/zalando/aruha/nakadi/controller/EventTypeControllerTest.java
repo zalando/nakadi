@@ -27,6 +27,7 @@ import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import de.zalando.aruha.nakadi.utils.TestUtils;
 import de.zalando.aruha.nakadi.validation.EventTypeOptionsValidator;
+import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -589,7 +590,8 @@ public class EventTypeControllerTest {
         eventTypeOptions.setRetentionTime(201L);
         defaultEventType.setOptions(eventTypeOptions);
         postEventType(defaultEventType)
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().is4xxClientError())
+                .andExpect(content().string(new StringContains("Field \\\"options.retention_time\\\" can not be more than 200")));
     }
 
     @Test
@@ -599,7 +601,8 @@ public class EventTypeControllerTest {
         eventTypeOptions.setRetentionTime(99L);
         defaultEventType.setOptions(eventTypeOptions);
         postEventType(defaultEventType)
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().is4xxClientError())
+                .andExpect(content().string(new StringContains("Field \\\"options.retention_time\\\" can not be less than 100")));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
