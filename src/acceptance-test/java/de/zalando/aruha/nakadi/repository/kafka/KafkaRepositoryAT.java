@@ -61,7 +61,7 @@ public class KafkaRepositoryAT extends BaseAT {
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() throws Exception {
-        EventType eventType = new EventType();
+        final EventType eventType = new EventType();
         eventType.setName(eventName);
         eventType.setTopic(topicName);
         // ACT //
@@ -126,10 +126,10 @@ public class KafkaRepositoryAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenCreateTopicWithRetentionTime() throws Exception {
-        EventType eventType = new EventType();
+        final EventType eventType = new EventType();
         eventType.setName(eventName);
         eventType.setTopic(topicName);
-        EventTypeOptions options = new EventTypeOptions();
+        final EventTypeOptions options = new EventTypeOptions();
         options.setRetentionTime(RETENTION_TIME);
         eventType.setOptions(options);
         // ACT //
@@ -137,16 +137,14 @@ public class KafkaRepositoryAT extends BaseAT {
 
 
         // ASSERT //
-        executeWithRetry(() -> {
-                    Assert.assertEquals(getTopicRetentionTime(topicName), RETENTION_TIME);
-                },
+        executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), RETENTION_TIME),
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 10000)
     public void whenCreateTopicWithDefaultRetentionTime() throws Exception {
-        EventType eventType = new EventType();
+        final EventType eventType = new EventType();
         eventType.setName(eventName);
         eventType.setTopic(topicName);
         // ACT //
@@ -154,9 +152,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
 
         // ASSERT //
-        executeWithRetry(() -> {
-                    Assert.assertEquals(getTopicRetentionTime(topicName), DEFAULT_TOPIC_RETENTION_MS);
-                },
+        executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), DEFAULT_TOPIC_RETENTION_MS),
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
     }
