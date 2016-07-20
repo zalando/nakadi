@@ -15,10 +15,10 @@ public class SecuritySettings {
         FULL   // full authentication and authorization using oauth2 scopes
     }
 
-    private String tokenInfoUrl;
-    private String clientId;
-    private AuthMode authMode;
-    private String adminClientId;
+    private final String tokenInfoUrl;
+    private final String clientId;
+    private final AuthMode authMode;
+    private final String adminClientId;
 
     @Autowired
     public SecuritySettings(@Value("${nakadi.oauth2.tokenInfoUrl}") final String tokenInfoUrl,
