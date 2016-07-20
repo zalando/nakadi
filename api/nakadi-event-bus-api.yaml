@@ -687,9 +687,12 @@ paths:
         '200':
           description: OK
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/Subscription'
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/Subscription'
         '401':
           description: Client is not authenticated
           schema:
