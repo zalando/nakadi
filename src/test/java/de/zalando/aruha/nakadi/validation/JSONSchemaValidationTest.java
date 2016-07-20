@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.Optional;
 
 import static de.zalando.aruha.nakadi.utils.IsOptional.isAbsent;
-import static de.zalando.aruha.nakadi.utils.IsOptional.isPresent;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildEventType;
 import static de.zalando.aruha.nakadi.utils.TestUtils.readFile;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -161,58 +160,6 @@ public class JSONSchemaValidationTest {
         final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
 
         assertThat(error.get().getMessage(), equalTo("#/metadata: required key [occurred_at] not found"));
-    }
-
-    @Test
-    public void requireMetadataOccurredAtToBeFormattedAsDateTime() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
-        et.setCategory(EventCategory.BUSINESS);
-
-        final JSONObject event = businessEvent();
-        event.getJSONObject("metadata").put("occurred_at", "x");
-
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
-
-        assertThat(error, isPresent());
-    }
-
-    @Test
-    public void requireMetadataOccurredAtToBeFormattedAsDateTimeWithValidDate() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
-        et.setCategory(EventCategory.BUSINESS);
-
-        final JSONObject event = businessEvent();
-        event.getJSONObject("metadata").put("occurred_at", "1996-60-15T16:39:57-08:00");
-
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
-
-        assertThat(error, isPresent());
-    }
-
-    @Test
-    public void requireMetadataOccurredAtToBeFormattedAsDateTimeWithMilliseconds() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
-        et.setCategory(EventCategory.BUSINESS);
-
-        final JSONObject event = businessEvent();
-        event.getJSONObject("metadata").put("occurred_at", "1996-10-15T16:39:57.1245678+07:00");
-
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
-
-        assertThat(error, isAbsent());
-    }
-
-    @Test
-    public void acceptsDateTimeZoneWithoutColonSeparation() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
-        et.setCategory(EventCategory.BUSINESS);
-
-        final JSONObject event = businessEvent();
-        event.getJSONObject("metadata").put("occurred_at", "1996-10-15T16:39:57+0800");
-
-        final Optional<ValidationError> error = EventValidation.forType(et).validate(event);
-
-        assertThat(error, isAbsent());
     }
 
     @Test
