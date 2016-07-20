@@ -51,6 +51,7 @@ import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
 import static org.hamcrest.Matchers.isOneOf;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpMethod.DELETE;
@@ -186,6 +187,13 @@ public abstract class AuthenticationTest {
         @Bean
         public KafkaLocationManager kafkaLocationManager() {
             return mock(KafkaLocationManager.class);
+        }
+
+        @Bean
+        public SecuritySettings securitySettings() {
+            SecuritySettings securitySettings = mock(SecuritySettings.class);
+            doReturn(authMode).when(securitySettings).getAuthMode();
+            return securitySettings;
         }
 
     }
