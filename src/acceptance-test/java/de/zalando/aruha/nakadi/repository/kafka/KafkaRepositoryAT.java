@@ -40,8 +40,15 @@ public class KafkaRepositoryAT extends BaseAT {
 
     private static final int DEFAULT_PARTITION_COUNT = 8;
     private static final int DEFAULT_REPLICA_FACTOR = 1;
+    private static final int MAX_TOPIC_PARTITION_COUNT = 10;
+    private static final int DEFAULT_TOPIC_ROTATION = 50000000;
+    private static final int ZK_SESSION_TIMEOUT = 30000;
+    private static final int ZK_CONNECTION_TIMEOUT = 10000;
+    private static final int KAFKA_SEND_TIMEOUT = 10000;
+    private static final int KAFKA_POLL_TIMEOUT = 10000;
     private static final Long RETENTION_TIME = 100L;
-    private static final Long DEFAULT_TOPIC_RETENTION_MS = 100000000L;
+    private static final Long DEFAULT_TOPIC_RETENTION = 100000000L;
+
 
     private KafkaRepositorySettings repositorySettings;
     private KafkaTestHelper kafkaHelper;
@@ -152,7 +159,7 @@ public class KafkaRepositoryAT extends BaseAT {
 
 
         // ASSERT //
-        executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), DEFAULT_TOPIC_RETENTION_MS),
+        executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), DEFAULT_TOPIC_RETENTION),
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
     }
@@ -189,15 +196,9 @@ public class KafkaRepositoryAT extends BaseAT {
     }
 
     private KafkaRepositorySettings createRepositorySettings() {
-        final KafkaRepositorySettings settings = new KafkaRepositorySettings();
-        settings.setDefaultTopicPartitionCount(DEFAULT_PARTITION_COUNT);
-        settings.setDefaultTopicReplicaFactor(DEFAULT_REPLICA_FACTOR);
-        settings.setKafkaSendTimeoutMs(10000);
-        settings.setDefaultTopicRetentionMs(DEFAULT_TOPIC_RETENTION_MS);
-        settings.setDefaultTopicRotationMs(50000000);
-        settings.setZkSessionTimeoutMs(30000);
-        settings.setZkConnectionTimeoutMs(10000);
-        return settings;
+        return new KafkaRepositorySettings(MAX_TOPIC_PARTITION_COUNT, DEFAULT_PARTITION_COUNT,
+                DEFAULT_REPLICA_FACTOR, DEFAULT_TOPIC_RETENTION, DEFAULT_TOPIC_ROTATION, KAFKA_POLL_TIMEOUT,
+                KAFKA_SEND_TIMEOUT, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
     }
 
 }

@@ -23,13 +23,17 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+@Component
 public class EventPublisher {
+
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
 
     private final TopicRepository topicRepository;
@@ -37,6 +41,7 @@ public class EventPublisher {
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
 
+    @Autowired
     public EventPublisher(final TopicRepository topicRepository,
                           final EventTypeCache eventTypeCache,
                           final PartitionResolver partitionResolver,

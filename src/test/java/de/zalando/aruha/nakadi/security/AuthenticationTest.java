@@ -6,20 +6,18 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import de.zalando.aruha.nakadi.Application;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
+import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
 import de.zalando.aruha.nakadi.repository.db.EventTypeDbRepository;
 import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
+import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
-import java.util.List;
-import java.util.Set;
-import javax.annotation.PostConstruct;
-import javax.servlet.Filter;
-import static org.hamcrest.Matchers.isOneOf;
-import static org.hamcrest.Matchers.not;
-
+import de.zalando.aruha.nakadi.service.CursorsService;
+import de.zalando.aruha.nakadi.service.EventPublisher;
+import de.zalando.aruha.nakadi.service.EventStreamFactory;
+import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import org.junit.Before;
@@ -44,7 +42,16 @@ import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import javax.annotation.PostConstruct;
+import javax.servlet.Filter;
+import java.util.List;
+import java.util.Set;
+
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomUUID;
+import static org.hamcrest.Matchers.isOneOf;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpMethod.DELETE;
@@ -112,13 +119,6 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public SecuritySettings mockSecuritySettings() {
-            final SecuritySettings settings = mock(SecuritySettings.class);
-            when(settings.getAuthMode()).thenReturn(authMode);
-            return settings;
-        }
-
-        @Bean
         public EventTypeRepository mockDbRepository() {
             return mock(EventTypeDbRepository.class);
         }
@@ -150,9 +150,52 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
+        public EventTypeService eventTypeService() {
+            return mock(EventTypeService.class);
+        }
+
+        @Bean
         public KafkaTopicRepository mockkafkaRepository() {
             return mock(KafkaTopicRepository.class);
         }
+
+        @Bean
+        public CursorsService cursorsCommitService() {
+            return mock(CursorsService.class);
+        }
+
+        @Bean
+        public EventPublisher eventPublisher() {
+            return mock(EventPublisher.class);
+        }
+
+        @Bean
+        public EventTypeMetricRegistry eventTypeMetricRegistry() {
+            return mock(EventTypeMetricRegistry.class);
+        }
+
+        @Bean
+        public EventStreamFactory eventStreamFactory() {
+            return mock(EventStreamFactory.class);
+        }
+
+        @Bean
+        public ClientResolver clientResolver() {
+            return mock(ClientResolver.class);
+        }
+
+        @Bean
+        public KafkaLocationManager kafkaLocationManager() {
+            return mock(KafkaLocationManager.class);
+        }
+
+        @Bean
+        public SecuritySettings securitySettings() {
+            final SecuritySettings securitySettings = mock(SecuritySettings.class);
+            doReturn(authMode).when(securitySettings).getAuthMode();
+            return securitySettings;
+        }
+
     }
 
     protected static final ResultMatcher STATUS_NOT_401_OR_403 = status().is(not(

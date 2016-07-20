@@ -18,10 +18,11 @@ import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFacto
 import de.zalando.aruha.nakadi.service.subscription.model.Partition;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 import static de.zalando.aruha.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 import static java.text.MessageFormat.format;
 
+@Component
 public class CursorsService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
@@ -48,13 +50,14 @@ public class CursorsService {
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory;
 
+    @Autowired
     public CursorsService(final ZooKeeperHolder zkHolder,
-                          final TopicRepository topicRepository,
-                          final SubscriptionDbRepository subscriptionRepository,
-                          final EventTypeRepository eventTypeRepository,
-                          final ZooKeeperLockFactory zkLockFactory,
-                          final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
-                          final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory) {
+                                final TopicRepository topicRepository,
+                                final SubscriptionDbRepository subscriptionRepository,
+                                final EventTypeRepository eventTypeRepository,
+                                final ZooKeeperLockFactory zkLockFactory,
+                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
+                                final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory) {
         this.zkHolder = zkHolder;
         this.topicRepository = topicRepository;
         this.subscriptionRepository = subscriptionRepository;

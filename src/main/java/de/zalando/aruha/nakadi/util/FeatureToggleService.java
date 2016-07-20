@@ -1,6 +1,10 @@
 package de.zalando.aruha.nakadi.util;
 
+import org.springframework.stereotype.Service;
+
+@Service
 public interface FeatureToggleService {
+
     boolean isFeatureEnabled(final Feature feature);
 
     enum Feature {

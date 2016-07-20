@@ -10,6 +10,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,7 @@ public class EventPublishingController {
     private final EventPublisher publisher;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
 
+    @Autowired
     public EventPublishingController(final EventPublisher publisher, final EventTypeMetricRegistry eventTypeMetricRegistry) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;

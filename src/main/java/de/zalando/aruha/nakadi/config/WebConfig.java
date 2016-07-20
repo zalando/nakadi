@@ -1,8 +1,9 @@
 package de.zalando.aruha.nakadi.config;
 
+import com.codahale.metrics.MetricRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.metrics.MonitoringRequestFilter;
 import de.zalando.aruha.nakadi.security.ClientResolver;
-import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.FlowIdRequestFilter;
 import de.zalando.aruha.nakadi.util.GzipBodyRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,8 +27,6 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import javax.servlet.Filter;
 import java.util.List;
 
-import static de.zalando.aruha.nakadi.config.NakadiConfig.METRIC_REGISTRY;
-
 @Configuration
 public class WebConfig extends WebMvcConfigurationSupport {
 
@@ -35,13 +34,10 @@ public class WebConfig extends WebMvcConfigurationSupport {
     private long nakadiStreamTimeout;
 
     @Autowired
-    private JsonConfig jsonConfig;
+    private ObjectMapper objectMapper;
 
     @Autowired
-    private SecuritySettings securitySettings;
-
-    @Autowired
-    private FeatureToggleService featureToggleService;
+    private ClientResolver clientResolver;
 
     @Override
     public void configureAsyncSupport(final AsyncSupportConfigurer configurer) {
@@ -60,20 +56,20 @@ public class WebConfig extends WebMvcConfigurationSupport {
     }
 
     @Bean
-    public FilterRegistrationBean gzipBodyRequestFilter() {
+    public FilterRegistrationBean gzipBodyRequestFilter(final ObjectMapper mapper) {
         return createFilterRegistrationBean(
-                new GzipBodyRequestFilter(jsonConfig.jacksonObjectMapper()), Ordered.HIGHEST_PRECEDENCE + 2);
+                new GzipBodyRequestFilter(mapper), Ordered.HIGHEST_PRECEDENCE + 2);
     }
 
     @Bean
-    public FilterRegistrationBean monitoringRequestFilter() {
-        return createFilterRegistrationBean(new MonitoringRequestFilter(METRIC_REGISTRY), Ordered.HIGHEST_PRECEDENCE);
+    public FilterRegistrationBean monitoringRequestFilter(final MetricRegistry metricRegistry) {
+        return createFilterRegistrationBean(new MonitoringRequestFilter(metricRegistry), Ordered.HIGHEST_PRECEDENCE);
     }
 
     @Bean
     public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
         final MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-        converter.setObjectMapper(jsonConfig.jacksonObjectMapper());
+        converter.setObjectMapper(objectMapper);
         return converter;
     }
 
@@ -93,7 +89,7 @@ public class WebConfig extends WebMvcConfigurationSupport {
 
     @Override
     protected void addArgumentResolvers(final List<HandlerMethodArgumentResolver> argumentResolvers) {
-        argumentResolvers.add(new ClientResolver(securitySettings, featureToggleService));
+        argumentResolvers.add(clientResolver);
     }
 
     @Override

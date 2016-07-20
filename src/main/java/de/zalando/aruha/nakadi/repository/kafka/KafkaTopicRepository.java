@@ -35,6 +35,9 @@ import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
@@ -61,6 +64,8 @@ import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiParti
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 
+@Component
+@Profile("!test")
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
@@ -71,6 +76,7 @@ public class KafkaTopicRepository implements TopicRepository {
     private final KafkaRepositorySettings settings;
     private final KafkaPartitionsCalculator partitionsCalculator;
 
+    @Autowired
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
                                 final KafkaRepositorySettings settings, final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;

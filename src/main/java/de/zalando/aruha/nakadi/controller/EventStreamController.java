@@ -18,6 +18,7 @@ import de.zalando.aruha.nakadi.service.EventStreamConfig;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -59,6 +60,7 @@ public class EventStreamController {
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
 
+    @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry, final ClosedConnectionsCrutch closedConnectionsCrutch) {

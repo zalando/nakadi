@@ -5,6 +5,7 @@ import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.oauth2.common.exceptions.UnauthorizedUserException;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -16,6 +17,7 @@ import java.util.Optional;
 import static de.zalando.aruha.nakadi.config.SecuritySettings.AuthMode.OFF;
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 
+@Component
 public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private final SecuritySettings settings;
