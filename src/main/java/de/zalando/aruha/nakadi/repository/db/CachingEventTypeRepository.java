@@ -19,7 +19,7 @@ public class CachingEventTypeRepository implements EventTypeRepository {
     private final EventTypeCache cache;
 
     public CachingEventTypeRepository(final EventTypeRepository repository,
-                                      final EventTypeCache cache) throws Exception {
+                                      final EventTypeCache cache) {
         this.repository = repository;
         this.cache = cache;
     }

@@ -27,12 +27,12 @@ public class JsonPathAccess {
 
         while ((field = pathTokenizer.nextToken()) != null) {
             if (!(curr instanceof JSONObject)) {
-                throw new InvalidPartitionKeyFieldsException("field " + field + "doesn't exist.");
+                throw new InvalidPartitionKeyFieldsException("field " + field + " doesn't exist.");
             }
             try {
                 curr = ((JSONObject) curr).get(field);
             } catch (JSONException e) {
-                throw new InvalidPartitionKeyFieldsException("field " + field + "doesn't exist.");
+                throw new InvalidPartitionKeyFieldsException("field " + field + " doesn't exist.");
             }
         }
         return curr;

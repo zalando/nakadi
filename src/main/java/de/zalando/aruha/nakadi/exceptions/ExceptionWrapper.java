@@ -8,6 +8,7 @@ public class ExceptionWrapper extends RuntimeException {
     private final Exception wrapped;
 
     public ExceptionWrapper(final Exception wrapped) {
+        super(wrapped);
         this.wrapped = wrapped;
     }
 
@@ -15,7 +16,7 @@ public class ExceptionWrapper extends RuntimeException {
         return wrapped;
     }
 
-    public static <T> Consumer<T> wrapConsumer(ConsumerWithException<T> consumer) {
+    public static <T> Consumer<T> wrapConsumer(final ConsumerWithException<T> consumer) {
         return t -> {
             try {
                 consumer.accept(t);
@@ -25,7 +26,7 @@ public class ExceptionWrapper extends RuntimeException {
         };
     }
 
-    public static <T, R> Function<T, R> wrapFunction(FunctionWithException<T, R> function) {
+    public static <T, R> Function<T, R> wrapFunction(final FunctionWithException<T, R> function) {
         return t -> {
             try {
                 return function.apply(t);

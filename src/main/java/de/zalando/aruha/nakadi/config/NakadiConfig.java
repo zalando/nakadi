@@ -11,15 +11,25 @@ import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import de.zalando.aruha.nakadi.controller.EventPublishingController;
 import de.zalando.aruha.nakadi.controller.EventStreamController;
 import de.zalando.aruha.nakadi.controller.PartitionsController;
+import de.zalando.aruha.nakadi.controller.VersionController;
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.enrichment.EnrichmentsRegistry;
-import de.zalando.aruha.nakadi.controller.VersionController;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.partitioning.PartitionResolver;
+import de.zalando.aruha.nakadi.repository.EventTypeRepository;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.db.EventTypeCache;
+import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
+import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperLockFactory;
+import de.zalando.aruha.nakadi.service.CursorsService;
+import de.zalando.aruha.nakadi.service.ClosedConnectionsCrutch;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
+import java.lang.management.ManagementFactory;
+
+import de.zalando.aruha.nakadi.service.subscription.SubscriptionKafkaClientFactory;
+import de.zalando.aruha.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -27,8 +37,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
-
-import java.lang.management.ManagementFactory;
 
 @Configuration
 @EnableMetrics
@@ -44,7 +52,16 @@ public class NakadiConfig {
     private TopicRepository topicRepository;
 
     @Autowired
+    private SubscriptionDbRepository subscriptionRepository;
+
+    @Autowired
+    private ZooKeeperHolder zooKeeperHolder;
+
+    @Autowired
     private EventTypeCache eventTypeCache;
+
+    @Autowired
+    private EventTypeRepository eventTypeRepository;
 
     @Bean
     public TaskExecutor taskExecutor() {
@@ -67,9 +84,9 @@ public class NakadiConfig {
     }
 
     @Bean
-    public EventStreamController eventStreamController() {
-        return new EventStreamController(topicRepository, jsonConfig.jacksonObjectMapper(),
-                eventStreamFactory(), METRIC_REGISTRY);
+    public EventStreamController eventStreamController(final ClosedConnectionsCrutch closedConnectionsCrutch) {
+        return new EventStreamController(eventTypeRepository, topicRepository, jsonConfig.jacksonObjectMapper(),
+                eventStreamFactory(), METRIC_REGISTRY, closedConnectionsCrutch);
     }
 
     @Bean
@@ -78,12 +95,35 @@ public class NakadiConfig {
     }
 
     @Bean
+    public ZooKeeperLockFactory zooKeeperLockFactory() {
+        return new ZooKeeperLockFactory(zooKeeperHolder);
+    }
+
+    @Bean
+    public ZkSubscriptionClientFactory zkSubscriptionClientFactory() {
+        return new ZkSubscriptionClientFactory(zooKeeperHolder);
+    }
+
+    @Bean
+    public SubscriptionKafkaClientFactory subscriptionKafkaClientFactory() {
+        return new SubscriptionKafkaClientFactory(topicRepository, eventTypeRepository);
+    }
+
+    @Bean
+    public CursorsService cursorsService() {
+        return new CursorsService(zooKeeperHolder, topicRepository, subscriptionRepository, eventTypeRepository,
+                zooKeeperLockFactory(), zkSubscriptionClientFactory(), subscriptionKafkaClientFactory());
+    }
+
+    @Bean
     public EventStreamFactory eventStreamFactory() {
         return new EventStreamFactory();
     }
 
     @Bean
-    public Enrichment enrichment() { return new Enrichment(new EnrichmentsRegistry()); }
+    public Enrichment enrichment() {
+        return new Enrichment(new EnrichmentsRegistry());
+    }
 
     @Bean
     public PartitionResolver partitionResolver() {
@@ -92,7 +132,7 @@ public class NakadiConfig {
 
     @Bean
     public PartitionsController partitionsController() {
-        return new PartitionsController(topicRepository);
+        return new PartitionsController(eventTypeRepository, topicRepository);
     }
 
     @Bean

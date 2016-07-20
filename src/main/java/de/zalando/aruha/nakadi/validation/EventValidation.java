@@ -12,6 +12,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class EventValidation {
+
+    public static final String DATA_CHANGE_WRAP_FIELD = "data";
+
     public static EventTypeValidator forType(final EventType eventType) {
         final EventTypeValidator etv = new EventTypeValidator(eventType);
 
@@ -45,18 +48,28 @@ public class EventValidation {
 
         addMetadata(wrapper, eventType);
 
+        moveDefinitionsToRoot(wrapper, schema);
+
         final JSONObject properties = wrapper.getJSONObject("properties");
 
         properties.put("data_type", new JSONObject().put("type", "string"));
         properties.put("data_op", new JSONObject().put("type", "string")
                 .put("enum", Arrays.asList(new String[] { "C", "U", "D", "S" })));
-        properties.put("data", schema);
+        properties.put(DATA_CHANGE_WRAP_FIELD, schema);
 
         wrapper.put("additionalProperties", false);
 
         addToRequired(wrapper, new String[]{ "data_type", "data_op", "data" });
 
         return wrapper;
+    }
+
+    private static void moveDefinitionsToRoot(final JSONObject wrapper, final JSONObject schema) {
+        final Object definitions = schema.remove("definitions");
+
+        if (definitions != null) {
+            wrapper.put("definitions", definitions);
+        }
     }
 
     private static JSONObject addMetadata(final JSONObject schema, final EventType eventType) {

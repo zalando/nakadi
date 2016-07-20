@@ -1,5 +1,6 @@
 package de.zalando.aruha.nakadi.enrichment;
 
+import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.exceptions.EnrichmentException;
 import de.zalando.aruha.nakadi.util.FlowIdUtils;
@@ -9,6 +10,7 @@ import org.junit.Test;
 
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildBusinessEvent;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
+import static de.zalando.aruha.nakadi.utils.TestUtils.createBatch;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyString;
@@ -26,7 +28,7 @@ public class MetadataEnrichmentStrategyTest {
 
         try {
             DateTimeUtils.setCurrentMillisFixed(0);
-            strategy.enrich(event, eventType);
+            strategy.enrich(createBatch(event), eventType);
         } finally {
             DateTimeUtils.setCurrentMillisSystem();
         }
@@ -41,7 +43,7 @@ public class MetadataEnrichmentStrategyTest {
 
         event.remove("metadata");
 
-        strategy.enrich(event, eventType);
+        strategy.enrich(createBatch(event), eventType);
     }
 
     @Test
@@ -51,7 +53,7 @@ public class MetadataEnrichmentStrategyTest {
 
         assertThat(event.getJSONObject("metadata").optString("event_type"), isEmptyString());
 
-        strategy.enrich(event, eventType);
+        strategy.enrich(createBatch(event), eventType);
 
         assertThat(event.getJSONObject("metadata").getString("event_type"), equalTo(eventType.getName()));
     }
@@ -65,8 +67,21 @@ public class MetadataEnrichmentStrategyTest {
 
         final String flowId = randomString();
         FlowIdUtils.push(flowId);
-        strategy.enrich(event, eventType);
+        strategy.enrich(createBatch(event), eventType);
 
         assertThat(event.getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
+    }
+
+    @Test
+    public void setPartition() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+        final String partition = randomString();
+        final BatchItem batch = createBatch(event);
+        batch.setPartition(partition);
+
+        strategy.enrich(batch, eventType);
+
+        assertThat(event.getJSONObject("metadata").getString("partition"), equalTo(partition));
     }
 }

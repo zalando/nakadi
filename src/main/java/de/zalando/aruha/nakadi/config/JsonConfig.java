@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -22,6 +23,7 @@ import org.zalando.problem.ProblemModule;
 import java.io.IOException;
 
 import static com.fasterxml.jackson.databind.PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES;
+import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
 
@@ -37,6 +39,8 @@ public class JsonConfig {
         objectMapper.registerModule(enumModule());
         objectMapper.registerModule(new Jdk8Module());
         objectMapper.registerModule(new ProblemModule());
+        objectMapper.registerModule(new JodaModule());
+        objectMapper.configure(WRITE_DATES_AS_TIMESTAMPS , false);
 
         return objectMapper;
     }

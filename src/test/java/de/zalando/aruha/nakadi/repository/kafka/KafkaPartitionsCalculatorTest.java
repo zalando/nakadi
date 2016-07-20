@@ -2,39 +2,45 @@ package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.zalando.aruha.nakadi.config.JsonConfig;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.io.InputStream;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
-import org.junit.Test;
 
 public class KafkaPartitionsCalculatorTest {
 
-    private static final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
 
-    private InputStream getTestStream() {
-        return this.getClass().getResourceAsStream("test_partitions_statistics.json");
+    public static KafkaPartitionsCalculator buildTest() throws IOException {
+        return KafkaPartitionsCalculator.load(OBJECT_MAPPER, "t2.large", getTestStream());
+    }
+
+    private static InputStream getTestStream() {
+        return KafkaPartitionsCalculator.class.getResourceAsStream("test_partitions_statistics.json");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testLoadFailForUnknownName() throws IOException {
-        KafkaPartitionsCalculator.load(objectMapper, "null", getTestStream());
+        KafkaPartitionsCalculator.load(OBJECT_MAPPER, "null", getTestStream());
     }
 
     @Test
     public void testLoadCorrectForCorrectName() throws IOException {
         for (final String name : new String[]{"t2.large", "c4.xlarge"}) {
-            final KafkaPartitionsCalculator calculatorMap = KafkaPartitionsCalculator.load(objectMapper, name, getTestStream());
+            final KafkaPartitionsCalculator calculatorMap = KafkaPartitionsCalculator.load(OBJECT_MAPPER, name, getTestStream());
             assertThat(calculatorMap, notNullValue());
         }
     }
 
     @Test
     public void ensureCorrectValuesReturnedForSimpleCase() throws IOException {
-        final KafkaPartitionsCalculator calculator = KafkaPartitionsCalculator.load(objectMapper, "t2.large", getTestStream());
+        final KafkaPartitionsCalculator calculator = buildTest();
         // 48.12, 74.83, 92.89, 84.69, 91.19, 94.22, 88.34, 86.35
         assertThat(calculator.getBestPartitionsCount(1000, 48.12f), equalTo(1));
         assertThat(calculator.getBestPartitionsCount(1000, 48.13f), equalTo(2));
@@ -48,7 +54,7 @@ public class KafkaPartitionsCalculatorTest {
 
     @Test
     public void ensureCorrectValuesReturnedForCentralCase() throws IOException {
-        final KafkaPartitionsCalculator calculator = KafkaPartitionsCalculator.load(objectMapper, "t2.large", getTestStream());
+        final KafkaPartitionsCalculator calculator = buildTest();
         final int testCaseCount = 100;
         for (int i = 0; i < testCaseCount; ++i) {
             final float mbsPerSecond = (100.f * i) / testCaseCount;
@@ -67,7 +73,7 @@ public class KafkaPartitionsCalculatorTest {
 
     @Test
     public void testSmallSizes() throws IOException {
-        final KafkaPartitionsCalculator calculator = KafkaPartitionsCalculator.load(objectMapper, "t2.large", getTestStream());
+        final KafkaPartitionsCalculator calculator = buildTest();
         // 25.27, 24.69, 25.48, 25.59, 24.95, 25.12, 25.17, 25.93
         assertThat(calculator.getBestPartitionsCount(0, 22.f), equalTo(1));
         assertThat(calculator.getBestPartitionsCount(0, 25.27f), equalTo(1));
@@ -77,7 +83,7 @@ public class KafkaPartitionsCalculatorTest {
 
     @Test
     public void testLargeSizes() throws IOException {
-        final KafkaPartitionsCalculator calculator = KafkaPartitionsCalculator.load(objectMapper, "t2.large", getTestStream());
+        final KafkaPartitionsCalculator calculator = buildTest();
         // 35.34, 55.52, 57.14, 76.96, 89.56, 97.54, 94.73, 96.69
         assertThat(calculator.getBestPartitionsCount(200000, 22.f), equalTo(1));
         assertThat(calculator.getBestPartitionsCount(200000, 35.36f), equalTo(2));

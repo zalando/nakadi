@@ -1,27 +1,29 @@
 package de.zalando.aruha.nakadi.controller;
 
-import com.codahale.metrics.annotation.Timed;
 import de.zalando.aruha.nakadi.domain.EventPublishResult;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.exceptions.NoSuchEventTypeException;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetricRegistry;
 import de.zalando.aruha.nakadi.metrics.EventTypeMetrics;
 import de.zalando.aruha.nakadi.service.EventPublisher;
-import javax.ws.rs.core.Response;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import static org.springframework.http.ResponseEntity.status;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
+
+import javax.ws.rs.core.Response;
+
+import static org.springframework.http.ResponseEntity.status;
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -37,7 +39,6 @@ public class EventPublishingController {
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
     }
 
-    @Timed(name = "post_events", absolute = true)
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity postEvent(@PathVariable final String eventTypeName, @RequestBody final String eventsAsString,
                                     final NativeWebRequest nativeWebRequest) {
@@ -54,7 +55,10 @@ public class EventPublishingController {
         }
     }
 
-    private ResponseEntity postEventInternal(String eventTypeName, String eventsAsString, NativeWebRequest nativeWebRequest, EventTypeMetrics eventTypeMetrics) {
+    private ResponseEntity postEventInternal(final String eventTypeName,
+                                             final String eventsAsString,
+                                             final NativeWebRequest nativeWebRequest,
+                                             final EventTypeMetrics eventTypeMetrics) {
         final long startingNanos = System.nanoTime();
         try {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
@@ -65,7 +69,7 @@ public class EventPublishingController {
             return response(publisher.publish(eventsAsJsonObjects, eventTypeName));
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
-            return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
+            return processJSONException(e, nativeWebRequest);
         } catch (final NoSuchEventTypeException e) {
             LOG.debug("Event type not found.", e);
             return create(e.asProblem(), nativeWebRequest);
@@ -75,6 +79,17 @@ public class EventPublishingController {
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
         }
+    }
+
+    private ResponseEntity processJSONException(final JSONException e, final NativeWebRequest nativeWebRequest) {
+        if (e.getCause() == null) {
+            return create(createProblem(e), nativeWebRequest);
+        }
+        return create(Problem.valueOf(Response.Status.BAD_REQUEST), nativeWebRequest);
+    }
+
+    private ThrowableProblem createProblem(final JSONException e) {
+        return Problem.valueOf(Response.Status.BAD_REQUEST, e.getMessage());
     }
 
     private ResponseEntity response(final EventPublishResult result) {

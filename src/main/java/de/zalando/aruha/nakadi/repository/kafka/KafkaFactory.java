@@ -13,10 +13,10 @@ class KafkaFactory {
 
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager) {
         this.kafkaLocationManager = kafkaLocationManager;
-        kafkaProducer = new KafkaProducer<>(kafkaLocationManager.getKafkaProperties());
+        kafkaProducer = new KafkaProducer<>(kafkaLocationManager.getKafkaProducerProperties());
     }
 
-    public Producer<String, String> createProducer() {
+    public Producer<String, String> getProducer() {
         return kafkaProducer;
     }
 

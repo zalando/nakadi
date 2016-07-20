@@ -20,6 +20,9 @@ public class SecuritySettings {
     @Value("${nakadi.oauth2.mode:BASIC}")
     private AuthMode authMode;
 
+    @Value("${nakadi.oauth2.adminClientId}")
+    private String adminClientId;
+
     public String getTokenInfoUrl() {
         return tokenInfoUrl;
     }
@@ -30,5 +33,9 @@ public class SecuritySettings {
 
     public AuthMode getAuthMode() {
         return authMode;
+    }
+
+    public String getAdminClientId() {
+        return adminClientId;
     }
 }

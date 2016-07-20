@@ -1,0 +1,238 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": [
+    "event_type",
+    "owner_id",
+    "product_id",
+    "product_status",
+    "event_timestamp"
+  ],
+  "properties": {
+    "product_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "enum": [
+        "create",
+        "update",
+        "delete"
+      ]
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "event_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of when this event was published. Each attempt to publish may result in a new timestamp"
+    },
+    "product_status": {
+      "enum": [
+        "active",
+        "inactive"
+      ]
+    },
+    "product": {
+      "$ref": "#/definitions/Product",
+      "description": "The product will be present for CREATE or UPDATE events"
+    }
+  },
+  "additional_properties": false,
+
+  "definitions": {
+
+    "Attribute": {
+      "type": "object",
+      "required": [
+        "type",
+        "values"
+      ],
+      "properties": {
+        "type": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
+              "description": "This is a UUID value"
+            }
+          }
+        },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        }
+      }
+    },
+
+    "Value": {
+      "type": "object",
+      "oneOf": [
+        { "$ref": "#/definitions/ReferenceValue" },
+        { "$ref": "#/definitions/BooleanValue" },
+        { "$ref": "#/definitions/StringValue" },
+        { "$ref": "#/definitions/LocalizedStringValue" },
+        { "$ref": "#/definitions/IntegerValue" },
+        { "$ref": "#/definitions/DecimalValue" },
+        { "$ref": "#/definitions/DatetimeValue" },
+        { "$ref": "#/definitions/StructuredValue" }
+      ]
+    },
+
+    "ReferenceValue": {
+      "type": "object",
+      "description": "A reference to an attribute, by ID, in the master-attributes service",
+      "required": [
+        "discrim",
+        "attribute"
+      ],
+      "properties": {
+        "discrim": { "enum": [ "ref" ] },
+        "attribute": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
+              "description": "This is a UUID value"
+            }
+          }
+        }
+      }
+    },
+
+    "BooleanValue": {
+      "type": "object",
+      "required": [
+        "discrim",
+        "value"
+      ],
+      "properties": {
+        "discrim": { "enum": ["boolean"] },
+        "value": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+
+    "StringValue": {
+      "type": "object",
+      "required": [
+        "discrim",
+        "value"
+      ],
+      "properties": {
+        "discrim": { "enum": ["string"] },
+        "value": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "LocalizedStringValue": {
+      "type": "object",
+      "required": [
+        "discrim",
+        "id"
+      ],
+      "properties": {
+        "discrim": { "enum": [ "localized" ] },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
+          "description": "The UUID ID of this text in the localized text service in SPP"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IntegerValue": {
+      "type": "object",
+      "required": [
+        "discrim",
+        "value"
+      ],
+      "properties": {
+        "discrim": { "enum": [ "integer" ] },
+        "value": {
+          "type": "integer",
+          "minimum": -9223372036854775808,
+          "maximum": 9223372036854775807
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DecimalValue": {
+      "type": "object",
+      "required": [
+        "discrim",
+        "value"
+      ],
+      "properties": {
+        "discrim": { "enum": [ "decimal" ] },
+        "value": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DatetimeValue": {
+      "type": "object",
+      "required": [
+        "discrim",
+        "value"
+      ],
+      "properties": {
+        "discrim": { "enum": [ "datetime" ] },
+        "value": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "StructuredValue": {
+      "type": "object",
+      "required": [
+        "discrim",
+        "values"
+      ],
+      "properties": {
+        "discrim": { "enum": [ "struct" ] },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        }
+      }
+    },
+
+    "Product": {
+      "type": "object",
+      "required": [
+        "attributes"
+      ],
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        }
+      }
+    }
+  }
+}

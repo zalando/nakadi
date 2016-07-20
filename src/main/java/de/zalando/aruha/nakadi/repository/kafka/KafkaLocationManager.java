@@ -19,7 +19,7 @@ class KafkaLocationManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaLocationManager.class);
 
-    private static final String _BROKERS_IDS_PATH = "/brokers/ids";
+    private static final String BROKERS_IDS_PATH = "/brokers/ids";
 
     @Autowired
     private ZooKeeperHolder zkFactory;
@@ -48,12 +48,12 @@ class KafkaLocationManager {
     }
 
     private List<Broker> fetchBrokers() {
-        final List<Broker> brokers = new ArrayList<Broker>();
+        final List<Broker> brokers = new ArrayList<>();
         try {
             final CuratorFramework curator = zkFactory.get();
-            for (final String brokerId : curator.getChildren().forPath(_BROKERS_IDS_PATH)) {
+            for (final String brokerId : curator.getChildren().forPath(BROKERS_IDS_PATH)) {
                 try {
-                    final byte[] brokerData = curator.getData().forPath(_BROKERS_IDS_PATH + "/" + brokerId);
+                    final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
                     brokers.add(Broker.fromByteJson(brokerData));
                 } catch (Exception e) {
                     LOG.info(String.format("Failed to fetch connection string for broker %s", brokerId), e);
@@ -66,7 +66,7 @@ class KafkaLocationManager {
         return brokers;
     }
 
-    private static String buildBootstrapServers(List<Broker> brokers) {
+    private static String buildBootstrapServers(final List<Broker> brokers) {
         final StringBuilder builder = new StringBuilder();
         brokers.stream().forEach(broker -> builder.append(broker).append(","));
         return builder.deleteCharAt(builder.length() - 1).toString();
@@ -75,11 +75,8 @@ class KafkaLocationManager {
     private Properties buildKafkaProperties(final List<Broker> brokers) {
         final Properties props = new Properties();
         props.put("bootstrap.servers", buildBootstrapServers(brokers));
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("acks", "all");
         return props;
     }
 
@@ -100,5 +97,13 @@ class KafkaLocationManager {
 
     public Properties getKafkaProperties() {
         return (Properties) kafkaProperties.clone();
+    }
+
+    public Properties getKafkaProducerProperties() {
+        final Properties producerProps = getKafkaProperties();
+        producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put("acks", "all");
+        return producerProps;
     }
 }

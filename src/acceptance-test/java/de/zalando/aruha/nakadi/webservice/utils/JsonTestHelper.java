@@ -17,16 +17,16 @@ public class JsonTestHelper {
     private static final TypeReference<HashMap<String, String>> MAP_REF =
             new TypeReference<HashMap<String, String>>() {};
 
-    private static final ObjectMapper jsonMapper = new ObjectMapper();
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     private JsonTestHelper() {
     }
 
     public static List<Map<String, String>> asMapsList(final String body) throws IOException {
-        return jsonMapper.<List<Map<String, String>>>readValue(body, LIST_OF_MAPS_REF);
+        return JSON_MAPPER.readValue(body, LIST_OF_MAPS_REF);
     }
 
     public static Map<String, String> asMap(final String body) throws IOException {
-        return jsonMapper.<Map<String, String>>readValue(body, MAP_REF);
+        return JSON_MAPPER.readValue(body, MAP_REF);
     }
 }

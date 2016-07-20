@@ -12,26 +12,26 @@ import static org.hamcrest.Matchers.equalTo;
 
 public class UserDefinedPartitionStrategyTest {
 
-    private static final UserDefinedPartitionStrategy strategy = new UserDefinedPartitionStrategy();
-    private static final List<String> partitions = ImmutableList.of("a", "b", "c");
+    private static final UserDefinedPartitionStrategy STRATEGY = new UserDefinedPartitionStrategy();
+    private static final List<String> PARTITIONS = ImmutableList.of("a", "b", "c");
 
     @Test
     public void whenCorrectPartitionThenOk() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"b\"}}");
-        final String partition = strategy.calculatePartition(null, event, partitions);
+        final String partition = STRATEGY.calculatePartition(null, event, PARTITIONS);
         assertThat(partition, equalTo("b"));
     }
 
     @Test(expected = PartitioningException.class)
     public void whenIncorrectJsonThenPartitioningException() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition_id\":\"b\"}}");
-        strategy.calculatePartition(null, event, partitions);
+        STRATEGY.calculatePartition(null, event, PARTITIONS);
     }
 
     @Test(expected = PartitioningException.class)
     public void whenUnknownPartitionThenPartitioningException() throws PartitioningException {
         final JSONObject event = new JSONObject("{\"metadata\":{\"partition\":\"z\"}}");
-        strategy.calculatePartition(null, event, partitions);
+        STRATEGY.calculatePartition(null, event, PARTITIONS);
     }
 
 }

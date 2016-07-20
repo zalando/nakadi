@@ -2,15 +2,20 @@ server:
   port: 8080
   compression:
     enabled: true
-#    mime-types: custom/mime-type,text/html,text/xml,text/plain
+    mime-types: text/plain,application/x-json-stream
+management:
+  port: 7979
 logging:
   level:
     ROOT: INFO
     org.springframework.web: INFO
+    org.springframework.security.web.access.intercept: DEBUG
+    org.apache.kafka: WARN
+    de.zalando.aruha.nakadi: DEBUG
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
-    username: nakadi_app
+    username: nakadi
     password: nakadi
     driverClassName: org.postgresql.Driver
     initialSize: 2
@@ -28,6 +33,7 @@ nakadi:
       rotationMs: 86400000 # 1 day
   stream:
     timeoutMs: 31536000000 # 1 year :-P
+  featureToggle.default: false
   kafka:
     instanceType: t2.large
     poll:
@@ -44,6 +50,7 @@ nakadi:
     connectionTimeoutMs: 10000
   oauth2:
     mode: BASIC
+    adminClientId: nakadi
     tokenInfoUrl: https://example.com/tokeninfo
     clientId: stups_aruha-event-store-poc
     scopes:

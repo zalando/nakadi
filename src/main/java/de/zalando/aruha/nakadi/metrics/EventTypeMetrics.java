@@ -1,7 +1,7 @@
 package de.zalando.aruha.nakadi.metrics;
 
-import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.google.common.annotations.VisibleForTesting;
@@ -18,34 +18,37 @@ public class EventTypeMetrics {
 
     private final Histogram eventsPerBatchHistogram;
     private final Timer publishingTimer;
+    private final Meter eventCountMeter;
     private final Histogram averageEventSizeInBytesHistogram;
-    private final ConcurrentMap<Integer, Counter> statusCodeCounter = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Integer, Meter> statusCodeMeter = new ConcurrentHashMap<>();
 
     public EventTypeMetrics(final String eventTypeName, final MetricRegistry metricRegistry) {
         this.eventTypeName = eventTypeName;
         this.metricRegistry = metricRegistry;
+        eventCountMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.events"));
         eventsPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
         averageEventSizeInBytesHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
         publishingTimer = metricRegistry.timer(metricNameFor(eventTypeName, "publishing"));
     }
 
-    public void reportSizing(int eventsPerBatch, int totalEventSize) {
+    public void reportSizing(final int eventsPerBatch, final int totalEventSize) {
         eventsPerBatchHistogram.update(eventsPerBatch);
+        eventCountMeter.mark(eventsPerBatch);
         averageEventSizeInBytesHistogram.update(eventsPerBatch == 0 ? 0 : totalEventSize / eventsPerBatch);
     }
 
-    public void incrementResponseCount(int code) {
-        statusCodeCounter.computeIfAbsent(code,
-                key -> metricRegistry.counter(metricNameFor(eventTypeName, "publishing." + code)))
-                .inc();
+    public void incrementResponseCount(final int code) {
+        statusCodeMeter.computeIfAbsent(code,
+                key -> metricRegistry.meter(metricNameFor(eventTypeName, "publishing." + code)))
+                .mark();
     }
 
-    public void updateTiming(long startingNanos, long currentNanos) {
+    public void updateTiming(final long startingNanos, final long currentNanos) {
         publishingTimer.update(currentNanos - startingNanos, TimeUnit.NANOSECONDS);
     }
 
     @VisibleForTesting
-    public long getResponseCount(int code) {
-        return Optional.ofNullable(statusCodeCounter.get(code)).map(Counter::getCount).orElse(-1L);
+    public long getResponseCount(final int code) {
+        return Optional.ofNullable(statusCodeMeter.get(code)).map(Meter::getCount).orElse(-1L);
     }
 }

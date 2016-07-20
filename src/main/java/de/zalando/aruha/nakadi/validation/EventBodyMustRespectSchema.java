@@ -22,7 +22,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
 
     public static final String NAME = "schema-validation";
 
-    private static final Function<OverrideDefinition, QualifiedJSONSchemaValidator> toQualifiedJSONSchemaValidator =
+    private static final Function<OverrideDefinition, QualifiedJSONSchemaValidator> TO_QUALIFIED_JSON_SCHEMA_VALIDATOR =
         t -> {
         final JSONSchemaValidator jsv = new JSONSchemaValidator(t.getEffectiveSchema());
         return new QualifiedJSONSchemaValidator(t.getQualifier(), jsv);
@@ -65,7 +65,7 @@ public class EventBodyMustRespectSchema extends ValidationStrategy {
                                                                                  SchemaValidationOverrides.class)
                                                                              .getOverrides().stream()
                                                                              .map(enhanceWithQualifiedSchema)
-                                                                             .map(toQualifiedJSONSchemaValidator)
+                                                                             .map(TO_QUALIFIED_JSON_SCHEMA_VALIDATOR)
                                                                              .collect(Collectors.toList());
 
         return new QualifiedJSONSchemaValidationChain(qualifiedValidators, defaultSchemaValidator);
@@ -165,14 +165,14 @@ class JSONSchemaValidator implements EventValidator {
 
             return Optional.empty();
         } catch (final ValidationException e) {
-            StringBuilder builder = new StringBuilder();
+            final StringBuilder builder = new StringBuilder();
             collectErrorMessages(e, builder);
 
             return Optional.of(new ValidationError(builder.toString()));
         }
     }
 
-    private void collectErrorMessages(ValidationException e, StringBuilder builder) {
+    private void collectErrorMessages(final ValidationException e, final StringBuilder builder) {
         builder.append(e.getMessage());
 
         e.getCausingExceptions().stream()

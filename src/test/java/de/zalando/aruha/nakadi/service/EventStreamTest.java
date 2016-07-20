@@ -4,7 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.exceptions.NakadiException;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.kafka.NakadiKafkaConsumer;
-import org.junit.Ignore;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -36,9 +36,8 @@ public class EventStreamTest {
     private static final String TOPIC = randomString();
     private static final String DUMMY = "DUMMY";
 
-    @Test(timeout = 10000)
-    @Ignore("This test blinks quite often; disabled for now")
-    public void whenNoExitConditionsThenStreamIsNotClosed() throws NakadiException, InterruptedException, IOException {
+    @Test(timeout = 15000)
+    public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withCursors(ImmutableMap.of("0", "0"))
@@ -49,7 +48,7 @@ public class EventStreamTest {
         final OutputStream outputStreamMock = mock(OutputStream.class);
         final EventStream eventStream = new EventStream(emptyConsumer(), outputStreamMock, config);
 
-        final Thread thread = new Thread(eventStream::streamEvents);
+        final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true)));
         thread.start();
 
         Thread.sleep(3000);
@@ -58,6 +57,33 @@ public class EventStreamTest {
 
         // simulation of client closing the connection: this will end the eventStream
         doThrow(new IOException()).when(outputStreamMock).flush();
+
+        Thread.sleep(5000);
+        assertThat("The thread should be dead now, as we simulated that client closed connection",
+                thread.isAlive(), is(false));
+        thread.join();
+    }
+
+    @Test(timeout = 10000)
+    public void whenCrutchWorkedThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
+        final EventStreamConfig config = EventStreamConfig
+                .builder()
+                .withCursors(ImmutableMap.of("0", "0"))
+                .withTopic(TOPIC)
+                .withBatchLimit(1)
+                .withBatchTimeout(1)
+                .build();
+        final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
+        final AtomicBoolean streamOpen = new AtomicBoolean(true);
+        final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen));
+        thread.start();
+
+        Thread.sleep(3000);
+        assertThat("As there are no exit conditions in config - the thread should be running",
+                thread.isAlive(), is(true));
+
+        // simulation of client closing the connection using crutch
+        streamOpen.set(false);
 
         Thread.sleep(3000);
         assertThat("The thread should be dead now, as we simulated that client closed connection",
@@ -72,9 +98,10 @@ public class EventStreamTest {
                 .withTopic(TOPIC)
                 .withBatchLimit(1)
                 .withStreamTimeout(1)
+                .withBatchTimeout(1)
                 .build();
         final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
-        eventStream.streamEvents();
+        eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
 
@@ -88,21 +115,22 @@ public class EventStreamTest {
                 .withStreamLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config);
-        eventStream.streamEvents();
+        eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
 
-    @Test(timeout = 3000)
+    @Test(timeout = 5000)
     public void whenKeepAliveLimitIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
                 .withTopic(TOPIC)
                 .withCursors(ImmutableMap.of("0", "0"))
                 .withBatchLimit(1)
+                .withBatchTimeout(1)
                 .withStreamKeepAliveLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
-        eventStream.streamEvents();
+        eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
 
@@ -120,7 +148,7 @@ public class EventStreamTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream = new EventStream(emptyConsumer(), out, config);
-        eventStream.streamEvents();
+        eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
         Arrays
@@ -136,14 +164,14 @@ public class EventStreamTest {
                 .withTopic(TOPIC)
                 .withCursors(ImmutableMap.of("0", "0"))
                 .withBatchLimit(5)
-                .withBatchTimeout(30)
+                .withBatchTimeout(1)
                 .withStreamTimeout(1)
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream = new EventStream(nCountDummyConsumerForPartition(12, "0"), out, config);
-        eventStream.streamEvents();
+        eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
@@ -160,13 +188,12 @@ public class EventStreamTest {
                 .withTopic(TOPIC)
                 .withCursors(ImmutableMap.of("0", "0"))
                 .withBatchLimit(1)
-                .withBatchTimeout(30)
-                .withStreamTimeout(1)
+                .withStreamLimit(4)
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        int eventNum = 4;
+        final int eventNum = 4;
         final LinkedList<ConsumedEvent> events = new LinkedList<>(IntStream
                 .range(0, eventNum)
                 .boxed()
@@ -175,7 +202,7 @@ public class EventStreamTest {
                 .collect(Collectors.toList()));
 
         final EventStream eventStream = new EventStream(predefinedConsumer(events), out, config);
-        eventStream.streamEvents();
+        eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
@@ -189,7 +216,7 @@ public class EventStreamTest {
                 ));
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 10000)
     public void whenReadFromMultiplePartitionsThenGroupedInBatchesAccordingToPartition()
             throws NakadiException, IOException, InterruptedException {
 
@@ -201,8 +228,8 @@ public class EventStreamTest {
                         "1", "0",
                         "2", "0"))
                 .withBatchLimit(2)
+                .withStreamLimit(6)
                 .withBatchTimeout(30)
-                .withStreamTimeout(1)
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -216,7 +243,7 @@ public class EventStreamTest {
         events.add(new ConsumedEvent(DUMMY, TOPIC, "2", "0"));
 
         final EventStream eventStream = new EventStream(predefinedConsumer(events), out, config);
-        eventStream.streamEvents();
+        eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 

@@ -1,10 +1,12 @@
 package de.zalando.aruha.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.CursorError;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
+import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.domain.Topic;
 import de.zalando.aruha.nakadi.domain.TopicPartition;
 import de.zalando.aruha.nakadi.exceptions.EventPublishingException;
@@ -270,6 +272,17 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
+    public void testIntegerOverflowOnStatisticsCalculation() throws NakadiException {
+        when(settings.getMaxTopicPartitionCount()).thenReturn(1000);
+        final EventTypeStatistics statistics = new EventTypeStatistics();
+        statistics.setReadParallelism(1);
+        statistics.setWriteParallelism(1);
+        statistics.setMessagesPerMinute(1000000000);
+        statistics.setMessageSize(1000000000);
+        assertThat(kafkaTopicRepository.calculateKafkaPartitionCount(statistics), equalTo(6));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void canCreateEventConsumerWithOffsetsTransformed() throws Exception {
         // ACT /
@@ -287,6 +300,29 @@ public class KafkaTopicRepositoryTest {
                 kafkaCursor(0, 41),
                 kafkaCursor(1, 100)
         )));
+    }
+
+    @Test
+    public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
+        kafkaTopicRepository.validateCommitCursors(MY_TOPIC, ImmutableList.of(cursor("0", "23")));
+    }
+
+    @Test
+    public void whenValidateInvalidCommitCursorsThenException() throws NakadiException {
+        ImmutableMap.of(
+                cursor(null, "1"), CursorError.NULL_PARTITION,
+                cursor("0", null), CursorError.NULL_OFFSET,
+                cursor("345", "1"), CursorError.PARTITION_NOT_FOUND,
+                cursor("0", "abc"), CursorError.INVALID_FORMAT)
+                .entrySet()
+                .stream()
+                .forEach(testCase -> {
+                    try {
+                        kafkaTopicRepository.validateCommitCursors(MY_TOPIC, ImmutableList.of(testCase.getKey()));
+                    } catch (final InvalidCursorException e) {
+                        assertThat(e.getError(), equalTo(testCase.getValue()));
+                    }
+                });
     }
 
     private void canListAllPartitionsOfTopic(final String topic) throws NakadiException {
@@ -307,7 +343,7 @@ public class KafkaTopicRepositoryTest {
 
     private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings, null);
+            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings, KafkaPartitionsCalculatorTest.buildTest());
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
@@ -369,7 +405,7 @@ public class KafkaTopicRepositoryTest {
         final KafkaFactory kafkaFactory = mock(KafkaFactory.class);
 
         when(kafkaFactory.getConsumer()).thenReturn(consumer);
-        when(kafkaFactory.createProducer()).thenReturn(kafkaProducer);
+        when(kafkaFactory.getProducer()).thenReturn(kafkaProducer);
 
         return kafkaFactory;
     }

@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import de.zalando.aruha.nakadi.domain.ConsumedEvent;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +26,7 @@ public class EventStream {
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
 
     public static final String BATCH_SEPARATOR = "\n";
-    private static final Charset UTF8 = Charset.forName("UTF-8");
+    public static final Charset UTF8 = Charset.forName("UTF-8");
 
     private final OutputStream outputStream;
 
@@ -40,7 +41,7 @@ public class EventStream {
         this.config = config;
     }
 
-    public void streamEvents() {
+    public void streamEvents(final AtomicBoolean connectionReady) {
         try {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
@@ -49,10 +50,10 @@ public class EventStream {
                     createMapWithPartitionKeys(partition -> Lists.newArrayList());
             final Map<String, String> latestOffsets = Maps.newHashMap(config.getCursors());
 
-            long start = currentTimeMillis();
-            Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
+            final long start = currentTimeMillis();
+            final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
 
-            while (true) {
+            while (connectionReady.get()) {
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
 
                 if (eventOrEmpty.isPresent()) {
@@ -71,7 +72,7 @@ public class EventStream {
 
                 // for each partition check if it's time to send the batch
                 for (final String partition: config.getCursors().keySet()) {
-                    long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
+                    final long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
                     if (config.getBatchTimeout() * 1000 <= timeSinceBatchStart
                             || currentBatches.get(partition).size() >= config.getBatchLimit()) {
 
@@ -101,7 +102,7 @@ public class EventStream {
                 }
 
                 // check if we reached the stream timeout or message count limit
-                long timeSinceStart = currentTimeMillis() - start;
+                final long timeSinceStart = currentTimeMillis() - start;
                 if (config.getStreamTimeout() != 0 && timeSinceStart >= config.getStreamTimeout() * 1000
                         || config.getStreamLimit() != 0 && messagesRead >= config.getStreamLimit()) {
 
@@ -114,11 +115,11 @@ public class EventStream {
                     break;
                 }
             }
-        } catch (IOException e) {
+        } catch (final IOException e) {
             LOG.info("I/O error occurred when streaming events (possibly client closed connection)", e);
-        } catch (IllegalStateException e) {
+        } catch (final IllegalStateException e) {
             LOG.info("Error occurred when streaming events (possibly server closed connection)", e);
-        } catch (KafkaException e) {
+        } catch (final KafkaException e) {
             LOG.error("Error occurred when polling events from kafka", e);
         }
     }
@@ -131,7 +132,7 @@ public class EventStream {
                 .collect(Collectors.toMap(identity(), valueFunction));
     }
 
-    private String createStreamEvent(final String partition, final String offset, final List<String> events,
+    public static String createStreamEvent(final String partition, final String offset, final List<String> events,
             final Optional<String> topology) {
         final StringBuilder builder = new StringBuilder().append("{\"cursor\":{\"partition\":\"").append(partition)
                                                          .append("\",\"offset\":\"").append(offset).append("\"}");

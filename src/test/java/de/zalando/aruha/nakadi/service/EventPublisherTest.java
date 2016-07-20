@@ -27,6 +27,7 @@ import java.util.Optional;
 
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildBusinessEvent;
 import static de.zalando.aruha.nakadi.utils.TestUtils.buildDefaultEventType;
+import static de.zalando.aruha.nakadi.utils.TestUtils.createBatch;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isEmptyString;
@@ -56,7 +57,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getName()), any());
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
     }
 
     @Test
@@ -70,7 +71,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getName()), any());
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
     }
 
     @Test
@@ -84,7 +85,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(0)).enrich(event, eventType);
+        verify(enrichment, times(0)).enrich(createBatch(event), eventType);
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
         verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
@@ -148,7 +149,7 @@ public class EventPublisherTest {
 
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(second.getStep(), equalTo(EventPublishingStep.ENRICHING));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(2)).getValidator(any());
@@ -176,12 +177,14 @@ public class EventPublisherTest {
         final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType, event);
-        mockFaultEnrichment(eventType, event);
+        mockFaultEnrichment();
 
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(partitionResolver, times(0)).resolvePartition(eventType, event);
+        verify(cache, times(1)).getValidator(eventType.getName());
+        verify(partitionResolver, times(1)).resolvePartition(eventType, event);
+        verify(enrichment, times(1)).enrich(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
@@ -189,10 +192,9 @@ public class EventPublisherTest {
     public void whenEnrichmentFailsThenSubsequentItemsAreAborted() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(2);
-        final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType);
-        mockFaultEnrichment(eventType, event);
+        mockFaultEnrichment();
 
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
@@ -205,8 +207,10 @@ public class EventPublisherTest {
 
         final BatchItemResponse second = result.getResponses().get(1);
         assertThat(second.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(second.getStep(), equalTo(EventPublishingStep.VALIDATING));
+        assertThat(second.getStep(), equalTo(EventPublishingStep.PARTITIONING));
         assertThat(second.getDetail(), is(isEmptyString()));
+
+        verify(enrichment, times(1)).enrich(any(), any());
     }
 
     private void mockFailedPublishing() throws Exception {
@@ -223,11 +227,11 @@ public class EventPublisherTest {
                 .resolvePartition(eventType, event);
     }
 
-    private void mockFaultEnrichment(final EventType eventType, final JSONObject event) throws EnrichmentException {
+    private void mockFaultEnrichment() throws EnrichmentException {
         Mockito
                 .doThrow(new EnrichmentException("enrichment error"))
                 .when(enrichment)
-                .enrich(event, eventType);
+                .enrich(any(), any());
     }
 
     private void mockFaultValidation(final EventType eventType, final JSONObject event, final String error) throws Exception {
@@ -298,4 +302,5 @@ public class EventPublisherTest {
 
         return new JSONArray(events);
     }
+
 }

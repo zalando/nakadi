@@ -58,7 +58,7 @@ public class PartitionResolver {
                     eventTypeStrategy);
         }
 
-        final List<String> partitions = topicRepository.listPartitionNames(eventType.getName());
+        final List<String> partitions = topicRepository.listPartitionNames(eventType.getTopic());
         return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
     }
 

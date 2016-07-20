@@ -10,6 +10,7 @@ import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTestHelper;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
@@ -34,7 +35,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     private static final String TEST_PARTITION = "0";
     private static final String DUMMY_EVENT = "Dummy";
-    private static final String STREAM_ENDPOINT = createStreamEndpointUrl(TEST_TOPIC);
+    private static final String STREAM_ENDPOINT = createStreamEndpointUrl(EVENT_TYPE_NAME);
     private static final String SEPARATOR = "\n";
 
     private final ObjectMapper jsonMapper = new ObjectMapper();
@@ -45,7 +46,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Before
     public void setUp() throws InterruptedException, JsonProcessingException {
-        kafkaHelper = new KafkaTestHelper(kafkaUrl);
+        kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         initialCursors = kafkaHelper.getOffsetsToReadFromLatest(TEST_TOPIC);
         kafkaInitialNextOffsets = kafkaHelper.getNextOffsets(TEST_TOPIC);
         xNakadiCursors = jsonMapper.writeValueAsString(initialCursors);
@@ -71,7 +72,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
 
         final String body = response.print();
         final List<Map<String, Object>> batches = deserializeBatches(body);
@@ -118,7 +119,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
         response.then().header("Content-Encoding", "gzip");
     }
 
@@ -143,7 +144,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
 
         final String body = response.print();
         final List<Map<String, Object>> batches = deserializeBatches(body);
@@ -186,7 +187,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
 
         final String body = response.print();
         final List<Map<String, Object>> batches = deserializeBatches(body);
@@ -219,7 +220,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
 
         // ASSERT //
-        response.then().statusCode(HttpStatus.OK.value());
+        response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
 
         final String body = response.print();
         final List<Map<String, Object>> batches = deserializeBatches(body);

@@ -1,38 +1,26 @@
 package de.zalando.aruha.nakadi.webservice;
 
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-
-import static org.hamcrest.Matchers.notNullValue;
-
-import static org.hamcrest.core.IsEqual.equalTo;
-
-import static org.springframework.http.HttpStatus.CREATED;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.OK;
-
-import static com.jayway.restassured.http.ContentType.JSON;
-
-import static de.zalando.aruha.nakadi.utils.TestUtils.randomTextString;
-
-import java.io.IOException;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
+import com.jayway.restassured.response.Header;
+import com.jayway.restassured.specification.RequestSpecification;
+import de.zalando.aruha.nakadi.utils.TestUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-
 import org.hamcrest.Matchers;
-
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.common.base.Charsets;
-import com.google.common.io.Resources;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
-import com.jayway.restassured.response.Header;
-import com.jayway.restassured.specification.RequestSpecification;
-
-import de.zalando.aruha.nakadi.utils.TestUtils;
+import static com.jayway.restassured.http.ContentType.JSON;
+import static de.zalando.aruha.nakadi.utils.TestUtils.getEventTypeJsonFromFile;
+import static de.zalando.aruha.nakadi.utils.TestUtils.randomTextString;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.IsEqual.equalTo;
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.OK;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
@@ -46,8 +34,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     @Before
     public void before() throws IOException {
-        eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json");
-        eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json");
+        eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", TEST_EVENT_TYPE);
+        eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", TEST_EVENT_TYPE);
     }
 
     @SuppressWarnings("unchecked")
@@ -72,7 +60,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
                          .body("schema.type[0]", notNullValue()).body("schema.schema[0]", notNullValue());
 
         // update event-type
-        jsonRequestSpec().body(eventTypeBodyUpdate).when().put("/event-types/" + TEST_EVENT_TYPE).then().statusCode(OK
+        jsonRequestSpec().body(eventTypeBodyUpdate)
+                .when().put("/event-types/" + TEST_EVENT_TYPE).then().statusCode(OK
                 .value());
 
         // Updates should eventually cause a cache invalidation, so we must retry
@@ -108,7 +97,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
                                  + EVENT2 + "]}\n"));
 
         // delete event type
-        jsonRequestSpec().when().delete("/event-types/" + TEST_EVENT_TYPE).then().statusCode(OK.value());
+        jsonRequestSpec()
+                .when().delete("/event-types/" + TEST_EVENT_TYPE)
+                .then().statusCode(OK.value());
 
         // check that it was removed
         jsonRequestSpec().when().get("/event-types/" + TEST_EVENT_TYPE).then().statusCode(NOT_FOUND.value());
@@ -122,11 +113,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private RequestSpecification jsonRequestSpec() {
         return requestSpec().header("accept", "application/json").contentType(JSON);
-    }
-
-    private String getEventTypeJsonFromFile(final String resourceName) throws IOException {
-        final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
-        return json.replace("NAME_PLACEHOLDER", TEST_EVENT_TYPE);
     }
 
     private static String timeString() {
