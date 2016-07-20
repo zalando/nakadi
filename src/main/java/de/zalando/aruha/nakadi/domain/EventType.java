@@ -127,7 +127,7 @@ public class EventType {
         return options;
     }
 
-    public void setOptions(EventTypeOptions options) {
+    public void setOptions(final EventTypeOptions options) {
         this.options = options;
     }
 }

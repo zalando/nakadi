@@ -11,7 +11,7 @@ public class EventTypeOptions {
         return retentionTime;
     }
 
-    public void setRetentionTime(Long retentionTime) {
+    public void setRetentionTime(final Long retentionTime) {
         this.retentionTime = retentionTime;
     }
 }
