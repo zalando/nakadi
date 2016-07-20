@@ -14,7 +14,7 @@ import de.zalando.aruha.nakadi.repository.db.SubscriptionDbRepository;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaLocationManager;
 import de.zalando.aruha.nakadi.repository.kafka.KafkaTopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-import de.zalando.aruha.nakadi.service.CursorsCommitService;
+import de.zalando.aruha.nakadi.service.CursorsService;
 import de.zalando.aruha.nakadi.service.EventPublisher;
 import de.zalando.aruha.nakadi.service.EventStreamFactory;
 import de.zalando.aruha.nakadi.service.EventTypeService;
@@ -160,8 +160,8 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public CursorsCommitService cursorsCommitService() {
-            return mock(CursorsCommitService.class);
+        public CursorsService cursorsCommitService() {
+            return mock(CursorsService.class);
         }
 
         @Bean
