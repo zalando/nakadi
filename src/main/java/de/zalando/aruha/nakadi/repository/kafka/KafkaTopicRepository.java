@@ -7,6 +7,8 @@ import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.EventPublishingStep;
+import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeOptions;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.domain.Topic;
@@ -40,6 +42,7 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -98,12 +101,18 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void createTopic(final String topic, final EventTypeStatistics statistics) throws TopicCreationException, DuplicatedEventTypeNameException {
-        createTopic(topic,
-                calculateKafkaPartitionCount(statistics),
+    public void createTopic(final EventType eventType) throws TopicCreationException, DuplicatedEventTypeNameException {
+        createTopic(eventType.getTopic(),
+                calculateKafkaPartitionCount(eventType.getDefaultStatistic()),
                 settings.getDefaultTopicReplicaFactor(),
-                settings.getDefaultTopicRetentionMs(),
+                getTopicRetentionMs(eventType),
                 settings.getDefaultTopicRotationMs());
+    }
+
+    private long getTopicRetentionMs(final EventType eventType) {
+        return Optional.ofNullable(eventType.getOptions())
+                .map(EventTypeOptions::getRetentionTime)
+                .orElse(settings.getDefaultTopicRetentionMs());
     }
 
     private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,

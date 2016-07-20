@@ -1019,6 +1019,12 @@ definitions:
           might change over time.
           (TBD: measured statistics)
 
+      options:
+        type: object
+        $ref: '#/definitions/EventTypeOptions'
+        description: |
+          Provides ability to set internal Nakadi parameters.
+
     required:
       - name
       - category
@@ -1083,6 +1089,16 @@ definitions:
       - message_size
       - read_parallelism
       - write_parallelism
+
+  EventTypeOptions:
+    type: object
+    description: |
+      Additional parameters for tuning internal behavior of Nakadi.
+    properties:
+      retention_time:
+        type: long
+        description: |
+          Retention time for usage on Kafka's topic.
 
   BatchItemResponse:
     description: |
