@@ -191,7 +191,7 @@ public abstract class AuthenticationTest {
 
         @Bean
         public SecuritySettings securitySettings() {
-            SecuritySettings securitySettings = mock(SecuritySettings.class);
+            final SecuritySettings securitySettings = mock(SecuritySettings.class);
             doReturn(authMode).when(securitySettings).getAuthMode();
             return securitySettings;
         }
