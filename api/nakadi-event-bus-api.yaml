@@ -1585,7 +1585,7 @@ definitions:
         type: array
         items:
           type: string
-        description: List of references to previous schemas.
+        description: List of links to previous schemas.
 
       partition_key_fields:
         type: array
