@@ -2,6 +2,7 @@ package de.zalando.aruha.nakadi.validation;
 
 import org.everit.json.schema.FormatValidator;
 
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -21,7 +22,7 @@ public class RFC3339DateTimeValidator implements FormatValidator {
     @Override
     public Optional<String> validate(final String dateTime) {
         try {
-            java.time.LocalDate.parse(dateTime, ISO_OFFSET_DATE_TIME);
+            OffsetDateTime.parse(dateTime, ISO_OFFSET_DATE_TIME);
 
             // Unfortunately, ISO_OFFSET_DATE_TIME accepts offsets with seconds, which is not RFC3339 compliant. So
             // we need to do some further checks using a regex in order to be sure that it adhere to the given format.
