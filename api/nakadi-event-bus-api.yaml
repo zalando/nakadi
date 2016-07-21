@@ -498,8 +498,8 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Retrieves a given schema version as JSON. A special `{version}` key named 'latest' is
-        provided for convenience.
+        Retrieves a given schema version. A special `{version}` key named 'latest' is provided for
+        convenience.
     responses:
         '200':
           description: |
@@ -1167,8 +1167,8 @@ definitions:
         description: |
           Version of the schema used for validating this event. This is enriched upon reception.
           Clients consuming events should desserialize events only when differences between their
-          schema and the one used to validate (produce) the event differs on minor level, i.e. from
-          '1.1.0' to '1.2.0'.
+          schema and the one used to validate differs on minor level, for example, from '1.1.0' to
+          '1.2.0'.
       parent_eids:
         type: array
         items:
