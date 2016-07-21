@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsonorg.JsonOrgModule;
 import de.zalando.aruha.nakadi.domain.EventType;
 import de.zalando.aruha.nakadi.domain.ValidationStrategyConfiguration;
+import org.everit.json.schema.FormatValidator;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -154,8 +155,16 @@ class JSONSchemaValidator implements EventValidator {
 
     private final Schema schema;
 
+    private static final FormatValidator DATE_TIME_VALIDATOR = new RFC3339DateTimeValidator();
+
     public JSONSchemaValidator(final JSONObject effectiveSchema) {
-        schema = SchemaLoader.load(effectiveSchema);
+        schema = SchemaLoader
+                .builder()
+                .schemaJson(effectiveSchema)
+                .addFormatValidator("date-time", DATE_TIME_VALIDATOR)
+                .build()
+                .load()
+                .build();
     }
 
     @Override
