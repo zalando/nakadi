@@ -1542,27 +1542,37 @@ definitions:
 
       compatibility_mode:
         description: |
-          The compatibility mode informs consumers streaming from this event type about which
-          guarantees they should expect regarding changes to the schema. Compatibility modes might
-          be promoted from 'none' to 'forwards' but never downgraded from 'forwards' to 'none' since
-          this would break the previously defined contract.
+          *Note*: only 'forwards' compatibility mode is currently supported.
 
-          In the case of 'forwards' compatible event types, every change to the schema is guaranteed
-          not to break already existing consumers, given they ignore undefined fields.
+          Compatibility modes provides a mean for event owners to evolve their schema, given changes
+          are done within the limits defined by such field.
 
-          On the other hand 'none' compatible event type can change it's schema in ways that would
-          make then incompatible with already existing consumers. So consumers should be aware of
-          major version changes and react accordingly, by not trying to parse these event based on
-          old schemas.
+          It's designed to be flexible enough so that producers can evolve their schema while not
+          inadvertently breaking existent consumers.
 
-          *TBD* A third compatibility mode, namely 'backwards', could be introduced in order to
-          allow for data to be parsed based on the latest defined schema. This mode is particularly
-          useful when loading all historical data for analysis. And finally, a 'full' compatibility
-          mode might also be introduced merging 'backwards' and 'forwards' modes.
+          Changes to this values are not allowed, since it would break a predefined contract,
+          jeopardizing the value of this feature.
+
+          There are 4 compatibility modes:
+
+          - 'none': Every schema change is allowed. Coordination between producers and consumers
+            must be done accordingly when backward incompatible changes are to be rolled out.
+
+          - 'forwards': changes never break existing consumers.
+
+          - 'backwards': every event published since the first version is still valid based on the
+            newest schema.
+
+          - 'full': Both 'forwards' and 'backwards'.
+
+          For a complete explanation on which changes are allowed for each mode check the algorithm
+          specification page.
         type: string
         enum:
           - none
           - forwards
+          - backwards
+          - full
         default: forwards
 
       schema:
