@@ -8,7 +8,7 @@ import java.util.Optional;
 import static com.jayway.restassured.RestAssured.given;
 import static java.util.Optional.ofNullable;
 
-public abstract class RealEnvironmentAT extends BaseAT {
+public abstract class RealEnvironmentAT {
 
     protected final Optional<String> oauthToken;
 
