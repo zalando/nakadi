@@ -486,7 +486,7 @@ paths:
           schema:
             type: object
             properties:
-              items:
+              data:
                 $ref: '#/definitions/EventTypeSchema'
         '401':
           description: Client is not authenticated
