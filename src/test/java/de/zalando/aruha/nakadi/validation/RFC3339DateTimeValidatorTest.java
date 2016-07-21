@@ -16,6 +16,7 @@ public class RFC3339DateTimeValidatorTest {
                 "1996-10-15T16:39:57+07:00:30", // invalid seconds in the offset
                 "1996-10-15T16:39:57+0700", // invalid missing colon in the offset
                 "1996-10-15T16:39:57 07:00", // invalid missing signal in the offset
+                "1996-10-15T16:39:57.1234567890Z", // invalid 10 digits milliseconds
                 "1996-10-45T16:39:57Z", // check for lenience (there are no months with 45 days)
                 "1996-10-45 16:39:57Z", // requires "T" as separator
                 "1996-10-45t16:39:57Z", // the RFC requires uppercase T, sorry
@@ -28,6 +29,7 @@ public class RFC3339DateTimeValidatorTest {
                 "1996-10-15T16:39:57-07:00", // just a very simple example
                 "1996-10-15T16:39:57.123+07:00", // simple example with milliseconds
                 "1996-10-15T16:39:57.1234Z", // tricky 4 milliseconds digits (yes it's valid, sorry)
+                "1996-10-15T16:39:57.123456789Z", // valid up to 9 milliseconds digits
                 "1996-10-15T16:39:57.12Z", // yes, it' valid, just 2 milliseconds digits
         };
 
