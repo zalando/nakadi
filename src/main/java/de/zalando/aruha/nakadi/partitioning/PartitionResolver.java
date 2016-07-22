@@ -7,6 +7,8 @@ import de.zalando.aruha.nakadi.exceptions.NoSuchPartitionStrategyException;
 import de.zalando.aruha.nakadi.exceptions.PartitioningException;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,7 @@ import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.HASH_STRATE
 import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
 import static de.zalando.aruha.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STRATEGY;
 
+@Component
 public class PartitionResolver {
 
     private static final Map<String, PartitionStrategy> PARTITION_STRATEGIES = ImmutableMap.of(
@@ -30,6 +33,7 @@ public class PartitionResolver {
 
     private final TopicRepository topicRepository;
 
+    @Autowired
     public PartitionResolver(final TopicRepository topicRepository) {
         this.topicRepository = topicRepository;
     }

@@ -24,8 +24,11 @@ spring:
     validationQuery: SELECT 1
 nakadi:
   topic:
+    min:
+      retentionMs: 86400000 # 1 days
     max:
       partitionNum: 8
+      retentionMs: 345600000 # 4 days
     default:
       partitionNum: 1
       replicaFactor: 1

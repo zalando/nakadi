@@ -25,6 +25,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 
 import static de.zalando.aruha.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
+@Component
 public class EventTypeService {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeService.class);
@@ -69,7 +71,7 @@ public class EventTypeService {
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(eventType.getTopic(), eventType.getDefaultStatistic());
+            topicRepository.createTopic(eventType);
             return Result.ok();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {

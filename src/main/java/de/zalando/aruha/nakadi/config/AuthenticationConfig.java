@@ -11,21 +11,16 @@ import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.zalando.stups.oauth2.spring.server.TokenInfoResourceServerTokenServices;
 
-import static de.zalando.aruha.nakadi.config.NakadiConfig.METRIC_REGISTRY;
-
 @Configuration
 @Profile("!test")
 public class AuthenticationConfig {
 
     @Bean
-    public ResourceServerTokenServices zalandoResourceTokenServices() {
+    public ResourceServerTokenServices zalandoResourceTokenServices(final SecuritySettings settings,
+                                                                    final MetricRegistry metricRegistry)
+    {
         return new MeasuringTokenInfoResourceServerTokenServices(
-                securitySettings().getTokenInfoUrl(), securitySettings().getClientId(), METRIC_REGISTRY);
-    }
-
-    @Bean
-    public SecuritySettings securitySettings() {
-        return new SecuritySettings();
+                settings.getTokenInfoUrl(), settings.getClientId(), metricRegistry);
     }
 
     public static class MeasuringTokenInfoResourceServerTokenServices extends TokenInfoResourceServerTokenServices {

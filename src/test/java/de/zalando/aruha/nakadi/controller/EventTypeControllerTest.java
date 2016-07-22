@@ -8,6 +8,7 @@ import com.sun.security.auth.UserPrincipal;
 import de.zalando.aruha.nakadi.config.JsonConfig;
 import de.zalando.aruha.nakadi.config.SecuritySettings;
 import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeOptions;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.enrichment.Enrichment;
 import de.zalando.aruha.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -25,6 +26,8 @@ import de.zalando.aruha.nakadi.service.EventTypeService;
 import de.zalando.aruha.nakadi.util.FeatureToggleService;
 import de.zalando.aruha.nakadi.util.UUIDGenerator;
 import de.zalando.aruha.nakadi.utils.TestUtils;
+import de.zalando.aruha.nakadi.validation.EventTypeOptionsValidator;
+import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,9 +56,7 @@ import static de.zalando.aruha.nakadi.utils.TestUtils.invalidProblem;
 import static de.zalando.aruha.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -73,6 +74,8 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventTypeControllerTest {
 
+    private static final int TOPIC_RETENTION_MIN_MS = 100;
+    private static final int TOPIC_RETENTION_MAX_MS = 200;
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
@@ -91,8 +94,10 @@ public class EventTypeControllerTest {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid, featureToggleService);
 
+        final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
-                featureToggleService);
+                featureToggleService,
+                eventTypeOptionsValidator);
 
         Mockito.doReturn(randomUUID).when(uuid).randomUUID();
 
@@ -262,8 +267,7 @@ public class EventTypeControllerTest {
         final EventType et = buildDefaultEventType();
         Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository).createTopic(
-            anyString(), anyObject());
+        Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository).createTopic(any());
 
         postEventType(et).andExpect(status().isConflict()).andExpect(content().contentType("application/problem+json"))
                          .andExpect(content().string(matchesProblem(expectedProblem)));
@@ -400,7 +404,7 @@ public class EventTypeControllerTest {
         statistics.setWriteParallelism(2);
         defaultEventType.setDefaultStatistic(statistics);
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
-        verify(topicRepository, times(1)).createTopic(anyString(), eq(statistics));
+        verify(topicRepository, times(1)).createTopic(any(EventType.class));
     }
 
     @Test
@@ -408,12 +412,12 @@ public class EventTypeControllerTest {
         final EventType et = buildDefaultEventType();
 
         Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
-        Mockito.doNothing().when(topicRepository).createTopic(anyString(), any(EventTypeStatistics.class));
+        Mockito.doNothing().when(topicRepository).createTopic(any());
 
         postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic(eq(randomUUID.toString()), any(EventTypeStatistics.class));
+        verify(topicRepository, times(1)).createTopic(any(EventType.class));
     }
 
     @Test
@@ -422,7 +426,7 @@ public class EventTypeControllerTest {
         final EventType et = buildDefaultEventType();
         Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(anyString(), anyObject());
+        Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(any(EventType.class));
 
         Mockito.doNothing().when(eventTypeRepository).removeEventType(et.getName());
 
@@ -433,7 +437,7 @@ public class EventTypeControllerTest {
                                  matchesProblem(expectedProblem)));
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
-        verify(topicRepository, times(1)).createTopic(eq(randomUUID.toString()), any(EventTypeStatistics.class));
+        verify(topicRepository, times(1)).createTopic(any(EventType.class));
         verify(eventTypeRepository, times(1)).removeEventType(randomUUID.toString());
     }
 
@@ -597,6 +601,37 @@ public class EventTypeControllerTest {
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void whenOptionsRetentionTimeExist() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+        eventTypeOptions.setRetentionTime(150L);
+        defaultEventType.setOptions(eventTypeOptions);
+        postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
+    }
+
+    @Test
+    public void whenOptionsRetentionTimeBiggerThanMax() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+        eventTypeOptions.setRetentionTime(201L);
+        defaultEventType.setOptions(eventTypeOptions);
+        postEventType(defaultEventType)
+                .andExpect(status().is4xxClientError())
+                .andExpect(content().string(new StringContains("Field \\\"options.retention_time\\\" can not be more than 200")));
+    }
+
+    @Test
+    public void whenOptionsRetentionTimeSmallerThanMin() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+        eventTypeOptions.setRetentionTime(99L);
+        defaultEventType.setOptions(eventTypeOptions);
+        postEventType(defaultEventType)
+                .andExpect(status().is4xxClientError())
+                .andExpect(content().string(new StringContains("Field \\\"options.retention_time\\\" can not be less than 100")));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {

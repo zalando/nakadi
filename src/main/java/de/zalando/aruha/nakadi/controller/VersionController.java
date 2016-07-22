@@ -1,18 +1,23 @@
 package de.zalando.aruha.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.ws.rs.core.MediaType;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import javax.ws.rs.core.MediaType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.RequestMapping;
+
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
-import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(value = "/version", produces = MediaType.APPLICATION_JSON)
+@Profile("!test")
 public class VersionController {
 
     private static final String SCM_SOURCE_FILE = "/scm-source.json";
@@ -72,6 +77,7 @@ public class VersionController {
     private final VersionInfo versionInfo;
     private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
 
+    @Autowired
     public VersionController(final ObjectMapper objectMapper) {
         this.versionInfo = new VersionInfo(loadScmSource(objectMapper));
     }

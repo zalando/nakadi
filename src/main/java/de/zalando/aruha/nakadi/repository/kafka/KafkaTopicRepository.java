@@ -7,6 +7,8 @@ import de.zalando.aruha.nakadi.domain.BatchItem;
 import de.zalando.aruha.nakadi.domain.Cursor;
 import de.zalando.aruha.nakadi.domain.EventPublishingStatus;
 import de.zalando.aruha.nakadi.domain.EventPublishingStep;
+import de.zalando.aruha.nakadi.domain.EventType;
+import de.zalando.aruha.nakadi.domain.EventTypeOptions;
 import de.zalando.aruha.nakadi.domain.EventTypeStatistics;
 import de.zalando.aruha.nakadi.domain.SubscriptionBase;
 import de.zalando.aruha.nakadi.domain.Topic;
@@ -21,9 +23,6 @@ import de.zalando.aruha.nakadi.exceptions.TopicDeletionException;
 import de.zalando.aruha.nakadi.repository.EventConsumer;
 import de.zalando.aruha.nakadi.repository.TopicRepository;
 import de.zalando.aruha.nakadi.repository.zookeeper.ZooKeeperHolder;
-
-import java.util.Arrays;
-import java.util.stream.Stream;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
@@ -36,13 +35,19 @@ import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static de.zalando.aruha.nakadi.domain.CursorError.EMPTY_PARTITION;
 import static de.zalando.aruha.nakadi.domain.CursorError.INVALID_FORMAT;
@@ -59,6 +64,8 @@ import static de.zalando.aruha.nakadi.repository.kafka.KafkaCursor.toNakadiParti
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 
+@Component
+@Profile("!test")
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
@@ -69,6 +76,7 @@ public class KafkaTopicRepository implements TopicRepository {
     private final KafkaRepositorySettings settings;
     private final KafkaPartitionsCalculator partitionsCalculator;
 
+    @Autowired
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
                                 final KafkaRepositorySettings settings, final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;
@@ -93,12 +101,18 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void createTopic(final String topic, final EventTypeStatistics statistics) throws TopicCreationException, DuplicatedEventTypeNameException {
-        createTopic(topic,
-                calculateKafkaPartitionCount(statistics),
+    public void createTopic(final EventType eventType) throws TopicCreationException, DuplicatedEventTypeNameException {
+        createTopic(eventType.getTopic(),
+                calculateKafkaPartitionCount(eventType.getDefaultStatistic()),
                 settings.getDefaultTopicReplicaFactor(),
-                settings.getDefaultTopicRetentionMs(),
+                getTopicRetentionMs(eventType),
                 settings.getDefaultTopicRotationMs());
+    }
+
+    private long getTopicRetentionMs(final EventType eventType) {
+        return Optional.ofNullable(eventType.getOptions())
+                .map(EventTypeOptions::getRetentionTime)
+                .orElse(settings.getDefaultTopicRetentionMs());
     }
 
     private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
