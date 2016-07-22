@@ -1031,7 +1031,7 @@ definitions:
   EventTypeStatistics:
     type: object
     description: |
-      Operational statistics for an EventType. This data SHOULD be provided by users on Event Type
+      Operational statistics for an EventType. This data MUST be provided by users on Event Type
       creation.
 
     properties:
