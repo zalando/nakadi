@@ -57,7 +57,12 @@ import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
 import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.*;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
 
 @Component
 @Profile("!test")

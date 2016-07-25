@@ -1,17 +1,17 @@
 package org.zalando.nakadi.partitioning;
 
+import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.ExceptionWrapper;
 import org.zalando.nakadi.exceptions.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.validation.EventValidation;
-import org.json.JSONObject;
 
 import java.util.List;
 
 import static java.lang.Math.abs;
-import static org.zalando.nakadi.exceptions.ExceptionWrapper.*;
+import static org.zalando.nakadi.exceptions.ExceptionWrapper.wrapFunction;
 
 public class HashPartitionStrategy implements PartitionStrategy {
 

@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
-import static org.zalando.nakadi.metrics.MetricUtils.*;
+import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 
 public class EventTypeMetrics {
 

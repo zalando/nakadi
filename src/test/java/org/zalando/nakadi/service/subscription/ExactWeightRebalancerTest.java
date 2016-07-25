@@ -4,6 +4,7 @@ import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Partition.PartitionKey;
 import org.zalando.nakadi.service.subscription.model.Session;
 
 import java.util.stream.Stream;
@@ -13,8 +14,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.zalando.nakadi.service.subscription.model.Partition.*;
-import static org.zalando.nakadi.service.subscription.model.Partition.State.*;
+import static org.zalando.nakadi.service.subscription.model.Partition.State.ASSIGNED;
+import static org.zalando.nakadi.service.subscription.model.Partition.State.REASSIGNING;
 
 public class ExactWeightRebalancerTest {
 

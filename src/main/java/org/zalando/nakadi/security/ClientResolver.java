@@ -14,7 +14,7 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import java.security.Principal;
 import java.util.Optional;
 
-import static org.zalando.nakadi.config.SecuritySettings.AuthMode.*;
+import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 
 @Component
