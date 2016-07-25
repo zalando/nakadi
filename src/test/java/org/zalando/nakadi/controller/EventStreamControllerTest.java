@@ -5,6 +5,17 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import org.mockito.exceptions.base.MockitoException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
@@ -22,18 +33,6 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.utils.JsonTestHelper;
-import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
-import org.mockito.exceptions.base.MockitoException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.problem.Problem;
 
 import javax.servlet.http.HttpServletRequest;
@@ -66,6 +65,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 public class EventStreamControllerTest {
@@ -338,7 +338,7 @@ public class EventStreamControllerTest {
 
 
         final LinkedList<Thread> clients = new LinkedList<>();
-        final Counter counter = metricRegistry.counter(MetricUtils.metricNameFor(TEST_EVENT_TYPE_NAME, EventStreamController.CONSUMERS_COUNT_METRIC_NAME));
+        final Counter counter = metricRegistry.counter(metricNameFor(TEST_EVENT_TYPE_NAME, EventStreamController.CONSUMERS_COUNT_METRIC_NAME));
 
         // create clients...
         for (int i = 0; i < 3; i++) {

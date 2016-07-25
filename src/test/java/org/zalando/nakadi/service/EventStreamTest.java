@@ -1,11 +1,10 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableMap;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -15,11 +14,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -28,6 +27,8 @@ import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.service.EventStream.BATCH_SEPARATOR;
+import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventStreamTest {
@@ -149,7 +150,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(emptyConsumer(), out, config);
         eventStream.streamEvents(new AtomicBoolean(true));
 
-        final String[] batches = out.toString().split(EventStream.BATCH_SEPARATOR);
+        final String[] batches = out.toString().split(BATCH_SEPARATOR);
         Arrays
                 .stream(batches)
                 .forEach(batch ->
@@ -172,7 +173,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(nCountDummyConsumerForPartition(12, "0"), out, config);
         eventStream.streamEvents(new AtomicBoolean(true));
 
-        final String[] batches = out.toString().split(EventStream.BATCH_SEPARATOR);
+        final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
         assertThat(batches[0], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(5, DUMMY)))));
@@ -203,7 +204,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(predefinedConsumer(events), out, config);
         eventStream.streamEvents(new AtomicBoolean(true));
 
-        final String[] batches = out.toString().split(EventStream.BATCH_SEPARATOR);
+        final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(eventNum));
         IntStream
@@ -244,7 +245,7 @@ public class EventStreamTest {
         final EventStream eventStream = new EventStream(predefinedConsumer(events), out, config);
         eventStream.streamEvents(new AtomicBoolean(true));
 
-        final String[] batches = out.toString().split(EventStream.BATCH_SEPARATOR);
+        final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
         assertThat(batches[0], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(2, DUMMY)))));

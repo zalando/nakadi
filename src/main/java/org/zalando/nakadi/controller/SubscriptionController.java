@@ -1,17 +1,6 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.collect.Lists;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +13,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.problem.ValidationProblem;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.util.FeatureToggleService;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -31,6 +31,7 @@ import java.util.List;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.ResponseEntity.status;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -60,7 +61,7 @@ public class SubscriptionController {
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors,
                                                      final NativeWebRequest request) {
-        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.HIGH_LEVEL_API)) {
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
         if (errors.hasErrors()) {

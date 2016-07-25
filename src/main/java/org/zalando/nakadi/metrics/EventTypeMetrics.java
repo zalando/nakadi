@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+import static org.zalando.nakadi.metrics.MetricUtils.*;
+
 public class EventTypeMetrics {
 
     private final String eventTypeName;
@@ -25,10 +27,10 @@ public class EventTypeMetrics {
     public EventTypeMetrics(final String eventTypeName, final MetricRegistry metricRegistry) {
         this.eventTypeName = eventTypeName;
         this.metricRegistry = metricRegistry;
-        eventCountMeter = metricRegistry.meter(MetricUtils.metricNameFor(eventTypeName, "publishing.events"));
-        eventsPerBatchHistogram = metricRegistry.histogram(MetricUtils.metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
-        averageEventSizeInBytesHistogram = metricRegistry.histogram(MetricUtils.metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
-        publishingTimer = metricRegistry.timer(MetricUtils.metricNameFor(eventTypeName, "publishing"));
+        eventCountMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.events"));
+        eventsPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
+        averageEventSizeInBytesHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
+        publishingTimer = metricRegistry.timer(metricNameFor(eventTypeName, "publishing"));
     }
 
     public void reportSizing(final int eventsPerBatch, final int totalEventSize) {
@@ -39,7 +41,7 @@ public class EventTypeMetrics {
 
     public void incrementResponseCount(final int code) {
         statusCodeMeter.computeIfAbsent(code,
-                key -> metricRegistry.meter(MetricUtils.metricNameFor(eventTypeName, "publishing." + code)))
+                key -> metricRegistry.meter(metricNameFor(eventTypeName, "publishing." + code)))
                 .mark();
     }
 

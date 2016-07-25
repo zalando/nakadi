@@ -11,6 +11,7 @@ import org.json.JSONObject;
 import java.util.List;
 
 import static java.lang.Math.abs;
+import static org.zalando.nakadi.exceptions.ExceptionWrapper.*;
 
 public class HashPartitionStrategy implements PartitionStrategy {
 
@@ -32,7 +33,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
                     // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
                     // a string first and then use hashCode()
                     .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? DATA_PATH_PREFIX + pkf : pkf)
-                    .map(ExceptionWrapper.wrapFunction(okf -> traversableJsonEvent.get(okf).toString().hashCode()))
+                    .map(wrapFunction(okf -> traversableJsonEvent.get(okf).toString().hashCode()))
                     .mapToInt(hc -> hc)
                     .sum();
 

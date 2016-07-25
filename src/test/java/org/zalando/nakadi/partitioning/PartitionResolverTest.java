@@ -1,28 +1,28 @@
 package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableList;
+import org.json.JSONObject;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.json.JSONObject;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.zalando.nakadi.domain.EventCategory;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.Is.is;
+import static org.mockito.Matchers.any;
+import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STRATEGY;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.loadEventType;
 import static org.zalando.nakadi.utils.TestUtils.readFile;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.core.Is.is;
-import static org.mockito.Matchers.any;
 
 public class PartitionResolverTest {
 
@@ -93,7 +93,7 @@ public class PartitionResolverTest {
     @Test(expected = InvalidEventTypeException.class)
     public void whenValidateWithUserDefinedPartitionStrategyForUndefinedCategoryThenExceptionThrown() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setCategory(EventCategory.UNDEFINED);
+        eventType.setCategory(UNDEFINED);
         eventType.setPartitionStrategy(USER_DEFINED_STRATEGY);
 
         partitionResolver.validate(eventType);

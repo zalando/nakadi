@@ -13,6 +13,8 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.*;
+
 public class KafkaTestHelper {
 
     private final String kafkaUrl;
@@ -63,8 +65,8 @@ public class KafkaTestHelper {
                         return new Cursor(cursor.getPartition(), Cursor.BEFORE_OLDEST_OFFSET);
                     }
                     else {
-                        final long lastEventOffset = KafkaCursor.toKafkaOffset(cursor.getOffset()) - 1;
-                        return new Cursor(cursor.getPartition(), KafkaCursor.toNakadiOffset(lastEventOffset));
+                        final long lastEventOffset = toKafkaOffset(cursor.getOffset()) - 1;
+                        return new Cursor(cursor.getPartition(), toNakadiOffset(lastEventOffset));
                     }
                 })
                 .collect(Collectors.toList());

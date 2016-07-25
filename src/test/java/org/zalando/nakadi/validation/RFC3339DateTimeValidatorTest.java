@@ -1,9 +1,10 @@
 package org.zalando.nakadi.validation;
 
 import org.junit.Test;
-import org.zalando.nakadi.utils.IsOptional;
 
 import static org.junit.Assert.assertThat;
+import static org.zalando.nakadi.utils.IsOptional.isAbsent;
+import static org.zalando.nakadi.utils.IsOptional.isPresent;
 
 public class RFC3339DateTimeValidatorTest {
     private final RFC3339DateTimeValidator validator = new RFC3339DateTimeValidator();
@@ -33,11 +34,11 @@ public class RFC3339DateTimeValidatorTest {
         };
 
         for (final String invalid : invalidDateTimes) {
-            assertThat(invalid, validator.validate(invalid), IsOptional.isPresent());
+            assertThat(invalid, validator.validate(invalid), isPresent());
         }
 
         for (final String valid : validDateTimes) {
-            assertThat(valid, validator.validate(valid), IsOptional.isAbsent());
+            assertThat(valid, validator.validate(valid), isAbsent());
         }
     }
 }

@@ -4,6 +4,17 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -16,18 +27,6 @@ import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
@@ -46,6 +45,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
+import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 
 @RestController
 public class EventStreamController {
@@ -91,7 +91,7 @@ public class EventStreamController {
             EventConsumer eventConsumer = null;
 
             try {
-                consumerCounter = metricRegistry.counter(MetricUtils.metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
+                consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
                 consumerCounter.inc();
 
                 @SuppressWarnings("UnnecessaryLocalVariable")

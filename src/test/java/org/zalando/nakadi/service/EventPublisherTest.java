@@ -1,5 +1,9 @@
 package org.zalando.nakadi.service;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
@@ -12,13 +16,8 @@ import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +33,10 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.createBatch;
+import static org.zalando.nakadi.utils.TestUtils.randomString;
 
 public class EventPublisherTest {
 
@@ -45,7 +48,7 @@ public class EventPublisherTest {
 
     @Test
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(1);
         final JSONObject event = batch.getJSONObject(0);
 
@@ -59,8 +62,8 @@ public class EventPublisherTest {
 
     @Test
     public void whenEventHasEidThenSetItInTheResponse() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
-        final JSONObject event = TestUtils.buildBusinessEvent();
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
         final JSONArray batch = new JSONArray(Arrays.asList(event));
 
         mockSuccessfulValidation(eventType, event);
@@ -73,7 +76,7 @@ public class EventPublisherTest {
 
     @Test
     public void whenValidationFailsThenResultIsAborted() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(1);
         final JSONObject event = batch.getJSONObject(0);
 
@@ -82,14 +85,14 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName());
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(0)).enrich(TestUtils.createBatch(event), eventType);
+        verify(enrichment, times(0)).enrich(createBatch(event), eventType);
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
         verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
     @Test
     public void whenValidationFailsThenSubsequentItemsAreAborted() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(2);
         final JSONObject event = batch.getJSONObject(0);
 
@@ -114,7 +117,7 @@ public class EventPublisherTest {
 
     @Test
     public void whenPartitionFailsThenResultIsAborted() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(1);
         final JSONObject event = batch.getJSONObject(0);
 
@@ -128,7 +131,7 @@ public class EventPublisherTest {
 
     @Test
     public void whenPartitionFailsThenSubsequentItemsAreAborted() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(2);
         final JSONObject event = batch.getJSONObject(0);
 
@@ -155,7 +158,7 @@ public class EventPublisherTest {
 
     @Test
     public void whenPublishingFailsThenResultIsFailed() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(1);
 
         mockSuccessfulValidation(eventType);
@@ -169,7 +172,7 @@ public class EventPublisherTest {
 
     @Test
     public void whenEnrichmentFailsThenResultIsAborted() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(1);
         final JSONObject event = batch.getJSONObject(0);
 
@@ -187,7 +190,7 @@ public class EventPublisherTest {
 
     @Test
     public void whenEnrichmentFailsThenSubsequentItemsAreAborted() throws Exception {
-        final EventType eventType = TestUtils.buildDefaultEventType();
+        final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(2);
 
         mockSuccessfulValidation(eventType);
@@ -293,7 +296,7 @@ public class EventPublisherTest {
 
         for (int i = 0; i < numberOfEvents; i++) {
             final JSONObject event = new JSONObject();
-            event.put("foo", TestUtils.randomString());
+            event.put("foo", randomString());
             events.add(event);
         }
 

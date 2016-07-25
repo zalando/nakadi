@@ -1,7 +1,5 @@
 package org.zalando.nakadi.security;
 
-import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.oauth2.common.exceptions.UnauthorizedUserException;
@@ -10,9 +8,14 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.security.Principal;
 import java.util.Optional;
+
+import static org.zalando.nakadi.config.SecuritySettings.AuthMode.*;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 
 @Component
 public class ClientResolver implements HandlerMethodArgumentResolver {
@@ -37,9 +40,9 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
     {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
 
-        if (!featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS)
+        if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
                 || clientId.filter(settings.getAdminClientId()::equals).isPresent()
-                || settings.getAuthMode() == SecuritySettings.AuthMode.OFF)
+                || settings.getAuthMode() == OFF)
         {
             return Client.PERMIT_ALL;
         }

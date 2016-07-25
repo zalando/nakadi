@@ -1,11 +1,10 @@
 package org.zalando.nakadi.partitioning;
 
-import org.zalando.nakadi.domain.EventType;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
+import org.zalando.nakadi.domain.EventType;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -18,7 +17,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.TreeSet;
 
-import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
 import static java.lang.Math.pow;
@@ -32,6 +30,8 @@ import static org.hamcrest.Matchers.isIn;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.zalando.nakadi.exceptions.ExceptionWrapper.wrapConsumer;
+import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 
 public class HashPartitionStrategyTest {
 
@@ -205,7 +205,7 @@ public class HashPartitionStrategyTest {
 
     private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions, final List<JSONObject> events) {
         events.stream()
-                .forEach(ExceptionWrapper.wrapConsumer(event -> {
+                .forEach(wrapConsumer(event -> {
                     final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);

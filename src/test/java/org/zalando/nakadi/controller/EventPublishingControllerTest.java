@@ -2,16 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.BatchItemResponse;
-import org.zalando.nakadi.domain.EventPublishResult;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
-import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import org.json.JSONArray;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -20,8 +10,17 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.zalando.nakadi.domain.EventPublishingStatus;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.BatchItemResponse;
+import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStep;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
+import org.zalando.nakadi.metrics.EventTypeMetrics;
+import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.utils.JsonTestHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +36,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.domain.EventPublishingStatus.ABORTED;
+import static org.zalando.nakadi.domain.EventPublishingStatus.FAILED;
+import static org.zalando.nakadi.domain.EventPublishingStatus.SUBMITTED;
 
 public class EventPublishingControllerTest {
 
@@ -67,7 +69,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenResultIsSubmittedThen200() throws Exception {
-        final EventPublishResult result = new EventPublishResult(EventPublishingStatus.SUBMITTED, null, null);
+        final EventPublishResult result = new EventPublishResult(SUBMITTED, null, null);
 
         Mockito
                 .doReturn(result)
@@ -88,7 +90,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenResultIsAbortedThen422() throws Exception {
-        final EventPublishResult result = new EventPublishResult(EventPublishingStatus.ABORTED, EventPublishingStep.PARTITIONING, responses());
+        final EventPublishResult result = new EventPublishResult(ABORTED, EventPublishingStep.PARTITIONING, responses());
 
         Mockito
                 .doReturn(result)
@@ -102,7 +104,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenResultIsAbortedThen207() throws Exception {
-        final EventPublishResult result = new EventPublishResult(EventPublishingStatus.FAILED, EventPublishingStep.PUBLISHING, responses());
+        final EventPublishResult result = new EventPublishResult(FAILED, EventPublishingStep.PUBLISHING, responses());
 
         Mockito
                 .doReturn(result)
@@ -128,7 +130,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void publishedEventsAreReportedPerEventType() throws Exception {
-        final EventPublishResult success = new EventPublishResult(EventPublishingStatus.SUBMITTED, null, null);
+        final EventPublishResult success = new EventPublishResult(SUBMITTED, null, null);
         Mockito
                 .doReturn(success)
                 .doReturn(success)
@@ -148,7 +150,7 @@ public class EventPublishingControllerTest {
 
     private List<BatchItemResponse> responses() {
         final BatchItemResponse response = new BatchItemResponse();
-        response.setPublishingStatus(EventPublishingStatus.ABORTED);
+        response.setPublishingStatus(ABORTED);
         response.setStep(EventPublishingStep.VALIDATING);
 
         final List<BatchItemResponse> responses = new ArrayList<>();

@@ -49,6 +49,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.*;
 
 public class KafkaTopicRepositoryTest {
 
@@ -296,8 +297,8 @@ public class KafkaTopicRepositoryTest {
 
         final List<KafkaCursor> kafkaCursors = captor.getValue();
         assertThat(kafkaCursors, equalTo(ImmutableList.of(
-                KafkaCursor.kafkaCursor(0, 41),
-                KafkaCursor.kafkaCursor(1, 100)
+                kafkaCursor(0, 41),
+                kafkaCursor(1, 100)
         )));
     }
 

@@ -1,8 +1,6 @@
 package org.zalando.nakadi.webservice;
 
 import com.jayway.restassured.response.Response;
-import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
@@ -10,7 +8,8 @@ import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
-import org.zalando.nakadi.webservice.utils.JsonTestHelper;
+import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 
 import java.io.IOException;
 import java.util.List;
@@ -24,6 +23,8 @@ import static com.jayway.restassured.RestAssured.when;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.zalando.nakadi.webservice.utils.JsonTestHelper.asMap;
+import static org.zalando.nakadi.webservice.utils.JsonTestHelper.asMapsList;
 
 public class PartitionsControllerAT extends BaseAT {
 
@@ -45,7 +46,7 @@ public class PartitionsControllerAT extends BaseAT {
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
 
-        final List<Map<String, String>> partitionsList = JsonTestHelper.asMapsList(response.print());
+        final List<Map<String, String>> partitionsList = asMapsList(response.print());
         partitionsList.forEach(this::validatePartitionStructure);
 
         final Set<String> partitions = partitionsList
@@ -75,10 +76,10 @@ public class PartitionsControllerAT extends BaseAT {
             InterruptedException, IOException {
         // ACT //
         final String url = String.format("/event-types/%s/partitions", EVENT_TYPE_NAME);
-        final List<Map<String, String>> partitionsInfoBefore = JsonTestHelper.asMapsList(get(url).print());
+        final List<Map<String, String>> partitionsInfoBefore = asMapsList(get(url).print());
 
         writeMessageToPartition(0);
-        final List<Map<String, String>> partitionsInfoAfter = JsonTestHelper.asMapsList(get(url).print());
+        final List<Map<String, String>> partitionsInfoAfter = asMapsList(get(url).print());
 
         // ASSERT //
         final Map<String, String> partitionInfoBefore = getPartitionMapByPartition(partitionsInfoBefore, "0");
@@ -93,7 +94,7 @@ public class PartitionsControllerAT extends BaseAT {
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
-        validatePartitionStructure(JsonTestHelper.asMap(response.print()));
+        validatePartitionStructure(asMap(response.print()));
     }
 
     @Test
@@ -121,10 +122,10 @@ public class PartitionsControllerAT extends BaseAT {
             InterruptedException, IOException {
         // ACT //
         final String url = String.format("/event-types/%s/partitions/0", EVENT_TYPE_NAME);
-        final Map<String, String> partitionInfoBefore = JsonTestHelper.asMap(get(url).print());
+        final Map<String, String> partitionInfoBefore = asMap(get(url).print());
 
         writeMessageToPartition(0);
-        final Map<String, String> partitionInfoAfter = JsonTestHelper.asMap(get(url).print());
+        final Map<String, String> partitionInfoAfter = asMap(get(url).print());
 
         // ASSERT //
         validateOffsetIncreasedBy(partitionInfoBefore, partitionInfoAfter, 1);

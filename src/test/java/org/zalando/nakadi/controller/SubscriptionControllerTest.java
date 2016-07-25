@@ -2,15 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
@@ -20,7 +11,15 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.problem.Problem;
 
 import java.util.Set;
@@ -38,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
@@ -87,14 +87,14 @@ public class SubscriptionControllerTest {
     @Test
     public void whenOwningApplicationIsNullThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = createSubscription(null, ImmutableSet.of("myET"));
-        final Problem expectedProblem = TestUtils.invalidProblem("owning_application", "may not be null");
+        final Problem expectedProblem = invalidProblem("owning_application", "may not be null");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
     public void whenEventTypesIsEmptyThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of());
-        final Problem expectedProblem = TestUtils.invalidProblem("event_types", "size must be between 1 and 1");
+        final Problem expectedProblem = invalidProblem("event_types", "size must be between 1 and 1");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
@@ -102,14 +102,14 @@ public class SubscriptionControllerTest {
     // this test method will fail when we implement consuming from multiple event types
     public void whenMoreThanOneEventTypeThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET", "secondET"));
-        final Problem expectedProblem = TestUtils.invalidProblem("event_types", "size must be between 1 and 1");
+        final Problem expectedProblem = invalidProblem("event_types", "size must be between 1 and 1");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
     public void whenEventTypesIsNullThenUnprocessableEntity() throws Exception {
         final String subscription = "{\"owning_application\":\"app\",\"consumer_group\":\"myGroup\"}";
-        final Problem expectedProblem = TestUtils.invalidProblem("event_types", "may not be null");
+        final Problem expectedProblem = invalidProblem("event_types", "may not be null");
         checkForProblem(postSubscriptionAsJson(subscription), expectedProblem);
     }
 

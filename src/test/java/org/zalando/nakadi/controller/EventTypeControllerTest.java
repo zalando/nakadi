@@ -17,7 +17,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -63,6 +62,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -239,7 +239,7 @@ public class EventTypeControllerTest {
         final EventType eventType = buildDefaultEventType();
         eventType.getSchema().setSchema(
             "{\"type\": \"object\", \"properties\": {\"metadata\": {\"type\": \"object\"} }}");
-        eventType.setCategory(EventCategory.BUSINESS);
+        eventType.setCategory(BUSINESS);
 
         final Problem expectedProblem = new InvalidEventTypeException("\"metadata\" property is reserved").asProblem();
 
