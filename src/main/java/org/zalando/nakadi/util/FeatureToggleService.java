@@ -13,7 +13,9 @@ public interface FeatureToggleService {
         DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation"),
         DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion"),
         HIGH_LEVEL_API("high_level_api"),
-        CHECK_APPLICATION_LEVEL_PERMISSIONS("check_application_level_permissions");
+        CHECK_APPLICATION_LEVEL_PERMISSIONS("check_application_level_permissions"),
+        CHECK_PARTITIONS_KEYS("check_partitions_keys");
+
 
         private final String id;
 

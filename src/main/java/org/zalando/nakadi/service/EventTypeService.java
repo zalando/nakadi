@@ -1,5 +1,13 @@
 package org.zalando.nakadi.service;
 
+import org.everit.json.schema.SchemaException;
+import org.everit.json.schema.loader.SchemaLoader;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -16,19 +24,15 @@ import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
-import org.everit.json.schema.SchemaException;
-import org.everit.json.schema.loader.SchemaLoader;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
 public class EventTypeService {
@@ -40,17 +44,20 @@ public class EventTypeService {
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final UUIDGenerator uuidGenerator;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                             final PartitionResolver partitionResolver, final Enrichment enrichment,
-                            final UUIDGenerator uuidGenerator)
+                            final UUIDGenerator uuidGenerator,
+                            final FeatureToggleService featureToggleService)
     {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.uuidGenerator = uuidGenerator;
+        this.featureToggleService = featureToggleService;
     }
 
     public List<EventType> list() {
@@ -145,6 +152,7 @@ public class EventTypeService {
         final EventType existingEventType = eventTypeRepository.findByName(name);
 
         validateName(name, eventType);
+        validatePartitionKeys(eventType);
         validateSchemaChange(eventType, existingEventType);
         eventType.setDefaultStatistic(
                 validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
@@ -172,6 +180,25 @@ public class EventTypeService {
         }
     }
 
+    private void validatePartitionKeys(final EventType eventType) throws InvalidEventTypeException {
+        if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
+            return;
+        }
+        try {
+            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+
+            final List<String> absentFields = eventType.getPartitionKeyFields().stream()
+                    .filter(field -> !hasReservedField(eventType, schemaAsJson, field))
+                    .collect(Collectors.toList());
+            if (!absentFields.isEmpty()) {
+                throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
+            }
+        } catch (final JSONException e) {
+            throw new InvalidEventTypeException("schema must be a valid json");
+        } catch (final SchemaException e) {
+            throw new InvalidEventTypeException("schema must be a valid json-schema");
+        }
+    }
 
     private void validateSchema(final EventType eventType) throws InvalidEventTypeException {
         try {
@@ -180,6 +207,8 @@ public class EventTypeService {
             if (hasReservedField(eventType, schemaAsJson, "metadata")) {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
+
+            validatePartitionKeys(eventType);
 
             SchemaLoader.load(schemaAsJson);
         } catch (final JSONException e) {

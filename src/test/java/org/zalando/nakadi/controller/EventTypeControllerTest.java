@@ -44,6 +44,7 @@ import org.zalando.problem.ThrowableProblem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -88,7 +89,7 @@ public class EventTypeControllerTest {
     public void init() throws Exception {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
-                partitionResolver, enrichment, uuid);
+                partitionResolver, enrichment, uuid, featureToggleService);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
@@ -103,6 +104,7 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
         doReturn(false).when(featureToggleService).isFeatureEnabled(any());
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_PARTITIONS_KEYS);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
@@ -340,9 +342,33 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenCreateEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
+
+        final EventType eventType = buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"),
+                Collections.singletonList("blabla"));
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void whenPUTEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
+
+        final EventType eventType = buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"),
+                Collections.singletonList("blabla"));
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+
+        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
-        final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
 
         Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
@@ -503,7 +529,7 @@ public class EventTypeControllerTest {
 
     @Test
     public void askingForANonExistingEventTypeResultsIn404() throws Exception {
-        final String eventTypeName = TestUtils.randomValidEventTypeName();
+        final String eventTypeName = randomValidEventTypeName();
         when(eventTypeRepository.findByName(anyString())).thenThrow(new NoSuchEventTypeException(
                 String.format("EventType '%s' does not exist.", eventTypeName)));
 
