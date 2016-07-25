@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service.subscription;
 
-import org.hamcrest.MatcherAssert;
-import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Partition.PartitionKey;
@@ -9,6 +7,7 @@ import org.zalando.nakadi.service.subscription.model.Session;
 
 import java.util.stream.Stream;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyArray;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -56,7 +55,7 @@ public class ExactWeightRebalancerTest {
         final Session[] sessions = new Session[]{
                 new Session("0", 1),
                 new Session("1", 1)};
-        MatcherAssert.assertThat(rebalancer.apply(sessions,
+        assertThat(rebalancer.apply(sessions,
                 new Partition[] {
                         new Partition(new PartitionKey("0", "0"), "0", null, ASSIGNED),
                         new Partition(new PartitionKey("0", "1"), "1", null, ASSIGNED),
@@ -65,7 +64,7 @@ public class ExactWeightRebalancerTest {
                 emptyArray());
 
         // 2. Data contains reassinging
-        MatcherAssert.assertThat(rebalancer.apply(sessions,
+        assertThat(rebalancer.apply(sessions,
                 new Partition[] {
                         new Partition(new PartitionKey("0", "0"), "0", null, ASSIGNED),
                         new Partition(new PartitionKey("0", "1"), "0", "1", REASSIGNING),
@@ -74,7 +73,7 @@ public class ExactWeightRebalancerTest {
                 emptyArray());
 
         // 3. Data contains only reassinging
-        MatcherAssert.assertThat(rebalancer.apply(sessions,
+        assertThat(rebalancer.apply(sessions,
                 new Partition[] {
                         new Partition(new PartitionKey("0", "0"), "0", "1", REASSIGNING),
                         new Partition(new PartitionKey("0", "1"), "0", "1", REASSIGNING),
@@ -119,7 +118,7 @@ public class ExactWeightRebalancerTest {
         assertTrue(changed.getKey().equals(new PartitionKey("1", "0")) || changed.getKey().equals(new PartitionKey("1", "1")));
         assertEquals("2", changed.getSession());
         assertEquals("3", changed.getNextSession());
-        Assert.assertEquals(REASSIGNING, changed.getState());
+        assertEquals(REASSIGNING, changed.getState());
     }
 
     @Test
@@ -133,9 +132,9 @@ public class ExactWeightRebalancerTest {
                         new Partition(new PartitionKey("1", "1"), "2", null, ASSIGNED)});
         assertEquals(1, changeset.length);
         final Partition changed = changeset[0];
-        Assert.assertEquals(new PartitionKey("1", "0"), changed.getKey());
+        assertEquals(new PartitionKey("1", "0"), changed.getKey());
         assertEquals("2", changed.getSession());
         assertEquals("3", changed.getNextSession());
-        Assert.assertEquals(REASSIGNING, changed.getState());
+        assertEquals(REASSIGNING, changed.getState());
     }
 }
