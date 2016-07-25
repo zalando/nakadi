@@ -13,7 +13,8 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.*;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 
 public class KafkaTestHelper {
 
