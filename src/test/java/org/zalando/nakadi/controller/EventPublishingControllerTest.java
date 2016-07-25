@@ -13,7 +13,6 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
-import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -39,6 +38,9 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.domain.EventPublishingStatus.ABORTED;
 import static org.zalando.nakadi.domain.EventPublishingStatus.FAILED;
 import static org.zalando.nakadi.domain.EventPublishingStatus.SUBMITTED;
+import static org.zalando.nakadi.domain.EventPublishingStep.PARTITIONING;
+import static org.zalando.nakadi.domain.EventPublishingStep.PUBLISHING;
+import static org.zalando.nakadi.domain.EventPublishingStep.VALIDATING;
 
 public class EventPublishingControllerTest {
 
@@ -90,7 +92,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenResultIsAbortedThen422() throws Exception {
-        final EventPublishResult result = new EventPublishResult(ABORTED, EventPublishingStep.PARTITIONING, responses());
+        final EventPublishResult result = new EventPublishResult(ABORTED, PARTITIONING, responses());
 
         Mockito
                 .doReturn(result)
@@ -104,7 +106,7 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenResultIsAbortedThen207() throws Exception {
-        final EventPublishResult result = new EventPublishResult(FAILED, EventPublishingStep.PUBLISHING, responses());
+        final EventPublishResult result = new EventPublishResult(FAILED, PUBLISHING, responses());
 
         Mockito
                 .doReturn(result)
@@ -151,7 +153,7 @@ public class EventPublishingControllerTest {
     private List<BatchItemResponse> responses() {
         final BatchItemResponse response = new BatchItemResponse();
         response.setPublishingStatus(ABORTED);
-        response.setStep(EventPublishingStep.VALIDATING);
+        response.setStep(VALIDATING);
 
         final List<BatchItemResponse> responses = new ArrayList<>();
         responses.add(response);
