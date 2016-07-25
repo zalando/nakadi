@@ -1,14 +1,13 @@
 package org.zalando.nakadi.service.subscription;
 
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.model.Session;
-import java.util.stream.Stream;
-
 import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 
-import static org.hamcrest.MatcherAssert.assertThat;
+import java.util.stream.Stream;
+
 import static org.hamcrest.Matchers.emptyArray;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;

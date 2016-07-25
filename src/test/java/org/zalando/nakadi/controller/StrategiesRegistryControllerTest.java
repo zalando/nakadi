@@ -5,13 +5,12 @@ import org.junit.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 
-import static org.zalando.nakadi.utils.TestUtils.mockMvcForController;
-import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.zalando.nakadi.utils.TestUtils.mockMvcForController;
 
 public class StrategiesRegistryControllerTest {
 

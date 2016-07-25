@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import static java.lang.String.valueOf;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
