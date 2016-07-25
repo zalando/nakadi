@@ -11,7 +11,7 @@ logging:
     org.springframework.web: INFO
     org.springframework.security.web.access.intercept: DEBUG
     org.apache.kafka: WARN
-    de.zalando.aruha.nakadi: DEBUG
+    org.zalando.nakadi: DEBUG
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
