@@ -9,11 +9,11 @@ apply plugin: "jacoco"
 apply plugin: 'findbugs'
 apply plugin: 'checkstyle'
 
-group 'de.zalando.aruha'
+group 'org.zalando'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-mainClassName = 'de.zalando.aruha.nakadi.Application'
+mainClassName = 'org.zalando.nakadi.Application'
 def dockerGroup = "aruha"
 def dockerApplicationName = "nakadi"
 
@@ -296,7 +296,7 @@ task development << {
 
 bootRun {
     addResources = false
-    main = 'de.zalando.aruha.nakadi.Application'
+    main = 'org.zalando.nakadi.Application'
     environment 'NAKADI_OAUTH2_MODE', 'OFF'
     environment 'NAKADI_FEATURETOGGLE_DEFAULT', 'true'
 }
