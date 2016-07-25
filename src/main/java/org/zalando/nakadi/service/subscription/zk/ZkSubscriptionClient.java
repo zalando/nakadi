@@ -21,7 +21,7 @@ public interface ZkSubscriptionClient {
      * Checks if path /nakadi/subscriptions/{subscriptionId} exists in zookeeper
      *
      * @return true if exists, false otherwise
-     * @throws Exception
+     * @throws Exception if zk is in incorrect state
      */
     boolean isSubscriptionCreated() throws Exception;
 
@@ -63,6 +63,7 @@ public interface ZkSubscriptionClient {
     /**
      * Updates specified partition in zk.
      *
+     * @param partition Partition to update
      */
     void updatePartitionConfiguration(Partition partition);
 
@@ -91,6 +92,7 @@ public interface ZkSubscriptionClient {
      * Each time list is changed calls {{@code listener}} subscription.
      *
      * @param listener method to call on any change of client list.
+     * @return subscription
      */
     ZKSubscription subscribeForSessionListChanges(Runnable listener);
 

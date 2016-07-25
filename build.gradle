@@ -8,8 +8,12 @@ apply plugin: 'spring-boot'
 apply plugin: "jacoco"
 apply plugin: 'findbugs'
 apply plugin: 'checkstyle'
+apply plugin: 'maven'
+apply plugin: 'signing'
 
 group 'org.zalando'
+version '1.0.0'
+
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -319,4 +323,58 @@ checkstyle {
 
 task checkstyle {
     dependsOn checkstyleMain, checkstyleTest, checkstyleAcceptanceTest
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+artifacts {
+    archives jar
+
+    archives javadocJar
+    archives sourcesJar
+}
+
+signing {
+    sign configurations.archives
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: sonatypeUsername, password: sonatypePassword)
+            }
+
+            pom.project {
+                name 'Nakadi'
+                packaging 'jar'
+                description 'A distributed event bus that implements a RESTful API abstraction instead of Kafka-like queues'
+                url 'https://github.com/zalando/nakadi'
+
+                scm {
+                    url 'scm:git@github.com:zalando/nakadi.git'
+                    connection 'scm:git@github.com:zalando/nakadi.git'
+                    developerConnection 'scm:git@github.com:zalando/nakadi.git'
+                }
+
+                licenses {
+                    license {
+                        name 'The MIT License (MIT)'
+                        url 'https://opensource.org/licenses/MIT'
+                        distribution 'repo'
+                    }
+                }
+            }
+        }
+    }
 }
