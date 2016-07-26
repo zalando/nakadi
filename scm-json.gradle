@@ -1,0 +1,28 @@
+task generateScmSourceJson() {
+    def rev = new ByteArrayOutputStream()
+    exec {
+        commandLine "git", "rev-parse", "HEAD"
+        standardOutput = rev
+    }
+    rev = rev.toString().trim()
+
+    def url = new ByteArrayOutputStream()
+    exec {
+        commandLine "git", "config", "--get", "remote.origin.url"
+        standardOutput = url
+    }
+    url = url.toString().trim()
+
+    def status = new ByteArrayOutputStream()
+    exec {
+        commandLine "git", "status", "--porcelain"
+        standardOutput = status
+    }
+    status = status.toString().trim().replaceAll("[\n\r]", "\\\\n")
+    if (status) {
+        rev = "$rev (locally modified)"
+    }
+    def scmSource = new FileOutputStream("scm-source.json")
+    scmSource.write("{\"url\": \"git:${url}\", \"revision\":\"${rev}\", \"author\": \"${System.getenv()['USER']}\", \"status\": \"${status}\"}".getBytes())
+    scmSource.close()
+}

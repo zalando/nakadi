@@ -10,9 +10,9 @@ apply plugin: 'findbugs'
 apply plugin: 'checkstyle'
 
 apply from: 'perform-release.gradle'
+apply from: 'scm-json.gradle'
 
 group 'org.zalando'
-version '1.0.0'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -171,37 +171,8 @@ tasks.withType(FindBugs) {
     }
 }
 
-task generateScmSourceJson() {
-    def rev = new ByteArrayOutputStream()
-    exec {
-        commandLine "git", "rev-parse", "HEAD"
-        standardOutput = rev
-    }
-    rev = rev.toString().trim()
-
-    def url = new ByteArrayOutputStream()
-    exec {
-        commandLine "git", "config", "--get", "remote.origin.url"
-        standardOutput = url
-    }
-    url = url.toString().trim()
-
-    def status = new ByteArrayOutputStream()
-    exec {
-        commandLine "git", "status", "--porcelain"
-        standardOutput = status
-    }
-    status = status.toString().trim().replaceAll("[\n\r]", "\\\\n")
-    if (status) {
-        rev = "$rev (locally modified)"
-    }
-    def scmSource = new FileOutputStream("scm-source.json")
-    scmSource.write("{\"url\": \"git:${url}\", \"revision\":\"${rev}\", \"author\": \"${System.getenv()['USER']}\", \"status\": \"${status}\"}".getBytes())
-    scmSource.close()
-}
-
 task buildDockerImage {
-    dependsOn bootRepackage, generateScmSourceJson
+    dependsOn releaseTarGz, generateScmSourceJson
     doLast {
         println "Building docker image with tag: $dockerImageTag"
         if (execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout) != 0) {
@@ -232,7 +203,7 @@ task initNakadi(type: Exec) {
 }
 
 task startNakadi(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'initNakadi']
+    tasks = ['clean', 'releaseTarGz', 'initNakadi']
 }
 
 task stopNakadi(type: Exec) {
@@ -265,12 +236,12 @@ task stopStorages(type: Exec) {
 }
 
 task fullTest(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'initNakadi', 'test', 'acceptanceTest']
+    tasks = ['clean', 'releaseTarGz', 'initNakadi', 'test', 'acceptanceTest']
     finalizedBy stopNakadi
 }
 
 task fullAcceptanceTest(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'initNakadi', 'acceptanceTest']
+    tasks = ['clean', 'releaseTarGz', 'initNakadi', 'acceptanceTest']
     finalizedBy stopNakadi
 }
 
@@ -323,4 +294,15 @@ checkstyle {
 
 task checkstyle {
     dependsOn checkstyleMain, checkstyleTest, checkstyleAcceptanceTest
+}
+
+tasks.create(name: "releaseTarGz", dependsOn: configurations.archives.artifacts, type: Tar) {
+    into "nakadi"
+    compression = Compression.GZIP
+    from(project.file("bin/")) { into "bin/" }
+    from(project.file("scm-source.json")) { into "scm-source.json" }
+    from '../LICENSE'
+    from '../MAINTAINERS'
+    from(configurations.runtime) { into("libs/") }
+    from(configurations.archives.artifacts.files) { into("libs/") }
 }
