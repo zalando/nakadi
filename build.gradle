@@ -9,7 +9,6 @@ apply plugin: "jacoco"
 apply plugin: 'findbugs'
 apply plugin: 'checkstyle'
 
-apply from: 'perform-release.gradle'
 apply from: 'scm-json.gradle'
 
 group 'org.zalando'
@@ -171,6 +170,17 @@ tasks.withType(FindBugs) {
     }
 }
 
+task releaseTarGz (dependsOn: configurations.archives.artifacts, type: Tar) {
+    into "nakadi"
+    compression = Compression.GZIP
+    from(project.file("bin/")) { into "bin/" }
+    from(project.file("scm-source.json")) { into "scm-source.json" }
+    from '../LICENSE'
+    from '../MAINTAINERS'
+    from(configurations.runtime) { into("libs/") }
+    from(configurations.archives.artifacts.files) { into("libs/") }
+}
+
 task buildDockerImage {
     dependsOn releaseTarGz, generateScmSourceJson
     doLast {
@@ -294,15 +304,4 @@ checkstyle {
 
 task checkstyle {
     dependsOn checkstyleMain, checkstyleTest, checkstyleAcceptanceTest
-}
-
-tasks.create(name: "releaseTarGz", dependsOn: configurations.archives.artifacts, type: Tar) {
-    into "nakadi"
-    compression = Compression.GZIP
-    from(project.file("bin/")) { into "bin/" }
-    from(project.file("scm-source.json")) { into "scm-source.json" }
-    from '../LICENSE'
-    from '../MAINTAINERS'
-    from(configurations.runtime) { into("libs/") }
-    from(configurations.archives.artifacts.files) { into("libs/") }
 }
