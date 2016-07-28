@@ -285,8 +285,6 @@ acceptanceTest {
     testLogging {
         events "passed", "skipped", "failed"
     }
-    testLogging.showStandardStreams = true
-    testLogging.exceptionFormat = 'full'
 }
 
 task development << {
