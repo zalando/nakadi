@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
@@ -33,12 +34,13 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 public class SubscriptionAT extends BaseAT {
 
     private static final String SUBSCRIPTIONS_URL = "/subscriptions";
+    private static final String SUBSCRIPTION_URL = "/subscriptions/{0}";
     private static final String CURSORS_URL = "/subscriptions/{0}/cursors";
 
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
     @Test
-    public void testSubscriptionCreation() throws IOException {
+    public void testSubscriptionBaseOperations() throws IOException {
         // create event type in Nakadi
         final EventType eventType = createEventType();
 
@@ -80,6 +82,12 @@ public class SubscriptionAT extends BaseAT {
         // check that second time already existing subscription was returned
         final Subscription subSecond = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(subSecond, equalTo(subFirst));
+
+        // check get subscription endpoint
+        response = get(format(SUBSCRIPTION_URL, subFirst.getId()));
+        response.then().statusCode(HttpStatus.SC_OK).contentType(JSON);
+        final Subscription gotSubscription = MAPPER.readValue(response.print(), Subscription.class);
+        assertThat(gotSubscription, equalTo(subFirst));
     }
 
     @Test
