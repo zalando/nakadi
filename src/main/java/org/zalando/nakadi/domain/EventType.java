@@ -33,7 +33,7 @@ public class EventType {
     private EventCategory category;
 
     @JsonIgnore
-    private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
+    private List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
     @NotNull
     private List<EnrichmentStrategyDescriptor> enrichmentStrategies = Lists.newArrayList();
@@ -54,6 +54,27 @@ public class EventType {
     @Valid
     @Nullable
     private EventTypeOptions options;
+
+    public EventType() {}
+
+    public EventType(String name, String topic, String owningApplication, EventCategory category,
+                     List<ValidationStrategyConfiguration> validationStrategies,
+                     List<EnrichmentStrategyDescriptor> enrichmentStrategies, String partitionStrategy,
+                     List<String> partitionKeyFields, EventTypeSchema schema, EventTypeStatistics defaultStatistic,
+                     EventTypeOptions options)
+    {
+        this.name = name;
+        this.topic = topic;
+        this.owningApplication = owningApplication;
+        this.category = category;
+        this.validationStrategies = validationStrategies;
+        this.enrichmentStrategies = enrichmentStrategies;
+        this.partitionStrategy = partitionStrategy;
+        this.partitionKeyFields = partitionKeyFields;
+        this.schema = schema;
+        this.defaultStatistic = defaultStatistic;
+        this.options = options;
+    }
 
     public String getName() { return name; }
 

@@ -35,6 +35,7 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -66,7 +67,6 @@ import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.buildEventType;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
@@ -346,8 +346,8 @@ public class EventTypeControllerTest {
     @Test
     public void whenCreateEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
 
-        final EventType eventType = buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"),
-                Collections.singletonList("blabla"));
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionKeyFields(Collections.singletonList("blabla")).build();
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
 
@@ -358,8 +358,22 @@ public class EventTypeControllerTest {
     @Test
     public void whenPUTEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
 
-        final EventType eventType = buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"),
-                Collections.singletonList("blabla"));
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionKeyFields(Collections.singletonList("blabla")).build();
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+
+        putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void whenPUTEventTypeWithWrongPartitionKeyToBuisnesCategoryFieldsThen422() throws Exception {
+
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionKeyFields(Collections.singletonList("blabla"))
+                .category(BUSINESS)
+                .build();
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
 
