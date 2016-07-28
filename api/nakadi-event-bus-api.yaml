@@ -527,10 +527,24 @@ paths:
             existed.
           schema:
             $ref: '#/definitions/Subscription'
+          headers:
+            Content-Location:
+              description: the URI of existing subscription resource
+              type: string
+            Location:
+              description: the URI of existing subscription resource
+              type: string
         '201':
           description: Subscription was successfuly created. Returns subscription object that was created.
           schema:
             $ref: '#/definitions/Subscription'
+          headers:
+            Content-Location:
+              description: the URI of created subscription resource
+              type: string
+            Location:
+              description: the URI of created subscription resource
+              type: string
         '401':
           description: Client is not authenticated
           schema:
