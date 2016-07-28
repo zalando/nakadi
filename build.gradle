@@ -285,11 +285,7 @@ acceptanceTest {
     testLogging {
         events "passed", "skipped", "failed"
     }
-}
-
-task development << {
-    jvmArgs = ["-Dnakadi.config=envs/development.conf"]
-    //bootRun.systemProperty 'nakadi.config', 'envs/development.conf'
+    testLogging.exceptionFormat = 'full'
 }
 
 bootRun {
