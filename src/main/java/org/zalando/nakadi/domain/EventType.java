@@ -11,6 +11,8 @@ import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -54,6 +56,10 @@ public class EventType {
     @Valid
     @Nullable
     private EventTypeOptions options;
+
+    private Optional<Set<String>> writeScope;
+
+    private Optional<Set<String>> readScope;
 
     public String getName() { return name; }
 
@@ -129,5 +135,21 @@ public class EventType {
 
     public void setOptions(final EventTypeOptions options) {
         this.options = options;
+    }
+
+    public Optional<Set<String>> getWriteScope() {
+        return writeScope;
+    }
+
+    public void setWriteScope(Optional<Set<String>> writeScope) {
+        this.writeScope = writeScope;
+    }
+
+    public Optional<Set<String>> getReadScope() {
+        return readScope;
+    }
+
+    public void setReadScope(Optional<Set<String>> readScope) {
+        this.readScope = readScope;
     }
 }
