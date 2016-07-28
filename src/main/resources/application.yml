@@ -11,7 +11,7 @@ logging:
     org.springframework.web: INFO
     org.springframework.security.web.access.intercept: DEBUG
     org.apache.kafka: WARN
-    de.zalando.aruha.nakadi: DEBUG
+    org.zalando.nakadi: DEBUG
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
@@ -24,8 +24,11 @@ spring:
     validationQuery: SELECT 1
 nakadi:
   topic:
+    min:
+      retentionMs: 86400000 # 1 days
     max:
       partitionNum: 8
+      retentionMs: 345600000 # 4 days
     default:
       partitionNum: 1
       replicaFactor: 1
