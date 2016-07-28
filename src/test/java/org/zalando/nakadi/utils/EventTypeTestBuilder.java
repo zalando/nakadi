@@ -42,62 +42,62 @@ public class EventTypeTestBuilder {
         this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, DEFAULT_SCHEMA);
     }
 
-    public EventTypeTestBuilder name(String name) {
+    public EventTypeTestBuilder name(final String name) {
         this.name = name;
         return this;
     }
 
-    public EventTypeTestBuilder topic(String topic) {
+    public EventTypeTestBuilder topic(final String topic) {
         this.topic = topic;
         return this;
     }
 
-    public EventTypeTestBuilder owningApplication(String owningApplication) {
+    public EventTypeTestBuilder owningApplication(final String owningApplication) {
         this.owningApplication = owningApplication;
         return this;
     }
 
-    public EventTypeTestBuilder category(EventCategory category) {
+    public EventTypeTestBuilder category(final EventCategory category) {
         this.category = category;
         return this;
     }
 
-    public EventTypeTestBuilder enrichmentStrategies(List<EnrichmentStrategyDescriptor> enrichmentStrategies) {
+    public EventTypeTestBuilder enrichmentStrategies(final List<EnrichmentStrategyDescriptor> enrichmentStrategies) {
         this.enrichmentStrategies = enrichmentStrategies;
         return this;
     }
 
-    public EventTypeTestBuilder partitionStrategy(String partitionStrategy) {
+    public EventTypeTestBuilder partitionStrategy(final String partitionStrategy) {
         this.partitionStrategy = partitionStrategy;
         return this;
     }
 
-    public EventTypeTestBuilder partitionKeyFields(List<String> partitionKeyFields) {
+    public EventTypeTestBuilder partitionKeyFields(final List<String> partitionKeyFields) {
         this.partitionKeyFields = partitionKeyFields;
         return this;
     }
 
-    public EventTypeTestBuilder schema(EventTypeSchema schema) {
+    public EventTypeTestBuilder schema(final EventTypeSchema schema) {
         this.schema = schema;
         return this;
     }
 
-    public EventTypeTestBuilder schema(JSONObject json) {
+    public EventTypeTestBuilder schema(final JSONObject json) {
         this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, json.toString());
         return this;
     }
 
-    public EventTypeTestBuilder schema(String json) {
+    public EventTypeTestBuilder schema(final String json) {
         this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, json);
         return this;
     }
 
-    public EventTypeTestBuilder defaultStatistic(EventTypeStatistics defaultStatistic) {
+    public EventTypeTestBuilder defaultStatistic(final EventTypeStatistics defaultStatistic) {
         this.defaultStatistic = defaultStatistic;
         return this;
     }
 
-    public EventTypeTestBuilder options(EventTypeOptions options) {
+    public EventTypeTestBuilder options(final EventTypeOptions options) {
         this.options = options;
         return this;
     }

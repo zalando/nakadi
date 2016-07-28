@@ -16,7 +16,7 @@ public class EventTypeSchema {
 
     public EventTypeSchema() {}
 
-    public EventTypeSchema(Type type, String schema) {
+    public EventTypeSchema(final Type type, final String schema) {
         this.type = type;
         this.schema = schema;
     }

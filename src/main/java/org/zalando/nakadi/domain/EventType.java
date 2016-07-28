@@ -57,11 +57,11 @@ public class EventType {
 
     public EventType() {}
 
-    public EventType(String name, String topic, String owningApplication, EventCategory category,
-                     List<ValidationStrategyConfiguration> validationStrategies,
-                     List<EnrichmentStrategyDescriptor> enrichmentStrategies, String partitionStrategy,
-                     List<String> partitionKeyFields, EventTypeSchema schema, EventTypeStatistics defaultStatistic,
-                     EventTypeOptions options)
+    public EventType(final String name, final String topic, final String owningApplication, final EventCategory category,
+                     final List<ValidationStrategyConfiguration> validationStrategies,
+                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies, final String partitionStrategy,
+                     final List<String> partitionKeyFields, final EventTypeSchema schema, final EventTypeStatistics defaultStatistic,
+                     final EventTypeOptions options)
     {
         this.name = name;
         this.topic = topic;
