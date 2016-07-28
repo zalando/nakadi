@@ -510,9 +510,9 @@ paths:
         consume events from EventTypes in a high level way when Nakadi stores the offsets and manages the
         rebalancing of consuming clients.
         The subscription is identified by its key parameters (owning_application, event_types, consumer_group). If
-        this endpoint is invoked several times with the same key subscription properties in body - the
-        subscription will be created only once and for all other calls it will just return the subscription
-        that was already created.
+        this endpoint is invoked several times with the same key subscription properties in body (order of even_types is
+        not important) - the subscription will be created only once and for all other calls it will just return
+        the subscription that was already created.
       parameters:
         - name: subscription
           in: body
@@ -665,21 +665,20 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for committing offsets of the subscription.
-        The behavior of commit is specific to `commit_mode` and `commit_semantics` parameters of the session
-        that makes a commit. Please see details in subscription streaming endpoint specification.
+        Endpoint for committing offsets of the subscription. The behavior of commit is specific to `commit_mode`
+        parameter of the client stream (please see details in subscription streaming endpoint specification).
       parameters:
         - name: subscription_id
           in: path
           type: string
           description: Id of subscription
           required: true
-        - name: X-Nakadi-SessionId
+        - name: X-Nakadi-StreamId
           in: header
           type: string
           description: |
-            Id of a session (client) which makes a commit. It is not possible to make a commit from a terminated or
-            none-existing session. Also the session can't commit something which was not sent to it.
+            Id of stream which client uses to read events. It is not possible to make a commit for a terminated or
+            none-existing stream. Also the client can't commit something which was not sent to his stream.
           required: true
         - name: cursors
           in: body
@@ -729,13 +728,12 @@ paths:
         - oauth2: ['nakadi.event_stream.read']
       description: |
         Starts a new stream for reading events from this subscription. The data will be automatically rebalanced
-        between streams of one subscription. The minimal consumption unit is a partition, so it is possible to create as
+        between streams of one subscription. The minimal consumption unit is a partition, so it is possible to start as
         many streams as the total number of partitions in event-types of this subscription. The rebalance currently
         only operates with the number of partitions so the amount of data in event-types/partitions is not considered
         during autorebalance.
         The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
-        a stream. For details of how committing works see description of parameters `commit_mode`, `commit_semantics`
-        and the description of commit endpoint.
+        a stream. This also depends on the `commit_mode` parameter that is set for the stream.
       parameters:
         - $ref: '#/parameters/SubscriptionId'
         - name: commit_timeout
@@ -763,10 +761,8 @@ paths:
             Possible values:
 
             - `commit_at_will`: client is free to choose how often he wants to commit. Of course the commit_timeout
-            property should still be respected.
-            When a batch is committed that also automatically commits all previous batches that were sent in a stream
-            (if the commit_semantics parameter is `per_partition` - that will commit all previous batches only for
-            current partition).
+            property should still be respected. When a batch is committed that also automatically commits all previous
+            batches that were sent in a stream for this partition.
 
             - `commit_each`: this commit mode requires each batch to be committed, and it should be done in correct
             order. Committing a cursor when the previous is not yet committed is not possible.
@@ -781,23 +777,6 @@ paths:
             - auto_commit
           required: false
           default: commit_at_will
-        - name: commit_semantics
-          in: query
-          description: |
-            The semantics of commit that will be used for this stream. Possible values:
-
-            - `per_partition`: Each partition is committed separatelly. Each cursor in a stream belongs to one of the
-            partitions of that stream; committing that cursor will commit the data only for that partition.
-
-            - `per_stream`: When you commit a cursor - all data in a stream before this cursor is
-            commited (doesn't matter to which partition it belongs)
-          type: string
-          enum:
-            - per_partition
-            - per_stream
-          required: false
-          default: per_partition
-
         - $ref: '#/parameters/BatchLimit'
         - $ref: '#/parameters/StreamLimit'
         - $ref: '#/parameters/BatchFlushTimeout'
@@ -812,8 +791,10 @@ paths:
           schema:
             $ref: '#/definitions/EventStreamBatch'
           headers:
-            X-Nakadi-SessionId:
-              description: the session id of this stream. Should be used for committing data read by this stream.
+            X-Nakadi-StreamId:
+              description: |
+                the id of this stream generated by Nakadi. Must be used for committing events that were read by client
+                from this stream.
               type: string
         '401':
           description: Client is not authenticated
@@ -1211,7 +1192,7 @@ definitions:
           The value describing the use case of this subscription.
           In general that is an additional identifier used to differ subscriptions having the same
           owning_application and event_types.
-        default: 'none'
+        default: 'default'
       created_at:
         type: string
         readOnly: true
