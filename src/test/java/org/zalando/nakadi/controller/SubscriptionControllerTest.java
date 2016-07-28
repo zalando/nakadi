@@ -16,12 +16,16 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
 
+import javax.ws.rs.core.Response;
+import java.text.MessageFormat;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -32,12 +36,14 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
@@ -146,11 +152,42 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))));
     }
 
+    @Test
+    public void whenGetSubscriptionThenOk() throws Exception {
+        final Subscription subscription = createRandomSubscription();
+        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+
+        getSubscription(subscription.getId())
+                .andExpect(status().isOk())
+                .andExpect(content().string(sameJSONAs(objectMapper.writeValueAsString(subscription))));
+    }
+
+    @Test
+    public void whenGetNoneExistingSubscriptionThenNotFound() throws Exception {
+        final Subscription subscription = createRandomSubscription();
+        when(subscriptionRepository.getSubscription(subscription.getId()))
+                .thenThrow(new NoSuchSubscriptionException("dummy-message"));
+        final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy-message");
+
+        getSubscription(subscription.getId())
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+    }
+
+    private ResultActions getSubscription(final String subscriptionId) throws Exception {
+        return mockMvc.perform(get(MessageFormat.format("/subscriptions/{0}", subscriptionId)));
+    }
+
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {
         resultActions
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+    }
+
+    private Subscription createRandomSubscription() {
+        final SubscriptionBase subscriptionBase = createSubscription(randomUUID(), ImmutableSet.of(randomUUID()));
+        return new Subscription(randomUUID(), new DateTime(), subscriptionBase);
     }
 
     private SubscriptionBase createSubscription(final String owningApplication, final Set<String> eventTypes) {
