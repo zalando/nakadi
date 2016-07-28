@@ -575,6 +575,12 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: Lists all subscriptions that exist in a system.
+      parameters:
+        - name: owning_application
+          in: query
+          description: parameter to filter subscriptions list by owning application.
+          type: string
+          required: false
       responses:
         '200':
           description: OK
