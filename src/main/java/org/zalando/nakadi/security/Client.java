@@ -1,23 +1,23 @@
 package org.zalando.nakadi.security;
 
+import java.util.Set;
+
 public interface Client {
 
-    Client PERMIT_ALL = clientId -> true;
-
-    boolean is(String clientId);
-
-    class Authorized implements Client {
-
-        private final String clientId;
-
-        public Authorized(final String clientId) {
-            this.clientId = clientId;
+    Client PERMIT_ALL = new Client() {
+        @Override
+        public boolean is(String clientId) {
+            return true;
         }
 
         @Override
-        public boolean is(final String clientId) {
-            return this.clientId.equals(clientId);
+        public boolean hasNoScopes(Set<String> scopes) {
+            return false;
         }
-    }
+    };
+
+    boolean is(String clientId);
+
+    boolean hasNoScopes(final Set<String> scopes);
 
 }

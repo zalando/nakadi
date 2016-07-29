@@ -2,11 +2,12 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.EventType;
 import org.apache.http.HttpStatus;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.problem.Problem;
 
@@ -19,8 +20,6 @@ import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_ENCODING;
 import static javax.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
-import static org.zalando.nakadi.utils.TestUtils.buildEventType;
-import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 
 public class CompressedEventPublishingAT extends BaseAT {
 
@@ -56,9 +55,9 @@ public class CompressedEventPublishingAT extends BaseAT {
     }
 
     private EventType createEventTypeWithSchema() throws JsonProcessingException {
-        final EventType eventType = buildEventType(randomValidEventTypeName(),
-                new JSONObject("{\"type\": \"object\", \"properties\": {\"blah\": {\"type\": \"string\"}}, " +
-                        "\"required\": [\"blah\"]}"));
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .schema(new JSONObject("{\"type\": \"object\", \"properties\": {\"blah\": {\"type\": \"string\"}}, " +
+                        "\"required\": [\"blah\"]}")).build();
         given()
                 .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)

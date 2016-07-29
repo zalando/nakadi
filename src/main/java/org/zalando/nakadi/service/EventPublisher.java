@@ -1,5 +1,11 @@
 package org.zalando.nakadi.service;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -17,14 +23,10 @@ import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
+import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.ScopeHelper;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
@@ -52,10 +54,12 @@ public class EventPublisher {
         this.enrichment = enrichment;
     }
 
-    public EventPublishResult publish(final JSONArray events, final String eventTypeName) throws NoSuchEventTypeException,
-            InternalNakadiException {
+    public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client)
+            throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         final List<BatchItem> batch = BatchFactory.from(events);
+
+        ScopeHelper.checkScopes(eventType.getWriteScope(), client);
 
         try {
             validate(batch, eventType);

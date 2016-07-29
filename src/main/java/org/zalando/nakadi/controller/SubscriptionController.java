@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -30,6 +31,7 @@ import java.util.List;
 
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
+import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
@@ -79,6 +81,21 @@ public class SubscriptionController {
             }
         } catch (final InternalNakadiException e) {
             LOG.error("Error occurred during subscription creation", e);
+            return create(e.asProblem(), request);
+        }
+    }
+
+    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+    public ResponseEntity<?> getSubscription(@PathVariable("id") final String subscriptionId,
+                                             final NativeWebRequest request) {
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
+            return new ResponseEntity<>(NOT_IMPLEMENTED);
+        }
+        try {
+            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+            return status(OK).body(subscription);
+        } catch (final NoSuchSubscriptionException e) {
+            LOG.debug("Failed to find subscription: " + subscriptionId, e);
             return create(e.asProblem(), request);
         }
     }

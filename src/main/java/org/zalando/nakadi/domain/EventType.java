@@ -11,6 +11,8 @@ import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -33,7 +35,7 @@ public class EventType {
     private EventCategory category;
 
     @JsonIgnore
-    private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
+    private List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
     @NotNull
     private List<EnrichmentStrategyDescriptor> enrichmentStrategies = Lists.newArrayList();
@@ -54,6 +56,33 @@ public class EventType {
     @Valid
     @Nullable
     private EventTypeOptions options;
+
+    private Optional<Set<String>> writeScope;
+
+    private Optional<Set<String>> readScope;
+
+    public EventType() {}
+
+    public EventType(final String name, final String topic, final String owningApplication, final EventCategory category,
+                     final List<ValidationStrategyConfiguration> validationStrategies,
+                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies, final String partitionStrategy,
+                     final List<String> partitionKeyFields, final EventTypeSchema schema, final EventTypeStatistics defaultStatistic,
+                     final EventTypeOptions options, final Optional<Set<String>> writeScope, Optional<Set<String>> readScope)
+    {
+        this.name = name;
+        this.topic = topic;
+        this.owningApplication = owningApplication;
+        this.category = category;
+        this.validationStrategies = validationStrategies;
+        this.enrichmentStrategies = enrichmentStrategies;
+        this.partitionStrategy = partitionStrategy;
+        this.partitionKeyFields = partitionKeyFields;
+        this.schema = schema;
+        this.defaultStatistic = defaultStatistic;
+        this.options = options;
+        this.writeScope = writeScope;
+        this.readScope = readScope;
+    }
 
     public String getName() { return name; }
 
@@ -129,5 +158,21 @@ public class EventType {
 
     public void setOptions(final EventTypeOptions options) {
         this.options = options;
+    }
+
+    public Optional<Set<String>> getWriteScope() {
+        return writeScope;
+    }
+
+    public void setWriteScope(Optional<Set<String>> writeScope) {
+        this.writeScope = writeScope;
+    }
+
+    public Optional<Set<String>> getReadScope() {
+        return readScope;
+    }
+
+    public void setReadScope(Optional<Set<String>> readScope) {
+        this.readScope = readScope;
     }
 }
