@@ -43,7 +43,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase) throws InternalNakadiException,
-            DuplicatedSubscriptionException {
+            DuplicatedSubscriptionException, ServiceUnavailableException {
 
         try {
             final String newId = uuidGenerator.randomUUID().toString();
@@ -59,15 +59,20 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             throw new InternalNakadiException("Serialization problem during persistence of event type", e);
         } catch (final DuplicateKeyException e) {
             throw new DuplicatedSubscriptionException("Subscription with the same key properties already exists", e);
+        } catch (final DataAccessException e) {
+            throw new ServiceUnavailableException("Error occurred when running database request", e);
         }
     }
 
-    public Subscription getSubscription(final String id) throws NoSuchSubscriptionException {
+    public Subscription getSubscription(final String id) throws NoSuchSubscriptionException,
+            ServiceUnavailableException {
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription WHERE s_id = ?";
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist", e);
+        } catch (final DataAccessException e) {
+            throw new ServiceUnavailableException("Error occurred when running database request", e);
         }
     }
 
@@ -92,7 +97,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
     public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,
                                         final String consumerGroup)
-            throws NoSuchSubscriptionException, InternalNakadiException {
+            throws NoSuchSubscriptionException, InternalNakadiException, ServiceUnavailableException {
 
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription " +
                 "WHERE s_subscription_object->>'owning_application' = ? " +
@@ -106,6 +111,8 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             throw new InternalNakadiException("Serialization problem during getting event type", e);
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription does not exist", e);
+        } catch (final DataAccessException e) {
+            throw new ServiceUnavailableException("Error occurred when running database request", e);
         }
     }
 

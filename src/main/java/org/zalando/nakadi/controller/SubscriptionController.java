@@ -31,7 +31,6 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import javax.annotation.Nullable;
 import javax.validation.Valid;
 import java.util.List;
-import java.util.Optional;
 
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
@@ -79,11 +78,14 @@ public class SubscriptionController {
         } catch (final DuplicatedSubscriptionException e) {
             try {
                 return new ResponseEntity<>(getExistingSubscription(subscriptionBase), HttpStatus.OK);
-            } catch (final NakadiException ex) {
+            } catch (final ServiceUnavailableException ex) {
+                LOG.error("Error occurred during fetching existing subscription", ex);
+                return create(e.asProblem(), request);
+            } catch (final NoSuchSubscriptionException | InternalNakadiException ex) {
                 LOG.error("Error occurred during fetching existing subscription", ex);
                 return create(INTERNAL_SERVER_ERROR, ex.getProblemMessage(), request);
             }
-        } catch (final InternalNakadiException e) {
+        } catch (final NakadiException e) {
             LOG.error("Error occurred during subscription creation", e);
             return create(e.asProblem(), request);
         }
@@ -122,11 +124,14 @@ public class SubscriptionController {
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: " + subscriptionId, e);
             return create(e.asProblem(), request);
+        } catch (final ServiceUnavailableException e) {
+            LOG.error("Error occurred when trying to get subscription: " + subscriptionId, e);
+            return create(e.asProblem(), request);
         }
     }
 
     private ResponseEntity<?> createSubscription(final SubscriptionBase subscriptionBase, final NativeWebRequest request)
-            throws InternalNakadiException, DuplicatedSubscriptionException {
+            throws InternalNakadiException, DuplicatedSubscriptionException, ServiceUnavailableException {
         final List<String> noneExistingEventTypes = checkExistingEventTypes(subscriptionBase);
         if (!noneExistingEventTypes.isEmpty()) {
             final String errorMessage = createErrorMessage(noneExistingEventTypes);
@@ -159,7 +164,7 @@ public class SubscriptionController {
     }
 
     private Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
-            throws NoSuchSubscriptionException, InternalNakadiException {
+            throws NoSuchSubscriptionException, InternalNakadiException, ServiceUnavailableException {
         return subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
                 subscriptionBase.getEventTypes(),

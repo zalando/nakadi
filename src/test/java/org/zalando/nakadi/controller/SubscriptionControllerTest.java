@@ -207,6 +207,21 @@ public class SubscriptionControllerTest {
         checkForProblem(getSubscriptions(Optional.empty()), expectedProblem);
     }
 
+    @Test
+    public void whenGetSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
+        when(subscriptionRepository.getSubscription(any())).thenThrow(new ServiceUnavailableException("dummy message"));
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
+        checkForProblem(getSubscription("dummyId"), expectedProblem);
+    }
+
+    @Test
+    public void whenPostSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
+        when(subscriptionRepository.createSubscription(any())).thenThrow(new ServiceUnavailableException("dummy message"));
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
+        final SubscriptionBase subscription = createSubscription("app", ImmutableSet.of("myET"));
+        checkForProblem(postSubscription(subscription), expectedProblem);
+    }
+
     private ResultActions getSubscriptions(final Optional<String> owningApplication) throws Exception {
         final String url = "/subscriptions" + owningApplication.map(app -> "?owning_application=" + app).orElse("");
         return mockMvc.perform(get(url));
