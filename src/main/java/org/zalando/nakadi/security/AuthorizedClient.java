@@ -13,12 +13,12 @@ public final class AuthorizedClient implements Client {
     }
 
     @Override
-    public final boolean is(final String clientId) {
+    public boolean is(final String clientId) {
         return this.clientId.equals(clientId);
     }
 
     @Override
-    public final boolean hasNoScopes(final Set<String> scopes) {
+    public boolean hasNoScopes(final Set<String> scopes) {
         return this.scopes.stream().noneMatch(scope -> scopes.contains(scope));
     }
 
