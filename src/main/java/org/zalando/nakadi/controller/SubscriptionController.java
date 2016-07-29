@@ -90,7 +90,7 @@ public class SubscriptionController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public ResponseEntity<?> createOrGetSubscription(
+    public ResponseEntity<?> listSubscriptions(
             @Nullable @RequestParam(value = "owning_application", required = false) final String owningApplication,
             final NativeWebRequest request) {
 
