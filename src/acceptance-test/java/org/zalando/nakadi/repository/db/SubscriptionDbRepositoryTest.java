@@ -1,24 +1,26 @@
 package org.zalando.nakadi.repository.db;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.junit.Before;
+import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.util.UUIDGenerator;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.junit.Before;
-import org.junit.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static java.util.UUID.randomUUID;
+import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
@@ -69,8 +71,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenGetSubscriptionByIdThenOk() throws InternalNakadiException, JsonProcessingException,
-            NoSuchSubscriptionException {
+    public void whenGetSubscriptionByIdThenOk() throws InternalNakadiException, NoSuchSubscriptionException {
 
         // insert subscription into DB
         final Subscription subscription = createSubscription();
@@ -82,8 +83,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenGetSubscriptionByKeyPropertiesThenOk() throws InternalNakadiException, JsonProcessingException,
-            NoSuchSubscriptionException {
+    public void whenGetSubscriptionByKeyPropertiesThenOk() throws InternalNakadiException, NoSuchSubscriptionException {
 
         // insert subscription into DB
         final Subscription subscription = createSubscription("myapp", ImmutableSet.of("my-et", "second-et"), "my-cg");
@@ -95,9 +95,44 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat("We found the needed subscription", gotSubscription, equalTo(subscription));
     }
 
-    private void insertSubscriptionToDB(final Subscription subscription) throws JsonProcessingException {
-        template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
-                subscription.getId(), mapper.writer().writeValueAsString(subscription));
+    @Test
+    public void whenListSubscriptionsThenOk() throws ServiceUnavailableException {
+
+        final Set<Subscription> testSubscriptions = ImmutableSet.of(
+                createSubscription("myapp1", ImmutableSet.of("et1", "et2"), "cg1"),
+                createSubscription("myapp2", ImmutableSet.of("et3"), "cg2"));
+
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+
+        final List<Subscription> subscriptions = repository.listSubscriptions();
+        assertThat(ImmutableSet.copyOf(subscriptions), equalTo(testSubscriptions));
+    }
+
+    @Test
+    public void whenListSubscriptionsByOwningApplicationThenOk() throws ServiceUnavailableException {
+
+        final Set<Subscription> testSubscriptions = ImmutableSet.of(
+                createSubscription("myapp1", ImmutableSet.of("et1", "et2"), "cg1"),
+                createSubscription("myapp1", ImmutableSet.of("et2", "et3"), "cg2"),
+                createSubscription("myapp2", ImmutableSet.of("et4"), "cg3"));
+
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+
+        final Set<Subscription> myapp1Subscriptions = testSubscriptions.stream()
+                .filter(sub -> "myapp1".equals(sub.getOwningApplication()))
+                .collect(toSet());
+
+        final List<Subscription> subscriptions = repository.listSubscriptionsForOwningApplication("myapp1");
+        assertThat(ImmutableSet.copyOf(subscriptions), equalTo(myapp1Subscriptions));
+    }
+
+    private void insertSubscriptionToDB(final Subscription subscription) {
+        try {
+            template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::JSONB)",
+                    subscription.getId(), mapper.writer().writeValueAsString(subscription));
+        } catch (final Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Subscription createSubscription() {
