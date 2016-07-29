@@ -188,7 +188,7 @@ public class EventTypeService {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
             final List<String> absentFields = eventType.getPartitionKeyFields().stream()
-                    .filter(field -> !hasReservedField(eventType, schemaAsJson, field))
+                    .filter(field -> !hasReservedField(schemaAsJson, field))
                     .collect(Collectors.toList());
             if (!absentFields.isEmpty()) {
                 throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
@@ -204,7 +204,9 @@ public class EventTypeService {
         try {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
-            if (hasReservedField(eventType, schemaAsJson, "metadata")) {
+            if (eventType.getCategory() == EventCategory.BUSINESS
+                    && hasReservedField(schemaAsJson, "metadata"))
+            {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
@@ -222,9 +224,8 @@ public class EventTypeService {
         eventType.setTopic(uuidGenerator.randomUUID().toString());
     }
 
-    private boolean hasReservedField(final EventType eventType, final JSONObject schemaAsJson, final String field) {
-        return eventType.getCategory() == EventCategory.BUSINESS
-                && schemaAsJson.optJSONObject("properties") != null
+    private boolean hasReservedField(final JSONObject schemaAsJson, final String field) {
+        return schemaAsJson.optJSONObject("properties") != null
                 && schemaAsJson.getJSONObject("properties").has(field);
     }
 

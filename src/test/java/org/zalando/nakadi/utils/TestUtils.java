@@ -3,28 +3,22 @@ package org.zalando.nakadi.utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.EventCategory;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.problem.ValidationProblem;
 import org.apache.commons.io.IOUtils;
-
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.json.JSONObject;
-
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
@@ -108,28 +102,8 @@ public class TestUtils {
         return IOUtils.toString(clazz.getResourceAsStream(resourceName));
     }
 
-    public static EventType buildEventType(final String name, final JSONObject schema) {
-        return buildEventType(name, schema, Collections.emptyList());
-    }
-
-    public static EventType buildEventType(final String name, final JSONObject schema, final List<String> partitionKeyFields) {
-        final EventType et = new EventType();
-        et.setName(name);
-        et.setTopic(randomUUID());
-        et.setPartitionKeyFields(partitionKeyFields);
-
-        final EventTypeSchema ets = new EventTypeSchema();
-        ets.setType(EventTypeSchema.Type.JSON_SCHEMA);
-        ets.setSchema(schema.toString());
-        et.setSchema(ets);
-        et.setCategory(EventCategory.UNDEFINED);
-        et.setOwningApplication(OWNING_APPLICATION);
-
-        return et;
-    }
-
     public static EventType buildDefaultEventType() {
-        return buildEventType(randomValidEventTypeName(), new JSONObject("{ \"price\": 1000 }"));
+        return EventTypeTestBuilder.builder().build();
     }
 
     public static String readFile(final String filename) throws IOException {
