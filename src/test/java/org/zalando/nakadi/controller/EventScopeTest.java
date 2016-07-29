@@ -65,7 +65,7 @@ public final class EventScopeTest {
     }
 
     @Test
-    public void test_scope_write() throws Exception {
+    public void testScopeWrite() throws Exception {
         mvcBuilder.setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver(SCOPE_WRITE));
         Mockito.when(eventTypeCache.getEventType(EVENT_NAME)).thenReturn(createEventWith(SCOPE_WRITE));
 
@@ -73,7 +73,7 @@ public final class EventScopeTest {
     }
 
     @Test
-    public void test_no_scope_write() throws Exception {
+    public void testNoScopeWrite() throws Exception {
         mvcBuilder.setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver(Collections.emptySet()));
         Mockito.when(eventTypeCache.getEventType(EVENT_NAME)).thenReturn(createEventWith(SCOPE_WRITE));
 

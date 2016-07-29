@@ -374,7 +374,7 @@ public class EventStreamControllerTest {
     }
 
     @Test
-    public void test_read_scope() throws Exception {
+    public void testReadScope() throws Exception {
         prepareScopeRead();
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
@@ -388,7 +388,7 @@ public class EventStreamControllerTest {
     }
 
     @Test
-    public void test_no_read_scope() throws Exception {
+    public void testNoReadScope() throws Exception {
         prepareScopeRead();
 
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
@@ -439,7 +439,7 @@ public class EventStreamControllerTest {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock, Client.PERMIT_ALL);
     }
 
-    private StreamingResponseBody createStreamingResponseBody(Client client) throws Exception {
+    private StreamingResponseBody createStreamingResponseBody(final Client client) throws Exception {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock, client);
     }
 
