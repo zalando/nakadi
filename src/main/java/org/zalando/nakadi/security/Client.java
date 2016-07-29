@@ -6,17 +6,17 @@ public interface Client {
 
     Client PERMIT_ALL = new Client() {
         @Override
-        public boolean is(String clientId) {
+        public boolean is(final String clientId) {
             return true;
         }
 
         @Override
-        public boolean hasNoScopes(Set<String> scopes) {
+        public boolean hasNoScopes(final Set<String> scopes) {
             return false;
         }
     };
 
-    boolean is(String clientId);
+    boolean is(final String clientId);
 
     boolean hasNoScopes(final Set<String> scopes);
 
