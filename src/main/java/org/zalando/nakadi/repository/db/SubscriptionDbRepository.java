@@ -2,11 +2,13 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.dao.DataAccessException;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.newTreeSet;
@@ -47,7 +50,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             final DateTime createdAt = new DateTime(DateTimeZone.UTC);
             final Subscription subscription = new Subscription(newId, createdAt, subscriptionBase);
 
-            jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
+            jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::JSONB)",
                     subscription.getId(),
                     jsonMapper.writer().writeValueAsString(subscription));
 
@@ -65,6 +68,25 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist", e);
+        }
+    }
+
+    public List<Subscription> listSubscriptions() throws ServiceUnavailableException {
+        try {
+            return jdbcTemplate.query("SELECT s_subscription_object FROM zn_data.subscription", rowMapper);
+        } catch (final DataAccessException e) {
+            throw new ServiceUnavailableException("Error occurred when running database request", e);
+        }
+    }
+
+    public List<Subscription> listSubscriptionsForOwningApplication(final String owningApplication)
+            throws ServiceUnavailableException {
+        final String query = "SELECT s_subscription_object FROM zn_data.subscription " +
+                "WHERE s_subscription_object->>'owning_application' = ?";
+        try {
+            return jdbcTemplate.query(query, new Object[]{owningApplication}, rowMapper);
+        } catch (final DataAccessException e) {
+            throw new ServiceUnavailableException("Error occurred when running database request", e);
         }
     }
 

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.Subscription;
@@ -21,13 +22,16 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.util.FeatureToggleService;
 
+import javax.annotation.Nullable;
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Optional;
 
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
@@ -81,6 +85,27 @@ public class SubscriptionController {
             }
         } catch (final InternalNakadiException e) {
             LOG.error("Error occurred during subscription creation", e);
+            return create(e.asProblem(), request);
+        }
+    }
+
+    @RequestMapping(method = RequestMethod.GET)
+    public ResponseEntity<?> createOrGetSubscription(
+            @Nullable @RequestParam(value = "owning_application", required = false) final String owningApplication,
+            final NativeWebRequest request) {
+
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
+            return new ResponseEntity<>(NOT_IMPLEMENTED);
+        }
+
+        try {
+            final List<Subscription> subscriptions = owningApplication == null ?
+                    subscriptionRepository.listSubscriptions() :
+                    subscriptionRepository.listSubscriptionsForOwningApplication(owningApplication);
+            return status(OK).body(subscriptions);
+
+        } catch (final ServiceUnavailableException e) {
+            LOG.error("Error occurred during listing of subscriptions", e);
             return create(e.asProblem(), request);
         }
     }
