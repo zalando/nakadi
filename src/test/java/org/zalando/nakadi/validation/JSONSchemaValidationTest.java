@@ -1,19 +1,19 @@
 package org.zalando.nakadi.validation;
 
+import org.json.JSONObject;
+import org.junit.Test;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
-import org.json.JSONObject;
-import org.junit.Test;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 import java.util.Arrays;
 import java.util.Optional;
 
-import static org.zalando.nakadi.utils.IsOptional.isAbsent;
-import static org.zalando.nakadi.utils.TestUtils.buildEventType;
-import static org.zalando.nakadi.utils.TestUtils.readFile;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.zalando.nakadi.utils.IsOptional.isAbsent;
+import static org.zalando.nakadi.utils.TestUtils.readFile;
 
 public class JSONSchemaValidationTest {
 
@@ -25,8 +25,11 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void schemaValidationShouldRespectEventTypeDefinition() {
-        final EventType et = buildEventType("some-event-type",
-                    new JSONObject("{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, \"bar\": {\"type\": \"string\"}}, \"required\": [\"foo\", \"bar\"]}}, \"required\": [\"foo\", \"bar\"]}"));
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
+                .schema("{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, " +
+                        "\"bar\": {\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}, " +
+                        "\"bar\": {\"type\": \"string\"}}, \"required\": [\"foo\", \"bar\"]}}, \"required\":" +
+                        " [\"foo\", \"bar\"]}").build();
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -56,8 +59,10 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void schemaValidationShouldRespectIgnoreConfigurationMatchRegular() {
-        final EventType et = buildEventType("some-event-type",
-                    new JSONObject("{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
+                .schema("{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": " +
+                        "{\"type\": \"object\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": " +
+                        "[\"field-that-will-not-be-found\", \"event-type\"]}").build();
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -80,8 +85,10 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void schemaValidationShouldRespectIgnoreConfigurationMatchQualified() {
-        final EventType et = buildEventType("some-event-type",
-                    new JSONObject("{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": {\"type\": \"string\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": [\"field-that-will-not-be-found\", \"event-type\"]}"));
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
+                .schema("{\"type\": \"object\", \"properties\": {\"field-that-will-not-be-found\": " +
+                        "{\"type\": \"string\"}, \"event-type\": {\"type\": \"string\"}}, \"required\": " +
+                        "[\"field-that-will-not-be-found\", \"event-type\"]}").build();
 
         final ValidationStrategyConfiguration vsc1 = new ValidationStrategyConfiguration();
         vsc1.setStrategyName(EventBodyMustRespectSchema.NAME);
@@ -101,7 +108,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfBusinessEventShouldRequiredMetadata() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
+                .schema(basicSchema()).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = new JSONObject("{ \"foo\": \"bar\" }");
@@ -113,7 +121,8 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfDataChangeEventRequiresExtraFields() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type")
+                .schema(basicSchema()).build();
         et.setCategory(EventCategory.DATA);
 
         final JSONObject event = new JSONObject("{ \"data\": { \"foo\": \"bar\" } }");
@@ -125,7 +134,7 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void validationOfDataChangeEventShouldNotAllowAdditionalFieldsAtTheRootLevelObject() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
         et.setCategory(EventCategory.DATA);
 
         final JSONObject event = dataChangeEvent();
@@ -138,7 +147,7 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void requireMetadataEventTypeToBeTheSameAsEventTypeName() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = businessEvent();
@@ -151,7 +160,7 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void requireMetadataOccurredAt() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = businessEvent();
@@ -164,7 +173,7 @@ public class JSONSchemaValidationTest {
 
     @Test
     public void requireEidToBeFormattedAsUUID() {
-        final EventType et = buildEventType("some-event-type", basicSchema());
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(basicSchema()).build();
         et.setCategory(EventCategory.BUSINESS);
 
         final JSONObject event = businessEvent();
@@ -178,7 +187,7 @@ public class JSONSchemaValidationTest {
     @Test
     public void acceptsDefinitionsOnDataChangeEvents() throws Exception {
         final JSONObject schema = new JSONObject(readFile("product-json-schema.json"));
-        final EventType et = buildEventType("some-event-type", schema);
+        final EventType et = EventTypeTestBuilder.builder().name("some-event-type").schema(schema).build();
         et.setCategory(EventCategory.DATA);
         final JSONObject event = new JSONObject(readFile("product-event.json"));
 

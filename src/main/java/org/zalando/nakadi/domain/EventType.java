@@ -35,7 +35,7 @@ public class EventType {
     private EventCategory category;
 
     @JsonIgnore
-    private final List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
+    private List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
 
     @NotNull
     private List<EnrichmentStrategyDescriptor> enrichmentStrategies = Lists.newArrayList();
@@ -60,6 +60,27 @@ public class EventType {
     private Optional<Set<String>> writeScope;
 
     private Optional<Set<String>> readScope;
+
+    public EventType() {}
+
+    public EventType(final String name, final String topic, final String owningApplication, final EventCategory category,
+                     final List<ValidationStrategyConfiguration> validationStrategies,
+                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies, final String partitionStrategy,
+                     final List<String> partitionKeyFields, final EventTypeSchema schema, final EventTypeStatistics defaultStatistic,
+                     final EventTypeOptions options)
+    {
+        this.name = name;
+        this.topic = topic;
+        this.owningApplication = owningApplication;
+        this.category = category;
+        this.validationStrategies = validationStrategies;
+        this.enrichmentStrategies = enrichmentStrategies;
+        this.partitionStrategy = partitionStrategy;
+        this.partitionKeyFields = partitionKeyFields;
+        this.schema = schema;
+        this.defaultStatistic = defaultStatistic;
+        this.options = options;
+    }
 
     public String getName() { return name; }
 
