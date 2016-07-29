@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -26,8 +27,13 @@ import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.text.MessageFormat;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.IntStream.range;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Matchers.any;
@@ -174,6 +180,38 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
+    @Test
+    public void whenListSubscriptionsThenOk() throws Exception {
+        final List<Subscription> subscriptions = createRandomSubscriptions(10);
+        when(subscriptionRepository.listSubscriptions()).thenReturn(subscriptions);
+
+        getSubscriptions(Optional.empty())
+                .andExpect(status().isOk())
+                .andExpect(content().string(jsonHelper.matchesObject(subscriptions)));
+    }
+
+    @Test
+    public void whenListSubscriptionsForOwningAppThenOk() throws Exception {
+        final List<Subscription> subscriptions = createRandomSubscriptions(10);
+        when(subscriptionRepository.listSubscriptionsForOwningApplication("blahApp")).thenReturn(subscriptions);
+
+        getSubscriptions(Optional.of("blahApp"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(jsonHelper.matchesObject(subscriptions)));
+    }
+
+    @Test
+    public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
+        when(subscriptionRepository.listSubscriptions()).thenThrow(new ServiceUnavailableException("dummy message"));
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
+        checkForProblem(getSubscriptions(Optional.empty()), expectedProblem);
+    }
+
+    private ResultActions getSubscriptions(final Optional<String> owningApplication) throws Exception {
+        final String url = "/subscriptions" + owningApplication.map(app -> "?owning_application=" + app).orElse("");
+        return mockMvc.perform(get(url));
+    }
+
     private ResultActions getSubscription(final String subscriptionId) throws Exception {
         return mockMvc.perform(get(MessageFormat.format("/subscriptions/{0}", subscriptionId)));
     }
@@ -183,6 +221,12 @@ public class SubscriptionControllerTest {
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+    }
+
+    private List<Subscription> createRandomSubscriptions(final int count) {
+        return range(0, count)
+                .mapToObj(i -> createRandomSubscription())
+                .collect(toList());
     }
 
     private Subscription createRandomSubscription() {
