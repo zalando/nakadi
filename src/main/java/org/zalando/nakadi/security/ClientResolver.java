@@ -55,8 +55,8 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                 .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
     }
 
-    public Set<String> getScopes() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    private Set<String> getScopes() {
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication instanceof OAuth2Authentication) {
             return ((OAuth2Authentication) authentication).getOAuth2Request().getScope();
         }

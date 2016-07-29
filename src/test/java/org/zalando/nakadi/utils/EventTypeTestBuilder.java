@@ -12,6 +12,8 @@ import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 public class EventTypeTestBuilder {
 
@@ -29,6 +31,8 @@ public class EventTypeTestBuilder {
     private EventTypeSchema schema;
     private EventTypeStatistics defaultStatistic;
     private EventTypeOptions options;
+    private Optional<Set<String>> writeScope;
+    private Optional<Set<String>> readScope;
 
     public EventTypeTestBuilder() {
         this.name = TestUtils.randomValidEventTypeName();
@@ -40,6 +44,8 @@ public class EventTypeTestBuilder {
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.partitionKeyFields = Lists.newArrayList();
         this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, DEFAULT_SCHEMA);
+        this.writeScope = Optional.empty();
+        this.readScope = Optional.empty();
     }
 
     public EventTypeTestBuilder name(final String name) {
@@ -102,9 +108,20 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder writeScope(final Optional<Set<String>> writeScope) {
+        this.writeScope = writeScope;
+        return this;
+    }
+
+    public EventTypeTestBuilder readScope(final Optional<Set<String>> readScope) {
+        this.readScope = readScope;
+        return this;
+    }
+
+
     public EventType build() {
         return new EventType(name, topic, owningApplication, category, validationStrategies, enrichmentStrategies,
-                partitionStrategy, partitionKeyFields, schema, defaultStatistic, options);
+                partitionStrategy, partitionKeyFields, schema, defaultStatistic, options, writeScope, readScope);
     }
 
     public static EventTypeTestBuilder builder() {

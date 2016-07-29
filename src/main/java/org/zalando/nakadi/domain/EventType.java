@@ -67,7 +67,7 @@ public class EventType {
                      final List<ValidationStrategyConfiguration> validationStrategies,
                      final List<EnrichmentStrategyDescriptor> enrichmentStrategies, final String partitionStrategy,
                      final List<String> partitionKeyFields, final EventTypeSchema schema, final EventTypeStatistics defaultStatistic,
-                     final EventTypeOptions options)
+                     final EventTypeOptions options, final Optional<Set<String>> writeScope, Optional<Set<String>> readScope)
     {
         this.name = name;
         this.topic = topic;
@@ -80,6 +80,8 @@ public class EventType {
         this.schema = schema;
         this.defaultStatistic = defaultStatistic;
         this.options = options;
+        this.writeScope = writeScope;
+        this.readScope = readScope;
     }
 
     public String getName() { return name; }

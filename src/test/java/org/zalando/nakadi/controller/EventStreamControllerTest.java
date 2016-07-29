@@ -29,6 +29,7 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.security.AuthorizedClient;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -37,6 +38,7 @@ import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
 
 import javax.servlet.http.HttpServletRequest;
@@ -46,7 +48,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.LinkedList;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -76,7 +81,8 @@ public class EventStreamControllerTest {
 
     private static final String TEST_EVENT_TYPE_NAME = "test";
     private static final String TEST_TOPIC = "test-topic";
-    private static final EventType EVENT_TYPE = new EventType();
+    private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
+    private static final Set<String> SCOPE_READ = Collections.singleton("oauth2.scope.read");
 
     private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
@@ -258,10 +264,8 @@ public class EventStreamControllerTest {
         when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
 
-        final ArgumentCaptor<Integer> statusCaptor = ArgumentCaptor.forClass(Integer.class);
-        doNothing().when(responseMock).setStatus(statusCaptor.capture());
-        final ArgumentCaptor<String> contentTypeCaptor = ArgumentCaptor.forClass(String.class);
-        doNothing().when(responseMock).setContentType(contentTypeCaptor.capture());
+        final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
+        final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
@@ -369,14 +373,74 @@ public class EventStreamControllerTest {
         }
     }
 
-    private String responseToString(final StreamingResponseBody responseBody) throws IOException {
+    @Test
+    public void test_read_scope() throws Exception {
+        prepareScopeRead();
+        final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
+        final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
+
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(mock(EventStream.class));
+
+        writeStream(SCOPE_READ);
+
+        assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
+        assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
+    }
+
+    @Test
+    public void test_no_read_scope() throws Exception {
+        prepareScopeRead();
+
+        final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
+        final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
+
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(mock(EventStream.class));
+
+        writeStream(Collections.emptySet());
+
+        assertThat(statusCaptor.getValue(), equalTo(HttpStatus.FORBIDDEN.value()));
+        assertThat(contentTypeCaptor.getValue(), equalTo("application/problem+json"));
+    }
+
+    private void writeStream(final Set<String> scopes) throws Exception {
+        final StreamingResponseBody responseBody = createStreamingResponseBody(new AuthorizedClient("clientId", scopes));
+        final OutputStream outputStream = mock(OutputStream.class);
+        responseBody.writeTo(outputStream);
+    }
+
+    private ArgumentCaptor<String> getContentTypeCaptor() {
+        final ArgumentCaptor<String> contentTypeCaptor = ArgumentCaptor.forClass(String.class);
+        doNothing().when(responseMock).setContentType(contentTypeCaptor.capture());
+        return contentTypeCaptor;
+    }
+
+    private ArgumentCaptor<Integer> getStatusCaptor() {
+        final ArgumentCaptor<Integer> statusCaptor = ArgumentCaptor.forClass(Integer.class);
+        doNothing().when(responseMock).setStatus(statusCaptor.capture());
+        return statusCaptor;
+    }
+
+    private void prepareScopeRead() throws NakadiException, InvalidCursorException {
+        EVENT_TYPE.setReadScope(Optional.of(SCOPE_READ));
+        final EventConsumer eventConsumerMock = mock(EventConsumer.class);
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
+                .thenReturn(eventConsumerMock);
+    }
+
+
+    protected String responseToString(final StreamingResponseBody responseBody) throws IOException {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         responseBody.writeTo(out);
         return out.toString();
     }
 
-    private StreamingResponseBody createStreamingResponseBody() throws IOException {
+    protected StreamingResponseBody createStreamingResponseBody() throws IOException {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock, Client.PERMIT_ALL);
+    }
+
+    private StreamingResponseBody createStreamingResponseBody(Client client) throws Exception {
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock, client);
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Integer batchLimit,
