@@ -17,6 +17,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
@@ -28,10 +29,13 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.problem.Problem;
 
@@ -84,6 +88,8 @@ public class EventStreamControllerTest {
     private EventStreamController controller;
     private JsonTestHelper jsonHelper;
     private MetricRegistry metricRegistry;
+    private FeatureToggleService featureToggleService;
+    private SecuritySettings settings;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException {
@@ -110,6 +116,9 @@ public class EventStreamControllerTest {
 
         controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
         eventStreamFactoryMock, metricRegistry, crutch);
+
+        featureToggleService = mock(FeatureToggleService.class);
+        settings = mock(SecuritySettings.class);
     }
 
     @Test
@@ -125,6 +134,7 @@ public class EventStreamControllerTest {
         final MockMvc mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
                         new MappingJackson2HttpMessageConverter(objectMapper))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
 
         mockMvc.perform(
@@ -153,8 +163,7 @@ public class EventStreamControllerTest {
     public void whenTopicNotExistsThenTopicNotFound() throws IOException, NakadiException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenThrow(NoSuchEventTypeException.class);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null,
-                requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "topic not found");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
@@ -165,8 +174,7 @@ public class EventStreamControllerTest {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.topicExists(eq(TEST_TOPIC))).thenReturn(false);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null,
-                requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
@@ -177,8 +185,7 @@ public class EventStreamControllerTest {
     public void whenStreamLimitLowerThanBatchLimitThenUnprocessableEntity() throws NakadiException, IOException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 20, 10, 0, 0, 0, null,
-                requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody(20, 10, 0, 0, 0, null);
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "stream_limit can't be lower than batch_limit");
@@ -189,8 +196,7 @@ public class EventStreamControllerTest {
     public void whenStreamTimeoutLowerThanBatchTimeoutThenUnprocessableEntity() throws NakadiException, IOException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 20, 10, 0, null,
-                requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 20, 10, 0, null);
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "stream_timeout can't be lower than batch_flush_timeout");
@@ -201,8 +207,7 @@ public class EventStreamControllerTest {
     public void whenWrongCursorsFormatThenBadRequest() throws NakadiException, IOException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0,
-                "cursors_with_wrong_format", requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, "cursors_with_wrong_format");
 
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "incorrect syntax of X-nakadi-cursors header");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
@@ -215,8 +220,7 @@ public class EventStreamControllerTest {
         when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(cursor))))
                 .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0,
-                "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, "[{\"partition\":\"0\",\"offset\":\"0\"}]");
 
         final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED, "offset 0 for partition 0 is unavailable");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
@@ -235,8 +239,7 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture()))
                 .thenReturn(eventStreamMock);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 1, 1, 0,
-                null, requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 1, 1, 0, null);
         responseBody.writeTo(new ByteArrayOutputStream());
 
         final EventStreamConfig streamConfig = configCaptor.getValue();
@@ -265,8 +268,7 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture()))
                 .thenReturn(eventStreamMock);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5,
-                "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody(1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"0\"}]");
         final OutputStream outputStream = mock(OutputStream.class);
         responseBody.writeTo(outputStream);
 
@@ -300,8 +302,7 @@ public class EventStreamControllerTest {
     public void whenNakadiExceptionIsThrownThenServiceUnavailable() throws NakadiException, IOException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenThrow(ServiceUnavailableException.class);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null,
-                requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE);
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
@@ -311,8 +312,7 @@ public class EventStreamControllerTest {
     public void whenExceptionIsThrownThenInternalServerError() throws NakadiException, IOException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenThrow(NullPointerException.class);
 
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null,
-                requestMock, responseMock);
+        final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final Problem expectedProblem = Problem.valueOf(INTERNAL_SERVER_ERROR);
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
@@ -333,9 +333,7 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server
-        final StreamingResponseBody responseBody = controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null,
-                requestMock, responseMock);
-
+        final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final LinkedList<Thread> clients = new LinkedList<>();
         final Counter counter = metricRegistry.counter(metricNameFor(TEST_EVENT_TYPE_NAME, EventStreamController.CONSUMERS_COUNT_METRIC_NAME));
@@ -375,6 +373,20 @@ public class EventStreamControllerTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         responseBody.writeTo(out);
         return out.toString();
+    }
+
+    private StreamingResponseBody createStreamingResponseBody() throws IOException {
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock, Client.PERMIT_ALL);
+    }
+
+    private StreamingResponseBody createStreamingResponseBody(final Integer batchLimit,
+                                                              final Integer streamLimit,
+                                                              final Integer batchTimeout,
+                                                              final Integer streamTimeout,
+                                                              final Integer streamKeepAliveLimit,
+                                                              final String cursorsStr) throws IOException {
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, batchLimit, streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit,
+                cursorsStr, requestMock, responseMock, Client.PERMIT_ALL);
     }
 
 }
