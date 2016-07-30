@@ -88,9 +88,14 @@ public class NakadiTestUtils {
     }
 
     public static Subscription createSubscription(final Set<String> eventTypes) throws IOException {
+        return createSubscription(eventTypes, "my_app");
+    }
+
+    public static Subscription createSubscription(final Set<String> eventTypes, final String owningApp)
+            throws IOException {
         final SubscriptionBase subscription = new SubscriptionBase();
         subscription.setEventTypes(eventTypes);
-        subscription.setOwningApplication("my_app");
+        subscription.setOwningApplication(owningApp);
         subscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
         final Response response = given()
                 .body(MAPPER.writeValueAsString(subscription))
