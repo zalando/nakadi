@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -104,7 +105,7 @@ public class SubscriptionController {
             final List<Subscription> subscriptions = owningApplication == null ?
                     subscriptionRepository.listSubscriptions() :
                     subscriptionRepository.listSubscriptionsForOwningApplication(owningApplication);
-            return status(OK).body(subscriptions);
+            return status(OK).body(new SubscriptionListWrapper(subscriptions));
 
         } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);

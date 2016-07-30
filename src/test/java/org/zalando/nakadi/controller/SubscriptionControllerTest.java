@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -184,20 +185,22 @@ public class SubscriptionControllerTest {
     public void whenListSubscriptionsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
         when(subscriptionRepository.listSubscriptions()).thenReturn(subscriptions);
+        final SubscriptionListWrapper subscriptionList = new SubscriptionListWrapper(subscriptions);
 
         getSubscriptions(Optional.empty())
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(subscriptions)));
+                .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
     }
 
     @Test
     public void whenListSubscriptionsForOwningAppThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
         when(subscriptionRepository.listSubscriptionsForOwningApplication("blahApp")).thenReturn(subscriptions);
+        final SubscriptionListWrapper subscriptionList = new SubscriptionListWrapper(subscriptions);
 
         getSubscriptions(Optional.of("blahApp"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(subscriptions)));
+                .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
     }
 
     @Test
