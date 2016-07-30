@@ -10,8 +10,6 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.util.UUIDGenerator;
 
@@ -71,7 +69,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenGetSubscriptionByIdThenOk() throws InternalNakadiException, NoSuchSubscriptionException {
+    public void whenGetSubscriptionByIdThenOk() throws Exception {
 
         // insert subscription into DB
         final Subscription subscription = createSubscription();
@@ -83,7 +81,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenGetSubscriptionByKeyPropertiesThenOk() throws InternalNakadiException, NoSuchSubscriptionException {
+    public void whenGetSubscriptionByKeyPropertiesThenOk() throws Exception {
 
         // insert subscription into DB
         final Subscription subscription = createSubscription("myapp", ImmutableSet.of("my-et", "second-et"), "my-cg");
