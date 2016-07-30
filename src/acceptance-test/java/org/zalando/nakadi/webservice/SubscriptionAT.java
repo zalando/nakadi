@@ -99,14 +99,14 @@ public class SubscriptionAT extends BaseAT {
     @Test
     public void testListSubscriptions() throws IOException {
         final Set<String> eventTypes = ImmutableSet.of(createEventType().getName());
-        final Subscription sub1 = createSubscription(eventTypes, "app");
-        final Subscription sub2 = createSubscription(eventTypes, "app");
+        final Subscription sub1 = createSubscription(eventTypes, "filterApp");
+        final Subscription sub2 = createSubscription(eventTypes, "filterApp");
         createSubscription(eventTypes, "anotherApp");
 
         final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub1, sub2));
 
         given()
-                .param("owning_application", "app")
+                .param("owning_application", "filterApp")
                 .get("/subscriptions")
                 .then()
                 .statusCode(HttpStatus.SC_OK)
