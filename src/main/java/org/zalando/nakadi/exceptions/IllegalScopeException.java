@@ -6,7 +6,7 @@ public class IllegalScopeException extends RuntimeException {
 
     private final Set<String> missingScopes;
 
-    public IllegalScopeException(Set<String> missingScopes) {
+    public IllegalScopeException(final Set<String> missingScopes) {
         this.missingScopes = missingScopes;
     }
 
