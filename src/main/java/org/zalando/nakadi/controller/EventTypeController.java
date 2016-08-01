@@ -42,7 +42,8 @@ public class EventTypeController {
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
                                final FeatureToggleService featureToggleService,
-                               final EventTypeOptionsValidator eventTypeOptionsValidator, ApplicationService applicationService) {
+                               final EventTypeOptionsValidator eventTypeOptionsValidator,
+                               final ApplicationService applicationService) {
         this.eventTypeService = eventTypeService;
         this.featureToggleService = featureToggleService;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;

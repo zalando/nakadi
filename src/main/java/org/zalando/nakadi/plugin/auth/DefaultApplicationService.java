@@ -5,7 +5,7 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 public class DefaultApplicationService implements ApplicationService {
 
     @Override
-    public boolean exists(String applicationId) {
+    public boolean exists(final String applicationId) {
         return true;
     }
 }
