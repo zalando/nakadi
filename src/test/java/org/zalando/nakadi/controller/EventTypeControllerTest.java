@@ -29,6 +29,7 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.auth.DefaultApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.ClientResolver;
@@ -96,7 +97,7 @@ public class EventTypeControllerTest {
         final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService,
-                eventTypeOptionsValidator, applicationService);
+                eventTypeOptionsValidator, new DefaultApplicationService());
 
         Mockito.doReturn(randomUUID).when(uuid).randomUUID();
 
