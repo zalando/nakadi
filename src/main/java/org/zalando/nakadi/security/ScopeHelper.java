@@ -8,7 +8,7 @@ import java.util.Set;
 public class ScopeHelper {
 
     public static void checkScopes(final Set<String> allowedScopes, final Set<String> clientScopes) {
-        if (isEmptyScope(allowedScopes) ) {
+        if (areScopesEmpty(allowedScopes)) {
             return;
         }
 
@@ -18,7 +18,7 @@ public class ScopeHelper {
                 .orElseThrow(() -> new IllegalScopeException(allowedScopes));
     }
 
-    private static boolean isEmptyScope(final Set<String> allowedScopes) {
+    private static boolean areScopesEmpty(final Set<String> allowedScopes) {
         return Objects.isNull(allowedScopes) || allowedScopes.isEmpty();
     }
 
