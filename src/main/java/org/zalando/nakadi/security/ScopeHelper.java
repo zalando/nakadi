@@ -1,22 +1,30 @@
 package org.zalando.nakadi.security;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ScopeHelper {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ScopeHelper.class);
-
-    public static void checkScopes(final Optional<Set<String>> scope, final Client client) {
-        scope.ifPresent(scopes -> {
-            LOG.debug("scopes={}", scopes);
-            if (client.hasNoScopes(scopes)) {
-                throw new IllegalScopeException();
+    public static void checkScopes(final Optional<Set<String>> allowedScope, final Set<String> clientScopes) {
+        allowedScope.ifPresent(allowedScopes -> {
+            if (hasNoAllowedScopes(allowedScopes, clientScopes)) {
+                throw new IllegalScopeException(getMissingScopes(allowedScopes, clientScopes));
             }
         });
     }
+
+    private static boolean hasNoAllowedScopes(final Set<String> allowedScopes, final Set<String> clientScopes) {
+        return clientScopes.stream()
+                .noneMatch(allowedScopes::contains);
+    }
+
+    private static Set<String> getMissingScopes(final Set<String> allowedScopes, final Set<String> clientScopes) {
+        return allowedScopes.stream()
+                .filter(scope -> !clientScopes.contains(scope))
+                .collect(Collectors.toSet());
+    }
+
 }

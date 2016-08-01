@@ -385,6 +385,8 @@ public class EventStreamControllerTest {
 
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
         assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
+
+        clearScopes();
     }
 
     @Test
@@ -400,6 +402,12 @@ public class EventStreamControllerTest {
 
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.FORBIDDEN.value()));
         assertThat(contentTypeCaptor.getValue(), equalTo("application/problem+json"));
+
+        clearScopes();
+    }
+
+    private void clearScopes() {
+        EVENT_TYPE.setReadScope(Optional.empty());
     }
 
     private void writeStream(final Set<String> scopes) throws Exception {
@@ -427,7 +435,6 @@ public class EventStreamControllerTest {
         when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
     }
-
 
     protected String responseToString(final StreamingResponseBody responseBody) throws IOException {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();

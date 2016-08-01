@@ -102,7 +102,7 @@ public class EventStreamController {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
                 final String topic = eventType.getTopic();
 
-                ScopeHelper.checkScopes(eventType.getReadScope(), client);
+                ScopeHelper.checkScopes(eventType.getReadScope(), client.getScopes());
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
@@ -197,9 +197,7 @@ public class EventStreamController {
     }
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,
-                                      final Problem problem) throws IOException
-    {
-
+                                      final Problem problem) throws IOException {
         response.setStatus(problem.getStatus().getStatusCode());
         response.setContentType("application/problem+json");
         jsonMapper.writer().writeValue(outputStream, problem);

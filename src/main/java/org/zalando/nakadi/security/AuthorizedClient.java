@@ -1,7 +1,10 @@
 package org.zalando.nakadi.security;
 
+import javax.annotation.concurrent.Immutable;
+import java.util.Collections;
 import java.util.Set;
 
+@Immutable
 public final class AuthorizedClient implements Client {
 
     private final String clientId;
@@ -18,8 +21,8 @@ public final class AuthorizedClient implements Client {
     }
 
     @Override
-    public boolean hasNoScopes(final Set<String> scopes) {
-        return this.scopes.stream().noneMatch(scope -> scopes.contains(scope));
+    public Set<String> getScopes() {
+        return Collections.unmodifiableSet(this.scopes);
     }
 
 }

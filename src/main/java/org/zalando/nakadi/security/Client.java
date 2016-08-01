@@ -1,5 +1,6 @@
 package org.zalando.nakadi.security;
 
+import java.util.Collections;
 import java.util.Set;
 
 public interface Client {
@@ -11,13 +12,13 @@ public interface Client {
         }
 
         @Override
-        public boolean hasNoScopes(final Set<String> scopes) {
-            return false;
+        public Set<String> getScopes() {
+            return Collections.emptySet();
         }
     };
 
     boolean is(final String clientId);
 
-    boolean hasNoScopes(final Set<String> scopes);
+    Set<String> getScopes();
 
 }

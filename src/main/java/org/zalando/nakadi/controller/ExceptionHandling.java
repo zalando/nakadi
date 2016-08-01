@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
 
@@ -23,7 +22,6 @@ import javax.ws.rs.core.Response;
 public final class ExceptionHandling implements ProblemHandling {
 
     private static final Logger LOG = LoggerFactory.getLogger(ExceptionHandling.class);
-    private static final String SCOPES_ARE_NOT_ALLOWED = "Scopes are not allowed";
 
     @Override
     public String formatFieldName(final String fieldName) {
@@ -61,10 +59,7 @@ public final class ExceptionHandling implements ProblemHandling {
 
     @ExceptionHandler(IllegalScopeException.class)
     public ResponseEntity<Problem> handleIllegalScopeException(final IllegalScopeException exception, final NativeWebRequest request) {
-        return Responses.create(getForbiddenProblem(), request);
+        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
     }
 
-    private ThrowableProblem getForbiddenProblem() {
-        return Problem.valueOf(Response.Status.FORBIDDEN, SCOPES_ARE_NOT_ALLOWED);
-    }
 }
