@@ -617,7 +617,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenOptionsRetentionTimeExist() throws Exception {
+    public void whenPostOptionsRetentionTimeExist() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
         final EventTypeOptions eventTypeOptions = new EventTypeOptions();
         eventTypeOptions.setRetentionTime(150L);
@@ -626,7 +626,28 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenOptionsRetentionTimeBiggerThanMax() throws Exception {
+    public void whenGetOptionsRetentionTimeExist() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+        eventTypeOptions.setRetentionTime(150L);
+        defaultEventType.setOptions(eventTypeOptions);
+
+        Mockito.doReturn(Collections.singletonList(defaultEventType)).when(eventTypeRepository).list();
+
+        getEventType()
+                .andExpect(status().is2xxSuccessful())
+                .andExpect(content().string(new StringContains("\"options\":{\"retention_time\":150}")));
+    }
+
+    @Test
+    public void whenPostOptionsRetentionNull() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+        defaultEventType.setOptions(new EventTypeOptions());
+        postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
+    }
+
+    @Test
+    public void whenPostOptionsRetentionTimeBiggerThanMax() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
         final EventTypeOptions eventTypeOptions = new EventTypeOptions();
         eventTypeOptions.setRetentionTime(201L);
@@ -637,7 +658,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenOptionsRetentionTimeSmallerThanMin() throws Exception {
+    public void whenPostOptionsRetentionTimeSmallerThanMin() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
         final EventTypeOptions eventTypeOptions = new EventTypeOptions();
         eventTypeOptions.setRetentionTime(99L);
@@ -691,6 +712,11 @@ public class EventTypeControllerTest {
                 .principal(new UserPrincipal(clientId))
                 .contentType(APPLICATION_JSON)
                 .content(content);
+        return mockMvc.perform(requestBuilder);
+    }
+
+    private ResultActions getEventType() throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types");
         return mockMvc.perform(requestBuilder);
     }
 

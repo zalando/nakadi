@@ -142,7 +142,6 @@ public class KafkaRepositoryAT extends BaseAT {
         // ACT //
         kafkaTopicRepository.createTopic(eventType);
 
-
         // ASSERT //
         executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), RETENTION_TIME),
                 new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
@@ -157,6 +156,21 @@ public class KafkaRepositoryAT extends BaseAT {
         // ACT //
         kafkaTopicRepository.createTopic(eventType);
 
+        // ASSERT //
+        executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), DEFAULT_TOPIC_RETENTION),
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
+    }
+
+    @Test(timeout = 10000)
+    public void whenCreateTopicWithNoRetentionTime() throws Exception {
+        final EventType eventType = new EventType();
+        eventType.setName(eventName);
+        eventType.setTopic(topicName);
+        eventType.setOptions(new EventTypeOptions());
+
+        // ACT //
+        kafkaTopicRepository.createTopic(eventType);
 
         // ASSERT //
         executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), DEFAULT_TOPIC_RETENTION),
