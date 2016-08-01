@@ -50,7 +50,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.LinkedList;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -407,7 +406,7 @@ public class EventStreamControllerTest {
     }
 
     private void clearScopes() {
-        EVENT_TYPE.setReadScope(Optional.empty());
+        EVENT_TYPE.setReadScopes(Collections.emptySet());
     }
 
     private void writeStream(final Set<String> scopes) throws Exception {
@@ -429,7 +428,7 @@ public class EventStreamControllerTest {
     }
 
     private void prepareScopeRead() throws NakadiException, InvalidCursorException {
-        EVENT_TYPE.setReadScope(Optional.of(SCOPE_READ));
+        EVENT_TYPE.setReadScopes(SCOPE_READ);
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))

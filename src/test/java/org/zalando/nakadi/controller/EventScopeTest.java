@@ -35,7 +35,6 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 
 import java.util.Collections;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -85,7 +84,7 @@ public final class EventScopeTest {
     }
 
     private EventType createEventWith(final Set<String> scopes) {
-        return EventTypeTestBuilder.builder().writeScope(Optional.ofNullable(scopes)).build();
+        return EventTypeTestBuilder.builder().writeScopes(scopes).build();
     }
 
     private ResultActions publishEvent(final String batch) throws Exception {

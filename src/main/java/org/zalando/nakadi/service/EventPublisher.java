@@ -59,7 +59,7 @@ public class EventPublisher {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         final List<BatchItem> batch = BatchFactory.from(events);
 
-        ScopeHelper.checkScopes(eventType.getWriteScope(), client.getScopes());
+        ScopeHelper.checkScopes(eventType.getWriteScopes(), client.getScopes());
 
         try {
             validate(batch, eventType);

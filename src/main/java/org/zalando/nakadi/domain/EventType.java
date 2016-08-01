@@ -10,8 +10,8 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
@@ -35,12 +35,12 @@ public class EventType {
     private EventCategory category;
 
     @JsonIgnore
-    private List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
+    private List<ValidationStrategyConfiguration> validationStrategies;
 
     @NotNull
-    private List<EnrichmentStrategyDescriptor> enrichmentStrategies = Lists.newArrayList();
+    private List<EnrichmentStrategyDescriptor> enrichmentStrategies;
 
-    private String partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
+    private String partitionStrategy;
 
     @Nullable
     private List<String> partitionKeyFields;
@@ -57,18 +57,23 @@ public class EventType {
     @Nullable
     private EventTypeOptions options;
 
-    private Optional<Set<String>> writeScope;
+    private Set<String> writeScopes;
 
-    private Optional<Set<String>> readScope;
+    private Set<String> readScopes;
 
-    public EventType() {}
+    public EventType() {
+        this.validationStrategies = Lists.newArrayList();
+        this.enrichmentStrategies = Lists.newArrayList();
+        this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
+        this.writeScopes = Collections.emptySet();
+        this.readScopes = Collections.emptySet();
+    }
 
     public EventType(final String name, final String topic, final String owningApplication, final EventCategory category,
                      final List<ValidationStrategyConfiguration> validationStrategies,
                      final List<EnrichmentStrategyDescriptor> enrichmentStrategies, final String partitionStrategy,
                      final List<String> partitionKeyFields, final EventTypeSchema schema, final EventTypeStatistics defaultStatistic,
-                     final EventTypeOptions options, final Optional<Set<String>> writeScope, final Optional<Set<String>> readScope)
-    {
+                     final EventTypeOptions options, final Set<String> writeScopes, final Set<String> readScopes) {
         this.name = name;
         this.topic = topic;
         this.owningApplication = owningApplication;
@@ -80,8 +85,8 @@ public class EventType {
         this.schema = schema;
         this.defaultStatistic = defaultStatistic;
         this.options = options;
-        this.writeScope = writeScope;
-        this.readScope = readScope;
+        this.writeScopes = writeScopes;
+        this.readScopes = readScopes;
     }
 
     public String getName() { return name; }
@@ -160,19 +165,19 @@ public class EventType {
         this.options = options;
     }
 
-    public Optional<Set<String>> getWriteScope() {
-        return writeScope;
+    public Set<String> getWriteScopes() {
+        return writeScopes;
     }
 
-    public void setWriteScope(final Optional<Set<String>> writeScope) {
-        this.writeScope = writeScope;
+    public void setWriteScopes(final Set<String> writeScopes) {
+        this.writeScopes = writeScopes;
     }
 
-    public Optional<Set<String>> getReadScope() {
-        return readScope;
+    public Set<String> getReadScopes() {
+        return readScopes;
     }
 
-    public void setReadScope(final Optional<Set<String>> readScope) {
-        this.readScope = readScope;
+    public void setReadScopes(final Set<String> readScopes) {
+        this.readScopes = readScopes;
     }
 }

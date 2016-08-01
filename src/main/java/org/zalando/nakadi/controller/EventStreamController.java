@@ -102,7 +102,7 @@ public class EventStreamController {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
                 final String topic = eventType.getTopic();
 
-                ScopeHelper.checkScopes(eventType.getReadScope(), client.getScopes());
+                ScopeHelper.checkScopes(eventType.getReadScopes(), client.getScopes());
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
