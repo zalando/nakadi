@@ -14,6 +14,13 @@ public class EventTypeSchema {
     @NotNull
     private String schema;
 
+    public EventTypeSchema() {}
+
+    public EventTypeSchema(final Type type, final String schema) {
+        this.type = type;
+        this.schema = schema;
+    }
+
     public Type getType() {
         return type;
     }
