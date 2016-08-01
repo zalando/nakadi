@@ -7,7 +7,7 @@ import java.util.List;
 @Immutable
 public class SubscriptionListWrapper {
 
-    final List<Subscription> data;
+    private final List<Subscription> data;
 
     public SubscriptionListWrapper(final List<Subscription> data) {
         this.data = data;
