@@ -54,7 +54,7 @@ nakadi:
   oauth2:
     mode: BASIC
     adminClientId: nakadi
-    tokenInfoUrl: https://example.com/tokeninfo
+    tokenInfoUrl: https://info.services.auth.zalando.com/oauth2/tokeninfo
     clientId: stups_aruha-event-store-poc
     scopes:
       uid: uid
@@ -62,3 +62,6 @@ nakadi:
       eventTypeWrite: nakadi.event_type.write
       eventStreamRead: nakadi.event_stream.read
       eventStreamWrite: nakadi.event_stream.write
+  auth:
+    plugin:
+      factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory

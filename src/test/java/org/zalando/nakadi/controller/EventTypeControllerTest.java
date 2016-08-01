@@ -96,7 +96,7 @@ public class EventTypeControllerTest {
         final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService,
-                eventTypeOptionsValidator);
+                eventTypeOptionsValidator, applicationService);
 
         Mockito.doReturn(randomUUID).when(uuid).randomUUID();
 

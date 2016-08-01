@@ -8,6 +8,12 @@ import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
+import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.plugin.api.ApplicationServiceFactory;
+import org.zalando.nakadi.plugin.api.SystemProperties;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
@@ -65,6 +71,26 @@ public class NakadiConfig {
         metricRegistry.register("jvm.threads", new ThreadStatesGaugeSet());
 
         return metricRegistry;
+    }
+
+    @Bean
+    public SystemProperties systemProperties(ApplicationContext context) {
+        return name -> context.getEnvironment().getProperty(name);
+    }
+
+    @Bean
+    @SuppressWarnings("unchecked")
+    public ApplicationService factory(@Value("${nakadi.auth.plugin.factory}") String factoryName,
+                                      SystemProperties systemProperties)
+    {
+        try {
+            Class<ApplicationServiceFactory> factoryClass = (Class<ApplicationServiceFactory>) ClassLoader.getSystemClassLoader()
+                    .loadClass(factoryName);
+            ApplicationServiceFactory factory = factoryClass.newInstance();
+            return factory.init(systemProperties);
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            throw new BeanCreationException("Can't create ApplicationService", e);
+        }
     }
 
 }
