@@ -23,7 +23,7 @@ import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.IClient;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 
@@ -92,12 +92,12 @@ public class EventTypeService {
         }
     }
 
-    public Result<Void> delete(final String eventTypeName, final Client client) {
+    public Result<Void> delete(final String eventTypeName, final IClient client) {
         try {
             final Optional<EventType> eventType = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
-            } else if (!client.is(eventType.get().getOwningApplication())) {
+            } else if (!client.authenticate(eventType.get().getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }
             eventTypeRepository.removeEventType(eventTypeName);
@@ -112,10 +112,10 @@ public class EventTypeService {
         }
     }
 
-    public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
+    public Result<Void> update(final String eventTypeName, final EventType eventType, final IClient client) {
         try {
             final EventType original = eventTypeRepository.findByName(eventTypeName);
-            if (!client.is(original.getOwningApplication())) {
+            if (!client.authenticate(original.getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }
             validateUpdate(eventTypeName, eventType);

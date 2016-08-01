@@ -12,6 +12,7 @@ import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
@@ -166,18 +167,18 @@ public class EventType {
     }
 
     public Set<String> getWriteScopes() {
-        return writeScopes;
+        return Collections.unmodifiableSet(writeScopes);
     }
 
     public void setWriteScopes(final Set<String> writeScopes) {
-        this.writeScopes = writeScopes;
+        this.writeScopes = Objects.isNull(writeScopes) ? Collections.emptySet() : writeScopes;
     }
 
     public Set<String> getReadScopes() {
-        return readScopes;
+        return Collections.unmodifiableSet(readScopes);
     }
 
     public void setReadScopes(final Set<String> readScopes) {
-        this.readScopes = readScopes;
+        this.readScopes = Objects.isNull(readScopes) ? Collections.emptySet() : readScopes;
     }
 }

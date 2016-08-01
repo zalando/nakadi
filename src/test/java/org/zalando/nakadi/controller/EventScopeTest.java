@@ -28,8 +28,8 @@ import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.security.AuthorizedClient;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.IClient;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
@@ -78,6 +78,7 @@ public final class EventScopeTest {
 
         try {
             publishEvent(EVENT_BATCH);
+            Assert.fail("IllegalScopeException was expected");
         } catch (Exception e) {
             Assert.assertTrue(e.getCause() instanceof IllegalScopeException);
         }
@@ -109,11 +110,11 @@ public final class EventScopeTest {
         }
 
         @Override
-        public Client resolveArgument(final MethodParameter parameter,
-                                      final ModelAndViewContainer mavContainer,
-                                      final NativeWebRequest webRequest,
-                                      final WebDataBinderFactory binderFactory) throws Exception {
-            return new AuthorizedClient("clientId", scopes);
+        public IClient resolveArgument(final MethodParameter parameter,
+                                       final ModelAndViewContainer mavContainer,
+                                       final NativeWebRequest webRequest,
+                                       final WebDataBinderFactory binderFactory) throws Exception {
+            return new Client("clientId", scopes);
         }
     }
 }
