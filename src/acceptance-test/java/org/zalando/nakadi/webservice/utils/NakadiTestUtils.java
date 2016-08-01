@@ -20,6 +20,7 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -93,10 +94,16 @@ public class NakadiTestUtils {
 
     public static Subscription createSubscription(final Set<String> eventTypes, final String owningApp)
             throws IOException {
+        return createSubscription(eventTypes, owningApp, Optional.empty());
+    }
+
+    public static Subscription createSubscription(final Set<String> eventTypes, final String owningApp,
+                                                  final Optional<String> consumerGroup) throws IOException {
         final SubscriptionBase subscription = new SubscriptionBase();
         subscription.setEventTypes(eventTypes);
         subscription.setOwningApplication(owningApp);
         subscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
+        consumerGroup.ifPresent(subscription::setConsumerGroup);
         final Response response = given()
                 .body(MAPPER.writeValueAsString(subscription))
                 .contentType(JSON)

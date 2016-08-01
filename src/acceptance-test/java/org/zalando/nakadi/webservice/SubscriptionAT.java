@@ -22,6 +22,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.jayway.restassured.RestAssured.get;
@@ -34,6 +35,7 @@ import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 
 public class SubscriptionAT extends BaseAT {
@@ -99,14 +101,18 @@ public class SubscriptionAT extends BaseAT {
     @Test
     public void testListSubscriptions() throws IOException {
         final Set<String> eventTypes = ImmutableSet.of(createEventType().getName());
-        final Subscription sub1 = createSubscription(eventTypes, "filterApp");
-        final Subscription sub2 = createSubscription(eventTypes, "filterApp");
-        createSubscription(eventTypes, "anotherApp");
+
+        final String filterApp = randomUUID();
+        final Subscription sub1 = createSubscription(eventTypes, filterApp);
+        final Subscription sub2 = createSubscription(eventTypes, filterApp, Optional.of("another_group"));
+
+        final String anotherApp = randomUUID();
+        createSubscription(eventTypes, anotherApp);
 
         final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub1, sub2));
 
         given()
-                .param("owning_application", "filterApp")
+                .param("owning_application", filterApp)
                 .get("/subscriptions")
                 .then()
                 .statusCode(HttpStatus.SC_OK)
