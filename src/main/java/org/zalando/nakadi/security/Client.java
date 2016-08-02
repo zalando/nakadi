@@ -19,7 +19,7 @@ public class Client implements IClient {
     }
 
     public void authorize(final Set<String> allowedScopes) {
-        if (allowedScopes.isEmpty()) {
+        if (!allowedScopes.isEmpty()) {
             allowedScopes.stream()
                     .filter(scopes::contains)
                     .findAny()
