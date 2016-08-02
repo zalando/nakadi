@@ -18,11 +18,11 @@ public class ExceptionHandlingTest {
 
     @Test
     public void testHandleIllegalScopeException() {
-        ExceptionHandling exceptionHandling = new ExceptionHandling();
-        NativeWebRequest mockedRequest = Mockito.mock(NativeWebRequest.class);
+        final ExceptionHandling exceptionHandling = new ExceptionHandling();
+        final NativeWebRequest mockedRequest = Mockito.mock(NativeWebRequest.class);
         Mockito.when(mockedRequest.getHeader(Matchers.any())).thenReturn("");
 
-        ResponseEntity<Problem> problemResponseEntity = exceptionHandling.handleIllegalScopeException(
+        final ResponseEntity<Problem> problemResponseEntity = exceptionHandling.handleIllegalScopeException(
                 new IllegalScopeException(Collections.singleton(OAUTH2_SCOPE_WRITE)), mockedRequest);
 
         Assert.assertEquals(problemResponseEntity.getStatusCode(), HttpStatus.FORBIDDEN);
