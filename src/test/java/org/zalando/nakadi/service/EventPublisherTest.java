@@ -225,7 +225,7 @@ public class EventPublisherTest {
 
     @Test
     public void testScopeWrite() throws Exception {
-        EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
+        final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         mockSuccessfulValidation(eventType);
         final EventPublishResult result = publisher.publish(buildDefaultBatch(0), eventType.getName(), new Client(CLIENT_ID, SCOPE_WRITE));
@@ -235,7 +235,7 @@ public class EventPublisherTest {
 
     @Test(expected = IllegalScopeException.class)
     public void testNoScopeWrite() throws Exception {
-        EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
+        final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         publisher.publish(buildDefaultBatch(0), eventType.getName(), new Client(CLIENT_ID, Collections.emptySet()));
     }
