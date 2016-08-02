@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -12,18 +13,23 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
+import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.IClient;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -40,6 +46,9 @@ import static org.zalando.nakadi.utils.TestUtils.createBatch;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 
 public class EventPublisherTest {
+
+    private static final Set<String> SCOPE_WRITE = Collections.singleton("oauth2.scope.write");
+    public static final String CLIENT_ID = "clientId";
 
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
@@ -214,6 +223,23 @@ public class EventPublisherTest {
         verify(enrichment, times(1)).enrich(any(), any());
     }
 
+    @Test
+    public void testScopeWrite() throws Exception {
+        EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
+        Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
+        mockSuccessfulValidation(eventType);
+        final EventPublishResult result = publisher.publish(buildDefaultBatch(0), eventType.getName(), new Client(CLIENT_ID, SCOPE_WRITE));
+
+        Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
+    }
+
+    @Test(expected = IllegalScopeException.class)
+    public void testNoScopeWrite() throws Exception {
+        EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
+        Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
+        publisher.publish(buildDefaultBatch(0), eventType.getName(), new Client(CLIENT_ID, Collections.emptySet()));
+    }
+
     private void mockFailedPublishing() throws Exception {
         Mockito
                 .doThrow(EventPublishingException.class)
@@ -303,5 +329,4 @@ public class EventPublisherTest {
 
         return new JSONArray(events);
     }
-
 }

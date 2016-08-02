@@ -18,7 +18,7 @@ public class Client implements IClient {
         return this.clientId.equals(clientId);
     }
 
-    public void authorize(final Set<String> allowedScopes) {
+    public void authorize(final Set<String> allowedScopes) throws IllegalScopeException {
         if (!allowedScopes.isEmpty()) {
             allowedScopes.stream()
                     .filter(scopes::contains)
