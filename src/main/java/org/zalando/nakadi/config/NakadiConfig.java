@@ -84,7 +84,7 @@ public class NakadiConfig {
                                                  final SystemProperties systemProperties)
     {
         try {
-            final Class<ApplicationServiceFactory> factoryClass = (Class<ApplicationServiceFactory>) ClassLoader.getSystemClassLoader()
+            final Class<ApplicationServiceFactory> factoryClass = (Class<ApplicationServiceFactory>) NakadiConfig.class.getClassLoader()
                     .loadClass(factoryName);
             final ApplicationServiceFactory factory = factoryClass.newInstance();
             return factory.init(systemProperties);
