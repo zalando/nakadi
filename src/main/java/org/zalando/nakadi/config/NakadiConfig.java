@@ -80,8 +80,8 @@ public class NakadiConfig {
 
     @Bean
     @SuppressWarnings("unchecked")
-    public ApplicationService factory(@Value("${nakadi.auth.plugin.factory}") final String factoryName,
-                                      final SystemProperties systemProperties)
+    public ApplicationService applicationService(@Value("${nakadi.auth.plugin.factory}") final String factoryName,
+                                                 final SystemProperties systemProperties)
     {
         try {
             final Class<ApplicationServiceFactory> factoryClass = (Class<ApplicationServiceFactory>) ClassLoader.getSystemClassLoader()
@@ -89,7 +89,7 @@ public class NakadiConfig {
             final ApplicationServiceFactory factory = factoryClass.newInstance();
             return factory.init(systemProperties);
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-            throw new BeanCreationException("Can't create ApplicationService", e);
+            throw new BeanCreationException("Can't create ApplicationService " + factoryName, e);
         }
     }
 
