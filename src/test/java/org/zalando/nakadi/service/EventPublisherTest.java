@@ -18,8 +18,8 @@ import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
+import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.security.IClient;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
@@ -64,7 +64,7 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType, event);
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
@@ -78,7 +78,7 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType, event);
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
         verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
@@ -92,7 +92,7 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, event, "error");
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(createBatch(event), eventType);
@@ -108,7 +108,7 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, event, "error");
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -134,7 +134,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType, event);
         mockFaultPartition(eventType, event);
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
     }
@@ -148,7 +148,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultPartition(eventType, event);
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -174,7 +174,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFailedPublishing();
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.FAILED));
         verify(topicRepository, times(1)).syncPostBatch(any(), any());
@@ -189,7 +189,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType, event);
         mockFaultEnrichment();
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, times(1)).getValidator(eventType.getName());
@@ -206,7 +206,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultEnrichment();
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), IClient.FULL_ACCESS);
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), Client.FULL_ACCESS);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -228,7 +228,7 @@ public class EventPublisherTest {
         final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         mockSuccessfulValidation(eventType);
-        final EventPublishResult result = publisher.publish(buildDefaultBatch(0), eventType.getName(), new Client(CLIENT_ID, SCOPE_WRITE));
+        final EventPublishResult result = publisher.publish(buildDefaultBatch(0), eventType.getName(), new NakadiClient(CLIENT_ID, SCOPE_WRITE));
 
         Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
     }
@@ -237,7 +237,7 @@ public class EventPublisherTest {
     public void testNoScopeWrite() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
-        publisher.publish(buildDefaultBatch(0), eventType.getName(), new Client(CLIENT_ID, Collections.emptySet()));
+        publisher.publish(buildDefaultBatch(0), eventType.getName(), new NakadiClient(CLIENT_ID, Collections.emptySet()));
     }
 
     private void mockFailedPublishing() throws Exception {

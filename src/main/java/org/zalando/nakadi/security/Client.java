@@ -1,30 +1,20 @@
 package org.zalando.nakadi.security;
 
+import org.zalando.nakadi.exceptions.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 
 import java.util.Set;
 
-public class Client implements IClient {
+public interface Client {
 
-    private final String clientId;
-    private final Set<String> scopes;
+    Client FULL_ACCESS = new Client() {
+        @Override
+        public void checkId(final String clientId) {}
+        @Override
+        public void checkScopes(final Set<String> allowedScopes) {}
+    };
 
-    public Client(final String clientId, final Set<String> scopes) {
-        this.clientId = clientId;
-        this.scopes = scopes;
-    }
+    void checkId(final String clientId) throws IllegalClientIdException;
 
-    public boolean authenticate(final String clientId) {
-        return this.clientId.equals(clientId);
-    }
-
-    public void authorize(final Set<String> allowedScopes) throws IllegalScopeException {
-        if (!allowedScopes.isEmpty()) {
-            allowedScopes.stream()
-                    .filter(scopes::contains)
-                    .findAny()
-                    .orElseThrow(() -> new IllegalScopeException(allowedScopes));
-        }
-    }
-
+    void checkScopes(final Set<String> allowedScopes) throws IllegalScopeException;
 }

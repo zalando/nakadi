@@ -17,7 +17,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.security.IClient;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
@@ -46,7 +46,7 @@ public class EventPublishingController {
     public ResponseEntity postEvent(@PathVariable final String eventTypeName,
                                     @RequestBody final String eventsAsString,
                                     final NativeWebRequest nativeWebRequest,
-                                    final IClient client) {
+                                    final Client client) {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
@@ -64,7 +64,7 @@ public class EventPublishingController {
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
-                                             final IClient client) {
+                                             final Client client) {
         final long startingNanos = System.nanoTime();
         try {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);

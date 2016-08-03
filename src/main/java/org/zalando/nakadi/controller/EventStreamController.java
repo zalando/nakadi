@@ -24,7 +24,7 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.security.IClient;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -85,7 +85,7 @@ public class EventStreamController {
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
             @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
-            final HttpServletRequest request, final HttpServletResponse response, final IClient client) throws IOException {
+            final HttpServletRequest request, final HttpServletResponse response, final Client client) throws IOException {
 
         return outputStream -> {
 
@@ -101,7 +101,7 @@ public class EventStreamController {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
                 final String topic = eventType.getTopic();
 
-                client.authorize(eventType.getReadScopes());
+                client.checkScopes(eventType.getReadScopes());
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {

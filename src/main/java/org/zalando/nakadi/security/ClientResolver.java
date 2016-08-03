@@ -36,11 +36,11 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     @Override
     public boolean supportsParameter(final MethodParameter parameter) {
-        return parameter.getParameterType().isAssignableFrom(IClient.class);
+        return parameter.getParameterType().isAssignableFrom(Client.class);
     }
 
     @Override
-    public IClient resolveArgument(final MethodParameter parameter,
+    public Client resolveArgument(final MethodParameter parameter,
                                   final ModelAndViewContainer mavContainer,
                                   final NativeWebRequest request,
                                   final WebDataBinderFactory binderFactory) throws Exception {
@@ -48,10 +48,10 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
                 || clientId.filter(settings.getAdminClientId()::equals).isPresent()
                 || settings.getAuthMode() == OFF) {
-            return IClient.FULL_ACCESS;
+            return Client.FULL_ACCESS;
         }
 
-        return clientId.map(client -> new Client(client, getScopes()))
+        return clientId.map(client -> new NakadiClient(client, getScopes()))
                 .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
     }
 

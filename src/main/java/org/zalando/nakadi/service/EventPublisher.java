@@ -23,7 +23,7 @@ import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.security.IClient;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
@@ -53,12 +53,12 @@ public class EventPublisher {
         this.enrichment = enrichment;
     }
 
-    public EventPublishResult publish(final JSONArray events, final String eventTypeName, final IClient client)
+    public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client)
             throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         final List<BatchItem> batch = BatchFactory.from(events);
 
-        client.authorize(eventType.getWriteScopes());
+        client.checkScopes(eventType.getWriteScopes());
 
         try {
             validate(batch, eventType);

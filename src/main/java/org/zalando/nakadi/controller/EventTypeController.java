@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.nakadi.security.IClient;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -75,7 +75,7 @@ public class EventTypeController {
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName,
                                     final NativeWebRequest request,
-                                    final IClient client) {
+                                    final Client client) {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)) {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
@@ -93,7 +93,7 @@ public class EventTypeController {
             @RequestBody @Valid final EventType eventType,
             final Errors errors,
             final NativeWebRequest request,
-            final IClient client) {
+            final Client client) {
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }

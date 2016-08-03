@@ -29,9 +29,9 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.security.ClientResolver;
-import org.zalando.nakadi.security.IClient;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -410,7 +410,7 @@ public class EventStreamControllerTest {
     }
 
     private void writeStream(final Set<String> scopes) throws Exception {
-        final StreamingResponseBody responseBody = createStreamingResponseBody(new Client("clientId", scopes));
+        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", scopes));
         final OutputStream outputStream = mock(OutputStream.class);
         responseBody.writeTo(outputStream);
     }
@@ -442,10 +442,10 @@ public class EventStreamControllerTest {
     }
 
     protected StreamingResponseBody createStreamingResponseBody() throws IOException {
-        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock, IClient.FULL_ACCESS);
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock, Client.FULL_ACCESS);
     }
 
-    private StreamingResponseBody createStreamingResponseBody(final IClient client) throws Exception {
+    private StreamingResponseBody createStreamingResponseBody(final Client client) throws Exception {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock, client);
     }
 
@@ -456,7 +456,7 @@ public class EventStreamControllerTest {
                                                               final Integer streamKeepAliveLimit,
                                                               final String cursorsStr) throws IOException {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, batchLimit, streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit,
-                cursorsStr, requestMock, responseMock, IClient.FULL_ACCESS);
+                cursorsStr, requestMock, responseMock, Client.FULL_ACCESS);
     }
 
 }
