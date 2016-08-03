@@ -108,7 +108,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private long getTopicRetentionMs(final EventType eventType) {
-        Long retentionTime = eventType.getOptions().getRetentionTime();
+        final Long retentionTime = eventType.getOptions().getRetentionTime();
         return retentionTime == null ? settings.getDefaultTopicRetentionMs() : retentionTime.longValue();
     }
 
