@@ -44,12 +44,6 @@ public class EventTypeOptionsValidatorTest {
                 .rejectValue("options.retentionTime", null, "can not be less than " + TOPIC_RETENTION_MIN);
     }
 
-    private EventTypeOptions createEventTypeOptions(long retentionTime) {
-        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
-        eventTypeOptions.setRetentionTime(retentionTime);
-        return eventTypeOptions;
-    }
-
     @Test
     public void testValidationMax() {
         validator.validate(createEventTypeOptions(4L), mockedErrors);
@@ -58,5 +52,10 @@ public class EventTypeOptionsValidatorTest {
                 .rejectValue("options.retentionTime", null, "can not be more than " + TOPIC_RETENTION_MAX);
     }
 
+    private EventTypeOptions createEventTypeOptions(final long retentionTime) {
+        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+        eventTypeOptions.setRetentionTime(retentionTime);
+        return eventTypeOptions;
+    }
 
 }
