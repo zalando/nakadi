@@ -23,7 +23,6 @@ import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Topic;
@@ -42,8 +41,6 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -111,10 +108,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private long getTopicRetentionMs(final EventType eventType) {
-        return Optional.ofNullable(eventType.getOptions())
-                .map(EventTypeOptions::getRetentionTime)
-                .filter(Objects::nonNull)
-                .orElse(settings.getDefaultTopicRetentionMs());
+        Long retentionTime = eventType.getOptions().getRetentionTime();
+        return retentionTime == null ? settings.getDefaultTopicRetentionMs() : retentionTime.longValue();
     }
 
     private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,

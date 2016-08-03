@@ -46,8 +46,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int ZK_CONNECTION_TIMEOUT = 10000;
     private static final int KAFKA_SEND_TIMEOUT = 10000;
     private static final int KAFKA_POLL_TIMEOUT = 10000;
-    private static final Long RETENTION_TIME = 100L;
-    private static final Long DEFAULT_TOPIC_RETENTION = 100000000L;
+    private static final long RETENTION_TIME = 100;
+    private static final long DEFAULT_TOPIC_RETENTION = 100000000;
 
 
     private KafkaRepositorySettings repositorySettings;
@@ -162,23 +162,7 @@ public class KafkaRepositoryAT extends BaseAT {
                         .withWaitBetweenEachTry(500));
     }
 
-    @Test(timeout = 10000)
-    public void whenCreateTopicWithNoRetentionTime() throws Exception {
-        final EventType eventType = new EventType();
-        eventType.setName(eventName);
-        eventType.setTopic(topicName);
-        eventType.setOptions(new EventTypeOptions());
-
-        // ACT //
-        kafkaTopicRepository.createTopic(eventType);
-
-        // ASSERT //
-        executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), DEFAULT_TOPIC_RETENTION),
-                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                        .withWaitBetweenEachTry(500));
-    }
-
-    private Long getTopicRetentionTime(final String topic) {
+    private long getTopicRetentionTime(final String topic) {
         final ZkUtils zkUtils = ZkUtils.apply(ZOOKEEPER_URL, 30000, 10000, false);
         final Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
         return Long.valueOf(topicConfig.getProperty("retention.ms"));

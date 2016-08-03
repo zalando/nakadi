@@ -52,10 +52,11 @@ public class EventType {
     private EventTypeStatistics defaultStatistic;
 
     @Valid
-    @Nullable
     private EventTypeOptions options;
 
-    public EventType() {}
+    public EventType() {
+        options = new EventTypeOptions();
+    }
 
     public EventType(final String name, final String topic, final String owningApplication, final EventCategory category,
                      final List<ValidationStrategyConfiguration> validationStrategies,

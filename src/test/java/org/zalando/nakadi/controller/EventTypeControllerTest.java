@@ -75,6 +75,7 @@ public class EventTypeControllerTest {
 
     private static final int TOPIC_RETENTION_MIN_MS = 100;
     private static final int TOPIC_RETENTION_MAX_MS = 200;
+    private static final int TOPIC_RETENTION_DEFAULT_MS = 150;
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
@@ -93,7 +94,8 @@ public class EventTypeControllerTest {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid, featureToggleService);
 
-        final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
+        final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator
+                (TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS, TOPIC_RETENTION_DEFAULT_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService,
                 eventTypeOptionsValidator);

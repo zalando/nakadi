@@ -1,19 +1,21 @@
 package org.zalando.nakadi.validation;
 
-import org.zalando.nakadi.domain.EventTypeOptions;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
-
-import java.util.Objects;
+import org.zalando.nakadi.domain.EventTypeOptions;
 
 public final class EventTypeOptionsValidator implements Validator {
 
     private final long minTopicRetentionMs;
     private final long maxTopicRetentionMs;
+    private final long defaultTopicRetentionMs;
 
-    public EventTypeOptionsValidator(final long minTopicRetentionMs, final long maxTopicRetentionMs) {
+    public EventTypeOptionsValidator(final long minTopicRetentionMs,
+                                     final long maxTopicRetentionMs,
+                                     final long defaultTopicRetentionMs) {
         this.minTopicRetentionMs = minTopicRetentionMs;
         this.maxTopicRetentionMs = maxTopicRetentionMs;
+        this.defaultTopicRetentionMs = defaultTopicRetentionMs;
     }
 
     @Override
@@ -28,13 +30,16 @@ public final class EventTypeOptionsValidator implements Validator {
     }
 
     private void checkRetentionTime(final Errors errors, final EventTypeOptions options) {
-        if (Objects.nonNull(options) && Objects.nonNull(options.getRetentionTime())) {
-            final Long retentionTime = options.getRetentionTime();
-            if (retentionTime > maxTopicRetentionMs) {
-                createError(errors, "can not be more than " + maxTopicRetentionMs);
-            } else if (retentionTime < minTopicRetentionMs) {
-                createError(errors, "can not be less than " + minTopicRetentionMs);
-            }
+        final Long retentionTime = options.getRetentionTime();
+        if (retentionTime == null) {
+            options.setRetentionTime(defaultTopicRetentionMs);
+            return;
+        }
+
+        if (retentionTime > maxTopicRetentionMs) {
+            createError(errors, "can not be more than " + maxTopicRetentionMs);
+        } else if (retentionTime < minTopicRetentionMs) {
+            createError(errors, "can not be less than " + minTopicRetentionMs);
         }
     }
 
