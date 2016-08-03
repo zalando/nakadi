@@ -44,7 +44,8 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
         assertThat("Number of rows should increase", rows, equalTo(1));
 
-        final SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_topic, et_event_type_object FROM zn_data.event_type");
+        final SqlRowSet rs =
+                template.queryForRowSet("SELECT et_name, et_topic, et_event_type_object FROM zn_data.event_type");
         rs.next();
 
         assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
@@ -147,7 +148,8 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     private void insertEventType(final EventType eventType) throws Exception {
-        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, to_json(?::json))";
+        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) " +
+                "VALUES (?, ?, to_json(?::json))";
         template.update(insertSQL,
                 eventType.getName(),
                 eventType.getTopic(),

@@ -234,7 +234,8 @@ public class EventPublisherTest {
                 .enrich(any(), any());
     }
 
-    private void mockFaultValidation(final EventType eventType, final JSONObject event, final String error) throws Exception {
+    private void mockFaultValidation(final EventType eventType, final JSONObject event, final String error)
+            throws Exception {
         final EventTypeValidator faultyValidator = mock(EventTypeValidator.class);
 
         Mockito

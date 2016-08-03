@@ -121,7 +121,8 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenWrongStartFromThenBadRequest() throws Exception {
-        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\"myEt\"],\"start_from\":\"middle\"}";
+        final String subscription
+                = "{\"owning_application\":\"app\",\"event_types\":[\"myEt\"],\"start_from\":\"middle\"}";
         postSubscriptionAsJson(subscription).andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
     }
 
@@ -141,7 +142,8 @@ public class SubscriptionControllerTest {
         final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
         doThrow(new DuplicatedSubscriptionException("", null)).when(subscriptionRepository).createSubscription(any());
 
-        final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
+        final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC),
+                subscriptionBase);
         existingSubscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);

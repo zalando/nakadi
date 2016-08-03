@@ -94,7 +94,8 @@ public class CursorsServiceTest {
         when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
 
-        final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory = mock(SubscriptionKafkaClientFactory.class);
+        final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory =
+                mock(SubscriptionKafkaClientFactory.class);
         kafkaClient = mock(KafkaClient.class);
         when(subscriptionKafkaClientFactory.createKafkaClient(any())).thenReturn(kafkaClient);
 
@@ -181,7 +182,8 @@ public class CursorsServiceTest {
         when(getDataBuilder.forPath(offsetPath(partition2))).thenReturn(offset2.getBytes(CHARSET));
 
         final List<Cursor> actualResult = cursorsService.getSubscriptionCursors(SID);
-        Assert.assertEquals(Arrays.asList(new Cursor(partition1, offset1), new Cursor(partition2, offset2)), actualResult);
+        Assert.assertEquals(Arrays.asList(new Cursor(partition1, offset1), new Cursor(partition2, offset2)),
+                actualResult);
     }
 
     @Test(expected = ServiceUnavailableException.class)
