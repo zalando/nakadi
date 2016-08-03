@@ -46,8 +46,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int ZK_CONNECTION_TIMEOUT = 10000;
     private static final int KAFKA_SEND_TIMEOUT = 10000;
     private static final int KAFKA_POLL_TIMEOUT = 10000;
-    private static final long RETENTION_TIME = 100;
-    private static final long DEFAULT_TOPIC_RETENTION = 100000000;
+    private static final Long RETENTION_TIME = 100L;
+    private static final Long DEFAULT_TOPIC_RETENTION = 100000000L;
 
 
     private KafkaRepositorySettings repositorySettings;
@@ -162,7 +162,7 @@ public class KafkaRepositoryAT extends BaseAT {
                         .withWaitBetweenEachTry(500));
     }
 
-    private long getTopicRetentionTime(final String topic) {
+    private Long getTopicRetentionTime(final String topic) {
         final ZkUtils zkUtils = ZkUtils.apply(ZOOKEEPER_URL, 30000, 10000, false);
         final Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
         return Long.valueOf(topicConfig.getProperty("retention.ms"));
