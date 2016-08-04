@@ -78,7 +78,8 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Autowired
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
-                                final KafkaRepositorySettings settings, final KafkaPartitionsCalculator partitionsCalculator) {
+                                final KafkaRepositorySettings settings,
+                                final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;
         this.partitionsCalculator = partitionsCalculator;
         this.kafkaProducer = kafkaFactory.getProducer();
@@ -297,7 +298,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public TopicPartition getPartition(final String topicId, final String partition) throws ServiceUnavailableException {
+    public TopicPartition getPartition(final String topicId, final String partition)
+            throws ServiceUnavailableException {
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
 
             final org.apache.kafka.common.TopicPartition tp =
@@ -453,7 +455,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private int calculatePartitionsAccordingLoad(final int messagesPerMinute, final int avgEventSizeBytes) {
-        final float throughoutputMbPerSec = ((float)messagesPerMinute * (float)avgEventSizeBytes) / (1024.f * 1024.f * 60.f);
+        final float throughoutputMbPerSec = ((float)messagesPerMinute * (float)avgEventSizeBytes)
+                / (1024.f * 1024.f * 60.f);
         return partitionsCalculator.getBestPartitionsCount(avgEventSizeBytes, throughoutputMbPerSec);
     }
 }

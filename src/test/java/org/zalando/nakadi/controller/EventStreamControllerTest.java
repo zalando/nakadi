@@ -293,7 +293,8 @@ public class EventStreamControllerTest {
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
         assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
         
-        verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0"))));
+        verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_TOPIC),
+                eq(ImmutableList.of(new Cursor("0", "0"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
                 eq(streamConfig));
         verify(eventStreamMock, times(1)).streamEvents(any());
@@ -339,7 +340,8 @@ public class EventStreamControllerTest {
         final StreamingResponseBody responseBody = createStreamingResponseBody();
 
         final LinkedList<Thread> clients = new LinkedList<>();
-        final Counter counter = metricRegistry.counter(metricNameFor(TEST_EVENT_TYPE_NAME, EventStreamController.CONSUMERS_COUNT_METRIC_NAME));
+        final Counter counter = metricRegistry.counter(metricNameFor(TEST_EVENT_TYPE_NAME,
+                EventStreamController.CONSUMERS_COUNT_METRIC_NAME));
 
         // create clients...
         for (int i = 0; i < 3; i++) {

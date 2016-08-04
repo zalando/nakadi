@@ -1,8 +1,13 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,10 +21,6 @@ import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-import org.slf4j.LoggerFactory;
 
 class StreamingState extends State {
     private ZKSubscription topologyChangeSubscription;
@@ -46,7 +47,8 @@ class StreamingState extends State {
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() ->this.shutdownGracefully("Stream timeout reached"), timeout, TimeUnit.MILLISECONDS));
+                timeout -> scheduleTask(() ->this.shutdownGracefully("Stream timeout reached"), timeout,
+                        TimeUnit.MILLISECONDS));
 
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
@@ -60,7 +62,8 @@ class StreamingState extends State {
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
                 shutdownGracefully("Commit timeout reached");
             } else {
-                scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis - millisFromLastCommit, TimeUnit.MILLISECONDS);
+                scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis - millisFromLastCommit,
+                        TimeUnit.MILLISECONDS);
             }
         } else {
             scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
@@ -92,7 +95,8 @@ class StreamingState extends State {
             final ConsumerRecords<String, String> records = kafkaConsumer.poll(getKafkaPollTimeout());
             if (!records.isEmpty()) {
                 for (final TopicPartition tp : records.partitions()) {
-                    final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition()));
+                    final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(),
+                            String.valueOf(tp.partition()));
                     Optional.ofNullable(offsets.get(pk))
                             .ifPresent(pd -> records.records(tp).stream()
                                     .forEach(record -> pd.addEventFromKafka(record.offset(), record.value())));
@@ -146,7 +150,8 @@ class StreamingState extends State {
         }
         pollPaused = getMessagesAllowedToSend() <= 0;
         if (!offsets.isEmpty() &&
-                getParameters().isKeepAliveLimitReached(offsets.values().stream().mapToInt(PartitionData::getKeepAliveInARow))) {
+                getParameters().isKeepAliveLimitReached(offsets.values().stream()
+                        .mapToInt(PartitionData::getKeepAliveInARow))) {
             shutdownGracefully("All partitions reached keepAlive limit");
         }
     }
@@ -211,7 +216,8 @@ class StreamingState extends State {
                 .filter(p -> p.getState() == Partition.State.REASSIGNING)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
 
-        // 1. Select which partitions must be removed right now for some (strange) reasons (no need to release topology).
+        // 1. Select which partitions must be removed right now for some (strange) reasons
+        // (no need to release topology).
         offsets.keySet().stream()
                 .filter(e -> !newAssigned.containsKey(e))
                 .filter(e -> !newReassigning.containsKey(e))
@@ -255,7 +261,8 @@ class StreamingState extends State {
         final long currentTime = System.currentTimeMillis();
         final long barrier = currentTime + getParameters().commitTimeoutMillis;
         releasingPartitions.put(partitionKey, barrier);
-        scheduleTask(() -> barrierOnRebalanceReached(partitionKey), getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
+        scheduleTask(() -> barrierOnRebalanceReached(partitionKey), getParameters().commitTimeoutMillis,
+                TimeUnit.MILLISECONDS);
     }
 
     private void barrierOnRebalanceReached(final Partition.PartitionKey pk) {
@@ -265,16 +272,19 @@ class StreamingState extends State {
         getLog().info("Checking barrier to transfer partition {}", pk);
         final long currentTime = System.currentTimeMillis();
         if (currentTime >= releasingPartitions.get(pk)) {
-            shutdownGracefully("barrier on reassigning partition reached for " + pk + ", current time: " + currentTime + ", barrier: " + releasingPartitions.get(pk));
+            shutdownGracefully("barrier on reassigning partition reached for " + pk + ", current time: " + currentTime
+                    + ", barrier: " + releasingPartitions.get(pk));
         } else {
             // Schedule again, probably something happened (ex. rebalance twice)
-            scheduleTask(() -> barrierOnRebalanceReached(pk), releasingPartitions.get(pk) - currentTime, TimeUnit.MILLISECONDS);
+            scheduleTask(() -> barrierOnRebalanceReached(pk), releasingPartitions.get(pk) - currentTime,
+                    TimeUnit.MILLISECONDS);
         }
     }
 
     private void reconfigureKafkaConsumer(final boolean forceSeek) {
         if (kafkaConsumer == null) {
-            throw new IllegalStateException("kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
+            throw new IllegalStateException(
+                    "kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
         }
         final Set<Partition.PartitionKey> currentKafkaAssignment = kafkaConsumer.assignment().stream()
                 .map(tp -> new Partition.PartitionKey(tp.topic(), String.valueOf(tp.partition())))
@@ -303,7 +313,8 @@ class StreamingState extends State {
         offsets.put(
                 partition.getKey(),
                 new PartitionData(
-                        getZk().subscribeForOffsetChanges(partition.getKey(), () -> addTask(() -> offsetChanged(partition.getKey()))),
+                        getZk().subscribeForOffsetChanges(partition.getKey(), () -> addTask(()
+                                -> offsetChanged(partition.getKey()))),
                         getZk().getOffset(partition.getKey()),
                         LoggerFactory.getLogger("subscription." + getSessionId() + "." + partition.getKey())));
     }
@@ -352,7 +363,8 @@ class StreamingState extends State {
         if (null != data) {
             try {
                 if (data.getUnconfirmed() > 0) {
-                    getLog().warn("Skipping commits: {}, commit={}, sent={}", key, data.getSentOffset() - data.getUnconfirmed(), data.getSentOffset());
+                    getLog().warn("Skipping commits: {}, commit={}, sent={}", key, data.getSentOffset()
+                            - data.getUnconfirmed(), data.getSentOffset());
                 }
                 data.getSubscription().cancel();
             } catch (final RuntimeException ex) {

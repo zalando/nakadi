@@ -18,7 +18,8 @@ public class HashPartitionStrategy implements PartitionStrategy {
     private static final String DATA_PATH_PREFIX = EventValidation.DATA_CHANGE_WRAP_FIELD + ".";
 
     @Override
-    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions) throws InvalidPartitionKeyFieldsException {
+    public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
+            throws InvalidPartitionKeyFieldsException {
         final List<String> partitionKeyFields = eventType.getPartitionKeyFields();
         if (partitionKeyFields.isEmpty()) {
             throw new RuntimeException("Applying " + this.getClass().getSimpleName() + " although event type " +

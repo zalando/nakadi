@@ -9,9 +9,9 @@ import org.springframework.context.annotation.Configuration;
 public class ValidatorConfig {
 
     @Bean
-    public EventTypeOptionsValidator eventTypeOptionsValidator(@Value("${nakadi.topic.min.retentionMs}") final long minTopicRetentionMs,
-                                                               @Value("${nakadi.topic.max.retentionMs}") final long maxTopicRetentionMs)
-    {
+    public EventTypeOptionsValidator eventTypeOptionsValidator(
+            @Value("${nakadi.topic.min.retentionMs}") final long minTopicRetentionMs,
+            @Value("${nakadi.topic.max.retentionMs}") final long maxTopicRetentionMs) {
         return new EventTypeOptionsValidator(minTopicRetentionMs, maxTopicRetentionMs);
     }
 }

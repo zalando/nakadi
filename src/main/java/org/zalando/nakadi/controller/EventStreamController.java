@@ -66,7 +66,8 @@ public class EventStreamController {
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
-                                 final MetricRegistry metricRegistry, final ClosedConnectionsCrutch closedConnectionsCrutch) {
+                                 final MetricRegistry metricRegistry,
+                                 final ClosedConnectionsCrutch closedConnectionsCrutch) {
 
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
@@ -83,7 +84,8 @@ public class EventStreamController {
             @Nullable @RequestParam(value = "stream_limit", required = false) final Integer streamLimit,
             @Nullable @RequestParam(value = "batch_flush_timeout", required = false) final Integer batchTimeout,
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Integer streamTimeout,
-            @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
+            @Nullable
+            @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             @Nullable @RequestHeader(name = "X-nakadi-cursors", required = false) final String cursorsStr,
             final HttpServletRequest request, final HttpServletResponse response, final Client client) throws IOException {
 
@@ -123,7 +125,8 @@ public class EventStreamController {
                         cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {});
                     } catch (final IOException e) {
                         if (LOG.isDebugEnabled()) {
-                            LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr + ". Respond with BAD_REQUEST.", e);
+                            LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr
+                                    + ". Respond with BAD_REQUEST.", e);
                         }
                         writeProblemResponse(response, outputStream, BAD_REQUEST,
                                 "incorrect syntax of X-nakadi-cursors header");

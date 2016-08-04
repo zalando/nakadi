@@ -68,11 +68,15 @@ public class EventType {
         this.readScopes = Collections.emptySet();
     }
 
-    public EventType(final String name, final String topic, final String owningApplication, final EventCategory category,
+    public EventType(final String name, final String topic, final String owningApplication,
+                     final EventCategory category,
                      final List<ValidationStrategyConfiguration> validationStrategies,
-                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies, final String partitionStrategy,
-                     final List<String> partitionKeyFields, final EventTypeSchema schema, final EventTypeStatistics defaultStatistic,
-                     final EventTypeOptions options, final Set<String> writeScopes, final Set<String> readScopes) {
+                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
+                     final String partitionStrategy,
+                     final List<String> partitionKeyFields, final EventTypeSchema schema,
+                     final EventTypeStatistics defaultStatistic,
+                     final EventTypeOptions options, final Set<String> writeScopes,
+                     final Set<String> readScopes) {
         this.name = name;
         this.topic = topic;
         this.owningApplication = owningApplication;
@@ -88,9 +92,13 @@ public class EventType {
         this.readScopes = readScopes;
     }
 
-    public String getName() { return name; }
+    public String getName() {
+        return name;
+    }
 
-    public void setName(final String name) { this.name = name; }
+    public void setName(final String name) {
+        this.name = name;
+    }
 
     public String getOwningApplication() {
         return owningApplication;
@@ -152,9 +160,13 @@ public class EventType {
         this.enrichmentStrategies = enrichmentStrategies;
     }
 
-    public String getTopic() { return topic; }
+    public String getTopic() {
+        return topic;
+    }
 
-    public void setTopic(final String topic) { this.topic = topic; }
+    public void setTopic(final String topic) {
+        this.topic = topic;
+    }
 
     public EventTypeOptions getOptions() {
         return options;

@@ -1,5 +1,11 @@
 package org.zalando.nakadi.controller;
 
+import org.zalando.nakadi.domain.EventPublishResult;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
+import org.zalando.nakadi.metrics.EventTypeMetrics;
+import org.zalando.nakadi.service.EventPublisher;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
@@ -37,7 +43,8 @@ public class EventPublishingController {
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
 
     @Autowired
-    public EventPublishingController(final EventPublisher publisher, final EventTypeMetricRegistry eventTypeMetricRegistry) {
+    public EventPublishingController(final EventPublisher publisher,
+                                     final EventTypeMetricRegistry eventTypeMetricRegistry) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
     }
@@ -51,7 +58,8 @@ public class EventPublishingController {
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
-            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString, nativeWebRequest, eventTypeMetrics, client);
+            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
+                    nativeWebRequest, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {

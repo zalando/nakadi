@@ -26,7 +26,8 @@ public class AuthenticationConfig {
     public static class MeasuringTokenInfoResourceServerTokenServices extends TokenInfoResourceServerTokenServices {
         private final Timer timer;
 
-        public MeasuringTokenInfoResourceServerTokenServices(final String tokenInfoEndpointUrl, final String clientId, final MetricRegistry metricRegistry) {
+        public MeasuringTokenInfoResourceServerTokenServices(final String tokenInfoEndpointUrl, final String clientId,
+                                                             final MetricRegistry metricRegistry) {
             super(tokenInfoEndpointUrl, clientId);
             timer = metricRegistry.timer(MetricUtils.NAKADI_PREFIX + "general.accessTokenValidation");
         }

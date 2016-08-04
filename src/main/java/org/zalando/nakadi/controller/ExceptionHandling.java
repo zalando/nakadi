@@ -34,7 +34,8 @@ public final class ExceptionHandling implements ProblemHandling {
     public ResponseEntity<Problem> handleThrowable(final Throwable throwable, final NativeWebRequest request) {
         final String errorTraceId = generateErrorTraceId();
         LOG.error("InternalServerError (" + errorTraceId + "):", throwable);
-        return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, "An internal error happened. Please report it. (" + errorTraceId + ")", request);
+        return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, "An internal error happened. Please report it. ("
+                + errorTraceId + ")", request);
     }
 
     private String generateErrorTraceId() {
@@ -43,7 +44,8 @@ public final class ExceptionHandling implements ProblemHandling {
 
     @Override
     @ExceptionHandler
-    public ResponseEntity<Problem> handleMessageNotReadableException(final HttpMessageNotReadableException exception, final NativeWebRequest request) {
+    public ResponseEntity<Problem> handleMessageNotReadableException(final HttpMessageNotReadableException exception,
+                                                                     final NativeWebRequest request) {
         /*
         Unwrap nested JsonMappingException because the enclosing HttpMessageNotReadableException adds some ugly, Java
         class and stacktrace like information.

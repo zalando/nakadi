@@ -50,8 +50,7 @@ public class EventTypeService {
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                             final PartitionResolver partitionResolver, final Enrichment enrichment,
                             final UUIDGenerator uuidGenerator,
-                            final FeatureToggleService featureToggleService)
-    {
+                            final FeatureToggleService featureToggleService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
@@ -157,7 +156,8 @@ public class EventTypeService {
                 validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
     }
 
-    private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing, final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
+    private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing,
+            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
         if (existing != null && newStatistics == null) {
             return existing;
         }
@@ -173,7 +173,8 @@ public class EventTypeService {
         }
     }
 
-    private void validateSchemaChange(final EventType eventType, final EventType existingEventType) throws InvalidEventTypeException {
+    private void validateSchemaChange(final EventType eventType, final EventType existingEventType)
+            throws InvalidEventTypeException {
         if (!existingEventType.getSchema().equals(eventType.getSchema())) {
             throw new InvalidEventTypeException("schema must not be changed");
         }
@@ -204,8 +205,7 @@ public class EventTypeService {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
             if (eventType.getCategory() == EventCategory.BUSINESS
-                    && hasReservedField(schemaAsJson, "metadata"))
-            {
+                    && hasReservedField(schemaAsJson, "metadata")) {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 

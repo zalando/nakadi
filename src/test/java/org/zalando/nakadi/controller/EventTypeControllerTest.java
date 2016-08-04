@@ -100,7 +100,8 @@ public class EventTypeControllerTest {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid, featureToggleService);
 
-        final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
+        final EventTypeOptionsValidator eventTypeOptionsValidator
+                = new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService,
                 eventTypeOptionsValidator);
@@ -645,7 +646,8 @@ public class EventTypeControllerTest {
         defaultEventType.setOptions(eventTypeOptions);
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
-                .andExpect(content().string(new StringContains("Field \\\"options.retention_time\\\" can not be more than 200")));
+                .andExpect(content().string(new StringContains(
+                        "Field \\\"options.retention_time\\\" can not be more than 200")));
     }
 
     @Test
@@ -656,7 +658,8 @@ public class EventTypeControllerTest {
         defaultEventType.setOptions(eventTypeOptions);
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
-                .andExpect(content().string(new StringContains("Field \\\"options.retention_time\\\" can not be less than 100")));
+                .andExpect(content().string(new StringContains(
+                        "Field \\\"options.retention_time\\\" can not be less than 100")));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
@@ -680,7 +683,8 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private ResultActions putEventType(final EventType eventType, final String name, final String clientId) throws Exception {
+    private ResultActions putEventType(final EventType eventType, final String name, final String clientId)
+            throws Exception {
         final String content = objectMapper.writeValueAsString(eventType);
 
         return putEventType(content, name, clientId);
@@ -698,7 +702,8 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private ResultActions putEventType(final String content, final String name, final String clientId) throws Exception {
+    private ResultActions putEventType(final String content, final String name, final String clientId)
+            throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
                 .principal(new UserPrincipal(clientId))
                 .contentType(APPLICATION_JSON)
