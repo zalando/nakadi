@@ -1,6 +1,5 @@
 package org.zalando.nakadi.validation;
 
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
@@ -10,15 +9,13 @@ import org.zalando.nakadi.domain.EventTypeOptions;
 
 public class EventTypeOptionsValidatorTest {
 
-    private static final Long TOPIC_RETENTION_DEFAULT = 2L;
     private static final Long TOPIC_RETENTION_MIN = 1L;
     private static final Long TOPIC_RETENTION_MAX = 3L;
 
     private final Errors mockedErrors = Mockito.mock(Errors.class);
     private final EventTypeOptionsValidator validator = new EventTypeOptionsValidator(
             TOPIC_RETENTION_MIN,
-            TOPIC_RETENTION_MAX,
-            TOPIC_RETENTION_DEFAULT
+            TOPIC_RETENTION_MAX
     );
 
     @Before
@@ -27,11 +24,10 @@ public class EventTypeOptionsValidatorTest {
     }
 
     @Test
-    public void testValidationDefault() {
+    public void testValidation() {
         final EventTypeOptions eventTypeOptions = new EventTypeOptions();
         validator.validate(eventTypeOptions, mockedErrors);
 
-        Assert.assertEquals(TOPIC_RETENTION_DEFAULT, eventTypeOptions.getRetentionTime());
         Mockito.verify(mockedErrors, Mockito.times(0)).rejectValue(Matchers.any(), Matchers.any(),
                 Matchers.any());
     }

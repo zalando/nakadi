@@ -1,5 +1,7 @@
 package org.zalando.nakadi.domain;
 
+import javax.annotation.Nullable;
+
 public class EventTypeOptions {
 
     private Long retentionTime;
@@ -8,6 +10,7 @@ public class EventTypeOptions {
         return retentionTime;
     }
 
+    @Nullable
     public void setRetentionTime(final Long retentionTime) {
         this.retentionTime = retentionTime;
     }

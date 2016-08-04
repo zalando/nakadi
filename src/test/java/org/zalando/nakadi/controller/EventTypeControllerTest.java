@@ -7,8 +7,10 @@ import com.google.common.io.Resources;
 import com.sun.security.auth.UserPrincipal;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -16,9 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
@@ -73,9 +75,9 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventTypeControllerTest {
 
-    private static final int TOPIC_RETENTION_MIN_MS = 100;
-    private static final int TOPIC_RETENTION_MAX_MS = 200;
-    private static final int TOPIC_RETENTION_DEFAULT_MS = 150;
+    private static final long TOPIC_RETENTION_MIN_MS = 100;
+    private static final long TOPIC_RETENTION_MAX_MS = 200;
+    private static final long TOPIC_RETENTION_TIME_MS = 150L;
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
@@ -94,11 +96,13 @@ public class EventTypeControllerTest {
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid, featureToggleService);
 
-        final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator
-                (TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS, TOPIC_RETENTION_DEFAULT_MS);
+        final EventTypeOptionsValidator eventTypeOptionsValidator = new EventTypeOptionsValidator(
+                TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
+        final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0);
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService,
-                eventTypeOptionsValidator);
+                eventTypeOptionsValidator,
+                nakadiSettings);
 
         Mockito.doReturn(randomUUID).when(uuid).randomUUID();
 
@@ -621,39 +625,44 @@ public class EventTypeControllerTest {
     @Test
     public void whenPostOptionsRetentionTimeExist() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
-        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
-        eventTypeOptions.setRetentionTime(150L);
-        defaultEventType.setOptions(eventTypeOptions);
+        defaultEventType.getOptions().setRetentionTime(TOPIC_RETENTION_TIME_MS);
+
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
+
+        ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
+        Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
+        Assert.assertEquals(TOPIC_RETENTION_TIME_MS, eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
+    }
+
+    @Test
+    public void whenPostOptionsRetentionTimeDoesNotExist() throws Exception {
+        final EventType defaultEventType = buildDefaultEventType();
+
+        postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
+
+        ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
+        Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
+        Assert.assertEquals(TOPIC_RETENTION_TIME_MS, eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
     }
 
     @Test
     public void whenGetOptionsRetentionTimeExist() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
-        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
-        eventTypeOptions.setRetentionTime(150L);
-        defaultEventType.setOptions(eventTypeOptions);
+        defaultEventType.getOptions().setRetentionTime(TOPIC_RETENTION_TIME_MS);
+        final String eventTypeName = defaultEventType.getName();
 
-        Mockito.doReturn(Collections.singletonList(defaultEventType)).when(eventTypeRepository).list();
+        Mockito.doReturn(defaultEventType).when(eventTypeRepository).findByName(eventTypeName);
 
-        getEventType()
+        getEventType(eventTypeName)
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(content().string(new StringContains("\"options\":{\"retention_time\":150}")));
     }
 
     @Test
-    public void whenPostOptionsRetentionNull() throws Exception {
-        final EventType defaultEventType = buildDefaultEventType();
-        defaultEventType.setOptions(new EventTypeOptions());
-        postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
-    }
-
-    @Test
     public void whenPostOptionsRetentionTimeBiggerThanMax() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
-        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
-        eventTypeOptions.setRetentionTime(201L);
-        defaultEventType.setOptions(eventTypeOptions);
+        defaultEventType.getOptions().setRetentionTime(201L);
+
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().string(new StringContains("Field \\\"options.retention_time\\\" can not be more than 200")));
@@ -662,9 +671,8 @@ public class EventTypeControllerTest {
     @Test
     public void whenPostOptionsRetentionTimeSmallerThanMin() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
-        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
-        eventTypeOptions.setRetentionTime(99L);
-        defaultEventType.setOptions(eventTypeOptions);
+        defaultEventType.getOptions().setRetentionTime(99L);
+
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().string(new StringContains("Field \\\"options.retention_time\\\" can not be less than 100")));
@@ -717,8 +725,8 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private ResultActions getEventType() throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types");
+    private ResultActions getEventType(String eventTypeName) throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName);
         return mockMvc.perform(requestBuilder);
     }
 

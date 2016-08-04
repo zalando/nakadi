@@ -8,14 +8,11 @@ public final class EventTypeOptionsValidator implements Validator {
 
     private final long minTopicRetentionMs;
     private final long maxTopicRetentionMs;
-    private final long defaultTopicRetentionMs;
 
     public EventTypeOptionsValidator(final long minTopicRetentionMs,
-                                     final long maxTopicRetentionMs,
-                                     final long defaultTopicRetentionMs) {
+                                     final long maxTopicRetentionMs) {
         this.minTopicRetentionMs = minTopicRetentionMs;
         this.maxTopicRetentionMs = maxTopicRetentionMs;
-        this.defaultTopicRetentionMs = defaultTopicRetentionMs;
     }
 
     @Override
@@ -31,15 +28,12 @@ public final class EventTypeOptionsValidator implements Validator {
 
     private void checkRetentionTime(final Errors errors, final EventTypeOptions options) {
         final Long retentionTime = options.getRetentionTime();
-        if (retentionTime == null) {
-            options.setRetentionTime(defaultTopicRetentionMs);
-            return;
-        }
-
-        if (retentionTime > maxTopicRetentionMs) {
-            createError(errors, "can not be more than " + maxTopicRetentionMs);
-        } else if (retentionTime < minTopicRetentionMs) {
-            createError(errors, "can not be less than " + minTopicRetentionMs);
+        if (retentionTime != null) {
+            if (retentionTime.longValue() > maxTopicRetentionMs) {
+                createError(errors, "can not be more than " + maxTopicRetentionMs);
+            } else if (retentionTime.longValue() < minTopicRetentionMs) {
+                createError(errors, "can not be less than " + minTopicRetentionMs);
+            }
         }
     }
 
