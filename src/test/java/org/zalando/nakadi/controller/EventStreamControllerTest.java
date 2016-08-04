@@ -212,7 +212,8 @@ public class EventStreamControllerTest {
     public void whenWrongCursorsFormatThenBadRequest() throws NakadiException, IOException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
-        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, "cursors_with_wrong_format");
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0,
+                "cursors_with_wrong_format");
 
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "incorrect syntax of X-nakadi-cursors header");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
@@ -225,7 +226,8 @@ public class EventStreamControllerTest {
         when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(cursor))))
                 .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
-        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, "[{\"partition\":\"0\",\"offset\":\"0\"}]");
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0,
+                "[{\"partition\":\"0\",\"offset\":\"0\"}]");
 
         final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED, "offset 0 for partition 0 is unavailable");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
@@ -271,7 +273,8 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture()))
                 .thenReturn(eventStreamMock);
 
-        final StreamingResponseBody responseBody = createStreamingResponseBody(1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"0\"}]");
+        final StreamingResponseBody responseBody = createStreamingResponseBody(1, 2, 3, 4, 5,
+                "[{\"partition\":\"0\",\"offset\":\"0\"}]");
         final OutputStream outputStream = mock(OutputStream.class);
         responseBody.writeTo(outputStream);
 
@@ -444,11 +447,13 @@ public class EventStreamControllerTest {
     }
 
     protected StreamingResponseBody createStreamingResponseBody() throws IOException {
-        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock, Client.FULL_ACCESS);
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock,
+                Client.FULL_ACCESS);
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Client client) throws Exception {
-        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"0\"}]", requestMock, responseMock, client);
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"0\"}]",
+                requestMock, responseMock, client);
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Integer batchLimit,
@@ -457,8 +462,8 @@ public class EventStreamControllerTest {
                                                               final Integer streamTimeout,
                                                               final Integer streamKeepAliveLimit,
                                                               final String cursorsStr) throws IOException {
-        return controller.streamEvents(TEST_EVENT_TYPE_NAME, batchLimit, streamLimit, batchTimeout, streamTimeout, streamKeepAliveLimit,
-                cursorsStr, requestMock, responseMock, Client.FULL_ACCESS);
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, batchLimit, streamLimit, batchTimeout, streamTimeout,
+                streamKeepAliveLimit, cursorsStr, requestMock, responseMock, Client.FULL_ACCESS);
     }
 
 }

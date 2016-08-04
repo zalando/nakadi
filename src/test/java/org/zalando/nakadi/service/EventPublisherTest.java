@@ -228,7 +228,8 @@ public class EventPublisherTest {
         final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         mockSuccessfulValidation(eventType);
-        final EventPublishResult result = publisher.publish(buildDefaultBatch(0), eventType.getName(), new NakadiClient(CLIENT_ID, SCOPE_WRITE));
+        final EventPublishResult result = publisher.publish(buildDefaultBatch(0), eventType.getName(),
+                new NakadiClient(CLIENT_ID, SCOPE_WRITE));
 
         Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
     }
@@ -237,7 +238,8 @@ public class EventPublisherTest {
     public void testNoScopeWrite() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
-        publisher.publish(buildDefaultBatch(0), eventType.getName(), new NakadiClient(CLIENT_ID, Collections.emptySet()));
+        publisher.publish(buildDefaultBatch(0), eventType.getName(),
+                new NakadiClient(CLIENT_ID, Collections.emptySet()));
     }
 
     private void mockFailedPublishing() throws Exception {
