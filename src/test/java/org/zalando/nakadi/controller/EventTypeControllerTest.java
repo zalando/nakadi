@@ -629,7 +629,7 @@ public class EventTypeControllerTest {
 
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
 
-        ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
+        final ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
         Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
         Assert.assertEquals(TOPIC_RETENTION_TIME_MS, eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
     }
@@ -640,7 +640,7 @@ public class EventTypeControllerTest {
 
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
 
-        ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
+        final ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
         Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
         Assert.assertEquals(TOPIC_RETENTION_TIME_MS, eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
     }
@@ -725,7 +725,7 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private ResultActions getEventType(String eventTypeName) throws Exception {
+    private ResultActions getEventType(final String eventTypeName) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName);
         return mockMvc.perform(requestBuilder);
     }
