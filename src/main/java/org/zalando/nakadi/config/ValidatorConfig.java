@@ -10,8 +10,8 @@ public class ValidatorConfig {
 
     @Bean
     public EventTypeOptionsValidator eventTypeOptionsValidator(
-                    @Value("${nakadi.topic.min.retentionMs}") final long minTopicRetentionMs,
-                    @Value("${nakadi.topic.max.retentionMs}") final long maxTopicRetentionMs) {
+            @Value("${nakadi.topic.min.retentionMs}") final long minTopicRetentionMs,
+            @Value("${nakadi.topic.max.retentionMs}") final long maxTopicRetentionMs) {
         return new EventTypeOptionsValidator(minTopicRetentionMs, maxTopicRetentionMs);
     }
 }

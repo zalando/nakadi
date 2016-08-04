@@ -36,14 +36,13 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     @Override
     public Client resolveArgument(final MethodParameter parameter, final ModelAndViewContainer mavContainer,
-                                  final NativeWebRequest request, final WebDataBinderFactory binderFactory) throws Exception
-    {
+                                  final NativeWebRequest request,
+                                  final WebDataBinderFactory binderFactory) throws Exception {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
 
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
                 || clientId.filter(settings.getAdminClientId()::equals).isPresent()
-                || settings.getAuthMode() == OFF)
-        {
+                || settings.getAuthMode() == OFF) {
             return Client.PERMIT_ALL;
         }
         return clientId.map(Client.Authorized::new)

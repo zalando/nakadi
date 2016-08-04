@@ -118,7 +118,8 @@ public class CursorsService {
                 subscriptionClient.runLocked(() -> {
                     try {
                         if (!subscriptionClient.isSubscriptionCreated() && subscriptionClient.createSubscription()) {
-                            final KafkaClient kafkaClient = subscriptionKafkaClientFactory.createKafkaClient(subscription);
+                            final KafkaClient kafkaClient = subscriptionKafkaClientFactory
+                                    .createKafkaClient(subscription);
                             final Map<Partition.PartitionKey, Long> subscriptionOffsets =
                                     kafkaClient.getSubscriptionOffsets();
 
@@ -156,7 +157,8 @@ public class CursorsService {
         }
     }
 
-    private Cursor readCursor(final String subscriptionId, final String topic, final String partition) throws RuntimeException {
+    private Cursor readCursor(final String subscriptionId, final String topic, final String partition)
+            throws RuntimeException {
         try {
             final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, topic, partition);
             final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);

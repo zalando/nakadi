@@ -29,7 +29,8 @@ public class EventTypeCache {
     private final PathChildrenCache cacheSync;
     private final CuratorFramework zkClient;
 
-    public EventTypeCache(final EventTypeRepository eventTypeRepository, final CuratorFramework zkClient) throws Exception {
+    public EventTypeCache(final EventTypeRepository eventTypeRepository, final CuratorFramework zkClient)
+            throws Exception {
         initParentCacheZNode(zkClient);
 
         this.zkClient = zkClient;
@@ -127,7 +128,8 @@ public class EventTypeCache {
         return cacheSync;
     }
 
-    private LoadingCache<String, EventTypeValidator> setupInMemoryValidatorCache(final LoadingCache<String, EventType> eventTypeCache) {
+    private LoadingCache<String, EventTypeValidator> setupInMemoryValidatorCache(
+            final LoadingCache<String, EventType> eventTypeCache) {
         final CacheLoader<String, EventTypeValidator> loader = new CacheLoader<String, EventTypeValidator>() {
             public EventTypeValidator load(final String key) throws Exception {
                 final EventType et = eventTypeCache.get(key);

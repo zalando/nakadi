@@ -40,7 +40,8 @@ public class CursorsController {
     }
 
     @RequestMapping(path = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.GET)
-    public ResponseEntity<?> getCursors(@PathVariable("subscriptionId") final String subscriptionId, final NativeWebRequest request) {
+    public ResponseEntity<?> getCursors(@PathVariable("subscriptionId") final String subscriptionId,
+                                        final NativeWebRequest request) {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }

@@ -33,7 +33,8 @@ public class KafkaPartitionsCalculatorTest {
     @Test
     public void testLoadCorrectForCorrectName() throws IOException {
         for (final String name : new String[]{"t2.large", "c4.xlarge"}) {
-            final KafkaPartitionsCalculator calculatorMap = KafkaPartitionsCalculator.load(OBJECT_MAPPER, name, getTestStream());
+            final KafkaPartitionsCalculator calculatorMap = KafkaPartitionsCalculator.load(OBJECT_MAPPER, name,
+                    getTestStream());
             assertThat(calculatorMap, notNullValue());
         }
     }

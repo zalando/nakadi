@@ -18,8 +18,7 @@ public class KafkaConfig {
     @Bean
     public KafkaPartitionsCalculator kafkaPartitionsCalculator(
             @Value("${nakadi.kafka.instanceType}") final String instanceType,
-            final ObjectMapper objectMapper) throws IOException
-    {
+            final ObjectMapper objectMapper) throws IOException {
         return KafkaPartitionsCalculator.load(objectMapper, instanceType);
     }
 

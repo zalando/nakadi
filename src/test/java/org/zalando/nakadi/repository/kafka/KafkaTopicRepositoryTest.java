@@ -267,7 +267,8 @@ public class KafkaTopicRepositoryTest {
                 .map(PARTITION_STATE_TO_TOPIC_PARTITION)
                 .forEach(tp -> {
                     try {
-                        final TopicPartition actual = kafkaTopicRepository.getPartition(tp.getTopicId(), tp.getPartitionId());
+                        final TopicPartition actual = kafkaTopicRepository.getPartition(tp.getTopicId(),
+                                tp.getPartitionId());
                         assertThat(actual, equalTo(tp));
                     } catch (final NakadiException e) {
                         fail("Should not get NakadiException for this call");
@@ -290,7 +291,8 @@ public class KafkaTopicRepositoryTest {
     @SuppressWarnings("unchecked")
     public void canCreateEventConsumerWithOffsetsTransformed() throws Exception {
         // ACT /
-        final List<Cursor> cursors = ImmutableList.of(new Cursor("0", "40"), new Cursor("1", Cursor.BEFORE_OLDEST_OFFSET));
+        final List<Cursor> cursors = ImmutableList.of(new Cursor("0", "40"), new Cursor("1",
+                Cursor.BEFORE_OLDEST_OFFSET));
 
         kafkaTopicRepository.createEventConsumer(MY_TOPIC, cursors);
 

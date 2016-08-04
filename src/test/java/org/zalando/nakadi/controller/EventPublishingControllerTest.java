@@ -63,7 +63,8 @@ public class EventPublishingControllerTest {
 
         final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry);
 
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter(objectMapper);
+        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
+                = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .build();
@@ -85,9 +86,11 @@ public class EventPublishingControllerTest {
 
     @Test
     public void whenInvalidPostBodyThen400() throws Exception {
-        final String expectedPayload = "{\"type\":\"http://httpstatus.es/400\",\"title\":\"Bad Request\",\"status\":400," +
+        final String expectedPayload = "{\"type\":\"http://httpstatus.es/400\"," +
+                "\"title\":\"Bad Request\",\"status\":400," +
                 "\"detail\":\"A JSONArray text must start with '[' at 1 [character 2 line 1]\"}";
-        postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest()).andExpect(content().string(expectedPayload));
+        postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest())
+                .andExpect(content().string(expectedPayload));
     }
 
     @Test

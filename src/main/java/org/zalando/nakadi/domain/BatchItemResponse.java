@@ -6,9 +6,13 @@ public class BatchItemResponse {
     private String detail = "";
     private String eid = "";
 
-    public String getEid() { return eid; }
+    public String getEid() {
+        return eid;
+    }
 
-    public void setEid(final String eid) { this.eid = eid; }
+    public void setEid(final String eid) {
+        this.eid = eid;
+    }
 
     public EventPublishingStatus getPublishingStatus() {
         return publishingStatus;
