@@ -1,11 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import org.zalando.nakadi.domain.EventPublishResult;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
-import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.service.EventPublisher;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;

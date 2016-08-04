@@ -61,12 +61,14 @@ public final class ExceptionHandling implements ProblemHandling {
     }
 
     @ExceptionHandler(IllegalScopeException.class)
-    public ResponseEntity<Problem> handleIllegalScopeException(final IllegalScopeException exception, final NativeWebRequest request) {
+    public ResponseEntity<Problem> handleIllegalScopeException(final IllegalScopeException exception,
+                                                               final NativeWebRequest request) {
         return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalClientIdException.class)
-    public ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception, final NativeWebRequest request) {
+    public ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception,
+                                                                  final NativeWebRequest request) {
         return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
     }
 }
