@@ -80,7 +80,7 @@ public class EventTypeController {
     }
 
     private void setDefaultEventTypeOptions(final EventType eventType) {
-        EventTypeOptions options = eventType.getOptions();
+        final EventTypeOptions options = eventType.getOptions();
         if (options.getRetentionTime() == null) {
             options.setRetentionTime(nakadiSettings.getDefaultTopicRetentionMs());
         }
