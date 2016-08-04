@@ -1,7 +1,6 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.common.collect.Lists;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import javax.annotation.Nullable;
@@ -12,7 +11,6 @@ import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
@@ -63,8 +61,8 @@ public class EventType {
     private Set<String> readScopes;
 
     public EventType() {
-        this.validationStrategies = Lists.newArrayList();
-        this.enrichmentStrategies = Lists.newArrayList();
+        this.validationStrategies = Collections.emptyList();
+        this.enrichmentStrategies = Collections.emptyList();
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
@@ -171,7 +169,7 @@ public class EventType {
     }
 
     public void setWriteScopes(final Set<String> writeScopes) {
-        this.writeScopes = Objects.isNull(writeScopes) ? Collections.emptySet() : writeScopes;
+        this.writeScopes = writeScopes == null ? Collections.emptySet() : writeScopes;
     }
 
     public Set<String> getReadScopes() {
@@ -179,6 +177,6 @@ public class EventType {
     }
 
     public void setReadScopes(final Set<String> readScopes) {
-        this.readScopes = Objects.isNull(readScopes) ? Collections.emptySet() : readScopes;
+        this.readScopes = readScopes == null ? Collections.emptySet() : readScopes;
     }
 }

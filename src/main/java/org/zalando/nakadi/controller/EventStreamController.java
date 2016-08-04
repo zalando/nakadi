@@ -168,7 +168,6 @@ public class EventStreamController {
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             } catch (final IllegalScopeException e) {
-                LOG.error("Error while trying to stream events. Respond with FORBIDDEN.", e);
                 writeProblemResponse(response, outputStream, FORBIDDEN, e.getMessage());
             } catch (final Exception e) {
                 LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
