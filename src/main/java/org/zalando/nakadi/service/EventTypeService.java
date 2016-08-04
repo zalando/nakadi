@@ -96,9 +96,9 @@ public class EventTypeService {
             final Optional<EventType> eventType = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
-            } else if (!client.is(eventType.get().getOwningApplication())) {
-                return Result.forbidden("You don't have access to this event type");
             }
+            client.checkId(eventType.get().getOwningApplication());
+
             eventTypeRepository.removeEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.get().getTopic());
             return Result.ok();
@@ -114,9 +114,8 @@ public class EventTypeService {
     public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
         try {
             final EventType original = eventTypeRepository.findByName(eventTypeName);
-            if (!client.is(original.getOwningApplication())) {
-                return Result.forbidden("You don't have access to this event type");
-            }
+            client.checkId(original.getOwningApplication());
+
             validateUpdate(eventTypeName, eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);

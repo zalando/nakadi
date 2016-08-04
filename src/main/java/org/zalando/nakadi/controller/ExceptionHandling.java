@@ -10,11 +10,14 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.exceptions.IllegalClientIdException;
+import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
+
 
 @ControllerAdvice
 public final class ExceptionHandling implements ProblemHandling {
@@ -55,5 +58,17 @@ public final class ExceptionHandling implements ProblemHandling {
             message = exception.getMessage();
         }
         return Responses.create(Response.Status.BAD_REQUEST, message, request);
+    }
+
+    @ExceptionHandler(IllegalScopeException.class)
+    public ResponseEntity<Problem> handleIllegalScopeException(final IllegalScopeException exception,
+                                                               final NativeWebRequest request) {
+        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(IllegalClientIdException.class)
+    public ResponseEntity<Problem> handleIllegalClientIdException(final IllegalClientIdException exception,
+                                                                  final NativeWebRequest request) {
+        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
     }
 }

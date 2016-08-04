@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -18,7 +19,10 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
+import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 
 import java.util.ArrayList;
@@ -51,6 +55,8 @@ public class EventPublishingControllerTest {
     private final MetricRegistry metricRegistry;
     private final JsonTestHelper jsonHelper;
     private final EventPublisher publisher;
+    private final FeatureToggleService featureToggleService;
+    private final SecuritySettings settings;
 
     private final MockMvc mockMvc;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
@@ -60,6 +66,8 @@ public class EventPublishingControllerTest {
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
+        featureToggleService = mock(FeatureToggleService.class);
+        settings = mock(SecuritySettings.class);
 
         final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry);
 
@@ -67,6 +75,7 @@ public class EventPublishingControllerTest {
                 = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
     }
 
@@ -77,7 +86,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC));
+                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isOk())
@@ -100,7 +109,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC));
+                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
@@ -114,7 +123,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC));
+                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())
@@ -126,7 +135,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC));
+                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -141,7 +150,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any());
+                .publish(any(), any(), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH);
         postBatch(TOPIC, EVENT_BATCH);
