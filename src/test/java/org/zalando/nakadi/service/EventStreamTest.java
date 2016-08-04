@@ -292,7 +292,8 @@ public class EventStreamTest {
         return endlessDummyConsumerForPartition("0");
     }
 
-    private static String jsonBatch(final String partition, final String offset, final Optional<List<String>> eventsOrNone) {
+    private static String jsonBatch(final String partition, final String offset,
+                                    final Optional<List<String>> eventsOrNone) {
         final String eventsStr = eventsOrNone
                 .map(events -> {
                     final StringBuilder builder = new StringBuilder(",\"events\":[");

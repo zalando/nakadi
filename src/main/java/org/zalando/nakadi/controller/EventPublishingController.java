@@ -36,7 +36,8 @@ public class EventPublishingController {
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
 
     @Autowired
-    public EventPublishingController(final EventPublisher publisher, final EventTypeMetricRegistry eventTypeMetricRegistry) {
+    public EventPublishingController(final EventPublisher publisher,
+                                     final EventTypeMetricRegistry eventTypeMetricRegistry) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
     }
@@ -48,7 +49,8 @@ public class EventPublishingController {
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
-            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString, nativeWebRequest, eventTypeMetrics);
+            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
+                    nativeWebRequest, eventTypeMetrics);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {

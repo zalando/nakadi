@@ -1,13 +1,13 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+
+import javax.annotation.Nullable;
 import java.util.NavigableMap;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
 
 class PartitionData {
     private final ZKSubscription subscription;
@@ -33,7 +33,8 @@ class PartitionData {
     }
 
     @Nullable
-    SortedMap<Long, String> takeEventsToStream(final long currentTimeMillis, final int batchSize, final long batchTimeoutMillis) {
+    SortedMap<Long, String> takeEventsToStream(final long currentTimeMillis, final int batchSize,
+                                               final long batchTimeoutMillis) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
         if (countReached || timeReached) {
@@ -104,7 +105,8 @@ class PartitionData {
     CommitResult onCommitOffset(final Long offset) {
         boolean seekKafka = false;
         if (offset > sentOffset) {
-            log.error("Commit in future: current: {}, committed {} will skip sending obsolete data", sentOffset, commitOffset);
+            log.error("Commit in future: current: {}, committed {} will skip sending obsolete data", sentOffset,
+                    commitOffset);
             seekKafka = true;
             sentOffset = offset;
         }

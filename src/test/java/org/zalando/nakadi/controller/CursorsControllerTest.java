@@ -117,7 +117,8 @@ public class CursorsControllerTest {
         when(cursorsService.getSubscriptionCursors(SUBSCRIPTION_ID)).thenReturn(DUMMY_CURSORS);
         getCursors()
                 .andExpect(status().is(HttpStatus.OK.value()))
-                .andExpect(content().string("[{\"partition\":\"0\",\"offset\":\"10\"},{\"partition\":\"1\",\"offset\":\"10\"}]"));
+                .andExpect(content()
+                        .string("[{\"partition\":\"0\",\"offset\":\"10\"},{\"partition\":\"1\",\"offset\":\"10\"}]"));
     }
 
     @Test

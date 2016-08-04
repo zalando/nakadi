@@ -52,8 +52,8 @@ public class EventPublisher {
         this.enrichment = enrichment;
     }
 
-    public EventPublishResult publish(final JSONArray events, final String eventTypeName) throws NoSuchEventTypeException,
-            InternalNakadiException {
+    public EventPublishResult publish(final JSONArray events, final String eventTypeName)
+            throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         final List<BatchItem> batch = BatchFactory.from(events);
 

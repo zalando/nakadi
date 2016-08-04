@@ -124,7 +124,8 @@ public class PartitionsControllerTest {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
         when(topicRepositoryMock.partitionExists(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION))).thenReturn(true);
-        when(topicRepositoryMock.getPartition(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION))).thenReturn(TEST_TOPIC_PARTITION_0);
+        when(topicRepositoryMock.getPartition(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION)))
+                .thenReturn(TEST_TOPIC_PARTITION_0);
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))

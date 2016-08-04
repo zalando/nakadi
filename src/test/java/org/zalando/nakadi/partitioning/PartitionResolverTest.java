@@ -83,7 +83,8 @@ public class PartitionResolverTest {
 
     @Test
     public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
-        final EventType eventType = loadEventType("org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
+        final EventType eventType = loadEventType(
+                "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
         eventType.setPartitionStrategy(HASH_STRATEGY);
         final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
 

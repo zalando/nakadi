@@ -25,9 +25,9 @@ import org.springframework.context.annotation.Profile;
 public class RepositoriesConfig {
 
     @Bean
-    public FeatureToggleService featureToggleService(@Value("${nakadi.featureToggle.default}") final boolean forceDefault,
-                                                     final ZooKeeperHolder zooKeeperHolder)
-    {
+    public FeatureToggleService featureToggleService(
+            @Value("${nakadi.featureToggle.default}") final boolean forceDefault,
+            final ZooKeeperHolder zooKeeperHolder) {
         if (forceDefault) {
             return new FeatureToggleServiceDefault();
         } else {
