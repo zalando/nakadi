@@ -20,10 +20,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.given;
@@ -34,9 +32,11 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
 
 public class SubscriptionAT extends BaseAT {
 
@@ -100,16 +100,16 @@ public class SubscriptionAT extends BaseAT {
 
     @Test
     public void testListSubscriptions() throws IOException {
-        final Set<String> eventTypes = ImmutableSet.of(createEventType().getName());
+        final String etName = createEventType().getName();
 
         final String filterApp = randomUUID();
-        final Subscription sub1 = createSubscription(eventTypes, filterApp);
-        final Subscription sub2 = createSubscription(eventTypes, filterApp, Optional.of("another_group"));
+        final Subscription sub1 = createSubscription(randomSubscription()
+                .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
+        final Subscription sub2 = createSubscription(randomSubscription()
+                .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
+        createSubscription(randomSubscription().withEventType(etName).buildSubscriptionBase());
 
-        final String anotherApp = randomUUID();
-        createSubscription(eventTypes, anotherApp);
-
-        final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub1, sub2));
+        final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub2, sub1));
 
         given()
                 .param("owning_application", filterApp)
@@ -122,10 +122,10 @@ public class SubscriptionAT extends BaseAT {
     @Test
     public void testOffsetsCommit() throws Exception {
         // create event type in Nakadi
-        final EventType eventType = createEventType();
-        final String topic = EVENT_TYPE_REPO.findByName(eventType.getName()).getTopic();
+        final String etName = createEventType().getName();
+        final String topic = EVENT_TYPE_REPO.findByName(etName).getTopic();
 
-        final Subscription subscription = createSubscription(ImmutableSet.of(eventType.getName()));
+        final Subscription subscription = createSubscriptionForEventType(etName);
 
         commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"25\"}]")
                 .then()
@@ -148,21 +148,20 @@ public class SubscriptionAT extends BaseAT {
 
     @Test
     public void testGetSubscriptionCursors() throws IOException {
-        final EventType eventType = createEventType();
-        final Subscription subscription = createSubscription(ImmutableSet.of(eventType.getName()));
+        final String etName = createEventType().getName();
+        final Subscription subscription = createSubscriptionForEventType(etName);
         commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"25\"}]")
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
         final List<Cursor> actualCursors = getSubscriptionCursors(subscription);
-        Assert.assertEquals(Arrays.asList(new Cursor("0", "25")), actualCursors);
+        Assert.assertEquals(Collections.singletonList(new Cursor("0", "25")), actualCursors);
     }
 
     @Test
     public void testGetSubscriptionCursorsEmpty() throws IOException {
-        final EventType eventType = createEventType();
-        final Subscription subscription = createSubscription(ImmutableSet.of(eventType.getName()));
-
+        final String etName = createEventType().getName();
+        final Subscription subscription = createSubscriptionForEventType(etName);
         Assert.assertTrue(getSubscriptionCursors(subscription).isEmpty());
     }
 

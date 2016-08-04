@@ -7,13 +7,13 @@ import java.util.List;
 @Immutable
 public class SubscriptionListWrapper {
 
-    private final List<Subscription> data;
+    private final List<Subscription> items;
 
-    public SubscriptionListWrapper(final List<Subscription> data) {
-        this.data = data;
+    public SubscriptionListWrapper(final List<Subscription> items) {
+        this.items = items;
     }
 
-    public List<Subscription> getData() {
-        return Collections.unmodifiableList(data);
+    public List<Subscription> getItems() {
+        return Collections.unmodifiableList(items);
     }
 }

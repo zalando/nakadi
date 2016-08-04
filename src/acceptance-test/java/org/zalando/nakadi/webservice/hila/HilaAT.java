@@ -2,10 +2,10 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.junit.Before;
@@ -14,6 +14,8 @@ import org.junit.Test;
 import java.io.IOException;
 
 import static com.jayway.restassured.RestAssured.given;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
@@ -41,10 +43,14 @@ public class HilaAT extends BaseAT {
     public void before() throws IOException {
         // create event-type and subscribe to it
         eventType = createEventType();
-        subscription = createSubscription(ImmutableSet.of(eventType.getName()));
+        final SubscriptionBase subscription = randomSubscription()
+                .withEventType(eventType.getName())
+                .withStartFrom(BEGIN)
+                .buildSubscriptionBase();
+        this.subscription = createSubscription(subscription);
     }
 
-    @Test(timeout = 30000)
+    @Test()
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
         rangeClosed(0, 3)

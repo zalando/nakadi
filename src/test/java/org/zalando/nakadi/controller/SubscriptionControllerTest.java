@@ -30,7 +30,6 @@ import javax.ws.rs.core.Response;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
@@ -49,8 +48,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
-import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
@@ -82,7 +81,10 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenPostValidSubscriptionThenOk() throws Exception {
-        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
         when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
 
@@ -91,7 +93,7 @@ public class SubscriptionControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
                 .andExpect(jsonPath("$.owning_application", equalTo("app")))
                 .andExpect(jsonPath("$.event_types", containsInAnyOrder(ImmutableSet.of("myET").toArray())))
-                .andExpect(jsonPath("$.consumer_group", equalTo("none")))
+                .andExpect(jsonPath("$.consumer_group", equalTo(subscription.getConsumerGroup())))
                 .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
                 .andExpect(jsonPath("$.id", equalTo("123")))
                 .andExpect(jsonPath("$.start_from", equalTo("end")));
@@ -99,14 +101,20 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenOwningApplicationIsNullThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = createSubscription(null, ImmutableSet.of("myET"));
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication(null)
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
         final Problem expectedProblem = invalidProblem("owning_application", "may not be null");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
     public void whenEventTypesIsEmptyThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of());
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of())
+                .buildSubscriptionBase();
         final Problem expectedProblem = invalidProblem("event_types", "size must be between 1 and 1");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
@@ -114,7 +122,10 @@ public class SubscriptionControllerTest {
     @Test
     // this test method will fail when we implement consuming from multiple event types
     public void whenMoreThanOneEventTypeThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET", "secondET"));
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET", "secondET"))
+                .buildSubscriptionBase();
         final Problem expectedProblem = invalidProblem("event_types", "size must be between 1 and 1");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
@@ -128,13 +139,17 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenWrongStartFromThenBadRequest() throws Exception {
-        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\"myEt\"],\"start_from\":\"middle\"}";
+        final String subscription =
+                "{\"owning_application\":\"app\",\"event_types\":[\"myEt\"],\"start_from\":\"middle\"}";
         postSubscriptionAsJson(subscription).andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
     }
 
     @Test
     public void whenEventTypeDoesNotExistThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
         when(eventTypeRepository.findByName("myET")).thenThrow(new NoSuchEventTypeException(""));
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
@@ -145,10 +160,14 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenSubscriptionExistsThenReturnIt() throws Exception {
-        final SubscriptionBase subscriptionBase = createSubscription("app", ImmutableSet.of("myET"));
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
         doThrow(new DuplicatedSubscriptionException("", null)).when(subscriptionRepository).createSubscription(any());
 
-        final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
+        final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC),
+                subscriptionBase);
         existingSubscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
@@ -161,7 +180,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionThenOk() throws Exception {
-        final Subscription subscription = createRandomSubscription();
+        final Subscription subscription = randomSubscription().build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
 
         getSubscription(subscription.getId())
@@ -171,7 +190,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetNoneExistingSubscriptionThenNotFound() throws Exception {
-        final Subscription subscription = createRandomSubscription();
+        final Subscription subscription = randomSubscription().build();
         when(subscriptionRepository.getSubscription(subscription.getId()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy-message");
@@ -219,9 +238,13 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenPostSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.createSubscription(any())).thenThrow(new ServiceUnavailableException("dummy message"));
+        when(subscriptionRepository.createSubscription(any()))
+                .thenThrow(new ServiceUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
-        final SubscriptionBase subscription = createSubscription("app", ImmutableSet.of("myET"));
+        final SubscriptionBase subscription = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
         checkForProblem(postSubscription(subscription), expectedProblem);
     }
 
@@ -243,20 +266,8 @@ public class SubscriptionControllerTest {
 
     private List<Subscription> createRandomSubscriptions(final int count) {
         return range(0, count)
-                .mapToObj(i -> createRandomSubscription())
+                .mapToObj(i -> randomSubscription().build())
                 .collect(toList());
-    }
-
-    private Subscription createRandomSubscription() {
-        final SubscriptionBase subscriptionBase = createSubscription(randomUUID(), ImmutableSet.of(randomUUID()));
-        return new Subscription(randomUUID(), new DateTime(), subscriptionBase);
-    }
-
-    private SubscriptionBase createSubscription(final String owningApplication, final Set<String> eventTypes) {
-        final SubscriptionBase subscriptionBase = new SubscriptionBase();
-        subscriptionBase.setOwningApplication(owningApplication);
-        subscriptionBase.setEventTypes(eventTypes);
-        return subscriptionBase;
     }
 
     private ResultActions postSubscription(final SubscriptionBase subscriptionBase) throws Exception {

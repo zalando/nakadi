@@ -2,6 +2,8 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -32,6 +34,8 @@ import static com.google.common.collect.Sets.newTreeSet;
 @Profile("!test")
 public class SubscriptionDbRepository extends AbstractDbRepository {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionDbRepository.class);
+
     private final SubscriptionMapper rowMapper = new SubscriptionMapper();
     private final UUIDGenerator uuidGenerator;
 
@@ -60,7 +64,8 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         } catch (final DuplicateKeyException e) {
             throw new DuplicatedSubscriptionException("Subscription with the same key properties already exists", e);
         } catch (final DataAccessException e) {
-            throw new ServiceUnavailableException("Error occurred when running database request", e);
+            LOG.error("Database error when creating subscription", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
 
@@ -72,26 +77,31 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist", e);
         } catch (final DataAccessException e) {
-            throw new ServiceUnavailableException("Error occurred when running database request", e);
+            LOG.error("Database error when getting subscription", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
 
     public List<Subscription> listSubscriptions() throws ServiceUnavailableException {
         try {
-            return jdbcTemplate.query("SELECT s_subscription_object FROM zn_data.subscription", rowMapper);
+            return jdbcTemplate.query("SELECT s_subscription_object FROM zn_data.subscription ORDER BY " +
+                    "s_subscription_object->>'created_at' DESC", rowMapper);
         } catch (final DataAccessException e) {
-            throw new ServiceUnavailableException("Error occurred when running database request", e);
+            LOG.error("Database error when listing subscriptions", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
 
     public List<Subscription> listSubscriptionsForOwningApplication(final String owningApplication)
             throws ServiceUnavailableException {
         final String query = "SELECT s_subscription_object FROM zn_data.subscription " +
-                "WHERE s_subscription_object->>'owning_application' = ?";
+                "WHERE s_subscription_object->>'owning_application' = ? " +
+                "ORDER BY s_subscription_object->>'created_at' DESC";
         try {
             return jdbcTemplate.query(query, new Object[]{owningApplication}, rowMapper);
         } catch (final DataAccessException e) {
-            throw new ServiceUnavailableException("Error occurred when running database request", e);
+            LOG.error("Database error when listing subscriptions for owning app", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
 
@@ -112,7 +122,8 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription does not exist", e);
         } catch (final DataAccessException e) {
-            throw new ServiceUnavailableException("Error occurred when running database request", e);
+            LOG.error("Database error when getting subscription by key properties", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
 
