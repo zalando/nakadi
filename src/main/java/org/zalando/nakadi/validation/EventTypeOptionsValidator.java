@@ -29,9 +29,9 @@ public final class EventTypeOptionsValidator implements Validator {
     private void checkRetentionTime(final Errors errors, final EventTypeOptions options) {
         final Long retentionTime = options.getRetentionTime();
         if (retentionTime != null) {
-            if (retentionTime.longValue() > maxTopicRetentionMs) {
+            if (retentionTime > maxTopicRetentionMs) {
                 createError(errors, "can not be more than " + maxTopicRetentionMs);
-            } else if (retentionTime.longValue() < minTopicRetentionMs) {
+            } else if (retentionTime < minTopicRetentionMs) {
                 createError(errors, "can not be less than " + minTopicRetentionMs);
             }
         }
