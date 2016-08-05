@@ -110,6 +110,9 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void createTopic(final EventType eventType) throws TopicCreationException, DuplicatedEventTypeNameException {
+        if (eventType.getOptions().getRetentionTime() == null) {
+            throw new IllegalArgumentException("Retention time can not be null");
+        }
         createTopic(eventType.getTopic(),
                 calculateKafkaPartitionCount(eventType.getDefaultStatistic()),
                 nakadiSettings.getDefaultTopicReplicaFactor(),
