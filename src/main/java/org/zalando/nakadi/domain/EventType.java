@@ -53,7 +53,6 @@ public class EventType {
     private EventTypeStatistics defaultStatistic;
 
     @Valid
-    @Nullable
     private EventTypeOptions options;
 
     private Set<String> writeScopes;
@@ -64,6 +63,7 @@ public class EventType {
         this.validationStrategies = Collections.emptyList();
         this.enrichmentStrategies = Collections.emptyList();
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
+        this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
     }
