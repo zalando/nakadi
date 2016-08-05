@@ -6,12 +6,12 @@ public class EventTypeOptions {
 
     private Long retentionTime;
 
+    @Nullable
     public Long getRetentionTime() {
         return retentionTime;
     }
 
-    @Nullable
-    public void setRetentionTime(final Long retentionTime) {
+    public void setRetentionTime(@Nullable final Long retentionTime) {
         this.retentionTime = retentionTime;
     }
 }
