@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
@@ -24,6 +25,7 @@ import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
 
 import javax.validation.Valid;
@@ -62,7 +64,8 @@ public class SubscriptionController {
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> createOrGetSubscription(@Valid @RequestBody final SubscriptionBase subscriptionBase,
                                                      final Errors errors,
-                                                     final NativeWebRequest request) {
+                                                     final NativeWebRequest request,
+                                                     final Client client) {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
@@ -71,7 +74,7 @@ public class SubscriptionController {
         }
 
         try {
-            return createSubscription(subscriptionBase, request);
+            return createSubscription(subscriptionBase, request, client);
         } catch (final DuplicatedSubscriptionException e) {
             try {
                 return new ResponseEntity<>(getExistingSubscription(subscriptionBase), HttpStatus.OK);
@@ -101,9 +104,10 @@ public class SubscriptionController {
     }
 
     private ResponseEntity<?> createSubscription(final SubscriptionBase subscriptionBase,
-                                                 final NativeWebRequest request)
+                                                 final NativeWebRequest request,
+                                                 final Client client)
             throws InternalNakadiException, DuplicatedSubscriptionException {
-        final List<String> noneExistingEventTypes = checkExistingEventTypes(subscriptionBase);
+        final List<String> noneExistingEventTypes = checkExistingEventTypes(subscriptionBase, client);
         if (!noneExistingEventTypes.isEmpty()) {
             final String errorMessage = createErrorMessage(noneExistingEventTypes);
             LOG.debug(errorMessage);
@@ -115,12 +119,13 @@ public class SubscriptionController {
         return status(HttpStatus.CREATED).body(subscription);
     }
 
-    private List<String> checkExistingEventTypes(final SubscriptionBase subscriptionBase)
+    private List<String> checkExistingEventTypes(final SubscriptionBase subscriptionBase, final Client client)
             throws InternalNakadiException {
         final List<String> noneExistingEventTypes = Lists.newArrayList();
         for (final String etName : subscriptionBase.getEventTypes()) {
             try {
-                eventTypeRepository.findByName(etName);
+                EventType eventType = eventTypeRepository.findByName(etName);
+                client.checkScopes(eventType.getReadScopes());
             } catch (NoSuchEventTypeException e) {
                 noneExistingEventTypes.add(etName);
             }
