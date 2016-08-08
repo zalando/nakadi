@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import com.sun.security.auth.UserPrincipal;
+
+import org.apache.http.auth.BasicUserPrincipal;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Before;
@@ -638,7 +639,7 @@ public class EventTypeControllerTest {
     }
 
     private ResultActions deleteEventType(final String eventTypeName, final String clientId) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(new UserPrincipal(clientId)));
+        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(new BasicUserPrincipal(clientId)));
     }
 
     private ResultActions postEventType(final EventType eventType) throws Exception {
@@ -674,7 +675,7 @@ public class EventTypeControllerTest {
 
     private ResultActions putEventType(final String content, final String name, final String clientId) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
-                .principal(new UserPrincipal(clientId))
+                .principal(new BasicUserPrincipal(clientId))
                 .contentType(APPLICATION_JSON)
                 .content(content);
         return mockMvc.perform(requestBuilder);
