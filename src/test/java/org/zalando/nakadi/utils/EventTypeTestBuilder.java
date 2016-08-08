@@ -44,6 +44,7 @@ public class EventTypeTestBuilder {
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.partitionKeyFields = Lists.newArrayList();
         this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, DEFAULT_SCHEMA);
+        this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
     }

@@ -4,14 +4,14 @@ import javax.annotation.Nullable;
 
 public class EventTypeOptions {
 
-    @Nullable
     private Long retentionTime;
 
+    @Nullable
     public Long getRetentionTime() {
         return retentionTime;
     }
 
-    public void setRetentionTime(final Long retentionTime) {
+    public void setRetentionTime(@Nullable final Long retentionTime) {
         this.retentionTime = retentionTime;
     }
 }
