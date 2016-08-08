@@ -50,7 +50,7 @@ public class HilaAT extends BaseAT {
         this.subscription = createSubscription(subscription);
     }
 
-    @Test()
+    @Test(timeout = 30000)
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
         rangeClosed(0, 3)
