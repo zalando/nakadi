@@ -124,7 +124,7 @@ public class SubscriptionController {
         final List<String> noneExistingEventTypes = Lists.newArrayList();
         for (final String etName : subscriptionBase.getEventTypes()) {
             try {
-                EventType eventType = eventTypeRepository.findByName(etName);
+                final EventType eventType = eventTypeRepository.findByName(etName);
                 client.checkScopes(eventType.getReadScopes());
             } catch (NoSuchEventTypeException e) {
                 noneExistingEventTypes.add(etName);
