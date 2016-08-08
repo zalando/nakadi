@@ -3,6 +3,7 @@ package org.zalando.nakadi.repository.db;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -102,12 +103,9 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void whenListSubscriptionsThenOk() throws ServiceUnavailableException {
 
-        final List<Subscription> testSubscriptions = ImmutableList.of(
-                randomSubscription().build(), randomSubscription().build())
-                .stream()
-                .sorted(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR)
-                .collect(toList());
-
+        final List<Subscription> testSubscriptions = Lists.newArrayList(
+                randomSubscription().build(), randomSubscription().build());
+        testSubscriptions.sort(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR);
         testSubscriptions.forEach(this::insertSubscriptionToDB);
 
         final List<Subscription> subscriptions = repository.listSubscriptions();
