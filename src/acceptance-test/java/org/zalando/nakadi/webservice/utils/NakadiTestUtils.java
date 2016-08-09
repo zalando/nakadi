@@ -44,7 +44,8 @@ public class NakadiTestUtils {
                 .post("/event-types");
     }
 
-    public static EventType createBusinessEventTypeWithPartitions(final int partitionNum) throws JsonProcessingException {
+    public static EventType createBusinessEventTypeWithPartitions(final int partitionNum)
+            throws JsonProcessingException {
         final EventTypeStatistics statistics = new EventTypeStatistics();
         statistics.setMessageSize(1);
         statistics.setMessagesPerMinute(1);
@@ -102,7 +103,8 @@ public class NakadiTestUtils {
         return MAPPER.readValue(response.print(), Subscription.class);
     }
 
-    public static int commitCursors(final String subscriptionId, final List<Cursor> cursors) throws JsonProcessingException {
+    public static int commitCursors(final String subscriptionId, final List<Cursor> cursors)
+            throws JsonProcessingException {
         return given()
                 .body(MAPPER.writeValueAsString(cursors))
                 .contentType(JSON)

@@ -79,7 +79,8 @@ public class JsonConfig {
                 final String possibleValues = stream(rawClass.getEnumConstants())
                         .map(enumValue -> enumValue.name().toLowerCase())
                         .collect(joining(", "));
-                throw new JsonMappingException("Illegal enum value: '" + jpValueAsString + "'. Possible values: [" + possibleValues + "]");
+                throw new JsonMappingException("Illegal enum value: '" + jpValueAsString
+                        + "'. Possible values: [" + possibleValues + "]");
             }
         }
     }
@@ -90,7 +91,8 @@ public class JsonConfig {
         }
 
         @Override
-        public void serialize(final Enum value, final JsonGenerator jgen, final SerializerProvider provider) throws IOException {
+        public void serialize(final Enum value, final JsonGenerator jgen, final SerializerProvider provider)
+                throws IOException {
             jgen.writeString(value.name().toLowerCase());
         }
     }

@@ -39,7 +39,8 @@ class ClosingState extends State {
 
     @Override
     public void onEnter() {
-        final long timeToWaitMillis = getParameters().commitTimeoutMillis - (System.currentTimeMillis() - lastCommitMillis);
+        final long timeToWaitMillis = getParameters().commitTimeoutMillis - (System.currentTimeMillis()
+                - lastCommitMillis);
         if (timeToWaitMillis > 0) {
             scheduleTask(() -> switchState(new CleanupState()), timeToWaitMillis, TimeUnit.MILLISECONDS);
             topologyListener = getZk().subscribeForTopologyChanges(() -> addTask(this::onTopologyChanged));
@@ -51,7 +52,8 @@ class ClosingState extends State {
 
     private void onTopologyChanged() {
         if (topologyListener == null) {
-            throw new IllegalStateException("topologyListener should not be null when calling onTopologyChanged method");
+            throw new IllegalStateException(
+                    "topologyListener should not be null when calling onTopologyChanged method");
         }
         topologyListener.refresh();
         reactOnTopologyChange();

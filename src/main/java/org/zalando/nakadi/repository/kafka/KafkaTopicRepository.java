@@ -18,12 +18,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Topic;
@@ -38,11 +38,11 @@ import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -73,17 +73,25 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ZooKeeperHolder zkFactory;
     private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
-    private final KafkaRepositorySettings settings;
+    private final NakadiSettings nakadiSettings;
+    private final KafkaSettings kafkaSettings;
+    private final ZookeeperSettings zookeeperSettings;
     private final KafkaPartitionsCalculator partitionsCalculator;
 
     @Autowired
-    public KafkaTopicRepository(final ZooKeeperHolder zkFactory, final KafkaFactory kafkaFactory,
-                                final KafkaRepositorySettings settings, final KafkaPartitionsCalculator partitionsCalculator) {
+    public KafkaTopicRepository(final ZooKeeperHolder zkFactory,
+                                final KafkaFactory kafkaFactory,
+                                final NakadiSettings nakadiSettings,
+                                final KafkaSettings kafkaSettings,
+                                final ZookeeperSettings zookeeperSettings,
+                                final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;
-        this.partitionsCalculator = partitionsCalculator;
         this.kafkaProducer = kafkaFactory.getProducer();
         this.kafkaFactory = kafkaFactory;
-        this.settings = settings;
+        this.nakadiSettings = nakadiSettings;
+        this.kafkaSettings = kafkaSettings;
+        this.zookeeperSettings = zookeeperSettings;
+        this.partitionsCalculator = partitionsCalculator;
     }
 
     @Override
@@ -102,17 +110,14 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void createTopic(final EventType eventType) throws TopicCreationException, DuplicatedEventTypeNameException {
+        if (eventType.getOptions().getRetentionTime() == null) {
+            throw new IllegalArgumentException("Retention time can not be null");
+        }
         createTopic(eventType.getTopic(),
                 calculateKafkaPartitionCount(eventType.getDefaultStatistic()),
-                settings.getDefaultTopicReplicaFactor(),
-                getTopicRetentionMs(eventType),
-                settings.getDefaultTopicRotationMs());
-    }
-
-    private long getTopicRetentionMs(final EventType eventType) {
-        return Optional.ofNullable(eventType.getOptions())
-                .map(EventTypeOptions::getRetentionTime)
-                .orElse(settings.getDefaultTopicRetentionMs());
+                nakadiSettings.getDefaultTopicReplicaFactor(),
+                eventType.getOptions().getRetentionTime(),
+                nakadiSettings.getDefaultTopicRotationMs());
     }
 
     private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
@@ -176,7 +181,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
 
         try {
-            final boolean isSuccessful = done.await(settings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
+            final boolean isSuccessful = done.await(kafkaSettings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
                 failBatch(batch, "timed out");
@@ -297,7 +302,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public TopicPartition getPartition(final String topicId, final String partition) throws ServiceUnavailableException {
+    public TopicPartition getPartition(final String topicId, final String partition)
+            throws ServiceUnavailableException {
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
 
             final org.apache.kafka.common.TopicPartition tp =
@@ -349,7 +355,7 @@ public class KafkaTopicRepository implements TopicRepository {
             kafkaCursors.add(kafkaCursor);
         }
 
-        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, settings.getKafkaPollTimeoutMs());
+        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, kafkaSettings.getKafkaPollTimeoutMs());
     }
 
     public int compareOffsets(final String firstOffset, final String secondOffset) {
@@ -427,8 +433,8 @@ public class KafkaTopicRepository implements TopicRepository {
         ZkUtils zkUtils = null;
         try {
             final String connectionString = zkFactory.get().getZookeeperClient().getCurrentConnectionString();
-            zkUtils = ZkUtils.apply(connectionString, settings.getZkSessionTimeoutMs(),
-                    settings.getZkConnectionTimeoutMs(), false);
+            zkUtils = ZkUtils.apply(connectionString, zookeeperSettings.getZkSessionTimeoutMs(),
+                    zookeeperSettings.getZkConnectionTimeoutMs(), false);
             action.execute(zkUtils);
         }
         finally {
@@ -441,19 +447,20 @@ public class KafkaTopicRepository implements TopicRepository {
     @VisibleForTesting
     Integer calculateKafkaPartitionCount(final EventTypeStatistics stat) {
         if (null == stat) {
-            return settings.getDefaultTopicPartitionCount();
+            return nakadiSettings.getDefaultTopicPartitionCount();
         }
         final int maxPartitionsDueParallelism = Math.max(stat.getReadParallelism(), stat.getWriteParallelism());
-        if (maxPartitionsDueParallelism >= settings.getMaxTopicPartitionCount()) {
-            return settings.getMaxTopicPartitionCount();
+        if (maxPartitionsDueParallelism >= nakadiSettings.getMaxTopicPartitionCount()) {
+            return nakadiSettings.getMaxTopicPartitionCount();
         }
-        return Math.min(settings.getMaxTopicPartitionCount(), Math.max(
+        return Math.min(nakadiSettings.getMaxTopicPartitionCount(), Math.max(
                 maxPartitionsDueParallelism,
                 calculatePartitionsAccordingLoad(stat.getMessagesPerMinute(), stat.getMessageSize())));
     }
 
     private int calculatePartitionsAccordingLoad(final int messagesPerMinute, final int avgEventSizeBytes) {
-        final float throughoutputMbPerSec = ((float)messagesPerMinute * (float)avgEventSizeBytes) / (1024.f * 1024.f * 60.f);
+        final float throughoutputMbPerSec = ((float)messagesPerMinute * (float)avgEventSizeBytes)
+                / (1024.f * 1024.f * 60.f);
         return partitionsCalculator.getBestPartitionsCount(avgEventSizeBytes, throughoutputMbPerSec);
     }
 }

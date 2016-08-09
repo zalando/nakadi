@@ -27,25 +27,22 @@ public class ZooKeeperHolder {
     private CuratorFramework zooKeeper;
 
     public ZooKeeperHolder(final String zookeeperBrokers, final String zookeeperKafkaNamespace,
-                           final String exhibitorAddresses, final Integer exhibitorPort)
-    {
+                           final String exhibitorAddresses, final Integer exhibitorPort) {
         this.zookeeperBrokers = zookeeperBrokers;
         this.zookeeperKafkaNamespace = zookeeperKafkaNamespace;
         this.exhibitorAddresses = exhibitorAddresses;
         this.exhibitorPort = exhibitorPort;
     }
 
-    class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
+    private class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
 
         public ExhibitorEnsembleProvider(final Exhibitors exhibitors, final ExhibitorRestClient restClient,
-                                         final String restUriPath, final int pollingMs, final RetryPolicy retryPolicy)
-        {
+                                         final String restUriPath, final int pollingMs, final RetryPolicy retryPolicy) {
             super(exhibitors, restClient, restUriPath, pollingMs, retryPolicy);
         }
 
         @Override
-        public String getConnectionString()
-        {
+        public String getConnectionString() {
             return super.getConnectionString() + zookeeperKafkaNamespace;
         }
     }
@@ -56,7 +53,8 @@ public class ZooKeeperHolder {
         EnsembleProvider ensembleProvider;
         if (exhibitorAddresses != null) {
             final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddresses.split("\\s*,\\s*"));
-            final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort, () -> zookeeperBrokers + zookeeperKafkaNamespace);
+            final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort, () -> zookeeperBrokers
+                    + zookeeperKafkaNamespace);
             final ExhibitorRestClient exhibitorRestClient = new DefaultExhibitorRestClient();
             ensembleProvider = new ExhibitorEnsembleProvider(exhibitors,
                     exhibitorRestClient, "/exhibitor/v1/cluster/list", 300000, retryPolicy);
@@ -64,7 +62,8 @@ public class ZooKeeperHolder {
         } else {
             ensembleProvider = new FixedEnsembleProvider(zookeeperBrokers + zookeeperKafkaNamespace);
         }
-        zooKeeper = CuratorFrameworkFactory.builder().ensembleProvider(ensembleProvider).retryPolicy(retryPolicy).build();
+        zooKeeper = CuratorFrameworkFactory.builder().ensembleProvider(ensembleProvider).retryPolicy(retryPolicy)
+                .build();
         zooKeeper.start();
     }
 

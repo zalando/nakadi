@@ -29,7 +29,8 @@ public class EventTypeMetrics {
         this.metricRegistry = metricRegistry;
         eventCountMeter = metricRegistry.meter(metricNameFor(eventTypeName, "publishing.events"));
         eventsPerBatchHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.eventsPerBatch"));
-        averageEventSizeInBytesHistogram = metricRegistry.histogram(metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
+        averageEventSizeInBytesHistogram = metricRegistry.histogram(
+                metricNameFor(eventTypeName, "publishing.averageEventSizeInBytes"));
         publishingTimer = metricRegistry.timer(metricNameFor(eventTypeName, "publishing"));
     }
 

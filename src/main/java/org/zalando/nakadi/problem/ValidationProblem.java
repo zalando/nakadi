@@ -23,10 +23,14 @@ public class ValidationProblem implements Problem {
     }
 
     @Override
-    public URI getType() { return TYPE; }
+    public URI getType() {
+        return TYPE;
+    }
 
     @Override
-    public String getTitle() { return TITLE; }
+    public String getTitle() {
+        return TITLE;
+    }
 
     @Override
     public Response.StatusType getStatus() {
