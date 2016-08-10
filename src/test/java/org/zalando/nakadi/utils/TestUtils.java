@@ -93,7 +93,8 @@ public class TestUtils {
         return Long.toString(randomULong());
     }
 
-    public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName) throws IOException {
+    public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName)
+            throws IOException {
         final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
         return json.replace("NAME_PLACEHOLDER", eventTypeName);
     }

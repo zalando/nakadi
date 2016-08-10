@@ -18,7 +18,8 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
         final Map<String, Integer> activeSessionWeights = Stream.of(sessions)
                 .collect(Collectors.toMap(Session::getId, Session::getWeight));
         // sorted session ids.
-        final List<String> activeSessionIds = activeSessionWeights.keySet().stream().sorted().collect(Collectors.toList());
+        final List<String> activeSessionIds = activeSessionWeights.keySet().stream().sorted()
+                .collect(Collectors.toList());
         // the main part of rebalance - calculate count for each partition.
         final int[] partitionsPerSession = splitByWeight(
                 currentPartitions.length,
@@ -41,7 +42,8 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
             int toTake = (partitions.containsKey(sessionId) ? partitions.get(sessionId).size() : 0) - suggestedCount;
             while (toTake > 0) {
                 final List<Partition> candidates = partitions.get(sessionId);
-                final Partition toTakeItem = candidates.stream().filter(p -> p.getState() == Partition.State.REASSIGNING).findAny().orElse(
+                final Partition toTakeItem = candidates.stream()
+                        .filter(p -> p.getState() == Partition.State.REASSIGNING).findAny().orElse(
                         candidates.get(candidates.size() - 1));
                 candidates.remove(toTakeItem);
                 toRebalance.add(toTakeItem);

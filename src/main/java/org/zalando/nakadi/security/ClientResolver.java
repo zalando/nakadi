@@ -2,7 +2,10 @@ package org.zalando.nakadi.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.common.exceptions.UnauthorizedUserException;
+import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
@@ -12,7 +15,9 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.util.FeatureToggleService;
 
 import java.security.Principal;
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
@@ -35,20 +40,26 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
     }
 
     @Override
-    public Client resolveArgument(final MethodParameter parameter, final ModelAndViewContainer mavContainer,
-                                  final NativeWebRequest request, final WebDataBinderFactory binderFactory) throws Exception
-    {
+    public Client resolveArgument(final MethodParameter parameter,
+                                  final ModelAndViewContainer mavContainer,
+                                  final NativeWebRequest request,
+                                  final WebDataBinderFactory binderFactory) throws Exception {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
-
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
                 || clientId.filter(settings.getAdminClientId()::equals).isPresent()
-                || settings.getAuthMode() == OFF)
-        {
-            return Client.PERMIT_ALL;
+                || settings.getAuthMode() == OFF) {
+            return Client.FULL_ACCESS;
         }
-        return clientId.map(Client.Authorized::new)
-                .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
 
+        return clientId.map(client -> new NakadiClient(client, getScopes()))
+                .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
     }
 
+    private Set<String> getScopes() {
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof OAuth2Authentication) {
+            return ((OAuth2Authentication) authentication).getOAuth2Request().getScope();
+        }
+        return Collections.emptySet();
+    }
 }

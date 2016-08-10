@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
@@ -25,6 +26,7 @@ import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -55,7 +57,9 @@ public class KafkaTopicRepositoryTest {
 
     public static final String MY_TOPIC = "my-topic";
     public static final String ANOTHER_TOPIC = "another-topic";
-    final KafkaRepositorySettings settings = mock(KafkaRepositorySettings.class);
+    private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
+    private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
+    private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
 
     @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");
@@ -212,7 +216,7 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
-        when(settings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
+        when(kafkaSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
 
         Mockito
                 .doReturn(mock(Future.class))
@@ -263,7 +267,8 @@ public class KafkaTopicRepositoryTest {
                 .map(PARTITION_STATE_TO_TOPIC_PARTITION)
                 .forEach(tp -> {
                     try {
-                        final TopicPartition actual = kafkaTopicRepository.getPartition(tp.getTopicId(), tp.getPartitionId());
+                        final TopicPartition actual = kafkaTopicRepository.getPartition(tp.getTopicId(),
+                                tp.getPartitionId());
                         assertThat(actual, equalTo(tp));
                     } catch (final NakadiException e) {
                         fail("Should not get NakadiException for this call");
@@ -273,7 +278,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void testIntegerOverflowOnStatisticsCalculation() throws NakadiException {
-        when(settings.getMaxTopicPartitionCount()).thenReturn(1000);
+        when(nakadiSettings.getMaxTopicPartitionCount()).thenReturn(1000);
         final EventTypeStatistics statistics = new EventTypeStatistics();
         statistics.setReadParallelism(1);
         statistics.setWriteParallelism(1);
@@ -286,7 +291,8 @@ public class KafkaTopicRepositoryTest {
     @SuppressWarnings("unchecked")
     public void canCreateEventConsumerWithOffsetsTransformed() throws Exception {
         // ACT /
-        final List<Cursor> cursors = ImmutableList.of(new Cursor("0", "40"), new Cursor("1", Cursor.BEFORE_OLDEST_OFFSET));
+        final List<Cursor> cursors = ImmutableList.of(new Cursor("0", "40"), new Cursor("1",
+                Cursor.BEFORE_OLDEST_OFFSET));
 
         kafkaTopicRepository.createEventConsumer(MY_TOPIC, cursors);
 
@@ -343,7 +349,12 @@ public class KafkaTopicRepositoryTest {
 
     private KafkaTopicRepository createKafkaRepository(final KafkaFactory kafkaFactory) {
         try {
-            return new KafkaTopicRepository(createZooKeeperHolder(), kafkaFactory, settings, KafkaPartitionsCalculatorTest.buildTest());
+            return new KafkaTopicRepository(createZooKeeperHolder(),
+                    kafkaFactory,
+                    nakadiSettings,
+                    kafkaSettings,
+                    zookeeperSettings,
+                    KafkaPartitionsCalculatorTest.buildTest());
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

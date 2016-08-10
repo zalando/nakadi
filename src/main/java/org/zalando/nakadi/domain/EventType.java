@@ -1,7 +1,6 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.common.collect.Lists;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import javax.annotation.Nullable;
@@ -10,7 +9,9 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -33,12 +34,12 @@ public class EventType {
     private EventCategory category;
 
     @JsonIgnore
-    private List<ValidationStrategyConfiguration> validationStrategies = Lists.newArrayList();
+    private List<ValidationStrategyConfiguration> validationStrategies;
 
     @NotNull
-    private List<EnrichmentStrategyDescriptor> enrichmentStrategies = Lists.newArrayList();
+    private List<EnrichmentStrategyDescriptor> enrichmentStrategies;
 
-    private String partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
+    private String partitionStrategy;
 
     @Nullable
     private List<String> partitionKeyFields;
@@ -52,17 +53,30 @@ public class EventType {
     private EventTypeStatistics defaultStatistic;
 
     @Valid
-    @Nullable
     private EventTypeOptions options;
 
-    public EventType() {}
+    private Set<String> writeScopes;
 
-    public EventType(final String name, final String topic, final String owningApplication, final EventCategory category,
+    private Set<String> readScopes;
+
+    public EventType() {
+        this.validationStrategies = Collections.emptyList();
+        this.enrichmentStrategies = Collections.emptyList();
+        this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
+        this.options = new EventTypeOptions();
+        this.writeScopes = Collections.emptySet();
+        this.readScopes = Collections.emptySet();
+    }
+
+    public EventType(final String name, final String topic, final String owningApplication,
+                     final EventCategory category,
                      final List<ValidationStrategyConfiguration> validationStrategies,
-                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies, final String partitionStrategy,
-                     final List<String> partitionKeyFields, final EventTypeSchema schema, final EventTypeStatistics defaultStatistic,
-                     final EventTypeOptions options)
-    {
+                     final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
+                     final String partitionStrategy,
+                     final List<String> partitionKeyFields, final EventTypeSchema schema,
+                     final EventTypeStatistics defaultStatistic,
+                     final EventTypeOptions options, final Set<String> writeScopes,
+                     final Set<String> readScopes) {
         this.name = name;
         this.topic = topic;
         this.owningApplication = owningApplication;
@@ -74,11 +88,17 @@ public class EventType {
         this.schema = schema;
         this.defaultStatistic = defaultStatistic;
         this.options = options;
+        this.writeScopes = writeScopes;
+        this.readScopes = readScopes;
     }
 
-    public String getName() { return name; }
+    public String getName() {
+        return name;
+    }
 
-    public void setName(final String name) { this.name = name; }
+    public void setName(final String name) {
+        this.name = name;
+    }
 
     public String getOwningApplication() {
         return owningApplication;
@@ -140,9 +160,13 @@ public class EventType {
         this.enrichmentStrategies = enrichmentStrategies;
     }
 
-    public String getTopic() { return topic; }
+    public String getTopic() {
+        return topic;
+    }
 
-    public void setTopic(final String topic) { this.topic = topic; }
+    public void setTopic(final String topic) {
+        this.topic = topic;
+    }
 
     public EventTypeOptions getOptions() {
         return options;
@@ -150,5 +174,21 @@ public class EventType {
 
     public void setOptions(final EventTypeOptions options) {
         this.options = options;
+    }
+
+    public Set<String> getWriteScopes() {
+        return Collections.unmodifiableSet(writeScopes);
+    }
+
+    public void setWriteScopes(final Set<String> writeScopes) {
+        this.writeScopes = writeScopes == null ? Collections.emptySet() : writeScopes;
+    }
+
+    public Set<String> getReadScopes() {
+        return Collections.unmodifiableSet(readScopes);
+    }
+
+    public void setReadScopes(final Set<String> readScopes) {
+        this.readScopes = readScopes == null ? Collections.emptySet() : readScopes;
     }
 }

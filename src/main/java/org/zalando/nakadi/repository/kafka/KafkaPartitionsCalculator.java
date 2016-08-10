@@ -34,7 +34,8 @@ public class KafkaPartitionsCalculator {
                 return floorResult;
             }
             final int ceilResult = getBestPartitionsCount(ceil.getValue(), mbsPerSecond);
-            return floorResult + ((ceilResult - floorResult) * (messageSize - floor.getKey())) / (ceil.getKey() - floor.getKey());
+            return floorResult + ((ceilResult - floorResult) * (messageSize - floor.getKey())) / (ceil.getKey()
+                    - floor.getKey());
         }
     }
 
@@ -129,7 +130,8 @@ public class KafkaPartitionsCalculator {
         }
     }
 
-    static KafkaPartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType) throws IOException {
+    static KafkaPartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType)
+            throws IOException {
         try (final InputStream in = KafkaPartitionsCalculator.class.getResourceAsStream(PARTITION_STATISTICS)) {
             if (null == in) {
                 throw new IOException("Resource with name " + PARTITION_STATISTICS + " is not found");
@@ -139,11 +141,13 @@ public class KafkaPartitionsCalculator {
     }
 
     @VisibleForTesting
-    static KafkaPartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType, final InputStream in) throws IOException {
+    static KafkaPartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType,
+                                          final InputStream in) throws IOException {
         final InstanceInfo[] instanceInfos = objectMapper.readValue(in, InstanceInfo[].class);
         final InstanceInfo instanceInfo = Stream.of(instanceInfos)
                 .filter(ii -> instanceType.equals(ii.getName()))
-                .findAny().orElseThrow(() -> new IllegalArgumentException("Failed to find instance " + instanceType + " configuration"));
+                .findAny().orElseThrow(() -> new IllegalArgumentException("Failed to find instance " + instanceType
+                        + " configuration"));
         return new KafkaPartitionsCalculator(instanceInfo);
     }
 

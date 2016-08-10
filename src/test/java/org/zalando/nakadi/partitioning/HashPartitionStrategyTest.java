@@ -67,7 +67,8 @@ public class HashPartitionStrategyTest {
 
         fillPartitionsWithRandomEvents(simpleEventType, partitions, 10000);
 
-        final double[] eventDistribution = partitions.stream().map(List::size).mapToDouble(value -> value * 1.0).toArray();
+        final double[] eventDistribution = partitions.stream().map(List::size).mapToDouble(value -> value * 1.0)
+                .toArray();
         final double variance = calculateVarianceOfUniformDistribution(eventDistribution);
 
         assertThat(variance, lessThan(1.5));
@@ -77,15 +78,19 @@ public class HashPartitionStrategyTest {
     public void partitionsAreEvenlyDistributed() throws IOException {
         loadEventSamples();
 
-        assertThat("Event sample set A is not evenly distributed with strategy", varianceForEvents(eventSamplesA), lessThan(1.5));
-        assertThat("Event sample set B is not evenly distributed with strategy", varianceForEvents(eventSamplesB), lessThan(1.5));
-        assertThat("Event sample set C is not evenly distributed with strategy", varianceForEvents(eventSamplesC), lessThan(1.5));
+        assertThat("Event sample set A is not evenly distributed with strategy", varianceForEvents(eventSamplesA),
+                lessThan(1.5));
+        assertThat("Event sample set B is not evenly distributed with strategy", varianceForEvents(eventSamplesB),
+                lessThan(1.5));
+        assertThat("Event sample set C is not evenly distributed with strategy", varianceForEvents(eventSamplesC),
+                lessThan(1.5));
     }
 
     private double varianceForEvents(final List<JSONObject> events) {
         fillPartitionsWithEvents(simpleEventType, partitions, events);
 
-        final double[] eventDistribution = partitions.stream().map(List::size).mapToDouble(value -> value * 1.0).toArray();
+        final double[] eventDistribution = partitions.stream().map(List::size).mapToDouble(value -> value * 1.0)
+                .toArray();
         return calculateVarianceOfUniformDistribution(eventDistribution);
     }
 
@@ -199,11 +204,13 @@ public class HashPartitionStrategyTest {
         return generate(this::randomArticleEvent).limit(numberOfEvents).collect(toList());
     }
 
-    private void fillPartitionsWithRandomEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions, final int numberOfEvents) {
+    private void fillPartitionsWithRandomEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions,
+                                                final int numberOfEvents) {
         fillPartitionsWithEvents(eventType, partitions, generateRandomEvents(numberOfEvents));
     }
 
-    private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions, final List<JSONObject> events) {
+    private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions,
+                                          final List<JSONObject> events) {
         events.stream()
                 .forEach(wrapConsumer(event -> {
                     final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
@@ -213,10 +220,12 @@ public class HashPartitionStrategyTest {
     }
 
     private JSONObject randomArticleEvent() {
-        return createArticleEvent(randomAlphabetic(1), RANDOM.nextInt(10), randomAlphabetic(1), randomAlphabetic(10), RANDOM.nextInt(1000));
+        return createArticleEvent(randomAlphabetic(1), RANDOM.nextInt(10), randomAlphabetic(1), randomAlphabetic(10),
+                RANDOM.nextInt(1000));
     }
 
-    private JSONObject createArticleEvent(final String sku, final int categoryId, final String name, final String color, final int price) {
+    private JSONObject createArticleEvent(final String sku, final int categoryId, final String name, final String color,
+                                          final int price) {
         final JSONObject jsonObject = new JSONObject();
         jsonObject.put("sku", sku);
         jsonObject.put("categoryId", categoryId);

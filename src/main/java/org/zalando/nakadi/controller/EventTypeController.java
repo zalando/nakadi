@@ -5,13 +5,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
@@ -38,16 +36,19 @@ public class EventTypeController {
     private final FeatureToggleService featureToggleService;
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final ApplicationService applicationService;
+    private final NakadiSettings nakadiSettings;
 
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
                                final FeatureToggleService featureToggleService,
                                final EventTypeOptionsValidator eventTypeOptionsValidator,
-                               final ApplicationService applicationService) {
+                               final ApplicationService applicationService,
+                               final NakadiSettings nakadiSettings) {
         this.eventTypeService = eventTypeService;
         this.featureToggleService = featureToggleService;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.applicationService = applicationService;
+        this.nakadiSettings = nakadiSettings;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -70,16 +71,24 @@ public class EventTypeController {
             return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "owning_application doesn't exist"), request);
         }
 
-
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
+
+        setDefaultEventTypeOptions(eventType);
 
         final Result<Void> result = eventTypeService.create(eventType);
         if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
         }
         return status(HttpStatus.CREATED).build();
+    }
+
+    private void setDefaultEventTypeOptions(final EventType eventType) {
+        final EventTypeOptions options = eventType.getOptions();
+        if (options.getRetentionTime() == null) {
+            options.setRetentionTime(nakadiSettings.getDefaultTopicRetentionMs());
+        }
     }
 
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)

@@ -31,9 +31,11 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     }
 
     @Override
-    public void saveEventType(final EventType eventType) throws InternalNakadiException, DuplicatedEventTypeNameException {
+    public void saveEventType(final EventType eventType) throws InternalNakadiException,
+            DuplicatedEventTypeNameException {
         try {
-            jdbcTemplate.update("INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, ?::jsonb)",
+            jdbcTemplate.update(
+                    "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, ?::jsonb)",
                     eventType.getName(),
                     eventType.getTopic(),
                     jsonMapper.writer().writeValueAsString(eventType));
