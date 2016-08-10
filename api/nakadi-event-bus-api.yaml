@@ -500,7 +500,7 @@ paths:
             $ref: '#/definitions/Problem'
 
   /subscriptions:
-    put:
+    post:
       tags:
         - managed-api
       security:
