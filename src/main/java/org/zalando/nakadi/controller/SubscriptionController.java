@@ -131,7 +131,8 @@ public class SubscriptionController {
         }
     }
 
-    private ResponseEntity<?> createSubscription(final SubscriptionBase subscriptionBase, final NativeWebRequest request)
+    private ResponseEntity<?> createSubscription(final SubscriptionBase subscriptionBase,
+                                                 final NativeWebRequest request)
             throws InternalNakadiException, DuplicatedSubscriptionException, ServiceUnavailableException {
         final List<String> noneExistingEventTypes = checkExistingEventTypes(subscriptionBase);
         if (!noneExistingEventTypes.isEmpty()) {
@@ -145,7 +146,8 @@ public class SubscriptionController {
         return status(HttpStatus.CREATED).body(subscription);
     }
 
-    private List<String> checkExistingEventTypes(final SubscriptionBase subscriptionBase) throws InternalNakadiException {
+    private List<String> checkExistingEventTypes(final SubscriptionBase subscriptionBase)
+            throws InternalNakadiException {
         final List<String> noneExistingEventTypes = Lists.newArrayList();
         for (final String etName : subscriptionBase.getEventTypes()) {
             try {
