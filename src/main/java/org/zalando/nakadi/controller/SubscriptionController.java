@@ -1,6 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +28,8 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
 
 import javax.validation.Valid;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -107,36 +108,35 @@ public class SubscriptionController {
                                                  final NativeWebRequest request,
                                                  final Client client)
             throws InternalNakadiException, DuplicatedSubscriptionException {
-        final List<String> noneExistingEventTypes = checkExistingEventTypes(subscriptionBase, client);
-        if (!noneExistingEventTypes.isEmpty()) {
-            final String errorMessage = createErrorMessage(noneExistingEventTypes);
-            LOG.debug(errorMessage);
+        final EventTypesHolder eventTypesHolder = getEventTypesHolder(subscriptionBase);
+        if (eventTypesHolder.hasMissingEvents()) {
+            final String errorMessage = createErrorMessage(eventTypesHolder.getMissingEventTypes());
             return create(UNPROCESSABLE_ENTITY, errorMessage, request);
         }
+        eventTypesHolder.getEventTypes().stream().forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         return status(HttpStatus.CREATED).body(subscription);
     }
 
-    private List<String> checkExistingEventTypes(final SubscriptionBase subscriptionBase, final Client client)
+    private EventTypesHolder getEventTypesHolder(final SubscriptionBase subscriptionBase)
             throws InternalNakadiException {
-        final List<String> noneExistingEventTypes = Lists.newArrayList();
+        final EventTypesHolder eventTypesHolder = new EventTypesHolder();
         for (final String etName : subscriptionBase.getEventTypes()) {
             try {
-                final EventType eventType = eventTypeRepository.findByName(etName);
-                client.checkScopes(eventType.getReadScopes());
+                eventTypesHolder.addEventType(eventTypeRepository.findByName(etName));
             } catch (NoSuchEventTypeException e) {
-                noneExistingEventTypes.add(etName);
+                eventTypesHolder.addMissingEventType(etName);
             }
         }
-        return noneExistingEventTypes;
+        return eventTypesHolder;
     }
 
-    private String createErrorMessage(final List<String> noneExistingEventTypes) {
+    private String createErrorMessage(final List<String> missingEventTypes) {
         return new StringBuilder()
                 .append("Failed to create subscription, event type(s) not found: '")
-                .append(StringUtils.join(noneExistingEventTypes, "','"))
+                .append(StringUtils.join(missingEventTypes, "','"))
                 .append("'").toString();
     }
 
@@ -146,6 +146,37 @@ public class SubscriptionController {
                 subscriptionBase.getOwningApplication(),
                 subscriptionBase.getEventTypes(),
                 subscriptionBase.getConsumerGroup());
+    }
+
+    private final class EventTypesHolder {
+        private List<EventType> eventTypes = Collections.emptyList();
+        private List<String> missingEventTypes = Collections.emptyList();
+
+        private void addEventType(final EventType eventType) {
+            if (eventTypes == Collections.<EventType>emptyList()) {
+                eventTypes = new LinkedList<>();
+            }
+            eventTypes.add(eventType);
+        }
+
+        private void addMissingEventType(final String etName) {
+            if (missingEventTypes == Collections.<String>emptyList()) {
+                missingEventTypes = new LinkedList<>();
+            }
+            missingEventTypes.add(etName);
+        }
+
+        private List<EventType> getEventTypes() {
+            return eventTypes;
+        }
+
+        private List<String> getMissingEventTypes() {
+            return missingEventTypes;
+        }
+
+        private boolean hasMissingEvents() {
+            return !missingEventTypes.isEmpty();
+        }
     }
 
 }
