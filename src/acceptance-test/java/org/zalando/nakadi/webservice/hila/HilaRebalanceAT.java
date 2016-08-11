@@ -1,9 +1,9 @@
 package org.zalando.nakadi.webservice.hila;
 
-import com.google.common.collect.ImmutableSet;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.junit.Before;
@@ -15,6 +15,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.intersection;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
@@ -36,7 +38,11 @@ public class HilaRebalanceAT extends BaseAT {
     @Before
     public void before() throws IOException {
         eventType = createBusinessEventTypeWithPartitions(8);
-        subscription = createSubscription(ImmutableSet.of(eventType.getName()));
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withEventType(eventType.getName())
+                .withStartFrom(BEGIN)
+                .buildSubscriptionBase();
+        subscription = createSubscription(subscriptionBase);
     }
 
     @Test(timeout = 30000)

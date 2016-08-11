@@ -5,6 +5,8 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import org.apache.commons.io.IOUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -158,6 +160,12 @@ public class TestUtils {
 
     public static BatchItem createBatch(final JSONObject event) {
         return new BatchItem(event);
+    }
+
+    public static DateTime randomDate() {
+        final long maxMillis = new DateTime().getMillis();
+        final long randomMillis = Math.round(Math.random() * maxMillis);
+        return new DateTime(randomMillis, DateTimeZone.UTC);
     }
 
 }

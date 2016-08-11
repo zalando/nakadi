@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.subscription;
 
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
@@ -42,7 +43,7 @@ public class SubscriptionStreamerFactory {
             final String subscriptionId,
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
-            final AtomicBoolean connectionReady) throws NoSuchSubscriptionException {
+            final AtomicBoolean connectionReady) throws NoSuchSubscriptionException, ServiceUnavailableException {
         final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
         final Session session = Session.generate(1);
