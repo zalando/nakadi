@@ -195,7 +195,7 @@ public class SubscriptionControllerTest {
     }
 
     @Test
-    public void whenPostSubscriptionThenWithNoReadScope() throws Exception {
+    public void whenPostSubscriptionWithNoReadScopeThenForbidden() throws Exception {
         when(eventTypeRepository.findByName("myET")).thenReturn(EventTypeTestBuilder.builder()
                 .name("myET")
                 .readScopes(Collections.singleton("oauth.read.scope"))
@@ -208,7 +208,7 @@ public class SubscriptionControllerTest {
     }
 
     @Test
-    public void whenPostSubscriptionThenWithHasReadScope() throws Exception {
+    public void whenPostSubscriptionWithReadScopeThenCreated() throws Exception {
         final Set<String> scopes = Collections.singleton("oauth.read.scope");
         when(eventTypeRepository.findByName("myET")).thenReturn(EventTypeTestBuilder.builder()
                 .name("myET")
