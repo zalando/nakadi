@@ -593,28 +593,12 @@ paths:
             Location:
               description: the URI of created subscription resource
               type: string
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Client is not authorized to perform this operation
-          schema:
-            $ref: '#/definitions/Problem'
         '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/Problem'
         '422':
           description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
     get:
@@ -639,22 +623,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Subscription'
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Client is not authorized to perform this operation
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
 
   /subscriptions/{subscription_id}:
     get:
@@ -670,24 +638,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/Subscription'
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Client is not authorized to perform this operation
-          schema:
-            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -707,24 +659,8 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Cursor'
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Client is not authorized to perform this operation
-          schema:
-            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
     put:
@@ -767,28 +703,12 @@ paths:
             type: array
             items:
               $ref: '#/definitions/CursorCommitResult'
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Client is not authorized to perform this operation
-          schema:
-            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found
           schema:
             $ref: '#/definitions/Problem'
         '422':
           description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -879,14 +799,6 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/Problem'
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
-        '403':
-          description: Client is not authorized to perform this operation
-          schema:
-            $ref: '#/definitions/Problem'
         '404':
           description: Subscription not found.
           schema:
@@ -895,14 +807,6 @@ paths:
           description: |
             Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
             already equals the maximal value - the total amount of this subscription partitions.
-          schema:
-            $ref: '#/definitions/Problem'
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
