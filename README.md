@@ -160,6 +160,9 @@ The `schema` value should only declare the custom part of the event - the generi
 schema is implicit and doesn't need to be defined. The combination of the two 
 (the "effective schema") will be checked when events are submitted for the event type.
 
+Note that at the moment only supported schema definition format is 
+[Json schema](http://json-schema.org/documentation.html) version 4.
+
 This example shows a `business` category event type with a simple schema for an 
 order number -
 
