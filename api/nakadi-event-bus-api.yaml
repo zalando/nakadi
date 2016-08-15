@@ -48,7 +48,7 @@ info:
     A low level **Unmanaged API** is available, providing full control and responsibility of
     position tracking and partition resolution (and therefore ordering) to the Clients.
 
-    In the high level **Subscription API** the consumption of Events proceeds via the establishment
+    In the **High Level API** the consumption of Events proceeds via the establishment
     of a named **Subscription** to an EventType. Subscriptions are persistent relationships from an
     Application (which might have several instances) and the stream of one or more EventType's,
     whose consumption tracking is managed by Nakadi, freeing Consumers from any responsibility in
@@ -66,7 +66,7 @@ info:
     * The existing event format (see definition of Event, BusinessEvent and DataChangeEvent)
     (Note: in the future this is planned to be configurable and not an inherent part of this API).
 
-    * Managed API (high level).
+    * High Level API.
 
     Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
@@ -550,7 +550,7 @@ paths:
   /subscriptions:
     post:
       tags:
-        - managed-api
+        - high-level-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
@@ -603,7 +603,7 @@ paths:
             $ref: '#/definitions/Problem'
     get:
       tags:
-        - managed-api
+        - high-level-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
@@ -654,7 +654,7 @@ paths:
   /subscriptions/{subscription_id}:
     get:
       tags:
-        - managed-api
+        - high-level-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: Returns a subscription identified by id.
@@ -673,7 +673,7 @@ paths:
   /subscriptions/{subscription_id}/cursors:
     get:
       tags:
-        - managed-api
+        - high-level-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: Exposes the currently committed offsets of a subscription.
@@ -698,7 +698,7 @@ paths:
             $ref: '#/definitions/Problem'
     post:
       tags:
-        - managed-api
+        - high-level-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
@@ -755,7 +755,7 @@ paths:
     get:
       tags:
         - stream-api
-        - managed-api
+        - high-level-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
