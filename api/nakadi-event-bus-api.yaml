@@ -696,7 +696,7 @@ paths:
           description: Subscription not found
           schema:
             $ref: '#/definitions/Problem'
-    put:
+    post:
       tags:
         - managed-api
       security:
