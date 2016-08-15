@@ -1,0 +1,1 @@
+CREATE INDEX ON zn_data.subscription ((s_subscription_object->>'created_at'));

@@ -1,31 +1,34 @@
 package org.zalando.nakadi.repository.db;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import org.junit.Before;
+import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.util.UUIDGenerator;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.junit.Before;
-import org.junit.Test;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import static java.util.UUID.randomUUID;
+import static java.util.stream.Collectors.toList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 
 public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
+
+    private static final Comparator<Subscription> SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR =
+            (sub1, sub2) -> sub2.getCreatedAt().compareTo(sub1.getCreatedAt());
 
     private SubscriptionDbRepository repository;
 
@@ -42,7 +45,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void whenCreateSubscriptionThenOk() throws Exception {
 
-        final SubscriptionBase subscription = createSubscriptionBase();
+        final SubscriptionBase subscription = randomSubscription().build();
         final Subscription createdSubscription = repository.createSubscription(subscription);
         checkSubscriptionCreatedFromSubscriptionBase(createdSubscription, subscription);
 
@@ -61,7 +64,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test(expected = DuplicatedSubscriptionException.class)
     public void whenCreateSubscriptionWithDuplicatedKeyParamsThenDuplicatedSubscriptionException() throws Exception {
 
-        final SubscriptionBase subscription = createSubscriptionBase();
+        final SubscriptionBase subscription = randomSubscription().build();
         repository.createSubscription(subscription);
 
         // try to create subscription second time
@@ -69,11 +72,10 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenGetSubscriptionByIdThenOk() throws InternalNakadiException, JsonProcessingException,
-            NoSuchSubscriptionException {
+    public void whenGetSubscriptionByIdThenOk() throws Exception {
 
         // insert subscription into DB
-        final Subscription subscription = createSubscription();
+        final Subscription subscription = randomSubscription().build();
         insertSubscriptionToDB(subscription);
 
         // get subscription by id and compare to original
@@ -82,11 +84,14 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenGetSubscriptionByKeyPropertiesThenOk() throws InternalNakadiException, JsonProcessingException,
-            NoSuchSubscriptionException {
+    public void whenGetSubscriptionByKeyPropertiesThenOk() throws Exception {
 
         // insert subscription into DB
-        final Subscription subscription = createSubscription("myapp", ImmutableSet.of("my-et", "second-et"), "my-cg");
+        final Subscription subscription = randomSubscription()
+                .withOwningApplication("myapp")
+                .withEventTypes(ImmutableSet.of("my-et", "second-et"))
+                .withConsumerGroup("my-cg")
+                .build();
         insertSubscriptionToDB(subscription);
 
         // get subscription by key properties and compare to original
@@ -95,34 +100,44 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat("We found the needed subscription", gotSubscription, equalTo(subscription));
     }
 
-    private void insertSubscriptionToDB(final Subscription subscription) throws JsonProcessingException {
-        template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
-                subscription.getId(), mapper.writer().writeValueAsString(subscription));
+    @Test
+    public void whenListSubscriptionsThenOk() throws ServiceUnavailableException {
+
+        final List<Subscription> testSubscriptions = Lists.newArrayList(
+                randomSubscription().build(), randomSubscription().build());
+        testSubscriptions.sort(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR);
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+
+        final List<Subscription> subscriptions = repository.listSubscriptions();
+        assertThat(subscriptions, equalTo(testSubscriptions));
     }
 
-    private Subscription createSubscription() {
-        final Subscription subscription = new Subscription();
-        subscription.setId(randomUUID().toString());
-        subscription.setOwningApplication("myapp");
-        subscription.setEventTypes(ImmutableSet.of("my-et"));
-        subscription.setCreatedAt(new DateTime(DateTimeZone.UTC));
-        return subscription;
+    @Test
+    public void whenListSubscriptionsByOwningApplicationThenOk() throws ServiceUnavailableException {
+
+        final List<Subscription> testSubscriptions = ImmutableList.of(
+                randomSubscription().withOwningApplication("myapp1").build(),
+                randomSubscription().withOwningApplication("myapp1").build(),
+                randomSubscription().withOwningApplication("myapp2").build());
+
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+
+        final List<Subscription> expectedSubscriptions = testSubscriptions.stream()
+                .filter(sub -> "myapp1".equals(sub.getOwningApplication()))
+                .sorted(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR)
+                .collect(toList());
+
+        final List<Subscription> subscriptions = repository.listSubscriptionsForOwningApplication("myapp1");
+        assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
-    private SubscriptionBase createSubscriptionBase() {
-        final Subscription subscription = new Subscription();
-        subscription.setOwningApplication("myapp");
-        subscription.setEventTypes(ImmutableSet.of("my-et"));
-        return subscription;
-    }
-
-    private Subscription createSubscription(final String owningApplication, final Set<String> eventTypes,
-                                            final String consumerGroup) {
-        final Subscription subscription = createSubscription();
-        subscription.setOwningApplication(owningApplication);
-        subscription.setEventTypes(eventTypes);
-        subscription.setConsumerGroup(consumerGroup);
-        return subscription;
+    private void insertSubscriptionToDB(final Subscription subscription) {
+        try {
+            template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::JSONB)",
+                    subscription.getId(), mapper.writer().writeValueAsString(subscription));
+        } catch (final Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void checkSubscriptionCreatedFromSubscriptionBase(final Subscription subscription,

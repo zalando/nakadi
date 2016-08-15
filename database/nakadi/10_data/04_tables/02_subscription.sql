@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS zn_data.subscription (
 
 CREATE INDEX ON zn_data.subscription USING gin (s_subscription_object);
 
+CREATE INDEX ON zn_data.subscription ((s_subscription_object->>'created_at'));
+
 CREATE UNIQUE INDEX ON zn_data.subscription ((s_subscription_object->>'owning_application'),
                                              (s_subscription_object->>'event_types'),
                                              (s_subscription_object->>'consumer_group'));

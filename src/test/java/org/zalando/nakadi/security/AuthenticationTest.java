@@ -220,6 +220,7 @@ public abstract class AuthenticationTest {
             new Endpoint(GET, "/event-types/foo/partitions/bar", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/subscriptions/foo/events", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(POST, "/subscriptions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(GET, "/subscriptions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(PUT, "/subscriptions/foo/cursors", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/subscriptions/foo/cursors", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/subscriptions/foo", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));

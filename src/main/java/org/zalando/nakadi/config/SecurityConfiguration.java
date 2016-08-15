@@ -62,6 +62,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers(PUT, "/event-types/**").access(hasScope(eventTypeWriteScope))
                     .antMatchers(GET, "/subscriptions/*/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(POST, "/subscriptions/**").access(hasScope(eventStreamReadScope))
+                    .antMatchers(GET, "/subscriptions/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/health/**").permitAll()
                     .anyRequest().access(hasScope(uidScope));
         }
