@@ -647,6 +647,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/definitions/Subscription'
+            required:
+              - items
+              - _links
 
   /subscriptions/{subscription_id}:
     get:
@@ -680,9 +683,15 @@ paths:
         '200':
           description: Ok
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/Cursor'
+            type: object
+            properties:
+              items:
+                description: list of cursors for subscription
+                type: array
+                items:
+                  $ref: '#/definitions/Cursor'
+            required:
+              - items
         '404':
           description: Subscription not found
           schema:
@@ -724,9 +733,15 @@ paths:
             At least one cursor which was tried to be committed is older or equal to already committed one. Array
             of commit results is returned for this status code.
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/CursorCommitResult'
+            type: object
+            properties:
+              items:
+                description: list of items which describe commit result for each cursor
+                type: array
+                items:
+                  $ref: '#/definitions/CursorCommitResult'
+            required:
+              - items
         '404':
           description: Subscription not found
           schema:
