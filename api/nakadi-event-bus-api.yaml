@@ -798,15 +798,10 @@ paths:
 
             - `commit_each`: this commit mode requires each batch to be committed, and it should be done in correct
             order. Committing a cursor when the previous is not yet committed is not possible.
-
-            - `auto_commit`: everything that Nakadi sends to stream is considered to be committed. No actions are
-            required from client side to commit. Be aware that with this commit mode loosing of some events is very
-            probable. So you should know what you are doing if you use autocommit.
           type: string
           enum:
             - commit_at_will
             - commit_each
-            - auto_commit
           required: false
           default: commit_at_will
         - $ref: '#/parameters/BatchLimit'
