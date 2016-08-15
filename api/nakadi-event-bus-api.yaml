@@ -606,20 +606,44 @@ paths:
         - managed-api
       security:
         - oauth2: ['nakadi.event_stream.read']
-      description: Lists all subscriptions that exist in a system.
+      description: |
+        Lists all subscriptions that exist in a system. List is ordered by creation date/time descending (newest
+        subscriptions come first).
       parameters:
         - name: owning_application
           in: query
-          description: parameter to filter subscriptions list by owning application.
+          description: |
+            Parameter to filter subscriptions list by owning application. If not specified - the result list will
+            contain subscription of all owning applications.
           type: string
           required: false
+        - name: limit
+          in: query
+          description: maximum number of subscriptions retuned in one page
+          type: integer
+          format: int64
+          required: false
+          default: 20
+          minimum: 0
+          maximum: 1000
+        - name: offset
+          in: query
+          description: page offset
+          type: integer
+          format: int64
+          required: false
+          default: 0
+          minimum: 0
       responses:
         '200':
           description: OK
           schema:
             type: object
             properties:
-              data:
+              _links:
+                $ref: '#/definitions/PaginationLinks'
+              items:
+                description: list of subscriptions
                 type: array
                 items:
                   $ref: '#/definitions/Subscription'
@@ -1445,6 +1469,24 @@ definitions:
           should have a description.
     required:
       - publishing_status
+
+  PaginationLinks:
+    description: contains links to previous and next pages of items
+    type: object
+    properties:
+      prev:
+        $ref: '#/definitions/PaginationLink'
+      next:
+        $ref: '#/definitions/PaginationLink'
+
+  PaginationLink:
+    description: URI identifying another page of items
+    type: object
+    properties:
+      href:
+        type: string
+        format: uri
+        example: '/subscriptions?offset=20&limit=10'
 
 parameters:
   EventTypeName:
