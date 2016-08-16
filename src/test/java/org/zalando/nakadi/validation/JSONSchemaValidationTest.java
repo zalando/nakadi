@@ -57,7 +57,7 @@ public class JSONSchemaValidationTest {
                 equalTo("#: required key [bar] not found"));
         assertThat(validator.validate(invalidEventMissingNameField).get().getMessage(), equalTo("name is required"));
         assertThat(validator.validate(nestedSchemaViolation).get().getMessage(),
-                equalTo("#: 2 schema violations found\n#/bar: 2 schema violations found\n#/bar: required key [foo]" +
+                equalTo("#: 3 schema violations found\n#/bar: 2 schema violations found\n#/bar: required key [foo]" +
                         " not found\n#/bar: required key [bar] not found\n#: required key [foo] not found"));
     }
 

@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
@@ -150,7 +151,7 @@ public class EventTypeService {
         final EventType existingEventType = eventTypeRepository.findByName(name);
 
         validateName(name, eventType);
-        validatePartitionKeys(eventType);
+        validatePartitionKeys(Optional.empty(), eventType);
         validateSchemaChange(eventType, existingEventType);
         eventType.setDefaultStatistic(
                 validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
@@ -180,19 +181,18 @@ public class EventTypeService {
         }
     }
 
-    private void validatePartitionKeys(final EventType eventType) throws InvalidEventTypeException {
-        if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
-            return;
-        }
+    private void validateSchema(final EventType eventType) throws InvalidEventTypeException {
         try {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
-            final List<String> absentFields = eventType.getPartitionKeyFields().stream()
-                    .filter(field -> !hasReservedField(schemaAsJson, field))
-                    .collect(Collectors.toList());
-            if (!absentFields.isEmpty()) {
-                throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
+            final Schema schema = SchemaLoader.load(schemaAsJson);
+
+            if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
+                throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
+
+            validatePartitionKeys(Optional.of(schema), eventType);
+
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
@@ -200,22 +200,22 @@ public class EventTypeService {
         }
     }
 
-    private void validateSchema(final EventType eventType) throws InvalidEventTypeException {
-        try {
+    private void validatePartitionKeys(final Optional<Schema> schemaO, final EventType eventType)
+            throws InvalidEventTypeException, JSONException, SchemaException {
+        if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
+            return;
+        }
+        final Schema schema = schemaO.orElseGet(() -> {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+            return SchemaLoader.load(schemaAsJson);
+        });
 
-            if (eventType.getCategory() == EventCategory.BUSINESS
-                    && hasReservedField(schemaAsJson, "metadata")) {
-                throw new InvalidEventTypeException("\"metadata\" property is reserved");
-            }
 
-            validatePartitionKeys(eventType);
-
-            SchemaLoader.load(schemaAsJson);
-        } catch (final JSONException e) {
-            throw new InvalidEventTypeException("schema must be a valid json");
-        } catch (final SchemaException e) {
-            throw new InvalidEventTypeException("schema must be a valid json-schema");
+        final List<String> absentFields = eventType.getPartitionKeyFields().stream()
+                .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
+                .collect(Collectors.toList());
+        if (!absentFields.isEmpty()) {
+            throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
         }
     }
 
@@ -223,9 +223,8 @@ public class EventTypeService {
         eventType.setTopic(uuidGenerator.randomUUID().toString());
     }
 
-    private boolean hasReservedField(final JSONObject schemaAsJson, final String field) {
-        return schemaAsJson.optJSONObject("properties") != null
-                && schemaAsJson.getJSONObject("properties").has(field);
+    private String convertToJSONPointer(final String value) {
+        return value.replaceAll("\\.", "/");
     }
 
 }
