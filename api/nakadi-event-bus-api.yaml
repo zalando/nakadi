@@ -854,6 +854,33 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /subscriptions/{subscription_id}/stats:
+    get:
+      tags:
+        - high-level-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: exposes statistics of specified subscription
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '200':
+          description: Ok
+          schema:
+            type: object
+            properties:
+              items:
+                description: statistics list for specified subscription
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionEventTypeStats'
+            required:
+              - items
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+
   '/registry/validation-strategies':
     get:
       tags:
@@ -1431,6 +1458,45 @@ definitions:
         format: int64
         description: |
           Retention time for usage on Kafka's topic.
+
+  SubscriptionEventTypeStats:
+    type: object
+    description: statistics of one event-type within a context of subscription
+    properties:
+      event_type:
+        type: string
+        description: event-type name
+      partitions:
+        type: array
+        description: statistics of partitions of this event-type
+        items:
+          type: object
+          description: statistics of partition within a subscription context
+          properties:
+            partition:
+              type: string
+            state:
+              type: string
+              description: |
+                The state of this partition in current subscription. Currently following values are possible:
+                - `unassigned`: the partition is currently not assigned to any client;
+                - `reassigning`: the partition is currently reasssigning from one client to another;
+                - `assigned`: the partition is assigned to a client.
+            unconsumed_events:
+              type: integer
+              description: |
+                The amount of events in this partition that are not yet consumed within this subscription. May be not
+                determined at the moment when no events were yet consumed from the partition in this subscription (in
+                that case the property will be absent).
+            client_id:
+              type: string
+              description: the id of client that consumes data from this partition
+          required:
+            - partition
+            - state
+    required:
+      - event_type
+      - partitions
 
   BatchItemResponse:
     description: |
