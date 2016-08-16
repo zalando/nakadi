@@ -32,9 +32,9 @@ import org.zalando.nakadi.util.FeatureToggleService;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
@@ -139,29 +139,33 @@ public class SubscriptionController {
                                                  final NativeWebRequest request,
                                                  final Client client)
             throws InternalNakadiException, DuplicatedSubscriptionException, ServiceUnavailableException {
-        final EventTypesHolder eventTypesHolder = getEventTypesHolder(subscriptionBase);
-        if (eventTypesHolder.hasMissingEvents()) {
-            final String errorMessage = createErrorMessage(eventTypesHolder.getMissingEventTypes());
+        final List<EventType> existingEventTypes = getExistingEventTypes(subscriptionBase);
+        final List<String> missingEventTypes = subscriptionBase.getEventTypes().stream()
+                .filter(etName -> !existingEventTypes.stream().anyMatch(
+                        eventType -> eventType.getName().equals(etName)))
+                .collect(Collectors.toList());
+
+        if (!missingEventTypes.isEmpty()) {
+            final String errorMessage = createErrorMessage(missingEventTypes);
             return create(UNPROCESSABLE_ENTITY, errorMessage, request);
         }
-        eventTypesHolder.getEventTypes().stream().forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+        existingEventTypes.stream().forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         return status(HttpStatus.CREATED).body(subscription);
     }
 
-    private EventTypesHolder getEventTypesHolder(final SubscriptionBase subscriptionBase)
+    private List<EventType> getExistingEventTypes(final SubscriptionBase subscriptionBase)
             throws InternalNakadiException {
-        final EventTypesHolder eventTypesHolder = new EventTypesHolder();
+        final List<EventType> eventTypes = new LinkedList<>();
         for (final String etName : subscriptionBase.getEventTypes()) {
             try {
-                eventTypesHolder.addEventType(eventTypeRepository.findByName(etName));
+                eventTypes.add(eventTypeRepository.findByName(etName));
             } catch (NoSuchEventTypeException e) {
-                eventTypesHolder.addMissingEventType(etName);
             }
         }
-        return eventTypesHolder;
+        return eventTypes;
     }
 
     private String createErrorMessage(final List<String> missingEventTypes) {
@@ -177,37 +181,6 @@ public class SubscriptionController {
                 subscriptionBase.getOwningApplication(),
                 subscriptionBase.getEventTypes(),
                 subscriptionBase.getConsumerGroup());
-    }
-
-    private final class EventTypesHolder {
-        private List<EventType> eventTypes = Collections.emptyList();
-        private List<String> missingEventTypes = Collections.emptyList();
-
-        private void addEventType(final EventType eventType) {
-            if (eventTypes == Collections.<EventType>emptyList()) {
-                eventTypes = new LinkedList<>();
-            }
-            eventTypes.add(eventType);
-        }
-
-        private void addMissingEventType(final String etName) {
-            if (missingEventTypes == Collections.<String>emptyList()) {
-                missingEventTypes = new LinkedList<>();
-            }
-            missingEventTypes.add(etName);
-        }
-
-        private List<EventType> getEventTypes() {
-            return eventTypes;
-        }
-
-        private List<String> getMissingEventTypes() {
-            return missingEventTypes;
-        }
-
-        private boolean hasMissingEvents() {
-            return !missingEventTypes.isEmpty();
-        }
     }
 
 }
