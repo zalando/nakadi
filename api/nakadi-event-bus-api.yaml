@@ -617,12 +617,12 @@ paths:
             contain subscriptions of all owning applications.
           type: string
           required: false
-        - name: event_types
+        - name: event_type
           in: query
           description: |
             Parameter to filter subscriptions list by event types. If not specified - the result list will contain
             subscriptions for all event types. It's possible to provide multiple values like
-            `event_types=et1&event_types=et2`
+            `event_type=et1&event_type=et2`
           collectionFormat: multi
           type: array
           items:
