@@ -614,9 +614,19 @@ paths:
           in: query
           description: |
             Parameter to filter subscriptions list by owning application. If not specified - the result list will
-            contain subscription of all owning applications.
+            contain subscriptions of all owning applications.
           type: string
           required: false
+        - name: event_types
+          in: query
+          description: |
+            Parameter to filter subscriptions list by event types. If not specified - the result list will contain
+            subscriptions for all event types. It's possible to provide multiple values like
+            `event_types=et1&event_types=et2`
+          collectionFormat: multi
+          type: array
+          items:
+            type: string
         - name: limit
           in: query
           description: maximum number of subscriptions retuned in one page
