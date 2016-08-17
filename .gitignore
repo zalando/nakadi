@@ -81,4 +81,4 @@ kafka-src
 .settings
 /bin/
 scm-source.json
-plugins
+
