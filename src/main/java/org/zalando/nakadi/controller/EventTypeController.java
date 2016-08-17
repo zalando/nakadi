@@ -29,6 +29,7 @@ import javax.validation.Valid;
 import java.util.List;
 
 import static org.springframework.http.ResponseEntity.status;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_CREATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 
@@ -71,7 +72,8 @@ public class EventTypeController {
         }
 
         ValidationUtils.invokeValidator(eventTypeOptionsValidator, eventType.getOptions(), errors);
-        if (!applicationService.exists(eventType.getOwningApplication())) {
+        if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
+                && !applicationService.exists(eventType.getOwningApplication())) {
             return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
                     "owning_application doesn't exist"), request);
         }
