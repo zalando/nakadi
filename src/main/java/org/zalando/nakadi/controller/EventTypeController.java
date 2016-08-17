@@ -5,7 +5,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
@@ -68,7 +72,8 @@ public class EventTypeController {
 
         ValidationUtils.invokeValidator(eventTypeOptionsValidator, eventType.getOptions(), errors);
         if (!applicationService.exists(eventType.getOwningApplication())) {
-            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "owning_application doesn't exist"), request);
+            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                    "owning_application doesn't exist"), request);
         }
 
         if (errors.hasErrors()) {

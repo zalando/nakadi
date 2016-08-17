@@ -67,4 +67,4 @@ nakadi:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
       accessClientUri: https://example.com/tokeninfo
       authTokenUri: https://example.com/tokeninfo
-      tokenId: aruha-test
+      tokenId: nakadi

@@ -90,7 +90,8 @@ public class NakadiConfig {
                                                  final DefaultResourceLoader loader) {
         try {
             LOGGER.info("Initialize application service factory: " + factoryName);
-            final Class<ApplicationServiceFactory> factoryClass = (Class<ApplicationServiceFactory>) loader.getClassLoader().loadClass(factoryName);
+            final Class<ApplicationServiceFactory> factoryClass =
+                    (Class<ApplicationServiceFactory>) loader.getClassLoader().loadClass(factoryName);
             final ApplicationServiceFactory factory = factoryClass.newInstance();
             return factory.init(systemProperties);
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
