@@ -65,6 +65,3 @@ nakadi:
   auth:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
-      accessClientUri: https://example.com/tokeninfo
-      authTokenUri: https://example.com/tokeninfo
-      tokenId: nakadi
