@@ -550,7 +550,7 @@ paths:
   /subscriptions:
     post:
       tags:
-        - high-level-api
+        - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
@@ -603,7 +603,7 @@ paths:
             $ref: '#/definitions/Problem'
     get:
       tags:
-        - high-level-api
+        - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
@@ -664,7 +664,7 @@ paths:
   /subscriptions/{subscription_id}:
     get:
       tags:
-        - high-level-api
+        - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: Returns a subscription identified by id.
@@ -683,7 +683,7 @@ paths:
   /subscriptions/{subscription_id}/cursors:
     get:
       tags:
-        - high-level-api
+        - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: Exposes the currently committed offsets of a subscription.
@@ -708,7 +708,7 @@ paths:
             $ref: '#/definitions/Problem'
     post:
       tags:
-        - high-level-api
+        - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
@@ -765,7 +765,7 @@ paths:
     get:
       tags:
         - stream-api
-        - high-level-api
+        - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
@@ -857,7 +857,7 @@ paths:
   /subscriptions/{subscription_id}/stats:
     get:
       tags:
-        - high-level-api
+        - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: exposes statistics of specified subscription
