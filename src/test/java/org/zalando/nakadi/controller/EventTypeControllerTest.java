@@ -35,6 +35,7 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.ClientResolver;
@@ -91,6 +92,7 @@ public class EventTypeControllerTest {
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final SecuritySettings settings = mock(SecuritySettings.class);
+    private final ApplicationService applicationService = mock(ApplicationService.class);
 
     private MockMvc mockMvc;
 
@@ -107,15 +109,14 @@ public class EventTypeControllerTest {
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0);
         final EventTypeController controller = new EventTypeController(eventTypeService,
-                featureToggleService,
-                eventTypeOptionsValidator,
-                nakadiSettings);
+                featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings);
 
         Mockito.doReturn(randomUUID).when(uuid).randomUUID();
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
             new MappingJackson2HttpMessageConverter(objectMapper);
 
+        doReturn(true).when(applicationService).exists(any());
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
         doReturn(false).when(featureToggleService).isFeatureEnabled(any());
@@ -363,6 +364,20 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenCreateEventTypeWithWrongPartitionKeyFieldsThen422() throws Exception {
+
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionKeyFields(Collections.singletonList("blabla")).build();
+
+        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void whenCreateEventTypeWithUnknownApplicationThen422() throws Exception {
+
+        doReturn(false).when(applicationService).exists(any());
 
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionKeyFields(Collections.singletonList("blabla")).build();
