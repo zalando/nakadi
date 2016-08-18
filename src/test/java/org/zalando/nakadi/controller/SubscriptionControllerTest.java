@@ -44,6 +44,7 @@ import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
@@ -279,9 +280,9 @@ public class SubscriptionControllerTest {
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
-        postSubscription(subscriptionBase)
-                .andExpect(status().isForbidden())
-                .andExpect(content().string(new StringContains("Client has to have scopes: [oauth.read.scope]")));
+
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Client has to have scopes: [oauth.read.scope]");
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
