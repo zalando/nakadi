@@ -5,34 +5,45 @@ import com.google.common.collect.ImmutableSet;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 import java.text.MessageFormat;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
@@ -60,8 +71,8 @@ public class SubscriptionControllerTest {
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private final MockMvc mockMvc;
     private final JsonTestHelper jsonHelper;
+    private final StandaloneMockMvcBuilder mockMvcBuilder;
 
     public SubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -72,11 +83,12 @@ public class SubscriptionControllerTest {
         final SubscriptionController controller = new SubscriptionController(subscriptionRepository,
                 eventTypeRepository, featureToggleService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
-            new MappingJackson2HttpMessageConverter(objectMapper);
+                new MappingJackson2HttpMessageConverter(objectMapper);
 
-        mockMvc = standaloneSetup(controller)
+        mockMvcBuilder = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .build();
+                .setControllerAdvice(new ExceptionHandling())
+                .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
     }
 
     @Test
@@ -87,6 +99,7 @@ public class SubscriptionControllerTest {
                 .buildSubscriptionBase();
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
         when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isCreated())
@@ -150,7 +163,7 @@ public class SubscriptionControllerTest {
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
-        when(eventTypeRepository.findByName("myET")).thenThrow(new NoSuchEventTypeException(""));
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(Optional.empty());
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "Failed to create subscription, event type(s) not found: 'myET'");
@@ -171,6 +184,7 @@ public class SubscriptionControllerTest {
         existingSubscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
@@ -240,6 +254,7 @@ public class SubscriptionControllerTest {
     public void whenPostSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
         when(subscriptionRepository.createSubscription(any()))
                 .thenThrow(new ServiceUnavailableException("dummy message"));
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         final SubscriptionBase subscription = randomSubscription()
                 .withOwningApplication("app")
@@ -250,11 +265,43 @@ public class SubscriptionControllerTest {
 
     private ResultActions getSubscriptions(final Optional<String> owningApplication) throws Exception {
         final String url = "/subscriptions" + owningApplication.map(app -> "?owning_application=" + app).orElse("");
-        return mockMvc.perform(get(url));
+        return mockMvcBuilder.build().perform(get(url));
+    }
+
+    @Test
+    public void whenPostSubscriptionWithNoReadScopeThenForbidden() throws Exception {
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getEventTypeWithReadScope());
+
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Client has to have scopes: [oauth.read.scope]");
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
+    }
+
+    @Test
+    public void whenPostSubscriptionWithReadScopeThenCreated() throws Exception {
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getEventTypeWithReadScope());
+
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+        postSubscriptionWithScope(subscriptionBase,  Collections.singleton("oauth.read.scope"))
+                .andExpect(status().isCreated());
+    }
+
+    private Optional<EventType> getEventTypeWithReadScope() {
+        return Optional.of(EventTypeTestBuilder.builder()
+                .name("myET")
+                .readScopes(Collections.singleton("oauth.read.scope"))
+                .build());
     }
 
     private ResultActions getSubscription(final String subscriptionId) throws Exception {
-        return mockMvc.perform(get(MessageFormat.format("/subscriptions/{0}", subscriptionId)));
+        return mockMvcBuilder.build().perform(get(MessageFormat.format("/subscriptions/{0}", subscriptionId)));
     }
 
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {
@@ -278,7 +325,44 @@ public class SubscriptionControllerTest {
         final MockHttpServletRequestBuilder requestBuilder = post("/subscriptions")
                 .contentType(APPLICATION_JSON)
                 .content(subscription);
-        return mockMvc.perform(requestBuilder);
+        return mockMvcBuilder.build().perform(requestBuilder);
     }
 
+    private ResultActions postSubscriptionWithScope(final SubscriptionBase subscriptionBase, final Set<String> scopes)
+            throws Exception {
+        final MockHttpServletRequestBuilder requestBuilder = post("/subscriptions")
+                .contentType(APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(subscriptionBase));
+        return mockMvcBuilder
+                .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver().addScope(scopes))
+                .build()
+                .perform(requestBuilder);
+    }
+
+    private Optional<EventType> getOptionalEventType() {
+        return Optional.of(EventTypeTestBuilder.builder().name("myET").build());
+    }
+
+    private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {
+
+        private Set<String> scopes = new HashSet<>();
+
+        public TestHandlerMethodArgumentResolver addScope(final Set<String> scopes) {
+            this.scopes = scopes;
+            return this;
+        }
+
+        @Override
+        public boolean supportsParameter(final MethodParameter parameter) {
+            return true;
+        }
+
+        @Override
+        public Object resolveArgument(final MethodParameter parameter,
+                                      final ModelAndViewContainer mavContainer,
+                                      final NativeWebRequest webRequest,
+                                      final WebDataBinderFactory binderFactory) throws Exception {
+            return new NakadiClient("nakadiClientId", scopes);
+        }
+    }
 }
