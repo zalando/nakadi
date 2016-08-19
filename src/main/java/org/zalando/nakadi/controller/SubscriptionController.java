@@ -19,9 +19,9 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.ExceptionWrapper;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.problem.ValidationProblem;
@@ -32,8 +32,10 @@ import org.zalando.nakadi.util.FeatureToggleService;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -139,33 +141,27 @@ public class SubscriptionController {
                                                  final NativeWebRequest request,
                                                  final Client client)
             throws InternalNakadiException, DuplicatedSubscriptionException, ServiceUnavailableException {
-        final List<EventType> existingEventTypes = getExistingEventTypes(subscriptionBase);
-        final List<String> missingEventTypes = subscriptionBase.getEventTypes().stream()
-                .filter(etName -> !existingEventTypes.stream().anyMatch(
-                        eventType -> eventType.getName().equals(etName)))
+        final Map<String, Optional<EventType>> eventTypeMapping =
+                subscriptionBase.getEventTypes().stream()
+                        .collect(Collectors.toMap(Function.identity(),
+                                        ExceptionWrapper.wrapFunction(t -> eventTypeRepository.findByNameO(t))));
+        final List<String> missingEventTypes = eventTypeMapping.entrySet().stream()
+                .filter(entry -> !entry.getValue().isPresent())
+                .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
 
         if (!missingEventTypes.isEmpty()) {
-            final String errorMessage = createErrorMessage(missingEventTypes);
-            return create(UNPROCESSABLE_ENTITY, errorMessage, request);
+            return create(UNPROCESSABLE_ENTITY, createErrorMessage(missingEventTypes), request);
         }
-        existingEventTypes.stream().forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+
+        eventTypeMapping.values().stream()
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         return status(HttpStatus.CREATED).body(subscription);
-    }
-
-    private List<EventType> getExistingEventTypes(final SubscriptionBase subscriptionBase)
-            throws InternalNakadiException {
-        final List<EventType> eventTypes = new LinkedList<>();
-        for (final String etName : subscriptionBase.getEventTypes()) {
-            try {
-                eventTypes.add(eventTypeRepository.findByName(etName));
-            } catch (NoSuchEventTypeException e) {
-            }
-        }
-        return eventTypes;
     }
 
     private String createErrorMessage(final List<String> missingEventTypes) {

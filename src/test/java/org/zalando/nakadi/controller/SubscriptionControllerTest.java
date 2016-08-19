@@ -17,11 +17,11 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -99,7 +99,7 @@ public class SubscriptionControllerTest {
                 .buildSubscriptionBase();
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
         when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
-        when(eventTypeRepository.findByName("myET")).thenReturn(EventTypeTestBuilder.builder().name("myET").build());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isCreated())
@@ -163,7 +163,7 @@ public class SubscriptionControllerTest {
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
-        when(eventTypeRepository.findByName("myET")).thenThrow(new NoSuchEventTypeException(""));
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(Optional.empty());
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
                 "Failed to create subscription, event type(s) not found: 'myET'");
@@ -184,7 +184,7 @@ public class SubscriptionControllerTest {
         existingSubscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
-        when(eventTypeRepository.findByName("myET")).thenReturn(EventTypeTestBuilder.builder().name("myET").build());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
@@ -254,7 +254,7 @@ public class SubscriptionControllerTest {
     public void whenPostSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
         when(subscriptionRepository.createSubscription(any()))
                 .thenThrow(new ServiceUnavailableException("dummy message"));
-        when(eventTypeRepository.findByName("myET")).thenReturn(EventTypeTestBuilder.builder().name("myET").build());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         final SubscriptionBase subscription = randomSubscription()
                 .withOwningApplication("app")
@@ -270,10 +270,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenPostSubscriptionWithNoReadScopeThenForbidden() throws Exception {
-        when(eventTypeRepository.findByName("myET")).thenReturn(EventTypeTestBuilder.builder()
-                .name("myET")
-                .readScopes(Collections.singleton("oauth.read.scope"))
-                .build());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getEventTypeWithReadScope());
 
         final SubscriptionBase subscriptionBase = randomSubscription()
                 .withOwningApplication("app")
@@ -286,18 +283,21 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenPostSubscriptionWithReadScopeThenCreated() throws Exception {
-        final Set<String> scopes = Collections.singleton("oauth.read.scope");
-        when(eventTypeRepository.findByName("myET")).thenReturn(EventTypeTestBuilder.builder()
-                .name("myET")
-                .readScopes(scopes)
-                .build());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getEventTypeWithReadScope());
 
         final SubscriptionBase subscriptionBase = randomSubscription()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
-        postSubscriptionWithScope(subscriptionBase, scopes)
+        postSubscriptionWithScope(subscriptionBase,  Collections.singleton("oauth.read.scope"))
                 .andExpect(status().isCreated());
+    }
+
+    private Optional<EventType> getEventTypeWithReadScope() {
+        return Optional.of(EventTypeTestBuilder.builder()
+                .name("myET")
+                .readScopes(Collections.singleton("oauth.read.scope"))
+                .build());
     }
 
     private ResultActions getSubscription(final String subscriptionId) throws Exception {
@@ -337,6 +337,10 @@ public class SubscriptionControllerTest {
                 .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver().addScope(scopes))
                 .build()
                 .perform(requestBuilder);
+    }
+
+    private Optional<EventType> getOptionalEventType() {
+        return Optional.of(EventTypeTestBuilder.builder().name("myET").build());
     }
 
     private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {
