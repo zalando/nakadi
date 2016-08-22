@@ -708,8 +708,10 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for committing offsets of the subscription. The behavior of commit is specific to `commit_mode`
-        parameter of the client stream (please see details in subscription streaming endpoint specification).
+        Endpoint for committing offsets of the subscription. The client is free to choose how often
+        it wants to commit. Of course the commit_timeout property should still be respected. When a
+        batch is committed that also automatically commits all previous batches that were sent in a
+        stream for this partition.
       parameters:
         - name: subscription_id
           in: path
@@ -771,7 +773,7 @@ paths:
         only operates with the number of partitions so the amount of data in event-types/partitions is not considered
         during autorebalance.
         The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
-        a stream. This also depends on the `commit_mode` parameter that is set for the stream.
+        a stream.
       parameters:
         - $ref: '#/parameters/SubscriptionId'
         - name: commit_timeout
@@ -792,24 +794,6 @@ paths:
           format: int32
           required: false
           default: 1000
-        - name: commit_mode
-          in: query
-          description: |
-            The commit mode that will be used for this stream. Currently only `commit_at_will` is supported.
-            Possible values:
-
-            - `commit_at_will`: client is free to choose how often he wants to commit. Of course the commit_timeout
-            property should still be respected. When a batch is committed that also automatically commits all previous
-            batches that were sent in a stream for this partition.
-
-            - `commit_each`: this commit mode requires each batch to be committed, and it should be done in correct
-            order. Committing a cursor when the previous is not yet committed is not possible.
-          type: string
-          enum:
-            - commit_at_will
-            - commit_each
-          required: false
-          default: commit_at_will
         - $ref: '#/parameters/BatchLimit'
         - $ref: '#/parameters/StreamLimit'
         - $ref: '#/parameters/BatchFlushTimeout'
