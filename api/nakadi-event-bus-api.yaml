@@ -738,9 +738,9 @@ paths:
               - stream_id
               - items
       responses:
-        '200':
+        '204':
           description: Offsets were committed
-        '207':
+        '200':
           description: |
             At least one cursor which was tried to be committed is older or equal to already committed one. Array
             of commit results is returned for this status code.
