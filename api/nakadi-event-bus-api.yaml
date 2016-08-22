@@ -766,7 +766,6 @@ paths:
   /subscriptions/{subscription_id}/events:
     get:
       tags:
-        - stream-api
         - subscription-api
       security:
         - oauth2: ['nakadi.event_stream.read']
