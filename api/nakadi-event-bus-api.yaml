@@ -576,23 +576,19 @@ paths:
           schema:
             $ref: '#/definitions/Subscription'
           headers:
-            Content-Location:
-              description: the URI of existing subscription resource
-              type: string
             Location:
-              description: the URI of existing subscription resource
+              description: relative URI of existing subscription resource
               type: string
+              example: '/subscriptions/105a76d8-db49-4144-ace7-e683e8f4ba46'
         '201':
           description: Subscription was successfuly created. Returns subscription object that was created.
           schema:
             $ref: '#/definitions/Subscription'
           headers:
-            Content-Location:
-              description: the URI of created subscription resource
-              type: string
             Location:
-              description: the URI of created subscription resource
+              description: relative URI of created subscription resource
               type: string
+              example: '/subscriptions/105a76d8-db49-4144-ace7-e683e8f4ba46'
         '400':
           description: Bad Request
           schema:
