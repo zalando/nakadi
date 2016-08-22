@@ -1222,8 +1222,7 @@ definitions:
         type: string
         example: 'gizig'
         description: |
-          The id of application owning the subscription. The reading and modification of subscription will be limited
-          to this application id.
+          The id of application owning the subscription.
       event_types:
         type: array
         items:
