@@ -10,4 +10,5 @@ ADD scm-source.json /scm-source.json
 EXPOSE 8080
 
 # run the server when a container based on this image is being run
-ENTRYPOINT java $JAVA_OPTS -Dloader.path=/plugins -Djava.security.egd=file:/dev/./urandom -jar nakadi.jar
+ENTRYPOINT java $(appdynamics-agent) $JAVA_OPTS -Dloader.path=/plugins -Djava.security.egd=file:/dev/./urandom -jar \
+nakadi.jar
