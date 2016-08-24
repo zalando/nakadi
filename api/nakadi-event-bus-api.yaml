@@ -789,7 +789,7 @@ paths:
           type: integer
           format: int32
           required: false
-          default: 1000
+          default: 10
         - $ref: '#/parameters/BatchLimit'
         - $ref: '#/parameters/StreamLimit'
         - $ref: '#/parameters/BatchFlushTimeout'
