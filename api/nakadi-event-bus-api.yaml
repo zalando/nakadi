@@ -781,11 +781,11 @@ paths:
         a stream.
       parameters:
         - $ref: '#/parameters/SubscriptionId'
-        - name: window_size
+        - name: max_uncommitted_events
           in: query
           description: |
             The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
-            state and commit comes - the stream will continue. Minimal window size is 1.
+            state and commit comes - the stream will resume. Minimal value is 1.
           type: integer
           format: int32
           required: false
