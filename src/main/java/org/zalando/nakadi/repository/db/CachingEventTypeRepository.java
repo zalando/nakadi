@@ -91,4 +91,15 @@ public class CachingEventTypeRepository implements EventTypeRepository {
         }
 
     }
+
+    @Override
+    public void setEventTypeDeleted(final String name) throws InternalNakadiException, NoSuchEventTypeException {
+        repository.setEventTypeDeleted(name);
+        try {
+            this.cache.updated(name);
+        } catch (Exception e) {
+            LOG.error("Failed to update cache for event type '" + name + "'", e);
+            throw new InternalNakadiException("Failed to update event type", e);
+        }
+    }
 }

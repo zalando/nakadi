@@ -20,6 +20,8 @@ public interface EventTypeRepository {
 
     void removeEventType(String name) throws InternalNakadiException, NoSuchEventTypeException;
 
+    void setEventTypeDeleted(String name) throws InternalNakadiException, NoSuchEventTypeException;
+
     default Optional<EventType> findByNameO(final String eventTypeName) throws InternalNakadiException {
         try {
             return Optional.of(findByName(eventTypeName));

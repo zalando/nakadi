@@ -59,6 +59,9 @@ public class EventType {
 
     private Set<String> readScopes;
 
+    @JsonIgnore
+    private boolean deleted;
+
     public EventType() {
         this.validationStrategies = Collections.emptyList();
         this.enrichmentStrategies = Collections.emptyList();
@@ -190,5 +193,13 @@ public class EventType {
 
     public void setReadScopes(final Set<String> readScopes) {
         this.readScopes = readScopes == null ? Collections.emptySet() : readScopes;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(final boolean deleted) {
+        this.deleted = deleted;
     }
 }

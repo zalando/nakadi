@@ -100,7 +100,7 @@ public class EventTypeService {
             }
             client.checkId(eventType.get().getOwningApplication());
 
-            eventTypeRepository.removeEventType(eventTypeName);
+            eventTypeRepository.setEventTypeDeleted(eventTypeName);
             topicRepository.deleteTopic(eventType.get().getTopic());
             return Result.ok();
         } catch (final TopicDeletionException e) {

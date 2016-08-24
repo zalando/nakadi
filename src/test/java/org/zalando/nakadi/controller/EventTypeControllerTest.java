@@ -296,13 +296,13 @@ public class EventTypeControllerTest {
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
         Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-        Mockito.doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
+        Mockito.doNothing().when(eventTypeRepository).setEventTypeDeleted(eventType.getName());
 
         Mockito.doNothing().when(topicRepository).deleteTopic(eventType.getTopic());
 
         deleteEventType(eventType.getName()).andExpect(status().isOk()).andExpect(content().string(""));
 
-        verify(eventTypeRepository, times(1)).removeEventType(eventType.getName());
+        verify(eventTypeRepository, times(1)).setEventTypeDeleted(eventType.getName());
         verify(topicRepository, times(1)).deleteTopic(eventType.getTopic());
     }
 
@@ -420,7 +420,7 @@ public class EventTypeControllerTest {
         final String eventTypeName = randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
 
-        Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
+        Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).setEventTypeDeleted(
             eventTypeName);
         Mockito.doReturn(Optional.of(buildDefaultEventType())).when(eventTypeRepository).findByNameO(eventTypeName);
 
