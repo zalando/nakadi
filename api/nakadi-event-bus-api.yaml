@@ -1599,7 +1599,7 @@ parameters:
     name: stream_timeout
     in: query
     description: |
-      Maximum time in seconds a stream will live before being interrupted.
+      Maximum time in seconds a stream will live before connection is closed by the server.
       If 0 or unspecified will stream indefinitely.
 
       If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
