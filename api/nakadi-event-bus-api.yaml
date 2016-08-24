@@ -712,16 +712,17 @@ paths:
           type: string
           description: Id of subscription
           required: true
+        - name: X-Nakadi-StreamId
+          in: header
+          type: string
+          description: |
+            Id of stream which client uses to read events. It is not possible to make a commit for a terminated or
+            none-existing stream. Also the client can't commit something which was not sent to his stream.
         - name: cursors
           in: body
           schema:
             type: object
             properties:
-              stream_id:
-                type: string
-                description: |
-                  Id of stream which client uses to read events. It is not possible to make a commit for a terminated or
-                  none-existing stream. Also the client can't commit something which was not sent to his stream.
               cursors:
                 description: |
                   List of cursors that the consumer acknowledges to have successfully processed.
