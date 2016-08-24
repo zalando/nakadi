@@ -123,7 +123,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: Ok
@@ -216,7 +215,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: Ok
@@ -258,7 +256,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: Ok
@@ -297,7 +294,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: EventType is successfuly removed
@@ -354,7 +350,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
         - name: event
           in: body
           description: The Event being published
@@ -452,7 +447,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
 
       responses:
         '200':
@@ -496,7 +490,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: OK
@@ -536,7 +529,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: OK
@@ -801,7 +793,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: |
