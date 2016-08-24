@@ -708,10 +708,12 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for committing offsets of the subscription. The client is free to choose how often
-        it wants to commit. Of course the commit_timeout property should still be respected. When a
-        batch is committed that also automatically commits all previous batches that were sent in a
-        stream for this partition.
+        Endpoint for committing offsets of the subscription. The client must commit at least once
+        every 60 seconds, otherwise Nakadi will consider the client to be gone and will close the
+        connection.
+
+        When a batch is committed that also automatically commits all previous batches that were
+        sent in a stream for this partition.
       parameters:
         - name: subscription_id
           in: path
@@ -779,15 +781,6 @@ paths:
         a stream.
       parameters:
         - $ref: '#/parameters/SubscriptionId'
-        - name: commit_timeout
-          in: query
-          description: |
-            The amount of time allowed between commits. If no commit is performed within this amount of time
-            - the connection will be closed from Nakadi side. Specified in seconds.
-          type: integer
-          format: int32
-          required: false
-          default: 30
         - name: window_size
           in: query
           description: |
@@ -1156,6 +1149,13 @@ definitions:
           available event in the partition.
         type: string
 
+    StreamInfo:
+      type: object
+      description: |
+        This object contains general information about the stream. Used only for debugging
+        purposes. We recommend logging this object in order to solve connection issues. Clients
+        should not parse this structure.
+
   Cursor:
     required:
       - partition
@@ -1203,6 +1203,8 @@ definitions:
     properties:
       cursor:
         $ref: '#/definitions/Cursor'
+      info:
+        $ref: '#/definitions/StreamInfo'
       events:
         type: array
         items:
