@@ -1651,7 +1651,7 @@ parameters:
     name: stream_keep_alive_limit
     in: query
     description: |
-      Maximum number of keep-alive messages to get in a row before closing the connection.
+      Maximum number of empty keep alive batches to get in a row before closing the connection.
 
       If 0 or undefined will send keep alive messages indefinitely.
     type: integer
