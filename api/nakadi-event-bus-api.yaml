@@ -1495,7 +1495,7 @@ definitions:
                 - `reassigning`: the partition is currently reasssigning from one client to another;
                 - `assigned`: the partition is assigned to a client.
             unconsumed_events:
-              type: integer
+              type: number
               description: |
                 The amount of events in this partition that are not yet consumed within this subscription. May be not
                 determined at the moment when no events were yet consumed from the partition in this subscription (in
