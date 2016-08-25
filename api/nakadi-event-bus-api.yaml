@@ -1171,18 +1171,6 @@ definitions:
           description: |
             Number of seconds the client ought to wait before making a follow-up request.
           type: number
-        X-RateLimit-Limit:
-          description: |
-            The maximum number of requests that the client is allowed to make in this window.
-            type: number
-        X-RateLimit-Remaining:
-          description: |
-            The number of requests allowed in the current window.
-          type: number
-        X-RateLimit-Reset:
-          description: |
-            The relative time in seconds when the rate limit window will be reset.
-          type: number
 
   Cursor:
     required:
