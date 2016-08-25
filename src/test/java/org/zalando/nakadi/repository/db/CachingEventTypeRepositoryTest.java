@@ -44,7 +44,7 @@ public class CachingEventTypeRepositoryTest {
         try {
             cachedRepo.saveEventType(et);
         } catch (InternalNakadiException e) {
-            verify(dbRepo, times(1)).removeEventType("event-name");
+            verify(dbRepo, times(1)).setEventTypeDeleted("event-name");
         }
     }
 
@@ -79,9 +79,9 @@ public class CachingEventTypeRepositoryTest {
 
     @Test
     public void removeFromDbSucceedNotifyCache() throws Exception {
-        cachedRepo.removeEventType("event-name");
+        cachedRepo.setEventTypeDeleted("event-name");
 
-        verify(dbRepo, times(1)).removeEventType("event-name");
+        verify(dbRepo, times(1)).setEventTypeDeleted("event-name");
         verify(cache, times(1)).removed("event-name");
     }
 
@@ -100,7 +100,7 @@ public class CachingEventTypeRepositoryTest {
                 .findByName("event-name");
 
         try {
-            cachedRepo.removeEventType("event-name");
+            cachedRepo.setEventTypeDeleted("event-name");
         } catch (InternalNakadiException e) {
             verify(dbRepo, times(1)).saveEventType(original);
         }

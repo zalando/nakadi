@@ -49,14 +49,10 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     @Override
     public EventType findByName(final String name) throws NoSuchEventTypeException {
         final String sql = "SELECT et_topic, et_event_type_object, et_deleted " +
-                "FROM zn_data.event_type WHERE et_name = ?";
+                "FROM zn_data.event_type WHERE et_name = ? AND et_deleted = FALSE";
 
         try {
-            final EventType eventType = jdbcTemplate.queryForObject(sql, new Object[]{name}, new EventTypeMapper());
-            if (eventType.isDeleted()) {
-                throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.");
-            }
-            return eventType;
+            return jdbcTemplate.queryForObject(sql, new Object[]{name}, new EventTypeMapper());
         } catch (EmptyResultDataAccessException e) {
             throw new NoSuchEventTypeException("EventType \"" + name + "\" does not exist.", e);
         }
@@ -94,18 +90,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
         return jdbcTemplate.query(
                 "SELECT et_topic, et_event_type_object, et_deleted FROM zn_data.event_type WHERE et_deleted = FALSE",
                 new EventTypeMapper());
-    }
-
-    @Override
-    public void removeEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
-        try {
-            final int deletedRows = jdbcTemplate.update("DELETE FROM zn_data.event_type WHERE et_name = ?", name);
-            if (deletedRows == 0) {
-                throw new NoSuchEventTypeException("EventType " + name + " doesn't exist");
-            }
-        } catch (DataAccessException e) {
-            throw new InternalNakadiException("Error occurred when deleting EventType " + name, e);
-        }
     }
 
     @Override

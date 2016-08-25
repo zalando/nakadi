@@ -474,7 +474,7 @@ public class EventTypeControllerTest {
 
         Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(any(EventType.class));
 
-        Mockito.doNothing().when(eventTypeRepository).removeEventType(et.getName());
+        Mockito.doNothing().when(eventTypeRepository).setEventTypeDeleted(et.getName());
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE);
 
@@ -484,7 +484,7 @@ public class EventTypeControllerTest {
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
         verify(topicRepository, times(1)).createTopic(any(EventType.class));
-        verify(eventTypeRepository, times(1)).removeEventType(randomUUID.toString());
+        verify(eventTypeRepository, times(1)).setEventTypeDeleted(randomUUID.toString());
     }
 
     @Test
