@@ -70,7 +70,7 @@ public class SubscriptionController {
     public SubscriptionController(final SubscriptionDbRepository subscriptionRepository,
                                   final EventTypeRepository eventTypeRepository,
                                   final FeatureToggleService featureToggleService,
-                                  ApplicationService applicationService) {
+                                  final ApplicationService applicationService) {
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.featureToggleService = featureToggleService;
