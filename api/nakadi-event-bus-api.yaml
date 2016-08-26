@@ -737,7 +737,7 @@ paths:
                   List of cursors that the consumer acknowledges to have successfully processed.
                 type: array
                 items:
-                  $ref: '#/definitions/Cursor'
+                  $ref: '#/definitions/SubscriptionCursor'
             required:
               - stream_id
               - items
@@ -1186,6 +1186,29 @@ definitions:
         description: |
           Offset of the event being pointed to.
 
+  SubscriptionCursor:
+    allOf:
+      - $ref: '#/definitions/Cursor'
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+            description: |
+              Id of the cursor (a UUID).
+          event_type_name:
+            type: string
+            description: |
+              The name of the event type this partition's events belong to
+          cursor_token:
+            type: string
+            description: |
+              An opaque value defined by the server.
+        required:
+          - id
+          - event_type_name
+          - cursor_token
+
   CursorCommitResult:
     description: |
       The result of single cursor commit. Holds a cursor itself and a result value.
@@ -1219,6 +1242,22 @@ definitions:
     properties:
       cursor:
         $ref: '#/definitions/Cursor'
+      info:
+        $ref: '#/definitions/StreamInfo'
+      events:
+        type: array
+        items:
+          $ref: '#/definitions/Event'
+
+  SubscriptionEventStreamBatch:
+    description: |
+      Analogue to EventStreamBatch but used for high level streamming. It includes specific cursors
+      for committing in the high level API.
+    required:
+      - cursor
+    properties:
+      cursor:
+        $ref: '#/definitions/SubscriptionCursor'
       info:
         $ref: '#/definitions/StreamInfo'
       events:
