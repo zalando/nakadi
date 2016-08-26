@@ -24,11 +24,15 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.problem.MoreStatus;
+import org.zalando.problem.Problem;
+import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
@@ -42,6 +46,7 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
@@ -59,13 +64,17 @@ public class SubscriptionController {
 
     private final FeatureToggleService featureToggleService;
 
+    private final ApplicationService applicationService;
+
     @Autowired
     public SubscriptionController(final SubscriptionDbRepository subscriptionRepository,
                                   final EventTypeRepository eventTypeRepository,
-                                  final FeatureToggleService featureToggleService) {
+                                  final FeatureToggleService featureToggleService,
+                                  final ApplicationService applicationService) {
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.featureToggleService = featureToggleService;
+        this.applicationService = applicationService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -141,10 +150,16 @@ public class SubscriptionController {
                                                  final NativeWebRequest request,
                                                  final Client client)
             throws InternalNakadiException, DuplicatedSubscriptionException, ServiceUnavailableException {
+        if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
+                && !applicationService.exists(subscriptionBase.getOwningApplication())) {
+            return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                    "owning_application doesn't exist"), request);
+        }
+
         final Map<String, Optional<EventType>> eventTypeMapping =
                 subscriptionBase.getEventTypes().stream()
                         .collect(Collectors.toMap(Function.identity(),
-                                        ExceptionWrapper.wrapFunction(t -> eventTypeRepository.findByNameO(t))));
+                                        ExceptionWrapper.wrapFunction(eventTypeRepository::findByNameO)));
         final List<String> missingEventTypes = eventTypeMapping.entrySet().stream()
                 .filter(entry -> !entry.getValue().isPresent())
                 .map(Map.Entry::getKey)

@@ -24,6 +24,7 @@ import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.NakadiClient;
@@ -49,9 +50,10 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -73,6 +75,7 @@ public class SubscriptionControllerTest {
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private final JsonTestHelper jsonHelper;
     private final StandaloneMockMvcBuilder mockMvcBuilder;
+    private final ApplicationService applicationService = mock(ApplicationService.class);
 
     public SubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -81,9 +84,10 @@ public class SubscriptionControllerTest {
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
         final SubscriptionController controller = new SubscriptionController(subscriptionRepository,
-                eventTypeRepository, featureToggleService);
+                eventTypeRepository, featureToggleService, applicationService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
+        doReturn(true).when(applicationService).exists(any());
 
         mockMvcBuilder = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
@@ -110,6 +114,23 @@ public class SubscriptionControllerTest {
                 .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
                 .andExpect(jsonPath("$.id", equalTo("123")))
                 .andExpect(jsonPath("$.start_from", equalTo("end")));
+    }
+
+    @Test
+    public void whenCreateSubscriptionWithUnknownApplicationThen422() throws Exception {
+
+        doReturn(false).when(applicationService).exists(any());
+        final SubscriptionBase subscriptionBase = randomSubscription()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+        final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
+        when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
+
+        postSubscription(subscriptionBase)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
 
     @Test
