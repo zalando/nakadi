@@ -696,7 +696,7 @@ paths:
                 description: list of cursors for subscription
                 type: array
                 items:
-                  $ref: '#/definitions/Cursor'
+                  $ref: '#/definitions/SubscriptionCursor'
             required:
               - items
         '404':
@@ -1217,7 +1217,7 @@ definitions:
       - result
     properties:
       cursor:
-        $ref: '#/definitions/Cursor'
+        $ref: '#/definitions/SubscriptionCursor'
       result:
         type: string
         description: |
