@@ -16,7 +16,8 @@ public class JsonPathAccessTest {
 
     static {
         try {
-            JSON_OBJECT = new JSONObject(TestUtils.resourceAsString("JsonPathAccessTest.json", JsonPathAccessTest.class));
+            JSON_OBJECT = new JSONObject(TestUtils.resourceAsString("JsonPathAccessTest.json",
+                    JsonPathAccessTest.class));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -32,7 +33,8 @@ public class JsonPathAccessTest {
         assertThat(jsonPath.get("brand.name"), equalTo("Superbrand"));
         assertThat(jsonPath.get("dynamic_attributes"), equalTo(JSON_OBJECT.getJSONObject("dynamic_attributes")));
         assertThat(jsonPath.get("'dynamic_attributes'"), equalTo(JSON_OBJECT.getJSONObject("dynamic_attributes")));
-        assertThat(jsonPath.get("dynamic_attributes.'field.with.dots'.field'.'\\\\with\\'chars\""), equalTo("you reached it"));
+        assertThat(jsonPath.get("dynamic_attributes.'field.with.dots'.field'.'\\\\with\\'chars\""),
+                equalTo("you reached it"));
 
     }
 

@@ -51,7 +51,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
                          .body("category", equalTo("undefined")).body("schema.type", equalTo("json_schema")).body(
                              "schema.schema",
                              equalTo(
-                                 "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"));
+                                 "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, " +
+                                         "\"required\": [\"foo\"]}"));
 
         // list event types
         jsonRequestSpec().when().get("/event-types").then().statusCode(OK.value()).and()

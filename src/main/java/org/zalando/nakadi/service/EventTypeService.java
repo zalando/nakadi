@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
@@ -50,8 +51,7 @@ public class EventTypeService {
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                             final PartitionResolver partitionResolver, final Enrichment enrichment,
                             final UUIDGenerator uuidGenerator,
-                            final FeatureToggleService featureToggleService)
-    {
+                            final FeatureToggleService featureToggleService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
@@ -97,9 +97,9 @@ public class EventTypeService {
             final Optional<EventType> eventType = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
-            } else if (!client.is(eventType.get().getOwningApplication())) {
-                return Result.forbidden("You don't have access to this event type");
             }
+            client.checkId(eventType.get().getOwningApplication());
+
             eventTypeRepository.removeEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.get().getTopic());
             return Result.ok();
@@ -115,9 +115,8 @@ public class EventTypeService {
     public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
         try {
             final EventType original = eventTypeRepository.findByName(eventTypeName);
-            if (!client.is(original.getOwningApplication())) {
-                return Result.forbidden("You don't have access to this event type");
-            }
+            client.checkId(original.getOwningApplication());
+
             validateUpdate(eventTypeName, eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
@@ -152,13 +151,14 @@ public class EventTypeService {
         final EventType existingEventType = eventTypeRepository.findByName(name);
 
         validateName(name, eventType);
-        validatePartitionKeys(eventType);
+        validatePartitionKeys(Optional.empty(), eventType);
         validateSchemaChange(eventType, existingEventType);
         eventType.setDefaultStatistic(
                 validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
     }
 
-    private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing, final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
+    private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing,
+            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
         if (existing != null && newStatistics == null) {
             return existing;
         }
@@ -174,29 +174,10 @@ public class EventTypeService {
         }
     }
 
-    private void validateSchemaChange(final EventType eventType, final EventType existingEventType) throws InvalidEventTypeException {
+    private void validateSchemaChange(final EventType eventType, final EventType existingEventType)
+            throws InvalidEventTypeException {
         if (!existingEventType.getSchema().equals(eventType.getSchema())) {
             throw new InvalidEventTypeException("schema must not be changed");
-        }
-    }
-
-    private void validatePartitionKeys(final EventType eventType) throws InvalidEventTypeException {
-        if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
-            return;
-        }
-        try {
-            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
-
-            final List<String> absentFields = eventType.getPartitionKeyFields().stream()
-                    .filter(field -> !hasReservedField(eventType, schemaAsJson, field))
-                    .collect(Collectors.toList());
-            if (!absentFields.isEmpty()) {
-                throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
-            }
-        } catch (final JSONException e) {
-            throw new InvalidEventTypeException("schema must be a valid json");
-        } catch (final SchemaException e) {
-            throw new InvalidEventTypeException("schema must be a valid json-schema");
         }
     }
 
@@ -204,13 +185,14 @@ public class EventTypeService {
         try {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
-            if (hasReservedField(eventType, schemaAsJson, "metadata")) {
+            final Schema schema = SchemaLoader.load(schemaAsJson);
+
+            if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            validatePartitionKeys(eventType);
+            validatePartitionKeys(Optional.of(schema), eventType);
 
-            SchemaLoader.load(schemaAsJson);
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
@@ -218,14 +200,31 @@ public class EventTypeService {
         }
     }
 
+    private void validatePartitionKeys(final Optional<Schema> schemaO, final EventType eventType)
+            throws InvalidEventTypeException, JSONException, SchemaException {
+        if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
+            return;
+        }
+        final Schema schema = schemaO.orElseGet(() -> {
+            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+            return SchemaLoader.load(schemaAsJson);
+        });
+
+
+        final List<String> absentFields = eventType.getPartitionKeyFields().stream()
+                .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
+                .collect(Collectors.toList());
+        if (!absentFields.isEmpty()) {
+            throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
+        }
+    }
+
     private void assignTopic(final EventType eventType) {
         eventType.setTopic(uuidGenerator.randomUUID().toString());
     }
 
-    private boolean hasReservedField(final EventType eventType, final JSONObject schemaAsJson, final String field) {
-        return eventType.getCategory() == EventCategory.BUSINESS
-                && schemaAsJson.optJSONObject("properties") != null
-                && schemaAsJson.getJSONObject("properties").has(field);
+    private String convertToJSONPointer(final String value) {
+        return value.replaceAll("\\.", "/");
     }
 
 }

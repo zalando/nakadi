@@ -5,7 +5,18 @@ import com.codahale.metrics.MetricRegistry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.net.InetAddresses;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.ArrayUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.util.FeatureToggleService;
+
+import javax.servlet.http.HttpServletRequest;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,17 +37,6 @@ import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.lang3.ArrayUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-
-import javax.servlet.http.HttpServletRequest;
 
 @Component
 public class ClosedConnectionsCrutch {
@@ -165,7 +165,8 @@ public class ClosedConnectionsCrutch {
         final Map<ConnectionInfo, ConnectionState> currentConnections = readAllConnectionStates();
         final long closedCount =
                 new HashSet<>(listeners.keySet()).stream()
-                        .filter(key -> CLOSED_STATES.contains(currentConnections.getOrDefault(key, ConnectionState.TCP_CLOSE)))
+                        .filter(key -> CLOSED_STATES.contains(currentConnections.getOrDefault(key,
+                                ConnectionState.TCP_CLOSE)))
                         .mapToLong(key -> {
                             LOG.info("Notifying about connection close via crutch: " + key);
                             return listeners.remove(key).stream().filter(BooleanSupplier::getAsBoolean).count();
@@ -229,7 +230,8 @@ public class ClosedConnectionsCrutch {
     private static InetAddress[] restoreAddresses(final String address) throws DecoderException, UnknownHostException {
         final byte[] data = Hex.decodeHex(address.toCharArray());
         if (data.length == 16) {
-            // /proc/net/tcp6 contains addresses in strange manner - each 4 bytes are rotated, so we need to rotate it back
+            // /proc/net/tcp6 contains addresses in strange manner - each 4 bytes are rotated,
+            // so we need to rotate it back
             for (int i = 0; i < 4; ++i) {
                 ArrayUtils.reverse(data, i * 4, i * 4 + 4);
             }

@@ -4,12 +4,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionListWrapper;
+import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
@@ -17,9 +20,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
+import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
@@ -28,22 +32,29 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
 
 public class SubscriptionAT extends BaseAT {
 
     private static final String SUBSCRIPTIONS_URL = "/subscriptions";
+    private static final String SUBSCRIPTION_URL = "/subscriptions/{0}";
     private static final String CURSORS_URL = "/subscriptions/{0}/cursors";
 
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
 
     @Test
-    public void testSubscriptionCreation() throws IOException {
+    public void testSubscriptionBaseOperations() throws IOException {
         // create event type in Nakadi
         final EventType eventType = createEventType();
 
         // create subscription
-        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() + "\"]}";
+        final String subscription = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() +
+                "\"]}";
         Response response = given()
                 .body(subscription)
                 .contentType(JSON)
@@ -80,15 +91,42 @@ public class SubscriptionAT extends BaseAT {
         // check that second time already existing subscription was returned
         final Subscription subSecond = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(subSecond, equalTo(subFirst));
+
+        // check get subscription endpoint
+        response = get(format(SUBSCRIPTION_URL, subFirst.getId()));
+        response.then().statusCode(HttpStatus.SC_OK).contentType(JSON);
+        final Subscription gotSubscription = MAPPER.readValue(response.print(), Subscription.class);
+        assertThat(gotSubscription, equalTo(subFirst));
+    }
+
+    @Test
+    public void testListSubscriptions() throws IOException {
+        final String etName = createEventType().getName();
+
+        final String filterApp = randomUUID();
+        final Subscription sub1 = createSubscription(randomSubscription()
+                .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
+        final Subscription sub2 = createSubscription(randomSubscription()
+                .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
+        createSubscription(randomSubscription().withEventType(etName).buildSubscriptionBase());
+
+        final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub2, sub1));
+
+        given()
+                .param("owning_application", filterApp)
+                .get("/subscriptions")
+                .then()
+                .statusCode(HttpStatus.SC_OK)
+                .body(JSON_HELPER.matchesObject(expectedList));
     }
 
     @Test
     public void testOffsetsCommit() throws Exception {
         // create event type in Nakadi
-        final EventType eventType = createEventType();
-        final String topic = EVENT_TYPE_REPO.findByName(eventType.getName()).getTopic();
+        final String etName = createEventType().getName();
+        final String topic = EVENT_TYPE_REPO.findByName(etName).getTopic();
 
-        final Subscription subscription = createSubscription(eventType);
+        final Subscription subscription = createSubscriptionForEventType(etName);
 
         commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"25\"}]")
                 .then()
@@ -111,21 +149,20 @@ public class SubscriptionAT extends BaseAT {
 
     @Test
     public void testGetSubscriptionCursors() throws IOException {
-        final EventType eventType = createEventType();
-        final Subscription subscription = createSubscription(eventType);
+        final String etName = createEventType().getName();
+        final Subscription subscription = createSubscriptionForEventType(etName);
         commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"25\"}]")
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
         final List<Cursor> actualCursors = getSubscriptionCursors(subscription);
-        Assert.assertEquals(Arrays.asList(new Cursor("0", "25")), actualCursors);
+        Assert.assertEquals(Collections.singletonList(new Cursor("0", "25")), actualCursors);
     }
 
     @Test
     public void testGetSubscriptionCursorsEmpty() throws IOException {
-        final EventType eventType = createEventType();
-        final Subscription subscription = createSubscription(eventType);
-
+        final String etName = createEventType().getName();
+        final Subscription subscription = createSubscriptionForEventType(etName);
         Assert.assertTrue(getSubscriptionCursors(subscription).isEmpty());
     }
 
@@ -135,15 +172,6 @@ public class SubscriptionAT extends BaseAT {
                 .get(format(CURSORS_URL, "UNKNOWN_SUB_ID"))
                 .then()
                 .statusCode(HttpStatus.SC_NOT_FOUND);
-    }
-
-    private Subscription createSubscription(final EventType eventType) throws IOException {
-        final String subscriptionJson = "{\"owning_application\":\"app\",\"event_types\":[\"" + eventType.getName() + "\"]}";
-        final Response response = given()
-                .body(subscriptionJson)
-                .contentType(JSON)
-                .post(SUBSCRIPTIONS_URL);
-        return MAPPER.readValue(response.print(), Subscription.class);
     }
 
     private Response commitCursors(final Subscription subscription, final String cursor) {

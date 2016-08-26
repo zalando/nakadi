@@ -1495,8 +1495,9 @@ definitions:
       retention_time:
         type: integer
         format: int64
+        default: 345600000 # 4 days
         description: |
-          Retention time for usage on Kafka's topic.
+          Number of milliseconds that Nakadi stores events published to this event type.
 
   SubscriptionEventTypeStats:
     type: object

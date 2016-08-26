@@ -31,7 +31,8 @@ public class CachingEventTypeRepository implements EventTypeRepository {
     }
 
     @Override
-    public void saveEventType(final EventType eventType) throws InternalNakadiException, DuplicatedEventTypeNameException {
+    public void saveEventType(final EventType eventType) throws InternalNakadiException,
+            DuplicatedEventTypeNameException {
         this.repository.saveEventType(eventType);
 
         try {

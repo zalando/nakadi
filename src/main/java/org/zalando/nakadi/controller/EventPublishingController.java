@@ -1,11 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import org.zalando.nakadi.domain.EventPublishResult;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
-import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.service.EventPublisher;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
@@ -18,6 +12,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.EventPublishResult;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
+import org.zalando.nakadi.metrics.EventTypeMetrics;
+import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -36,19 +37,23 @@ public class EventPublishingController {
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
 
     @Autowired
-    public EventPublishingController(final EventPublisher publisher, final EventTypeMetricRegistry eventTypeMetricRegistry) {
+    public EventPublishingController(final EventPublisher publisher,
+                                     final EventTypeMetricRegistry eventTypeMetricRegistry) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
-    public ResponseEntity postEvent(@PathVariable final String eventTypeName, @RequestBody final String eventsAsString,
-                                    final NativeWebRequest nativeWebRequest) {
+    public ResponseEntity postEvent(@PathVariable final String eventTypeName,
+                                    @RequestBody final String eventsAsString,
+                                    final NativeWebRequest nativeWebRequest,
+                                    final Client client) {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
-            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString, nativeWebRequest, eventTypeMetrics);
+            final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
+                    nativeWebRequest, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {
@@ -60,7 +65,8 @@ public class EventPublishingController {
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
-                                             final EventTypeMetrics eventTypeMetrics) {
+                                             final EventTypeMetrics eventTypeMetrics,
+                                             final Client client) {
         final long startingNanos = System.nanoTime();
         try {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
@@ -68,7 +74,7 @@ public class EventPublishingController {
             final int eventCount = eventsAsJsonObjects.length();
             eventTypeMetrics.reportSizing(eventCount, eventsAsString.length());
 
-            return response(publisher.publish(eventsAsJsonObjects, eventTypeName));
+            return response(publisher.publish(eventsAsJsonObjects, eventTypeName, client));
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);

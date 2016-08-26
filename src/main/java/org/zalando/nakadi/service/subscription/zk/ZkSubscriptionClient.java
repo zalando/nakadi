@@ -10,8 +10,8 @@ public interface ZkSubscriptionClient {
 
     /**
      * Makes runLocked on subscription, using zk path /nakadi/locks/subscription_{subscriptionId}
-     * Lock is created as an ephemeral node, so it will be deleted if nakadi go down. After obtaining runLocked, provided
-     * function will be called under subscription runLocked
+     * Lock is created as an ephemeral node, so it will be deleted if nakadi go down. After obtaining runLocked,
+     * provided function will be called under subscription runLocked
      *
      * @param function Function to call in context of runLocked.
      */
@@ -112,7 +112,8 @@ public interface ZkSubscriptionClient {
     long getOffset(Partition.PartitionKey key);
 
     /**
-     * Registers client connection using session id in /nakadi/subscriptions/{subscriptionId}/sessions/{session.id} and value {{session.weight}}
+     * Registers client connection using session id in /nakadi/subscriptions/{subscriptionId}/sessions/{session.id}
+     * and value {{session.weight}}
      *
      * @param session Session to register.
      */

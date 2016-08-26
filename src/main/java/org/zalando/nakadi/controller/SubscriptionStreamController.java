@@ -1,22 +1,6 @@
 package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
-import org.zalando.nakadi.service.subscription.StreamParameters;
-import org.zalando.nakadi.service.subscription.SubscriptionOutput;
-import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
-import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
-import org.zalando.nakadi.util.FeatureToggleService;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.concurrent.atomic.AtomicBoolean;
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +11,22 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.subscription.StreamParameters;
+import org.zalando.nakadi.service.subscription.SubscriptionOutput;
+import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
+import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
@@ -82,7 +81,8 @@ public class SubscriptionStreamController {
                     if (ex instanceof NakadiException) {
                         writeProblemResponse(((NakadiException) ex).asProblem());
                     } else {
-                        writeProblemResponse(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, "Failed to continue streaming"));
+                        writeProblemResponse(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
+                                "Failed to continue streaming"));
                     }
                 } catch (final IOException e) {
                     LOG.error("Failed to write exception to response", e);
@@ -115,7 +115,8 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
             @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
-            @Nullable @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
+            @Nullable
+            @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
             final HttpServletRequest request, final HttpServletResponse response) throws IOException {
 
         return outputStream -> {

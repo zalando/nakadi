@@ -18,7 +18,8 @@ public class MonitoringRequestFilter implements Filter {
     private final Counter openHttpConnectionsCounter;
 
     public MonitoringRequestFilter(final MetricRegistry metricRegistry) {
-        openHttpConnectionsCounter = metricRegistry.counter(MetricUtils.NAKADI_PREFIX + "general.openSynchronousHttpConnections");
+        openHttpConnectionsCounter = metricRegistry.counter(MetricUtils.NAKADI_PREFIX
+                + "general.openSynchronousHttpConnections");
         httpConnectionsTimer = metricRegistry.timer(MetricUtils.NAKADI_PREFIX + "general.synchronousHttpConnections");
     }
 
@@ -28,7 +29,8 @@ public class MonitoringRequestFilter implements Filter {
     }
 
     @Override
-    public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain) throws IOException, ServletException {
+    public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain)
+            throws IOException, ServletException {
         openHttpConnectionsCounter.inc();
         final Timer.Context timerContext = httpConnectionsTimer.time();
 

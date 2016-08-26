@@ -2,11 +2,15 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -21,6 +25,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.newTreeSet;
@@ -28,6 +33,8 @@ import static com.google.common.collect.Sets.newTreeSet;
 @Component
 @Profile("!test")
 public class SubscriptionDbRepository extends AbstractDbRepository {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionDbRepository.class);
 
     private final SubscriptionMapper rowMapper = new SubscriptionMapper();
     private final UUIDGenerator uuidGenerator;
@@ -40,14 +47,14 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase) throws InternalNakadiException,
-            DuplicatedSubscriptionException {
+            DuplicatedSubscriptionException, ServiceUnavailableException {
 
         try {
             final String newId = uuidGenerator.randomUUID().toString();
             final DateTime createdAt = new DateTime(DateTimeZone.UTC);
             final Subscription subscription = new Subscription(newId, createdAt, subscriptionBase);
 
-            jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::jsonb)",
+            jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::JSONB)",
                     subscription.getId(),
                     jsonMapper.writer().writeValueAsString(subscription));
 
@@ -56,21 +63,51 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             throw new InternalNakadiException("Serialization problem during persistence of event type", e);
         } catch (final DuplicateKeyException e) {
             throw new DuplicatedSubscriptionException("Subscription with the same key properties already exists", e);
+        } catch (final DataAccessException e) {
+            LOG.error("Database error when creating subscription", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
 
-    public Subscription getSubscription(final String id) throws NoSuchSubscriptionException {
+    public Subscription getSubscription(final String id) throws NoSuchSubscriptionException,
+            ServiceUnavailableException {
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription WHERE s_id = ?";
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist", e);
+        } catch (final DataAccessException e) {
+            LOG.error("Database error when getting subscription", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
+        }
+    }
+
+    public List<Subscription> listSubscriptions() throws ServiceUnavailableException {
+        try {
+            return jdbcTemplate.query("SELECT s_subscription_object FROM zn_data.subscription ORDER BY " +
+                    "s_subscription_object->>'created_at' DESC", rowMapper);
+        } catch (final DataAccessException e) {
+            LOG.error("Database error when listing subscriptions", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
+        }
+    }
+
+    public List<Subscription> listSubscriptionsForOwningApplication(final String owningApplication)
+            throws ServiceUnavailableException {
+        final String query = "SELECT s_subscription_object FROM zn_data.subscription " +
+                "WHERE s_subscription_object->>'owning_application' = ? " +
+                "ORDER BY s_subscription_object->>'created_at' DESC";
+        try {
+            return jdbcTemplate.query(query, new Object[]{owningApplication}, rowMapper);
+        } catch (final DataAccessException e) {
+            LOG.error("Database error when listing subscriptions for owning app", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
 
     public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,
                                         final String consumerGroup)
-            throws NoSuchSubscriptionException, InternalNakadiException {
+            throws NoSuchSubscriptionException, InternalNakadiException, ServiceUnavailableException {
 
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription " +
                 "WHERE s_subscription_object->>'owning_application' = ? " +
@@ -84,6 +121,9 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             throw new InternalNakadiException("Serialization problem during getting event type", e);
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription does not exist", e);
+        } catch (final DataAccessException e) {
+            LOG.error("Database error when getting subscription by key properties", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }
 

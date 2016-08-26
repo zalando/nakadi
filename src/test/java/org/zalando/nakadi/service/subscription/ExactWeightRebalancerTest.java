@@ -98,7 +98,8 @@ public class ExactWeightRebalancerTest {
         // All partitions must not have nextSessionId
         assertFalse(Stream.of(changeset).filter(p -> p.getNextSession() != null).findAny().isPresent());
 
-        assertFalse(Stream.of(changeset).filter(p->p.getKey().equals(new PartitionKey("1", "0"))).findAny().isPresent());
+        assertFalse(Stream.of(changeset).filter(p->p.getKey().equals(new PartitionKey("1", "0"))).findAny()
+                .isPresent());
         assertEquals(1, Stream.of(changeset).filter(p -> p.getSession().equals("1")).count());
         assertEquals(2, Stream.of(changeset).filter(p -> p.getSession().equals("2")).count());
         assertFalse(Stream.of(changeset).filter(p -> p.getState() != ASSIGNED).findAny().isPresent());
@@ -115,7 +116,8 @@ public class ExactWeightRebalancerTest {
                         new Partition(new PartitionKey("1", "1"), "2", null, ASSIGNED)});
         assertEquals(1, changeset.length);
         final Partition changed = changeset[0];
-        assertTrue(changed.getKey().equals(new PartitionKey("1", "0")) || changed.getKey().equals(new PartitionKey("1", "1")));
+        assertTrue(changed.getKey().equals(new PartitionKey("1", "0")) || changed.getKey()
+                .equals(new PartitionKey("1", "1")));
         assertEquals("2", changed.getSession());
         assertEquals("3", changed.getNextSession());
         assertEquals(REASSIGNING, changed.getState());
