@@ -114,8 +114,8 @@ class StreamingState extends State {
 
     private long getMessagesAllowedToSend() {
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
-        final long allowDueWindowSize = getParameters().windowSizeMessages - unconfirmed;
-        return getParameters().getMessagesAllowedToSend(allowDueWindowSize, this.sentEvents);
+        final long limit = getParameters().maxUncommittedMessages - unconfirmed;
+        return getParameters().getMessagesAllowedToSend(limit, this.sentEvents);
     }
 
     private void checkBatchTimeouts() {

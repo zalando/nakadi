@@ -109,7 +109,7 @@ public class SubscriptionStreamController {
     @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
-            @RequestParam(value = "window_size", required = false, defaultValue = "100") final int windowSize,
+            @RequestParam(value = "max_uncommitted_size", required = false, defaultValue = "10") final int maxUncommittedSize,
             @RequestParam(value = "commit_timeout", required = false, defaultValue = "30") final int commitTimeout,
             @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
             @Nullable @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
@@ -132,7 +132,7 @@ public class SubscriptionStreamController {
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
-                        streamTimeout, streamKeepAliveLimit, windowSize, commitTimeout);
+                        streamTimeout, streamKeepAliveLimit, maxUncommittedSize, commitTimeout);
                 streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output, connectionReady);
                 streamer.stream();
             } catch (final InterruptedException ex) {
