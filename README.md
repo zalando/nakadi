@@ -456,8 +456,7 @@ For working with an IDE, the `eclipse` IDE task is available and you'll be able 
 The Nakadi server is a Java 8 [Spring Boot](http://projects.spring.io/spring-boot/) application. It uses [Kafka 0.9](http://kafka.apache.org/090/documentation.html) as its broker and [PostgreSQL 9.5](http://www.postgresql.org/docs/9.5/static/release-9-5.html) as its supporting database.
 
 Nakadi requires recent versions of docker and docker-compose. In
-particular, the docker-compose version (1.5.x) shipped with Ubuntu
-16.04 does not work for Nakadi. See [Install Docker
+particular, docker-compose >= v1.7.0 is required. See [Install Docker
 Compose](https://docs.docker.com/compose/install/) for information on
 installing the most recent docker-compose version.
 
