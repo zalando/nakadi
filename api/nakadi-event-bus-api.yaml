@@ -48,20 +48,15 @@ info:
     A low level **Unmanaged API** is available, providing full control and responsibility of
     position tracking and partition resolution (and therefore ordering) to the Clients.
 
-    In the high level **Subscription API** the consumption of Events proceeds via the establishment
+    In the **High Level API** the consumption of Events proceeds via the establishment
     of a named **Subscription** to an EventType. Subscriptions are persistent relationships from an
     Application (which might have several instances) and the stream of one or more EventType's,
     whose consumption tracking is managed by Nakadi, freeing Consumers from any responsibility in
     tracking of the current position on a Stream.
 
-    **Note** *Currently the high level API is out of scope in this specification.  It is in the
-    short term plan to be included.*
-
 
     Scope and status of the API
     ---------------------------------
-
-    The API specification is in **draft** state and is subject to change.
 
     In this document, you'll find:
     
@@ -71,25 +66,12 @@ info:
     * The existing event format (see definition of Event, BusinessEvent and DataChangeEvent)
     (Note: in the future this is planned to be configurable and not an inherent part of this API).
 
-    * Unmanaged API: provides low level access to an event stream with information that allows
-      consumers to detect their position for each partition in the stream via a `Cursor`.
+    * High Level API.
 
-    Notable omissions here are:
+    Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
+    in this version of this specification.
 
-    * The Managed (or "high level") API: this will be a contract between Nakadi and consumers to
-    allow the latter to establish subscriptions and have offset information managed by the Nakadi
-    service.
-
-    * Enrichment options. Enrichment is currently limited to metadata enrichment for the business
-      and data change types, but the API is designed to allow more options.
-
-    * More extensive security scopes (OAuth) for the different operations in the API.
-
-    * Explicit control of an event type's creation parameters (the number of partitions, retention
-      times, etc), as well as their modification.
-
-
-  version: '0.6.0'
+  version: '0.7.0'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
@@ -138,10 +120,9 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-            The flow id of the request, which is written into the logs and passed to called
-            services. Helpful for operational troubleshooting and log analysis.
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: Ok
@@ -231,10 +212,9 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-            The flow id of the request, which is written into the logs and passed to called
-            services. Helpful for operational troubleshooting and log analysis.
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: Ok
@@ -273,10 +253,9 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-            The flow id of the request, which is written into the logs and passed to called
-            services. Helpful for operational troubleshooting and log analysis.
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: Ok
@@ -312,10 +291,9 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-            The flow id of the request, which is written into the logs and passed to called
-            services. Helpful for operational troubleshooting and log analysis.
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: EventType is successfuly removed
@@ -369,10 +347,9 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-            The flow id of the request, which is written into the logs and passed to called
-            services. Helpful for operational troubleshooting and log analysis.
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
         - name: event
           in: body
           description: The Event being published
@@ -436,11 +413,7 @@ paths:
       produces:
         - application/x-json-stream
       parameters:
-        - name: name
-          in: path
-          description: EventType name to get events about
-          type: string
-          required: true
+        - $ref: '#/parameters/EventTypeName'
         - name: X-nakadi-cursors
           in: header
           description: |
@@ -459,76 +432,21 @@ paths:
             future versions of this API.
 
           required: false
-          type: string
-          format: serialized json array of '#/definitions/Cursor'
-        - name: batch_limit
-          in: query
-          description: |
-            Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
-
-            * If 0 will buffer Events indefinitely and flush on reaching of `batch_flush_timeout`.
-          type: integer
-          format: int32
-          required: false
-          default: 1
-        - name: stream_limit
-          in: query
-          description: |
-            Maximum number of `Event`s in this stream (over all partitions being streamed in this
-            connection).
-
-            * If 0 or undefined, will stream batches indefinitely.
-
-            * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
-          type: integer
-          format: int32
-          required: false
-          default: 0
-        - name: batch_flush_timeout
-          in: query
-          description: |
-            Maximum time in seconds to wait for the flushing of each chunk (per partition).
-
-            * If the amount of buffered Events reaches `batch_limit` before this
-            `batch_flush_timeout` is reached, the messages are immediately flushed to the client and
-            batch flush timer is reset.
-
-            * If 0 or undefined, will assume 30 seconds.
-          type: number
-          format: int32
-          required: false
-          default: 30
-        - name: stream_timeout
-          in: query
-          description: |
-            Maximum time in seconds a stream will live before being interrupted.
-            If value is zero, streams indefinitely.
-
-            If this timeout is reached, any pending messages (in the sense of `stream_limit`) will
-            be flushed to the client.
-
-            Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
-          type: number
-          format: int32
-          required: false
-          default: 60
-        - name: stream_keep_alive_limit
-          in: query
-          description: |
-            Maximum number of keep-alive messages to get in a row before closing the connection.
-
-            If 0 or undefined will send keep alive messages indefinitely.
-          type: integer
-          format: int32
-          required: false
-          default: 0
+          type: array
+          items:
+            type: string
+            format: '#/definitions/Cursor'
+        - $ref: '#/parameters/BatchLimit'
+        - $ref: '#/parameters/StreamLimit'
+        - $ref: '#/parameters/BatchFlushTimeout'
+        - $ref: '#/parameters/StreamTimeout'
+        - $ref: '#/parameters/StreamKeepAliveLimit'
         - name: X-Flow-Id
           in: header
           description: |
-            The flow id of the request, which is written into the logs and passed to called
-            services. Helpful for operational troubleshooting and log analysis.
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
 
       responses:
         '200':
@@ -546,7 +464,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  '/event-types/{name}/partitions':
+  /event-types/{name}/partitions:
     get:
       tags:
         - unmanaged-api
@@ -569,10 +487,9 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-            The flow id of the request, which is written into the logs and passed to called
-            services. Helpful for operational troubleshooting and log analysis.
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: OK
@@ -609,10 +526,9 @@ paths:
         - name: X-Flow-Id
           in: header
           description: |
-            The flow id of the request, which is written into the logs and passed to called
-            services. Helpful for operational troubleshooting and log analysis.
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
           type: string
-          format: flow-id
       responses:
         '200':
           description: OK
@@ -620,6 +536,358 @@ paths:
             $ref: '#/definitions/Partition'
         '401':
           description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /subscriptions:
+    post:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        This endpoint creates a subscription for EventTypes. The subscription is needed to be able to
+        consume events from EventTypes in a high level way when Nakadi stores the offsets and manages the
+        rebalancing of consuming clients.
+        The subscription is identified by its key parameters (owning_application, event_types, consumer_group). If
+        this endpoint is invoked several times with the same key subscription properties in body (order of even_types is
+        not important) - the subscription will be created only once and for all other calls it will just return
+        the subscription that was already created.
+      parameters:
+        - name: subscription
+          in: body
+          description: Subscription to create
+          schema:
+            $ref: '#/definitions/Subscription'
+          required: true
+      responses:
+        '200':
+          description: |
+            Subscription for such parameters already exists. Returns subscription object that already
+            existed.
+          schema:
+            $ref: '#/definitions/Subscription'
+          headers:
+             Location:
+               description: |
+                 The absolute URI for this subscription resource.
+               type: string
+               example: 'https://example.org/api/subscriptions/105a76d8-db49-4144-ace7-e683e8f4ba46'
+        '201':
+          description: Subscription was successfuly created. Returns subscription object that was created.
+          schema:
+            $ref: '#/definitions/Subscription'
+          headers:
+             Location:
+               description: |
+                 The absolute URI for the created resource.
+               type: string
+               example: 'https://example.org/api/subscriptions/105a76d8-db49-4144-ace7-e683e8f4ba46'
+             Content-Location:
+               description: |
+                 If the Content-Location header is present and the same as the Location header the
+                 client can assume it has an up to date representation of the Subscription and a
+                 corresponding GET request is not needed.
+               type: string
+               example: 'https://example.org/api/subscriptions/105a76d8-db49-4144-ace7-e683e8f4ba46'
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Lists all subscriptions that exist in a system. List is ordered by creation date/time descending (newest
+        subscriptions come first).
+      parameters:
+        - name: owning_application
+          in: query
+          description: |
+            Parameter to filter subscriptions list by owning application. If not specified - the result list will
+            contain subscriptions of all owning applications.
+          type: string
+          required: false
+        - name: event_type
+          in: query
+          description: |
+            Parameter to filter subscriptions list by event types. If not specified - the result list will contain
+            subscriptions for all event types. It's possible to provide multiple values like
+            `event_type=et1&event_type=et2`
+          collectionFormat: multi
+          type: array
+          items:
+            type: string
+        - name: limit
+          in: query
+          description: maximum number of subscriptions retuned in one page
+          type: integer
+          format: int64
+          required: false
+          default: 20
+          minimum: 0
+          maximum: 1000
+        - name: offset
+          in: query
+          description: page offset
+          type: integer
+          format: int64
+          required: false
+          default: 0
+          minimum: 0
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              _links:
+                $ref: '#/definitions/PaginationLinks'
+              items:
+                description: list of subscriptions
+                type: array
+                items:
+                  $ref: '#/definitions/Subscription'
+            required:
+              - items
+              - _links
+
+  /subscriptions/{subscription_id}:
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Returns a subscription identified by id.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Subscription'
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /subscriptions/{subscription_id}/cursors:
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Exposes the currently committed offsets of a subscription.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '200':
+          description: Ok
+          schema:
+            type: object
+            properties:
+              items:
+                description: list of cursors for subscription
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionCursor'
+            required:
+              - items
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+    post:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Endpoint for committing offsets of the subscription. The client must commit at least once
+        every 60 seconds, otherwise Nakadi will consider the client to be gone and will close the
+        connection.
+
+        When a batch is committed that also automatically commits all previous batches that were
+        sent in a stream for this partition.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+        - name: X-Nakadi-StreamId
+          in: header
+          type: string
+          description: |
+            Id of stream which client uses to read events. It is not possible to make a commit for a terminated or
+            none-existing stream. Also the client can't commit something which was not sent to his stream.
+        - name: cursors
+          in: body
+          schema:
+            type: object
+            properties:
+              cursors:
+                description: |
+                  List of cursors that the consumer acknowledges to have successfully processed.
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionCursor'
+            required:
+              - stream_id
+              - items
+      responses:
+        '204':
+          description: Offsets were committed
+        '200':
+          description: |
+            At least one cursor which was tried to be committed is older or equal to already committed one. Array
+            of commit results is returned for this status code.
+          schema:
+            type: object
+            properties:
+              items:
+                description: list of items which describe commit result for each cursor
+                type: array
+                items:
+                  $ref: '#/definitions/CursorCommitResult'
+            required:
+              - items
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '429':
+          description: Too many requests
+          schema:
+            $ref: '#/definitions/TooManyRequests'
+
+  /subscriptions/{subscription_id}/events:
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Starts a new stream for reading events from this subscription. The data will be automatically rebalanced
+        between streams of one subscription. The minimal consumption unit is a partition, so it is possible to start as
+        many streams as the total number of partitions in event-types of this subscription. The rebalance currently
+        only operates with the number of partitions so the amount of data in event-types/partitions is not considered
+        during autorebalance.
+        The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
+        a stream.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+        - name: max_uncommitted_events
+          in: query
+          description: |
+            The amount of uncommitted events Nakadi will stream before pausing the stream. When in paused
+            state and commit comes - the stream will resume. Minimal value is 1.
+          type: integer
+          format: int32
+          required: false
+          default: 10
+        - $ref: '#/parameters/BatchLimit'
+        - $ref: '#/parameters/StreamLimit'
+        - $ref: '#/parameters/BatchFlushTimeout'
+        - $ref: '#/parameters/StreamTimeout'
+        - $ref: '#/parameters/StreamKeepAliveLimit'
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+      responses:
+        '200':
+          description: |
+            Ok. Stream started.
+            Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
+          schema:
+            $ref: '#/definitions/EventStreamBatch'
+          headers:
+            X-Nakadi-StreamId:
+              description: |
+                the id of this stream generated by Nakadi. Must be used for committing events that were read by client
+                from this stream.
+              type: string
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Problem'
+        '404':
+          description: Subscription not found.
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: |
+            Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
+            already equals the maximal value - the total amount of this subscription partitions.
+          schema:
+            $ref: '#/definitions/Problem'
+        '429':
+          description: Too many requests
+          schema:
+            $ref: '#/definitions/TooManyRequests'
+
+  /subscriptions/{subscription_id}/stats:
+    get:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: exposes statistics of specified subscription
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '200':
+          description: Ok
+          schema:
+            type: object
+            properties:
+              items:
+                description: statistics list for specified subscription
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionEventTypeStats'
+            required:
+              - items
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+
+  '/registry/validation-strategies':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        Lists all of the validation strategies supported by this installation of Nakadi.
+
+        If the EventType creation is to have special validations (besides the default), one can consult over
+        this method the available possibilities.
+      responses:
+        '200':
+          description: Returns a list of all validation strategies known to Nakadi
+          schema:
+            type: array
+            items:
+              type: string
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/Problem'
+        '503':
+          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
@@ -890,6 +1158,20 @@ definitions:
           available event in the partition.
         type: string
 
+    StreamInfo:
+      type: object
+      description: |
+        This object contains general information about the stream. Used only for debugging
+        purposes. We recommend logging this object in order to solve connection issues. Clients
+        should not parse this structure.
+
+    TooManyRequests:
+      headers:
+        Retry-After:
+          description: |
+            Number of seconds the client ought to wait before making a follow-up request.
+          type: number
+
   Cursor:
     required:
       - partition
@@ -903,6 +1185,46 @@ definitions:
         type: string
         description: |
           Offset of the event being pointed to.
+
+  SubscriptionCursor:
+    allOf:
+      - $ref: '#/definitions/Cursor'
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+            description: |
+              Id of the cursor (a UUID).
+          event_type_name:
+            type: string
+            description: |
+              The name of the event type this partition's events belong to
+          cursor_token:
+            type: string
+            description: |
+              An opaque value defined by the server.
+        required:
+          - id
+          - event_type_name
+          - cursor_token
+
+  CursorCommitResult:
+    description: |
+      The result of single cursor commit. Holds a cursor itself and a result value.
+    required:
+      - cursor
+      - result
+    properties:
+      cursor:
+        $ref: '#/definitions/SubscriptionCursor'
+      result:
+        type: string
+        description: |
+          The result of cursor commit.
+          - `committed`: cursor was successfully committed
+          - `outdated`: there already was more recent (or the same) cursor committed, so the current one was not
+            committed as it is outdated
 
   EventStreamBatch:
     description: |
@@ -920,10 +1242,86 @@ definitions:
     properties:
       cursor:
         $ref: '#/definitions/Cursor'
+      info:
+        $ref: '#/definitions/StreamInfo'
       events:
         type: array
         items:
           $ref: '#/definitions/Event'
+
+  SubscriptionEventStreamBatch:
+    description: |
+      Analogue to EventStreamBatch but used for high level streamming. It includes specific cursors
+      for committing in the high level API.
+    required:
+      - cursor
+    properties:
+      cursor:
+        $ref: '#/definitions/SubscriptionCursor'
+      info:
+        $ref: '#/definitions/StreamInfo'
+      events:
+        type: array
+        items:
+          $ref: '#/definitions/Event'
+
+  Subscription:
+    description: |
+      Subscription is a high level consumption unit. Subscriptions allow applications to easily scale the
+      number of clients by managing consumed event offsets and distributing load between instances.
+      The key properties that identify subscription are 'owning_application', 'event_types' and 'consumer_group'.
+      It's not possible to have two different subscriptions with these properties being the same.
+    properties:
+      id:
+        type: string
+        readOnly: true
+        description: |
+          Id of subscription that was created. Is generated by Nakadi, should not be specified when creating
+          subscription.
+      owning_application:
+        type: string
+        example: 'gizig'
+        description: |
+          The id of application owning the subscription.
+      event_types:
+        type: array
+        items:
+          type: string
+        description: |
+          EventTypes to subscribe to.
+          The order is not important. Subscriptions that differ only be the order of EventTypes will be
+          considered the same and will have the same id.
+
+          * Currently only subscription to a single EventType is supported. Subscriptions with more than one
+            EventType in event_types property will be rejected.
+      consumer_group:
+        type: string
+        example: 'read-product-updates'
+        description: |
+          The value describing the use case of this subscription.
+          In general that is an additional identifier used to differ subscriptions having the same
+          owning_application and event_types.
+        default: 'default'
+      created_at:
+        type: string
+        readOnly: true
+        description: |
+          Timestamp of creation of the subscription. This is generated by Nakadi. It should not be
+          specified when creating subscription and sending it may result in a client error.
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
+      read_from:
+        type: string
+        description: |
+          Position to start reading events from. Currently supported values:
+          - `begin` - read from the oldest available event.
+          - `end` - read from the most recent offset.
+          Applied in the moment when client starts reading from a subscription.
+        default: 'end'
+
+    required:
+      - owning_application
+      - event_types
 
   EventType:
     description: An event type defines the schema and its runtime properties.
@@ -1101,6 +1499,45 @@ definitions:
         description: |
           Number of milliseconds that Nakadi stores events published to this event type.
 
+  SubscriptionEventTypeStats:
+    type: object
+    description: statistics of one event-type within a context of subscription
+    properties:
+      event_type:
+        type: string
+        description: event-type name
+      partitions:
+        type: array
+        description: statistics of partitions of this event-type
+        items:
+          type: object
+          description: statistics of partition within a subscription context
+          properties:
+            partition:
+              type: string
+            state:
+              type: string
+              description: |
+                The state of this partition in current subscription. Currently following values are possible:
+                - `unassigned`: the partition is currently not assigned to any client;
+                - `reassigning`: the partition is currently reasssigning from one client to another;
+                - `assigned`: the partition is assigned to a client.
+            unconsumed_events:
+              type: number
+              description: |
+                The amount of events in this partition that are not yet consumed within this subscription. May be not
+                determined at the moment when no events were yet consumed from the partition in this subscription (in
+                that case the property will be absent).
+            client_id:
+              type: string
+              description: the id of client that consumes data from this partition
+          required:
+            - partition
+            - state
+    required:
+      - event_type
+      - partitions
+
   BatchItemResponse:
     description: |
       A status corresponding to one individual Event's publishing attempt.
@@ -1153,3 +1590,108 @@ definitions:
           should have a description.
     required:
       - publishing_status
+
+  PaginationLinks:
+    description: contains links to previous and next pages of items
+    type: object
+    properties:
+      prev:
+        $ref: '#/definitions/PaginationLink'
+      next:
+        $ref: '#/definitions/PaginationLink'
+
+  PaginationLink:
+    description: URI identifying another page of items
+    type: object
+    properties:
+      href:
+        type: string
+        format: uri
+        example: '/subscriptions?offset=20&limit=10'
+
+parameters:
+  EventTypeName:
+    name: name
+    in: path
+    description: EventType name to get events about
+    type: string
+    required: true
+
+  BatchLimit:
+    name: batch_limit
+    in: query
+    description: |
+      Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
+
+      * If 0 or unspecified will buffer Events indefinitely and flush on reaching of
+      `batch_flush_timeout`.
+    type: integer
+    format: int32
+    required: false
+    default: 1
+
+  StreamLimit:
+    name: stream_limit
+    in: query
+    description: |
+      Maximum number of `Event`s in this stream (over all partitions being streamed in this
+      connection).
+
+      * If 0 or undefined, will stream batches indefinitely.
+
+      * Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
+    type: integer
+    format: int32
+    required: false
+    default: 0
+
+  BatchFlushTimeout:
+    name: batch_flush_timeout
+    in: query
+    description: |
+      Maximum time in seconds to wait for the flushing of each chunk (per partition).
+
+      * If the amount of buffered Events reaches `batch_limit` before this `batch_flush_timeout`
+      is reached, the messages are immediately flushed to the client and batch flush timer is reset.
+
+      * If 0 or undefined, will assume 30 seconds.
+    type: number
+    format: int32
+    required: false
+    default: 30
+
+  StreamTimeout:
+    name: stream_timeout
+    in: query
+    description: |
+      Maximum time in seconds a stream will live before connection is closed by the server.
+      If 0 or unspecified will stream indefinitely.
+
+      If this timeout is reached, any pending messages (in the sense of `stream_limit`) will be flushed
+      to the client.
+
+      Stream initialization will fail if `stream_timeout` is lower than `batch_flush_timeout`.
+    type: number
+    format: int32
+    required: false
+    default: 0
+
+  SubscriptionId:
+    name: subscription_id
+    in: path
+    description: Id of subscription.
+    type: string
+    format: uuid
+    required: true
+
+  StreamKeepAliveLimit:
+    name: stream_keep_alive_limit
+    in: query
+    description: |
+      Maximum number of empty keep alive batches to get in a row before closing the connection.
+
+      If 0 or undefined will send keep alive messages indefinitely.
+    type: integer
+    format: int32
+    required: false
+    default: 0
