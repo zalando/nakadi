@@ -235,7 +235,7 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
-    @Test
+    /*@Test
     public void whenListSubscriptionsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
         when(subscriptionRepository.listSubscriptions()).thenReturn(subscriptions);
@@ -262,7 +262,7 @@ public class SubscriptionControllerTest {
         when(subscriptionRepository.listSubscriptions()).thenThrow(new ServiceUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscriptions(Optional.empty()), expectedProblem);
-    }
+    }*/
 
     @Test
     public void whenGetSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
@@ -330,12 +330,6 @@ public class SubscriptionControllerTest {
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
-    }
-
-    private List<Subscription> createRandomSubscriptions(final int count) {
-        return range(0, count)
-                .mapToObj(i -> randomSubscription().build())
-                .collect(toList());
     }
 
     private ResultActions postSubscription(final SubscriptionBase subscriptionBase) throws Exception {

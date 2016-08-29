@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
+import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 
 public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
 
@@ -134,6 +135,41 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of("et1"),
                 Optional.of("app"), 0, 10);
+        assertThat(subscriptions, equalTo(expectedSubscriptions));
+    }
+
+    @Test
+    public void whenListSubscriptionsByMultipleEventTypesThenOk() throws ServiceUnavailableException {
+        final List<Subscription> testSubscriptions = ImmutableList.of(
+                randomSubscription().withEventTypes(ImmutableSet.of("et1", "et2")).build(),
+                randomSubscription().withEventTypes(ImmutableSet.of("et1", "et2", "et3")).build(),
+                randomSubscription().withEventTypes(ImmutableSet.of("et1")).build(),
+                randomSubscription().withEventTypes(ImmutableSet.of("et2")).build(),
+                randomSubscription().withEventTypes(ImmutableSet.of("et3", "et4", "et5")).build());
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+
+        final List<Subscription> expectedSubscriptions = testSubscriptions.stream()
+                .filter(sub -> sub.getEventTypes().containsAll(ImmutableSet.of("et1", "et2")))
+                .sorted(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR)
+                .collect(toList());
+
+        final List<Subscription> subscriptions = repository.listSubscriptions(ImmutableSet.of("et1", "et2"),
+                Optional.empty(), 0, 10);
+        assertThat(subscriptions, equalTo(expectedSubscriptions));
+    }
+
+    @Test
+    public void whenListSubscriptionsLimitAndOffsetAreRespected() throws ServiceUnavailableException {
+        final List<Subscription> testSubscriptions = createRandomSubscriptions(10);
+        testSubscriptions.forEach(this::insertSubscriptionToDB);
+
+        final List<Subscription> expectedSubscriptions = testSubscriptions.stream()
+                .sorted(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR)
+                .collect(toList());
+        expectedSubscriptions.subList(0, 2).clear();
+        expectedSubscriptions.subList(3, expectedSubscriptions.size()).clear();
+
+        final List<Subscription> subscriptions = repository.listSubscriptions(emptySet(), Optional.empty(), 2, 3);
         assertThat(subscriptions, equalTo(expectedSubscriptions));
     }
 
