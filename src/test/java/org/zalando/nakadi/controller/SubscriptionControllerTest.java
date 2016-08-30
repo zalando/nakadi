@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.text.MessageFormat.format;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -274,6 +275,19 @@ public class SubscriptionControllerTest {
                 .thenThrow(new ServiceUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         checkForProblem(getSubscriptions(), expectedProblem);
+    }
+
+    @Test
+    public void whenListSubscriptionsWithNegativeOffsetThenBadRequest() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "'offset' parameter can't be lower than 0");
+        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", -5, 10), expectedProblem);
+    }
+
+    @Test
+    public void whenListSubscriptionsWithIncorrectLimitThenBadRequest() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
+                "'limit' parameter should have value from 1 to 1000");
+        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", 0, -5), expectedProblem);
     }
 
     @Test
