@@ -1040,7 +1040,7 @@ definitions:
         description: |
           This field is used for event consuming access control. Nakadi only authorises consumers whose session
           contains at least one of the scopes in this list.
-          If no scopes provided then anyone can consume from this event type
+          If no scopes provided then anyone can consume from this event type.
 
     required:
       - name
