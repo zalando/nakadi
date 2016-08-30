@@ -1029,20 +1029,18 @@ definitions:
         items:
           type: string
         description: |
-          Provides ability to set oauth2 scopes to be able to publish an Event. The event publisher is cheked for
-          existings of scopes using his oauth2 token. The owner of the EventType has to create oauth2 scopes which is
-          going to be used by publishers.
-          If no scopes provided then anyone can publish the Event.
+          This field is used for event publishing access control. Nakadi only authorises publishers whose session
+          contains at least one of the scopes in this list.
+          If no scopes provided then anyone can publish to this event type.
 
       read_scopes:
         type: array
         items:
           type: string
         description: |
-          Provides ability to set oauth2 scopes to be able to consume an Event. The event consumer is cheked for
-          existings of scopes using his oauth2 token. The owner of the EventType has to create oauth2 scopes which is
-          going to be used by consumers.
-          If no scopes provided then anyone can consume the Event.
+          This field is used for event consuming access control. Nakadi only authorises consumers whose session
+          contains at least one of the scopes in this list.
+          If no scopes provided then anyone can consume from this event type
 
     required:
       - name
