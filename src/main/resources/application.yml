@@ -67,3 +67,11 @@ nakadi:
   auth:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
+---
+
+spring:
+  profiles: acceptanceTest
+nakadi:
+  stream:
+    default:
+      commitTimeout: 5 # seconds

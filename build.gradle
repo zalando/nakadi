@@ -224,7 +224,7 @@ task pushDockerImage {
 }
 
 task testInitNakadi(type: Exec) {
-    environment "NAKADI_STREAM_DEFAULT_COMMITTIMEOUT", "5"
+    environment "JAVA_OPTS", "-Dspring.profiles.active=acceptanceTest"
     commandLine "bash", "-c", "docker-compose up -d --build"
     doLast {
         println "Waiting for Nakadi to start up"
