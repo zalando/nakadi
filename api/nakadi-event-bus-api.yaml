@@ -1024,6 +1024,26 @@ definitions:
         description: |
           Provides ability to set internal Nakadi parameters.
 
+      write_scopes:
+        type: array
+        items:
+          type: string
+        description: |
+          Provides ability to set oauth2 scopes to be able to publish an Event. The event publisher is cheked for
+          existings of scopes using his oauth2 token. The owner of the EventType has to create oauth2 scopes which is
+          going to be used by publishers.
+          If no scopes provided then anyone can publish the Event.
+
+      read_scopes:
+        type: array
+        items:
+          type: string
+        description: |
+          Provides ability to set oauth2 scopes to be able to consume an Event. The event consumer is cheked for
+          existings of scopes using his oauth2 token. The owner of the EventType has to create oauth2 scopes which is
+          going to be used by consumers.
+          If no scopes provided then anyone can consume the Event.
+
     required:
       - name
       - category
