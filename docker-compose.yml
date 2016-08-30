@@ -10,12 +10,13 @@ services:
      - zookeeper
      - kafka
     environment:
-      NAKADI_OAUTH2_MODE: "OFF"
-      NAKADI_FEATURETOGGLE_DEFAULT: "true"
-      NAKADI_ZOOKEEPER_BROKERS: localhost:2181
-      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/local_nakadi_db
-      SPRING_DATASOURCE_USERNAME: nakadi
-      SPRING_DATASOURCE_PASSWORD: nakadi
+      - NAKADI_STREAM_DEFAULT_COMMITTIMEOUT
+      - NAKADI_OAUTH2_MODE=OFF
+      - NAKADI_FEATURETOGGLE_DEFAULT=true
+      - NAKADI_ZOOKEEPER_BROKERS=localhost:2181
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/local_nakadi_db
+      - SPRING_DATASOURCE_USERNAME=nakadi
+      - SPRING_DATASOURCE_PASSWORD=nakadi
     network_mode: "host"
 
   postgres:

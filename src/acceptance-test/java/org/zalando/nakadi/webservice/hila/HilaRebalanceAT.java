@@ -122,21 +122,21 @@ public class HilaRebalanceAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenNotCommittedThenEventsAreReplayedAfterRebalance() {
-        range(0, 10)
+        range(0, 2)
                 .forEach(x -> publishBusinessEventWithUserDefinedPartition(
                         eventType.getName(), "blah" + x, String.valueOf(x % 8)));
 
         final TestStreamingClient clientA = TestStreamingClient
-                .create(URL, subscription.getId(), "commit_timeout=2")
+                .create(URL, subscription.getId(), "")
                 .start();
-        waitFor(() -> assertThat(clientA.getBatches(), hasSize(10)));
+        waitFor(() -> assertThat(clientA.getBatches(), hasSize(2)));
 
         final TestStreamingClient clientB = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
 
         // after commit_timeout of first client exceeds it is closed and all events are resent to second client
-        waitFor(() -> assertThat(clientB.getBatches(), hasSize(10)));
+        waitFor(() -> assertThat(clientB.getBatches(), hasSize(2)), 10000);
     }
 
     public List<Cursor> getLastCursorsForPartitions(final TestStreamingClient client, final Set<String> partitions) {

@@ -44,6 +44,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int DEFAULT_REPLICA_FACTOR = 1;
     private static final int MAX_TOPIC_PARTITION_COUNT = 10;
     private static final int DEFAULT_TOPIC_ROTATION = 50000000;
+    private static final int DEFAULT_COMMIT_TIMEOUT = 60;
     private static final int ZK_SESSION_TIMEOUT = 30000;
     private static final int ZK_CONNECTION_TIMEOUT = 10000;
     private static final int KAFKA_SEND_TIMEOUT = 10000;
@@ -67,7 +68,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_PARTITION_COUNT,
                 DEFAULT_REPLICA_FACTOR,
                 DEFAULT_TOPIC_RETENTION,
-                DEFAULT_TOPIC_ROTATION);
+                DEFAULT_TOPIC_ROTATION,
+                DEFAULT_COMMIT_TIMEOUT);
         kafkaSettings = new KafkaSettings(KAFKA_POLL_TIMEOUT, KAFKA_SEND_TIMEOUT);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);

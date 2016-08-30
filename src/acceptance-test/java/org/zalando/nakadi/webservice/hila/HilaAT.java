@@ -116,17 +116,17 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(12)));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void whenCommitTimeoutReachedSessionIsClosed() throws Exception {
 
         publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "commit_timeout=1")
+                .create(URL, subscription.getId(), "") // commit_timeout is 5 seconds for test
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
-        waitFor(() -> assertThat(client.isRunning(), is(false)), 3000);
+        waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
     }
 
     @Test(timeout = 15000)
