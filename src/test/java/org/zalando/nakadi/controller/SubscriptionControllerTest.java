@@ -18,6 +18,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
@@ -35,22 +36,24 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
-import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.IntStream.range;
+import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -62,6 +65,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
+import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
@@ -235,34 +239,42 @@ public class SubscriptionControllerTest {
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
-    /*@Test
-    public void whenListSubscriptionsThenOk() throws Exception {
+    @Test
+    public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions()).thenReturn(subscriptions);
-        final SubscriptionListWrapper subscriptionList = new SubscriptionListWrapper(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        final SubscriptionListWrapper subscriptionList =
+                new SubscriptionListWrapper(subscriptions, new PaginationLinks());
 
-        getSubscriptions(Optional.empty())
+        getSubscriptions()
                 .andExpect(status().isOk())
                 .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
+
+        verify(subscriptionRepository, times(1)).listSubscriptions(ImmutableSet.of(), Optional.empty(), 0, 20);
     }
 
     @Test
-    public void whenListSubscriptionsForOwningAppThenOk() throws Exception {
+    public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptionsForOwningApplication("blahApp")).thenReturn(subscriptions);
-        final SubscriptionListWrapper subscriptionList = new SubscriptionListWrapper(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        final SubscriptionListWrapper subscriptionList =
+                new SubscriptionListWrapper(subscriptions, new PaginationLinks());
 
-        getSubscriptions(Optional.of("blahApp"))
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 10, 30)
                 .andExpect(status().isOk())
                 .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
+
+        verify(subscriptionRepository, times(1))
+                .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 10, 30);
     }
 
     @Test
     public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.listSubscriptions()).thenThrow(new ServiceUnavailableException("dummy message"));
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+                .thenThrow(new ServiceUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
-        checkForProblem(getSubscriptions(Optional.empty()), expectedProblem);
-    }*/
+        checkForProblem(getSubscriptions(), expectedProblem);
+    }
 
     @Test
     public void whenGetSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
@@ -284,8 +296,18 @@ public class SubscriptionControllerTest {
         checkForProblem(postSubscription(subscription), expectedProblem);
     }
 
-    private ResultActions getSubscriptions(final Optional<String> owningApplication) throws Exception {
-        final String url = "/subscriptions" + owningApplication.map(app -> "?owning_application=" + app).orElse("");
+    private ResultActions getSubscriptions() throws Exception {
+        return mockMvcBuilder.build().perform(get("/subscriptions"));
+    }
+
+    private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
+                                           final int limit) throws Exception {
+        final String etQuery = eventTypes.stream()
+                .map(et -> format("event_type={0}", et))
+                .collect(Collectors.joining("&"));
+
+        final String url = format("/subscriptions?owning_application={0}&{1}&offset={2}&limit={3}",
+                owningApp, etQuery, offset, limit);
         return mockMvcBuilder.build().perform(get(url));
     }
 
@@ -322,7 +344,7 @@ public class SubscriptionControllerTest {
     }
 
     private ResultActions getSubscription(final String subscriptionId) throws Exception {
-        return mockMvcBuilder.build().perform(get(MessageFormat.format("/subscriptions/{0}", subscriptionId)));
+        return mockMvcBuilder.build().perform(get(format("/subscriptions/{0}", subscriptionId)));
     }
 
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {

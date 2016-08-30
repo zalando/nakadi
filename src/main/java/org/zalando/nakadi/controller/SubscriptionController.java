@@ -1,5 +1,6 @@
 package org.zalando.nakadi.controller;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
@@ -39,9 +41,11 @@ import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
@@ -110,17 +114,26 @@ public class SubscriptionController {
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity<?> listSubscriptions(
             @Nullable @RequestParam(value = "owning_application", required = false) final String owningApplication,
+            @Nullable @RequestParam(value = "event_type", required = false) final Set<String> eventTypes,
+            @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
+            @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             final NativeWebRequest request) {
 
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
 
+        if (limit < 1 || limit > 1000) {
+            return create(BAD_REQUEST, "'limit' parameter should have value from 1 to 1000", request);
+        }
+        if (offset < 0) {
+            return create(BAD_REQUEST, "'offset' parameter can't be lower than 0", request);
+        }
         try {
-            final List<Subscription> subscriptions = owningApplication == null ?
-                    subscriptionRepository.listSubscriptions() :
-                    subscriptionRepository.listSubscriptionsForOwningApplication(owningApplication);
-            return status(OK).body(new SubscriptionListWrapper(subscriptions));
+            final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
+            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(eventTypesFilter,
+                    Optional.ofNullable(owningApplication), offset, limit);
+            return status(OK).body(new SubscriptionListWrapper(subscriptions, new PaginationLinks()));
 
         } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
