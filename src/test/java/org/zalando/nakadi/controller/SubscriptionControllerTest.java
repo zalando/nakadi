@@ -41,7 +41,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -65,6 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
@@ -261,12 +261,12 @@ public class SubscriptionControllerTest {
         final SubscriptionListWrapper subscriptionList =
                 new SubscriptionListWrapper(subscriptions, new PaginationLinks());
 
-        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 10, 30)
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 0, 30)
                 .andExpect(status().isOk())
                 .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
-                .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 10, 30);
+                .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 0, 30);
     }
 
     @Test
@@ -288,6 +288,23 @@ public class SubscriptionControllerTest {
         final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
                 "'limit' parameter should have value from 1 to 1000");
         checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", 0, -5), expectedProblem);
+    }
+
+    @Test
+    public void whenListSubscriptionsThenPaginationIsOk() throws Exception {
+        final List<Subscription> subscriptions = createRandomSubscriptions(10);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+
+        final PaginationLinks.Link prevLink = new PaginationLinks.Link(
+                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=4&limit=10");
+        final PaginationLinks.Link nextLink = new PaginationLinks.Link(
+                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=6&limit=10");
+        final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
+        final SubscriptionListWrapper expectedResult = new SubscriptionListWrapper(subscriptions, links);
+
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 5, 10)
+                .andExpect(status().isOk())
+                .andExpect(content().string(jsonHelper.matchesObject(expectedResult)));
     }
 
     @Test
@@ -316,12 +333,7 @@ public class SubscriptionControllerTest {
 
     private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
                                            final int limit) throws Exception {
-        final String etQuery = eventTypes.stream()
-                .map(et -> format("event_type={0}", et))
-                .collect(Collectors.joining("&"));
-
-        final String url = format("/subscriptions?owning_application={0}&{1}&offset={2}&limit={3}",
-                owningApp, etQuery, offset, limit);
+        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit);
         return mockMvcBuilder.build().perform(get(url));
     }
 

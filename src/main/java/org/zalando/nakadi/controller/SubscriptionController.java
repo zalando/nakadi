@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
@@ -52,6 +53,7 @@ import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionPaginationLinks;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -131,9 +133,15 @@ public class SubscriptionController {
         }
         try {
             final Set<String> eventTypesFilter = eventTypes == null ? ImmutableSet.of() : eventTypes;
-            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(eventTypesFilter,
-                    Optional.ofNullable(owningApplication), offset, limit);
-            return status(OK).body(new SubscriptionListWrapper(subscriptions, new PaginationLinks()));
+            final Optional<String> owningAppOption = Optional.ofNullable(owningApplication);
+
+            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                    eventTypesFilter, owningAppOption, offset, limit);
+
+            final PaginationLinks paginationLinks = createSubscriptionPaginationLinks(
+                    owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
+
+            return status(OK).body(new SubscriptionListWrapper(subscriptions, paginationLinks));
 
         } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
