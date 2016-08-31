@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -36,6 +38,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
+import javax.ws.rs.core.HttpHeaders;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,12 +61,13 @@ public class SubscriptionController {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionController.class);
 
+    private static final UriComponentsBuilder SUBSCRIPTION_PATH = UriComponentsBuilder.fromPath("/subscriptions/{id}");
+
     private final SubscriptionDbRepository subscriptionRepository;
 
     private final EventTypeRepository eventTypeRepository;
 
     private final FeatureToggleService featureToggleService;
-
     private final ApplicationService applicationService;
 
     @Autowired
@@ -93,7 +97,9 @@ public class SubscriptionController {
             return createSubscription(subscriptionBase, request, client);
         } catch (final DuplicatedSubscriptionException e) {
             try {
-                return new ResponseEntity<>(getExistingSubscription(subscriptionBase), HttpStatus.OK);
+                final Subscription existingSubscription = getExistingSubscription(subscriptionBase);
+                final UriComponents path = SUBSCRIPTION_PATH.buildAndExpand(existingSubscription.getId());
+                return status(OK).location(path.toUri()).body(existingSubscription);
             } catch (final ServiceUnavailableException ex) {
                 LOG.error("Error occurred during fetching existing subscription", ex);
                 return create(e.asProblem(), request);
@@ -176,7 +182,11 @@ public class SubscriptionController {
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
-        return status(HttpStatus.CREATED).body(subscription);
+        final UriComponents location = SUBSCRIPTION_PATH.buildAndExpand(subscription.getId());
+        return status(HttpStatus.CREATED)
+                .location(location.toUri())
+                .header(HttpHeaders.CONTENT_LOCATION, location.toString())
+                .body(subscription);
     }
 
     private String createErrorMessage(final List<String> missingEventTypes) {
