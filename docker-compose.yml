@@ -10,7 +10,7 @@ services:
      - zookeeper
      - kafka
     environment:
-      - JAVA_OPTS
+      - SPRING_PROFILES_ACTIVE
       - NAKADI_OAUTH2_MODE=OFF
       - NAKADI_FEATURETOGGLE_DEFAULT=true
       - NAKADI_ZOOKEEPER_BROKERS=localhost:2181
