@@ -1158,19 +1158,19 @@ definitions:
           available event in the partition.
         type: string
 
-    StreamInfo:
-      type: object
-      description: |
-        This object contains general information about the stream. Used only for debugging
-        purposes. We recommend logging this object in order to solve connection issues. Clients
-        should not parse this structure.
+  StreamInfo:
+    type: object
+    description: |
+      This object contains general information about the stream. Used only for debugging
+      purposes. We recommend logging this object in order to solve connection issues. Clients
+      should not parse this structure.
 
-    TooManyRequests:
-      headers:
-        Retry-After:
-          description: |
-            Number of seconds the client ought to wait before making a follow-up request.
-          type: number
+  TooManyRequests:
+    headers:
+      Retry-After:
+        description: |
+          Number of seconds the client ought to wait before making a follow-up request.
+        type: number
 
   Cursor:
     required:
