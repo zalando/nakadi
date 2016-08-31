@@ -34,6 +34,11 @@ def dockerImageTag = "$dockerImageName:$dockerImageVersion"
 
 def dockerBuildTimeout = 300
 
+def dockerFile = "Dockerfile"
+if (project.hasProperty('dockerFile')) {
+    dockerFile = project.property("dockerFile")
+}
+
 repositories {
     mavenCentral()
 }
@@ -205,8 +210,8 @@ task generateScmSourceJson() {
 task buildDockerImage {
     dependsOn bootRepackage, generateScmSourceJson
     doLast {
-        println "Building docker image with tag: $dockerImageTag"
-        if (execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout) != 0) {
+        println "Building docker image with tag: $dockerImageTag from dockerfile: $dockerFile"
+        if (execAndWait("docker build -t " + dockerImageTag + " -f " + dockerFile + " .", dockerBuildTimeout) != 0) {
             throw new GradleException("docker build failed.")
         }
     }
