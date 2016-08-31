@@ -1194,6 +1194,7 @@ definitions:
           - offsets are fully ordered and comparable lexicographicaly.
           - it's not possible to determine how many events there are between two offsets from different timelines.
           - timeline and index are always padded by zeros.
+          - the first event in a log has a special offset of BEGIN.
   SubscriptionCursor:
     allOf:
       - $ref: '#/definitions/Cursor'
