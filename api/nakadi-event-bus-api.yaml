@@ -1184,8 +1184,14 @@ definitions:
       offset:
         type: string
         description: |
-          Offset of the event being pointed to.
+          Offset of the event being pointed to. Regarding its format and guarantees:
 
+          - offsets have a fixed size of 26 characters ranging from 0 to F (Hexadecimals).
+          - the first 9 characters are used to define the timeline, a monotonically increasing sequence.
+          - the remaining 17 characters defines the index, a strictly increasing sequence in the scope of a timeline.
+            This maps Kafka offsets just by converting to hexadecimals.
+          - offsets are fully ordered and comparable lexicographicaly.
+          - it's not possible to determine how many events there are between two offsets from different timelines.
   SubscriptionCursor:
     allOf:
       - $ref: '#/definitions/Cursor'
