@@ -5,15 +5,15 @@ import java.util.Collections;
 import java.util.List;
 
 @Immutable
-public class SubscriptionListWrapper {
+public class ItemsWrapper<T> {
 
-    private final List<Subscription> items;
+    private final List<T> items;
 
-    public SubscriptionListWrapper(final List<Subscription> items) {
+    public ItemsWrapper(final List<T> items) {
         this.items = items;
     }
 
-    public List<Subscription> getItems() {
+    public List<T> getItems() {
         return Collections.unmodifiableList(items);
     }
 }
