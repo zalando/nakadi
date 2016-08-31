@@ -98,8 +98,8 @@ public class SubscriptionController {
             return createSubscription(subscriptionBase, request, client);
         } catch (final DuplicatedSubscriptionException e) {
             try {
-                Subscription existingSubscription = getExistingSubscription(subscriptionBase);
-                UriComponents path = SUBSCRIPTION_PATH.buildAndExpand(existingSubscription.getId());
+                final Subscription existingSubscription = getExistingSubscription(subscriptionBase);
+                final UriComponents path = SUBSCRIPTION_PATH.buildAndExpand(existingSubscription.getId());
                 return status(OK).location(path.toUri()).body(existingSubscription);
             } catch (final ServiceUnavailableException ex) {
                 LOG.error("Error occurred during fetching existing subscription", ex);
@@ -183,10 +183,10 @@ public class SubscriptionController {
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
-        UriComponents components = SUBSCRIPTION_PATH.buildAndExpand(subscription.getId());
+        final UriComponents location = SUBSCRIPTION_PATH.buildAndExpand(subscription.getId());
         return status(HttpStatus.CREATED)
-                .location(components.toUri())
-                .header(HttpHeaders.CONTENT_LOCATION, components.toString())
+                .location(location.toUri())
+                .header(HttpHeaders.CONTENT_LOCATION, location.toString())
                 .body(subscription);
     }
 
