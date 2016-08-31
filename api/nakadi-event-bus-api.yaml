@@ -1191,10 +1191,10 @@ definitions:
             000000001.
           - the remaining 17 characters defines the index, a strictly increasing sequence in the scope of a timeline.
             This maps Kafka offsets just by converting to hexadecimals.
+          - offsets for empty partitions have a special value of BEGIN.
           - offsets are fully ordered and comparable lexicographicaly.
           - it's not possible to determine how many events there are between two offsets from different timelines.
           - timeline and index are always padded by zeros.
-          - the first event in a log has a special offset of BEGIN.
   SubscriptionCursor:
     allOf:
       - $ref: '#/definitions/Cursor'
