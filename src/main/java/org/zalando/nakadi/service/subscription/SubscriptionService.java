@@ -46,7 +46,8 @@ public class SubscriptionService {
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions = Arrays.stream(partitions)
                             .filter(partition -> eventType.getTopic().equals(partition.getKey().topic))
-                            .map(ExceptionWrapper.wrapFunction(partition -> createPartition(zkSubscriptionClient, partition)))
+                            .map(ExceptionWrapper.wrapFunction(
+                                    partition -> createPartition(zkSubscriptionClient, partition)))
                             .collect(Collectors.toSet());
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
