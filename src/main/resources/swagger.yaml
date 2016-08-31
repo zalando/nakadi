@@ -219,7 +219,7 @@ paths:
         - name: stream_limit
           in: query
           description: |
-            Maximum number of `Event`s in this stream. If 0 or undefined, will stream indefinately.
+            Maximum number of `Event`s in this stream. If 0 or undefined, will stream indefinitely.
 
             Stream initialization will fail if `stream_limit` is lower than `batch_limit`.
           type: integer

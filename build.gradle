@@ -223,6 +223,17 @@ task pushDockerImage {
     }
 }
 
+task testInitNakadi(type: Exec) {
+    environment "SPRING_PROFILES_ACTIVE", "acceptanceTest"
+    commandLine "bash", "-c", "docker-compose up -d --build"
+    doLast {
+        println "Waiting for Nakadi to start up"
+        long start = System.currentTimeMillis()
+        waitForNakadi()
+        println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
+    }
+}
+
 task initNakadi(type: Exec) {
     commandLine "bash", "-c", "docker-compose up -d --build"
     doLast {
@@ -267,12 +278,12 @@ task stopStorages(type: Exec) {
 }
 
 task fullTest(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'initNakadi', 'test', 'acceptanceTest']
+    tasks = ['clean', 'bootRepackage', 'testInitNakadi', 'test', 'acceptanceTest']
     finalizedBy stopNakadi
 }
 
 task fullAcceptanceTest(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'initNakadi', 'acceptanceTest']
+    tasks = ['clean', 'bootRepackage', 'testInitNakadi', 'acceptanceTest']
     finalizedBy stopNakadi
 }
 

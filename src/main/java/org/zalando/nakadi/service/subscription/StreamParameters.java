@@ -30,7 +30,7 @@ public class StreamParameters {
     private final Optional<Integer> batchKeepAliveIterations;
 
     // Applies to stream, number of messages to send to clients
-    public final int windowSizeMessages;
+    public final int maxUncommittedMessages;
 
     // Applies to stream. Timeout without commits.
     public final long commitTimeoutMillis;
@@ -38,13 +38,13 @@ public class StreamParameters {
     private StreamParameters(
             final int batchLimitEvents, @Nullable final Long streamLimitEvents, final long batchTimeoutMillis,
             @Nullable final Long streamTimeoutMillis, @Nullable final Integer batchKeepAliveIterations,
-            final int windowSizeMessages, final long commitTimeoutMillis) {
+            final int maxUncommittedMessages, final long commitTimeoutMillis) {
         this.batchLimitEvents = batchLimitEvents;
         this.streamLimitEvents = Optional.ofNullable(streamLimitEvents);
         this.batchTimeoutMillis = batchTimeoutMillis;
         this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutMillis);
         this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
-        this.windowSizeMessages = windowSizeMessages;
+        this.maxUncommittedMessages = maxUncommittedMessages;
         this.commitTimeoutMillis = commitTimeoutMillis;
     }
 
@@ -66,7 +66,7 @@ public class StreamParameters {
             final long batchTimeoutSeconds,
             @Nullable final Long streamTimeoutSeconds,
             @Nullable final Integer batchKeepAliveIterations,
-            final int windowSizeMessages,
+            final int maxUncommittedMessages,
             final long commitTimeoutSeconds) {
         return new StreamParameters(
                 batchLimitEvents,
@@ -74,7 +74,7 @@ public class StreamParameters {
                 TimeUnit.SECONDS.toMillis(batchTimeoutSeconds),
                 Optional.ofNullable(streamTimeoutSeconds).map(TimeUnit.SECONDS::toMillis).orElse(null),
                 batchKeepAliveIterations,
-                windowSizeMessages,
+                maxUncommittedMessages,
                 TimeUnit.SECONDS.toMillis(commitTimeoutSeconds));
     }
 }
