@@ -1191,11 +1191,6 @@ definitions:
       - $ref: '#/definitions/Cursor'
       - type: object
         properties:
-          id:
-            type: string
-            format: uuid
-            description: |
-              Id of the cursor (a UUID).
           event_type_name:
             type: string
             description: |
@@ -1205,7 +1200,6 @@ definitions:
             description: |
               An opaque value defined by the server.
         required:
-          - id
           - event_type_name
           - cursor_token
 
