@@ -163,14 +163,12 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         final List<Subscription> testSubscriptions = createRandomSubscriptions(10);
         testSubscriptions.forEach(this::insertSubscriptionToDB);
 
-        final List<Subscription> expectedSubscriptions = testSubscriptions.stream()
-                .sorted(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR)
-                .collect(toList());
-        expectedSubscriptions.subList(0, 2).clear();
-        expectedSubscriptions.subList(3, expectedSubscriptions.size()).clear();
+        testSubscriptions.sort(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR);
+        testSubscriptions.subList(0, 2).clear();
+        testSubscriptions.subList(3, testSubscriptions.size()).clear();
 
         final List<Subscription> subscriptions = repository.listSubscriptions(emptySet(), Optional.empty(), 2, 3);
-        assertThat(subscriptions, equalTo(expectedSubscriptions));
+        assertThat(subscriptions, equalTo(testSubscriptions));
     }
 
     private void insertSubscriptionToDB(final Subscription subscription) {
