@@ -619,7 +619,7 @@ paths:
           description: |
             Parameter to filter subscriptions list by event types. If not specified - the result list will contain
             subscriptions for all event types. It's possible to provide multiple values like
-            `event_type=et1&event_type=et2`
+            `event_type=et1&event_type=et2`, in this case it will show subscriptions having both `et1` and `et2`
           collectionFormat: multi
           type: array
           items:
@@ -631,7 +631,7 @@ paths:
           format: int64
           required: false
           default: 20
-          minimum: 0
+          minimum: 1
           maximum: 1000
         - name: offset
           in: query
@@ -657,6 +657,10 @@ paths:
             required:
               - items
               - _links
+        '400':
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/Problem'
 
   /subscriptions/{subscription_id}:
     get:
