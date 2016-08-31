@@ -1196,10 +1196,10 @@ definitions:
             format: uuid
             description: |
               Id of the cursor (a UUID).
-          event_type_name:
+          event_type:
             type: string
             description: |
-              The name of the event type this partition's events belong to
+              The name of the event type this partition's events belong to.
           cursor_token:
             type: string
             description: |
