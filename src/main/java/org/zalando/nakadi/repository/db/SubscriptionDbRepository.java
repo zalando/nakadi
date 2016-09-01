@@ -2,6 +2,8 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -26,9 +28,12 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.Sets.newTreeSet;
+import static java.text.MessageFormat.format;
 
 @Component
 @Profile("!test")
@@ -82,25 +87,38 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
-    public List<Subscription> listSubscriptions() throws ServiceUnavailableException {
+    public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
+                                                final int offset, final int limit) throws ServiceUnavailableException {
+
+        final StringBuilder queryBuilder = new StringBuilder("SELECT s_subscription_object FROM zn_data.subscription ");
+        final List<String> clauses = Lists.newArrayList();
+        final List<Object> params = Lists.newArrayList();
+
+        owningApplication.ifPresent(owningApp -> {
+            clauses.add(" s_subscription_object->>'owning_application' = ? ");
+            params.add(owningApp);
+        });
+        if (!eventTypes.isEmpty()) {
+            final String clause = eventTypes.stream()
+                    .map(et -> " s_subscription_object->'event_types' @> ?::jsonb")
+                    .collect(Collectors.joining(" AND "));
+            clauses.add(clause);
+            eventTypes.stream()
+                    .map(et -> format("\"{0}\"", et))
+                    .forEach(params::add);
+        }
+        if (!clauses.isEmpty()) {
+            queryBuilder.append(" WHERE ");
+            queryBuilder.append(StringUtils.join(clauses, " AND "));
+        }
+
+        queryBuilder.append(" ORDER BY s_subscription_object->>'created_at' DESC LIMIT ? OFFSET ? ");
+        params.add(limit);
+        params.add(offset);
         try {
-            return jdbcTemplate.query("SELECT s_subscription_object FROM zn_data.subscription ORDER BY " +
-                    "s_subscription_object->>'created_at' DESC", rowMapper);
+            return jdbcTemplate.query(queryBuilder.toString(), params.toArray(), rowMapper);
         } catch (final DataAccessException e) {
             LOG.error("Database error when listing subscriptions", e);
-            throw new ServiceUnavailableException("Error occurred when running database request");
-        }
-    }
-
-    public List<Subscription> listSubscriptionsForOwningApplication(final String owningApplication)
-            throws ServiceUnavailableException {
-        final String query = "SELECT s_subscription_object FROM zn_data.subscription " +
-                "WHERE s_subscription_object->>'owning_application' = ? " +
-                "ORDER BY s_subscription_object->>'created_at' DESC";
-        try {
-            return jdbcTemplate.query(query, new Object[]{owningApplication}, rowMapper);
-        } catch (final DataAccessException e) {
-            LOG.error("Database error when listing subscriptions for owning app", e);
             throw new ServiceUnavailableException("Error occurred when running database request");
         }
     }

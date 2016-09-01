@@ -10,8 +10,9 @@ import com.jayway.restassured.response.Response;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.apache.curator.framework.CuratorFramework;
@@ -110,7 +111,8 @@ public class SubscriptionAT extends BaseAT {
                 .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
         createSubscription(randomSubscription().withEventType(etName).buildSubscriptionBase());
 
-        final ItemsWrapper expectedList = new ItemsWrapper(ImmutableList.of(sub2, sub1));
+        final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub2, sub1),
+                new PaginationLinks());
 
         given()
                 .param("owning_application", filterApp)
