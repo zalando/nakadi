@@ -139,10 +139,10 @@ public class SubscriptionController {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             return status(OK).body(subscription);
         } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: " + subscriptionId, e);
+            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
             return create(e.asProblem(), request);
         } catch (final ServiceUnavailableException e) {
-            LOG.error("Error occurred when trying to get subscription: " + subscriptionId, e);
+            LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);
             return create(e.asProblem(), request);
         }
     }
@@ -156,10 +156,10 @@ public class SubscriptionController {
                     subscriptionService.createSubscriptionStat(subscription);
             return status(OK).body(new ItemsWrapper(subscriptionStat));
         } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: " + subscriptionId, e);
+            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
             return create(e.asProblem(), request);
         } catch (final ServiceUnavailableException e) {
-            LOG.error("Error occurred when trying to get subscription stat: " + subscriptionId, e);
+            LOG.error("Error occurred when trying to get subscription stat: {}" + subscriptionId, e);
             return create(e.asProblem(), request);
         }
     }
