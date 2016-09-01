@@ -65,6 +65,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -130,7 +131,9 @@ public class SubscriptionControllerTest {
                 .andExpect(jsonPath("$.consumer_group", equalTo(subscription.getConsumerGroup())))
                 .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
                 .andExpect(jsonPath("$.id", equalTo("123")))
-                .andExpect(jsonPath("$.start_from", equalTo("end")));
+                .andExpect(jsonPath("$.start_from", equalTo("end")))
+                .andExpect(header().string("Location", "/subscriptions/123"))
+                .andExpect(header().string("Content-Location", "/subscriptions/123"));
     }
 
     @Test
@@ -227,7 +230,9 @@ public class SubscriptionControllerTest {
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))));
+                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))))
+                .andExpect(header().string("Location", "/subscriptions/123"))
+                .andExpect(header().doesNotExist("Content-Location"));
     }
 
     @Test
@@ -381,6 +386,9 @@ public class SubscriptionControllerTest {
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
+        final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
+        when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
+
         postSubscriptionWithScope(subscriptionBase,  Collections.singleton("oauth.read.scope"))
                 .andExpect(status().isCreated());
     }
