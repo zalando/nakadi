@@ -1,11 +1,10 @@
 package org.zalando.nakadi.util;
 
+import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.PaginationLinks;
 
 import java.util.Optional;
 import java.util.Set;
-
-import static java.text.MessageFormat.format;
 
 public class SubscriptionsUriHelper {
 
@@ -29,22 +28,16 @@ public class SubscriptionsUriHelper {
 
     public static String createSubscriptionListUri(final Optional<String> owningApplication,
                                                    final Set<String> eventTypes, final int offset, final int limit) {
-        final StringBuilder urlBuilder = new StringBuilder("/subscriptions?");
+
+        final UriComponentsBuilder urlBuilder = UriComponentsBuilder.fromPath("/subscriptions");
         if (!eventTypes.isEmpty()) {
-            eventTypes.stream()
-                    .map(et -> format("event_type={0}", et))
-                    .forEach(et -> urlBuilder.append(et).append("&"));
+            urlBuilder.queryParam("event_type", eventTypes.toArray());
         }
-        owningApplication.ifPresent(owningApp ->
-                urlBuilder
-                        .append("owning_application=")
-                        .append(owningApp)
-                        .append("&"));
-        urlBuilder
-                .append("offset=")
-                .append(offset)
-                .append("&limit=")
-                .append(limit);
-        return urlBuilder.toString();
+        owningApplication.ifPresent(owningApp -> urlBuilder.queryParam("owning_application", owningApp));
+        return urlBuilder
+                .queryParam("offset", offset)
+                .queryParam("limit", limit)
+                .build()
+                .toString();
     }
 }
