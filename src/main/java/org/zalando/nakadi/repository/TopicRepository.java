@@ -51,5 +51,5 @@ public interface TopicRepository {
 
     int compareOffsets(String firstOffset, String secondOffset) throws InternalNakadiException;
 
-    void validateCommitCursors(String topic, List<Cursor> cursors) throws InvalidCursorException;
+    void validateCommitCursors(String topic, List<? extends Cursor> cursors) throws InvalidCursorException;
 }

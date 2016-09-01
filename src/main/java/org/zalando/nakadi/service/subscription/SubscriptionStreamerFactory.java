@@ -1,6 +1,10 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.google.common.collect.ImmutableMap;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -9,6 +13,9 @@ import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
+
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,9 +50,11 @@ public class SubscriptionStreamerFactory {
             final String subscriptionId,
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
-            final AtomicBoolean connectionReady) throws NoSuchSubscriptionException, ServiceUnavailableException {
-        final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
+            final AtomicBoolean connectionReady) throws NoSuchSubscriptionException, ServiceUnavailableException,
+            InternalNakadiException, NoSuchEventTypeException {
 
+        final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
+        final Map<String, String> eventTypesForTopics = createTopicsMap(subscription.getEventTypes());
         final Session session = Session.generate(1);
         final String loggingPath = "subscription." + subscriptionId + "." + session.getId();
         // Create streaming context
@@ -59,7 +68,18 @@ public class SubscriptionStreamerFactory {
                 new ExactWeightRebalancer(),
                 kafkaPollTimeout,
                 loggingPath,
-                connectionReady);
+                connectionReady,
+                eventTypesForTopics);
+    }
+
+    private Map<String, String> createTopicsMap(final Set<String> eventTypes) throws InternalNakadiException,
+            NoSuchEventTypeException {
+        final ImmutableMap.Builder<String, String> topicMapBuilder = ImmutableMap.builder();
+        for (final String eventTypeName : eventTypes) {
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+            topicMapBuilder.put(eventType.getTopic(), eventTypeName);
+        }
+        return topicMapBuilder.build();
     }
 
 }

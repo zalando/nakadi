@@ -9,6 +9,8 @@ import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.state.State;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,6 +29,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final SubscriptionOutput out;
     private final long kafkaPollTimeout;
     private final AtomicBoolean connectionReady;
+    private final Map<String, String> eventTypesForTopics;
 
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
@@ -51,7 +54,8 @@ public class StreamingContext implements SubscriptionStreamer {
             final BiFunction<Session[], Partition[], Partition[]> rebalancer,
             final long kafkaPollTimeout,
             final String loggingPath,
-            final AtomicBoolean connectionReady) {
+            final AtomicBoolean connectionReady,
+            final Map<String, String> eventTypesForTopics) {
         this.out = out;
         this.parameters = parameters;
         this.session = session;
@@ -63,6 +67,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.loggingPath = loggingPath + ".stream";
         this.log = LoggerFactory.getLogger(loggingPath);
         this.connectionReady = connectionReady;
+        this.eventTypesForTopics = eventTypesForTopics;
     }
 
     public StreamParameters getParameters() {
@@ -161,6 +166,10 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public boolean isConnectionReady() {
         return connectionReady.get();
+    }
+
+    public Map<String, String> getEventTypesForTopics() {
+        return eventTypesForTopics;
     }
 
     private void rebalance() {

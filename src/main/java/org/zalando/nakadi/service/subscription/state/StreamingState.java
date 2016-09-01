@@ -10,6 +10,7 @@ import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,6 +22,8 @@ import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.zalando.nakadi.util.CursorTokenGenerator.generateCursorToken;
 
 class StreamingState extends State {
     private ZKSubscription topologyChangeSubscription;
@@ -157,17 +160,38 @@ class StreamingState extends State {
     }
 
     private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data) {
-        final String evt = EventStream.createStreamEvent(
-                pk.partition,
+        final String batch = serializeBatch(
+                pk,
                 String.valueOf(offsets.get(pk).getSentOffset()),
-                new ArrayList<>(data.values()),
-                Optional.empty());
+                data.values());
         try {
-            getOut().streamData(evt.getBytes(EventStream.UTF8));
+            getOut().streamData(batch.getBytes(EventStream.UTF8));
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
             shutdownGracefully("Failed to write data to output");
         }
+    }
+
+    private String serializeBatch(final Partition.PartitionKey partitionKey, final String offset,
+                                 final Collection<String> events) {
+
+        final StringBuilder builder = new StringBuilder()
+                .append("{\"cursor\":{\"partition\":\"")
+                .append(partitionKey.partition)
+                .append("\",\"offset\":\"")
+                .append(offset)
+                .append("\",\"event_type\":\"")
+                .append(eventTypeForTopic(partitionKey.topic))
+                .append("\",\"cursor_token\":\"")
+                .append(generateCursorToken())
+                .append("\"}");
+        if (!events.isEmpty()) {
+            builder.append(",\"events\":[");
+            events.stream().forEach(event -> builder.append(event).append(","));
+            builder.deleteCharAt(builder.length() - 1).append("]");
+        }
+        builder.append("}").append("\n");
+        return builder.toString();
     }
 
     @Override

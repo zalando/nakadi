@@ -87,4 +87,8 @@ public abstract class State {
     protected void unregisterSession() {
         context.unregisterSession();
     }
+
+    protected String eventTypeForTopic(final String topic) {
+        return context.getEventTypesForTopics().get(topic);
+    }
 }
