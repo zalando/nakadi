@@ -2,7 +2,9 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
-import org.zalando.nakadi.domain.Cursor;
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -15,16 +17,18 @@ import static java.util.Collections.unmodifiableList;
 @Immutable
 public class StreamBatch {
 
-    private final Cursor cursor;
+    private static final String DUMMY_TOKEN = "dummy-token";
+
+    private final SubscriptionCursor cursor;
     private final List<Map> events;
 
-    public StreamBatch(@JsonProperty("cursor") final Cursor cursor,
+    public StreamBatch(@JsonProperty("cursor") final SubscriptionCursor cursor,
                        @Nullable @JsonProperty("events") final List<Map> events) {
         this.cursor = cursor;
         this.events = Optional.ofNullable(events).orElse(ImmutableList.of());
     }
 
-    public Cursor getCursor() {
+    public SubscriptionCursor getCursor() {
         return cursor;
     }
 
@@ -32,8 +36,10 @@ public class StreamBatch {
         return unmodifiableList(events);
     }
 
-    public static StreamBatch singleEventBatch(final String partition, final String offset, final Map event) {
-        return new StreamBatch(new Cursor(partition, offset), ImmutableList.of(event));
+    public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
+                                               final Map event) {
+        return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
+                ImmutableList.of(event));
     }
 
     @Override
@@ -55,5 +61,37 @@ public class StreamBatch {
                 "cursor=" + cursor +
                 ", events=" + events +
                 '}';
+    }
+
+    public static class MatcherIgnoringToken extends BaseMatcher<StreamBatch> {
+
+        private final StreamBatch batch;
+
+        public MatcherIgnoringToken(final StreamBatch batch) {
+            this.batch = batch;
+        }
+
+        @Override
+        public boolean matches(final Object item) {
+            if (!(item instanceof StreamBatch)) {
+                return false;
+            }
+            final StreamBatch batchTocheck = (StreamBatch) item;
+            final SubscriptionCursor cursor = batch.getCursor();
+            final SubscriptionCursor cursorToCheck = batchTocheck.getCursor();
+
+            return batch.getEvents().equals(batchTocheck.getEvents()) &&
+                    cursor.getPartition().equals(cursorToCheck.getPartition()) &&
+                    cursor.getOffset().equals(cursorToCheck.getOffset()) &&
+                    cursor.getEventType().equals(cursorToCheck.getEventType());
+        }
+
+        @Override
+        public void describeTo(final Description description) {
+        }
+
+        public static MatcherIgnoringToken equalToBatchIgnoringToken(final StreamBatch batch) {
+            return new MatcherIgnoringToken(batch);
+        }
     }
 }

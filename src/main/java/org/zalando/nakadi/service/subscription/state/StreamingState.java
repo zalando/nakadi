@@ -5,7 +5,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.domain.EventsBatch;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -177,9 +176,18 @@ class StreamingState extends State {
         final String eventType = getContext().getEventTypesForTopics().get(partitionKey.topic);
         final String token = getContext().getCursorTokenService().generateToken();
         final SubscriptionCursor cursor = new SubscriptionCursor(partitionKey.partition, offset, eventType, token);
+        final String cursorSerialized = getContext().getObjectMapper().writeValueAsString(cursor);
 
-        final EventsBatch batch = new EventsBatch(cursor, events);
-        return getContext().getObjectMapper().writeValueAsString(batch) + EventStream.BATCH_SEPARATOR;
+        final StringBuilder builder = new StringBuilder()
+                .append("{\"cursor\":")
+                .append(cursorSerialized);
+        if (!events.isEmpty()) {
+            builder.append(",\"events\":[");
+            events.stream().forEach(event -> builder.append(event).append(","));
+            builder.deleteCharAt(builder.length() - 1).append("]");
+        }
+        builder.append("}").append(EventStream.BATCH_SEPARATOR);
+        return builder.toString();
     }
 
     @Override

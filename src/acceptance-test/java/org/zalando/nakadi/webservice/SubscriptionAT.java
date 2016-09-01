@@ -155,7 +155,7 @@ public class SubscriptionAT extends BaseAT {
     public void testGetSubscriptionCursors() throws IOException {
         final String etName = createEventType().getName();
         final Subscription subscription = createSubscriptionForEventType(etName);
-        String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
+        final String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
                 .then()

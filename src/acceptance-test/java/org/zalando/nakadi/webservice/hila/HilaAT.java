@@ -2,10 +2,10 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.junit.Before;
@@ -17,6 +17,7 @@ import static com.jayway.restassured.RestAssured.given;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
@@ -62,9 +63,10 @@ public class HilaAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
 
-        // check that we have read first two events with correct offsets
-        assertThat(client.getBatches().get(0), equalTo(singleEventBatch("0", "0", ImmutableMap.of("blah", "foo0"))));
-        assertThat(client.getBatches().get(1), equalTo(singleEventBatch("0", "1", ImmutableMap.of("blah", "foo1"))));
+        assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
+                ImmutableMap.of("blah", "foo0"))));
+        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "1", eventType.getName(),
+                ImmutableMap.of("blah", "foo1"))));
 
         // commit offset that will also trigger session closing as we reached stream_limit and committed
         commitCursors(subscription.getId(), ImmutableList.of(client.getBatches().get(1).getCursor()));
@@ -75,8 +77,10 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
 
         // check that we have read the next two events with correct offsets
-        assertThat(client.getBatches().get(0), equalTo(singleEventBatch("0", "2", ImmutableMap.of("blah", "foo2"))));
-        assertThat(client.getBatches().get(1), equalTo(singleEventBatch("0", "3", ImmutableMap.of("blah", "foo3"))));
+        assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "2", eventType.getName(),
+                ImmutableMap.of("blah", "foo2"))));
+        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "3", eventType.getName(),
+                ImmutableMap.of("blah", "foo3"))));
     }
 
     @Test(timeout = 5000)
@@ -90,7 +94,8 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), not(empty())));
 
         // commit and check that status is 200
-        final int commitResult = commitCursors(subscription.getId(), ImmutableList.of(new Cursor("0", "0")));
+        final int commitResult = commitCursors(subscription.getId(),
+                ImmutableList.of(new SubscriptionCursor("0", "0", eventType.getName(), "token")));
         assertThat(commitResult, equalTo(SC_OK));
     }
 
@@ -105,7 +110,7 @@ public class HilaAT extends BaseAT {
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
 
-        Cursor cursorToCommit = client.getBatches().get(4).getCursor();
+        SubscriptionCursor cursorToCommit = client.getBatches().get(4).getCursor();
         commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit));
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(10)));
@@ -142,7 +147,7 @@ public class HilaAT extends BaseAT {
 
         // to check that stream_timeout works we need to commit everything we consumed, in other case
         // Nakadi will first wait till commit_timeout exceeds
-        final Cursor lastBatchCursor = client.getBatches().get(client.getBatches().size() - 1).getCursor();
+        final SubscriptionCursor lastBatchCursor = client.getBatches().get(client.getBatches().size() - 1).getCursor();
         commitCursors(subscription.getId(), ImmutableList.of(lastBatchCursor));
 
         waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);
