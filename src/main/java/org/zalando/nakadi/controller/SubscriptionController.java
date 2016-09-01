@@ -15,11 +15,14 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionListWrapper;
+import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.ExceptionWrapper;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -31,6 +34,7 @@ import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -38,6 +42,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;
+import javax.ws.rs.core.HttpHeaders;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,24 +67,25 @@ import static org.zalando.problem.spring.web.advice.Responses.create;
 public class SubscriptionController {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionController.class);
+    private static final UriComponentsBuilder SUBSCRIPTION_PATH = UriComponentsBuilder.fromPath("/subscriptions/{id}");
 
     private final SubscriptionDbRepository subscriptionRepository;
-
     private final EventTypeRepository eventTypeRepository;
-
     private final FeatureToggleService featureToggleService;
-
     private final ApplicationService applicationService;
+    private final SubscriptionService subscriptionService;
 
     @Autowired
     public SubscriptionController(final SubscriptionDbRepository subscriptionRepository,
                                   final EventTypeRepository eventTypeRepository,
                                   final FeatureToggleService featureToggleService,
-                                  final ApplicationService applicationService) {
+                                  final ApplicationService applicationService,
+                                  final SubscriptionService subscriptionService) {
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.featureToggleService = featureToggleService;
         this.applicationService = applicationService;
+        this.subscriptionService = subscriptionService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -98,7 +104,9 @@ public class SubscriptionController {
             return createSubscription(subscriptionBase, request, client);
         } catch (final DuplicatedSubscriptionException e) {
             try {
-                return new ResponseEntity<>(getExistingSubscription(subscriptionBase), HttpStatus.OK);
+                final Subscription existingSubscription = getExistingSubscription(subscriptionBase);
+                final UriComponents path = SUBSCRIPTION_PATH.buildAndExpand(existingSubscription.getId());
+                return status(OK).location(path.toUri()).body(existingSubscription);
             } catch (final ServiceUnavailableException ex) {
                 LOG.error("Error occurred during fetching existing subscription", ex);
                 return create(e.asProblem(), request);
@@ -158,10 +166,27 @@ public class SubscriptionController {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             return status(OK).body(subscription);
         } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: " + subscriptionId, e);
+            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
             return create(e.asProblem(), request);
         } catch (final ServiceUnavailableException e) {
-            LOG.error("Error occurred when trying to get subscription: " + subscriptionId, e);
+            LOG.error("Error occurred when trying to get subscription: {}", subscriptionId, e);
+            return create(e.asProblem(), request);
+        }
+    }
+
+    @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
+    public ResponseEntity<?> getSubscriptionStats(@PathVariable("id") final String subscriptionId,
+                                             final NativeWebRequest request) {
+        try {
+            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+            final List<SubscriptionEventTypeStats> subscriptionStat =
+                    subscriptionService.createSubscriptionStat(subscription);
+            return status(OK).body(new ItemsWrapper(subscriptionStat));
+        } catch (final NoSuchSubscriptionException e) {
+            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
+            return create(e.asProblem(), request);
+        } catch (final ServiceUnavailableException e) {
+            LOG.error("Error occurred when trying to get subscription stat: {}" + subscriptionId, e);
             return create(e.asProblem(), request);
         }
     }
@@ -196,7 +221,11 @@ public class SubscriptionController {
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
-        return status(HttpStatus.CREATED).body(subscription);
+        final UriComponents location = SUBSCRIPTION_PATH.buildAndExpand(subscription.getId());
+        return status(HttpStatus.CREATED)
+                .location(location.toUri())
+                .header(HttpHeaders.CONTENT_LOCATION, location.toString())
+                .body(subscription);
     }
 
     private String createErrorMessage(final List<String> missingEventTypes) {

@@ -21,14 +21,21 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionListWrapper;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.subscription.SubscriptionService;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -57,10 +64,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -81,6 +91,8 @@ public class SubscriptionControllerTest {
     private final JsonTestHelper jsonHelper;
     private final StandaloneMockMvcBuilder mockMvcBuilder;
     private final ApplicationService applicationService = mock(ApplicationService.class);
+    private final TopicRepository topicRepository;
+    private final ZkSubscriptionClient zkSubscriptionClient;
 
     public SubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -88,8 +100,16 @@ public class SubscriptionControllerTest {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
+        topicRepository = mock(TopicRepository.class);
+        final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
+        zkSubscriptionClient = mock(ZkSubscriptionClient.class);
+        when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
+
+        when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
+        final SubscriptionService subscriptionService = new SubscriptionService(zkSubscriptionClientFactory,
+                topicRepository, eventTypeRepository);
         final SubscriptionController controller = new SubscriptionController(subscriptionRepository,
-                eventTypeRepository, featureToggleService, applicationService);
+                eventTypeRepository, featureToggleService, applicationService, subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
         doReturn(true).when(applicationService).exists(any());
@@ -118,7 +138,9 @@ public class SubscriptionControllerTest {
                 .andExpect(jsonPath("$.consumer_group", equalTo(subscription.getConsumerGroup())))
                 .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
                 .andExpect(jsonPath("$.id", equalTo("123")))
-                .andExpect(jsonPath("$.start_from", equalTo("end")));
+                .andExpect(jsonPath("$.start_from", equalTo("end")))
+                .andExpect(header().string("Location", "/subscriptions/123"))
+                .andExpect(header().string("Content-Location", "/subscriptions/123"));
     }
 
     @Test
@@ -215,7 +237,9 @@ public class SubscriptionControllerTest {
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
-                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))));
+                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))))
+                .andExpect(header().string("Location", "/subscriptions/123"))
+                .andExpect(header().doesNotExist("Content-Location"));
     }
 
     @Test
@@ -327,6 +351,61 @@ public class SubscriptionControllerTest {
         checkForProblem(postSubscription(subscription), expectedProblem);
     }
 
+    @Test
+    public void whenGetSubscriptionStatThenOk() throws Exception {
+        final Subscription subscription = randomSubscription().withEventType("myET").build();
+        final Partition.PartitionKey partitionKey = new Partition.PartitionKey("topic", "p1");
+        final Partition[] partitions = {new Partition(partitionKey, "xz", "xz", Partition.State.ASSIGNED)};
+
+        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(zkSubscriptionClient.listPartitions()).thenReturn(partitions);
+        when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn(3l);
+        when(eventTypeRepository.findByNameO("myET"))
+                .thenReturn(Optional.of(EventTypeTestBuilder.builder().name("myET").topic("topic").build()));
+        when(topicRepository.getPartition("topic", "p1")).thenReturn(new TopicPartition("topic", "p1", "3", "13"));
+
+        final List<SubscriptionEventTypeStats> subscriptionStats =
+                Collections.singletonList(new SubscriptionEventTypeStats(
+                        "myET",
+                        Collections.singleton(new SubscriptionEventTypeStats.Partition("p1", "assigned", 10, "xz")))
+                );
+
+        getSubscriptionStats(subscription.getId())
+                .andExpect(status().isOk())
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper(subscriptionStats))));
+    }
+
+    @Test
+    public void whenGetSubscriptionNoPartitionsThenStatEmpty() throws Exception {
+        final Subscription subscription = randomSubscription().withEventType("myET").build();
+        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[]{});
+        when(eventTypeRepository.findByNameO("myET"))
+                .thenReturn(Optional.of(EventTypeTestBuilder.builder().name("myET").topic("topic").build()));
+
+        final List<SubscriptionEventTypeStats> subscriptionStats =
+                Collections.singletonList(new SubscriptionEventTypeStats("myET", Collections.emptySet()));
+
+        getSubscriptionStats(subscription.getId())
+                .andExpect(status().isOk())
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper(subscriptionStats))));
+    }
+
+    @Test
+    public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
+        final Subscription subscription = randomSubscription().withEventType("myET").build();
+        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(Optional.empty());
+
+        getSubscriptionStats(subscription.getId())
+                .andExpect(status().isOk())
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper(Collections.emptyList()))));
+    }
+
+    private ResultActions getSubscriptionStats(final String subscriptionId) throws Exception {
+        return mockMvcBuilder.build().perform(get(MessageFormat.format("/subscriptions/{0}/stats", subscriptionId)));
+    }
+
     private ResultActions getSubscriptions() throws Exception {
         return mockMvcBuilder.build().perform(get("/subscriptions"));
     }
@@ -358,6 +437,9 @@ public class SubscriptionControllerTest {
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
+        final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
+        when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
+
         postSubscriptionWithScope(subscriptionBase,  Collections.singleton("oauth.read.scope"))
                 .andExpect(status().isCreated());
     }

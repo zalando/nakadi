@@ -2,26 +2,27 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.webservice.BaseAT;
-import org.zalando.nakadi.webservice.utils.TestStreamingClient;
+import org.hamcrest.core.StringContains;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
+import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
-import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
 import static java.util.stream.IntStream.rangeClosed;
@@ -33,9 +34,18 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 
 public class HilaAT extends BaseAT {
 
+    private static final JsonTestHelper JSON_TEST_HELPER = new JsonTestHelper(new JsonConfig().jacksonObjectMapper());
     private EventType eventType;
     private Subscription subscription;
 
@@ -200,6 +210,40 @@ public class HilaAT extends BaseAT {
         // if we start to get data for another client it means that Nakadi recognized that first client closed
         // connection (in other case it would not allow second client to connect because of lack of slots)
         waitFor(() -> assertThat(anotherClient.getBatches(), hasSize(1)));
+    }
+
+    @Test
+    public void testGetSubscriptionStat() throws Exception {
+        IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
+
+        List<SubscriptionEventTypeStats> subscriptionStats =
+                Collections.singletonList(new SubscriptionEventTypeStats(
+                        eventType.getName(),
+                        Collections.singleton(
+                                new SubscriptionEventTypeStats.Partition("0", "assigned", 15, client.getSessionId())))
+                );
+        NakadiTestUtils.getSubscriptionStat(subscription)
+                .then()
+                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper(subscriptionStats))));
+
+        final String partition = client.getBatches().get(0).getCursor().getPartition();
+        final Cursor cursor = new Cursor(partition, "9");
+        commitCursors(subscription.getId(), ImmutableList.of(cursor));
+
+        subscriptionStats =
+                Collections.singletonList(new SubscriptionEventTypeStats(
+                        eventType.getName(),
+                        Collections.singleton(
+                                new SubscriptionEventTypeStats.Partition("0", "assigned", 5, client.getSessionId())))
+                );
+        NakadiTestUtils.getSubscriptionStat(subscription)
+                .then()
+                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper(subscriptionStats))));
     }
 
 }

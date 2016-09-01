@@ -112,4 +112,11 @@ public class NakadiTestUtils {
                 .getStatusCode();
     }
 
+    public static Response getSubscriptionStat(final Subscription subscription)
+            throws IOException {
+        return given()
+                .contentType(JSON)
+                .get("/subscriptions/{subscription_id}/stats", subscription.getId());
+    }
+
 }

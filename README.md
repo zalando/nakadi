@@ -60,7 +60,7 @@ More detailed information can be found on the [manual](http://zalando.github.io/
 
 ## Quickstart
 
-You can run the project locally using [Docker](https://www.docker.com/).
+You can run the project locally using [Docker](https://www.docker.com/). Note that Nakadi requires very recent versions of docker and docker-compose. See [Dependencies](#dependencies) for more information.
 
 ### Running a Server
 
@@ -106,7 +106,7 @@ running, you might want to run this command:
 ```sh
 eval "$(docker-machine env default)"
 ```
-Note: Docker Beta for Mac OS (1.12.0-rc3-beta18) currently is not supported due to the bug in networking host configuration.
+Note: Docker for Mac OS (previously in beta) version 1.12 (1.12.0 or 1.12.1) currently is not supported due to the [bug](https://github.com/docker/docker/issues/22753#issuecomment-242711639) in networking host configuration.
 
 ## API Overview and Usage
 
@@ -454,6 +454,11 @@ For working with an IDE, the `eclipse` IDE task is available and you'll be able 
 ### Dependencies
 
 The Nakadi server is a Java 8 [Spring Boot](http://projects.spring.io/spring-boot/) application. It uses [Kafka 0.9](http://kafka.apache.org/090/documentation.html) as its broker and [PostgreSQL 9.5](http://www.postgresql.org/docs/9.5/static/release-9-5.html) as its supporting database.
+
+Nakadi requires recent versions of docker and docker-compose. In
+particular, docker-compose >= v1.7.0 is required. See [Install Docker
+Compose](https://docs.docker.com/compose/install/) for information on
+installing the most recent docker-compose version.
 
 ### What does the project already implement?
 
