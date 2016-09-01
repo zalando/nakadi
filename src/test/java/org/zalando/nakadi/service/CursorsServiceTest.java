@@ -101,8 +101,11 @@ public class CursorsServiceTest {
         kafkaClient = mock(KafkaClient.class);
         when(subscriptionKafkaClientFactory.createKafkaClient(any())).thenReturn(kafkaClient);
 
-        cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepository,
-                eventTypeRepository, zkLockFactory, zkSubscriptionClientFactory, subscriptionKafkaClientFactory);
+        final CursorTokenService tokenService = mock(CursorTokenService.class);
+        when(tokenService.generateToken()).thenReturn(TOKEN);
+
+        cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepository, eventTypeRepository,
+                zkLockFactory, zkSubscriptionClientFactory, subscriptionKafkaClientFactory, tokenService);
     }
 
     @Test

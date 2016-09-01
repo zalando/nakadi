@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 import static java.text.MessageFormat.format;
-import static org.zalando.nakadi.util.CursorTokenGenerator.generateCursorToken;
 
 @Component
 public class CursorsService {
@@ -52,6 +51,7 @@ public class CursorsService {
     private final ZooKeeperLockFactory zkLockFactory;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory;
+    private final CursorTokenService cursorTokenService;
 
     @Autowired
     public CursorsService(final ZooKeeperHolder zkHolder,
@@ -60,7 +60,8 @@ public class CursorsService {
                           final EventTypeRepository eventTypeRepository,
                           final ZooKeeperLockFactory zkLockFactory,
                           final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
-                          final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory) {
+                          final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory,
+                          final CursorTokenService cursorTokenService) {
         this.zkHolder = zkHolder;
         this.topicRepository = topicRepository;
         this.subscriptionRepository = subscriptionRepository;
@@ -68,6 +69,7 @@ public class CursorsService {
         this.zkLockFactory = zkLockFactory;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
         this.subscriptionKafkaClientFactory = subscriptionKafkaClientFactory;
+        this.cursorTokenService = cursorTokenService;
     }
 
     public boolean commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors)
@@ -180,7 +182,7 @@ public class CursorsService {
         try {
             final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, topic, partition);
             final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
-            return new SubscriptionCursor(partition, currentOffset, eventType, generateCursorToken());
+            return new SubscriptionCursor(partition, currentOffset, eventType, cursorTokenService.generateToken());
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

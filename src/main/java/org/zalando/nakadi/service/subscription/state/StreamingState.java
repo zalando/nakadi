@@ -1,16 +1,18 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.EventsBatch;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.zalando.nakadi.util.CursorTokenGenerator.generateCursorToken;
 
 class StreamingState extends State {
     private ZKSubscription topologyChangeSubscription;
@@ -50,7 +51,7 @@ class StreamingState extends State {
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() ->this.shutdownGracefully("Stream timeout reached"), timeout,
+                timeout -> scheduleTask(() -> this.shutdownGracefully("Stream timeout reached"), timeout,
                         TimeUnit.MILLISECONDS));
 
         this.lastCommitMillis = System.currentTimeMillis();
@@ -160,11 +161,9 @@ class StreamingState extends State {
     }
 
     private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data) {
-        final String batch = serializeBatch(
-                pk,
-                String.valueOf(offsets.get(pk).getSentOffset()),
-                data.values());
         try {
+            final String offset = String.valueOf(offsets.get(pk).getSentOffset());
+            final String batch = serializeBatch(pk, offset, new ArrayList<>(data.values()));
             getOut().streamData(batch.getBytes(EventStream.UTF8));
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
@@ -173,25 +172,14 @@ class StreamingState extends State {
     }
 
     private String serializeBatch(final Partition.PartitionKey partitionKey, final String offset,
-                                 final Collection<String> events) {
+                                  final List<String> events) throws JsonProcessingException {
 
-        final StringBuilder builder = new StringBuilder()
-                .append("{\"cursor\":{\"partition\":\"")
-                .append(partitionKey.partition)
-                .append("\",\"offset\":\"")
-                .append(offset)
-                .append("\",\"event_type\":\"")
-                .append(eventTypeForTopic(partitionKey.topic))
-                .append("\",\"cursor_token\":\"")
-                .append(generateCursorToken())
-                .append("\"}");
-        if (!events.isEmpty()) {
-            builder.append(",\"events\":[");
-            events.stream().forEach(event -> builder.append(event).append(","));
-            builder.deleteCharAt(builder.length() - 1).append("]");
-        }
-        builder.append("}").append("\n");
-        return builder.toString();
+        final String eventType = getContext().getEventTypesForTopics().get(partitionKey.topic);
+        final String token = getContext().getCursorTokenService().generateToken();
+        final SubscriptionCursor cursor = new SubscriptionCursor(partitionKey.partition, offset, eventType, token);
+
+        final EventsBatch batch = new EventsBatch(cursor, events);
+        return getContext().getObjectMapper().writeValueAsString(batch) + EventStream.BATCH_SEPARATOR;
     }
 
     @Override

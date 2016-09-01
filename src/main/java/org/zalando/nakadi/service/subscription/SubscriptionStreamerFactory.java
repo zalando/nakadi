@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
@@ -11,6 +12,7 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 
@@ -33,17 +35,23 @@ public class SubscriptionStreamerFactory {
     private final KafkaTopicRepository topicRepository;
     private final EventTypeRepository eventTypeRepository;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private final CursorTokenService cursorTokenService;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public SubscriptionStreamerFactory(
             final ZooKeeperHolder zkHolder,
             final SubscriptionDbRepository subscriptionDbRepository,
             final KafkaTopicRepository topicRepository,
-            final EventTypeRepository eventTypeRepository) {
+            final EventTypeRepository eventTypeRepository,
+            final CursorTokenService cursorTokenService,
+            final ObjectMapper objectMapper) {
         this.zkHolder = zkHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.topicRepository = topicRepository;
         this.eventTypeRepository = eventTypeRepository;
+        this.cursorTokenService = cursorTokenService;
+        this.objectMapper = objectMapper;
     }
 
     public SubscriptionStreamer build(
@@ -69,7 +77,9 @@ public class SubscriptionStreamerFactory {
                 kafkaPollTimeout,
                 loggingPath,
                 connectionReady,
-                eventTypesForTopics);
+                eventTypesForTopics,
+                cursorTokenService,
+                objectMapper);
     }
 
     private Map<String, String> createTopicsMap(final Set<String> eventTypes) throws InternalNakadiException,

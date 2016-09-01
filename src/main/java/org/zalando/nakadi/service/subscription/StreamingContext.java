@@ -1,6 +1,8 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.zalando.nakadi.exceptions.ExceptionWrapper;
+import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
@@ -30,6 +32,8 @@ public class StreamingContext implements SubscriptionStreamer {
     private final long kafkaPollTimeout;
     private final AtomicBoolean connectionReady;
     private final Map<String, String> eventTypesForTopics;
+    private final CursorTokenService cursorTokenService;
+    private final ObjectMapper objectMapper;
 
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
@@ -55,7 +59,9 @@ public class StreamingContext implements SubscriptionStreamer {
             final long kafkaPollTimeout,
             final String loggingPath,
             final AtomicBoolean connectionReady,
-            final Map<String, String> eventTypesForTopics) {
+            final Map<String, String> eventTypesForTopics,
+            final CursorTokenService cursorTokenService,
+            final ObjectMapper objectMapper) {
         this.out = out;
         this.parameters = parameters;
         this.session = session;
@@ -68,6 +74,8 @@ public class StreamingContext implements SubscriptionStreamer {
         this.log = LoggerFactory.getLogger(loggingPath);
         this.connectionReady = connectionReady;
         this.eventTypesForTopics = eventTypesForTopics;
+        this.cursorTokenService = cursorTokenService;
+        this.objectMapper = objectMapper;
     }
 
     public StreamParameters getParameters() {
@@ -170,6 +178,14 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public Map<String, String> getEventTypesForTopics() {
         return eventTypesForTopics;
+    }
+
+    public CursorTokenService getCursorTokenService() {
+        return cursorTokenService;
+    }
+
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
     }
 
     private void rebalance() {

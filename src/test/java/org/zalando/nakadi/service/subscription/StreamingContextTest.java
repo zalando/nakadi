@@ -30,7 +30,7 @@ public class StreamingContextTest {
         };
 
         return new StreamingContext(output, null, Session.generate(1), null, null, null, null, 0, "stream",
-                new AtomicBoolean(true), null);
+                new AtomicBoolean(true), null, null, null);
     }
 
     @Test

@@ -88,7 +88,7 @@ public abstract class State {
         context.unregisterSession();
     }
 
-    protected String eventTypeForTopic(final String topic) {
-        return context.getEventTypesForTopics().get(topic);
+    public StreamingContext getContext() {
+        return context;
     }
 }
