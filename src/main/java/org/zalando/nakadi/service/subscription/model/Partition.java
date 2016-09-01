@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service.subscription.model;
 
-import java.util.Collection;
 import javax.annotation.Nullable;
+import java.util.Collection;
 
 public class Partition {
     public static class PartitionKey {
@@ -22,7 +22,6 @@ public class Partition {
             final PartitionKey that = (PartitionKey) o;
 
             return topic.equals(that.topic) && partition.equals(that.partition);
-
         }
 
         @Override
@@ -39,9 +38,15 @@ public class Partition {
     }
 
     public enum State {
-        UNASSIGNED,
-        REASSIGNING,
-        ASSIGNED,;
+        UNASSIGNED("unassigned"),
+        REASSIGNING("reassigning"),
+        ASSIGNED("assigned");
+
+        public final String description;
+
+        State(final String description) {
+            this.description = description;
+        }
     }
 
     private final PartitionKey key;
