@@ -9,15 +9,7 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalLong;
-import java.util.Set;
-import java.util.SortedMap;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -72,6 +64,9 @@ class StreamingState extends State {
 
     private void shutdownGracefully(final String reason) {
         getLog().info("Shutting down gracefully. Reason: {}", reason);
+        offsets.entrySet().stream().findFirst()
+                .ifPresent(pk -> flushData(pk.getKey(), new TreeMap<>(), Optional.of(reason)));
+
         final Map<Partition.PartitionKey, Long> uncommitted = offsets.entrySet().stream()
                 .filter(e -> !e.getValue().isCommitted())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
@@ -140,7 +135,11 @@ class StreamingState extends State {
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, freeSlots),
                     getParameters().batchTimeoutMillis))) {
-                flushData(e.getKey(), toSend);
+                if (sentEvents == 0) {
+                    flushData(e.getKey(), toSend, Optional.of("Stream started"));
+                } else {
+                    flushData(e.getKey(), toSend, Optional.empty());
+                }
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
@@ -156,13 +155,13 @@ class StreamingState extends State {
         }
     }
 
-    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data) {
-        final String evt = EventStream.createStreamEvent(
-                pk.partition,
-                String.valueOf(offsets.get(pk).getSentOffset()),
-                new ArrayList<>(data.values()),
-                Optional.empty());
+    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data, final Optional<String> metadata) {
         try {
+            final String evt = EventStream.createStreamEvent(
+                    pk.partition,
+                    String.valueOf(offsets.get(pk).getSentOffset()),
+                    new ArrayList<>(data.values()),
+                    metadata);
             getOut().streamData(evt.getBytes(EventStream.UTF8));
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);

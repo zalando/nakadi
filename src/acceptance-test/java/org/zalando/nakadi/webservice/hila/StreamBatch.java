@@ -1,6 +1,7 @@
 package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.domain.Cursor;
 
@@ -17,11 +18,14 @@ public class StreamBatch {
 
     private final Cursor cursor;
     private final List<Map> events;
+    private final JsonNode metadata;
 
     public StreamBatch(@JsonProperty("cursor") final Cursor cursor,
-                       @Nullable @JsonProperty("events") final List<Map> events) {
+                       @Nullable @JsonProperty("events") final List<Map> events,
+                       @JsonProperty("metadata") final JsonNode metadata) {
         this.cursor = cursor;
         this.events = Optional.ofNullable(events).orElse(ImmutableList.of());
+        this.metadata = metadata;
     }
 
     public Cursor getCursor() {
@@ -32,8 +36,10 @@ public class StreamBatch {
         return unmodifiableList(events);
     }
 
+    public JsonNode getMetadata() { return metadata; }
+
     public static StreamBatch singleEventBatch(final String partition, final String offset, final Map event) {
-        return new StreamBatch(new Cursor(partition, offset), ImmutableList.of(event));
+        return new StreamBatch(new Cursor(partition, offset), ImmutableList.of(event), null);
     }
 
     @Override

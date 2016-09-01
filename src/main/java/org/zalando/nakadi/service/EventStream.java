@@ -133,7 +133,7 @@ public class EventStream {
     }
 
     public static String createStreamEvent(final String partition, final String offset, final List<String> events,
-            final Optional<String> topology) {
+            final Optional<String> metadata) {
         final StringBuilder builder = new StringBuilder().append("{\"cursor\":{\"partition\":\"").append(partition)
                                                          .append("\",\"offset\":\"").append(offset).append("\"}");
         if (!events.isEmpty()) {
@@ -142,7 +142,12 @@ public class EventStream {
             builder.deleteCharAt(builder.length() - 1).append("]");
         }
 
+        if (metadata.isPresent()) {
+            builder.append(",\"metadata\":{\"debug\":\"").append(metadata.get()).append("\"}");
+        }
+
         builder.append("}").append(BATCH_SEPARATOR);
+
         return builder.toString();
     }
 
