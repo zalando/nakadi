@@ -74,12 +74,18 @@ public class CachingEventTypeRepository implements EventTypeRepository {
 
     @Override
     public void setEventTypeDeleted(final String name) throws InternalNakadiException, NoSuchEventTypeException {
+        final EventType original = this.repository.findByName(name);
         repository.setEventTypeDeleted(name);
         try {
             this.cache.removed(name);
         } catch (Exception e) {
-            LOG.error("Failed to update cache for event type '" + name + "'", e);
-            throw new InternalNakadiException("Failed to update event type", e);
+            LOG.error("Failed to remove entry from cache '" + name + "'");
+            try {
+                this.repository.saveEventType(original);
+            } catch (DuplicatedEventTypeNameException e1) {
+                LOG.error("Failed to rollback db removal", e);
+            }
+            throw new InternalNakadiException("Failed to remove event type", e);
         }
     }
 }

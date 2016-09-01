@@ -484,7 +484,7 @@ public class EventTypeControllerTest {
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
         verify(topicRepository, times(1)).createTopic(any(EventType.class));
-        verify(eventTypeRepository, times(1)).setEventTypeDeleted(randomUUID.toString());
+        verify(eventTypeRepository, times(1)).setEventTypeDeleted(et.getName());
     }
 
     @Test
