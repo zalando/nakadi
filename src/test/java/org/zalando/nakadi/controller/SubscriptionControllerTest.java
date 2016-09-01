@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -64,8 +65,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -403,7 +402,7 @@ public class SubscriptionControllerTest {
     }
 
     private ResultActions getSubscriptionStats(final String subscriptionId) throws Exception {
-        return mockMvcBuilder.build().perform(get(MessageFormat.format("/subscriptions/{0}/stats", subscriptionId)));
+        return mockMvcBuilder.build().perform(get(format("/subscriptions/{0}/stats", subscriptionId)));
     }
 
     private ResultActions getSubscriptions() throws Exception {

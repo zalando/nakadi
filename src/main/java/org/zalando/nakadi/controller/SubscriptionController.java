@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.ExceptionWrapper;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -181,7 +182,7 @@ public class SubscriptionController {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             final List<SubscriptionEventTypeStats> subscriptionStat =
                     subscriptionService.createSubscriptionStat(subscription);
-            return status(OK).body(new ItemsWrapper(subscriptionStat));
+            return status(OK).body(new ItemsWrapper<>(subscriptionStat));
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId, e);
             return create(e.asProblem(), request);
