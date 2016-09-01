@@ -2,19 +2,18 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.annotations.DB;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.annotations.DB;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.repository.EventTypeRepository;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -33,6 +32,10 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     @Override
     public void saveEventType(final EventType eventType) throws InternalNakadiException,
             DuplicatedEventTypeNameException {
+        if (findByNameO(eventType.getName()).isPresent()) {
+            throw new DuplicatedEventTypeNameException("EventType " + eventType.getName() + " already exists.");
+        }
+
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, ?::jsonb)",
@@ -41,8 +44,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
                     jsonMapper.writer().writeValueAsString(eventType));
         } catch (JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during persistence of event type", e);
-        } catch (DuplicateKeyException e) {
-            throw new DuplicatedEventTypeNameException("EventType " + eventType.getName() + " already exists.", e);
         }
     }
 
