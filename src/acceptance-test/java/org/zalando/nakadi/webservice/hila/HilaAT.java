@@ -6,7 +6,6 @@ import org.hamcrest.core.StringContains;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
@@ -44,14 +43,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
-import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 
 public class HilaAT extends BaseAT {
 
@@ -243,10 +234,10 @@ public class HilaAT extends BaseAT {
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
-                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper(subscriptionStats))));
+                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
 
         final String partition = client.getBatches().get(0).getCursor().getPartition();
-        final Cursor cursor = new Cursor(partition, "9");
+        final SubscriptionCursor cursor = new SubscriptionCursor(partition, "9", eventType.getName(), "token");
         commitCursors(subscription.getId(), ImmutableList.of(cursor));
 
         subscriptionStats =
@@ -257,7 +248,7 @@ public class HilaAT extends BaseAT {
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
-                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper(subscriptionStats))));
+                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
     }
 
 }
