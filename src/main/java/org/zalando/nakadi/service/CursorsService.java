@@ -76,13 +76,12 @@ public class CursorsService {
             throws NakadiException, InvalidCursorException {
 
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+        createSubscriptionInZkIfNeeded(subscription);
 
         boolean allCommitted = true;
         for (final String eventTypeName : subscription.getEventTypes()) {
 
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            createSubscriptionInZkIfNeeded(subscription);
-
             final List<SubscriptionCursor> eventTypeCursors = cursors.stream()
                     .filter(cursor -> eventTypeName.equals(cursor.getEventType()))
                     .collect(Collectors.toList());
