@@ -79,19 +79,13 @@ public class CursorsService {
         createSubscriptionInZkIfNeeded(subscription);
 
         boolean allCommitted = true;
-        for (final String eventTypeName : subscription.getEventTypes()) {
+        for (final SubscriptionCursor cursor: cursors) {
 
-            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            final List<SubscriptionCursor> eventTypeCursors = cursors.stream()
-                    .filter(cursor -> eventTypeName.equals(cursor.getEventType()))
-                    .collect(Collectors.toList());
+            final EventType eventType = eventTypeRepository.findByName(cursor.getEventType());
+            topicRepository.validateCommitCursors(eventType.getTopic(), ImmutableList.of(cursor));
 
-            topicRepository.validateCommitCursors(eventType.getTopic(), eventTypeCursors);
-
-            for (final SubscriptionCursor cursor : eventTypeCursors) {
-                final boolean cursorCommitted = commitCursor(subscriptionId, eventType.getTopic(), cursor);
-                allCommitted = allCommitted && cursorCommitted;
-            }
+            final boolean cursorCommitted = commitCursor(subscriptionId, eventType.getTopic(), cursor);
+            allCommitted = allCommitted && cursorCommitted;
         }
         return allCommitted;
     }
