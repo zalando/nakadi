@@ -1,7 +1,6 @@
 package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -144,8 +143,9 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.setEventTypeDeleted(eventType.getName());
 
-        final EventType eventTypeInDb = repository.findByName(eventType.getName());
-        Assert.assertEquals(true, eventTypeInDb.isDeleted());
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type WHERE et_deleted = TRUE",
+                Integer.class);
+        assertThat("Number of rows should encrease", rows, equalTo(1));
     }
 
     private void insertEventType(final EventType eventType) throws Exception {
