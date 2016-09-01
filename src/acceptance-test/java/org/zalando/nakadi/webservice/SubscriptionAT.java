@@ -8,9 +8,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
@@ -20,7 +20,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 import static com.jayway.restassured.RestAssured.get;
@@ -29,6 +28,7 @@ import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -128,7 +128,9 @@ public class SubscriptionAT extends BaseAT {
 
         final Subscription subscription = createSubscriptionForEventType(etName);
 
-        commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"25\"}]")
+        String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
+                "\",\"cursor_token\":\"abc\"}]";
+        commitCursors(subscription, cursor)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
@@ -138,7 +140,9 @@ public class SubscriptionAT extends BaseAT {
         assertThat(committedOffset, equalTo("25"));
 
         // commit lower offsets and expect 204
-        commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"10\"}]")
+        cursor = "[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
+                "\",\"cursor_token\":\"abc\"}]";
+        commitCursors(subscription, cursor)
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
@@ -151,12 +155,19 @@ public class SubscriptionAT extends BaseAT {
     public void testGetSubscriptionCursors() throws IOException {
         final String etName = createEventType().getName();
         final Subscription subscription = createSubscriptionForEventType(etName);
-        commitCursors(subscription, "[{\"partition\":\"0\",\"offset\":\"25\"}]")
+        String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
+                "\",\"cursor_token\":\"abc\"}]";
+        commitCursors(subscription, cursor)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
-        final List<Cursor> actualCursors = getSubscriptionCursors(subscription);
-        Assert.assertEquals(Collections.singletonList(new Cursor("0", "25")), actualCursors);
+        final List<SubscriptionCursor> actualCursors = getSubscriptionCursors(subscription);
+        assertThat(actualCursors, hasSize(1));
+
+        final SubscriptionCursor actualCursor = actualCursors.get(0);
+        assertThat(actualCursor.getPartition(), equalTo("0"));
+        assertThat(actualCursor.getOffset(), equalTo("25"));
+        assertThat(actualCursor.getEventType(), equalTo(etName));
     }
 
     @Test
@@ -181,9 +192,9 @@ public class SubscriptionAT extends BaseAT {
                 .put(format(CURSORS_URL, subscription.getId()));
     }
 
-    private List<Cursor> getSubscriptionCursors(final Subscription subscription) throws IOException {
+    private List<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription) throws IOException {
         final Response response = given().get(format(CURSORS_URL, subscription.getId()));
-        return MAPPER.readValue(response.print(), new TypeReference<List<Cursor>>() {});
+        return MAPPER.readValue(response.print(), new TypeReference<List<SubscriptionCursor>>() {});
     }
 
     private String getCommittedOffsetFromZk(final String topic, final Subscription subscription,
