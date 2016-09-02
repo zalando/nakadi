@@ -60,7 +60,7 @@ public class EventType {
     private Set<String> readScopes;
 
     @JsonIgnore
-    private boolean deleted;
+    private boolean archived;
 
     public EventType() {
         this.validationStrategies = Collections.emptyList();
@@ -195,11 +195,11 @@ public class EventType {
         this.readScopes = readScopes == null ? Collections.emptySet() : readScopes;
     }
 
-    public boolean isDeleted() {
-        return deleted;
+    public boolean isArchived() {
+        return archived;
     }
 
-    public void setDeleted(final boolean deleted) {
-        this.deleted = deleted;
+    public void setArchived(final boolean archived) {
+        this.archived = archived;
     }
 }

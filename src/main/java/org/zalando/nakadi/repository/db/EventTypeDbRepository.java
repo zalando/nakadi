@@ -49,8 +49,8 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
 
     @Override
     public EventType findByName(final String name) throws NoSuchEventTypeException {
-        final String sql = "SELECT et_topic, et_event_type_object, et_deleted " +
-                "FROM zn_data.event_type WHERE et_name = ? AND et_deleted = FALSE";
+        final String sql = "SELECT et_topic, et_event_type_object, et_archived " +
+                "FROM zn_data.event_type WHERE et_name = ? AND et_archived = FALSE";
 
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{name}, new EventTypeMapper());
@@ -78,7 +78,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
             try {
                 final EventType eventType = jsonMapper.readValue(rs.getString("et_event_type_object"), EventType.class);
                 eventType.setTopic(rs.getString("et_topic"));
-                eventType.setDeleted(rs.getBoolean("et_deleted"));
+                eventType.setArchived(rs.getBoolean("et_archived"));
                 return eventType;
             } catch (IOException e) {
                 throw new SQLException(e);
@@ -89,15 +89,15 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     @Override
     public List<EventType> list() {
         return jdbcTemplate.query(
-                "SELECT et_topic, et_event_type_object, et_deleted FROM zn_data.event_type WHERE et_deleted = FALSE",
+                "SELECT et_topic, et_event_type_object, et_archived FROM zn_data.event_type WHERE et_archived = FALSE",
                 new EventTypeMapper());
     }
 
     @Override
-    public void setEventTypeDeleted(final String name) throws InternalNakadiException, NoSuchEventTypeException {
+    public void archiveEventType(final String name) throws InternalNakadiException, NoSuchEventTypeException {
         try {
             final int updatedRows = jdbcTemplate.update(
-                    "UPDATE zn_data.event_type SET et_deleted = ? WHERE et_name = ?", true, name);
+                    "UPDATE zn_data.event_type SET et_archived = ? WHERE et_name = ?", true, name);
             if (updatedRows == 0) {
                 throw new NoSuchEventTypeException("EventType " + name + " doesn't exist");
             }

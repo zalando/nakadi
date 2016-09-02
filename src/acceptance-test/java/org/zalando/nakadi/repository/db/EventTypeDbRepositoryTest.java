@@ -141,7 +141,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         final EventType eventType = buildDefaultEventType();
         insertEventType(eventType);
 
-        repository.setEventTypeDeleted(eventType.getName());
+        repository.archiveEventType(eventType.getName());
 
         final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type WHERE et_deleted = TRUE",
                 Integer.class);

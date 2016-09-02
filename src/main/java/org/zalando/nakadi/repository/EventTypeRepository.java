@@ -18,7 +18,7 @@ public interface EventTypeRepository {
 
     List<EventType> list();
 
-    void setEventTypeDeleted(String name) throws InternalNakadiException, NoSuchEventTypeException;
+    void archiveEventType(String name) throws InternalNakadiException, NoSuchEventTypeException;
 
     default Optional<EventType> findByNameO(final String eventTypeName) throws InternalNakadiException {
         try {

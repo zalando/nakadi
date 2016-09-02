@@ -40,7 +40,7 @@ public class CachingEventTypeRepository implements EventTypeRepository {
         } catch (Exception e) {
             LOG.error("Failed to create new cache entry for event type '" + eventType.getName() + "'", e);
             try {
-                this.repository.setEventTypeDeleted(eventType.getName());
+                this.repository.archiveEventType(eventType.getName());
             } catch (NoSuchEventTypeException e1) {
                 LOG.error("Failed to revert event type db persistence", e1);
             }
@@ -73,9 +73,9 @@ public class CachingEventTypeRepository implements EventTypeRepository {
     }
 
     @Override
-    public void setEventTypeDeleted(final String name) throws InternalNakadiException, NoSuchEventTypeException {
+    public void archiveEventType(final String name) throws InternalNakadiException, NoSuchEventTypeException {
         final EventType original = this.repository.findByName(name);
-        repository.setEventTypeDeleted(name);
+        repository.archiveEventType(name);
         try {
             this.cache.removed(name);
         } catch (Exception e) {

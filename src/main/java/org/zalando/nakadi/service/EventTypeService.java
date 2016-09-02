@@ -81,7 +81,7 @@ public class EventTypeService {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
 
             try {
-                eventTypeRepository.setEventTypeDeleted(eventType.getName());
+                eventTypeRepository.archiveEventType(eventType.getName());
             } catch (final NakadiException e1) {
                 return Result.problem(e.asProblem());
             }
@@ -100,7 +100,7 @@ public class EventTypeService {
             }
             client.checkId(eventType.get().getOwningApplication());
 
-            eventTypeRepository.setEventTypeDeleted(eventTypeName);
+            eventTypeRepository.archiveEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.get().getTopic());
             return Result.ok();
         } catch (final TopicDeletionException e) {
