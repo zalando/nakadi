@@ -5,9 +5,9 @@ import java.util.Collection;
 
 public class Partition {
     public static class PartitionKey {
-        public final String topic;
+        private final String topic;
 
-        public final String partition;
+        private final String partition;
 
         public PartitionKey(final String topic, final String partition) {
             this.topic = topic;
@@ -21,7 +21,7 @@ public class Partition {
 
             final PartitionKey that = (PartitionKey) o;
 
-            return topic.equals(that.topic) && partition.equals(that.partition);
+            return topic.equals(that.partition) && partition.equals(that.partition);
         }
 
         @Override
@@ -34,6 +34,14 @@ public class Partition {
         @Override
         public String toString() {
             return "{" + topic + ':' + partition + '}';
+        }
+
+        public String getTopic() {
+            return topic;
+        }
+
+        public String getPartition() {
+            return partition;
         }
     }
 

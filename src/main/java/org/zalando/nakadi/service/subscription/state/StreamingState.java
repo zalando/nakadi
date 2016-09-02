@@ -158,7 +158,7 @@ class StreamingState extends State {
 
     private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data) {
         final String evt = EventStream.createStreamEvent(
-                pk.partition,
+                pk.getPartition(),
                 String.valueOf(offsets.get(pk).getSentOffset()),
                 new ArrayList<>(data.values()),
                 Optional.empty());
@@ -297,7 +297,7 @@ class StreamingState extends State {
             final Map<Partition.PartitionKey, TopicPartition> kafkaKeys = currentNakadiAssignment.stream().collect(
                     Collectors.toMap(
                             k -> k,
-                            k -> new TopicPartition(k.topic, Integer.valueOf(k.partition))));
+                            k -> new TopicPartition(k.getTopic(), Integer.valueOf(k.getPartition()))));
             // Ignore order
             kafkaConsumer.assign(new ArrayList<>(kafkaKeys.values()));
             // Check if offsets are available in kafka

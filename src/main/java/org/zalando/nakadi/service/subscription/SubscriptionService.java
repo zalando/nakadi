@@ -134,7 +134,7 @@ public class SubscriptionService {
                 .append("'").toString();
     }
 
-    public UriComponents getSubscriptionUri(Subscription subscription) {
+    public UriComponents getSubscriptionUri(final Subscription subscription) {
         final UriComponents path = SUBSCRIPTION_PATH.buildAndExpand(subscription.getId());
         return path;
     }
@@ -179,7 +179,7 @@ public class SubscriptionService {
         }
     }
 
-    public Result<ItemsWrapper<List<SubscriptionEventTypeStats>>> getSubscriptionStat(String subscriptionId) {
+    public Result<ItemsWrapper<List<SubscriptionEventTypeStats>>> getSubscriptionStat(final String subscriptionId) {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription);
@@ -203,7 +203,7 @@ public class SubscriptionService {
                 .map(Optional::get)
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions = Arrays.stream(partitions)
-                            .filter(partition -> eventType.getTopic().equals(partition.getKey().topic))
+                            .filter(partition -> eventType.getTopic().equals(partition.getKey().getTopic()))
                             .map(ExceptionWrapper.wrapFunction(
                                     partition -> createPartition(zkSubscriptionClient, partition)))
                             .collect(Collectors.toSet());
@@ -214,11 +214,11 @@ public class SubscriptionService {
 
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,
                                                                  final Partition partition) throws NakadiException {
-        final String partitionName = partition.getKey().partition;
+        final String partitionName = partition.getKey().getPartition();
         final String partitionState = partition.getState().description;
         final String partitionSession = partition.getSession();
-        final TopicPartition topicPartition = topicRepository.getPartition(partition.getKey().topic,
-                partition.getKey().partition);
+        final TopicPartition topicPartition = topicRepository.getPartition(partition.getKey().getTopic(),
+                partition.getKey().getPartition());
         final long clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
         final long total = Long.valueOf(topicPartition.getNewestAvailableOffset());
         final long unconsumedEvents = total - clientOffset;
