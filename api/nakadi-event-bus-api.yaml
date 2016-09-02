@@ -1024,6 +1024,24 @@ definitions:
         description: |
           Provides ability to set internal Nakadi parameters.
 
+      write_scopes:
+        type: array
+        items:
+          type: string
+        description: |
+          This field is used for event publishing access control. Nakadi only authorises publishers whose session
+          contains at least one of the scopes in this list.
+          If no scopes provided then anyone can publish to this event type.
+
+      read_scopes:
+        type: array
+        items:
+          type: string
+        description: |
+          This field is used for event consuming access control. Nakadi only authorises consumers whose session
+          contains at least one of the scopes in this list.
+          If no scopes provided then anyone can consume from this event type.
+
     required:
       - name
       - category

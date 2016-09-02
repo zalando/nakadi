@@ -400,7 +400,9 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public void validateCommitCursors(final String topic, final List<Cursor> cursors) throws InvalidCursorException {
+    @Override
+    public void validateCommitCursors(final String topic, final List<? extends Cursor> cursors)
+            throws InvalidCursorException {
         final List<String> partitions = this.listPartitionNames(topic);
         for (final Cursor cursor : cursors) {
             validateCursorForNulls(cursor);

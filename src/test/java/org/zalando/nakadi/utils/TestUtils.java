@@ -16,18 +16,23 @@ import org.springframework.validation.FieldError;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.IntStream.range;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 
 public class TestUtils {
 
@@ -166,6 +171,12 @@ public class TestUtils {
         final long maxMillis = new DateTime().getMillis();
         final long randomMillis = Math.round(Math.random() * maxMillis);
         return new DateTime(randomMillis, DateTimeZone.UTC);
+    }
+
+    public static List<Subscription> createRandomSubscriptions(final int count) {
+        return range(0, count)
+                .mapToObj(i -> randomSubscription().build())
+                .collect(toList());
     }
 
 }
