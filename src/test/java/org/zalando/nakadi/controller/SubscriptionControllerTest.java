@@ -18,10 +18,12 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -42,25 +44,27 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
-import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.IntStream.range;
+import static java.text.MessageFormat.format;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -69,7 +73,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
+import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
@@ -258,32 +264,70 @@ public class SubscriptionControllerTest {
     }
 
     @Test
-    public void whenListSubscriptionsThenOk() throws Exception {
+    public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptions()).thenReturn(subscriptions);
-        final ItemsWrapper subscriptionList = new ItemsWrapper(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        final SubscriptionListWrapper subscriptionList =
+                new SubscriptionListWrapper(subscriptions, new PaginationLinks());
 
-        getSubscriptions(Optional.empty())
+        getSubscriptions()
                 .andExpect(status().isOk())
                 .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
+
+        verify(subscriptionRepository, times(1)).listSubscriptions(ImmutableSet.of(), Optional.empty(), 0, 20);
     }
 
     @Test
-    public void whenListSubscriptionsForOwningAppThenOk() throws Exception {
+    public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
-        when(subscriptionRepository.listSubscriptionsForOwningApplication("blahApp")).thenReturn(subscriptions);
-        final ItemsWrapper subscriptionList = new ItemsWrapper(subscriptions);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+        final SubscriptionListWrapper subscriptionList =
+                new SubscriptionListWrapper(subscriptions, new PaginationLinks());
 
-        getSubscriptions(Optional.of("blahApp"))
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 0, 30)
                 .andExpect(status().isOk())
                 .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
+
+        verify(subscriptionRepository, times(1))
+                .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 0, 30);
     }
 
     @Test
     public void whenListSubscriptionsAndExceptionThenServiceUnavailable() throws Exception {
-        when(subscriptionRepository.listSubscriptions()).thenThrow(new ServiceUnavailableException("dummy message"));
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt()))
+                .thenThrow(new ServiceUnavailableException("dummy message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
-        checkForProblem(getSubscriptions(Optional.empty()), expectedProblem);
+        checkForProblem(getSubscriptions(), expectedProblem);
+    }
+
+    @Test
+    public void whenListSubscriptionsWithNegativeOffsetThenBadRequest() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(BAD_REQUEST, "'offset' parameter can't be lower than 0");
+        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", -5, 10), expectedProblem);
+    }
+
+    @Test
+    public void whenListSubscriptionsWithIncorrectLimitThenBadRequest() throws Exception {
+        final Problem expectedProblem = Problem.valueOf(BAD_REQUEST,
+                "'limit' parameter should have value from 1 to 1000");
+        checkForProblem(getSubscriptions(ImmutableSet.of("et"), "app", 0, -5), expectedProblem);
+    }
+
+    @Test
+    public void whenListSubscriptionsThenPaginationIsOk() throws Exception {
+        final List<Subscription> subscriptions = createRandomSubscriptions(10);
+        when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
+
+        final PaginationLinks.Link prevLink = new PaginationLinks.Link(
+                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=4&limit=10");
+        final PaginationLinks.Link nextLink = new PaginationLinks.Link(
+                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=6&limit=10");
+        final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
+        final SubscriptionListWrapper expectedResult = new SubscriptionListWrapper(subscriptions, links);
+
+        getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 5, 10)
+                .andExpect(status().isOk())
+                .andExpect(content().string(jsonHelper.matchesObject(expectedResult)));
     }
 
     @Test
@@ -358,10 +402,16 @@ public class SubscriptionControllerTest {
     }
 
     private ResultActions getSubscriptionStats(final String subscriptionId) throws Exception {
-        return mockMvcBuilder.build().perform(get(MessageFormat.format("/subscriptions/{0}/stats", subscriptionId)));
+        return mockMvcBuilder.build().perform(get(format("/subscriptions/{0}/stats", subscriptionId)));
     }
-    private ResultActions getSubscriptions(final Optional<String> owningApplication) throws Exception {
-        final String url = "/subscriptions" + owningApplication.map(app -> "?owning_application=" + app).orElse("");
+
+    private ResultActions getSubscriptions() throws Exception {
+        return mockMvcBuilder.build().perform(get("/subscriptions"));
+    }
+
+    private ResultActions getSubscriptions(final Set<String> eventTypes, final String owningApp, final int offset,
+                                           final int limit) throws Exception {
+        final String url = createSubscriptionListUri(Optional.of(owningApp), eventTypes, offset, limit);
         return mockMvcBuilder.build().perform(get(url));
     }
 
@@ -401,7 +451,7 @@ public class SubscriptionControllerTest {
     }
 
     private ResultActions getSubscription(final String subscriptionId) throws Exception {
-        return mockMvcBuilder.build().perform(get(MessageFormat.format("/subscriptions/{0}", subscriptionId)));
+        return mockMvcBuilder.build().perform(get(format("/subscriptions/{0}", subscriptionId)));
     }
 
     private void checkForProblem(final ResultActions resultActions, final Problem expectedProblem) throws Exception {
@@ -409,12 +459,6 @@ public class SubscriptionControllerTest {
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
-    }
-
-    private List<Subscription> createRandomSubscriptions(final int count) {
-        return range(0, count)
-                .mapToObj(i -> randomSubscription().build())
-                .collect(toList());
     }
 
     private ResultActions postSubscription(final SubscriptionBase subscriptionBase) throws Exception {
