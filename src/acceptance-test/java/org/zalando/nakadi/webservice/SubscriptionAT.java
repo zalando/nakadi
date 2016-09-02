@@ -12,8 +12,6 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
-import org.zalando.nakadi.domain.ItemsWrapper;
-import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
