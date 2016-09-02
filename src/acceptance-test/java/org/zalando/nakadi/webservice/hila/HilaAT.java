@@ -140,8 +140,10 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "") // commit_timeout is 5 seconds for test
                 .start();
 
-        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+        waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
+        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
+                ImmutableMap.of(), "Commit timeout reached")));
     }
 
     @Test(timeout = 15000)

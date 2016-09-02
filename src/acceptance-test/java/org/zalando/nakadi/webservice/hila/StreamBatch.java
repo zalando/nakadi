@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
+import org.json.JSONObject;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 
 import javax.annotation.Nullable;
@@ -22,11 +23,11 @@ public class StreamBatch {
 
     private final SubscriptionCursor cursor;
     private final List<Map> events;
-    private final JsonNode metadata;
+    private final JSONObject metadata;
 
     public StreamBatch(@JsonProperty("cursor") final SubscriptionCursor cursor,
                        @Nullable @JsonProperty("events") final List<Map> events,
-                       @JsonProperty("metadata") final JsonNode metadata) {
+                       @Nullable @JsonProperty("metadata") final JSONObject metadata) {
         this.cursor = cursor;
         this.events = Optional.ofNullable(events).orElse(ImmutableList.of());
         this.metadata = metadata;
@@ -40,8 +41,14 @@ public class StreamBatch {
         return unmodifiableList(events);
     }
 
-    public JsonNode getMetadata() {
+    public JSONObject getMetadata() {
         return metadata;
+    }
+
+    public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
+                                               final Map event, String metadata) {
+        return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
+                ImmutableList.of(event), new JSONObject("{\"debug\":\""+metadata+"\"}"));
     }
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
@@ -91,7 +98,8 @@ public class StreamBatch {
             return batch.getEvents().equals(batchTocheck.getEvents()) &&
                     cursor.getPartition().equals(cursorToCheck.getPartition()) &&
                     cursor.getOffset().equals(cursorToCheck.getOffset()) &&
-                    cursor.getEventType().equals(cursorToCheck.getEventType());
+                    cursor.getEventType().equals(cursorToCheck.getEventType()) &&
+                    batch.getMetadata().equals(batchTocheck.getMetadata());
         }
 
         @Override
