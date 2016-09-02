@@ -8,13 +8,13 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
@@ -103,7 +103,7 @@ public class NakadiTestUtils {
         return MAPPER.readValue(response.print(), Subscription.class);
     }
 
-    public static int commitCursors(final String subscriptionId, final List<Cursor> cursors)
+    public static int commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors)
             throws JsonProcessingException {
         return given()
                 .body(MAPPER.writeValueAsString(cursors))

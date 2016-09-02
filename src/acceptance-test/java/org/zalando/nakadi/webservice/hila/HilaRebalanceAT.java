@@ -1,9 +1,9 @@
 package org.zalando.nakadi.webservice.hila;
 
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.junit.Before;
@@ -67,9 +67,9 @@ public class HilaRebalanceAT extends BaseAT {
                         equalTo(5L)));
 
         // commit what we consumed
-        final List<Cursor> cursors = range(0, 8)
+        final List<SubscriptionCursor> cursors = range(0, 8)
                 .boxed()
-                .map(partition -> new Cursor(String.valueOf(partition), "4"))
+                .map(partition -> new SubscriptionCursor(String.valueOf(partition), "4", eventType.getName(), "token"))
                 .collect(toList());
         commitCursors(subscription.getId(), cursors);
 
@@ -103,7 +103,8 @@ public class HilaRebalanceAT extends BaseAT {
 
         // commit what we consumed, as clientB has already consumed what was required by stream_limit - it should
         // be closed right after everything is committed
-        final List<Cursor> lastCursors = getLastCursorsForPartitions(clientA, clientAPartitionsAfterRebalance);
+        final List<SubscriptionCursor> lastCursors =
+                getLastCursorsForPartitions(clientA, clientAPartitionsAfterRebalance);
         lastCursors.addAll(getLastCursorsForPartitions(clientB, clientBPartitions));
         commitCursors(subscription.getId(), lastCursors);
         waitFor(() -> assertThat(clientB.isRunning(), is(false)));
@@ -139,7 +140,8 @@ public class HilaRebalanceAT extends BaseAT {
         waitFor(() -> assertThat(clientB.getBatches(), hasSize(20)));
     }
 
-    public List<Cursor> getLastCursorsForPartitions(final TestStreamingClient client, final Set<String> partitions) {
+    public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,
+                                                                final Set<String> partitions) {
         if (!client.getBatches().isEmpty()) {
             return partitions.stream()
                     .map(partition -> client.getBatches().stream()
