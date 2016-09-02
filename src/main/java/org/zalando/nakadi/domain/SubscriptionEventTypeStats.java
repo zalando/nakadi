@@ -7,16 +7,16 @@ import java.util.Set;
 @Immutable
 public class SubscriptionEventTypeStats {
 
-    private final String eventTypeName;
+    private final String eventType;
     private final Set<Partition> partitions;
 
-    public SubscriptionEventTypeStats(final String eventTypeName, final Set<Partition> partitions) {
-        this.eventTypeName = eventTypeName;
+    public SubscriptionEventTypeStats(final String eventType, final Set<Partition> partitions) {
+        this.eventType = eventType;
         this.partitions = partitions;
     }
 
-    public String getEventTypeName() {
-        return eventTypeName;
+    public String getEventType() {
+        return eventType;
     }
 
     public Set<Partition> getPartitions() {
