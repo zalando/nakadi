@@ -36,7 +36,9 @@ public class StreamBatch {
         return unmodifiableList(events);
     }
 
-    public JsonNode getMetadata() { return metadata; }
+    public JsonNode getMetadata() {
+        return metadata;
+    }
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final Map event) {
         return new StreamBatch(new Cursor(partition, offset), ImmutableList.of(event), null);
