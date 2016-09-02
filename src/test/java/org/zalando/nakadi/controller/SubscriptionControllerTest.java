@@ -105,10 +105,11 @@ public class SubscriptionControllerTest {
         when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
 
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
-        final SubscriptionService subscriptionService = new SubscriptionService(zkSubscriptionClientFactory,
+        final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
+                zkSubscriptionClientFactory,
                 topicRepository, eventTypeRepository);
-        final SubscriptionController controller = new SubscriptionController(subscriptionRepository,
-                eventTypeRepository, featureToggleService, applicationService, subscriptionService);
+        final SubscriptionController controller = new SubscriptionController(featureToggleService, applicationService,
+                subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
         doReturn(true).when(applicationService).exists(any());
