@@ -9,7 +9,16 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -155,7 +164,8 @@ class StreamingState extends State {
         }
     }
 
-    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data, final Optional<String> metadata) {
+    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
+                           final Optional<String> metadata) {
         try {
             final String evt = EventStream.createStreamEvent(
                     pk.partition,
