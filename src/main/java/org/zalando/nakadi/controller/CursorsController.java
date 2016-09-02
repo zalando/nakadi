@@ -1,6 +1,6 @@
 package org.zalando.nakadi.controller;
 
-import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.service.CursorsService;
@@ -47,7 +47,7 @@ public class CursorsController {
         }
 
         try {
-            final List<Cursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId);
+            final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId);
             return status(OK).body(cursors);
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
@@ -56,7 +56,7 @@ public class CursorsController {
 
     @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.PUT)
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
-                                           @RequestBody final List<Cursor> cursors,
+                                           @RequestBody final List<SubscriptionCursor> cursors,
                                            final NativeWebRequest request) {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
