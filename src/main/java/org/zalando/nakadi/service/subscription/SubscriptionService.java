@@ -15,7 +15,6 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,9 +39,7 @@ public class SubscriptionService {
                 zkSubscriptionClientFactory.createZkSubscriptionClient(subscription.getId());
         final Partition[] partitions = zkSubscriptionClient.listPartitions();
         return subscription.getEventTypes().stream()
-                .map(ExceptionWrapper.wrapFunction(eventTypeRepository::findByNameO))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+                .map(ExceptionWrapper.wrapFunction(eventTypeRepository::findByName))
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions = Arrays.stream(partitions)
                             .filter(partition -> eventType.getTopic().equals(partition.getKey().topic))
