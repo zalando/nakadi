@@ -3,8 +3,8 @@ package org.zalando.nakadi.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -40,8 +40,13 @@ public class CursorsControllerTest {
     private static final String PROBLEM_CONTENT_TYPE = "application/problem+json";
     private static final String SUBSCRIPTION_ID = "my-sub";
 
-    private static final ImmutableList<Cursor> DUMMY_CURSORS =
-            ImmutableList.of(new Cursor("0", "10"), new Cursor("1", "10"));
+    private static final String MY_ET = "my-et";
+    private static final String TOKEN = "cursor-token";
+
+    private static final ImmutableList<SubscriptionCursor> DUMMY_CURSORS =
+            ImmutableList.of(
+                    new SubscriptionCursor("0", "10", MY_ET, TOKEN),
+                    new SubscriptionCursor("1", "10", MY_ET, TOKEN));
 
     private final CursorsService cursorsService = mock(CursorsService.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
@@ -99,7 +104,8 @@ public class CursorsControllerTest {
     @Test
     public void whenInvalidCursorExceptionThenUnprocessableEntity() throws Exception {
         when(cursorsService.commitCursors(any(), any()))
-                .thenThrow((new InvalidCursorException(CursorError.NULL_PARTITION, new Cursor(null, null))));
+                .thenThrow((new InvalidCursorException(CursorError.NULL_PARTITION,
+                        new SubscriptionCursor(null, null, null, null))));
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "partition must not be null");
 
@@ -117,8 +123,7 @@ public class CursorsControllerTest {
         when(cursorsService.getSubscriptionCursors(SUBSCRIPTION_ID)).thenReturn(DUMMY_CURSORS);
         getCursors()
                 .andExpect(status().is(HttpStatus.OK.value()))
-                .andExpect(content()
-                        .string("[{\"partition\":\"0\",\"offset\":\"10\"},{\"partition\":\"1\",\"offset\":\"10\"}]"));
+                .andExpect(content().string(objectMapper.writeValueAsString(DUMMY_CURSORS)));
     }
 
     @Test
@@ -139,7 +144,7 @@ public class CursorsControllerTest {
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
-    private ResultActions putCursors(final List<Cursor> cursors) throws Exception {
+    private ResultActions putCursors(final List<SubscriptionCursor> cursors) throws Exception {
         return putCursorsString(objectMapper.writeValueAsString(cursors));
     }
 
