@@ -90,8 +90,8 @@ public class SubscriptionService {
                 .collect(Collectors.toList());
 
         if (!missingEventTypes.isEmpty()) {
-            final Problem problem =
-                    Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, createErrorMessage(missingEventTypes));
+            final Problem problem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                    createMissingEventsErrorMessage(missingEventTypes));
             return Result.problem(problem);
         }
 
@@ -127,7 +127,7 @@ public class SubscriptionService {
                 subscriptionBase.getConsumerGroup());
     }
 
-    private String createErrorMessage(final List<String> missingEventTypes) {
+    private String createMissingEventsErrorMessage(final List<String> missingEventTypes) {
         return new StringBuilder()
                 .append("Failed to create subscription, event type(s) not found: '")
                 .append(StringUtils.join(missingEventTypes, "','"))
@@ -141,12 +141,13 @@ public class SubscriptionService {
 
     public Result listSubscriptions(final String owningApplication, final Set<String> eventTypes, final int limit,
                                     final int offset) {
-        if(limit< 1||limit >1000) {
+        if(limit< 1 || limit >1000) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
                     "'limit' parameter should have value from 1 to 1000");
             return Result.problem(problem);
         }
-        if(offset< 0) {
+
+        if(offset < 0) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
                     "'offset' parameter can't be lower than 0");
             return Result.problem(problem);
@@ -179,11 +180,11 @@ public class SubscriptionService {
         }
     }
 
-    public Result<ItemsWrapper<List<SubscriptionEventTypeStats>>> getSubscriptionStat(final String subscriptionId) {
+    public Result<ItemsWrapper<SubscriptionEventTypeStats>> getSubscriptionStat(final String subscriptionId) {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription);
-            return new Result.Success<>(new ItemsWrapper(subscriptionStat));
+            return new Result.Success<>(new ItemsWrapper<>(subscriptionStat));
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId, e);
             return Result.problem(e.asProblem());
