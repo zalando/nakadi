@@ -46,8 +46,7 @@ public class CursorsController {
     public CursorsController(final CursorsService cursorsService,
                              final FeatureToggleService featureToggleService,
                              final SubscriptionDbRepository subscriptionRepository,
-                             final EventTypeRepository eventTypeRepository)
-    {
+                             final EventTypeRepository eventTypeRepository) {
         this.cursorsService = cursorsService;
         this.featureToggleService = featureToggleService;
         this.subscriptionRepository = subscriptionRepository;
@@ -81,8 +80,8 @@ public class CursorsController {
 
         try {
             validateSubscriptionReadScopes(client, subscriptionId);
-            Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(subscriptionId, cursors);
-            List<CursorCommitResult> items = result.entrySet().stream()
+            final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(subscriptionId, cursors);
+            final List<CursorCommitResult> items = result.entrySet().stream()
                     .map(entry -> new CursorCommitResult(entry.getKey(), entry.getValue()))
                     .collect(Collectors.toList());
             return ok(new ItemsWrapper<>(items));
@@ -106,7 +105,7 @@ public class CursorsController {
         private final SubscriptionCursor cursor;
         private final String result;
 
-        private CursorCommitResult(SubscriptionCursor cursor, boolean result) {
+        private CursorCommitResult(final SubscriptionCursor cursor, final boolean result) {
             this.cursor = cursor;
             this.result = result ? "committed" : "outdated";
         }
