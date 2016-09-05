@@ -1194,8 +1194,9 @@ definitions:
             This maps Kafka offsets just by converting to hexadecimals.
           - offsets for empty partitions have a special value of BEGIN.
           - offsets are fully ordered and comparable lexicographicaly.
-          - it's not possible to determine how many events there are between two offsets from different timelines.
-          - timeline and index are always padded by zeros.
+          - it's not possible to determine how many events there are between two offsets. Check
+            SubscriptionEventTypeStats for that.
+          - timeline and index are zero padded.
   SubscriptionCursor:
     allOf:
       - $ref: '#/definitions/Cursor'
