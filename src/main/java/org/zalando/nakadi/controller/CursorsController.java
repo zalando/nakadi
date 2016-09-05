@@ -23,10 +23,11 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
-import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
@@ -80,8 +81,11 @@ public class CursorsController {
 
         try {
             validateSubscriptionReadScopes(client, subscriptionId);
-            final boolean allCommitted = cursorsService.commitCursors(subscriptionId, cursors);
-            return allCommitted ? ok().build() : noContent().build();
+            Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(subscriptionId, cursors);
+            List<CursorCommitResult> items = result.entrySet().stream()
+                    .map(entry -> new CursorCommitResult(entry.getKey(), entry.getValue()))
+                    .collect(Collectors.toList());
+            return ok(new ItemsWrapper<>(items));
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
         } catch (InvalidCursorException e) {
@@ -95,5 +99,24 @@ public class CursorsController {
                 .getEventTypes().stream().map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)
                 .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+    }
+
+    private static class CursorCommitResult {
+
+        private final SubscriptionCursor cursor;
+        private final String result;
+
+        private CursorCommitResult(SubscriptionCursor cursor, boolean result) {
+            this.cursor = cursor;
+            this.result = result ? "committed" : "outdated";
+        }
+
+        public SubscriptionCursor getCursor() {
+            return cursor;
+        }
+
+        public String getResult() {
+            return result;
+        }
     }
 }

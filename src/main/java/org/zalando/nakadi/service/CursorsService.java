@@ -5,10 +5,13 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -30,6 +33,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
@@ -72,22 +76,25 @@ public class CursorsService {
         this.cursorTokenService = cursorTokenService;
     }
 
-    public boolean commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors)
+    public Map<SubscriptionCursor, Boolean> commitCursors(final String subscriptionId,
+                                                          final List<SubscriptionCursor> cursors)
             throws NakadiException, InvalidCursorException {
 
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         createSubscriptionInZkIfNeeded(subscription);
 
-        boolean allCommitted = true;
-        for (final SubscriptionCursor cursor : cursors) {
+        return cursors.stream().collect(Collectors.toMap(Function.identity(),
+                Try.<SubscriptionCursor, Boolean>wrap(cursor -> processCursor(subscriptionId, cursor))
+                        .andThen(Try::getOrThrow)));
+    }
 
-            final EventType eventType = eventTypeRepository.findByName(cursor.getEventType());
-            topicRepository.validateCommitCursors(eventType.getTopic(), ImmutableList.of(cursor));
+    private boolean processCursor(final String subscriptionId, final SubscriptionCursor cursor)
+            throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
+            ServiceUnavailableException, NoSuchSubscriptionException {
+        final EventType eventType = eventTypeRepository.findByName(cursor.getEventType());
 
-            final boolean cursorCommitted = commitCursor(subscriptionId, eventType.getTopic(), cursor);
-            allCommitted = allCommitted && cursorCommitted;
-        }
-        return allCommitted;
+        topicRepository.validateCommitCursors(eventType.getTopic(), ImmutableList.of(cursor));
+        return commitCursor(subscriptionId, eventType.getTopic(), cursor);
     }
 
     private boolean commitCursor(final String subscriptionId, final String eventType, final SubscriptionCursor cursor)

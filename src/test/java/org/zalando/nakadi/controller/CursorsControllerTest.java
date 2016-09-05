@@ -8,6 +8,8 @@ import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -53,6 +55,8 @@ public class CursorsControllerTest {
     private final MockMvc mockMvc;
     private final JsonTestHelper jsonHelper;
     private final FeatureToggleService featureToggleService;
+    private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+    private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
 
     public CursorsControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -60,7 +64,8 @@ public class CursorsControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
-        final CursorsController controller = new CursorsController(cursorsService, featureToggleService, subscriptionRepository, eventTypeRepository);
+        final CursorsController controller = new CursorsController(cursorsService, featureToggleService,
+                subscriptionRepository, eventTypeRepository);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
 
