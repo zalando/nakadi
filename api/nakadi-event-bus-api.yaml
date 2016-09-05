@@ -1186,9 +1186,10 @@ definitions:
         description: |
           Offset of the event being pointed to. Regarding its format and guarantees:
 
-          - offsets have a fixed size of 26 characters ranging from 0 to F (Hexadecimals).
+          - offsets have a fixed size of 27 characters ranging from 0 to F (Hexadecimals).
           - the first 9 characters are used to define the timeline, a monotonically increasing sequence. Starts with
             000000001.
+          - its followed by the separator "/".
           - the remaining 17 characters defines the index, a strictly increasing sequence in the scope of a timeline.
             This maps Kafka offsets just by converting to hexadecimals.
           - offsets for empty partitions have a special value of BEGIN.
