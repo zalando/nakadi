@@ -1,8 +1,12 @@
 package org.zalando.nakadi.service;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
+import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
+import java.util.function.Supplier;
 
 public interface Result<T> {
 
@@ -30,6 +34,14 @@ public interface Result<T> {
 
     static Result<Void> notFound(final String message) {
         return problem(Problem.valueOf(Response.Status.NOT_FOUND, message));
+    }
+
+    static ResponseEntity<?> wrap(final Supplier<Result> supplier, final NativeWebRequest request) {
+        final Result result = supplier.get();
+        if (!result.isSuccessful()) {
+            return Responses.create(result.getProblem(), request);
+        }
+        return ResponseEntity.ok(result.getValue());
     }
 
     class Success<V> implements Result<V> {

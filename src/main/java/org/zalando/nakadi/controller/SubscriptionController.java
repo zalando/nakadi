@@ -19,7 +19,6 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.Result;
-import org.zalando.nakadi.service.WrappableResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.MoreStatus;
@@ -107,7 +106,7 @@ public class SubscriptionController {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
-        return WrappableResult.resultWrapper(() ->
+        return Result.wrap(() ->
                 subscriptionService.listSubscriptions(owningApplication, eventTypes, limit, offset), request);
     }
 
@@ -118,8 +117,7 @@ public class SubscriptionController {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
 
-        return WrappableResult.resultWrapper(() ->
-                subscriptionService.getSubscription(subscriptionId), request);
+        return Result.wrap(() -> subscriptionService.getSubscription(subscriptionId), request);
     }
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
@@ -129,8 +127,7 @@ public class SubscriptionController {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
 
-        return WrappableResult.resultWrapper(() ->
-                subscriptionService.getSubscriptionStat(subscriptionId), request);
+        return Result.wrap(() -> subscriptionService.getSubscriptionStat(subscriptionId), request);
     }
 
 }
