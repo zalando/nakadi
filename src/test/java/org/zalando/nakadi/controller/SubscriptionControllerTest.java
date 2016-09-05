@@ -26,6 +26,7 @@ import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
@@ -359,9 +360,10 @@ public class SubscriptionControllerTest {
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.listPartitions()).thenReturn(partitions);
         when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn(3l);
-        when(eventTypeRepository.findByNameO("myET"))
-                .thenReturn(Optional.of(EventTypeTestBuilder.builder().name("myET").topic("topic").build()));
-        when(topicRepository.getPartition("topic", "p1")).thenReturn(new TopicPartition("topic", "p1", "3", "13"));
+        when(eventTypeRepository.findByName("myET"))
+                .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
+        when(topicRepository.listPartitions(Collections.singleton("topic")))
+                .thenReturn(Collections.singletonList(new TopicPartition("topic", "p1", "3", "13")));
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
@@ -379,8 +381,8 @@ public class SubscriptionControllerTest {
         final Subscription subscription = randomSubscription().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[]{});
-        when(eventTypeRepository.findByNameO("myET"))
-                .thenReturn(Optional.of(EventTypeTestBuilder.builder().name("myET").topic("topic").build()));
+        when(eventTypeRepository.findByName("myET"))
+                .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats("myET", Collections.emptySet()));
@@ -394,11 +396,10 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = randomSubscription().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(eventTypeRepository.findByNameO("myET")).thenReturn(Optional.empty());
+        when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
         getSubscriptionStats(subscription.getId())
-                .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper(Collections.emptyList()))));
+                .andExpect(status().isNotFound());
     }
 
     private ResultActions getSubscriptionStats(final String subscriptionId) throws Exception {
