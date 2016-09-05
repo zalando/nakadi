@@ -143,7 +143,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.archiveEventType(eventType.getName());
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type WHERE et_deleted = TRUE",
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type WHERE et_archived = TRUE",
                 Integer.class);
         assertThat("Number of rows should encrease", rows, equalTo(1));
     }
