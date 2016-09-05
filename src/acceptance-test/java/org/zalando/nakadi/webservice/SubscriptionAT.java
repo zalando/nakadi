@@ -198,7 +198,7 @@ public class SubscriptionAT extends BaseAT {
     private ItemsWrapper<List<SubscriptionCursor>> getSubscriptionCursors(final Subscription subscription)
             throws IOException {
         final Response response = given().get(format(CURSORS_URL, subscription.getId()));
-        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<List<SubscriptionCursor>>>() {});
+        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
     }
 
     private String getCommittedOffsetFromZk(final String topic, final Subscription subscription,
