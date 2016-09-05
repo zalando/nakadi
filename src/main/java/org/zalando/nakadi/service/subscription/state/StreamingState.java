@@ -51,7 +51,11 @@ class StreamingState extends State {
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() -> this.shutdownGracefully("Stream timeout reached"), timeout,
+                timeout -> scheduleTask(() -> {
+                            final String debugMessage = "Stream timeout reached";
+                            this.sendMetadata(debugMessage);
+                            this.shutdownGracefully(debugMessage);
+                        }, timeout,
                         TimeUnit.MILLISECONDS));
 
         this.lastCommitMillis = System.currentTimeMillis();
@@ -64,7 +68,9 @@ class StreamingState extends State {
         if (hasUncommitted) {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
-                shutdownGracefully("Commit timeout reached");
+                final String debugMessage = "Commit timeout reached";
+                sendMetadata(debugMessage);
+                shutdownGracefully(debugMessage);
             } else {
                 scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis - millisFromLastCommit,
                         TimeUnit.MILLISECONDS);
@@ -74,10 +80,13 @@ class StreamingState extends State {
         }
     }
 
+    private void sendMetadata(final String metadata) {
+        offsets.entrySet().stream().findFirst()
+                .ifPresent(pk -> flushData(pk.getKey(), new TreeMap<>(), Optional.of(metadata)));
+    }
+
     private void shutdownGracefully(final String reason) {
         getLog().info("Shutting down gracefully. Reason: {}", reason);
-        offsets.entrySet().stream().findFirst()
-                .ifPresent(pk -> flushData(pk.getKey(), new TreeMap<>(), Optional.of(reason)));
 
         final Map<Partition.PartitionKey, Long> uncommitted = offsets.entrySet().stream()
                 .filter(e -> !e.getValue().isCommitted())
@@ -379,7 +388,9 @@ class StreamingState extends State {
                 streamToOutput();
             }
             if (getParameters().isStreamLimitReached(committedEvents)) {
-                shutdownGracefully("Stream limit in events reached: " + committedEvents);
+                final String debugMessage = "Stream limit in events reached: " + committedEvents;
+                sendMetadata(debugMessage);
+                shutdownGracefully(debugMessage);
             }
             if (releasingPartitions.containsKey(key) && data.isCommitted()) {
                 reassignCommitted();
