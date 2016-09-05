@@ -10,9 +10,9 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.utils.JsonTestHelper;
-import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -23,15 +23,6 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
-import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
 import static java.util.stream.IntStream.rangeClosed;
@@ -43,6 +34,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 
 public class HilaAT extends BaseAT {
 

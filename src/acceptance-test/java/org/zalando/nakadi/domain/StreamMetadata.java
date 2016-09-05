@@ -6,11 +6,11 @@ import javax.annotation.Nullable;
 
 public class StreamMetadata {
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        StreamMetadata that = (StreamMetadata) o;
+        final StreamMetadata that = (StreamMetadata) o;
 
         return debug != null ? debug.equals(that.debug) : that.debug == null;
 
@@ -21,7 +21,7 @@ public class StreamMetadata {
         return debug != null ? debug.hashCode() : 0;
     }
 
-    public StreamMetadata(@Nullable @JsonProperty("debug") String debug) {
+    public StreamMetadata(@Nullable @JsonProperty("debug") final String debug) {
         this.debug = debug;
     }
 
@@ -29,7 +29,7 @@ public class StreamMetadata {
         return debug;
     }
 
-    public void setDebug(String debug) {
+    public void setDebug(final String debug) {
         this.debug = debug;
     }
 

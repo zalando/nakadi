@@ -189,7 +189,8 @@ class StreamingState extends State {
     }
 
     private String serializeBatch(final Partition.PartitionKey partitionKey, final String offset,
-                                  final List<String> events, Optional<String> metadata) throws JsonProcessingException {
+                                  final List<String> events, final Optional<String> metadata)
+            throws JsonProcessingException {
 
         final String eventType = getContext().getEventTypesForTopics().get(partitionKey.topic);
         final String token = getContext().getCursorTokenService().generateToken();

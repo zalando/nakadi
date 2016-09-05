@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
-import org.json.JSONObject;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 
@@ -46,7 +45,7 @@ public class StreamBatch {
     }
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
-                                               final Map event, String metadata) {
+                                               final Map event, final String metadata) {
         if (event.isEmpty()) {
             return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
                     ImmutableList.of(), new StreamMetadata(metadata));
@@ -63,11 +62,11 @@ public class StreamBatch {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        StreamBatch that = (StreamBatch) o;
+        final StreamBatch that = (StreamBatch) o;
 
         if (!cursor.equals(that.cursor)) return false;
         if (events != null ? !events.equals(that.events) : that.events != null) return false;
