@@ -14,6 +14,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
@@ -33,7 +34,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
@@ -105,11 +105,11 @@ public class SubscriptionAT extends BaseAT {
         final String etName = createEventType().getName();
 
         final String filterApp = randomUUID();
-        final Subscription sub1 = createSubscription(randomSubscription()
+        final Subscription sub1 = createSubscription(RandomSubscriptionBuilder.builder()
                 .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
-        final Subscription sub2 = createSubscription(randomSubscription()
+        final Subscription sub2 = createSubscription(RandomSubscriptionBuilder.builder()
                 .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
-        createSubscription(randomSubscription().withEventType(etName).buildSubscriptionBase());
+        createSubscription(RandomSubscriptionBuilder.builder().withEventType(etName).buildSubscriptionBase());
 
         final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub2, sub1),
                 new PaginationLinks());

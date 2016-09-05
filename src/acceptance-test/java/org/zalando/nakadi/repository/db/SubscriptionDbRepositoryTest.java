@@ -12,6 +12,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
 import java.util.Comparator;
 import java.util.List;
@@ -25,7 +26,6 @@ import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 
 public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
@@ -48,7 +48,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void whenCreateSubscriptionThenOk() throws Exception {
 
-        final SubscriptionBase subscription = randomSubscription().build();
+        final SubscriptionBase subscription = RandomSubscriptionBuilder.builder().build();
         final Subscription createdSubscription = repository.createSubscription(subscription);
         checkSubscriptionCreatedFromSubscriptionBase(createdSubscription, subscription);
 
@@ -67,7 +67,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test(expected = DuplicatedSubscriptionException.class)
     public void whenCreateSubscriptionWithDuplicatedKeyParamsThenDuplicatedSubscriptionException() throws Exception {
 
-        final SubscriptionBase subscription = randomSubscription().build();
+        final SubscriptionBase subscription = RandomSubscriptionBuilder.builder().build();
         repository.createSubscription(subscription);
 
         // try to create subscription second time
@@ -78,7 +78,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     public void whenGetSubscriptionByIdThenOk() throws Exception {
 
         // insert subscription into DB
-        final Subscription subscription = randomSubscription().build();
+        final Subscription subscription = RandomSubscriptionBuilder.builder().build();
         insertSubscriptionToDB(subscription);
 
         // get subscription by id and compare to original
@@ -90,7 +90,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     public void whenGetSubscriptionByKeyPropertiesThenOk() throws Exception {
 
         // insert subscription into DB
-        final Subscription subscription = randomSubscription()
+        final Subscription subscription = RandomSubscriptionBuilder.builder()
                 .withOwningApplication("myapp")
                 .withEventTypes(ImmutableSet.of("my-et", "second-et"))
                 .withConsumerGroup("my-cg")
@@ -107,7 +107,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     public void whenListSubscriptionsThenOk() throws ServiceUnavailableException {
 
         final List<Subscription> testSubscriptions = Lists.newArrayList(
-                randomSubscription().build(), randomSubscription().build());
+                RandomSubscriptionBuilder.builder().build(), RandomSubscriptionBuilder.builder().build());
         testSubscriptions.sort(SUBSCRIPTION_CREATION_DATE_DESC_COMPARATOR);
         testSubscriptions.forEach(this::insertSubscriptionToDB);
 
@@ -119,13 +119,15 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     public void whenListSubscriptionsByOwningApplicationAndEventTypeThenOk() throws ServiceUnavailableException {
 
         final List<Subscription> testSubscriptions = ImmutableList.of(
-                randomSubscription().withOwningApplication("app").withEventType("et1").build(),
-                randomSubscription().withOwningApplication("app").withEventTypes(ImmutableSet.of("et2", "et1")).build(),
-                randomSubscription().withOwningApplication("app").withEventType("et1").build(),
-                randomSubscription().withOwningApplication("app").withEventType("et2").build(),
-                randomSubscription().withOwningApplication("app").withEventTypes(ImmutableSet.of("et2", "et3")).build(),
-                randomSubscription().withOwningApplication("app2").withEventType("et1").build(),
-                randomSubscription().withOwningApplication("app2").withEventType("et2").build());
+                RandomSubscriptionBuilder.builder().withOwningApplication("app").withEventType("et1").build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication("app")
+                        .withEventTypes(ImmutableSet.of("et2", "et1")).build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication("app").withEventType("et1").build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication("app").withEventType("et2").build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication("app")
+                        .withEventTypes(ImmutableSet.of("et2", "et3")).build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication("app2").withEventType("et1").build(),
+                RandomSubscriptionBuilder.builder().withOwningApplication("app2").withEventType("et2").build());
         testSubscriptions.forEach(this::insertSubscriptionToDB);
 
         final List<Subscription> expectedSubscriptions = testSubscriptions.stream()
@@ -141,11 +143,11 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void whenListSubscriptionsByMultipleEventTypesThenOk() throws ServiceUnavailableException {
         final List<Subscription> testSubscriptions = ImmutableList.of(
-                randomSubscription().withEventTypes(ImmutableSet.of("et1", "et2")).build(),
-                randomSubscription().withEventTypes(ImmutableSet.of("et1", "et2", "et3")).build(),
-                randomSubscription().withEventTypes(ImmutableSet.of("et1")).build(),
-                randomSubscription().withEventTypes(ImmutableSet.of("et2")).build(),
-                randomSubscription().withEventTypes(ImmutableSet.of("et3", "et4", "et5")).build());
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of("et1", "et2")).build(),
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of("et1", "et2", "et3")).build(),
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of("et1")).build(),
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of("et2")).build(),
+                RandomSubscriptionBuilder.builder().withEventTypes(ImmutableSet.of("et3", "et4", "et5")).build());
         testSubscriptions.forEach(this::insertSubscriptionToDB);
 
         final List<Subscription> expectedSubscriptions = testSubscriptions.stream()
