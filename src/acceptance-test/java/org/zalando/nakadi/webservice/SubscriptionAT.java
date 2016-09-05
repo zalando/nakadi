@@ -195,7 +195,7 @@ public class SubscriptionAT extends BaseAT {
                 .post(format(CURSORS_URL, subscription.getId()));
     }
 
-    private ItemsWrapper<List<SubscriptionCursor>> getSubscriptionCursors(final Subscription subscription)
+    private ItemsWrapper<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription)
             throws IOException {
         final Response response = given().get(format(CURSORS_URL, subscription.getId()));
         return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
