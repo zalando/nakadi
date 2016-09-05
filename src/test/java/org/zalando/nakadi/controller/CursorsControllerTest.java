@@ -60,7 +60,7 @@ public class CursorsControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
-        final CursorsController controller = new CursorsController(cursorsService, featureToggleService);
+        final CursorsController controller = new CursorsController(cursorsService, featureToggleService, subscriptionRepository, eventTypeRepository);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
 

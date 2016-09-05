@@ -25,11 +25,11 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -205,7 +205,7 @@ public class SubscriptionController {
         final Map<String, Optional<EventType>> eventTypeMapping =
                 subscriptionBase.getEventTypes().stream()
                         .collect(Collectors.toMap(Function.identity(),
-                                        ExceptionWrapper.wrapFunction(eventTypeRepository::findByNameO)));
+                                        Try.wrap(eventTypeRepository::findByNameO).andThen(Try::getOrThrow)));
         final List<String> missingEventTypes = eventTypeMapping.entrySet().stream()
                 .filter(entry -> !entry.getValue().isPresent())
                 .map(Map.Entry::getKey)

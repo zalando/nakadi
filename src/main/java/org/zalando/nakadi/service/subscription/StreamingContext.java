@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -118,9 +118,9 @@ public class StreamingContext implements SubscriptionStreamer {
                 if (task != null) {
                     task.run();
                 }
-            } catch (final ExceptionWrapper ex) {
+            } catch (final NakadiRuntimeException ex) {
                 log.error("Failed to process task " + task + ", will rethrow original error", ex);
-                switchState(new CleanupState(ex.getWrapped()));
+                switchState(new CleanupState(ex.getException()));
             } catch (final RuntimeException ex) {
                 log.error("Failed to process task " + task + ", code carefully!", ex);
                 switchState(new CleanupState(ex));

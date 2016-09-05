@@ -6,9 +6,9 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.TopicPartition;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -44,11 +44,12 @@ public class SubscriptionService {
         final Partition[] partitions = zkSubscriptionClient.listPartitions();
 
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
-                .map(ExceptionWrapper.wrapFunction(eventTypeRepository::findByName))
+                .map(Try.wrap(eventTypeRepository::findByName))
+                .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
         final Set<String> topics = eventTypes.stream()
-                .map(eventType -> eventType.getTopic())
+                .map(EventType::getTopic)
                 .collect(Collectors.toSet());
 
         final List<TopicPartition> topicPartitions = topicRepository.listPartitions(topics);
@@ -72,8 +73,9 @@ public class SubscriptionService {
         return topicPartitions.stream()
                 .filter(topicPartition ->
                         partition.getKey().partition.equals(topicPartition.getPartitionId()))
-                .map(ExceptionWrapper.wrapFunction(topicPartition ->
-                        createPartition(zkSubscriptionClient, partition, topicPartition)));
+                .map(Try.wrap(topicPartition ->
+                        createPartition(zkSubscriptionClient, partition, topicPartition)))
+                .map(Try::getOrThrow);
     }
 
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,

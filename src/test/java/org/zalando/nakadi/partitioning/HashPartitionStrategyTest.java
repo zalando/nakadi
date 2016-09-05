@@ -5,6 +5,7 @@ import org.json.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.exceptions.Try;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,7 +31,6 @@ import static org.hamcrest.Matchers.isIn;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
-import static org.zalando.nakadi.exceptions.ExceptionWrapper.wrapConsumer;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 
 public class HashPartitionStrategyTest {
@@ -212,11 +212,12 @@ public class HashPartitionStrategyTest {
     private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions,
                                           final List<JSONObject> events) {
         events.stream()
-                .forEach(wrapConsumer(event -> {
+                .map(Try.wrap(event -> {
                     final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
-                }));
+                    return null;
+                })).map(Try::getOrThrow);
     }
 
     private JSONObject randomArticleEvent() {
