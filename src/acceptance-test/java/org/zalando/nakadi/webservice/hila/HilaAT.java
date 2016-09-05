@@ -72,9 +72,11 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "stream_limit=2")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
-
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
-                ImmutableMap.of("blah", "foo0"))));
+                ImmutableMap.of("blah", "foo0"), "Stream started")));
+        System.out.println(client.getBatches().get(1));
+        System.out.println(singleEventBatch("0", "1", eventType.getName(),
+                ImmutableMap.of("blah", "foo1")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "1", eventType.getName(),
                 ImmutableMap.of("blah", "foo1"))));
 
@@ -88,7 +90,7 @@ public class HilaAT extends BaseAT {
 
         // check that we have read the next two events with correct offsets
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "2", eventType.getName(),
-                ImmutableMap.of("blah", "foo2"))));
+                ImmutableMap.of("blah", "foo2"), "Stream started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "3", eventType.getName(),
                 ImmutableMap.of("blah", "foo3"))));
     }
@@ -140,7 +142,7 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "") // commit_timeout is 5 seconds for test
                 .start();
 
-        waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
+        waitFor(() -> assertThat(client.getBatches(), hasSize(2)), 10000);
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
                 ImmutableMap.of(), "Commit timeout reached")));
@@ -200,7 +202,7 @@ public class HilaAT extends BaseAT {
                 .statusCode(SC_CONFLICT);
     }
 
-    @Test(timeout = 15000)
+    @Test(timeout = 30000)
     public void whenConnectionIsClosedByClientNakadiRecognizesIt() throws Exception {
 
         final TestStreamingClient client = TestStreamingClient
@@ -209,14 +211,14 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
 
         client.close();
-        Thread.sleep(6000);
+        Thread.sleep(10000);
 
         final TestStreamingClient anotherClient = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1");
         anotherClient.start();
         // if we start to get data for another client it means that Nakadi recognized that first client closed
         // connection (in other case it would not allow second client to connect because of lack of slots)
-        waitFor(() -> assertThat(anotherClient.getBatches(), hasSize(1)), 10000);
+        waitFor(() -> assertThat(anotherClient.getBatches(), hasSize(1)));
     }
 
     @Test

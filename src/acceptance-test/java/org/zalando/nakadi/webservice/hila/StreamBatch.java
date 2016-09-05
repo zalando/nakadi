@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 
 import javax.annotation.Nullable;
@@ -22,11 +23,11 @@ public class StreamBatch {
 
     private final SubscriptionCursor cursor;
     private final List<Map> events;
-    private final JSONObject metadata;
+    private final StreamMetadata metadata;
 
     public StreamBatch(@JsonProperty("cursor") final SubscriptionCursor cursor,
                        @Nullable @JsonProperty("events") final List<Map> events,
-                       @Nullable @JsonProperty("metadata") final JSONObject metadata) {
+                       @Nullable @JsonProperty("metadata") final StreamMetadata metadata) {
         this.cursor = cursor;
         this.events = Optional.ofNullable(events).orElse(ImmutableList.of());
         this.metadata = metadata;
@@ -40,14 +41,19 @@ public class StreamBatch {
         return unmodifiableList(events);
     }
 
-    public JSONObject getMetadata() {
+    public StreamMetadata getMetadata() {
         return metadata;
     }
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
                                                final Map event, String metadata) {
-        return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
-                ImmutableList.of(event), new JSONObject("{\"debug\":\""+metadata+"\"}"));
+        if (event.isEmpty()) {
+            return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
+                    ImmutableList.of(), new StreamMetadata(metadata));
+        } else {
+            return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
+                    ImmutableList.of(event), new StreamMetadata(metadata));
+        }
     }
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
@@ -57,16 +63,24 @@ public class StreamBatch {
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        final StreamBatch that = (StreamBatch) o;
-        return cursor.equals(that.cursor) && events.equals(that.events);
+
+        StreamBatch that = (StreamBatch) o;
+
+        if (!cursor.equals(that.cursor)) return false;
+        if (events != null ? !events.equals(that.events) : that.events != null) return false;
+        return metadata != null ? metadata.equals(that.metadata) : that.metadata == null;
+
     }
 
     @Override
     public int hashCode() {
-        return 31 * cursor.hashCode() + events.hashCode();
+        int result = cursor.hashCode();
+        result = 31 * result + (events != null ? events.hashCode() : 0);
+        result = 31 * result + (metadata != null ? metadata.hashCode() : 0);
+        return result;
     }
 
     @Override
@@ -74,6 +88,7 @@ public class StreamBatch {
         return "StreamBatch{" +
                 "cursor=" + cursor +
                 ", events=" + events +
+                ", metadata=" + metadata +
                 '}';
     }
 
@@ -98,7 +113,9 @@ public class StreamBatch {
                     cursor.getPartition().equals(cursorToCheck.getPartition()) &&
                     cursor.getOffset().equals(cursorToCheck.getOffset()) &&
                     cursor.getEventType().equals(cursorToCheck.getEventType()) &&
-                    batch.getMetadata().equals(batchTocheck.getMetadata());
+                    Optional.ofNullable(batch.getMetadata())
+                            .map(b -> b.equals(batchTocheck.getMetadata()))
+                            .orElse(batchTocheck != null && batchTocheck.getMetadata() == null);
         }
 
         @Override
