@@ -115,7 +115,7 @@ public class CursorsServiceTest {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(1);
 
-        Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
+        final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
 
         assertThat(result.get(DUMMY_CURSORS.get(0)), is(true));
         verify(setDataBuilder, times(1)).forPath(eq(offsetPath("p1")), eq("newOffset".getBytes(CHARSET)));
@@ -129,11 +129,11 @@ public class CursorsServiceTest {
         when(topicRepository.compareOffsets("p1offset", "p1currentOffset")).thenReturn(-1);
         when(topicRepository.compareOffsets("p2offset", "p2currentOffset")).thenReturn(1);
 
-        SubscriptionCursor p1 = new SubscriptionCursor("p1", "p1offset", MY_ET, TOKEN);
-        SubscriptionCursor p2 = new SubscriptionCursor("p2", "p2offset", MY_ET, TOKEN);
+        final SubscriptionCursor p1 = new SubscriptionCursor("p1", "p1offset", MY_ET, TOKEN);
+        final SubscriptionCursor p2 = new SubscriptionCursor("p2", "p2offset", MY_ET, TOKEN);
         final ImmutableList<SubscriptionCursor> cursors = ImmutableList.of(p1, p2);
 
-        Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, cursors);
+        final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, cursors);
 
         assertThat(result.get(p1), is(false));
         assertThat(result.get(p2), is(true));
@@ -145,7 +145,7 @@ public class CursorsServiceTest {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(-1);
 
-        Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
+        final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
 
         assertThat(result.get(DUMMY_CURSORS.get(0)), is(false));
         verify(setDataBuilder, never()).forPath(any(), any());
@@ -173,7 +173,7 @@ public class CursorsServiceTest {
         final ImmutableMap<Partition.PartitionKey, Long> offsets = ImmutableMap.of();
         when(kafkaClient.getSubscriptionOffsets()).thenReturn(offsets);
 
-        Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
+        final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
         assertThat(result.get(DUMMY_CURSORS.get(0)), is(true));
         verify(zkSubscriptionClient, times(1)).fillEmptySubscription(eq(offsets));
     }

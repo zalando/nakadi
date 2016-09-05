@@ -70,8 +70,8 @@ public class CursorsControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
-        SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
-        EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
+        final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+        final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
         doReturn(buildDefaultEventType()).when(eventTypeRepository).findByName(any());
         doReturn(RandomSubscriptionBuilder.builder().build()).when(subscriptionRepository).getSubscription(any());
         final CursorsController controller = new CursorsController(cursorsService, featureToggleService,
@@ -79,7 +79,7 @@ public class CursorsControllerTest {
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
 
-        SecuritySettings settings = mock(SecuritySettings.class);
+        final SecuritySettings settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_PARTITIONS_KEYS);

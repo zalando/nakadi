@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
@@ -163,7 +164,7 @@ public class SubscriptionAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
-        final List<SubscriptionCursor> actualCursors = getSubscriptionCursors(subscription);
+        final List<SubscriptionCursor> actualCursors = getSubscriptionCursors(subscription).getItems();
         assertThat(actualCursors, hasSize(1));
 
         final SubscriptionCursor actualCursor = actualCursors.get(0);
@@ -176,7 +177,7 @@ public class SubscriptionAT extends BaseAT {
     public void testGetSubscriptionCursorsEmpty() throws IOException {
         final String etName = createEventType().getName();
         final Subscription subscription = createSubscriptionForEventType(etName);
-        Assert.assertTrue(getSubscriptionCursors(subscription).isEmpty());
+        Assert.assertTrue(getSubscriptionCursors(subscription).getItems().isEmpty());
     }
 
     @Test
@@ -191,12 +192,13 @@ public class SubscriptionAT extends BaseAT {
         return given()
                 .body(cursor)
                 .contentType(JSON)
-                .put(format(CURSORS_URL, subscription.getId()));
+                .post(format(CURSORS_URL, subscription.getId()));
     }
 
-    private List<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription) throws IOException {
+    private ItemsWrapper<List<SubscriptionCursor>> getSubscriptionCursors(final Subscription subscription)
+            throws IOException {
         final Response response = given().get(format(CURSORS_URL, subscription.getId()));
-        return MAPPER.readValue(response.print(), new TypeReference<List<SubscriptionCursor>>() {});
+        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<List<SubscriptionCursor>>>() {});
     }
 
     private String getCommittedOffsetFromZk(final String topic, final Subscription subscription,
