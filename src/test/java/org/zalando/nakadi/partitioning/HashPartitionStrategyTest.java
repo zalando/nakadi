@@ -17,6 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
@@ -212,12 +213,12 @@ public class HashPartitionStrategyTest {
     private void fillPartitionsWithEvents(final EventType eventType, final ArrayList<List<JSONObject>> partitions,
                                           final List<JSONObject> events) {
         events.stream()
-                .map(Try.wrap(event -> {
+                .map(Try.<JSONObject, Void>wrap(event -> {
                     final String partition = strategy.calculatePartition(eventType, event, asList(PARTITIONS));
                     final int partitionNo = parseInt(partition);
                     partitions.get(partitionNo).add(event);
                     return null;
-                })).map(Try::getOrThrow);
+                }).andThen(Try::getOrThrow)).collect(Collectors.toSet());
     }
 
     private JSONObject randomArticleEvent() {

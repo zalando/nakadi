@@ -3,9 +3,18 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.GetChildrenBuilder;
+import org.apache.curator.framework.api.GetDataBuilder;
+import org.apache.curator.framework.api.SetDataBuilder;
+import org.apache.curator.framework.recipes.locks.InterProcessLock;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -17,20 +26,12 @@ import org.zalando.nakadi.service.subscription.SubscriptionKafkaClientFactory;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.api.GetChildrenBuilder;
-import org.apache.curator.framework.api.GetDataBuilder;
-import org.apache.curator.framework.api.SetDataBuilder;
-import org.apache.curator.framework.recipes.locks.InterProcessLock;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public class CursorsServiceTest {
 
@@ -113,9 +115,9 @@ public class CursorsServiceTest {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(1);
 
-        final boolean committed = cursorsService.commitCursors(SID, DUMMY_CURSORS);
+        Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
 
-        assertThat(committed, is(true));
+        assertThat(result.get(DUMMY_CURSORS.get(0)), is(true));
         verify(setDataBuilder, times(1)).forPath(eq(offsetPath("p1")), eq("newOffset".getBytes(CHARSET)));
     }
 
@@ -127,13 +129,14 @@ public class CursorsServiceTest {
         when(topicRepository.compareOffsets("p1offset", "p1currentOffset")).thenReturn(-1);
         when(topicRepository.compareOffsets("p2offset", "p2currentOffset")).thenReturn(1);
 
-        final ImmutableList<SubscriptionCursor> cursors = ImmutableList.of(
-                new SubscriptionCursor("p1", "p1offset", MY_ET, TOKEN),
-                new SubscriptionCursor("p2", "p2offset", MY_ET, TOKEN));
+        SubscriptionCursor p1 = new SubscriptionCursor("p1", "p1offset", MY_ET, TOKEN);
+        SubscriptionCursor p2 = new SubscriptionCursor("p2", "p2offset", MY_ET, TOKEN);
+        final ImmutableList<SubscriptionCursor> cursors = ImmutableList.of(p1, p2);
 
-        final boolean committed = cursorsService.commitCursors(SID, cursors);
+        Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, cursors);
 
-        assertThat(committed, is(false));
+        assertThat(result.get(p1), is(false));
+        assertThat(result.get(p2), is(true));
         verify(setDataBuilder, times(1)).forPath(eq(offsetPath("p2")), eq("p2offset".getBytes(CHARSET)));
     }
 
@@ -142,13 +145,13 @@ public class CursorsServiceTest {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(-1);
 
-        final boolean committed = cursorsService.commitCursors(SID, DUMMY_CURSORS);
+        Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
 
-        assertThat(committed, is(false));
+        assertThat(result.get(DUMMY_CURSORS.get(0)), is(false));
         verify(setDataBuilder, never()).forPath(any(), any());
     }
 
-    @Test(expected = ServiceUnavailableException.class)
+    @Test(expected = NakadiRuntimeException.class)
     public void whenExceptionThenServiceUnavailableException() throws Exception {
         when(getDataBuilder.forPath(any())).thenThrow(new Exception());
         cursorsService.commitCursors(SID, DUMMY_CURSORS);
@@ -170,8 +173,8 @@ public class CursorsServiceTest {
         final ImmutableMap<Partition.PartitionKey, Long> offsets = ImmutableMap.of();
         when(kafkaClient.getSubscriptionOffsets()).thenReturn(offsets);
 
-        final boolean committed = cursorsService.commitCursors(SID, DUMMY_CURSORS);
-        assertThat(committed, is(true));
+        Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(SID, DUMMY_CURSORS);
+        assertThat(result.get(DUMMY_CURSORS.get(0)), is(true));
         verify(zkSubscriptionClient, times(1)).fillEmptySubscription(eq(offsets));
     }
 
