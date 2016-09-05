@@ -81,7 +81,7 @@ public class SubscriptionController {
             if (!result.isSuccessful()) {
                 return Responses.create(result.getProblem(), request);
             }
-            final Subscription existingSubscription =  result.getValue();
+            final Subscription existingSubscription = result.getValue();
             final UriComponents location = subscriptionService.getSubscriptionUri(existingSubscription);
             return ResponseEntity.status(OK).location(location.toUri()).body(existingSubscription);
         }
