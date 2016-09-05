@@ -21,7 +21,7 @@ public class Partition {
 
             final PartitionKey that = (PartitionKey) o;
 
-            return topic.equals(that.partition) && partition.equals(that.partition);
+            return topic.equals(that.topic) && partition.equals(that.partition);
         }
 
         @Override
