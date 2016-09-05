@@ -108,7 +108,7 @@ public class NakadiTestUtils {
         return given()
                 .body(MAPPER.writeValueAsString(cursors))
                 .contentType(JSON)
-                .put(format("/subscriptions/{0}/cursors", subscriptionId))
+                .post(format("/subscriptions/{0}/cursors", subscriptionId))
                 .getStatusCode();
     }
 

@@ -147,7 +147,7 @@ public class SubscriptionAT extends BaseAT {
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
                 .then()
-                .statusCode(HttpStatus.SC_NO_CONTENT);
+                .statusCode(HttpStatus.SC_OK);
 
         // check that committed offset in Zookeeper is not changed
         committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
