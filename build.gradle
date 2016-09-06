@@ -290,6 +290,7 @@ test {
     testLogging {
         events "passed", "skipped", "failed"
     }
+    testLogging.exceptionFormat = 'full'
 }
 
 acceptanceTest {

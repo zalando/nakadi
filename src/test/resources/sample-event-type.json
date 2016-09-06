@@ -1,6 +1,6 @@
 {
   "name": "NAME_PLACEHOLDER",
-  "owning_application": "article-producer",
+  "owning_application": "stups_nakadi",
   "category": "undefined",
   "schema": {
     "type": "json_schema",

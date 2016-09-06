@@ -50,10 +50,14 @@ public class Partition {
         REASSIGNING("reassigning"),
         ASSIGNED("assigned");
 
-        public final String description;
+        private final String description;
 
         State(final String description) {
             this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
         }
     }
 

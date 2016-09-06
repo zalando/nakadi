@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Component
 public class SubscriptionService {
@@ -194,32 +195,52 @@ public class SubscriptionService {
         }
     }
 
-    private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription) {
+    private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription)
+            throws ServiceUnavailableException {
         final ZkSubscriptionClient zkSubscriptionClient =
                 zkSubscriptionClientFactory.createZkSubscriptionClient(subscription.getId());
         final Partition[] partitions = zkSubscriptionClient.listPartitions();
-        return subscription.getEventTypes().stream()
-                .map(ExceptionWrapper.wrapFunction(eventTypeRepository::findByNameO))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+
+        final List<EventType> eventTypes = subscription.getEventTypes().stream()
+                .map(ExceptionWrapper.wrapFunction(eventTypeRepository::findByName))
+                .collect(Collectors.toList());
+
+        final Set<String> topics = eventTypes.stream()
+                .map(eventType -> eventType.getTopic())
+                .collect(Collectors.toSet());
+
+        final List<TopicPartition> topicPartitions = topicRepository.listPartitions(topics);
+
+        return eventTypes.stream()
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions = Arrays.stream(partitions)
                             .filter(partition -> eventType.getTopic().equals(partition.getKey().getTopic()))
-                            .map(ExceptionWrapper.wrapFunction(
-                                    partition -> createPartition(zkSubscriptionClient, partition)))
+                            .flatMap(partition ->
+                                    filterTopicPartitions(zkSubscriptionClient, topicPartitions, partition))
                             .collect(Collectors.toSet());
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
                 .collect(Collectors.toList());
     }
 
+    private Stream<SubscriptionEventTypeStats.Partition> filterTopicPartitions(
+            final ZkSubscriptionClient zkSubscriptionClient,
+            final List<TopicPartition> topicPartitions,
+            final Partition partition) {
+        return topicPartitions.stream()
+                .filter(topicPartition ->
+                        partition.getKey().getPartition().equals(topicPartition.getPartitionId()))
+                .map(ExceptionWrapper.wrapFunction(topicPartition ->
+                        createPartition(zkSubscriptionClient, partition, topicPartition)));
+    }
+
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,
-                                                                 final Partition partition) throws NakadiException {
+                                                                 final Partition partition,
+                                                                 final TopicPartition topicPartition)
+            throws NakadiException {
         final String partitionName = partition.getKey().getPartition();
-        final String partitionState = partition.getState().description;
+        final String partitionState = partition.getState().getDescription();
         final String partitionSession = partition.getSession();
-        final TopicPartition topicPartition = topicRepository.getPartition(partition.getKey().getTopic(),
-                partition.getKey().getPartition());
         final long clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
         final long total = Long.valueOf(topicPartition.getNewestAvailableOffset());
         final long unconsumedEvents = total - clientOffset;

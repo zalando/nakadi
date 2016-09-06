@@ -17,6 +17,7 @@ import org.zalando.nakadi.exceptions.TopicDeletionException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Manages access to topic information.
@@ -39,6 +40,8 @@ public interface TopicRepository {
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 
+    List<TopicPartition> listPartitions(Set<String> topics) throws ServiceUnavailableException;
+
     Map<String, Long> materializePositions(String topicId, SubscriptionBase.InitialPosition position)
             throws ServiceUnavailableException;
 
@@ -51,5 +54,5 @@ public interface TopicRepository {
 
     int compareOffsets(String firstOffset, String secondOffset) throws InternalNakadiException;
 
-    void validateCommitCursors(String topic, List<Cursor> cursors) throws InvalidCursorException;
+    void validateCommitCursors(String topic, List<? extends Cursor> cursors) throws InvalidCursorException;
 }
