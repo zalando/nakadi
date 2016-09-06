@@ -5,6 +5,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.Nullable;
 
 public class StreamMetadata {
+    private String debug;
+
+    public StreamMetadata(@Nullable @JsonProperty("debug") final String debug) {
+        this.debug = debug;
+    }
+
+    public String getDebug() {
+        return debug;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -20,20 +30,6 @@ public class StreamMetadata {
     public int hashCode() {
         return debug != null ? debug.hashCode() : 0;
     }
-
-    public StreamMetadata(@Nullable @JsonProperty("debug") final String debug) {
-        this.debug = debug;
-    }
-
-    public String getDebug() {
-        return debug;
-    }
-
-    public void setDebug(final String debug) {
-        this.debug = debug;
-    }
-
-    private String debug;
 
     @Override
     public String toString() {
