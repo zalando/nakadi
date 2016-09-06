@@ -1197,6 +1197,7 @@ definitions:
           - it's not possible to determine how many events there are between two offsets. Check
             SubscriptionEventTypeStats for that.
           - timeline and index are zero padded.
+        example: "000000001/12345678901234567"
   SubscriptionCursor:
     allOf:
       - $ref: '#/definitions/Cursor'
