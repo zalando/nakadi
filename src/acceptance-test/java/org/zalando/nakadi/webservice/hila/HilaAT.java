@@ -199,7 +199,7 @@ public class HilaAT extends BaseAT {
                 .statusCode(SC_CONFLICT);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 10000)
     public void whenConnectionIsClosedByClientNakadiRecognizesIt() throws Exception {
 
         final TestStreamingClient client = TestStreamingClient
@@ -208,7 +208,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
 
         client.close();
-        Thread.sleep(10000);
+        Thread.sleep(2000);
 
         final TestStreamingClient anotherClient = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1");
