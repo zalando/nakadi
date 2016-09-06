@@ -74,9 +74,6 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
                 ImmutableMap.of("blah", "foo0"), "Stream started")));
-        System.out.println(client.getBatches().get(1));
-        System.out.println(singleEventBatch("0", "1", eventType.getName(),
-                ImmutableMap.of("blah", "foo1")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "1", eventType.getName(),
                 ImmutableMap.of("blah", "foo1"))));
 
