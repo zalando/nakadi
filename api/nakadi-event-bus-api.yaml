@@ -1186,7 +1186,7 @@ definitions:
         description: |
           Offset of the event being pointed to. Regarding its format and guarantees:
 
-          - offsets have a fixed size of 27 characters ranging from 0 to F (Hexadecimals).
+          - offsets have a fixed size of 27 characters.
           - the first 9 characters are used to define the timeline, a monotonically increasing sequence. Starts with
             000000001.
           - its followed by the separator "/".
