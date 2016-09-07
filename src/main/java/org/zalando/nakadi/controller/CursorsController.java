@@ -84,7 +84,9 @@ public class CursorsController {
             final List<CursorCommitResult> items = result.entrySet().stream()
                     .map(entry -> new CursorCommitResult(entry.getKey(), entry.getValue()))
                     .collect(Collectors.toList());
-            return ok(new ItemsWrapper<>(items));
+            boolean allCommited = result.values().stream().reduce(Boolean::logicalAnd).orElseGet(() -> true);
+            ItemsWrapper<CursorCommitResult> body = new ItemsWrapper<>(items);
+            return allCommited ? status(204).body(body) : ok(body);
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
         } catch (InvalidCursorException e) {

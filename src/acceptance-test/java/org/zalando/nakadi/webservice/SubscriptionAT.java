@@ -142,7 +142,7 @@ public class SubscriptionAT extends BaseAT {
         String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
 
-        // commit lower offsets and expect 204
+        // commit lower offsets and expect 200
         cursor = "[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
