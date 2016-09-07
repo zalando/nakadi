@@ -142,12 +142,12 @@ public class SubscriptionAT extends BaseAT {
         String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
 
-        // commit lower offsets and expect 201
+        // commit lower offsets and expect 200
         cursor = "[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
                 .then()
-                .statusCode(HttpStatus.SC_CREATED);
+                .statusCode(HttpStatus.SC_OK);
 
         // check that committed offset in Zookeeper is not changed
         committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
