@@ -28,7 +28,7 @@ import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
-import static org.apache.http.HttpStatus.SC_OK;
+import static org.apache.http.HttpStatus.SC_CREATED;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -103,10 +103,10 @@ public class HilaAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getBatches(), not(empty())));
 
-        // commit and check that status is 200
+        // commit and check that status is 201
         final int commitResult = commitCursors(subscription.getId(),
                 ImmutableList.of(new SubscriptionCursor("0", "0", eventType.getName(), "token")));
-        assertThat(commitResult, equalTo(SC_OK));
+        assertThat(commitResult, equalTo(SC_CREATED));
     }
 
     @Test(timeout = 15000)
