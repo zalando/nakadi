@@ -95,7 +95,7 @@ public class CursorsControllerTest {
         when(cursorsService.commitCursors(any(), any()))
                 .thenReturn(new HashMap<>());
         putCursors(DUMMY_CURSORS)
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
     }
 
     @Test
