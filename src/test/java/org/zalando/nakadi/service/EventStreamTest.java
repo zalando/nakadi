@@ -295,11 +295,11 @@ public class EventStreamTest {
 
     private static String jsonBatch(final String partition, final String offset,
                                     final Optional<List<String>> eventsOrNone) {
-        return jsonBatch(partition, offset, eventsOrNone, null);
+        return jsonBatch(partition, offset, eventsOrNone, Optional.empty());
     }
 
     private static String jsonBatch(final String partition, final String offset,
-                                    final Optional<List<String>> eventsOrNone, final String metadata) {
+                                    final Optional<List<String>> eventsOrNone, final Optional<String> metadata) {
         final String eventsStr = eventsOrNone
                 .map(events -> {
                     final StringBuilder builder = new StringBuilder(",\"events\":[");
@@ -308,8 +308,8 @@ public class EventStreamTest {
                     return builder.toString();
                 })
                 .orElse("");
-        final String metadataStr = Optional.ofNullable(metadata).map(m -> ",\"metadata\":{\"debug\":\""+m+"\"}")
-                .orElse("");
+        final String metadataStr = metadata.map(m -> ",\"metadata\":{\"debug\":\""+m+"\"}").orElse("");
+
         return String.format("{\"cursor\":{\"partition\":\"%s\",\"offset\":\"%s\"}%s%s}", partition, offset, eventsStr,
                 metadataStr);
     }
