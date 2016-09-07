@@ -86,7 +86,7 @@ public class CursorsController {
                     .collect(Collectors.toList());
             final boolean allCommited = result.values().stream().reduce(Boolean::logicalAnd).orElseGet(() -> true);
             final ItemsWrapper<CursorCommitResult> body = new ItemsWrapper<>(items);
-            return allCommited ? status(204).body(body) : ok(body);
+            return allCommited ? status(201).body(body) : ok(body);
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
         } catch (InvalidCursorException e) {
