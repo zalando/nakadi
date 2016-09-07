@@ -173,9 +173,9 @@ class StreamingState extends State {
     private String serializeBatch(final Partition.PartitionKey partitionKey, final String offset,
                                   final List<String> events) throws JsonProcessingException {
 
-        final String eventType = getContext().getEventTypesForTopics().get(partitionKey.topic);
+        final String eventType = getContext().getEventTypesForTopics().get(partitionKey.getTopic());
         final String token = getContext().getCursorTokenService().generateToken();
-        final SubscriptionCursor cursor = new SubscriptionCursor(partitionKey.partition, offset, eventType, token);
+        final SubscriptionCursor cursor = new SubscriptionCursor(partitionKey.getPartition(), offset, eventType, token);
         final String cursorSerialized = getContext().getObjectMapper().writeValueAsString(cursor);
 
         final StringBuilder builder = new StringBuilder()
@@ -317,7 +317,7 @@ class StreamingState extends State {
             final Map<Partition.PartitionKey, TopicPartition> kafkaKeys = currentNakadiAssignment.stream().collect(
                     Collectors.toMap(
                             k -> k,
-                            k -> new TopicPartition(k.topic, Integer.valueOf(k.partition))));
+                            k -> new TopicPartition(k.getTopic(), Integer.valueOf(k.getPartition()))));
             // Ignore order
             kafkaConsumer.assign(new ArrayList<>(kafkaKeys.values()));
             // Check if offsets are available in kafka

@@ -47,7 +47,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // get event type
         jsonRequestSpec().when().get("/event-types/" + TEST_EVENT_TYPE).then().statusCode(OK.value()).and()
-                         .body("name", equalTo(TEST_EVENT_TYPE)).body("owning_application", equalTo("article-producer"))
+                         .body("name", equalTo(TEST_EVENT_TYPE)).body("owning_application", equalTo("stups_nakadi"))
                          .body("category", equalTo("undefined")).body("schema.type", equalTo("json_schema")).body(
                              "schema.schema",
                              equalTo(

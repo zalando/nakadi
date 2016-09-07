@@ -76,7 +76,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     private String getPartitionPath(final Partition.PartitionKey key) {
-        return getSubscriptionPath("/topics/" + key.topic + "/" + key.partition);
+        return getSubscriptionPath("/topics/" + key.getTopic() + "/" + key.getPartition());
     }
 
     @Override

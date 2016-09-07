@@ -5,9 +5,9 @@ import java.util.Collection;
 
 public class Partition {
     public static class PartitionKey {
-        public final String topic;
+        private final String topic;
 
-        public final String partition;
+        private final String partition;
 
         public PartitionKey(final String topic, final String partition) {
             this.topic = topic;
@@ -35,6 +35,14 @@ public class Partition {
         public String toString() {
             return "{" + topic + ':' + partition + '}';
         }
+
+        public String getTopic() {
+            return topic;
+        }
+
+        public String getPartition() {
+            return partition;
+        }
     }
 
     public enum State {
@@ -42,10 +50,14 @@ public class Partition {
         REASSIGNING("reassigning"),
         ASSIGNED("assigned");
 
-        public final String description;
+        private final String description;
 
         State(final String description) {
             this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
         }
     }
 
