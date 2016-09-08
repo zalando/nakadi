@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.Nullable;
 
 public class StreamMetadata {
-    private String debug;
+    private final String debug;
 
     public StreamMetadata(@Nullable @JsonProperty("debug") final String debug) {
         this.debug = debug;
