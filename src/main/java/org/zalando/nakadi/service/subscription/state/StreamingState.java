@@ -206,7 +206,7 @@ class StreamingState extends State {
             builder.deleteCharAt(builder.length() - 1).append("]");
         }
         if (metadata.isPresent()) {
-            builder.append(",\"metadata\":{\"debug\":\"").append(metadata.get()).append("\"}");
+            builder.append(",\"info\":{\"debug\":\"").append(metadata.get()).append("\"}");
         }
         builder.append("}").append(EventStream.BATCH_SEPARATOR);
         return builder.toString();

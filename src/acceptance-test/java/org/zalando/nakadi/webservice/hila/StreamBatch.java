@@ -26,7 +26,7 @@ public class StreamBatch {
 
     public StreamBatch(@JsonProperty("cursor") final SubscriptionCursor cursor,
                        @Nullable @JsonProperty("events") final List<Map> events,
-                       @Nullable @JsonProperty("metadata") final StreamMetadata metadata) {
+                       @Nullable @JsonProperty("info") final StreamMetadata metadata) {
         this.cursor = cursor;
         this.events = Optional.ofNullable(events).orElse(ImmutableList.of());
         this.metadata = metadata;
