@@ -26,6 +26,7 @@ import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.problem.Problem;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -91,11 +92,19 @@ public class CursorsControllerTest {
     }
 
     @Test
-    public void whenCommitValidCursorsThenOk() throws Exception {
+    public void whenCommitValidCursorsThenNoContent() throws Exception {
         when(cursorsService.commitCursors(any(), any()))
                 .thenReturn(new HashMap<>());
         putCursors(DUMMY_CURSORS)
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    public void whenCommitInvalidCursorsThenOk() throws Exception {
+        when(cursorsService.commitCursors(any(), any()))
+                .thenReturn(Collections.singletonMap(any(), false));
+        putCursors(DUMMY_CURSORS)
+                .andExpect(status().isOk());
     }
 
     @Test
