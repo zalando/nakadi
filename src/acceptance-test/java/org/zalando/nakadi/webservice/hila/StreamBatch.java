@@ -40,6 +40,7 @@ public class StreamBatch {
         return unmodifiableList(events);
     }
 
+    @Nullable
     public StreamMetadata getMetadata() {
         return metadata;
     }

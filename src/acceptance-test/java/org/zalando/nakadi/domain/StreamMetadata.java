@@ -11,6 +11,7 @@ public class StreamMetadata {
         this.debug = debug;
     }
 
+    @Nullable
     public String getDebug() {
         return debug;
     }
