@@ -40,6 +40,27 @@ public class StreamBatch {
         return unmodifiableList(events);
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final StreamBatch that = (StreamBatch) o;
+
+        if (!cursor.equals(that.cursor)) return false;
+        if (!events.equals(that.events)) return false;
+        return metadata != null ? metadata.equals(that.metadata) : that.metadata == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = cursor.hashCode();
+        result = 31 * result + events.hashCode();
+        result = 31 * result + (metadata != null ? metadata.hashCode() : 0);
+        return result;
+    }
+
     @Nullable
     public StreamMetadata getMetadata() {
         return metadata;
@@ -60,27 +81,6 @@ public class StreamBatch {
                                                final Map event) {
         return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
                 ImmutableList.of(event), null);
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        final StreamBatch that = (StreamBatch) o;
-
-        if (!cursor.equals(that.cursor)) return false;
-        if (events != null ? !events.equals(that.events) : that.events != null) return false;
-        return metadata != null ? metadata.equals(that.metadata) : that.metadata == null;
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = cursor.hashCode();
-        result = 31 * result + (events != null ? events.hashCode() : 0);
-        result = 31 * result + (metadata != null ? metadata.hashCode() : 0);
-        return result;
     }
 
     @Override
