@@ -135,7 +135,7 @@ public class SubscriptionAT extends BaseAT {
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
                 .then()
-                .statusCode(HttpStatus.SC_CREATED);
+                .statusCode(HttpStatus.SC_NO_CONTENT);
 
         // check that offset is actually committed to Zookeeper
         final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
@@ -162,7 +162,7 @@ public class SubscriptionAT extends BaseAT {
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
                 .then()
-                .statusCode(HttpStatus.SC_CREATED);
+                .statusCode(HttpStatus.SC_NO_CONTENT);
 
         final List<SubscriptionCursor> actualCursors = getSubscriptionCursors(subscription).getItems();
         assertThat(actualCursors, hasSize(1));

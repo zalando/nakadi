@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.ResponseEntity.noContent;
 import static org.springframework.http.ResponseEntity.ok;
 import static org.springframework.http.ResponseEntity.status;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
@@ -86,7 +87,7 @@ public class CursorsController {
                     .collect(Collectors.toList());
             final boolean allCommited = result.values().stream().reduce(Boolean::logicalAnd).orElseGet(() -> true);
             final ItemsWrapper<CursorCommitResult> body = new ItemsWrapper<>(items);
-            return allCommited ? status(201).body(body) : ok(body);
+            return allCommited ? noContent().build() : ok(body);
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
         } catch (InvalidCursorException e) {
