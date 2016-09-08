@@ -10,9 +10,9 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.utils.JsonTestHelper;
-import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -23,15 +23,6 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
-import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
-import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
 import static java.util.stream.IntStream.rangeClosed;
@@ -43,6 +34,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 
 public class HilaAT extends BaseAT {
 
@@ -72,9 +72,8 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "stream_limit=2")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
-
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
-                ImmutableMap.of("blah", "foo0"))));
+                ImmutableMap.of("blah", "foo0"), "Stream started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "1", eventType.getName(),
                 ImmutableMap.of("blah", "foo1"))));
 
@@ -88,7 +87,7 @@ public class HilaAT extends BaseAT {
 
         // check that we have read the next two events with correct offsets
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "2", eventType.getName(),
-                ImmutableMap.of("blah", "foo2"))));
+                ImmutableMap.of("blah", "foo2"), "Stream started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "3", eventType.getName(),
                 ImmutableMap.of("blah", "foo3"))));
     }
@@ -140,8 +139,10 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "") // commit_timeout is 5 seconds for test
                 .start();
 
-        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
+        waitFor(() -> assertThat(client.getBatches(), hasSize(2)), 10000);
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
+        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
+                ImmutableMap.of(), "Commit timeout reached")));
     }
 
     @Test(timeout = 15000)
@@ -222,7 +223,7 @@ public class HilaAT extends BaseAT {
         IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "")
+                .create(URL, subscription.getId(), "max_uncommitted_size=20")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
 

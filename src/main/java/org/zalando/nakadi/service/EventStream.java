@@ -2,12 +2,11 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.repository.EventConsumer;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.repository.EventConsumer;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -15,6 +14,7 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -132,8 +132,7 @@ public class EventStream {
                 .collect(Collectors.toMap(identity(), valueFunction));
     }
 
-    public static String createStreamEvent(final String partition, final String offset, final List<String> events,
-            final Optional<String> topology) {
+    public static String createStreamEvent(final String partition, final String offset, final List<String> events) {
         final StringBuilder builder = new StringBuilder().append("{\"cursor\":{\"partition\":\"").append(partition)
                                                          .append("\",\"offset\":\"").append(offset).append("\"}");
         if (!events.isEmpty()) {
@@ -143,6 +142,7 @@ public class EventStream {
         }
 
         builder.append("}").append(BATCH_SEPARATOR);
+
         return builder.toString();
     }
 
@@ -150,7 +150,7 @@ public class EventStream {
             throws IOException {
         // create stream event batch for current partition and send it; if there were
         // no events, it will be just a keep-alive
-        final String streamEvent = createStreamEvent(partition, offset, currentBatch, Optional.empty());
+        final String streamEvent = createStreamEvent(partition, offset, currentBatch);
         outputStream.write(streamEvent.getBytes(UTF8));
         outputStream.flush();
     }
