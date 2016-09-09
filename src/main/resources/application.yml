@@ -36,6 +36,8 @@ nakadi:
       rotationMs: 86400000 # 1 day
   stream:
     timeoutMs: 31536000000 # 1 year :-P
+    default:
+        commitTimeout: 60 # 1 minute
   featureToggle.default: false
   kafka:
     instanceType: t2.large
@@ -65,3 +67,11 @@ nakadi:
   auth:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
+---
+
+spring:
+  profiles: acceptanceTest
+nakadi:
+  stream:
+    default:
+      commitTimeout: 5 # seconds

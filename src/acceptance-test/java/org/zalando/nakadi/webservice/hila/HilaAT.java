@@ -72,9 +72,8 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "stream_limit=2")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
-
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
-                ImmutableMap.of("blah", "foo0"))));
+                ImmutableMap.of("blah", "foo0"), "Stream started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "1", eventType.getName(),
                 ImmutableMap.of("blah", "foo1"))));
 
@@ -88,7 +87,7 @@ public class HilaAT extends BaseAT {
 
         // check that we have read the next two events with correct offsets
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "2", eventType.getName(),
-                ImmutableMap.of("blah", "foo2"))));
+                ImmutableMap.of("blah", "foo2"), "Stream started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "3", eventType.getName(),
                 ImmutableMap.of("blah", "foo3"))));
     }
@@ -115,7 +114,7 @@ public class HilaAT extends BaseAT {
         range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "window_size=5")
+                .create(URL, subscription.getId(), "max_uncommitted_size=5")
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
@@ -131,17 +130,19 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(12)));
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void whenCommitTimeoutReachedSessionIsClosed() throws Exception {
 
         publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "commit_timeout=1")
+                .create(URL, subscription.getId(), "") // commit_timeout is 5 seconds for test
                 .start();
 
-        waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
-        waitFor(() -> assertThat(client.isRunning(), is(false)), 3000);
+        waitFor(() -> assertThat(client.getBatches(), hasSize(2)), 10000);
+        waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
+        assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
+                ImmutableMap.of(), "Commit timeout reached")));
     }
 
     @Test(timeout = 15000)
@@ -169,7 +170,7 @@ public class HilaAT extends BaseAT {
         range(0, 12).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1")
+                .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1&max_uncommitted_size=20")
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(3)));
@@ -222,7 +223,7 @@ public class HilaAT extends BaseAT {
         IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "")
+                .create(URL, subscription.getId(), "max_uncommitted_size=20")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
 

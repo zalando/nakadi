@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,7 +51,11 @@ class StreamingState extends State {
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() -> this.shutdownGracefully("Stream timeout reached"), timeout,
+                timeout -> scheduleTask(() -> {
+                            final String debugMessage = "Stream timeout reached";
+                            this.sendMetadata(debugMessage);
+                            this.shutdownGracefully(debugMessage);
+                        }, timeout,
                         TimeUnit.MILLISECONDS));
 
         this.lastCommitMillis = System.currentTimeMillis();
@@ -63,7 +68,9 @@ class StreamingState extends State {
         if (hasUncommitted) {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
-                shutdownGracefully("Commit timeout reached");
+                final String debugMessage = "Commit timeout reached";
+                sendMetadata(debugMessage);
+                shutdownGracefully(debugMessage);
             } else {
                 scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis - millisFromLastCommit,
                         TimeUnit.MILLISECONDS);
@@ -73,8 +80,14 @@ class StreamingState extends State {
         }
     }
 
+    private void sendMetadata(final String metadata) {
+        offsets.entrySet().stream().findFirst()
+                .ifPresent(pk -> flushData(pk.getKey(), new TreeMap<>(), Optional.of(metadata)));
+    }
+
     private void shutdownGracefully(final String reason) {
         getLog().info("Shutting down gracefully. Reason: {}", reason);
+
         final Map<Partition.PartitionKey, Long> uncommitted = offsets.entrySet().stream()
                 .filter(e -> !e.getValue().isCommitted())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
@@ -117,8 +130,8 @@ class StreamingState extends State {
 
     private long getMessagesAllowedToSend() {
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
-        final long allowDueWindowSize = getParameters().windowSizeMessages - unconfirmed;
-        return getParameters().getMessagesAllowedToSend(allowDueWindowSize, this.sentEvents);
+        final long limit = getParameters().maxUncommittedMessages - unconfirmed;
+        return getParameters().getMessagesAllowedToSend(limit, this.sentEvents);
     }
 
     private void checkBatchTimeouts() {
@@ -143,7 +156,11 @@ class StreamingState extends State {
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, freeSlots),
                     getParameters().batchTimeoutMillis))) {
-                flushData(e.getKey(), toSend);
+                if (sentEvents == 0) {
+                    flushData(e.getKey(), toSend, Optional.of("Stream started"));
+                } else {
+                    flushData(e.getKey(), toSend, Optional.empty());
+                }
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
@@ -159,10 +176,11 @@ class StreamingState extends State {
         }
     }
 
-    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data) {
+    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
+        final Optional<String> metadata) {
         try {
             final String offset = String.valueOf(offsets.get(pk).getSentOffset());
-            final String batch = serializeBatch(pk, offset, new ArrayList<>(data.values()));
+            final String batch = serializeBatch(pk, offset, new ArrayList<>(data.values()), metadata);
             getOut().streamData(batch.getBytes(EventStream.UTF8));
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
@@ -171,7 +189,8 @@ class StreamingState extends State {
     }
 
     private String serializeBatch(final Partition.PartitionKey partitionKey, final String offset,
-                                  final List<String> events) throws JsonProcessingException {
+                                  final List<String> events, final Optional<String> metadata)
+            throws JsonProcessingException {
 
         final String eventType = getContext().getEventTypesForTopics().get(partitionKey.getTopic());
         final String token = getContext().getCursorTokenService().generateToken();
@@ -185,6 +204,9 @@ class StreamingState extends State {
             builder.append(",\"events\":[");
             events.stream().forEach(event -> builder.append(event).append(","));
             builder.deleteCharAt(builder.length() - 1).append("]");
+        }
+        if (metadata.isPresent()) {
+            builder.append(",\"info\":{\"debug\":\"").append(metadata.get()).append("\"}");
         }
         builder.append("}").append(EventStream.BATCH_SEPARATOR);
         return builder.toString();
@@ -367,7 +389,9 @@ class StreamingState extends State {
                 streamToOutput();
             }
             if (getParameters().isStreamLimitReached(committedEvents)) {
-                shutdownGracefully("Stream limit in events reached: " + committedEvents);
+                final String debugMessage = "Stream limit in events reached: " + committedEvents;
+                sendMetadata(debugMessage);
+                shutdownGracefully(debugMessage);
             }
             if (releasingPartitions.containsKey(key) && data.isCommitted()) {
                 reassignCommitted();

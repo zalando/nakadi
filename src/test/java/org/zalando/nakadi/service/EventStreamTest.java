@@ -134,7 +134,7 @@ public class EventStreamTest {
         // if something goes wrong - the test should fail with a timeout
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void whenNoEventsToReadThenKeepAliveIsSent() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -151,6 +151,7 @@ public class EventStreamTest {
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
+
         Arrays
                 .stream(batches)
                 .forEach(batch ->
@@ -294,6 +295,11 @@ public class EventStreamTest {
 
     private static String jsonBatch(final String partition, final String offset,
                                     final Optional<List<String>> eventsOrNone) {
+        return jsonBatch(partition, offset, eventsOrNone, Optional.empty());
+    }
+
+    private static String jsonBatch(final String partition, final String offset,
+                                    final Optional<List<String>> eventsOrNone, final Optional<String> metadata) {
         final String eventsStr = eventsOrNone
                 .map(events -> {
                     final StringBuilder builder = new StringBuilder(",\"events\":[");
@@ -302,7 +308,10 @@ public class EventStreamTest {
                     return builder.toString();
                 })
                 .orElse("");
-        return String.format("{\"cursor\":{\"partition\":\"%s\",\"offset\":\"%s\"}%s}", partition, offset, eventsStr);
+        final String metadataStr = metadata.map(m -> ",\"metadata\":{\"debug\":\""+m+"\"}").orElse("");
+
+        return String.format("{\"cursor\":{\"partition\":\"%s\",\"offset\":\"%s\"}%s%s}", partition, offset, eventsStr,
+                metadataStr);
     }
 
 }

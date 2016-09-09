@@ -12,18 +12,21 @@ public class NakadiSettings {
     private final int defaultTopicReplicaFactor;
     private final long defaultTopicRetentionMs;
     private final long defaultTopicRotationMs;
+    private final long defaultCommitTimeoutSeconds;
 
     @Autowired
     public NakadiSettings(@Value("${nakadi.topic.max.partitionNum}") final int maxTopicPartitionCount,
                           @Value("${nakadi.topic.default.partitionNum}") final int defaultTopicPartitionCount,
                           @Value("${nakadi.topic.default.replicaFactor}") final int defaultTopicReplicaFactor,
                           @Value("${nakadi.topic.default.retentionMs}") final long defaultTopicRetentionMs,
-                          @Value("${nakadi.topic.default.rotationMs}") final long defaultTopicRotationMs) {
+                          @Value("${nakadi.topic.default.rotationMs}") final long defaultTopicRotationMs,
+                          @Value("${nakadi.stream.default.commitTimeout}") final long defaultCommitTimeoutSeconds) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
         this.defaultTopicPartitionCount = defaultTopicPartitionCount;
         this.defaultTopicReplicaFactor = defaultTopicReplicaFactor;
         this.defaultTopicRetentionMs = defaultTopicRetentionMs;
         this.defaultTopicRotationMs = defaultTopicRotationMs;
+        this.defaultCommitTimeoutSeconds = defaultCommitTimeoutSeconds;
     }
 
     public int getDefaultTopicPartitionCount() {
@@ -44,6 +47,10 @@ public class NakadiSettings {
 
     public long getDefaultTopicRotationMs() {
         return defaultTopicRotationMs;
+    }
+
+    public long getDefaultCommitTimeoutSeconds() {
+        return defaultCommitTimeoutSeconds;
     }
 
 }
