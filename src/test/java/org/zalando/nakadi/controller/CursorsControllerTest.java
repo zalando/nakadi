@@ -93,7 +93,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenCommitValidCursorsThenNoContent() throws Exception {
-        when(cursorsService.commitCursors(any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any()))
                 .thenReturn(new HashMap<>());
         postCursors(DUMMY_CURSORS)
                 .andExpect(status().isNoContent());
@@ -101,7 +101,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenCommitInvalidCursorsThenOk() throws Exception {
-        when(cursorsService.commitCursors(any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any()))
                 .thenReturn(Collections.singletonMap(DUMMY_CURSORS.get(0), false));
         postCursors(DUMMY_CURSORS)
                 .andExpect(status().isOk())
@@ -112,7 +112,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenNoSubscriptionThenNotFound() throws Exception {
-        when(cursorsService.commitCursors(any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
@@ -121,7 +121,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenServiceUnavailableExceptionThenServiceUnavailable() throws Exception {
-        when(cursorsService.commitCursors(any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any()))
                 .thenThrow(new ServiceUnavailableException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy-message");
 
@@ -130,7 +130,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenInvalidCursorExceptionThenUnprocessableEntity() throws Exception {
-        when(cursorsService.commitCursors(any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any()))
                 .thenThrow((new InvalidCursorException(CursorError.NULL_PARTITION,
                         new SubscriptionCursor(null, null, null, null))));
 
@@ -177,6 +177,7 @@ public class CursorsControllerTest {
 
     private ResultActions postCursorsString(final String cursors) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = post("/subscriptions/" + SUBSCRIPTION_ID + "/cursors")
+                .header("X-Nakadi-StreamId", "test-stream-id")
                 .contentType(APPLICATION_JSON)
                 .content(cursors);
         return mockMvc.perform(requestBuilder);

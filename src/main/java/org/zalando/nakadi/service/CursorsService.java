@@ -1,6 +1,11 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.zookeeper.KeeperException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
@@ -22,13 +27,9 @@ import org.zalando.nakadi.service.subscription.SubscriptionKafkaClientFactory;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import org.apache.zookeeper.KeeperException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -36,8 +37,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 import static java.text.MessageFormat.format;
+import static org.zalando.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 
 @Component
 public class CursorsService {
@@ -76,16 +77,35 @@ public class CursorsService {
         this.cursorTokenService = cursorTokenService;
     }
 
-    public Map<SubscriptionCursor, Boolean> commitCursors(final String subscriptionId,
+    public Map<SubscriptionCursor, Boolean> commitCursors(final String streamId, final String subscriptionId,
                                                           final List<SubscriptionCursor> cursors)
             throws NakadiException, InvalidCursorException {
 
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-        createSubscriptionInZkIfNeeded(subscription);
+        final ZkSubscriptionClient subscriptionClient = zkSubscriptionClientFactory.createZkSubscriptionClient(
+                subscription.getId());
+        createSubscriptionInZkIfNeeded(subscription, subscriptionClient);
+
+        validateCursors(subscriptionClient, cursors, streamId);
 
         return cursors.stream().collect(Collectors.toMap(Function.identity(),
                 Try.<SubscriptionCursor, Boolean>wrap(cursor -> processCursor(subscriptionId, cursor))
                         .andThen(Try::getOrThrow)));
+    }
+
+    private void validateCursors(final ZkSubscriptionClient subscriptionClient,
+                                 final List<SubscriptionCursor> cursors,
+                                 final String streamId) throws InvalidCursorException
+    {
+        final Map<Partition.PartitionKey, Partition> partitions = Arrays.stream(subscriptionClient.listPartitions())
+                .collect(Collectors.toMap(Partition::getKey, Function.identity()));
+        List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor ->
+                !streamId.equals(partitions.get(
+                        new Partition.PartitionKey(cursor.getEventType(), cursor.getPartition())).getSession()))
+                .collect(Collectors.toList());
+        if (!invalidCursors.isEmpty()) {
+            throw new InvalidCursorException(CursorError.FORBIDDEN, cursors.get(0));
+        }
     }
 
     private boolean processCursor(final String subscriptionId, final SubscriptionCursor cursor)
@@ -118,12 +138,11 @@ public class CursorsService {
         }
     }
 
-    private void createSubscriptionInZkIfNeeded(final Subscription subscription) throws ServiceUnavailableException {
+    private void createSubscriptionInZkIfNeeded(final Subscription subscription,
+                                                final ZkSubscriptionClient subscriptionClient)
+            throws ServiceUnavailableException {
 
-        final ZkSubscriptionClient subscriptionClient =
-                zkSubscriptionClientFactory.createZkSubscriptionClient(subscription.getId());
         final AtomicReference<Exception> atomicReference = new AtomicReference<>();
-
         try {
             if (!subscriptionClient.isSubscriptionCreated()) {
                 subscriptionClient.runLocked(() -> {
