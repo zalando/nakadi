@@ -36,7 +36,7 @@ public interface Result<T> {
 
         private final V value;
 
-        public Success(final V value) {
+        private Success(final V value) {
             this.value = value;
         }
 
@@ -60,7 +60,7 @@ public interface Result<T> {
 
         private final Problem problem;
 
-        public Failure(final Problem problem) {
+        private Failure(final Problem problem) {
             this.problem = problem;
         }
 

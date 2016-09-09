@@ -10,7 +10,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -75,13 +75,14 @@ public final class ExceptionHandling implements ProblemHandling {
     }
 
     @ExceptionHandler
-    public ResponseEntity<Problem> handleExceptionWrapper(final ExceptionWrapper exception,
-                                                          final NativeWebRequest request) {
+    public ResponseEntity<Problem> handleExceptionWrapper(final NakadiRuntimeException exception,
+                                                          final NativeWebRequest request) throws Exception
+    {
         final Throwable cause = exception.getCause();
         if (cause instanceof NakadiException) {
             final NakadiException ne = (NakadiException) cause;
             return Responses.create(ne.asProblem(), request);
         }
-        return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, cause, request);
+        throw exception.getException();
     }
 }

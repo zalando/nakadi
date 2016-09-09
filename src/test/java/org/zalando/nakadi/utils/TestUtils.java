@@ -32,7 +32,7 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 
 public class TestUtils {
 
@@ -175,7 +175,7 @@ public class TestUtils {
 
     public static List<Subscription> createRandomSubscriptions(final int count) {
         return range(0, count)
-                .mapToObj(i -> randomSubscription().build())
+                .mapToObj(i -> builder().build())
                 .collect(toList());
     }
 

@@ -3,15 +3,15 @@ package org.zalando.nakadi.partitioning;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.InvalidPartitionKeyFieldsException;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.validation.EventValidation;
 
 import java.util.List;
 
 import static java.lang.Math.abs;
-import static org.zalando.nakadi.exceptions.ExceptionWrapper.wrapFunction;
 
 public class HashPartitionStrategy implements PartitionStrategy {
 
@@ -34,15 +34,16 @@ public class HashPartitionStrategy implements PartitionStrategy {
                     // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
                     // a string first and then use hashCode()
                     .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? DATA_PATH_PREFIX + pkf : pkf)
-                    .map(wrapFunction(okf -> traversableJsonEvent.get(okf).toString().hashCode()))
+                    .map(Try.wrap(okf -> traversableJsonEvent.get(okf).toString().hashCode()))
+                    .map(Try::getOrThrow)
                     .mapToInt(hc -> hc)
                     .sum();
 
             final int partitionIndex = abs(hashValue) % partitions.size();
             return partitions.get(partitionIndex);
 
-        } catch (ExceptionWrapper e) {
-            final Exception original = e.getWrapped();
+        } catch (NakadiRuntimeException e) {
+            final Exception original = e.getException();
             if (original instanceof InvalidPartitionKeyFieldsException) {
                 throw (InvalidPartitionKeyFieldsException) original;
             } else {

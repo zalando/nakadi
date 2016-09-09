@@ -75,7 +75,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
+import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
@@ -123,7 +123,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenPostValidSubscriptionThenOk() throws Exception {
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
@@ -148,7 +148,7 @@ public class SubscriptionControllerTest {
     public void whenCreateSubscriptionWithUnknownApplicationThen422() throws Exception {
 
         doReturn(false).when(applicationService).exists(any());
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
@@ -163,7 +163,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenOwningApplicationIsNullThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication(null)
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
@@ -173,7 +173,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenEventTypesIsEmptyThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of())
                 .buildSubscriptionBase();
@@ -184,7 +184,7 @@ public class SubscriptionControllerTest {
     @Test
     // this test method will fail when we implement consuming from multiple event types
     public void whenMoreThanOneEventTypeThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET", "secondET"))
                 .buildSubscriptionBase();
@@ -208,7 +208,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenEventTypeDoesNotExistThenUnprocessableEntity() throws Exception {
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
@@ -222,7 +222,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenSubscriptionExistsThenReturnIt() throws Exception {
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
@@ -245,7 +245,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionThenOk() throws Exception {
-        final Subscription subscription = randomSubscription().build();
+        final Subscription subscription = builder().build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
 
         getSubscription(subscription.getId())
@@ -255,7 +255,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetNoneExistingSubscriptionThenNotFound() throws Exception {
-        final Subscription subscription = randomSubscription().build();
+        final Subscription subscription = builder().build();
         when(subscriptionRepository.getSubscription(subscription.getId()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final ThrowableProblem expectedProblem = Problem.valueOf(Response.Status.NOT_FOUND, "dummy-message");
@@ -345,7 +345,7 @@ public class SubscriptionControllerTest {
                 .thenThrow(new ServiceUnavailableException("dummy message"));
         when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
-        final SubscriptionBase subscription = randomSubscription()
+        final SubscriptionBase subscription = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
@@ -354,7 +354,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
-        final Subscription subscription = randomSubscription().withEventType("myET").build();
+        final Subscription subscription = builder().withEventType("myET").build();
         final Partition.PartitionKey partitionKey = new Partition.PartitionKey("topic", "p1");
         final Partition[] partitions = {new Partition(partitionKey, "xz", "xz", Partition.State.ASSIGNED)};
 
@@ -379,7 +379,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionNoPartitionsThenStatEmpty() throws Exception {
-        final Subscription subscription = randomSubscription().withEventType("myET").build();
+        final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[]{});
         when(eventTypeRepository.findByName("myET"))
@@ -395,7 +395,7 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
-        final Subscription subscription = randomSubscription().withEventType("myET").build();
+        final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
@@ -421,7 +421,7 @@ public class SubscriptionControllerTest {
     public void whenPostSubscriptionWithNoReadScopeThenForbidden() throws Exception {
         when(eventTypeRepository.findByNameO("myET")).thenReturn(getEventTypeWithReadScope());
 
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
@@ -434,7 +434,7 @@ public class SubscriptionControllerTest {
     public void whenPostSubscriptionWithReadScopeThenCreated() throws Exception {
         when(eventTypeRepository.findByNameO("myET")).thenReturn(getEventTypeWithReadScope());
 
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();

@@ -2,7 +2,7 @@ package org.zalando.nakadi.service.subscription;
 
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -37,7 +37,7 @@ public class KafkaClient {
             }
             return offsets;
         } catch (final NakadiException e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 

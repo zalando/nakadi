@@ -17,11 +17,11 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -84,7 +84,7 @@ public class SubscriptionService {
         final Map<String, Optional<EventType>> eventTypeMapping =
                 subscriptionBase.getEventTypes().stream()
                         .collect(Collectors.toMap(Function.identity(),
-                                ExceptionWrapper.wrapFunction(eventTypeRepository::findByNameO)));
+                                Try.wrap(eventTypeRepository::findByNameO).andThen(Try::getOrThrow)));
         final List<String> missingEventTypes = eventTypeMapping.entrySet().stream()
                 .filter(entry -> !entry.getValue().isPresent())
                 .map(Map.Entry::getKey)
@@ -103,13 +103,13 @@ public class SubscriptionService {
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
-        return new Result.Success(subscription);
+        return Result.ok(subscription);
     }
 
     public Result<Subscription> processDuplicatedSubscription(final SubscriptionBase subscriptionBase) {
         try {
             final Subscription existingSubscription = getExistingSubscription(subscriptionBase);
-            return new Result.Success(existingSubscription);
+            return Result.ok(existingSubscription);
         } catch (final ServiceUnavailableException ex) {
             LOG.error("Error occurred during fetching existing subscription", ex);
             return Result.problem(ex.asProblem());
@@ -161,7 +161,7 @@ public class SubscriptionService {
                     subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                 owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
-            return new Result.Success(new SubscriptionListWrapper(subscriptions, paginationLinks));
+            return Result.ok(new SubscriptionListWrapper(subscriptions, paginationLinks));
         } catch (ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
             return Result.problem(e.asProblem());
@@ -171,7 +171,7 @@ public class SubscriptionService {
     public Result<Subscription> getSubscription(final String subscriptionId) {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            return new Result.Success<>(subscription);
+            return Result.ok(subscription);
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId, e);
             return Result.problem(e.asProblem());
@@ -185,7 +185,7 @@ public class SubscriptionService {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
             final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription);
-            return new Result.Success<>(new ItemsWrapper<>(subscriptionStat));
+            return Result.ok(new ItemsWrapper<>(subscriptionStat));
         } catch (final NoSuchSubscriptionException e) {
             LOG.debug("Failed to find subscription: {}", subscriptionId, e);
             return Result.problem(e.asProblem());
@@ -202,11 +202,12 @@ public class SubscriptionService {
         final Partition[] partitions = zkSubscriptionClient.listPartitions();
 
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
-                .map(ExceptionWrapper.wrapFunction(eventTypeRepository::findByName))
+                .map(Try.wrap(eventTypeRepository::findByName))
+                .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
         final Set<String> topics = eventTypes.stream()
-                .map(eventType -> eventType.getTopic())
+                .map(EventType::getTopic)
                 .collect(Collectors.toSet());
 
         final List<TopicPartition> topicPartitions = topicRepository.listPartitions(topics);
@@ -230,8 +231,9 @@ public class SubscriptionService {
         return topicPartitions.stream()
                 .filter(topicPartition ->
                         partition.getKey().getPartition().equals(topicPartition.getPartitionId()))
-                .map(ExceptionWrapper.wrapFunction(topicPartition ->
-                        createPartition(zkSubscriptionClient, partition, topicPartition)));
+                .map(Try.wrap(topicPartition ->
+                        createPartition(zkSubscriptionClient, partition, topicPartition)))
+                .map(Try::getOrThrow);
     }
 
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,

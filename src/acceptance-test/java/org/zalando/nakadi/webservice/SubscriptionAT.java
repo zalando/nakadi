@@ -9,11 +9,13 @@ import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
@@ -33,7 +35,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
@@ -105,11 +106,11 @@ public class SubscriptionAT extends BaseAT {
         final String etName = createEventType().getName();
 
         final String filterApp = randomUUID();
-        final Subscription sub1 = createSubscription(randomSubscription()
+        final Subscription sub1 = createSubscription(RandomSubscriptionBuilder.builder()
                 .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
-        final Subscription sub2 = createSubscription(randomSubscription()
+        final Subscription sub2 = createSubscription(RandomSubscriptionBuilder.builder()
                 .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
-        createSubscription(randomSubscription().withEventType(etName).buildSubscriptionBase());
+        createSubscription(RandomSubscriptionBuilder.builder().withEventType(etName).buildSubscriptionBase());
 
         final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub2, sub1),
                 new PaginationLinks());
@@ -134,19 +135,19 @@ public class SubscriptionAT extends BaseAT {
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
                 .then()
-                .statusCode(HttpStatus.SC_OK);
+                .statusCode(HttpStatus.SC_NO_CONTENT);
 
         // check that offset is actually committed to Zookeeper
         final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
         String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
         assertThat(committedOffset, equalTo("25"));
 
-        // commit lower offsets and expect 204
+        // commit lower offsets and expect 200
         cursor = "[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
                 .then()
-                .statusCode(HttpStatus.SC_NO_CONTENT);
+                .statusCode(HttpStatus.SC_OK);
 
         // check that committed offset in Zookeeper is not changed
         committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
@@ -161,9 +162,9 @@ public class SubscriptionAT extends BaseAT {
                 "\",\"cursor_token\":\"abc\"}]";
         commitCursors(subscription, cursor)
                 .then()
-                .statusCode(HttpStatus.SC_OK);
+                .statusCode(HttpStatus.SC_NO_CONTENT);
 
-        final List<SubscriptionCursor> actualCursors = getSubscriptionCursors(subscription);
+        final List<SubscriptionCursor> actualCursors = getSubscriptionCursors(subscription).getItems();
         assertThat(actualCursors, hasSize(1));
 
         final SubscriptionCursor actualCursor = actualCursors.get(0);
@@ -176,7 +177,7 @@ public class SubscriptionAT extends BaseAT {
     public void testGetSubscriptionCursorsEmpty() throws IOException {
         final String etName = createEventType().getName();
         final Subscription subscription = createSubscriptionForEventType(etName);
-        Assert.assertTrue(getSubscriptionCursors(subscription).isEmpty());
+        Assert.assertTrue(getSubscriptionCursors(subscription).getItems().isEmpty());
     }
 
     @Test
@@ -191,12 +192,13 @@ public class SubscriptionAT extends BaseAT {
         return given()
                 .body(cursor)
                 .contentType(JSON)
-                .put(format(CURSORS_URL, subscription.getId()));
+                .post(format(CURSORS_URL, subscription.getId()));
     }
 
-    private List<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription) throws IOException {
+    private ItemsWrapper<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription)
+            throws IOException {
         final Response response = given().get(format(CURSORS_URL, subscription.getId()));
-        return MAPPER.readValue(response.print(), new TypeReference<List<SubscriptionCursor>>() {});
+        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
     }
 
     private String getCommittedOffsetFromZk(final String topic, final Subscription subscription,

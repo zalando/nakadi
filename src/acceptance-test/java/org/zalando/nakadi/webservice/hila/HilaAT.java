@@ -10,9 +10,10 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.utils.JsonTestHelper;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -23,8 +24,18 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
+import static java.text.MessageFormat.format;
+import static java.util.stream.IntStream.range;
+import static java.util.stream.IntStream.rangeClosed;
+import static org.apache.http.HttpStatus.SC_CONFLICT;
+import static org.apache.http.HttpStatus.SC_NO_CONTENT;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
@@ -32,17 +43,6 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
-import static java.text.MessageFormat.format;
-import static java.util.stream.IntStream.range;
-import static java.util.stream.IntStream.rangeClosed;
-import static org.apache.http.HttpStatus.SC_CONFLICT;
-import static org.apache.http.HttpStatus.SC_OK;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.not;
 
 public class HilaAT extends BaseAT {
 
@@ -54,7 +54,7 @@ public class HilaAT extends BaseAT {
     public void before() throws IOException {
         // create event-type and subscribe to it
         eventType = createEventType();
-        final SubscriptionBase subscription = randomSubscription()
+        final SubscriptionBase subscription = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType.getName())
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
@@ -103,10 +103,10 @@ public class HilaAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getBatches(), not(empty())));
 
-        // commit and check that status is 200
+        // commit and check that status is 201
         final int commitResult = commitCursors(subscription.getId(),
                 ImmutableList.of(new SubscriptionCursor("0", "0", eventType.getName(), "token")));
-        assertThat(commitResult, equalTo(SC_OK));
+        assertThat(commitResult, equalTo(SC_NO_CONTENT));
     }
 
     @Test(timeout = 15000)

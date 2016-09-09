@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,7 +26,6 @@ import java.util.UUID;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 
 public class NakadiTestUtils {
 
@@ -89,7 +89,7 @@ public class NakadiTestUtils {
     }
 
     public static Subscription createSubscriptionForEventType(final String eventType) throws IOException {
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType)
                 .buildSubscriptionBase();
         return createSubscription(subscriptionBase);
@@ -108,7 +108,7 @@ public class NakadiTestUtils {
         return given()
                 .body(MAPPER.writeValueAsString(cursors))
                 .contentType(JSON)
-                .put(format("/subscriptions/{0}/cursors", subscriptionId))
+                .post(format("/subscriptions/{0}/cursors", subscriptionId))
                 .getStatusCode();
     }
 

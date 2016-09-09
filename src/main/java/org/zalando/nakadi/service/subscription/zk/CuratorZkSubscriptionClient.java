@@ -6,7 +6,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -64,10 +64,10 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             if (releaseException != null) {
                 throw releaseException;
             }
-        } catch (final ExceptionWrapper e) {
+        } catch (final NakadiRuntimeException e) {
             throw e;
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -99,7 +99,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 return !state.equals(STATE_INITIALIZED);
             }
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -137,7 +137,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             log.info("updating state");
             curatorFramework.setData().forPath(getSubscriptionPath("/state"), STATE_INITIALIZED.getBytes(CHARSET));
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -167,7 +167,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                     getPartitionPath(partition.getKey()),
                     serializeNode(partition.getSession(), partition.getNextSession(), partition.getState()));
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -180,7 +180,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             curatorFramework.setData().forPath(getSubscriptionPath("/topology"), String.valueOf(curVersion + 1)
                     .getBytes(CHARSET));
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -198,7 +198,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             }
             return partitions.toArray(new Partition[partitions.size()]);
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -214,7 +214,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             }
             return sessions.toArray(new Session[sessions.size()]);
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -242,7 +242,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             return Long.parseLong(new String(curatorFramework.getData().forPath(getPartitionPath(key) + "/offset"),
                     CHARSET));
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -254,7 +254,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             curatorFramework.create().withMode(CreateMode.EPHEMERAL).forPath(clientPath,
                     String.valueOf(session.getWeight()).getBytes(CHARSET));
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -263,7 +263,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         try {
             curatorFramework.delete().guaranteed().forPath(getSubscriptionPath("/sessions/" + session.getId()));
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
@@ -287,7 +287,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 incrementTopology();
             }
         } catch (final Exception e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 }

@@ -30,7 +30,7 @@ public class RandomSubscriptionBuilder {
         eventTypes = ImmutableSet.of(randomTextString());
     }
 
-    public static RandomSubscriptionBuilder randomSubscription() {
+    public static RandomSubscriptionBuilder builder() {
         return new RandomSubscriptionBuilder();
     }
 
