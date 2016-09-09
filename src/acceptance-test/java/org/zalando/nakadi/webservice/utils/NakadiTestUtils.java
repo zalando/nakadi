@@ -108,6 +108,7 @@ public class NakadiTestUtils {
         return given()
                 .body(MAPPER.writeValueAsString(cursors))
                 .contentType(JSON)
+                .header("X-Nakadi-StreamId", "test-stream-id")
                 .post(format("/subscriptions/{0}/cursors", subscriptionId))
                 .getStatusCode();
     }

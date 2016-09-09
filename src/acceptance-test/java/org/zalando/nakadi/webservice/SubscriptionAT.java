@@ -192,6 +192,7 @@ public class SubscriptionAT extends BaseAT {
         return given()
                 .body(cursor)
                 .contentType(JSON)
+                .header("X-Nakadi-StreamId", "test-stream-id")
                 .post(format(CURSORS_URL, subscription.getId()));
     }
 

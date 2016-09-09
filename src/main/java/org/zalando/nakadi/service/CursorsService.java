@@ -99,7 +99,7 @@ public class CursorsService {
     {
         final Map<Partition.PartitionKey, Partition> partitions = Arrays.stream(subscriptionClient.listPartitions())
                 .collect(Collectors.toMap(Partition::getKey, Function.identity()));
-        List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor ->
+        final List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor ->
                 !streamId.equals(partitions.get(
                         new Partition.PartitionKey(cursor.getEventType(), cursor.getPartition())).getSession()))
                 .collect(Collectors.toList());
