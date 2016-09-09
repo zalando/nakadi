@@ -95,16 +95,19 @@ public class CursorsControllerTest {
     public void whenCommitValidCursorsThenNoContent() throws Exception {
         when(cursorsService.commitCursors(any(), any()))
                 .thenReturn(new HashMap<>());
-        putCursors(DUMMY_CURSORS)
+        postCursors(DUMMY_CURSORS)
                 .andExpect(status().isNoContent());
     }
 
     @Test
     public void whenCommitInvalidCursorsThenOk() throws Exception {
         when(cursorsService.commitCursors(any(), any()))
-                .thenReturn(Collections.singletonMap(any(), false));
-        putCursors(DUMMY_CURSORS)
-                .andExpect(status().isOk());
+                .thenReturn(Collections.singletonMap(DUMMY_CURSORS.get(0), false));
+        postCursors(DUMMY_CURSORS)
+                .andExpect(status().isOk())
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(
+                        Collections.singletonList(
+                                new CursorsController.CursorCommitResult(DUMMY_CURSORS.get(0), false))))));
     }
 
     @Test
@@ -113,7 +116,7 @@ public class CursorsControllerTest {
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
-        checkForProblem(putCursors(DUMMY_CURSORS), expectedProblem);
+        checkForProblem(postCursors(DUMMY_CURSORS), expectedProblem);
     }
 
     @Test
@@ -122,7 +125,7 @@ public class CursorsControllerTest {
                 .thenThrow(new ServiceUnavailableException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy-message");
 
-        checkForProblem(putCursors(DUMMY_CURSORS), expectedProblem);
+        checkForProblem(postCursors(DUMMY_CURSORS), expectedProblem);
     }
 
     @Test
@@ -133,12 +136,12 @@ public class CursorsControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "partition must not be null");
 
-        checkForProblem(putCursors(DUMMY_CURSORS), expectedProblem);
+        checkForProblem(postCursors(DUMMY_CURSORS), expectedProblem);
     }
 
     @Test
     public void whenBodyIsNotJsonThenBadRequest() throws Exception {
-        putCursorsString("blah")
+        postCursorsString("blah")
                 .andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
     }
 
@@ -168,11 +171,11 @@ public class CursorsControllerTest {
                 .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
     }
 
-    private ResultActions putCursors(final List<SubscriptionCursor> cursors) throws Exception {
-        return putCursorsString(objectMapper.writeValueAsString(cursors));
+    private ResultActions postCursors(final List<SubscriptionCursor> cursors) throws Exception {
+        return postCursorsString(objectMapper.writeValueAsString(cursors));
     }
 
-    private ResultActions putCursorsString(final String cursors) throws Exception {
+    private ResultActions postCursorsString(final String cursors) throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = post("/subscriptions/" + SUBSCRIPTION_ID + "/cursors")
                 .contentType(APPLICATION_JSON)
                 .content(cursors);

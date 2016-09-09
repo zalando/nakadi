@@ -103,12 +103,12 @@ public class CursorsController {
                 .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
     }
 
-    private static class CursorCommitResult {
+    public static class CursorCommitResult {
 
         private final SubscriptionCursor cursor;
         private final String result;
 
-        private CursorCommitResult(final SubscriptionCursor cursor, final boolean result) {
+        public CursorCommitResult(final SubscriptionCursor cursor, final boolean result) {
             this.cursor = cursor;
             this.result = result ? "committed" : "outdated";
         }
