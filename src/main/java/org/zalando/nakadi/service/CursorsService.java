@@ -99,10 +99,11 @@ public class CursorsService {
     {
         final Map<Partition.PartitionKey, Partition> partitions = Arrays.stream(subscriptionClient.listPartitions())
                 .collect(Collectors.toMap(Partition::getKey, Function.identity()));
-        final List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor ->
-                !streamId.equals(partitions.get(
-                        new Partition.PartitionKey(cursor.getEventType(), cursor.getPartition())).getSession()))
-                .collect(Collectors.toList());
+        final List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor -> {
+            final Partition.PartitionKey key = new Partition.PartitionKey(cursor.getEventType(), cursor.getPartition());
+            final Partition partition = partitions.get(key);
+            return partition == null || !streamId.equals(partition.getSession());
+        }).collect(Collectors.toList());
         if (!invalidCursors.isEmpty()) {
             throw new InvalidCursorException(CursorError.FORBIDDEN, cursors.get(0));
         }
