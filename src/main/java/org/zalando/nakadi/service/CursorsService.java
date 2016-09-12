@@ -22,8 +22,6 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
-import org.zalando.nakadi.service.subscription.KafkaClient;
-import org.zalando.nakadi.service.subscription.SubscriptionKafkaClientFactory;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
@@ -33,7 +31,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -55,7 +52,6 @@ public class CursorsService {
     private final EventTypeRepository eventTypeRepository;
     private final ZooKeeperLockFactory zkLockFactory;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
-    private final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory;
     private final CursorTokenService cursorTokenService;
 
     @Autowired
@@ -65,7 +61,6 @@ public class CursorsService {
                           final EventTypeRepository eventTypeRepository,
                           final ZooKeeperLockFactory zkLockFactory,
                           final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
-                          final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory,
                           final CursorTokenService cursorTokenService) {
         this.zkHolder = zkHolder;
         this.topicRepository = topicRepository;
@@ -73,7 +68,6 @@ public class CursorsService {
         this.eventTypeRepository = eventTypeRepository;
         this.zkLockFactory = zkLockFactory;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
-        this.subscriptionKafkaClientFactory = subscriptionKafkaClientFactory;
         this.cursorTokenService = cursorTokenService;
     }
 
@@ -84,7 +78,6 @@ public class CursorsService {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         final ZkSubscriptionClient subscriptionClient = zkSubscriptionClientFactory.createZkSubscriptionClient(
                 subscription.getId());
-        createSubscriptionInZkIfNeeded(subscription, subscriptionClient);
 
         validateCursors(subscriptionClient, cursors, streamId);
 
@@ -99,11 +92,12 @@ public class CursorsService {
     {
         final Map<Partition.PartitionKey, Partition> partitions = Arrays.stream(subscriptionClient.listPartitions())
                 .collect(Collectors.toMap(Partition::getKey, Function.identity()));
-        final List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor -> {
-            final Partition.PartitionKey key = new Partition.PartitionKey(cursor.getEventType(), cursor.getPartition());
+        final List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor -> Try.cons(() ->
+                eventTypeRepository.findByName(cursor.getEventType())).getO().map(eventType -> {
+            final Partition.PartitionKey key = new Partition.PartitionKey(eventType.getTopic(), cursor.getPartition());
             final Partition partition = partitions.get(key);
             return partition == null || !streamId.equals(partition.getSession());
-        }).collect(Collectors.toList());
+        }).orElseGet(() -> false)).collect(Collectors.toList());
         if (!invalidCursors.isEmpty()) {
             throw new InvalidCursorException(CursorError.FORBIDDEN, cursors.get(0));
         }
@@ -136,36 +130,6 @@ public class CursorsService {
             throw new InvalidCursorException(CursorError.INVALID_FORMAT, cursor);
         } catch (final Exception e) {
             throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER, e);
-        }
-    }
-
-    private void createSubscriptionInZkIfNeeded(final Subscription subscription,
-                                                final ZkSubscriptionClient subscriptionClient)
-            throws ServiceUnavailableException {
-
-        final AtomicReference<Exception> atomicReference = new AtomicReference<>();
-        try {
-            if (!subscriptionClient.isSubscriptionCreated()) {
-                subscriptionClient.runLocked(() -> {
-                    try {
-                        if (!subscriptionClient.isSubscriptionCreated() && subscriptionClient.createSubscription()) {
-                            final KafkaClient kafkaClient = subscriptionKafkaClientFactory
-                                    .createKafkaClient(subscription);
-                            final Map<Partition.PartitionKey, Long> subscriptionOffsets =
-                                    kafkaClient.getSubscriptionOffsets();
-
-                            subscriptionClient.fillEmptySubscription(subscriptionOffsets);
-                        }
-                    } catch (final Exception e) {
-                        atomicReference.set(e);
-                    }
-                });
-            }
-        } catch (final Exception e) {
-            atomicReference.set(e);
-        }
-        if (atomicReference.get() != null) {
-            throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER, atomicReference.get());
         }
     }
 

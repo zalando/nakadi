@@ -103,10 +103,11 @@ public class HilaRebalanceAT extends BaseAT {
 
         // commit what we consumed, as clientB has already consumed what was required by stream_limit - it should
         // be closed right after everything is committed
-        final List<SubscriptionCursor> lastCursors =
-                getLastCursorsForPartitions(clientA, clientAPartitionsAfterRebalance);
-        lastCursors.addAll(getLastCursorsForPartitions(clientB, clientBPartitions));
-        commitCursors(subscription.getId(), lastCursors, clientB.getSessionId());
+        final List<SubscriptionCursor> lastCursorsA = getLastCursorsForPartitions(clientA,
+                clientAPartitionsAfterRebalance);
+        final List<SubscriptionCursor> lastCursorsB = getLastCursorsForPartitions(clientB, clientBPartitions);
+        commitCursors(subscription.getId(), lastCursorsA, clientA.getSessionId());
+        commitCursors(subscription.getId(), lastCursorsB, clientB.getSessionId());
         waitFor(() -> assertThat(clientB.isRunning(), is(false)));
 
         // wait for rebalance process to start

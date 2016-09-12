@@ -108,7 +108,7 @@ public class CursorsServiceTest {
         when(tokenService.generateToken()).thenReturn(TOKEN);
 
         cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepository, eventTypeRepository,
-                zkLockFactory, zkSubscriptionClientFactory, subscriptionKafkaClientFactory, tokenService);
+                zkLockFactory, zkSubscriptionClientFactory, tokenService);
     }
 
     @Test
@@ -200,7 +200,6 @@ public class CursorsServiceTest {
 
         final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors("stream-id", SID, DUMMY_CURSORS);
         assertThat(result.get(DUMMY_CURSORS.get(0)), is(true));
-        verify(zkSubscriptionClient, times(1)).fillEmptySubscription(eq(offsets));
     }
 
     @Test
