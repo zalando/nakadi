@@ -38,6 +38,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
 
@@ -135,7 +136,7 @@ public class SubscriptionAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        Thread.sleep(1000);
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo("UNKNOWN"))));
 
         String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
@@ -170,7 +171,7 @@ public class SubscriptionAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        Thread.sleep(1000);
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo("UNKNOWN"))));
 
         commitCursors(subscription, cursor, client.getSessionId())
                 .then()
@@ -229,13 +230,6 @@ public class SubscriptionAT extends BaseAT {
                 .contentType(JSON)
                 .post("/event-types");
         return eventType;
-    }
-
-    private static void publishEvent(final String eventType, final String event) {
-        given()
-                .body(format("[{0}]", event))
-                .contentType(JSON)
-                .post(format("/event-types/{0}/events", eventType));
     }
 
 }
