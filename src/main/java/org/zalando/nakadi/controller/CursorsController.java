@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +23,7 @@ import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
 
+import javax.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -73,6 +75,7 @@ public class CursorsController {
     @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.POST)
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                            @RequestBody final List<SubscriptionCursor> cursors,
+                                           @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
@@ -81,7 +84,8 @@ public class CursorsController {
 
         try {
             validateSubscriptionReadScopes(client, subscriptionId);
-            final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(subscriptionId, cursors);
+            final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(streamId, subscriptionId,
+                    cursors);
             final List<CursorCommitResult> items = result.entrySet().stream()
                     .map(entry -> new CursorCommitResult(entry.getKey(), entry.getValue()))
                     .collect(Collectors.toList());

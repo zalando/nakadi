@@ -78,7 +78,8 @@ public class HilaAT extends BaseAT {
                 ImmutableMap.of("blah", "foo1"))));
 
         // commit offset that will also trigger session closing as we reached stream_limit and committed
-        commitCursors(subscription.getId(), ImmutableList.of(client.getBatches().get(1).getCursor()));
+        commitCursors(subscription.getId(), ImmutableList.of(client.getBatches().get(1).getCursor()),
+                client.getSessionId());
         waitFor(() -> assertThat(client.isRunning(), is(false)));
 
         // create new session and read from subscription again
@@ -102,9 +103,10 @@ public class HilaAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getBatches(), not(empty())));
 
-        // commit and check that status is 201
+        // commit and check that status is 204
         final int commitResult = commitCursors(subscription.getId(),
-                ImmutableList.of(new SubscriptionCursor("0", "0", eventType.getName(), "token")));
+                ImmutableList.of(new SubscriptionCursor("0", "0", eventType.getName(), "token")),
+                client.getSessionId());
         assertThat(commitResult, equalTo(SC_NO_CONTENT));
     }
 
@@ -120,12 +122,12 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
 
         SubscriptionCursor cursorToCommit = client.getBatches().get(4).getCursor();
-        commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit));
+        commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit), client.getSessionId());
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(10)));
 
         cursorToCommit = client.getBatches().get(6).getCursor();
-        commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit));
+        commitCursors(subscription.getId(), ImmutableList.of(cursorToCommit), client.getSessionId());
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(12)));
     }
@@ -159,7 +161,7 @@ public class HilaAT extends BaseAT {
         // to check that stream_timeout works we need to commit everything we consumed, in other case
         // Nakadi will first wait till commit_timeout exceeds
         final SubscriptionCursor lastBatchCursor = client.getBatches().get(client.getBatches().size() - 1).getCursor();
-        commitCursors(subscription.getId(), ImmutableList.of(lastBatchCursor));
+        commitCursors(subscription.getId(), ImmutableList.of(lastBatchCursor), client.getSessionId());
 
         waitFor(() -> assertThat(client.isRunning(), is(false)), 5000);
     }
@@ -239,7 +241,7 @@ public class HilaAT extends BaseAT {
 
         final String partition = client.getBatches().get(0).getCursor().getPartition();
         final SubscriptionCursor cursor = new SubscriptionCursor(partition, "9", eventType.getName(), "token");
-        commitCursors(subscription.getId(), ImmutableList.of(cursor));
+        commitCursors(subscription.getId(), ImmutableList.of(cursor), client.getSessionId());
 
         subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
