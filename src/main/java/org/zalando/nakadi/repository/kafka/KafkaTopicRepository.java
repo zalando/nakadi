@@ -206,7 +206,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private void failUnpublished(final List<BatchItem> batch, final String reason) {
         batch.stream()
-                .filter(item -> !(item.getResponse().getPublishingStatus().equals(EventPublishingStatus.SUBMITTED)))
+                .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
                 .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
     }
 
