@@ -2,6 +2,7 @@ package org.zalando.nakadi.domain;
 
 import org.json.JSONObject;
 
+import javax.annotation.Nullable;
 import java.util.Optional;
 
 public class BatchItem {
@@ -13,8 +14,7 @@ public class BatchItem {
         this.response = new BatchItemResponse();
         this.event = event;
 
-        Optional.
-                ofNullable(event.optJSONObject("metadata"))
+        Optional.ofNullable(event.optJSONObject("metadata"))
                 .map(e -> e.optString("eid", null))
                 .ifPresent(this.response::setEid);
     }
@@ -27,6 +27,7 @@ public class BatchItem {
         this.partition = partition;
     }
 
+    @Nullable
     public String getPartition() {
         return this.partition;
     }

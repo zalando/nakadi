@@ -1,6 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import kafka.admin.AdminUtils;
@@ -168,6 +169,8 @@ public class KafkaTopicRepository implements TopicRepository {
         final CountDownLatch done = new CountDownLatch(batch.size());
 
         for (final BatchItem item : batch) {
+            Preconditions.checkNotNull(item.getPartition(),
+                    "BatchItem partition can't be null at the moment of publishing!");
             final ProducerRecord<String, String> record = new ProducerRecord<>(topicId,
                     toKafkaPartition(item.getPartition()), item.getPartition(), item.getEvent().toString());
 
@@ -185,19 +188,26 @@ public class KafkaTopicRepository implements TopicRepository {
             final boolean isSuccessful = done.await(kafkaSettings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
-                failBatch(batch, "timed out");
+                failUnpublished(batch, "timed out");
                 throw new EventPublishingException("Timeout publishing events");
             }
+
+            final boolean atLeastOneFailed = batch.stream()
+                    .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
+            if (atLeastOneFailed) {
+                failUnpublished(batch, "internal error");
+                throw new EventPublishingException("Error publishing message to kafka");
+            }
         } catch (final InterruptedException e) {
-            failBatch(batch, "internal error");
+            failUnpublished(batch, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
     }
 
-    private void failBatch(final List<BatchItem> batch, final String reason) {
-        for (final BatchItem item : batch) {
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason);
-        }
+    private void failUnpublished(final List<BatchItem> batch, final String reason) {
+        batch.stream()
+                .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
+                .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
     }
 
     private Callback kafkaSendCallback(final BatchItem item, final CountDownLatch done) {
