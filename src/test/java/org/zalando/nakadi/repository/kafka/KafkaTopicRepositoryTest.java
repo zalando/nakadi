@@ -3,8 +3,6 @@ package org.zalando.nakadi.repository.kafka;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.producer.Callback;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
@@ -280,8 +278,8 @@ public class KafkaTopicRepositoryTest {
             kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
             fail();
         } catch (final EventPublishingException e) {
-//            assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-//            assertThat(firstItem.getResponse().getDetail(), equalTo(""));
+            assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+            assertThat(firstItem.getResponse().getDetail(), equalTo(""));
             assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(secondItem.getResponse().getDetail(), equalTo("internal error"));
         }

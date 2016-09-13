@@ -188,26 +188,26 @@ public class KafkaTopicRepository implements TopicRepository {
             final boolean isSuccessful = done.await(kafkaSettings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
-                failBatch(batch, "timed out");
+                failUnpublished(batch, "timed out");
                 throw new EventPublishingException("Timeout publishing events");
             }
 
             final boolean atLeastOneFailed = batch.stream()
                     .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
             if (atLeastOneFailed) {
-                failBatch(batch, "internal error");
+                failUnpublished(batch, "internal error");
                 throw new EventPublishingException("Error publishing message to kafka");
             }
         } catch (final InterruptedException e) {
-            failBatch(batch, "internal error");
+            failUnpublished(batch, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
     }
 
-    private void failBatch(final List<BatchItem> batch, final String reason) {
-        for (final BatchItem item : batch) {
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason);
-        }
+    private void failUnpublished(final List<BatchItem> batch, final String reason) {
+        batch.stream()
+                .filter(item -> !(item.getResponse().getPublishingStatus().equals(EventPublishingStatus.SUBMITTED)))
+                .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
     }
 
     private Callback kafkaSendCallback(final BatchItem item, final CountDownLatch done) {
