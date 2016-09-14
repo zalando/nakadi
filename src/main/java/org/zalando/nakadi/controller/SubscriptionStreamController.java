@@ -71,7 +71,7 @@ public class SubscriptionStreamController {
                 headersSent = true;
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
-                response.setHeader("X-Nakadi-SessionId", sessionId);
+                response.setHeader("X-Nakadi-StreamId", sessionId);
                 out.flush();
             }
         }
