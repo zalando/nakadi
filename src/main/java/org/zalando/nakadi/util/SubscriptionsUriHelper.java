@@ -13,13 +13,14 @@ public class SubscriptionsUriHelper {
                                                                     final int limit, final int currentPageItemCount) {
         Optional<PaginationLinks.Link> prevLink = Optional.empty();
         if (offset > 0) {
-            final String prevUri = createSubscriptionListUri(owningApplication, eventTypes, offset - 1, limit);
+            final int newOffset = offset >= limit ? offset - limit : 0;
+            final String prevUri = createSubscriptionListUri(owningApplication, eventTypes, newOffset, limit);
             prevLink = Optional.of(new PaginationLinks.Link(prevUri));
         }
 
         Optional<PaginationLinks.Link> nextLink = Optional.empty();
         if (currentPageItemCount >= limit) {
-            final String nextUri = createSubscriptionListUri(owningApplication, eventTypes, offset + 1, limit);
+            final String nextUri = createSubscriptionListUri(owningApplication, eventTypes, offset + limit, limit);
             nextLink = Optional.of(new PaginationLinks.Link(nextUri));
         }
 

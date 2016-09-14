@@ -321,9 +321,9 @@ public class SubscriptionControllerTest {
         when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
 
         final PaginationLinks.Link prevLink = new PaginationLinks.Link(
-                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=4&limit=10");
+                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=0&limit=10");
         final PaginationLinks.Link nextLink = new PaginationLinks.Link(
-                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=6&limit=10");
+                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=15&limit=10");
         final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
         final SubscriptionListWrapper expectedResult = new SubscriptionListWrapper(subscriptions, links);
 
@@ -374,7 +374,7 @@ public class SubscriptionControllerTest {
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper(subscriptionStats))));
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(subscriptionStats))));
     }
 
     @Test
@@ -390,10 +390,11 @@ public class SubscriptionControllerTest {
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper(subscriptionStats))));
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(subscriptionStats))));
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
