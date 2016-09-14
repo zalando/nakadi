@@ -116,7 +116,7 @@ public class HilaAT extends BaseAT {
         range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "max_uncommitted_size=5")
+                .create(URL, subscription.getId(), "max_uncommitted_events=5")
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
@@ -172,7 +172,7 @@ public class HilaAT extends BaseAT {
         range(0, 12).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1&max_uncommitted_size=20")
+                .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1&max_uncommitted_events=20")
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(3)));
@@ -225,7 +225,7 @@ public class HilaAT extends BaseAT {
         IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "max_uncommitted_size=20")
+                .create(URL, subscription.getId(), "max_uncommitted_events=20")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(15)));
 
