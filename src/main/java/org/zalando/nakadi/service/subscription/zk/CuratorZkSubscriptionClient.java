@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.subscription.zk;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -289,5 +290,24 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
+    }
+
+    @Override
+    public ZkSubscriptionNode getZkSubscriptionNode() {
+        final ZkSubscriptionNode subscriptionNode = new ZkSubscriptionNode();
+        try {
+            runLocked(() -> {
+                subscriptionNode.setPartitions(listPartitions());
+                subscriptionNode.setSessions(listSessions());
+            });
+        } catch (final NakadiRuntimeException nre) {
+            final Exception cause = nre.getException();
+            if (!(cause instanceof KeeperException.NoNodeException)) {
+                throw new NakadiRuntimeException(cause);
+            }
+            log.info("No data about provided subscription {} in ZK", subscriptionId);
+        }
+
+        return subscriptionNode;
     }
 }
