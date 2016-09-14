@@ -54,7 +54,7 @@ public class HilaRebalanceAT extends BaseAT {
 
         // create a session
         final TestStreamingClient clientA = TestStreamingClient
-                .create(URL, subscription.getId(), "max_uncommitted_size=100")
+                .create(URL, subscription.getId(), "max_uncommitted_events=100")
                 .start();
         waitFor(() -> assertThat(clientA.getBatches(), hasSize(40)));
 
@@ -75,7 +75,7 @@ public class HilaRebalanceAT extends BaseAT {
 
         // create second session for the same subscription
         final TestStreamingClient clientB = TestStreamingClient
-                .create(URL, subscription.getId(), "stream_limit=20&max_uncommitted_size=100")
+                .create(URL, subscription.getId(), "stream_limit=20&max_uncommitted_events=100")
                 .start();
 
         // wait for rebalance process to start

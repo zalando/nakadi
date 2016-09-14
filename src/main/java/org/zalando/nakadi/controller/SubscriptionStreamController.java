@@ -113,7 +113,7 @@ public class SubscriptionStreamController {
     @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
-            @RequestParam(value = "max_uncommitted_size", required = false, defaultValue = "10")
+            @RequestParam(value = "max_uncommitted_events", required = false, defaultValue = "10")
             final int maxUncommittedSize,
             @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
             @Nullable @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
