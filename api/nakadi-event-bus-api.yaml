@@ -624,6 +624,7 @@ paths:
           type: array
           items:
             type: string
+          required: false
         - name: limit
           in: query
           description: maximum number of subscriptions retuned in one page
