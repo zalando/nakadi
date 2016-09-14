@@ -34,6 +34,7 @@ import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.List;
@@ -140,15 +141,15 @@ public class SubscriptionService {
         return path;
     }
 
-    public Result listSubscriptions(final String owningApplication, final Set<String> eventTypes, final int limit,
-                                    final int offset) {
-        if(limit< 1 || limit >1000) {
+    public Result listSubscriptions(@Nullable final String owningApplication, @Nullable  final Set<String> eventTypes,
+                                    final int limit, final int offset) {
+        if (limit < 1 || limit > 1000) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
                     "'limit' parameter should have value from 1 to 1000");
             return Result.problem(problem);
         }
 
-        if(offset < 0) {
+        if (offset < 0) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
                     "'offset' parameter can't be lower than 0");
             return Result.problem(problem);
@@ -160,7 +161,7 @@ public class SubscriptionService {
             final List<Subscription> subscriptions =
                     subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
-                owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
+                    owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
             return Result.ok(new SubscriptionListWrapper(subscriptions, paginationLinks));
         } catch (ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
