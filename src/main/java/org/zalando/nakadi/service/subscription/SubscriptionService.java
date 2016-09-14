@@ -2,12 +2,14 @@ package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
@@ -19,6 +21,7 @@ import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
@@ -197,9 +200,10 @@ public class SubscriptionService {
 
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription)
             throws ServiceUnavailableException {
+        final String subscriptionId = subscription.getId();
         final ZkSubscriptionClient zkSubscriptionClient =
-                zkSubscriptionClientFactory.createZkSubscriptionClient(subscription.getId());
-        final Partition[] partitions = zkSubscriptionClient.listPartitions();
+                zkSubscriptionClientFactory.createZkSubscriptionClient(subscriptionId);
+        final Partition[] partitions = listPartitions(zkSubscriptionClient, subscriptionId);
 
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
@@ -215,6 +219,7 @@ public class SubscriptionService {
         return eventTypes.stream()
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions = Arrays.stream(partitions)
+                            .sorted((p1, p2) -> p1.getKey().getPartition().compareTo(p2.getKey().getPartition()))
                             .filter(partition -> eventType.getTopic().equals(partition.getKey().getTopic()))
                             .flatMap(partition ->
                                     filterTopicPartitions(zkSubscriptionClient, topicPartitions, partition))
@@ -222,6 +227,19 @@ public class SubscriptionService {
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
                 .collect(Collectors.toList());
+    }
+
+    private Partition[] listPartitions(final ZkSubscriptionClient zkSubscriptionClient, final String subscriptionId) {
+        try {
+            return zkSubscriptionClient.listPartitions();
+        } catch (final NakadiRuntimeException nre) {
+            final Exception cause = nre.getException();
+            if (!(cause instanceof KeeperException.NoNodeException)) {
+                throw new NakadiRuntimeException(cause);
+            }
+            LOG.info("No data about provided subscription {} in ZK", subscriptionId);
+        }
+        return new Partition[]{};
     }
 
     private Stream<SubscriptionEventTypeStats.Partition> filterTopicPartitions(
@@ -244,8 +262,12 @@ public class SubscriptionService {
         final String partitionState = partition.getState().getDescription();
         final String partitionSession = partition.getSession();
         final long clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
-        final long total = Long.valueOf(topicPartition.getNewestAvailableOffset());
-        final long unconsumedEvents = total - clientOffset;
+        Long unconsumedEvents = null;
+        final String total = topicPartition.getNewestAvailableOffset();
+        if (!Cursor.BEFORE_OLDEST_OFFSET.equals(total)) {
+            unconsumedEvents = Long.valueOf(total) - clientOffset;
+        }
+
         return new SubscriptionEventTypeStats.Partition(
                 partitionName, partitionState, unconsumedEvents, partitionSession);
     }
