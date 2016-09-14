@@ -139,7 +139,7 @@ public class SubscriptionControllerTest {
                 .andExpect(jsonPath("$.consumer_group", equalTo(subscription.getConsumerGroup())))
                 .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
                 .andExpect(jsonPath("$.id", equalTo("123")))
-                .andExpect(jsonPath("$.start_from", equalTo("end")))
+                .andExpect(jsonPath("$.read_from", equalTo("end")))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().string("Content-Location", "/subscriptions/123"));
     }
