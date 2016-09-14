@@ -139,7 +139,7 @@ public class SubscriptionControllerTest {
                 .andExpect(jsonPath("$.consumer_group", equalTo(subscription.getConsumerGroup())))
                 .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
                 .andExpect(jsonPath("$.id", equalTo("123")))
-                .andExpect(jsonPath("$.start_from", equalTo("end")))
+                .andExpect(jsonPath("$.read_from", equalTo("end")))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().string("Content-Location", "/subscriptions/123"));
     }
@@ -230,7 +230,7 @@ public class SubscriptionControllerTest {
 
         final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC),
                 subscriptionBase);
-        existingSubscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
+        existingSubscription.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
         when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
