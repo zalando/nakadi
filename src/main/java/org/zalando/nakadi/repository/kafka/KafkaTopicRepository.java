@@ -182,7 +182,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
 
         try {
-            final boolean isSuccessful = done.await(kafkaSettings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
+            final boolean isSuccessful = done.await(getSendTimeout(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
                 failBatch(batch, "timed out");
@@ -192,6 +192,10 @@ public class KafkaTopicRepository implements TopicRepository {
             failBatch(batch, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
+    }
+
+    private long getSendTimeout() {
+        return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
     }
 
     private void failBatch(final List<BatchItem> batch, final String reason) {
@@ -377,7 +381,7 @@ public class KafkaTopicRepository implements TopicRepository {
             kafkaCursors.add(kafkaCursor);
         }
 
-        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, kafkaSettings.getKafkaPollTimeoutMs());
+        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs());
     }
 
     public int compareOffsets(final String firstOffset, final String secondOffset) {

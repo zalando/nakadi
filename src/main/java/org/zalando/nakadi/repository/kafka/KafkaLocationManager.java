@@ -25,11 +25,13 @@ public class KafkaLocationManager {
 
     private final ZooKeeperHolder zkFactory;
     private final Properties kafkaProperties;
+    private final KafkaSettings kafkaSettings;
 
     @Autowired
     public KafkaLocationManager(final ZooKeeperHolder zkFactory, final KafkaSettings kafkaSettings) {
         this.zkFactory = zkFactory;
-        this.kafkaProperties = buildKafkaProperties(fetchBrokers(), kafkaSettings);
+        this.kafkaProperties = buildKafkaProperties(fetchBrokers());
+        this.kafkaSettings = kafkaSettings;
     }
 
     static class Broker {
@@ -78,14 +80,11 @@ public class KafkaLocationManager {
         return builder.deleteCharAt(builder.length() - 1).toString();
     }
 
-    private Properties buildKafkaProperties(final List<Broker> brokers, final KafkaSettings kafkaSettings) {
+    private Properties buildKafkaProperties(final List<Broker> brokers) {
         final Properties props = new Properties();
         props.put("bootstrap.servers", buildBootstrapServers(brokers));
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("request.timeout.ms", kafkaSettings.getRequestTimeoutMs());
-        props.put("batch.size", kafkaSettings.getBatchSize());
-        props.put("linger.ms", kafkaSettings.getLingerMs());
         return props;
     }
 
@@ -108,6 +107,9 @@ public class KafkaLocationManager {
         producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put("acks", "all");
+        producerProps.put("request.timeout.ms", kafkaSettings.getRequestTimeoutMs());
+        producerProps.put("batch.size", kafkaSettings.getBatchSize());
+        producerProps.put("linger.ms", kafkaSettings.getLingerMs());
         return producerProps;
     }
 }
