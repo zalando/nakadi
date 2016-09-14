@@ -7,4 +7,4 @@ ADD build/libs/nakadi.jar nakadi.jar
 
 EXPOSE 8080
 
-ENTRYPOINT java -jar nakadi.jar
+ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -jar nakadi.jar
