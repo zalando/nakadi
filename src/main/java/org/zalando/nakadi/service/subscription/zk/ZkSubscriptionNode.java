@@ -13,11 +13,11 @@ public final class ZkSubscriptionNode {
         this.sessions = new Session[0];
     }
 
-    public void setPartitions(Partition[] partitions) {
+    public void setPartitions(final Partition[] partitions) {
         this.partitions = partitions;
     }
 
-    public void setSessions(Session[] sessions) {
+    public void setSessions(final Session[] sessions) {
         this.sessions = sessions;
     }
 

@@ -36,8 +36,10 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -357,9 +359,11 @@ public class SubscriptionControllerTest {
         final Subscription subscription = builder().withEventType("myET").build();
         final Partition.PartitionKey partitionKey = new Partition.PartitionKey("topic", "p1");
         final Partition[] partitions = {new Partition(partitionKey, "xz", "xz", Partition.State.ASSIGNED)};
-
+        final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
+        zkSubscriptionNode.setPartitions(partitions);
+        zkSubscriptionNode.setSessions(new Session[]{new Session("session-is", 0)});
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.listPartitions()).thenReturn(partitions);
+        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(zkSubscriptionNode);
         when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn(3l);
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
@@ -369,7 +373,7 @@ public class SubscriptionControllerTest {
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         "myET",
-                        Collections.singleton(new SubscriptionEventTypeStats.Partition("p1", "assigned", 10, "xz")))
+                        Collections.singleton(new SubscriptionEventTypeStats.Partition("p1", "assigned", 10L, "xz")))
                 );
 
         getSubscriptionStats(subscription.getId())
@@ -381,7 +385,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoPartitionsThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[]{});
+        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(new ZkSubscriptionNode());
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
 
@@ -397,6 +401,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(new ZkSubscriptionNode());
         when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
         getSubscriptionStats(subscription.getId())

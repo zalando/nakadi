@@ -38,6 +38,7 @@ import org.zalando.problem.Problem;
 
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,6 +52,8 @@ public class SubscriptionService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionService.class);
     private static final UriComponentsBuilder SUBSCRIPTION_PATH = UriComponentsBuilder.fromPath("/subscriptions/{id}");
+    private static final Comparator<? super Partition> PARTITIONS_COMPARATOR = (p1, p2) ->
+            Integer.valueOf(p1.getKey().getPartition()).compareTo(Integer.valueOf(p2.getKey().getPartition()));
 
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
@@ -199,9 +202,8 @@ public class SubscriptionService {
 
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription)
             throws ServiceUnavailableException {
-        final String subscriptionId = subscription.getId();
         final ZkSubscriptionClient zkSubscriptionClient =
-                zkSubscriptionClientFactory.createZkSubscriptionClient(subscriptionId);
+                zkSubscriptionClientFactory.createZkSubscriptionClient(subscription.getId());
         final ZkSubscriptionNode zkSubscriptionNode = zkSubscriptionClient.getZkSubscriptionNode();
         final boolean hasSessions = zkSubscriptionNode.getSessions().length > 0;
 
@@ -220,10 +222,10 @@ public class SubscriptionService {
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions =
                             Arrays.stream(zkSubscriptionNode.getPartitions())
-                            .sorted((p1, p2) -> p1.getKey().getPartition().compareTo(p2.getKey().getPartition()))
+                            .sorted(PARTITIONS_COMPARATOR)
                             .filter(partition -> eventType.getTopic().equals(partition.getKey().getTopic()))
                             .flatMap(partition ->
-                                    filterTopicPartitions(zkSubscriptionClient, topicPartitions, partition, hasSessions))
+                                   filterTopicPartitions(zkSubscriptionClient, topicPartitions, partition, hasSessions))
                             .collect(Collectors.toSet());
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
@@ -251,7 +253,7 @@ public class SubscriptionService {
         final String partitionName = partition.getKey().getPartition();
         final String partitionState;
         final String partitionSession;
-        if (hasSessions){
+        if (hasSessions) {
             partitionState = partition.getState().getDescription();
             partitionSession = partition.getSession();
         } else {
