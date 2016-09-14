@@ -230,7 +230,7 @@ public class SubscriptionControllerTest {
 
         final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC),
                 subscriptionBase);
-        existingSubscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
+        existingSubscription.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
         when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());

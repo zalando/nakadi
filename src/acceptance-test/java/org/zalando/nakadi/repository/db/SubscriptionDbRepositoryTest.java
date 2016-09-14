@@ -189,7 +189,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat(subscription.getConsumerGroup(), equalTo(subscriptionBase.getConsumerGroup()));
         assertThat(subscription.getEventTypes(), equalTo(subscriptionBase.getEventTypes()));
         assertThat(subscription.getOwningApplication(), equalTo(subscriptionBase.getOwningApplication()));
-        assertThat(subscription.getStartFrom(), equalTo(subscriptionBase.getStartFrom()));
+        assertThat(subscription.getReadFrom(), equalTo(subscriptionBase.getReadFrom()));
     }
 
 }
