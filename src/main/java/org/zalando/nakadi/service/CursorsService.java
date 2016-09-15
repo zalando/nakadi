@@ -90,9 +90,8 @@ public class CursorsService {
 
     private void validateCursors(final ZkSubscriptionClient subscriptionClient,
                                  final List<SubscriptionCursor> cursors,
-                                 final String streamId) throws NakadiException
-    {
-        ZkSubscriptionNode subscription = subscriptionClient.getZkSubscriptionNodeLocked();
+                                 final String streamId) throws NakadiException {
+        final ZkSubscriptionNode subscription = subscriptionClient.getZkSubscriptionNodeLocked();
         if (!Arrays.stream(subscription.getSessions()).anyMatch(session -> session.getId().equals(streamId))) {
             throw new InvalidStreamIdException("Session with stream id " + streamId + " not found");
         }
