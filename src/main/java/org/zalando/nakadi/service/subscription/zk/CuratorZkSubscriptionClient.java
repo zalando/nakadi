@@ -293,7 +293,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public ZkSubscriptionNode getZkSubscriptionNode() {
+    public ZkSubscriptionNode getZkSubscriptionNodeLocked() {
         final ZkSubscriptionNode subscriptionNode = new ZkSubscriptionNode();
         try {
             runLocked(() -> {

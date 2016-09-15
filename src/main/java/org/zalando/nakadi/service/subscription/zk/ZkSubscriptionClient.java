@@ -129,5 +129,5 @@ public interface ZkSubscriptionClient {
      */
     void transfer(String sessionId, Collection<Partition.PartitionKey> partitions);
 
-    ZkSubscriptionNode getZkSubscriptionNode();
+    ZkSubscriptionNode getZkSubscriptionNodeLocked();
 }

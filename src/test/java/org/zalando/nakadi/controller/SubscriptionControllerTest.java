@@ -363,7 +363,7 @@ public class SubscriptionControllerTest {
         zkSubscriptionNode.setPartitions(partitions);
         zkSubscriptionNode.setSessions(new Session[]{new Session("session-is", 0)});
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(zkSubscriptionNode);
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
         when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn(3l);
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
@@ -385,7 +385,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoPartitionsThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(new ZkSubscriptionNode());
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode());
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
 
@@ -401,7 +401,7 @@ public class SubscriptionControllerTest {
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNode()).thenReturn(new ZkSubscriptionNode());
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode());
         when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
         getSubscriptionStats(subscription.getId())

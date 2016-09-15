@@ -45,15 +45,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Component
 public class SubscriptionService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionService.class);
     private static final UriComponentsBuilder SUBSCRIPTION_PATH = UriComponentsBuilder.fromPath("/subscriptions/{id}");
-    private static final Comparator<? super Partition> PARTITIONS_COMPARATOR = (p1, p2) ->
-            Integer.valueOf(p1.getKey().getPartition()).compareTo(Integer.valueOf(p2.getKey().getPartition()));
 
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
@@ -204,8 +201,8 @@ public class SubscriptionService {
             throws ServiceUnavailableException {
         final ZkSubscriptionClient zkSubscriptionClient =
                 zkSubscriptionClientFactory.createZkSubscriptionClient(subscription.getId());
-        final ZkSubscriptionNode zkSubscriptionNode = zkSubscriptionClient.getZkSubscriptionNode();
-        final boolean hasSessions = zkSubscriptionNode.getSessions().length > 0;
+        final ZkSubscriptionNode zkSubscriptionNode = zkSubscriptionClient.getZkSubscriptionNodeLocked();
+
 
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
@@ -221,54 +218,52 @@ public class SubscriptionService {
         return eventTypes.stream()
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions =
-                            Arrays.stream(zkSubscriptionNode.getPartitions())
-                            .sorted(PARTITIONS_COMPARATOR)
-                            .filter(partition -> eventType.getTopic().equals(partition.getKey().getTopic()))
-                            .flatMap(partition ->
-                                   filterTopicPartitions(zkSubscriptionClient, topicPartitions, partition, hasSessions))
+                            topicPartitions.stream()
+                            .sorted(Comparator.comparing(topicPartition ->
+                                    Integer.valueOf(topicPartition.getPartitionId())))
+                            .filter(partition -> eventType.getTopic().equals(partition.getTopicId()))
+                            .map(Try.wrap(partition -> mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
+                            .map(Try::getOrThrow)
                             .collect(Collectors.toSet());
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
                 .collect(Collectors.toList());
     }
 
-    private Stream<SubscriptionEventTypeStats.Partition> filterTopicPartitions(
+    private SubscriptionEventTypeStats.Partition mergePartitions(
             final ZkSubscriptionClient zkSubscriptionClient,
-            final List<TopicPartition> topicPartitions,
-            final Partition partition,
-            final boolean hasSessions) {
-        return topicPartitions.stream()
-                .filter(topicPartition ->
-                        partition.getKey().getPartition().equals(topicPartition.getPartitionId()))
-                .map(Try.wrap(topicPartition ->
-                        createPartition(zkSubscriptionClient, partition, topicPartition, hasSessions)))
-                .map(Try::getOrThrow);
+            final ZkSubscriptionNode zkSubscriptionNode,
+            final TopicPartition topicPartition) throws NakadiException {
+        final boolean hasSessions = zkSubscriptionNode.getSessions().length > 0;
+
+        final Partition partition = Arrays.stream(zkSubscriptionNode.getPartitions())
+                .filter(p -> p.getKey().getPartition().equals(topicPartition.getPartitionId()))
+                .findFirst()
+                .orElse(null);
+
+        return createPartition(zkSubscriptionClient, partition, topicPartition, hasSessions);
     }
 
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,
-                                                                 final Partition partition,
+                                                                 Partition partition,
                                                                  final TopicPartition topicPartition,
-                                                                 final boolean hasSessions)
-            throws NakadiException {
-        final String partitionName = partition.getKey().getPartition();
-        final String partitionState;
-        final String partitionSession;
-        if (hasSessions) {
-            partitionState = partition.getState().getDescription();
-            partitionSession = partition.getSession();
-        } else {
-            partitionState = Partition.State.UNASSIGNED.getDescription();
-            partitionSession = "";
-        }
-
-        final long clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
+                                                                 final boolean hasSessions) throws NakadiException {
+        final String partitionId = topicPartition.getPartitionId();
+        String partitionState = Partition.State.UNASSIGNED.getDescription();
+        String partitionSession = "";
         Long unconsumedEvents = null;
-        final String total = topicPartition.getNewestAvailableOffset();
-        if (!Cursor.BEFORE_OLDEST_OFFSET.equals(total)) {
-            unconsumedEvents = Long.valueOf(total) - clientOffset;
+        if (partition != null) {
+            if (hasSessions) {
+                partitionState = partition.getState().getDescription();
+                partitionSession = partition.getSession();
+            }
+            final String total = topicPartition.getNewestAvailableOffset();
+            if (!Cursor.BEFORE_OLDEST_OFFSET.equals(total)) {
+                final long clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
+                unconsumedEvents = Long.valueOf(total) - clientOffset;
+            }
         }
-
         return new SubscriptionEventTypeStats.Partition(
-                partitionName, partitionState, unconsumedEvents, partitionSession);
+                partitionId, partitionState, unconsumedEvents, partitionSession);
     }
 }
