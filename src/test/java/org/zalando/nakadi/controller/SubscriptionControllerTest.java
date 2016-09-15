@@ -357,7 +357,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
-        final Partition.PartitionKey partitionKey = new Partition.PartitionKey("topic", "p1");
+        final Partition.PartitionKey partitionKey = new Partition.PartitionKey("topic", "1");
         final Partition[] partitions = {new Partition(partitionKey, "xz", "xz", Partition.State.ASSIGNED)};
         final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
         zkSubscriptionNode.setPartitions(partitions);
@@ -368,12 +368,12 @@ public class SubscriptionControllerTest {
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
         when(topicRepository.listPartitions(Collections.singleton("topic")))
-                .thenReturn(Collections.singletonList(new TopicPartition("topic", "p1", "3", "13")));
+                .thenReturn(Collections.singletonList(new TopicPartition("topic", "1", "3", "13")));
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         "myET",
-                        Collections.singleton(new SubscriptionEventTypeStats.Partition("p1", "assigned", 10L, "xz")))
+                        Collections.singleton(new SubscriptionEventTypeStats.Partition("1", "assigned", 10L, "xz")))
                 );
 
         getSubscriptionStats(subscription.getId())
