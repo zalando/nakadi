@@ -233,7 +233,7 @@ public class HilaAT extends BaseAT {
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         eventType.getName(),
                         Collections.singleton(
-                                new SubscriptionEventTypeStats.Partition("0", "assigned", 15, client.getSessionId())))
+                                new SubscriptionEventTypeStats.Partition("0", "assigned", 15L, client.getSessionId())))
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
@@ -247,7 +247,7 @@ public class HilaAT extends BaseAT {
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         eventType.getName(),
                         Collections.singleton(
-                                new SubscriptionEventTypeStats.Partition("0", "assigned", 5, client.getSessionId())))
+                                new SubscriptionEventTypeStats.Partition("0", "assigned", 5L, client.getSessionId())))
                 );
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()

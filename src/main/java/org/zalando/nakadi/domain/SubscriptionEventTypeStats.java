@@ -1,5 +1,8 @@
 package org.zalando.nakadi.domain;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.Collections;
 import java.util.Set;
@@ -27,13 +30,14 @@ public class SubscriptionEventTypeStats {
     public static class Partition {
         private final String partition;
         private final String state;
-        private final long unconsumedEvents;
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private final Long unconsumedEvents;
         private final String clientId;
 
         public Partition(final String partition,
-                          final String state,
-                          final long unconsumedEvents,
-                          final String clientId) {
+                         final String state,
+                         @Nullable final Long unconsumedEvents,
+                         final String clientId) {
             this.partition = partition;
             this.state = state;
             this.unconsumedEvents = unconsumedEvents;
@@ -48,7 +52,8 @@ public class SubscriptionEventTypeStats {
             return state;
         }
 
-        public long getUnconsumedEvents() {
+        @Nullable
+        public Long getUnconsumedEvents() {
             return unconsumedEvents;
         }
 
