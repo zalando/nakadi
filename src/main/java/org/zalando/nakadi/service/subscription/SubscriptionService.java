@@ -222,7 +222,8 @@ public class SubscriptionService {
                             .sorted(Comparator.comparing(topicPartition ->
                                     Integer.valueOf(topicPartition.getPartitionId())))
                             .filter(partition -> eventType.getTopic().equals(partition.getTopicId()))
-                            .map(Try.wrap(partition -> mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
+                            .map(Try.wrap(partition ->
+                                    mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
                             .map(Try::getOrThrow)
                             .collect(Collectors.toSet());
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
@@ -245,7 +246,7 @@ public class SubscriptionService {
     }
 
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,
-                                                                 Partition partition,
+                                                                 final Partition partition,
                                                                  final TopicPartition topicPartition,
                                                                  final boolean hasSessions) throws NakadiException {
         final String partitionId = topicPartition.getPartitionId();
