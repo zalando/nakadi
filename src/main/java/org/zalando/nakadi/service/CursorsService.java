@@ -104,7 +104,7 @@ public class CursorsService {
             return partition == null || !streamId.equals(partition.getSession());
         }).orElseGet(() -> false)).collect(Collectors.toList());
         if (!invalidCursors.isEmpty()) {
-            throw new InvalidStreamIdException("Cursors " + invalidCursors + " cannot be commited with stream id "
+            throw new InvalidStreamIdException("Cursors " + invalidCursors + " cannot be committed with stream id "
                     + streamId);
         }
     }
