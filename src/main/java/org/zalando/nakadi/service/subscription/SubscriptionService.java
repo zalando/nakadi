@@ -36,6 +36,7 @@ import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -219,13 +221,14 @@ public class SubscriptionService {
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions =
                             topicPartitions.stream()
-                            .sorted(Comparator.comparing(topicPartition ->
-                                    Integer.valueOf(topicPartition.getPartitionId())))
                             .filter(partition -> eventType.getTopic().equals(partition.getTopicId()))
                             .map(Try.wrap(partition ->
                                     mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
                             .map(Try::getOrThrow)
-                            .collect(Collectors.toSet());
+                            .collect(Collectors.toCollection(() ->
+                                    new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition())))
+                                    )
+                            );
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
                 .collect(Collectors.toList());
@@ -246,7 +249,7 @@ public class SubscriptionService {
     }
 
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,
-                                                                 final Partition partition,
+                                                                 @Nullable final Partition partition,
                                                                  final TopicPartition topicPartition,
                                                                  final boolean hasSessions) throws NakadiException {
         final String partitionId = topicPartition.getPartitionId();
