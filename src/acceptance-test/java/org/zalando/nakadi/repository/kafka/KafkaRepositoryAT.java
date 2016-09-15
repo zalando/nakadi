@@ -51,8 +51,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int NAKADI_POLL_TIMEOUT = 10000;
     private static final Long RETENTION_TIME = 100L;
     private static final Long DEFAULT_TOPIC_RETENTION = 100000000L;
-    private static final long KAFKA_REQUEST_TIMEOUT = 30000;
-    private static final long KAFKA_BATCH_SIZE = 1048576;
+    private static final int KAFKA_REQUEST_TIMEOUT = 30000;
+    private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_LINGER_MS = 0;
 
     private NakadiSettings nakadiSettings;

@@ -7,24 +7,24 @@ import org.springframework.stereotype.Component;
 @Component
 public class KafkaSettings {
 
-    private final long requestTimeoutMs;
-    private final long batchSize;
+    private final int requestTimeoutMs;
+    private final int batchSize;
     private final long lingerMs;
 
     @Autowired
-    public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final long requestTimeoutMs,
-                         @Value("${nakadi.kafka.batch.size}") final long batchSize,
+    public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
+                         @Value("${nakadi.kafka.batch.size}") final int batchSize,
                          @Value("${nakadi.kafka.linger.ms}") final long lingerMs) {
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
         this.lingerMs = lingerMs;
     }
 
-    public long getRequestTimeoutMs() {
+    public int getRequestTimeoutMs() {
         return requestTimeoutMs;
     }
 
-    public long getBatchSize() {
+    public int getBatchSize() {
         return batchSize;
     }
 
