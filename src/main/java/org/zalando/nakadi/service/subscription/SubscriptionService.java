@@ -226,8 +226,7 @@ public class SubscriptionService {
                                     mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
                             .map(Try::getOrThrow)
                             .collect(Collectors.toCollection(() ->
-                                    new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition())))
-                                    )
+                                    new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
                             );
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
