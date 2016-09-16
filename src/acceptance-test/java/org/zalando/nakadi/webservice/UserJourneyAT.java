@@ -8,22 +8,21 @@ import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -38,50 +37,42 @@ import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.utils.TestUtils.getEventTypeJsonFromFile;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
+import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.getSubscriptionStat;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
-    private static final String TEST_EVENT_TYPE = TestUtils.randomValidEventTypeName();
-
     private static final String EVENT1 = "{\"foo\":\"" + randomTextString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomTextString() + "\"}";
+
+    private String eventTypeName;
 
     private String eventTypeBody;
     private String eventTypeBodyUpdate;
 
     @Before
     public void before() throws IOException {
-        eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", TEST_EVENT_TYPE);
-        eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", TEST_EVENT_TYPE);
+        eventTypeName = randomValidEventTypeName();
+        eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName);
+        eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName);
     }
 
     @SuppressWarnings("unchecked")
     @Test(timeout = 15000)
-    public void userJourneyM1() throws InterruptedException {
-
+    public void userJourneyM1() throws InterruptedException, IOException {
         // create event-type
-        jsonRequestSpec()
-                .body(eventTypeBody)
-                .when()
-                .post("/event-types")
-                .then()
-                .statusCode(CREATED.value());
+        createEventType();
 
         // get event type
         jsonRequestSpec()
                 .when()
-                .get("/event-types/" + TEST_EVENT_TYPE)
+                .get("/event-types/" + eventTypeName)
                 .then()
                 .statusCode(OK.value())
-                .body("name", equalTo(TEST_EVENT_TYPE))
+                .body("name", equalTo(eventTypeName))
                 .body("owning_application", equalTo("stups_nakadi"))
                 .body("category", equalTo("undefined"))
                 .body("schema.type", equalTo("json_schema"))
@@ -105,7 +96,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         jsonRequestSpec()
                 .body(eventTypeBodyUpdate)
                 .when()
-                .put("/event-types/" + TEST_EVENT_TYPE)
+                .put("/event-types/" + eventTypeName)
                 .then()
                 .statusCode(OK.value());
 
@@ -114,7 +105,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                     // get event type to check that update is done
                     jsonRequestSpec()
                             .when()
-                            .get("/event-types/" + TEST_EVENT_TYPE)
+                            .get("/event-types/" + eventTypeName)
                             .then()
                             .statusCode(OK.value())
                             .body("owning_application", equalTo("my-app"));
@@ -124,12 +115,12 @@ public class UserJourneyAT extends RealEnvironmentAT {
                         .withWaitBetweenEachTry(500));
 
         // push two events to event-type
-        publishEvents(TEST_EVENT_TYPE, EVENT1, EVENT2);
+        postEvents(EVENT1, EVENT2);
 
         // get offsets for partition
         jsonRequestSpec()
                 .when()
-                .get("/event-types/" + TEST_EVENT_TYPE + "/partitions/0")
+                .get("/event-types/" + eventTypeName + "/partitions/0")
                 .then()
                 .statusCode(OK.value())
                 .body("partition", equalTo("0"))
@@ -139,7 +130,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // get offsets for all partitions
         jsonRequestSpec()
                 .when()
-                .get("/event-types/" + TEST_EVENT_TYPE + "/partitions")
+                .get("/event-types/" + eventTypeName + "/partitions")
                 .then()
                 .statusCode(OK.value())
                 .body("size()", equalTo(1)).body("partition[0]", notNullValue())
@@ -152,7 +143,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .param("batch_limit", "2")
                 .param("stream_limit", "2")
                 .when()
-                .get("/event-types/" + TEST_EVENT_TYPE + "/events")
+                .get("/event-types/" + eventTypeName + "/events")
                 .then()
                 .statusCode(OK.value())
                 .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"1\"},\"events\":" + "[" + EVENT1 + ","
@@ -161,35 +152,38 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // delete event type
         jsonRequestSpec()
                 .when()
-                .delete("/event-types/" + TEST_EVENT_TYPE)
+                .delete("/event-types/" + eventTypeName)
                 .then()
                 .statusCode(OK.value());
 
         // check that it was removed
         jsonRequestSpec()
                 .when()
-                .get("/event-types/" + TEST_EVENT_TYPE)
+                .get("/event-types/" + eventTypeName)
                 .then()
                 .statusCode(NOT_FOUND.value());
     }
 
-    @Test
+    @Test(timeout = 15000)
     public void userJourneyHila() throws InterruptedException, IOException {
         // create event-type and push some events
-        final EventType eventType = createEventType();
-        rangeClosed(0, 3)
-                .forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo" + x + "\"}"));
+        createEventType();
+        postEvents(rangeClosed(0, 3)
+                .boxed()
+                .map(x -> "{\"foo\":\"bar" + x + "\"}")
+                .collect(Collectors.toList())
+                .toArray(new String[4]));
 
         // create subscription
         final SubscriptionBase subscriptionToCreate = RandomSubscriptionBuilder.builder()
-                .withEventType(eventType.getName())
+                .withEventType(eventTypeName)
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
-        final Subscription subscription = createSubscription(subscriptionToCreate);
+        final Subscription subscription = createSubscription(jsonRequestSpec(), subscriptionToCreate);
 
         // list subscriptions
-        given()
-                .param("event_type", eventType.getName())
+        jsonRequestSpec()
+                .param("event_type", eventTypeName)
                 .get("/subscriptions")
                 .then()
                 .statusCode(OK.value())
@@ -197,18 +191,17 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("items[0].id", equalTo(subscription.getId()));
 
         // create client and wait till we receive all events
-        final TestStreamingClient client = TestStreamingClient
-                .create(RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "")
-                .start();
+        final TestStreamingClient client = new TestStreamingClient(
+                RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "", oauthToken).start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(4)));
         final List<StreamBatch> batches = client.getBatches();
 
         // validate the content of events
         for (int i = 0; i < batches.size(); i++) {
 
-            final SubscriptionCursor cursor = new SubscriptionCursor("0", String.valueOf(i), eventType.getName(), "");
+            final SubscriptionCursor cursor = new SubscriptionCursor("0", String.valueOf(i), eventTypeName, "");
             final StreamBatch expectedBatch = new StreamBatch(cursor,
-                    ImmutableList.of(ImmutableMap.of("blah", "foo" + i)),
+                    ImmutableList.of(ImmutableMap.of("foo", "bar" + i)),
                     i == 0 ? new StreamMetadata("Stream started") : null);
 
             final StreamBatch batch = batches.get(i);
@@ -216,28 +209,56 @@ public class UserJourneyAT extends RealEnvironmentAT {
         }
 
         // as we didn't commit, there should be still 4 unconsumed events
-        getSubscriptionStat(subscription)
+        jsonRequestSpec()
+                .get("/subscriptions/{sid}/stats", subscription.getId())
                 .then()
                 .statusCode(OK.value())
                 .body("items[0].partitions[0].unconsumed_events", equalTo(4));
 
         // commit cursor of latest event
         final StreamBatch lastBatch = batches.get(batches.size() - 1);
-        final int commitCode = commitCursors(subscription.getId(), ImmutableList.of(lastBatch.getCursor()),
-                client.getSessionId());
+        final int commitCode = commitCursors(jsonRequestSpec(), subscription.getId(),
+                ImmutableList.of(lastBatch.getCursor()), client.getSessionId());
         assertThat(commitCode, equalTo(NO_CONTENT.value()));
 
         // now there should be 0 unconsumed events
-        getSubscriptionStat(subscription)
+        jsonRequestSpec()
+                .get("/subscriptions/{sid}/stats", subscription.getId())
                 .then()
                 .statusCode(OK.value())
                 .body("items[0].partitions[0].unconsumed_events", equalTo(0));
 
         // get cursors
-        final Response response = given().get("/subscriptions/" + subscription.getId() + "/cursors");
-        response.then().statusCode(OK.value())
+        jsonRequestSpec()
+                .get("/subscriptions/" + subscription.getId() + "/cursors")
+                .then()
+                .statusCode(OK.value())
                 .body("items[0].partition", equalTo("0"))
                 .body("items[0].offset", equalTo("3"));
+    }
+
+    @After
+    public void after() {
+        jsonRequestSpec().delete("/event-types/" + eventTypeName);
+    }
+
+    private void createEventType() {
+        jsonRequestSpec()
+                .body(eventTypeBody)
+                .when()
+                .post("/event-types")
+                .then()
+                .statusCode(CREATED.value());
+    }
+
+    private void postEvents(final String... events) {
+        final String batch = "[" + String.join(",", events) + "]";
+        jsonRequestSpec()
+                .body(batch)
+                .when()
+                .post("/event-types/" + eventTypeName + "/events")
+                .then()
+                .statusCode(OK.value());
     }
 
     private RequestSpecification jsonRequestSpec() {
