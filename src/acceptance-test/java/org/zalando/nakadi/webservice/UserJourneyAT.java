@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Header;
-import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.hamcrest.Matchers;

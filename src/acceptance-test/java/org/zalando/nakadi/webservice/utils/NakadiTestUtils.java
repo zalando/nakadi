@@ -117,7 +117,7 @@ public class NakadiTestUtils {
     public static int commitCursors(final RequestSpecification requestSpec, final String subscriptionId,
                                     final List<SubscriptionCursor> cursors, final String streamId)
             throws JsonProcessingException {
-        return given()
+        return requestSpec
                 .body(MAPPER.writeValueAsString(cursors))
                 .contentType(JSON)
                 .header("X-Nakadi-StreamId", streamId)
