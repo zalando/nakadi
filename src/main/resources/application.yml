@@ -44,7 +44,7 @@ nakadi:
     instanceType: t2.large
     poll.timeoutMs: 100
     send.timeoutMs: 5000
-    batch.size: 1048576
+    batch.size: 5242880
     linger.ms: 0
   zookeeper:
     kafkaNamespace:
