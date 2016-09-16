@@ -115,7 +115,7 @@ public class StreamBatch {
                     cursor.getEventType().equals(cursorToCheck.getEventType()) &&
                     Optional.ofNullable(batch.getMetadata())
                             .map(b -> b.equals(batchTocheck.getMetadata()))
-                            .orElse(batchTocheck != null && batchTocheck.getMetadata() == null);
+                            .orElse(batchTocheck.getMetadata() == null);
         }
 
         @Override

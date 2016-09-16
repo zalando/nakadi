@@ -20,6 +20,7 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -71,6 +72,12 @@ public class NakadiTestUtils {
                 .body(format("[{0}]", event))
                 .contentType(JSON)
                 .post(format("/event-types/{0}/events", eventType));
+    }
+
+    public static void publishEvents(final String eventType, final String... events) {
+        for (String event : events) {
+            publishEvent(eventType, event);
+        }
     }
 
     public static void publishBusinessEventWithUserDefinedPartition(final String eventType,

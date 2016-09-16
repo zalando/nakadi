@@ -1,6 +1,7 @@
 package org.zalando.nakadi.webservice;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
@@ -10,19 +11,19 @@ import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -32,15 +33,19 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
 import static org.zalando.nakadi.utils.TestUtils.getEventTypeJsonFromFile;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.getSubscriptionStat;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvents;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
@@ -119,7 +124,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                         .withWaitBetweenEachTry(500));
 
         // push two events to event-type
-        postEvents(new String[]{EVENT1, EVENT2});
+        publishEvents(TEST_EVENT_TYPE, EVENT1, EVENT2);
 
         // get offsets for partition
         jsonRequestSpec()
@@ -168,54 +173,77 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .statusCode(NOT_FOUND.value());
     }
 
+    @Test
     public void userJourneyHila() throws InterruptedException, IOException {
+        // create event-type and push some events
         final EventType eventType = createEventType();
-
         rangeClosed(0, 3)
                 .forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo" + x + "\"}"));
 
+        // create subscription
         final SubscriptionBase subscriptionToCreate = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType.getName())
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
         final Subscription subscription = createSubscription(subscriptionToCreate);
 
+        // list subscriptions
+        given()
+                .param("event_type", eventType.getName())
+                .get("/subscriptions")
+                .then()
+                .statusCode(OK.value())
+                .body("items.size()", equalTo(1))
+                .body("items[0].id", equalTo(subscription.getId()));
+
+        // create client and wait till we receive all events
         final TestStreamingClient client = TestStreamingClient
                 .create(RestAssured.baseURI + ":" + RestAssured.port, subscription.getId(), "")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(4)));
-        final String sessionId = client.getSessionId();
-
-        final Response subscriptionStat = NakadiTestUtils.getSubscriptionStat(subscription);
-        subscriptionStat.then()
-                .statusCode(OK.value());
-
         final List<StreamBatch> batches = client.getBatches();
-        final StreamBatch lastBatch = batches.get(batches.size() - 1);
-        final int commitCode = commitCursors(subscription.getId(), ImmutableList.of(lastBatch.getCursor()), sessionId);
-        assertThat(commitCode, equalTo(OK.value()));
 
+        // validate the content of events
+        for (int i = 0; i < batches.size(); i++) {
 
-    }
+            final SubscriptionCursor cursor = new SubscriptionCursor("0", String.valueOf(i), eventType.getName(), "");
+            final StreamBatch expectedBatch = new StreamBatch(cursor,
+                    ImmutableList.of(ImmutableMap.of("blah", "foo" + i)),
+                    i == 0 ? new StreamMetadata("Stream started") : null);
 
-    private void postEvents(final String[] events) {
-        final String batch = "[" + String.join(",", events) + "]";
-        jsonRequestSpec()
-                .body(batch)
-                .when()
-                .post("/event-types/" + TEST_EVENT_TYPE + "/events")
+            final StreamBatch batch = batches.get(i);
+            assertThat(batch, equalToBatchIgnoringToken(expectedBatch));
+        }
+
+        // as we didn't commit, there should be still 4 unconsumed events
+        getSubscriptionStat(subscription)
                 .then()
-                .statusCode(OK.value());
+                .statusCode(OK.value())
+                .body("items[0].partitions[0].unconsumed_events", equalTo(4));
+
+        // commit cursor of latest event
+        final StreamBatch lastBatch = batches.get(batches.size() - 1);
+        final int commitCode = commitCursors(subscription.getId(), ImmutableList.of(lastBatch.getCursor()),
+                client.getSessionId());
+        assertThat(commitCode, equalTo(NO_CONTENT.value()));
+
+        // now there should be 0 unconsumed events
+        getSubscriptionStat(subscription)
+                .then()
+                .statusCode(OK.value())
+                .body("items[0].partitions[0].unconsumed_events", equalTo(0));
+
+        // get cursors
+        final Response response = given().get("/subscriptions/" + subscription.getId() + "/cursors");
+        response.then().statusCode(OK.value())
+                .body("items[0].partition", equalTo("0"))
+                .body("items[0].offset", equalTo("3"));
     }
 
     private RequestSpecification jsonRequestSpec() {
         return requestSpec()
                 .header("accept", "application/json")
                 .contentType(JSON);
-    }
-
-    private static String timeString() {
-        return DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS").format(LocalDateTime.now());
     }
 
 }
