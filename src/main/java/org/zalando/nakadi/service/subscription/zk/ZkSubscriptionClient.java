@@ -128,4 +128,6 @@ public interface ZkSubscriptionClient {
      * @param partitions topic ids and partition ids of transferred data.
      */
     void transfer(String sessionId, Collection<Partition.PartitionKey> partitions);
+
+    ZkSubscriptionNode getZkSubscriptionNodeLocked();
 }

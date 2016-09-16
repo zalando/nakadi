@@ -60,7 +60,7 @@ public class TestStreamingClient implements Runnable {
             if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 throw new IOException("Response code is " + conn.getResponseCode());
             }
-            sessionId = conn.getHeaderField("X-Nakadi-SessionId");
+            sessionId = conn.getHeaderField("X-Nakadi-StreamId");
             inputStream = conn.getInputStream();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             running = true;

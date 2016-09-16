@@ -12,6 +12,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -25,6 +26,7 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -88,9 +90,12 @@ public class CursorsService {
 
     private void validateCursors(final ZkSubscriptionClient subscriptionClient,
                                  final List<SubscriptionCursor> cursors,
-                                 final String streamId) throws InvalidCursorException
-    {
-        final Map<Partition.PartitionKey, Partition> partitions = Arrays.stream(subscriptionClient.listPartitions())
+                                 final String streamId) throws NakadiException {
+        final ZkSubscriptionNode subscription = subscriptionClient.getZkSubscriptionNodeLocked();
+        if (!Arrays.stream(subscription.getSessions()).anyMatch(session -> session.getId().equals(streamId))) {
+            throw new InvalidStreamIdException("Session with stream id " + streamId + " not found");
+        }
+        final Map<Partition.PartitionKey, Partition> partitions = Arrays.stream(subscription.getPartitions())
                 .collect(Collectors.toMap(Partition::getKey, Function.identity()));
         final List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor -> Try.cons(() ->
                 eventTypeRepository.findByName(cursor.getEventType())).getO().map(eventType -> {
@@ -99,7 +104,8 @@ public class CursorsService {
             return partition == null || !streamId.equals(partition.getSession());
         }).orElseGet(() -> false)).collect(Collectors.toList());
         if (!invalidCursors.isEmpty()) {
-            throw new InvalidCursorException(CursorError.FORBIDDEN, cursors.get(0));
+            throw new InvalidStreamIdException("Cursors " + invalidCursors + " cannot be committed with stream id "
+                    + streamId);
         }
     }
 

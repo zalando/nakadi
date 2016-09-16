@@ -36,8 +36,10 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -139,7 +141,7 @@ public class SubscriptionControllerTest {
                 .andExpect(jsonPath("$.consumer_group", equalTo(subscription.getConsumerGroup())))
                 .andExpect(jsonPath("$.created_at", equalTo(subscription.getCreatedAt().toString())))
                 .andExpect(jsonPath("$.id", equalTo("123")))
-                .andExpect(jsonPath("$.start_from", equalTo("end")))
+                .andExpect(jsonPath("$.read_from", equalTo("end")))
                 .andExpect(header().string("Location", "/subscriptions/123"))
                 .andExpect(header().string("Content-Location", "/subscriptions/123"));
     }
@@ -230,7 +232,7 @@ public class SubscriptionControllerTest {
 
         final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC),
                 subscriptionBase);
-        existingSubscription.setStartFrom(SubscriptionBase.InitialPosition.BEGIN);
+        existingSubscription.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
         when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
@@ -321,9 +323,9 @@ public class SubscriptionControllerTest {
         when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
 
         final PaginationLinks.Link prevLink = new PaginationLinks.Link(
-                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=4&limit=10");
+                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=0&limit=10");
         final PaginationLinks.Link nextLink = new PaginationLinks.Link(
-                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=6&limit=10");
+                "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=15&limit=10");
         final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
         final SubscriptionListWrapper expectedResult = new SubscriptionListWrapper(subscriptions, links);
 
@@ -355,33 +357,35 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
-        final Partition.PartitionKey partitionKey = new Partition.PartitionKey("topic", "p1");
+        final Partition.PartitionKey partitionKey = new Partition.PartitionKey("topic", "0");
         final Partition[] partitions = {new Partition(partitionKey, "xz", "xz", Partition.State.ASSIGNED)};
-
+        final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
+        zkSubscriptionNode.setPartitions(partitions);
+        zkSubscriptionNode.setSessions(new Session[]{new Session("session-is", 0)});
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.listPartitions()).thenReturn(partitions);
-        when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn(3l);
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
+        when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn(3L);
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
         when(topicRepository.listPartitions(Collections.singleton("topic")))
-                .thenReturn(Collections.singletonList(new TopicPartition("topic", "p1", "3", "13")));
+                .thenReturn(Collections.singletonList(new TopicPartition("topic", "0", "3", "13")));
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         "myET",
-                        Collections.singleton(new SubscriptionEventTypeStats.Partition("p1", "assigned", 10, "xz")))
+                        Collections.singleton(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
                 );
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper(subscriptionStats))));
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(subscriptionStats))));
     }
 
     @Test
     public void whenGetSubscriptionNoPartitionsThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[]{});
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode());
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
 
@@ -390,13 +394,15 @@ public class SubscriptionControllerTest {
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper(subscriptionStats))));
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(subscriptionStats))));
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void whenGetSubscriptionNoEventTypesThenStatEmpty() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode());
         when(eventTypeRepository.findByName("myET")).thenThrow(NoSuchEventTypeException.class);
 
         getSubscriptionStats(subscription.getId())
