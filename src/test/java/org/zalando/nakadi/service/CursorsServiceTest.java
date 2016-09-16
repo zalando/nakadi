@@ -14,7 +14,7 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionCursor;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -25,8 +25,10 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import org.zalando.nakadi.service.subscription.KafkaClient;
 import org.zalando.nakadi.service.subscription.SubscriptionKafkaClientFactory;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -115,20 +117,24 @@ public class CursorsServiceTest {
     public void whenCommitCursorsThenTrue() throws Exception {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(1);
-        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[] {
-            new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED)
-        });
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode(new Partition[] {
+                new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED)
+        }, new Session[] {
+            new Session("stream-id", 0)
+        }));
         final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors("stream-id", SID, DUMMY_CURSORS);
 
         assertThat(result.get(DUMMY_CURSORS.get(0)), is(true));
         verify(setDataBuilder, times(1)).forPath(eq(offsetPath("p1")), eq("newOffset".getBytes(CHARSET)));
     }
 
-    @Test(expected = InvalidCursorException.class)
+    @Test(expected = InvalidStreamIdException.class)
     public void whenStreamIdInvalidThen422() throws Exception {
-        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[] {
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode(new Partition[] {
                 new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED)
-        });
+        }, new Session[] {
+                new Session("stream-id", 0)
+        }));
         cursorsService.commitCursors("wrong-stream-id", SID, DUMMY_CURSORS);
     }
 
@@ -143,10 +149,12 @@ public class CursorsServiceTest {
         final SubscriptionCursor p1 = new SubscriptionCursor("p1", "p1offset", MY_ET, TOKEN);
         final SubscriptionCursor p2 = new SubscriptionCursor("p2", "p2offset", MY_ET, TOKEN);
 
-        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[] {
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode(new Partition[] {
                 new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED),
                 new Partition(new Partition.PartitionKey(MY_ET, "p2"), "stream-id", null, Partition.State.ASSIGNED)
-        });
+        }, new Session[] {
+                new Session("stream-id", 0)
+        }));
         final ImmutableList<SubscriptionCursor> cursors = ImmutableList.of(p1, p2);
 
         final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors("stream-id", SID, cursors);
@@ -160,10 +168,11 @@ public class CursorsServiceTest {
     public void whenCommitOldCursorsThenFalse() throws Exception {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
         when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(-1);
-        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[] {
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode(new Partition[] {
                 new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED)
-        });
-
+        }, new Session[] {
+                new Session("stream-id", 0)
+        }));
         final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors("stream-id", SID, DUMMY_CURSORS);
 
         assertThat(result.get(DUMMY_CURSORS.get(0)), is(false));
@@ -173,9 +182,11 @@ public class CursorsServiceTest {
     @Test(expected = NakadiRuntimeException.class)
     public void whenExceptionThenServiceUnavailableException() throws Exception {
         when(getDataBuilder.forPath(any())).thenThrow(new Exception());
-        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[] {
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode(new Partition[] {
                 new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED)
-        });
+        }, new Session[] {
+                new Session("stream-id", 0)
+        }));
         cursorsService.commitCursors("stream-id", SID, DUMMY_CURSORS);
     }
 
@@ -194,9 +205,11 @@ public class CursorsServiceTest {
 
         final ImmutableMap<Partition.PartitionKey, Long> offsets = ImmutableMap.of();
         when(kafkaClient.getSubscriptionOffsets()).thenReturn(offsets);
-        when(zkSubscriptionClient.listPartitions()).thenReturn(new Partition[] {
+        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode(new Partition[] {
                 new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED)
-        });
+        }, new Session[] {
+                new Session("stream-id", 0)
+        }));
 
         final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors("stream-id", SID, DUMMY_CURSORS);
         assertThat(result.get(DUMMY_CURSORS.get(0)), is(true));

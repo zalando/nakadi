@@ -22,10 +22,10 @@ public class SubscriptionBase {
     private Set<String> eventTypes;
 
     @NotNull
-    private String consumerGroup = "none";
+    private String consumerGroup = "default";
 
     @NotNull
-    private InitialPosition startFrom = InitialPosition.END;
+    private InitialPosition readFrom = InitialPosition.END;
 
     public SubscriptionBase() {
     }
@@ -34,7 +34,7 @@ public class SubscriptionBase {
         this.setOwningApplication(subscriptionBase.getOwningApplication());
         this.setEventTypes(subscriptionBase.getEventTypes());
         this.setConsumerGroup(subscriptionBase.getConsumerGroup());
-        this.setStartFrom(subscriptionBase.getStartFrom());
+        this.setReadFrom(subscriptionBase.getReadFrom());
     }
 
     public String getOwningApplication() {
@@ -61,12 +61,12 @@ public class SubscriptionBase {
         this.consumerGroup = consumerGroup;
     }
 
-    public InitialPosition getStartFrom() {
-        return startFrom;
+    public InitialPosition getReadFrom() {
+        return readFrom;
     }
 
-    public void setStartFrom(final InitialPosition startFrom) {
-        this.startFrom = startFrom;
+    public void setReadFrom(final InitialPosition readFrom) {
+        this.readFrom = readFrom;
     }
 
     @Override
@@ -77,7 +77,7 @@ public class SubscriptionBase {
         return owningApplication.equals(that.owningApplication)
                 && eventTypes.equals(that.eventTypes)
                 && consumerGroup.equals(that.consumerGroup)
-                && startFrom.equals(that.startFrom);
+                && readFrom.equals(that.readFrom);
     }
 
     @Override
@@ -85,7 +85,7 @@ public class SubscriptionBase {
         int result = owningApplication != null ? owningApplication.hashCode() : 0;
         result = 31 * result + (eventTypes != null ? eventTypes.hashCode() : 0);
         result = 31 * result + (consumerGroup != null ? consumerGroup.hashCode() : 0);
-        result = 31 * result + (startFrom != null ? startFrom.hashCode() : 0);
+        result = 31 * result + (readFrom != null ? readFrom.hashCode() : 0);
         return result;
     }
 }
