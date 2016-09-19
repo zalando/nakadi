@@ -1,9 +1,12 @@
 {
   "name": "NAME_PLACEHOLDER",
-  "owning_application": "stups_nakadi",
+  "owning_application": "stups_aruha-test-end2end-nakadi",
   "category": "undefined",
   "schema": {
     "type": "json_schema",
     "schema": "{\"type\": \"object\", \"properties\": {\"foo\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"
+  },
+  "options" : {
+    "retention_time": 86400000
   }
 }

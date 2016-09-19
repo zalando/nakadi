@@ -72,7 +72,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("name", equalTo(eventTypeName))
-                .body("owning_application", equalTo("stups_nakadi"))
+                .body("owning_application", equalTo("stups_aruha-test-end2end-nakadi"))
                 .body("category", equalTo("undefined"))
                 .body("schema.type", equalTo("json_schema"))
                 .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": " +
@@ -107,7 +107,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                             .get("/event-types/" + eventTypeName)
                             .then()
                             .statusCode(OK.value())
-                            .body("owning_application", equalTo("my-app"));
+                            .body("options.retention_time", equalTo(86400000));
                 },
                 new RetryForSpecifiedTimeStrategy<Void>(5000)
                         .withExceptionsThatForceRetry(AssertionError.class)
