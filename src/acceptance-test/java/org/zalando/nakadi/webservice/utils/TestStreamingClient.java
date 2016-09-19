@@ -13,6 +13,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static java.text.MessageFormat.format;
 
@@ -28,6 +29,7 @@ public class TestStreamingClient implements Runnable {
     private final List<StreamBatch> batches;
     private InputStream inputStream;
     private String sessionId;
+    private Optional<String> token;
 
     public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params) {
         this.baseUrl = baseUrl;
@@ -36,6 +38,13 @@ public class TestStreamingClient implements Runnable {
         this.batches = Lists.newArrayList();
         this.running = false;
         this.sessionId = "UNKNOWN";
+        this.token = Optional.empty();
+    }
+
+    public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params,
+                               final Optional<String> token) {
+        this(baseUrl, subscriptionId, params);
+        this.token = token;
     }
 
     public static TestStreamingClient create(final String baseUrl, final String subscriptionId, final String params) {
@@ -47,6 +56,7 @@ public class TestStreamingClient implements Runnable {
         try {
             final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
             final HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            token.ifPresent(token -> conn.setRequestProperty("Authorization", "Bearer " + token));
             if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 throw new IOException("Response code is " + conn.getResponseCode());
             }

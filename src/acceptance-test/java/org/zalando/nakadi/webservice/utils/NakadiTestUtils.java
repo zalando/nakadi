@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.response.Response;
+import com.jayway.restassured.specification.RequestSpecification;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
@@ -96,7 +97,12 @@ public class NakadiTestUtils {
     }
 
     public static Subscription createSubscription(final SubscriptionBase subscription) throws IOException {
-        final Response response = given()
+        return createSubscription(given(), subscription);
+    }
+
+    public static Subscription createSubscription(final RequestSpecification requestSpec,
+                                                  final SubscriptionBase subscription) throws IOException {
+        final Response response = requestSpec
                 .body(MAPPER.writeValueAsString(subscription))
                 .contentType(JSON)
                 .post("/subscriptions");
@@ -104,9 +110,14 @@ public class NakadiTestUtils {
     }
 
     public static int commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors,
-                                    final String streamId)
+                                    final String streamId) throws JsonProcessingException {
+        return commitCursors(given(), subscriptionId, cursors, streamId);
+    }
+
+    public static int commitCursors(final RequestSpecification requestSpec, final String subscriptionId,
+                                    final List<SubscriptionCursor> cursors, final String streamId)
             throws JsonProcessingException {
-        return given()
+        return requestSpec
                 .body(MAPPER.writeValueAsString(cursors))
                 .contentType(JSON)
                 .header("X-Nakadi-StreamId", streamId)
