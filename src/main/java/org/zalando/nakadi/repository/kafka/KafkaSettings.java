@@ -7,7 +7,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class KafkaSettings {
 
+    // kafka client requires this property to be int
+    // https://github.com/apache/kafka/blob/d9206500bf2f99ce93f6ad64c7a89483100b3b5f/clients/src/main/java/org/apache
+    // /kafka/clients/producer/ProducerConfig.java#L261
     private final int requestTimeoutMs;
+    // kafka client requires this property to be int
+    // https://github.com/apache/kafka/blob/d9206500bf2f99ce93f6ad64c7a89483100b3b5f/clients/src/main/java/org/apache
+    // /kafka/clients/producer/ProducerConfig.java#L232
     private final int batchSize;
     private final long lingerMs;
 

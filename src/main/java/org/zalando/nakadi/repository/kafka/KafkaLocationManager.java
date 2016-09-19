@@ -98,12 +98,12 @@ public class KafkaLocationManager {
         }
     }
 
-    public Properties getKafkaProperties() {
+    public Properties getKafkaConsumerProperties() {
         return (Properties) kafkaProperties.clone();
     }
 
     public Properties getKafkaProducerProperties() {
-        final Properties producerProps = getKafkaProperties();
+        final Properties producerProps = getKafkaConsumerProperties();
         producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put("acks", "all");
