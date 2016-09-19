@@ -100,12 +100,6 @@ public class TestUtils {
         return Long.toString(randomULong());
     }
 
-    public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName)
-            throws IOException {
-        final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
-        return json.replace("NAME_PLACEHOLDER", eventTypeName);
-    }
-
     public static String resourceAsString(final String resourceName, final Class clazz) throws IOException {
         return IOUtils.toString(clazz.getResourceAsStream(resourceName));
     }

@@ -1,7 +1,9 @@
 package org.zalando.nakadi.webservice;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Resources;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.specification.RequestSpecification;
@@ -34,7 +36,6 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import static org.zalando.nakadi.utils.TestUtils.getEventTypeJsonFromFile;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
@@ -55,8 +56,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
     @Before
     public void before() throws IOException {
         eventTypeName = randomValidEventTypeName();
-        eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName);
-        eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName);
+        eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
+        eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
     }
 
     @SuppressWarnings("unchecked")
@@ -72,7 +73,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("name", equalTo(eventTypeName))
-                .body("owning_application", equalTo("stups_aruha-test-end2end-nakadi"))
+                .body("owning_application", equalTo(owningApp))
                 .body("category", equalTo("undefined"))
                 .body("schema.type", equalTo("json_schema"))
                 .body("schema.schema", equalTo("{\"type\": \"object\", \"properties\": " +
@@ -175,6 +176,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // create subscription
         final SubscriptionBase subscriptionToCreate = RandomSubscriptionBuilder.builder()
+                .withOwningApplication("stups_aruha-test-end2end-nakadi")
                 .withEventType(eventTypeName)
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
@@ -264,6 +266,15 @@ public class UserJourneyAT extends RealEnvironmentAT {
         return requestSpec()
                 .header("accept", "application/json")
                 .contentType(JSON);
+    }
+
+    public static String getEventTypeJsonFromFile(final String resourceName, final String eventTypeName,
+                                                  final String owningApp)
+            throws IOException {
+        final String json = Resources.toString(Resources.getResource(resourceName), Charsets.UTF_8);
+        return json
+                .replace("NAME_PLACEHOLDER", eventTypeName)
+                .replace("OWNING_APP_PLACEHOLDER", owningApp);
     }
 
 }

@@ -11,9 +11,11 @@ import static java.util.Optional.ofNullable;
 public abstract class RealEnvironmentAT {
 
     protected final Optional<String> oauthToken;
+    protected final String owningApp;
 
     public RealEnvironmentAT() {
         oauthToken = ofNullable(System.getenv("NAKADI_OAUTH_TOKEN"));
+        owningApp = ofNullable(System.getenv("NAKADI_OWNING_APP")).orElse("dummy-app");
 
         RestAssured.baseURI = ofNullable(System.getenv("NAKADI_BASE_URL"))
                 .orElse(RestAssured.DEFAULT_URI);
