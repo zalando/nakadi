@@ -185,7 +185,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
 
         try {
-            final boolean isSuccessful = done.await(getSendTimeout(), TimeUnit.MILLISECONDS);
+            final boolean isSuccessful = done.await(createSendTimeout(), TimeUnit.MILLISECONDS);
 
             if (!isSuccessful) {
                 failUnpublished(batch, "timed out");
@@ -204,7 +204,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private long getSendTimeout() {
+    private long createSendTimeout() {
         return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
     }
 
