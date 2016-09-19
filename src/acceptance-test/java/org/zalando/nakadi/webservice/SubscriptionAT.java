@@ -7,20 +7,21 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.http.HttpStatus;
+import org.junit.Assert;
+import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.http.HttpStatus;
-import org.junit.Assert;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,6 +38,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
 
@@ -131,9 +133,14 @@ public class SubscriptionAT extends BaseAT {
 
         final Subscription subscription = createSubscriptionForEventType(etName);
 
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo("UNKNOWN"))));
+
         String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
-        commitCursors(subscription, cursor)
+        commitCursors(subscription, cursor, client.getSessionId())
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
@@ -145,7 +152,7 @@ public class SubscriptionAT extends BaseAT {
         // commit lower offsets and expect 200
         cursor = "[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
-        commitCursors(subscription, cursor)
+        commitCursors(subscription, cursor, client.getSessionId())
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
@@ -155,12 +162,18 @@ public class SubscriptionAT extends BaseAT {
     }
 
     @Test
-    public void testGetSubscriptionCursors() throws IOException {
+    public void testGetSubscriptionCursors() throws IOException, InterruptedException {
         final String etName = createEventType().getName();
         final Subscription subscription = createSubscriptionForEventType(etName);
         final String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
-        commitCursors(subscription, cursor)
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo("UNKNOWN"))));
+
+        commitCursors(subscription, cursor, client.getSessionId())
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
@@ -188,10 +201,11 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NOT_FOUND);
     }
 
-    private Response commitCursors(final Subscription subscription, final String cursor) {
+    private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {
         return given()
                 .body(cursor)
                 .contentType(JSON)
+                .header("X-Nakadi-StreamId", streamId)
                 .post(format(CURSORS_URL, subscription.getId()));
     }
 

@@ -103,11 +103,13 @@ public class NakadiTestUtils {
         return MAPPER.readValue(response.print(), Subscription.class);
     }
 
-    public static int commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors)
+    public static int commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors,
+                                    final String streamId)
             throws JsonProcessingException {
         return given()
                 .body(MAPPER.writeValueAsString(cursors))
                 .contentType(JSON)
+                .header("X-Nakadi-StreamId", streamId)
                 .post(format("/subscriptions/{0}/cursors", subscriptionId))
                 .getStatusCode();
     }

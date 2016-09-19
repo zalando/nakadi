@@ -37,7 +37,7 @@
 
 The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide an event broker infrastructure to:
 
-- Abstract event delivery via a secured [RESTful API](/api/nakadi-event-bus-api.yaml). This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology. Access to the API can be managed and secured using OAuth scopes.
+- Abstract event delivery via a secured [RESTful API](api/nakadi-event-bus-api.yaml). This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology. Access to the API can be managed and secured using OAuth scopes.
 
 - Enable convenient development of event-driven applications and asynchronous microservices. Event types can be defined with schemas and managed via a registry. Nakadi also has optional support for events describing business processes and data changes using standard primitives for identity, timestamps, event types, and causality. 
 

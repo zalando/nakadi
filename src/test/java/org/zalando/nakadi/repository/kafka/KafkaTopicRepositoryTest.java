@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.kafka.clients.producer.Callback;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
@@ -106,9 +107,10 @@ public class KafkaTopicRepositoryTest {
     };
 
     private final KafkaTopicRepository kafkaTopicRepository;
-    private final KafkaProducer kafkaProducer;
+    private final KafkaProducer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
 
+    @SuppressWarnings("unchecked")
     public KafkaTopicRepositoryTest() {
         kafkaProducer = mock(KafkaProducer.class);
         when(kafkaProducer.partitionsFor(anyString())).then(
@@ -209,7 +211,6 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void whenPostEventTimesOutThenUpdateItemStatus() throws Exception {
         final BatchItem item = new BatchItem(new JSONObject());
         item.setPartition("1");
@@ -233,7 +234,6 @@ public class KafkaTopicRepositoryTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
         final BatchItem item = new BatchItem(new JSONObject());
         item.setPartition("1");
@@ -251,6 +251,37 @@ public class KafkaTopicRepositoryTest {
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("internal error"));
+        }
+    }
+
+    @Test
+    public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() throws Exception {
+
+        final BatchItem firstItem = new BatchItem(new JSONObject());
+        firstItem.setPartition("1");
+        final BatchItem secondItem = new BatchItem(new JSONObject());
+        secondItem.setPartition("2");
+        final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
+
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            if (record.partition() == 2) {
+                callback.onCompletion(null, new Exception()); // return exception only for second event
+            } else {
+                callback.onCompletion(null, null);
+            }
+            return null;
+        });
+
+        try {
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            fail();
+        } catch (final EventPublishingException e) {
+            assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+            assertThat(firstItem.getResponse().getDetail(), equalTo(""));
+            assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
+            assertThat(secondItem.getResponse().getDetail(), equalTo("internal error"));
         }
     }
 
