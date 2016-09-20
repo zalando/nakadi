@@ -217,7 +217,7 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
-        when(kafkaSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
 
         Mockito
                 .doReturn(mock(Future.class))
