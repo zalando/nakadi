@@ -57,7 +57,7 @@ public class NakadiTestUtils {
         eventType.setCategory(EventCategory.BUSINESS);
         eventType.setEnrichmentStrategies(ImmutableList.of(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT));
         eventType.setPartitionStrategy(PartitionStrategy.USER_DEFINED_STRATEGY);
-        eventType.setDefaultStatistic(statistics);
+        eventType.setDefaultStatistics(statistics);
 
         createEventTypeInNakadi(eventType);
         return eventType;

@@ -153,8 +153,8 @@ public class EventTypeService {
         validateName(name, eventType);
         validatePartitionKeys(Optional.empty(), eventType);
         validateSchemaChange(eventType, existingEventType);
-        eventType.setDefaultStatistic(
-                validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
+        eventType.setDefaultStatistics(
+                validateStatisticsUpdate(existingEventType.getDefaultStatistics(), eventType.getDefaultStatistics()));
     }
 
     private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing,

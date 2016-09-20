@@ -29,7 +29,7 @@ public class EventTypeTestBuilder {
     private String partitionStrategy;
     private List<String> partitionKeyFields;
     private EventTypeSchema schema;
-    private EventTypeStatistics defaultStatistic;
+    private EventTypeStatistics defaultStatistics;
     private EventTypeOptions options;
     private Set<String> writeScopes;
     private Set<String> readScopes;
@@ -99,8 +99,8 @@ public class EventTypeTestBuilder {
         return this;
     }
 
-    public EventTypeTestBuilder defaultStatistic(final EventTypeStatistics defaultStatistic) {
-        this.defaultStatistic = defaultStatistic;
+    public EventTypeTestBuilder defaultStatistics(final EventTypeStatistics defaultStatistics) {
+        this.defaultStatistics = defaultStatistics;
         return this;
     }
 
@@ -122,7 +122,7 @@ public class EventTypeTestBuilder {
 
     public EventType build() {
         return new EventType(name, topic, owningApplication, category, validationStrategies, enrichmentStrategies,
-                partitionStrategy, partitionKeyFields, schema, defaultStatistic, options, writeScopes, readScopes);
+                partitionStrategy, partitionKeyFields, schema, defaultStatistics, options, writeScopes, readScopes);
     }
 
     public static EventTypeTestBuilder builder() {

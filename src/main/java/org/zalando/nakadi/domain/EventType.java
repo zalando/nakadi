@@ -50,7 +50,7 @@ public class EventType {
 
     @Valid
     @Nullable
-    private EventTypeStatistics defaultStatistic;
+    private EventTypeStatistics defaultStatistics;
 
     @Valid
     private EventTypeOptions options;
@@ -74,7 +74,7 @@ public class EventType {
                      final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
                      final String partitionStrategy,
                      final List<String> partitionKeyFields, final EventTypeSchema schema,
-                     final EventTypeStatistics defaultStatistic,
+                     final EventTypeStatistics defaultStatistics,
                      final EventTypeOptions options, final Set<String> writeScopes,
                      final Set<String> readScopes) {
         this.name = name;
@@ -86,7 +86,7 @@ public class EventType {
         this.partitionStrategy = partitionStrategy;
         this.partitionKeyFields = partitionKeyFields;
         this.schema = schema;
-        this.defaultStatistic = defaultStatistic;
+        this.defaultStatistics = defaultStatistics;
         this.options = options;
         this.writeScopes = writeScopes;
         this.readScopes = readScopes;
@@ -136,12 +136,12 @@ public class EventType {
         this.schema = schema;
     }
 
-    public EventTypeStatistics getDefaultStatistic() {
-        return defaultStatistic;
+    public EventTypeStatistics getDefaultStatistics() {
+        return defaultStatistics;
     }
 
-    public void setDefaultStatistic(final EventTypeStatistics defaultStatistic) {
-        this.defaultStatistic = defaultStatistic;
+    public void setDefaultStatistics(final EventTypeStatistics defaultStatistics) {
+        this.defaultStatistics = defaultStatistics;
     }
 
     public List<String> getPartitionKeyFields() {
