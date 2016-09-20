@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
@@ -83,9 +84,11 @@ public class CursorsService {
 
         validateCursors(subscriptionClient, cursors, streamId);
 
-        return cursors.stream().collect(Collectors.toMap(Function.identity(),
-                Try.<SubscriptionCursor, Boolean>wrap(cursor -> processCursor(subscriptionId, cursor))
-                        .andThen(Try::getOrThrow)));
+        return cursors.stream()
+                .collect(Collectors.toMap(
+                        Function.identity(),
+                        Try.<SubscriptionCursor, Boolean>wrap(cursor -> processCursor(subscriptionId, cursor))
+                                .andThen(Try::getOrThrow)));
     }
 
     private void validateCursors(final ZkSubscriptionClient subscriptionClient,
@@ -97,12 +100,18 @@ public class CursorsService {
         }
         final Map<Partition.PartitionKey, Partition> partitions = Arrays.stream(subscription.getPartitions())
                 .collect(Collectors.toMap(Partition::getKey, Function.identity()));
-        final List<SubscriptionCursor> invalidCursors = cursors.stream().filter(cursor -> Try.cons(() ->
-                eventTypeRepository.findByName(cursor.getEventType())).getO().map(eventType -> {
-            final Partition.PartitionKey key = new Partition.PartitionKey(eventType.getTopic(), cursor.getPartition());
-            final Partition partition = partitions.get(key);
-            return partition == null || !streamId.equals(partition.getSession());
-        }).orElseGet(() -> false)).collect(Collectors.toList());
+        final List<SubscriptionCursor> invalidCursors = cursors.stream()
+                .filter(cursor ->
+                        Try.cons(() -> eventTypeRepository.findByName(cursor.getEventType()))
+                                .getO()
+                                .map(eventType -> {
+                                    final Partition.PartitionKey key =
+                                            new Partition.PartitionKey(eventType.getTopic(), cursor.getPartition());
+                                    final Partition partition = partitions.get(key);
+                                    return partition == null || !streamId.equals(partition.getSession());
+                                })
+                                .orElseGet(() -> false))
+                .collect(Collectors.toList());
         if (!invalidCursors.isEmpty()) {
             throw new InvalidStreamIdException("Cursors " + invalidCursors + " cannot be committed with stream id "
                     + streamId);
@@ -112,10 +121,15 @@ public class CursorsService {
     private boolean processCursor(final String subscriptionId, final SubscriptionCursor cursor)
             throws InternalNakadiException, NoSuchEventTypeException, InvalidCursorException,
             ServiceUnavailableException, NoSuchSubscriptionException {
-        final EventType eventType = eventTypeRepository.findByName(cursor.getEventType());
 
-        topicRepository.validateCommitCursors(eventType.getTopic(), ImmutableList.of(cursor));
-        return commitCursor(subscriptionId, eventType.getTopic(), cursor);
+        SubscriptionCursor cursorToProcess = cursor;
+        if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset().trim())) {
+            cursorToProcess = new SubscriptionCursor(cursor.getPartition(), "-1", cursor.getEventType(),
+                    cursor.getCursorToken());
+        }
+        final EventType eventType = eventTypeRepository.findByName(cursorToProcess.getEventType());
+        topicRepository.validateCommitCursors(eventType.getTopic(), ImmutableList.of(cursorToProcess));
+        return commitCursor(subscriptionId, eventType.getTopic(), cursorToProcess);
     }
 
     private boolean commitCursor(final String subscriptionId, final String eventType, final SubscriptionCursor cursor)

@@ -20,6 +20,7 @@ import static java.text.MessageFormat.format;
 public class TestStreamingClient implements Runnable {
 
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    public static final String SESSION_ID_UNKNOWN = "UNKNOWN";
 
     private final String baseUrl;
     private final String subscriptionId;
@@ -37,7 +38,7 @@ public class TestStreamingClient implements Runnable {
         this.params = params;
         this.batches = Lists.newArrayList();
         this.running = false;
-        this.sessionId = "UNKNOWN";
+        this.sessionId = SESSION_ID_UNKNOWN;
         this.token = Optional.empty();
     }
 

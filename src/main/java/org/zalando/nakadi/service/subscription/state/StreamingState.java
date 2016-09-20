@@ -5,6 +5,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -179,7 +180,8 @@ class StreamingState extends State {
     private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
         final Optional<String> metadata) {
         try {
-            final String offset = String.valueOf(offsets.get(pk).getSentOffset());
+            final long numberOffset = offsets.get(pk).getSentOffset();
+            final String offset = numberOffset < 0 ? Cursor.BEFORE_OLDEST_OFFSET : String.valueOf(numberOffset);
             final String batch = serializeBatch(pk, offset, new ArrayList<>(data.values()), metadata);
             getOut().streamData(batch.getBytes(EventStream.UTF8));
         } catch (final IOException e) {
