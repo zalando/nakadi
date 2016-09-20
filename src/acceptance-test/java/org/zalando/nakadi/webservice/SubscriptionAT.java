@@ -138,8 +138,8 @@ public class SubscriptionAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getSessionId(), not(equalTo("UNKNOWN"))));
 
-        String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
-                "\",\"cursor_token\":\"abc\"}]";
+        String cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
+                "\",\"cursor_token\":\"abc\"}]}";
         commitCursors(subscription, cursor, client.getSessionId())
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
@@ -150,8 +150,8 @@ public class SubscriptionAT extends BaseAT {
         assertThat(committedOffset, equalTo("25"));
 
         // commit lower offsets and expect 200
-        cursor = "[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
-                "\",\"cursor_token\":\"abc\"}]";
+        cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
+                "\",\"cursor_token\":\"abc\"}]}";
         commitCursors(subscription, cursor, client.getSessionId())
                 .then()
                 .statusCode(HttpStatus.SC_OK);
@@ -165,8 +165,8 @@ public class SubscriptionAT extends BaseAT {
     public void testGetSubscriptionCursors() throws IOException, InterruptedException {
         final String etName = createEventType().getName();
         final Subscription subscription = createSubscriptionForEventType(etName);
-        final String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
-                "\",\"cursor_token\":\"abc\"}]";
+        final String cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
+                "\",\"cursor_token\":\"abc\"}]}";
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "")

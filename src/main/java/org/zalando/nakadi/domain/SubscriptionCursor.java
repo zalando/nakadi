@@ -3,12 +3,15 @@ package org.zalando.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.annotation.concurrent.Immutable;
+import javax.validation.constraints.NotNull;
 
 @Immutable
 public class SubscriptionCursor extends Cursor {
 
+    @NotNull
     private final String eventType;
 
+    @NotNull
     private final String cursorToken;
 
     public SubscriptionCursor(@JsonProperty("partition") final String partition,
@@ -40,8 +43,8 @@ public class SubscriptionCursor extends Cursor {
     @Override
     public int hashCode() {
         int result = super.hashCode();
-        result = 31 * result + eventType.hashCode();
-        result = 31 * result + cursorToken.hashCode();
+        result = 31 * result + (eventType != null ? eventType.hashCode() : 0);
+        result = 31 * result + (cursorToken != null ? cursorToken.hashCode() : 0);
         return result;
     }
 

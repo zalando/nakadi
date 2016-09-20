@@ -3,14 +3,17 @@ package org.zalando.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.annotation.concurrent.Immutable;
+import javax.validation.constraints.NotNull;
 
 @Immutable
 public class Cursor {
 
     public static final String BEFORE_OLDEST_OFFSET = "BEGIN";
 
+    @NotNull
     private final String partition;
 
+    @NotNull
     private final String offset;
 
     public Cursor(@JsonProperty("partition") final String partition, @JsonProperty("offset") final String offset) {
