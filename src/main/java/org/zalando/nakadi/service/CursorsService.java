@@ -123,7 +123,7 @@ public class CursorsService {
             ServiceUnavailableException, NoSuchSubscriptionException {
 
         SubscriptionCursor cursorToProcess = cursor;
-        if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset().trim())) {
+        if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
             cursorToProcess = new SubscriptionCursor(cursor.getPartition(), "-1", cursor.getEventType(),
                     cursor.getCursorToken());
         }
