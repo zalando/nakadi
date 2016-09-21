@@ -27,7 +27,7 @@ public class KafkaFactory {
     }
 
     public Consumer<String, String> getConsumer() {
-        return new KafkaConsumer<>(kafkaLocationManager.getKafkaProperties());
+        return new KafkaConsumer<>(kafkaLocationManager.getKafkaConsumerProperties());
     }
 
     public NakadiKafkaConsumer createNakadiConsumer(final String topic, final List<KafkaCursor> kafkaCursors,

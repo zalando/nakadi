@@ -6,6 +6,7 @@ import org.hamcrest.core.StringContains;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
@@ -29,6 +30,7 @@ import static java.util.stream.IntStream.range;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_NO_CONTENT;
+import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -43,6 +45,7 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
+import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
 
 public class HilaAT extends BaseAT {
 
@@ -91,6 +94,29 @@ public class HilaAT extends BaseAT {
                 ImmutableMap.of("blah", "foo2"), "Stream started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "3", eventType.getName(),
                 ImmutableMap.of("blah", "foo3"))));
+    }
+
+
+    @Test(timeout = 5000)
+    public void whenNoEventsThenFirstOffsetIsBEGIN() throws Exception {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_flush_timeout=1")
+                .start();
+        waitFor(() -> assertThat(client.getBatches(), not(empty())));
+        assertThat(client.getBatches().get(0).getCursor().getOffset(), equalTo(Cursor.BEFORE_OLDEST_OFFSET));
+    }
+
+    @Test(timeout = 5000)
+    public void whenCommitBEGINThenSuccess() throws Exception {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        final int commitResult = commitCursors(subscription.getId(),
+                ImmutableList.of(new SubscriptionCursor("0", Cursor.BEFORE_OLDEST_OFFSET, eventType.getName(), "abc")),
+                client.getSessionId());
+        assertThat(commitResult, equalTo(SC_OK));
     }
 
     @Test(timeout = 5000)

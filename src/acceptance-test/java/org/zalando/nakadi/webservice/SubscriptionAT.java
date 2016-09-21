@@ -41,6 +41,7 @@ import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
+import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
 
 public class SubscriptionAT extends BaseAT {
 
@@ -136,7 +137,7 @@ public class SubscriptionAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        waitFor(() -> assertThat(client.getSessionId(), not(equalTo("UNKNOWN"))));
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
 
         String cursor = "[{\"partition\":\"0\",\"offset\":\"25\",\"event_type\":\"" + etName +
                 "\",\"cursor_token\":\"abc\"}]";
@@ -171,7 +172,7 @@ public class SubscriptionAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        waitFor(() -> assertThat(client.getSessionId(), not(equalTo("UNKNOWN"))));
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
 
         commitCursors(subscription, cursor, client.getSessionId())
                 .then()
