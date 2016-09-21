@@ -28,6 +28,7 @@ import java.util.List;
 
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -197,6 +198,20 @@ public class SubscriptionAT extends BaseAT {
     public void testGetSubscriptionNotFound() throws IOException {
         given()
                 .get(format(CURSORS_URL, "UNKNOWN_SUB_ID"))
+                .then()
+                .statusCode(HttpStatus.SC_NOT_FOUND);
+    }
+
+    @Test
+    public void testDeleteSubscription() throws IOException {
+        final String etName = createEventType().getName();
+        final Subscription subscription = createSubscriptionForEventType(etName);
+
+        when().delete("/subscriptions/{sid}", subscription.getId())
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+
+        when().get("/subscriptions/{sid}", subscription.getId())
                 .then()
                 .statusCode(HttpStatus.SC_NOT_FOUND);
     }
