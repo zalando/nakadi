@@ -53,7 +53,7 @@ public class SubscriptionAT extends BaseAT {
 
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
-    private static final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
+    private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
 
     @Test
     public void testSubscriptionBaseOperations() throws IOException {
@@ -217,7 +217,7 @@ public class SubscriptionAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_NOT_FOUND);
 
-        final Stat stat = curator.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId()));
+        final Stat stat = CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId()));
         final boolean subscriptionExistsInZk = stat != null;
         assertThat(subscriptionExistsInZk, is(false));
     }
@@ -240,7 +240,7 @@ public class SubscriptionAT extends BaseAT {
             throws Exception {
         final String path = format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset", subscription.getId(),
                 topic, partition);
-        final byte[] data = curator.getData().forPath(path);
+        final byte[] data = CURATOR.getData().forPath(path);
         return new String(data, Charsets.UTF_8);
     }
 

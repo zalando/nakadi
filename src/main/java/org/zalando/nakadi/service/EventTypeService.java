@@ -98,7 +98,9 @@ public class EventTypeService {
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
             }
-            client.checkId(eventType.get().getOwningApplication());
+            if (!client.idMatches(eventType.get().getOwningApplication())) {
+                return Result.forbidden("You don't have access to this event type");
+            }
 
             eventTypeRepository.removeEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.get().getTopic());
@@ -115,7 +117,9 @@ public class EventTypeService {
     public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
         try {
             final EventType original = eventTypeRepository.findByName(eventTypeName);
-            client.checkId(original.getOwningApplication());
+            if (!client.idMatches(original.getOwningApplication())) {
+                return Result.forbidden("You don't have access to this event type");
+            }
 
             validateUpdate(eventTypeName, eventType);
             enrichment.validate(eventType);

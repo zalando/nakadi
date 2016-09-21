@@ -5,15 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import com.sun.security.auth.UserPrincipal;
-import org.hamcrest.core.IsInstanceOf;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.junit.rules.ExpectedException;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -27,7 +24,6 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -54,6 +50,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
@@ -97,9 +94,6 @@ public class EventTypeControllerTest {
     private final ApplicationService applicationService = mock(ApplicationService.class);
 
     private MockMvc mockMvc;
-
-    @Rule
-    public final ExpectedException expectedException = ExpectedException.none();
 
     @Before
     public void init() throws Exception {
@@ -226,9 +220,6 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTNotOwner403() throws Exception {
-        expectedException.expectCause(IsInstanceOf.instanceOf(IllegalClientIdException.class));
-        expectedException.expectMessage("You don't have access to this event type");
-
         final EventType eventType = buildDefaultEventType();
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
@@ -236,9 +227,11 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
 
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to this event type");
+
         putEventType(eventType, eventType.getName(), "alice")
                 .andExpect(status().isForbidden())
-                .andExpect(content().contentType("application/problem+json"));
+                .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
@@ -311,9 +304,6 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenDeleteEventTypeThen403() throws Exception {
-        expectedException.expectCause(IsInstanceOf.instanceOf(IllegalClientIdException.class));
-        expectedException.expectMessage("You don't have access to this event type");
-
         final EventType eventType = buildDefaultEventType();
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
@@ -322,7 +312,11 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
 
-        deleteEventType(eventType.getName(), "alice").andExpect(status().isForbidden());
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to this event type");
+
+        deleteEventType(eventType.getName(), "alice")
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
