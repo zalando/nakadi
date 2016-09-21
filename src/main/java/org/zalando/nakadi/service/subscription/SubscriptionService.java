@@ -185,6 +185,27 @@ public class SubscriptionService {
         }
     }
 
+    public Result<Void> deleteSubscription(final String subscriptionId, final Client client) {
+        try {
+            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
+            client.checkId(subscription.getOwningApplication());
+
+            subscriptionRepository.deleteSubscription(subscriptionId);
+
+            final ZkSubscriptionClient zkSubscriptionClient =
+                    zkSubscriptionClientFactory.createZkSubscriptionClient(subscriptionId);
+            zkSubscriptionClient.deleteSubscription();
+
+            return Result.ok();
+        } catch (final NoSuchSubscriptionException e) {
+            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
+            return Result.problem(e.asProblem());
+        } catch (final ServiceUnavailableException e) {
+            LOG.error("Error occurred when trying to delete subscription: {}", subscriptionId, e);
+            return Result.problem(e.asProblem());
+        }
+    }
+
     public Result<ItemsWrapper<SubscriptionEventTypeStats>> getSubscriptionStat(final String subscriptionId) {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);

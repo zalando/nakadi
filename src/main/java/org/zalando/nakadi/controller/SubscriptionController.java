@@ -121,6 +121,16 @@ public class SubscriptionController {
         return WebResult.wrap(() -> subscriptionService.getSubscription(subscriptionId), request);
     }
 
+    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
+    public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
+                                                final NativeWebRequest request, final Client client) {
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
+            return new ResponseEntity<>(NOT_IMPLEMENTED);
+        }
+
+        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId, client), request);
+    }
+
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
     public ResponseEntity<?> getSubscriptionStats(@PathVariable("id") final String subscriptionId,
                                              final NativeWebRequest request) {
