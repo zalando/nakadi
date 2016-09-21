@@ -19,6 +19,15 @@ public class EventType {
 
     public static final List<String> EMPTY_STRING_LIST = new ArrayList<>(0);
 
+    // remove again once migrated to "default_statistics"
+    public static EventTypeStatistics decideOnStatisticsDuringMigration(final EventType eventType) {
+        if (eventType.getDefaultStatistics() != null) {
+            return eventType.getDefaultStatistics();
+        } else {
+            return eventType.getDefaultStatistic();
+        }
+    }
+
     @NotNull
     @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed" )
     @Size(min = 1, max = 255, message = "the length of the name must be >= 1 and <= 255")
@@ -53,6 +62,10 @@ public class EventType {
     private EventTypeStatistics defaultStatistics;
 
     @Valid
+    @Nullable
+    private EventTypeStatistics defaultStatistic;
+
+    @Valid
     private EventTypeOptions options;
 
     private Set<String> writeScopes;
@@ -75,6 +88,7 @@ public class EventType {
                      final String partitionStrategy,
                      final List<String> partitionKeyFields, final EventTypeSchema schema,
                      final EventTypeStatistics defaultStatistics,
+                     final EventTypeStatistics defaultStatistic,
                      final EventTypeOptions options, final Set<String> writeScopes,
                      final Set<String> readScopes) {
         this.name = name;
@@ -87,6 +101,7 @@ public class EventType {
         this.partitionKeyFields = partitionKeyFields;
         this.schema = schema;
         this.defaultStatistics = defaultStatistics;
+        this.defaultStatistic = defaultStatistic;
         this.options = options;
         this.writeScopes = writeScopes;
         this.readScopes = readScopes;
@@ -142,6 +157,14 @@ public class EventType {
 
     public void setDefaultStatistics(final EventTypeStatistics defaultStatistics) {
         this.defaultStatistics = defaultStatistics;
+    }
+
+    public EventTypeStatistics getDefaultStatistic() {
+        return defaultStatistic;
+    }
+
+    public void setDefaultStatistic(final EventTypeStatistics defaultStatistic) {
+        this.defaultStatistic = defaultStatistic;
     }
 
     public List<String> getPartitionKeyFields() {
