@@ -122,7 +122,7 @@ public class EventTypeTestBuilder {
 
     public EventType build() {
         return new EventType(name, topic, owningApplication, category, validationStrategies, enrichmentStrategies,
-                partitionStrategy, partitionKeyFields, schema, defaultStatistics, options, writeScopes, readScopes);
+                partitionStrategy, partitionKeyFields, schema, defaultStatistics, defaultStatistics, options, writeScopes, readScopes);
     }
 
     public static EventTypeTestBuilder builder() {
