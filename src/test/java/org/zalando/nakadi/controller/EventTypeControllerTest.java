@@ -3,6 +3,8 @@ package org.zalando.nakadi.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Resources;
 import com.sun.security.auth.UserPrincipal;
 import org.hamcrest.core.StringContains;
@@ -22,6 +24,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -34,6 +37,7 @@ import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -53,7 +57,9 @@ import java.util.UUID;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -92,6 +98,7 @@ public class EventTypeControllerTest {
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
+    private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
 
     private MockMvc mockMvc;
 
@@ -99,7 +106,7 @@ public class EventTypeControllerTest {
     public void init() throws Exception {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
-                partitionResolver, enrichment, uuid, featureToggleService);
+                partitionResolver, enrichment, uuid, featureToggleService, subscriptionRepository);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
@@ -357,6 +364,23 @@ public class EventTypeControllerTest {
         deleteEventType(eventType.getName()).andExpect(status().isServiceUnavailable())
                                       .andExpect(content().contentType("application/problem+json")).andExpect(content()
                                               .string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenDeleteEventTypeThatHasSubscriptionsThenConflict() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        when(eventTypeRepository.findByNameO(eventType.getName())).thenReturn(Optional.of(eventType));
+        when(subscriptionRepository
+                .listSubscriptions(eq(ImmutableSet.of(eventType.getName())), eq(Optional.empty()), anyInt(), anyInt()))
+                .thenReturn(ImmutableList.of(mock(Subscription.class)));
+
+        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT,
+                "Not possible to remove event-type as it has subscriptions");
+
+        deleteEventType(eventType.getName())
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     @Test
