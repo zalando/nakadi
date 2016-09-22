@@ -10,6 +10,7 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
@@ -171,6 +172,24 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final List<Subscription> subscriptions = repository.listSubscriptions(emptySet(), Optional.empty(), 2, 3);
         assertThat(subscriptions, equalTo(testSubscriptions));
+    }
+
+    @Test
+    public void whenDeleteSubscriptionThenOk() throws ServiceUnavailableException, NoSuchSubscriptionException {
+        final Subscription subscription = RandomSubscriptionBuilder.builder().build();
+        insertSubscriptionToDB(subscription);
+
+        repository.deleteSubscription(subscription.getId());
+
+        final Integer count = template.queryForObject("SELECT count(*) FROM zn_data.subscription WHERE s_id = ?",
+                Integer.class, subscription.getId());
+        assertThat("Subscription is removed", count, equalTo(0));
+    }
+
+    @Test(expected = NoSuchSubscriptionException.class)
+    public void whenDeleteNoneExistingConnectionThenNoSuchSubscriptionException() throws ServiceUnavailableException,
+            NoSuchSubscriptionException {
+        repository.deleteSubscription("some-dummy-id");
     }
 
     private void insertSubscriptionToDB(final Subscription subscription) {

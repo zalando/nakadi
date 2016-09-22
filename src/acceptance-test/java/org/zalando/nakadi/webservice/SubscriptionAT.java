@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
+import org.apache.zookeeper.data.Stat;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -28,11 +29,13 @@ import java.util.List;
 
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -51,6 +54,7 @@ public class SubscriptionAT extends BaseAT {
 
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
+    private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
 
     @Test
     public void testSubscriptionBaseOperations() throws IOException {
@@ -146,8 +150,7 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
         // check that offset is actually committed to Zookeeper
-        final CuratorFramework curator = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
-        String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
+        String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0");
         assertThat(committedOffset, equalTo("25"));
 
         // commit lower offsets and expect 200
@@ -158,7 +161,7 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
 
         // check that committed offset in Zookeeper is not changed
-        committedOffset = getCommittedOffsetFromZk(topic, subscription, "0", curator);
+        committedOffset = getCommittedOffsetFromZk(topic, subscription, "0");
         assertThat(committedOffset, equalTo("25"));
     }
 
@@ -202,6 +205,24 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NOT_FOUND);
     }
 
+    @Test
+    public void testDeleteSubscription() throws Exception {
+        final String etName = createEventType().getName();
+        final Subscription subscription = createSubscriptionForEventType(etName);
+
+        when().delete("/subscriptions/{sid}", subscription.getId())
+                .then()
+                .statusCode(HttpStatus.SC_OK);
+
+        when().get("/subscriptions/{sid}", subscription.getId())
+                .then()
+                .statusCode(HttpStatus.SC_NOT_FOUND);
+
+        final Stat stat = CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId()));
+        final boolean subscriptionExistsInZk = stat != null;
+        assertThat(subscriptionExistsInZk, is(false));
+    }
+
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {
         return given()
                 .body(cursor)
@@ -216,11 +237,11 @@ public class SubscriptionAT extends BaseAT {
         return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
     }
 
-    private String getCommittedOffsetFromZk(final String topic, final Subscription subscription,
-                                            final String partition, final CuratorFramework curator) throws Exception {
+    private String getCommittedOffsetFromZk(final String topic, final Subscription subscription, final String partition)
+            throws Exception {
         final String path = format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset", subscription.getId(),
                 topic, partition);
-        final byte[] data = curator.getData().forPath(path);
+        final byte[] data = CURATOR.getData().forPath(path);
         return new String(data, Charsets.UTF_8);
     }
 

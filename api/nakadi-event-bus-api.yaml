@@ -678,6 +678,21 @@ paths:
           description: Subscription not found
           schema:
             $ref: '#/definitions/Problem'
+    delete:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: Deletes a subscription.
+      parameters:
+        - $ref: '#/parameters/SubscriptionId'
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
 
   /subscriptions/{subscription_id}/cursors:
     get:
