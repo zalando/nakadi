@@ -4,12 +4,16 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.annotation.concurrent.Immutable;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import java.util.Collections;
 import java.util.List;
 
 @Immutable
 public class ItemsWrapper<T> {
 
+    @Valid
+    @NotNull
     private final List<T> items;
 
     @JsonCreator

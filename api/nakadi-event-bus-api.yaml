@@ -568,28 +568,25 @@ paths:
           schema:
             $ref: '#/definitions/Subscription'
           headers:
-             Location:
-               description: |
-                 The absolute URI for this subscription resource.
-               type: string
-               example: 'https://example.org/api/subscriptions/105a76d8-db49-4144-ace7-e683e8f4ba46'
+            Location:
+              description: |
+                The relative URI for this subscription resource.
+              type: string
         '201':
           description: Subscription was successfuly created. Returns subscription object that was created.
           schema:
             $ref: '#/definitions/Subscription'
           headers:
-             Location:
-               description: |
-                 The absolute URI for the created resource.
-               type: string
-               example: 'https://example.org/api/subscriptions/105a76d8-db49-4144-ace7-e683e8f4ba46'
-             Content-Location:
-               description: |
-                 If the Content-Location header is present and the same as the Location header the
-                 client can assume it has an up to date representation of the Subscription and a
-                 corresponding GET request is not needed.
-               type: string
-               example: 'https://example.org/api/subscriptions/105a76d8-db49-4144-ace7-e683e8f4ba46'
+            Location:
+              description: |
+                The relative URI for the created resource.
+              type: string
+            Content-Location:
+              description: |
+                If the Content-Location header is present and the same as the Location header the
+                client can assume it has an up to date representation of the Subscription and a
+                corresponding GET request is not needed.
+              type: string
         '400':
           description: Bad Request
           schema:
@@ -732,19 +729,19 @@ paths:
           description: |
             Id of stream which client uses to read events. It is not possible to make a commit for a terminated or
             none-existing stream. Also the client can't commit something which was not sent to his stream.
+          required: true
         - name: cursors
           in: body
           schema:
             type: object
             properties:
-              cursors:
+              items:
                 description: |
                   List of cursors that the consumer acknowledges to have successfully processed.
                 type: array
                 items:
                   $ref: '#/definitions/SubscriptionCursor'
             required:
-              - stream_id
               - items
       responses:
         '204':
@@ -773,8 +770,11 @@ paths:
             $ref: '#/definitions/Problem'
         '429':
           description: Too many requests
-          schema:
-            $ref: '#/definitions/TooManyRequests'
+          headers:
+            Retry-After:
+              description: |
+                Number of seconds the client ought to wait before making a follow-up request.
+              type: number
 
   /subscriptions/{subscription_id}/events:
     get:
@@ -841,8 +841,11 @@ paths:
             $ref: '#/definitions/Problem'
         '429':
           description: Too many requests
-          schema:
-            $ref: '#/definitions/TooManyRequests'
+          headers:
+            Retry-After:
+              description: |
+                Number of seconds the client ought to wait before making a follow-up request.
+              type: number
 
   /subscriptions/{subscription_id}/stats:
     get:
@@ -1170,13 +1173,6 @@ definitions:
       purposes. We recommend logging this object in order to solve connection issues. Clients
       should not parse this structure.
 
-  TooManyRequests:
-    headers:
-      Retry-After:
-        description: |
-          Number of seconds the client ought to wait before making a follow-up request.
-        type: number
-
   Cursor:
     required:
       - partition
@@ -1205,7 +1201,7 @@ definitions:
             description: |
               An opaque value defined by the server.
         required:
-          - event_type_name
+          - event_type
           - cursor_token
 
   CursorCommitResult:

@@ -13,6 +13,7 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionCursor;
@@ -118,7 +119,7 @@ public class NakadiTestUtils {
                                     final List<SubscriptionCursor> cursors, final String streamId)
             throws JsonProcessingException {
         return requestSpec
-                .body(MAPPER.writeValueAsString(cursors))
+                .body(MAPPER.writeValueAsString(new ItemsWrapper<>(cursors)))
                 .contentType(JSON)
                 .header("X-Nakadi-StreamId", streamId)
                 .post(format("/subscriptions/{0}/cursors", subscriptionId))
