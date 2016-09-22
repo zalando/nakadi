@@ -43,6 +43,8 @@ public class SubscriptionCursor extends Cursor {
     @Override
     public int hashCode() {
         int result = super.hashCode();
+        // eventType and cursorToken are checked for null here only because of validation implementation that
+        // calls hashCode before checking fields for not-null
         result = 31 * result + (eventType != null ? eventType.hashCode() : 0);
         result = 31 * result + (cursorToken != null ? cursorToken.hashCode() : 0);
         return result;
