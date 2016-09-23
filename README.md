@@ -449,8 +449,13 @@ point of your latest commit.
 If you need more that one client for your subscription to distribute the load - you can start 
 reading the subscription with multiple clients and Nakadi will balance the load among your clients. 
 The balancing units are partitions, so the number of clients of your subscription can't be higher 
-than the total number of all partitions of the event-types of your subscription. So if you wave
-a subscription that is subscribed 
+than the total number of all partitions of the event-types of your subscription. 
+
+_E.g. if you have a subscription for two event-types A and B having 2 and 4 partitions accordingly
+then if you start reading events by a single client - you will get events from all 6 partitions
+by this client. If you connect by a second client - 3 partitions will be transferred from first client
+to a second client and each client will be getting data from 3 partitions. So the maximum possible 
+number of clients for this subscription is 6 (in that case each one will read from one subscription)_
 
 ### Creating subscriptions
 The subscription can be created by posting to `/subscriptions`resourse.
@@ -477,12 +482,20 @@ Content-Type: application/json;charset=UTF-8
   "created_at": "2016-09-23T16:35:13.273Z"
 }
 ```
+### Subscription cursors
 ### Reading events
 Reading events is possible by sending GET request to `/subscriptions/{subscription-id}/events` endpoint 
 ```sh
 curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/events"
 ```
+todo...
 
+### Committing 
+### Checking currently committed cursors
+### Rebalance
+### Subscription statistics
+### Deleting subscription
+### Getting/listing subscriptions
 ## Build and Development
 
 ### Building
