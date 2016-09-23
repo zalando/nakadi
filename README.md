@@ -428,6 +428,61 @@ HTTP/1.1 200 OK
 
 This can be treated as a keep-alive control for some load balancers.
 
+## Subscription API
+
+### Subscriptions
+Using subscriptions users are able to consume events from event-types in a "high level" way when 
+Nakadi stores the offsets and manages the rebalancing of consuming clients. So the clients using 
+subscriptions can stay really stateless. It is possible to subscribe to multiple event-types in 
+one subscription* so that within one connection it is possible to read events from many event-types.
+
+(\* This possibility will be enabled soon)
+
+The typical workflow when using subscriptions if following:
+1) create subscription specifying the event-types you want to read;
+2) start reading events from your subscription;
+3) periodically commit the cursors you get in event batches;
+
+If you closed the connection and after some time started reading again - you get events from the 
+point of your latest commit.
+
+If you need more that one client for your subscription to distribute the load - you can start 
+reading the subscription with multiple clients and Nakadi will balance the load among your clients. 
+The balancing units are partitions, so the number of clients of your subscription can't be higher 
+than the total number of all partitions of the event-types of your subscription. So if you wave
+a subscription that is subscribed 
+
+### Creating subscriptions
+The subscription can be created by posting to `/subscriptions`resourse.
+```sh
+curl -v -X POST -H "Content-type: application/json" \
+  "http://localhost:8080/subscriptions" -d '{
+    "owning_application": "order-service",
+    "event_types": ["order.ORDER_RECEIVED"]
+  }'
+    
+```
+In response you will get the whole subscription object that was created including the id.
+```sh
+HTTP/1.1 201 Created
+Content-Type: application/json;charset=UTF-8
+{
+  "owning_application": "order-service",
+  "event_types": [
+    "order.ORDER_RECEIVED"
+  ],
+  "consumer_group": "default",
+  "read_from": "end",
+  "id": "038fc871-1d2c-4e2e-aa29-1579e8f2e71f",
+  "created_at": "2016-09-23T16:35:13.273Z"
+}
+```
+### Reading events
+Reading events is possible by sending GET request to `/subscriptions/{subscription-id}/events` endpoint 
+```sh
+curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/events"
+```
+
 ## Build and Development
 
 ### Building
