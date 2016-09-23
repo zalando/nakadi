@@ -23,6 +23,8 @@ import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
+import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
 
 import java.io.IOException;
 import java.util.List;
@@ -32,6 +34,7 @@ import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -221,6 +224,20 @@ public class SubscriptionAT extends BaseAT {
         final Stat stat = CURATOR.checkExists().forPath(format("/nakadi/subscriptions/{0}", subscription.getId()));
         final boolean subscriptionExistsInZk = stat != null;
         assertThat(subscriptionExistsInZk, is(false));
+    }
+
+    @Test
+    public void testDeleteEventTypeRestriction() throws Exception {
+        final String etName = createEventType().getName();
+        createSubscriptionForEventType(etName);
+
+        final ThrowableProblem expectedProblem = Problem.valueOf(CONFLICT,
+                "Not possible to remove event-type as it has subscriptions");
+
+        when().delete("/event-types/{event-type}", etName)
+                .then()
+                .statusCode(HttpStatus.SC_CONFLICT)
+                .body(JSON_HELPER.matchesObject(expectedProblem));
     }
 
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {

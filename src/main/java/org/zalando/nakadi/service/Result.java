@@ -32,6 +32,10 @@ public interface Result<T> {
         return problem(Problem.valueOf(Response.Status.NOT_FOUND, message));
     }
 
+    static Result<Void> conflict(final String message) {
+        return problem(Problem.valueOf(Response.Status.CONFLICT, message));
+    }
+
     class Success<V> implements Result<V> {
 
         private final V value;
