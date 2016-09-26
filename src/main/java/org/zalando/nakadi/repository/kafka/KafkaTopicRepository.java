@@ -210,50 +210,38 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
-        final CountDownLatch done = new CountDownLatch(batch.size());
         batch.forEach(item -> Preconditions.checkNotNull(
                 item.getPartition(), "BatchItem partition can't be null at the moment of publishing!"));
-        batch.forEach(item -> item.setStep(EventPublishingStep.PUBLISHING));
-        long cycleStart = System.currentTimeMillis();
-        final long finishUntil = cycleStart + createSendTimeout();
-        while ((cycleStart = System.currentTimeMillis()) < finishUntil
-                && batch.stream().filter(item -> item.getStep() == EventPublishingStep.PUBLISHING).findAny().isPresent()) {
-            final Producer<String, String> producer = kafkaFactory.takeProducer();
-            final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
-            try {
-                for (final BatchItem item : batch) {
-                    if (item.getStep() == EventPublishingStep.PUBLISHING) {
-                        sendFutures.put(item, publishItem(producer, topicId, item));
-                    }
-                }
-                final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
-                        sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-                multiFuture.get(finishUntil - cycleStart, TimeUnit.MILLISECONDS);
-
-                // Now lets check for errors
-                final AtomicBoolean needRetry = new AtomicBoolean();
-                sendFutures.entrySet().stream().filter(
-                        entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
-                        .forEach(entry -> {
-                            entry.getKey().setStep(EventPublishingStep.PUBLISHING);
-                            needRetry.set(true);
-                        });
-                if (needRetry.get()) {
-                    kafkaFactory.terminateProducer(producer);
-                }
-            } catch (final TimeoutException ex) {
-                failUnpublished(batch, "timed out");
-                throw new EventPublishingException("Error publishing message to kafka", ex);
-            } catch (final ExecutionException ex) {
-                failUnpublished(batch, "internal error");
-                throw new EventPublishingException("Error publishing message to kafka", ex);
-            } catch (final InterruptedException ex) {
-                Thread.currentThread().interrupt();
-                failUnpublished(batch, "interrupted");
-                throw new EventPublishingException("Error publishing message to kafka", ex);
-            } finally {
-                kafkaFactory.releaseProducer(producer);
+        final Producer<String, String> producer = kafkaFactory.takeProducer();
+        final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
+        try {
+            for (final BatchItem item : batch) {
+                item.setStep(EventPublishingStep.PUBLISHING);
+                sendFutures.put(item, publishItem(producer, topicId, item));
             }
+            final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
+                    sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
+            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+
+            // Now lets check for errors
+            final boolean needReset = sendFutures.entrySet().stream().filter(
+                    entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
+                    .findAny().isPresent();
+            if (needReset) {
+                kafkaFactory.terminateProducer(producer);
+            }
+        } catch (final TimeoutException ex) {
+            failUnpublished(batch, "timed out");
+            throw new EventPublishingException("Error publishing message to kafka", ex);
+        } catch (final ExecutionException ex) {
+            failUnpublished(batch, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka", ex);
+        } catch (final InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            failUnpublished(batch, "interrupted");
+            throw new EventPublishingException("Error publishing message to kafka", ex);
+        } finally {
+            kafkaFactory.releaseProducer(producer);
         }
         final boolean atLeastOneFailed = batch.stream()
                 .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
