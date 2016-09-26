@@ -16,7 +16,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toList;
 import java.util.stream.Stream;
@@ -166,7 +165,8 @@ public class KafkaTopicRepository implements TopicRepository {
                 .anyMatch(partition::equals);
     }
 
-    private static CompletableFuture<Exception> publishItem(final Producer<String, String> producer, final String topicId, final BatchItem item)
+    private static CompletableFuture<Exception> publishItem(
+            final Producer<String, String> producer, final String topicId, final BatchItem item)
             throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
