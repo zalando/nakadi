@@ -19,6 +19,7 @@ import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.service.FloodBlocker;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -35,25 +36,33 @@ public class EventPublishingController {
 
     private final EventPublisher publisher;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
+    private final FloodBlocker floodBlocker;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
-                                     final EventTypeMetricRegistry eventTypeMetricRegistry) {
+                                     final EventTypeMetricRegistry eventTypeMetricRegistry,
+                                     final FloodBlocker floodBlocker) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
+        this.floodBlocker = floodBlocker;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity postEvent(@PathVariable final String eventTypeName,
                                     @RequestBody final String eventsAsString,
-                                    final NativeWebRequest nativeWebRequest,
+                                    final NativeWebRequest request,
                                     final Client client) {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
+            if  (floodBlocker.isProductionBlocked(eventTypeName)) {
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .header("Retry-After", floodBlocker.getRetryAfterStr()).build();
+            }
+
             final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
-                    nativeWebRequest, eventTypeMetrics, client);
+                    request, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {

@@ -29,6 +29,7 @@ import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.FloodBlocker;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
@@ -62,19 +63,21 @@ public class EventStreamController {
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
+    private final FloodBlocker floodBlocker;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
-                                 final ClosedConnectionsCrutch closedConnectionsCrutch) {
-
+                                 final ClosedConnectionsCrutch closedConnectionsCrutch,
+                                 final FloodBlocker floodBlocker) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
+        this.floodBlocker = floodBlocker;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
@@ -91,6 +94,12 @@ public class EventStreamController {
             throws IOException {
 
         return outputStream -> {
+
+            if  (floodBlocker.isConsumptionBlocked(eventTypeName)) {
+                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                response.setHeader("Retry-After", floodBlocker.getRetryAfterStr());
+                return;
+            }
 
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
