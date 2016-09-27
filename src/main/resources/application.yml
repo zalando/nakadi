@@ -21,7 +21,7 @@ spring:
     password: nakadi
     driverClassName: org.postgresql.Driver
     initialSize: 2
-    maxActive: 20
+    maxActive: 5
     testOnBorrow: true
     validationQuery: SELECT 1
 nakadi:
