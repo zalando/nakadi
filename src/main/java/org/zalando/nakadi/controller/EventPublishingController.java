@@ -19,7 +19,7 @@ import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.service.FloodBlocker;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -36,15 +36,15 @@ public class EventPublishingController {
 
     private final EventPublisher publisher;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
-    private final FloodBlocker floodBlocker;
+    private final FloodService floodService;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
                                      final EventTypeMetricRegistry eventTypeMetricRegistry,
-                                     final FloodBlocker floodBlocker) {
+                                     final FloodService floodService) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
-        this.floodBlocker = floodBlocker;
+        this.floodService = floodService;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -56,9 +56,9 @@ public class EventPublishingController {
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
-            if  (floodBlocker.isProductionBlocked(eventTypeName)) {
+            if  (floodService.isProductionBlocked(eventTypeName)) {
                 return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                        .header("Retry-After", floodBlocker.getRetryAfterStr()).build();
+                        .header("Retry-After", floodService.getRetryAfterStr()).build();
             }
 
             final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,

@@ -29,7 +29,7 @@ import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.FloodBlocker;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
@@ -63,21 +63,21 @@ public class EventStreamController {
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
-    private final FloodBlocker floodBlocker;
+    private final FloodService floodService;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
-                                 final FloodBlocker floodBlocker) {
+                                 final FloodService floodService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
-        this.floodBlocker = floodBlocker;
+        this.floodService = floodService;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
@@ -95,9 +95,9 @@ public class EventStreamController {
 
         return outputStream -> {
 
-            if  (floodBlocker.isConsumptionBlocked(eventTypeName)) {
+            if  (floodService.isConsumptionBlocked(eventTypeName)) {
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-                response.setHeader("Retry-After", floodBlocker.getRetryAfterStr());
+                response.setHeader("Retry-After", floodService.getRetryAfterStr());
                 return;
             }
 

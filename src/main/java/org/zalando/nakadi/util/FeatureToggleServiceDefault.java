@@ -1,6 +1,8 @@
 package org.zalando.nakadi.util;
 
 import com.google.common.collect.ImmutableSet;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 import java.util.Set;
 
 /**
@@ -12,6 +14,12 @@ public class FeatureToggleServiceDefault implements FeatureToggleService {
             Feature.DISABLE_EVENT_TYPE_CREATION,
             Feature.DISABLE_EVENT_TYPE_DELETION
     );
+
+    @Override
+    public void setFeature(FeatureWrapper feature) {
+        throw new NotImplementedException();
+    }
+
     @Override
     public boolean isFeatureEnabled(final Feature feature) {
         return !DEPRECATED_FEATURES.contains(feature);
