@@ -47,7 +47,7 @@ nakadi:
     poll.timeoutMs: 100
     send.timeoutMs: 5000
     batch.size: 5242880
-    linger.ms: 0
+    linger.ms: 5
   zookeeper:
     kafkaNamespace:
     brokers: 127.0.0.1:2181
