@@ -1,6 +1,7 @@
 package org.zalando.nakadi.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,11 +28,14 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private final SecuritySettings settings;
     private final FeatureToggleService featureToggleService;
+    private final String defaultId;
 
     @Autowired
-    public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService) {
+    public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService,
+                          @Value("${nakadi.oauth2.adminClientId}") String defaultId) {
         this.settings = settings;
         this.featureToggleService = featureToggleService;
+        this.defaultId = defaultId;
     }
 
     @Override
@@ -45,14 +49,16 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                                   final NativeWebRequest request,
                                   final WebDataBinderFactory binderFactory) throws Exception {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+        final String id = settings.getAuthMode() == OFF
+                ? defaultId
+                : clientId.orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
-                || clientId.filter(settings.getAdminClientId()::equals).isPresent()
-                || settings.getAuthMode() == OFF) {
-            return Client.FULL_ACCESS;
+                || clientId.filter(settings.getAdminClientId()::equals).isPresent()) {
+            return new Client(id, Permissions.FULL_ACCESS);
         }
 
-        return clientId.map(client -> new NakadiClient(client, getScopes()))
-                .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+        return new Client(id, new NakadiPermissions(id, getScopes()));
     }
 
     private Set<String> getScopes() {

@@ -112,7 +112,7 @@ public class CursorsController {
         subscriptionRepository.getSubscription(subscriptionId)
                 .getEventTypes().stream().map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)
-                .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+                .forEach(eventType -> client.getPermissions().checkScopes(eventType.getReadScopes()));
     }
 
     public static class CursorCommitResult {

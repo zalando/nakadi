@@ -104,7 +104,7 @@ public class EventTypeService {
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
             }
-            if (!client.idMatches(eventType.get().getOwningApplication())) {
+            if (!client.getPermissions().isOwner(eventType.get().getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
@@ -128,7 +128,7 @@ public class EventTypeService {
     public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
         try {
             final EventType original = eventTypeRepository.findByName(eventTypeName);
-            if (!client.idMatches(original.getOwningApplication())) {
+            if (!client.getPermissions().isOwner(original.getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }
 

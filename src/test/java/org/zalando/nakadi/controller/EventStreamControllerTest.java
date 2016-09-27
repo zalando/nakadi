@@ -29,9 +29,10 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.NakadiPermissions;
+import org.zalando.nakadi.security.Permissions;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -139,7 +140,7 @@ public class EventStreamControllerTest {
         final MockMvc mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
                         new MappingJackson2HttpMessageConverter(objectMapper))
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, "test"))
                 .build();
 
         mockMvc.perform(
@@ -415,7 +416,8 @@ public class EventStreamControllerTest {
     }
 
     private void writeStream(final Set<String> scopes) throws Exception {
-        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", scopes));
+        final StreamingResponseBody responseBody = createStreamingResponseBody(new Client("clientId",
+                new NakadiPermissions("clientId", scopes)));
         final OutputStream outputStream = mock(OutputStream.class);
         responseBody.writeTo(outputStream);
     }
@@ -448,7 +450,7 @@ public class EventStreamControllerTest {
 
     protected StreamingResponseBody createStreamingResponseBody() throws IOException {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock,
-                Client.FULL_ACCESS);
+                new Client("test", Permissions.FULL_ACCESS));
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Client client) throws Exception {
@@ -463,7 +465,8 @@ public class EventStreamControllerTest {
                                                               final Integer streamKeepAliveLimit,
                                                               final String cursorsStr) throws IOException {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, batchLimit, streamLimit, batchTimeout, streamTimeout,
-                streamKeepAliveLimit, cursorsStr, requestMock, responseMock, Client.FULL_ACCESS);
+                streamKeepAliveLimit, cursorsStr, requestMock, responseMock, new Client("test",
+                        Permissions.FULL_ACCESS));
     }
 
 }

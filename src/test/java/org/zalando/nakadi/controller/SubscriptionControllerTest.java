@@ -33,7 +33,8 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.NakadiPermissions;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -553,7 +554,7 @@ public class SubscriptionControllerTest {
                                       final ModelAndViewContainer mavContainer,
                                       final NativeWebRequest webRequest,
                                       final WebDataBinderFactory binderFactory) throws Exception {
-            return new NakadiClient("nakadiClientId", scopes);
+            return new Client("nakadiClientId", new NakadiPermissions("nakadiClientId", scopes));
         }
     }
 }

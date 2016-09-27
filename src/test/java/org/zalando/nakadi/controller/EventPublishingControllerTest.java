@@ -19,6 +19,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
+import org.zalando.nakadi.metrics.ThrottlingService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
@@ -48,7 +49,7 @@ import static org.zalando.nakadi.domain.EventPublishingStep.VALIDATING;
 
 public class EventPublishingControllerTest {
 
-    public static final String TOPIC = "my-topic";
+    private static final String TOPIC = "my-topic";
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
 
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
@@ -60,6 +61,7 @@ public class EventPublishingControllerTest {
 
     private final MockMvc mockMvc;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
+    private final ThrottlingService throttlingService;
 
     public EventPublishingControllerTest() throws NakadiException, ExecutionException {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -68,14 +70,16 @@ public class EventPublishingControllerTest {
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
+        throttlingService = mock(ThrottlingService.class);
 
-        final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry);
+        final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry,
+                throttlingService);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
                 = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, "test"))
                 .build();
     }
 

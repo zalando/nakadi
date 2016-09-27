@@ -4,18 +4,18 @@ import org.zalando.nakadi.exceptions.IllegalScopeException;
 
 import java.util.Set;
 
-public class NakadiClient implements Client {
+public class NakadiPermissions implements Permissions {
 
     private final String clientId;
     private final Set<String> scopes;
 
-    public NakadiClient(final String clientId, final Set<String> scopes) {
+    public NakadiPermissions(final String clientId, final Set<String> scopes) {
         this.clientId = clientId;
         this.scopes = scopes;
     }
 
     @Override
-    public boolean idMatches(final String clientId) {
+    public boolean isOwner(String clientId) {
         return this.clientId.equals(clientId);
     }
 
