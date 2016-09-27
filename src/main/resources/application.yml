@@ -3,6 +3,8 @@ server:
   compression:
     enabled: true
     mime-types: text/plain,application/x-json-stream
+  tomcat:
+    maxThreads: 500
 management:
   port: 7979
 logging:
@@ -19,7 +21,7 @@ spring:
     password: nakadi
     driverClassName: org.postgresql.Driver
     initialSize: 2
-    maxActive: 20
+    maxActive: 5
     testOnBorrow: true
     validationQuery: SELECT 1
 nakadi:
@@ -45,7 +47,7 @@ nakadi:
     poll.timeoutMs: 100
     send.timeoutMs: 5000
     batch.size: 5242880
-    linger.ms: 0
+    linger.ms: 5
   zookeeper:
     kafkaNamespace:
     brokers: 127.0.0.1:2181
