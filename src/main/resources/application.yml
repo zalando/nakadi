@@ -3,6 +3,8 @@ server:
   compression:
     enabled: true
     mime-types: text/plain,application/x-json-stream
+  tomcat:
+    maxThreads: 500
 management:
   port: 7979
 logging:
