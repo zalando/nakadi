@@ -2,22 +2,21 @@ package org.zalando.nakadi.util;
 
 import org.springframework.stereotype.Service;
 
-import java.util.LinkedList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public interface FeatureToggleService {
 
-    void setFeature(final FeatureWrapper feature);
+    void setFeature(FeatureWrapper feature);
 
-    boolean isFeatureEnabled(final Feature feature);
+    boolean isFeatureEnabled(Feature feature);
 
     default List<FeatureWrapper> getFeatures() {
-        final List<FeatureWrapper> features = new LinkedList<>();
-        for (FeatureToggleService.Feature feature : FeatureToggleService.Feature.values()) {
-            features.add(new FeatureWrapper(feature, isFeatureEnabled(feature)));
-        }
-        return features;
+        return Arrays.stream(Feature.values())
+                .map(feature -> new FeatureWrapper(feature, isFeatureEnabled(feature)))
+                .collect(Collectors.toList());
     }
 
     enum Feature {
@@ -48,7 +47,7 @@ public interface FeatureToggleService {
         public FeatureWrapper() {
         }
 
-        public FeatureWrapper(final Feature feature, boolean enabled) {
+        public FeatureWrapper(final Feature feature, final boolean enabled) {
             this.feature = feature;
             this.enabled = enabled;
         }

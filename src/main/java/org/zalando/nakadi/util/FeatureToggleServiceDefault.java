@@ -16,7 +16,7 @@ public class FeatureToggleServiceDefault implements FeatureToggleService {
     );
 
     @Override
-    public void setFeature(FeatureWrapper feature) {
+    public void setFeature(final FeatureWrapper feature) {
         throw new NotSupportedException();
     }
 

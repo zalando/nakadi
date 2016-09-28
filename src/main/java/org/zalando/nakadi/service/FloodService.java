@@ -105,7 +105,7 @@ public class FloodService {
     }
 
     private Set<String> getChildren(final String path) {
-        Map<String, ChildData> currentChildren = floodersCache.getCurrentChildren(path);
+        final Map<String, ChildData> currentChildren = floodersCache.getCurrentChildren(path);
         return currentChildren == null ? Collections.emptySet() : currentChildren.keySet();
     }
 
@@ -152,7 +152,7 @@ public class FloodService {
         public Flooder() {
         }
 
-        public Flooder(String name, Type type) {
+        public Flooder(final String name, final Type type) {
             this.name = name;
             this.type = type;
         }
@@ -161,7 +161,7 @@ public class FloodService {
             return name;
         }
 
-        public void setName(String name) {
+        public void setName(final String name) {
             this.name = name;
         }
 
@@ -169,7 +169,7 @@ public class FloodService {
             return type;
         }
 
-        public void setType(FloodService.Type type) {
+        public void setType(final FloodService.Type type) {
             this.type = type;
         }
     }
