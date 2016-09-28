@@ -9,10 +9,10 @@ import static java.util.Collections.unmodifiableList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -24,7 +24,6 @@ import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.InterruptException;
@@ -198,8 +197,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private static boolean isExceptionShouldLeadToReset(
-            @Nullable final Exception exception) {
+    private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
         if (null == exception) {
             return false;
         }
@@ -224,10 +222,13 @@ public class KafkaTopicRepository implements TopicRepository {
             multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
 
             // Now lets check for errors
-            final boolean needReset = sendFutures.entrySet().stream().filter(
-                    entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
-                    .findAny().isPresent();
-            if (needReset) {
+            final Optional<Exception> needReset = sendFutures.entrySet().stream()
+                    .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
+                    .map(entry -> entry.getValue().getNow(null))
+                    .findAny();
+            if (needReset.isPresent()) {
+                LOG.info("Terminating producer while publishing to topic " + topicId +
+                        " because of unrecoverable exception", needReset.get());
                 kafkaFactory.terminateProducer(producer);
             }
         } catch (final TimeoutException ex) {
@@ -259,19 +260,6 @@ public class KafkaTopicRepository implements TopicRepository {
         batch.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
                 .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
-    }
-
-    private Callback kafkaSendCallback(final BatchItem item, final CountDownLatch done) {
-        return (metadata, exception) -> {
-            if (exception == null) {
-                item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
-            } else {
-                LOG.error("Failed to publish event", exception);
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            }
-
-            done.countDown();
-        };
     }
 
     @Override

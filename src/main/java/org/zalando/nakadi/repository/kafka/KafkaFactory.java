@@ -1,9 +1,12 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.annotation.Nullable;
@@ -11,6 +14,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -20,44 +25,69 @@ import org.springframework.stereotype.Component;
 public class KafkaFactory {
 
     private final KafkaLocationManager kafkaLocationManager;
+    private final Counter useCountMetric;
+    private final Counter producerTerminations;
     @Nullable
     private Producer<String, String> activeProducer;
     private final Map<Producer<String, String>, AtomicInteger> useCount = new ConcurrentHashMap<>();
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
 
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
+
     @Autowired
-    public KafkaFactory(final KafkaLocationManager kafkaLocationManager) {
+    public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final MetricRegistry metricRegistry) {
         this.kafkaLocationManager = kafkaLocationManager;
+        this.useCountMetric = metricRegistry.counter("kafka.producer.use_count");
+        this.producerTerminations = metricRegistry.counter("kafka.producer.termination_count");
     }
 
+    @Nullable
+    private Producer<String, String> takeUnderLock(final boolean canCreate) {
+        final Lock lock = canCreate ? rwLock.writeLock() : rwLock.readLock();
+        lock.lock();
+        try {
+            if (null != activeProducer) {
+                useCountMetric.inc();
+                useCount.get(activeProducer).incrementAndGet();
+                return activeProducer;
+            } else if (canCreate) {
+                activeProducer = new KafkaProducer<>(kafkaLocationManager.getKafkaProducerProperties());
+                useCountMetric.inc();
+                useCount.put(activeProducer, new AtomicInteger(1));
+                LOG.info("New producer instance created: " + activeProducer);
+                return activeProducer;
+            } else {
+                return null;
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
 
+    /**
+     * Takes producer from producer cache. Every producer, that was received by this method must be released with
+     * {@link #releaseProducer(Producer)} method.
+     *
+     * @return Initialized kafka producer instance.
+     */
     public Producer<String, String> takeProducer() {
-        rwLock.readLock().lock();
-        try {
-            if (null != activeProducer) {
-                useCount.get(activeProducer).incrementAndGet();
-                return activeProducer;
-            }
-        } finally {
-            rwLock.readLock().unlock();
+        Producer<String, String> result = takeUnderLock(false);
+        if (null == result) {
+            result = takeUnderLock(true);
         }
-        rwLock.writeLock().lock();
-        try {
-            if (null != activeProducer) {
-                useCount.get(activeProducer).incrementAndGet();
-                return activeProducer;
-            }
-            activeProducer = new KafkaProducer<>(kafkaLocationManager.getKafkaProducerProperties());
-            useCount.put(activeProducer, new AtomicInteger(1));
-            return activeProducer;
-        } finally {
-            rwLock.writeLock().unlock();
-        }
+        useCountMetric.inc();
+        return result;
     }
 
+    /**
+     * Release kafka producer that was obtained by {@link #takeProducer()} method. If producer was not obtained by
+     * {@link #takeProducer()} call - method will throw {@link NullPointerException}
+     *
+     * @param producer Producer to release.
+     */
     public void releaseProducer(final Producer<String, String> producer) {
         final int newUseCount = useCount.get(producer).decrementAndGet();
-        assert newUseCount >= 0;
+        useCountMetric.dec();
         if (newUseCount == 0) {
             final boolean deleteProducer;
             rwLock.readLock().lock();
@@ -67,17 +97,32 @@ public class KafkaFactory {
                 rwLock.readLock().unlock();
             }
             if (deleteProducer) {
+                LOG.info("Stopping producer instance - It was reported that instance should be refreshed " +
+                        "and it is not used anymore: " + producer);
                 useCount.remove(producer);
                 producer.close();
             }
         }
     }
 
+    /**
+     * Notifies producer cache, that this producer should be marked as obsolete. All methods, that are using this
+     * producer instance right now can continue using it, but new calls to {@link #takeProducer()} will use some other
+     * producers.
+     * It is allowed to call this method only between {@link #takeProducer()} and {@link #releaseProducer(Producer)}
+     * method calls. (You can not terminate something that you do not own)
+     *
+     * @param producer Producer instance to terminate.
+     */
     public void terminateProducer(final Producer<String, String> producer) {
+        LOG.info("Received signal to terminate producer " + producer);
         rwLock.writeLock().lock();
         try {
             if (producer == this.activeProducer) {
+                producerTerminations.inc();
                 this.activeProducer = null;
+            } else {
+                LOG.info("Signal for producer termination already received: " + producer);
             }
         } finally {
             rwLock.writeLock().unlock();
