@@ -31,13 +31,13 @@ public class NakadiController {
     @RequestMapping(value = "/flooders", method = RequestMethod.POST)
     public ResponseEntity blockFlooders(@RequestBody final FloodService.Flooder flooder) {
         floodService.blockFlooder(flooder);
-        return ResponseEntity.ok("");
+        return ResponseEntity.noContent().build();
     }
 
     @RequestMapping(value = "/flooders", method = RequestMethod.DELETE)
     public ResponseEntity unblockFlooder(@RequestBody final FloodService.Flooder flooder) {
         floodService.unblockFlooder(flooder);
-        return ResponseEntity.ok("");
+        return ResponseEntity.noContent().build();
     }
 
     @RequestMapping(path = "/features", method = RequestMethod.GET)
@@ -48,6 +48,6 @@ public class NakadiController {
     @RequestMapping(path = "/features", method = RequestMethod.POST)
     public ResponseEntity<?> setFeature(@RequestBody final FeatureToggleService.FeatureWrapper featureWrapper) {
         featureToggleService.setFeature(featureWrapper);
-        return ResponseEntity.ok("");
+        return ResponseEntity.noContent().build();
     }
 }

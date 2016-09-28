@@ -48,7 +48,7 @@ public interface FeatureToggleService {
         public FeatureWrapper() {
         }
 
-        private FeatureWrapper(final Feature feature, boolean enabled) {
+        public FeatureWrapper(final Feature feature, boolean enabled) {
             this.feature = feature;
             this.enabled = enabled;
         }
