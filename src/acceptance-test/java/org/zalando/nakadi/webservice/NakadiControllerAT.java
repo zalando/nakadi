@@ -2,25 +2,27 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.http.ContentType;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
-import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.service.FloodService;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Set;
 
 import static com.jayway.restassured.RestAssured.given;
 
 public class NakadiControllerAT extends BaseAT {
 
     private static final String FLOODERS_URL = "/nakadi/flooders";
-    private static final String FEATURES_URL = "/nakadi/features";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
@@ -84,52 +86,18 @@ public class NakadiControllerAT extends BaseAT {
                 .get(FLOODERS_URL)
                 .then()
                 .statusCode(HttpStatus.SC_OK)
-                .content(new StringContains(""));
-    }
-
-    @Test
-    public void testSetFeature() throws Exception {
-        FeatureToggleService.FeatureWrapper  featureWrapper =
-                new FeatureToggleService.FeatureWrapper(FeatureToggleService.Feature.CONNECTION_CLOSE_CRUTCH, true);
-        given()
-                .body(MAPPER.writeValueAsString(featureWrapper))
-                .contentType(ContentType.JSON)
-                .post(FEATURES_URL)
-                .then()
-                .statusCode(HttpStatus.SC_NO_CONTENT);
-
-        given()
-                .contentType(ContentType.JSON)
-                .get(FEATURES_URL)
-                .then()
-                .statusCode(HttpStatus.SC_OK)
-                .content(new StringContains(""));
-
-        featureWrapper =
-                new FeatureToggleService.FeatureWrapper(FeatureToggleService.Feature.CONNECTION_CLOSE_CRUTCH, false);
-        given()
-                .body(MAPPER.writeValueAsString(featureWrapper))
-                .contentType(ContentType.JSON)
-                .post(FEATURES_URL)
-                .then()
-                .statusCode(HttpStatus.SC_NO_CONTENT);
-
-        given()
-                .contentType(ContentType.JSON)
-                .get(FEATURES_URL)
-                .then()
-                .statusCode(HttpStatus.SC_OK)
-                .content(new StringContains(""));
-    }
-
-    @Test
-    public void testGetFeatures() throws Exception {
-        given()
-                .contentType(ContentType.JSON)
-                .get(FEATURES_URL)
-                .then()
-                .statusCode(HttpStatus.SC_OK)
-                .content(new StringContains(""));
+                .content(JSON_HELPER.matchesObject(new HashedMap() {
+                    {
+                        put("consumers", new HashMap<String, Set<String>>() {{
+                            put("event_types", Collections.singleton(eventType.getName()));
+                            put("apps", Collections.emptySet());
+                        }});
+                        put("producers", new HashMap<String, Set<String>>() {{
+                            put("event_types", Collections.emptySet());
+                            put("apps", Collections.emptySet());
+                        }});
+                    }
+                }));
     }
 
 }
