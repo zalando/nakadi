@@ -3,6 +3,7 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONArray;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -72,8 +73,6 @@ public class EventPublishingControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
         floodService = Mockito.mock(FloodService.class);
-        Mockito.when(floodService.isProductionBlocked(any())).thenReturn(false);
-        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
 
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, floodService);
@@ -84,6 +83,12 @@ public class EventPublishingControllerTest {
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
+    }
+
+    @Before
+    public void setUp() {
+        Mockito.when(floodService.isProductionBlocked(any())).thenReturn(false);
+        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
     }
 
     @Test

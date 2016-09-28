@@ -49,14 +49,11 @@ nakadi:
   zookeeper:
     kafkaNamespace:
     brokers: 127.0.0.1:2181
-#    exhibitor:
-#      brokers: 127.0.0.1,127.0.0.2
-#      port: 8181
     sessionTimeoutMs: 30000
     connectionTimeoutMs: 10000
   oauth2:
     mode: BASIC
-    adminClientId: nakadi
+    adminClientId: stups_nakadi
     tokenInfoUrl: https://example.com/tokeninfo
     clientId: stups_aruha-event-store-poc
     scopes:

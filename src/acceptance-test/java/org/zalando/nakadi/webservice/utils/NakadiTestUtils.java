@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
+import org.apache.http.HttpStatus;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
@@ -132,13 +133,6 @@ public class NakadiTestUtils {
         return given()
                 .contentType(JSON)
                 .get("/subscriptions/{subscription_id}/stats", subscription.getId());
-    }
-
-    public static Response blockFlooder(final FloodService.Flooder flooder) throws IOException {
-        return given()
-                .body(MAPPER.writeValueAsString(flooder))
-                .contentType(JSON)
-                .post("/nakadi/flooders");
     }
 
 }

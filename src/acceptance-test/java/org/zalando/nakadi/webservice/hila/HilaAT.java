@@ -18,6 +18,7 @@ import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.NakadiControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
@@ -284,7 +285,9 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenConsumerIsBlocked429() throws Exception {
-        NakadiTestUtils.blockFlooder(new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET));
+        final FloodService.Flooder flooder =
+                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
+        NakadiControllerAT.blockFlooder(flooder);
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1")
@@ -292,5 +295,7 @@ public class HilaAT extends BaseAT {
         Thread.sleep(2000);
         Assert.assertEquals(429, client.getResponseCode());
         Assert.assertEquals("300", client.getHeaderValue("Retry-After"));
+
+        NakadiControllerAT.unblockFlooder(flooder);
     }
 }

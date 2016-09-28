@@ -124,9 +124,6 @@ public class EventStreamControllerTest {
         when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
 
         floodService = Mockito.mock(FloodService.class);
-        Mockito.when(floodService.isConsumptionBlocked(any())).thenReturn(false);
-        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
-
         controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
         eventStreamFactoryMock, metricRegistry, crutch, floodService);
 
@@ -421,11 +418,11 @@ public class EventStreamControllerTest {
     @Test
     public void testConsumerIsBlocked429() throws Exception {
         Mockito.when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        Mockito.when(floodService.isConsumptionBlocked(any())).thenReturn(true);
+        Mockito.when(floodService.isConsumptionBlocked(TEST_EVENT_TYPE_NAME)).thenReturn(true);
+        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
 
-        mockMvc.perform(
-                get(String.format("/event-types/%s/events", TEST_EVENT_TYPE_NAME))
-                        .header("X-nakadi-cursors", "[{\"partition\":\"0\",\"offset\":\"0\"}]"))
+        mockMvc.perform(get(String.format("/event-types/%s/events", TEST_EVENT_TYPE_NAME))
+                .header("X-nakadi-cursors", "[{\"partition\":\"0\",\"offset\":\"0\"}]"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string("Retry-After", "300"));
     }
