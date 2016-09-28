@@ -57,14 +57,14 @@ public class FloodService {
         this.floodersCache.close();
     }
 
-    public boolean isProductionBlocked(final String etName) {
-        return isBlocked(PATH_FLOODER_PRODUCER_ET + etName) ||
-                isAppBlocked(etName, PATH_FLOODER_PRODUCER_APP);
+    public boolean isProductionBlocked(final String name) {
+        return isBlocked(PATH_FLOODER_PRODUCER_ET, name) ||
+                isAppBlocked(PATH_FLOODER_PRODUCER_APP, name);
     }
 
-    public boolean isConsumptionBlocked(final String etName) {
-        return isBlocked(PATH_FLOODER_CONSUMER_ET + etName) ||
-                isAppBlocked(etName, PATH_FLOODER_CONSUMER_APP);
+    public boolean isConsumptionBlocked(final String name) {
+        return isBlocked(PATH_FLOODER_CONSUMER_ET, name) ||
+                isAppBlocked(PATH_FLOODER_CONSUMER_APP, name);
     }
 
     public Map<String, Map> getFlooders() {
@@ -77,7 +77,6 @@ public class FloodService {
                 put("producers", new HashMap<String, Set<String>>() {{
                     put("event_types", getChildren(PATH_FLOODER_PRODUCER_ET));
                     put("apps", getChildren(PATH_FLOODER_PRODUCER_APP));
-
                 }});
             }
         };
@@ -110,18 +109,18 @@ public class FloodService {
         return currentChildren == null ? Collections.emptySet() : currentChildren.keySet();
     }
 
-    private boolean isAppBlocked(String etName, String path) {
+    private boolean isAppBlocked(final String path, final String etName) {
         try {
             final EventType eventType = eventTypeCache.getEventType(etName);
-            return isBlocked(path + eventType.getOwningApplication());
+            return isBlocked(path, eventType.getOwningApplication());
         } catch (final NakadiException ne) {
             LOG.error(ne.getMessage(), ne);
         }
         return false;
     }
 
-    private boolean isBlocked(final String path) {
-        return floodersCache.getCurrentData(path) == null ? false : true;
+    private boolean isBlocked(final String path, final String name) {
+        return floodersCache.getCurrentData(path + "/" + name) == null ? false : true;
     }
 
     private String createFlooderPath(final Flooder flooder) {
@@ -149,6 +148,14 @@ public class FloodService {
     public static class Flooder {
         private String name;
         private FloodService.Type type;
+
+        public Flooder() {
+        }
+
+        public Flooder(String name, Type type) {
+            this.name = name;
+            this.type = type;
+        }
 
         public String getName() {
             return name;

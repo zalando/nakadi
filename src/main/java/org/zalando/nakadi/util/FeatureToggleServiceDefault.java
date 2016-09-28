@@ -1,8 +1,8 @@
 package org.zalando.nakadi.util;
 
 import com.google.common.collect.ImmutableSet;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import javax.ws.rs.NotSupportedException;
 import java.util.Set;
 
 /**
@@ -17,7 +17,7 @@ public class FeatureToggleServiceDefault implements FeatureToggleService {
 
     @Override
     public void setFeature(FeatureWrapper feature) {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     @Override

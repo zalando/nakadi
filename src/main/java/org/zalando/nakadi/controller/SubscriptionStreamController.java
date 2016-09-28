@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -40,18 +42,24 @@ public class SubscriptionStreamController {
     private final ObjectMapper jsonMapper;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final NakadiSettings nakadiSettings;
+    private final FloodService floodService;
+    private final SubscriptionDbRepository subscriptionDbRepository;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
                                         final FeatureToggleService featureToggleService,
                                         final ObjectMapper objectMapper,
                                         final ClosedConnectionsCrutch closedConnectionsCrutch,
-                                        final NakadiSettings nakadiSettings) {
+                                        final NakadiSettings nakadiSettings,
+                                        final FloodService floodService,
+                                        final SubscriptionDbRepository subscriptionDbRepository) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.nakadiSettings = nakadiSettings;
+        this.floodService = floodService;
+        this.subscriptionDbRepository = subscriptionDbRepository;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -135,6 +143,13 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
+                if  (subscriptionDbRepository.getSubscription(subscriptionId).getEventTypes().stream()
+                        .map(etName -> floodService.isConsumptionBlocked(etName)).findFirst().orElse(false)) {
+                    response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                    response.setHeader("Retry-After", floodService.getRetryAfterStr());
+                    return;
+                }
+
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
                         nakadiSettings.getDefaultCommitTimeoutSeconds());
@@ -150,4 +165,6 @@ public class SubscriptionStreamController {
             }
         };
     }
+
+
 }

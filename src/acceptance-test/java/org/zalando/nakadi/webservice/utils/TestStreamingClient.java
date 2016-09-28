@@ -13,7 +13,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.text.MessageFormat.format;
 
@@ -31,6 +33,8 @@ public class TestStreamingClient implements Runnable {
     private InputStream inputStream;
     private String sessionId;
     private Optional<String> token;
+    private volatile int responseCode;
+    private final Map<String, List<String>> headers;
 
     public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params) {
         this.baseUrl = baseUrl;
@@ -40,6 +44,7 @@ public class TestStreamingClient implements Runnable {
         this.running = false;
         this.sessionId = SESSION_ID_UNKNOWN;
         this.token = Optional.empty();
+        this.headers = new ConcurrentHashMap<>();
     }
 
     public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params,
@@ -58,8 +63,12 @@ public class TestStreamingClient implements Runnable {
             final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
             final HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
             token.ifPresent(token -> conn.setRequestProperty("Authorization", "Bearer " + token));
-            if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                throw new IOException("Response code is " + conn.getResponseCode());
+            responseCode = conn.getResponseCode();
+            conn.getHeaderFields().entrySet().stream()
+                    .filter(entry -> entry.getKey() != null)
+                    .forEach(entry ->  headers.put(entry.getKey(), entry.getValue()));
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw new IOException("Response code is " + responseCode);
             }
             sessionId = conn.getHeaderField("X-Nakadi-StreamId");
             inputStream = conn.getInputStream();
@@ -94,6 +103,7 @@ public class TestStreamingClient implements Runnable {
     public TestStreamingClient start() {
         if (!running) {
             batches.clear();
+            headers.clear();
             final Thread thread = new Thread(this);
             thread.start();
             return this;
@@ -127,5 +137,17 @@ public class TestStreamingClient implements Runnable {
 
     public String getSessionId() {
         return sessionId;
+    }
+
+    public int getResponseCode() {
+        return responseCode;
+    }
+
+    public String getHeaderValue(final String name) {
+        final List<String> values = headers.get(name);
+        if (values == null) {
+            return null;
+        }
+        return values.get(0);
     }
 }

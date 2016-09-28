@@ -3,6 +3,7 @@ package org.zalando.nakadi.webservice.hila;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.hamcrest.core.StringContains;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -13,6 +14,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -280,4 +282,15 @@ public class HilaAT extends BaseAT {
                 .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
     }
 
+    @Test(timeout = 10000)
+    public void whenConsumerIsBlocked429() throws Exception {
+        NakadiTestUtils.blockFlooder(new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET));
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_flush_timeout=1")
+                .start();
+        Thread.sleep(2000);
+        Assert.assertEquals(429, client.getResponseCode());
+        Assert.assertEquals("300", client.getHeaderValue("Retry-After"));
+    }
 }

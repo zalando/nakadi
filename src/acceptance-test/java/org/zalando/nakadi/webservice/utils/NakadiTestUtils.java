@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
@@ -131,6 +132,13 @@ public class NakadiTestUtils {
         return given()
                 .contentType(JSON)
                 .get("/subscriptions/{subscription_id}/stats", subscription.getId());
+    }
+
+    public static Response blockFlooder(final FloodService.Flooder flooder) throws IOException {
+        return given()
+                .body(MAPPER.writeValueAsString(flooder))
+                .contentType(JSON)
+                .post("/nakadi/flooders");
     }
 
 }

@@ -29,13 +29,14 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.security.NakadiClient;
-import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
@@ -71,6 +72,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
@@ -95,6 +97,8 @@ public class EventStreamControllerTest {
     private MetricRegistry metricRegistry;
     private FeatureToggleService featureToggleService;
     private SecuritySettings settings;
+    private FloodService floodService;
+    private MockMvc mockMvc;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException {
@@ -119,11 +123,21 @@ public class EventStreamControllerTest {
         final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
         when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
 
+        floodService = Mockito.mock(FloodService.class);
+        Mockito.when(floodService.isConsumptionBlocked(any())).thenReturn(false);
+        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
+
         controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
-        eventStreamFactoryMock, metricRegistry, crutch);
+        eventStreamFactoryMock, metricRegistry, crutch, floodService);
 
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
+
+        mockMvc = standaloneSetup(controller)
+                .setMessageConverters(new StringHttpMessageConverter(),
+                        new MappingJackson2HttpMessageConverter(objectMapper))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .build();
     }
 
     @Test
@@ -135,12 +149,6 @@ public class EventStreamControllerTest {
                 .thenReturn(eventStreamMock);
 
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-
-        final MockMvc mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(),
-                        new MappingJackson2HttpMessageConverter(objectMapper))
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .build();
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/events", TEST_EVENT_TYPE_NAME))
@@ -408,6 +416,18 @@ public class EventStreamControllerTest {
         assertThat(contentTypeCaptor.getValue(), equalTo("application/problem+json"));
 
         clearScopes();
+    }
+
+    @Test
+    public void testConsumerIsBlocked429() throws Exception {
+        Mockito.when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        Mockito.when(floodService.isConsumptionBlocked(any())).thenReturn(true);
+
+        mockMvc.perform(
+                get(String.format("/event-types/%s/events", TEST_EVENT_TYPE_NAME))
+                        .header("X-nakadi-cursors", "[{\"partition\":\"0\",\"offset\":\"0\"}]"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "300"));
     }
 
     private void clearScopes() {

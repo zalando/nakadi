@@ -22,6 +22,7 @@ import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.mock;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.domain.EventPublishingStatus.ABORTED;
@@ -60,6 +62,7 @@ public class EventPublishingControllerTest {
 
     private final MockMvc mockMvc;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
+    private final FloodService floodService;
 
     public EventPublishingControllerTest() throws NakadiException, ExecutionException {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -68,8 +71,12 @@ public class EventPublishingControllerTest {
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
+        floodService = Mockito.mock(FloodService.class);
+        Mockito.when(floodService.isProductionBlocked(any())).thenReturn(false);
+        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
 
-        final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry);
+        final EventPublishingController controller =
+                new EventPublishingController(publisher, eventTypeMetricRegistry, floodService);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
                 = new MappingJackson2HttpMessageConverter(objectMapper);
@@ -160,6 +167,15 @@ public class EventPublishingControllerTest {
 
         assertThat(eventTypeMetrics.getResponseCount(200), equalTo(2L));
         assertThat(eventTypeMetrics.getResponseCount(500), equalTo(1L));
+    }
+
+    @Test
+    public void whenPostEventTypeIsBlocked429() throws Exception {
+        Mockito.when(floodService.isProductionBlocked(any())).thenReturn(true);
+        postBatch(TOPIC, EVENT_BATCH)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(content().string(""))
+                .andExpect(header().string("Retry-After", "300"));
     }
 
     private List<BatchItemResponse> responses() {
