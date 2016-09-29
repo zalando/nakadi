@@ -72,7 +72,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
@@ -125,7 +124,6 @@ public class EventStreamControllerTest {
 
         floodService = Mockito.mock(FloodService.class);
         Mockito.when(floodService.isConsumptionBlocked(any())).thenReturn(false);
-        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
 
         controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
         eventStreamFactoryMock, metricRegistry, crutch, floodService);
@@ -416,17 +414,6 @@ public class EventStreamControllerTest {
         assertThat(contentTypeCaptor.getValue(), equalTo("application/problem+json"));
 
         clearScopes();
-    }
-
-    @Test
-    public void testConsumerIsBlocked429() throws Exception {
-        Mockito.when(eventTypeRepository.findByName(any())).thenReturn(EVENT_TYPE);
-        Mockito.when(floodService.isConsumptionBlocked(any())).thenReturn(true);
-
-        mockMvc.perform(get(String.format("/event-types/%s/events", TEST_EVENT_TYPE_NAME))
-                .header("X-nakadi-cursors", "[{\"partition\":\"0\",\"offset\":\"0\"}]"))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(header().string("Retry-After", "300"));
     }
 
     private void clearScopes() {

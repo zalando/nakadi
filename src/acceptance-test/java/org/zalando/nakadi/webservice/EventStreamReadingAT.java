@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.zalando.nakadi.service.FloodService;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -299,6 +300,45 @@ public class EventStreamReadingAT extends BaseAT {
                 .contentType(equalTo("application/problem+json;charset=UTF-8"))
                 .and()
                 .body("detail", equalTo("non existing partition very_wrong_partition"));
+    }
+
+    @Test(timeout = 10000)
+    @SuppressWarnings("unchecked")
+    public void whenReadEventsForBlockedConsumerThen429() throws Exception {
+        final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
+
+        given()
+                .header(new Header("X-nakadi-cursors", xNakadiCursors))
+                .param("batch_limit", "5")
+                .param("stream_timeout", "2")
+                .param("batch_flush_timeout", "2")
+                .when()
+                .get(STREAM_ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.OK.value());
+
+        NakadiControllerAT.blockFlooder(flooder);
+        given()
+                .header(new Header("X-nakadi-cursors", xNakadiCursors))
+                .param("batch_limit", "5")
+                .param("stream_timeout", "2")
+                .param("batch_flush_timeout", "2")
+                .when()
+                .get(STREAM_ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.TOO_MANY_REQUESTS.value())
+                .header("Retry-After", "300");
+
+        NakadiControllerAT.unblockFlooder(flooder);
+        given()
+                .header(new Header("X-nakadi-cursors", xNakadiCursors))
+                .param("batch_limit", "5")
+                .param("stream_timeout", "2")
+                .param("batch_flush_timeout", "2")
+                .when()
+                .get(STREAM_ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.OK.value());
     }
 
     private static String createStreamEndpointUrl(final String eventType) {

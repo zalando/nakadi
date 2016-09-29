@@ -2,6 +2,7 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.http.HttpStatus;
 import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.Before;
@@ -21,6 +22,7 @@ import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.NakadiControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
+import org.zalando.problem.MoreStatus;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -289,13 +291,19 @@ public class HilaAT extends BaseAT {
                 new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
         NakadiControllerAT.blockFlooder(flooder);
 
-        final TestStreamingClient client = TestStreamingClient
+        TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1")
                 .start();
         Thread.sleep(2000);
-        Assert.assertEquals(429, client.getResponseCode());
+        Assert.assertEquals(MoreStatus.TOO_MANY_REQUESTS.getStatusCode(), client.getResponseCode());
         Assert.assertEquals("300", client.getHeaderValue("Retry-After"));
 
         NakadiControllerAT.unblockFlooder(flooder);
+
+        client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_flush_timeout=1")
+                .start();
+        Thread.sleep(2000);
+        Assert.assertEquals(HttpStatus.SC_OK, client.getResponseCode());
     }
 }

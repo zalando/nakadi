@@ -37,7 +37,6 @@ import static org.mockito.Mockito.mock;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.domain.EventPublishingStatus.ABORTED;
@@ -73,7 +72,6 @@ public class EventPublishingControllerTest {
         settings = mock(SecuritySettings.class);
         floodService = Mockito.mock(FloodService.class);
         Mockito.when(floodService.isProductionBlocked(any())).thenReturn(false);
-        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
 
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, floodService);
@@ -167,14 +165,6 @@ public class EventPublishingControllerTest {
 
         assertThat(eventTypeMetrics.getResponseCount(200), equalTo(2L));
         assertThat(eventTypeMetrics.getResponseCount(500), equalTo(1L));
-    }
-
-    @Test
-    public void whenPostEventTypeIsBlocked429() throws Exception {
-        Mockito.when(floodService.isProductionBlocked(any())).thenReturn(true);
-        postBatch(TOPIC, EVENT_BATCH)
-                .andExpect(status().isTooManyRequests())
-                .andExpect(header().string("Retry-After", "300"));
     }
 
     private List<BatchItemResponse> responses() {
