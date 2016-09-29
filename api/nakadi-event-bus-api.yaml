@@ -687,8 +687,8 @@ paths:
       parameters:
         - $ref: '#/parameters/SubscriptionId'
       responses:
-        '200':
-          description: OK
+        '204':
+          description: Subscription was deleted
         '404':
           description: Subscription not found
           schema:
