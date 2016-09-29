@@ -39,7 +39,7 @@ class StreamingState extends State {
     private long lastCommitMillis;
     private long committedEvents;
     private long sentEvents;
-    private long bathesSent;
+    private long batchesSent;
 
     @Override
     public void onEnter() {
@@ -158,7 +158,7 @@ class StreamingState extends State {
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, freeSlots),
                     getParameters().batchTimeoutMillis))) {
-                flushData(e.getKey(), toSend, bathesSent == 0 ? Optional.of("Stream started") : Optional.empty());
+                flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
@@ -181,7 +181,7 @@ class StreamingState extends State {
             final String offset = numberOffset < 0 ? Cursor.BEFORE_OLDEST_OFFSET : String.valueOf(numberOffset);
             final String batch = serializeBatch(pk, offset, new ArrayList<>(data.values()), metadata);
             getOut().streamData(batch.getBytes(EventStream.UTF8));
-            bathesSent++;
+            batchesSent++;
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
             shutdownGracefully("Failed to write data to output");
