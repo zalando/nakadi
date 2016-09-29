@@ -51,7 +51,7 @@ public class KafkaFactory {
                 useCount.get(activeProducer).incrementAndGet();
                 return activeProducer;
             } else if (canCreate) {
-                activeProducer = new KafkaProducer<>(kafkaLocationManager.getKafkaProducerProperties());
+                activeProducer = createProducerInstance();
                 useCountMetric.inc();
                 useCount.put(activeProducer, new AtomicInteger(1));
                 LOG.info("New producer instance created: " + activeProducer);
@@ -62,6 +62,10 @@ public class KafkaFactory {
         } finally {
             lock.unlock();
         }
+    }
+
+    protected Producer<String, String> createProducerInstance() {
+        return new KafkaProducer<>(kafkaLocationManager.getKafkaProducerProperties());
     }
 
     /**
@@ -86,9 +90,9 @@ public class KafkaFactory {
      * @param producer Producer to release.
      */
     public void releaseProducer(final Producer<String, String> producer) {
-        final int newUseCount = useCount.get(producer).decrementAndGet();
         useCountMetric.dec();
-        if (newUseCount == 0) {
+        final AtomicInteger counter = useCount.get(producer);
+        if (counter != null && 0 == counter.decrementAndGet()) {
             final boolean deleteProducer;
             rwLock.readLock().lock();
             try {
@@ -97,10 +101,16 @@ public class KafkaFactory {
                 rwLock.readLock().unlock();
             }
             if (deleteProducer) {
-                LOG.info("Stopping producer instance - It was reported that instance should be refreshed " +
-                        "and it is not used anymore: " + producer);
-                useCount.remove(producer);
-                producer.close();
+                rwLock.writeLock().lock();
+                try {
+                    if (counter.get() == 0 && null != useCount.remove(producer)) {
+                        LOG.info("Stopping producer instance - It was reported that instance should be refreshed " +
+                                "and it is not used anymore: " + producer);
+                        producer.close();
+                    }
+                } finally {
+                    rwLock.writeLock().unlock();
+                }
             }
         }
     }

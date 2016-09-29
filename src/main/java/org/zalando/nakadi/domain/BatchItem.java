@@ -44,7 +44,7 @@ public class BatchItem {
     }
 
     public void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
-        this.response.setPublishingStatus(publishingStatus);
-        this.response.setDetail(detail);
+        response.setPublishingStatus(publishingStatus);
+        response.setDetail(detail);
     }
 }
