@@ -6,8 +6,8 @@ import com.jayway.restassured.http.ContentType;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
@@ -30,8 +30,8 @@ public class NakadiControllerAT extends BaseAT {
     private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
 
-    @Before
-    public void setUp() throws Exception{
+    @After
+    public void setUp() {
         clearFloodersData();
     }
 
@@ -84,8 +84,13 @@ public class NakadiControllerAT extends BaseAT {
                 }));
     }
 
-    private void clearFloodersData() throws Exception {
-        CURATOR.delete().deletingChildrenIfNeeded().forPath("/nakadi/flooders");
+    private void clearFloodersData() {
+        try {
+            CURATOR.delete().deletingChildrenIfNeeded().forPath("/nakadi/flooders/consumers");
+            CURATOR.delete().deletingChildrenIfNeeded().forPath("/nakadi/flooders/producers");
+        } catch (final Exception exception) {
+            // nothing to do
+        }
     }
 
     public static void blockFlooder(final FloodService.Flooder flooder) throws IOException {
