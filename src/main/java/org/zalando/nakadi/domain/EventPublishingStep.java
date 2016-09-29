@@ -6,6 +6,4 @@ public enum EventPublishingStep {
     ENRICHING,
     PARTITIONING,
     PUBLISHING,
-    PUBLISHED,
-    FAILED_PUBLISH
 }

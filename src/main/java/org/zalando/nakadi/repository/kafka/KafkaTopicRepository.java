@@ -177,11 +177,9 @@ public class KafkaTopicRepository implements TopicRepository {
 
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
-                    item.setStep(EventPublishingStep.FAILED_PUBLISH);
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
                     result.complete(exception);
                 } else {
-                    item.setStep(EventPublishingStep.PUBLISHED);
                     item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
                     result.complete(null);
                 }
