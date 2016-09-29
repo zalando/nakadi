@@ -31,6 +31,7 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
@@ -83,6 +84,7 @@ public class EventStreamControllerTest {
     private static final String TEST_TOPIC = "test-topic";
     private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
     private static final Set<String> SCOPE_READ = Collections.singleton("oauth2.scope.read");
+    private static final Client FULL_ACCESS_CLIENT = new FullAccessClient("clientId");
 
     private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
@@ -454,7 +456,7 @@ public class EventStreamControllerTest {
 
     protected StreamingResponseBody createStreamingResponseBody() throws IOException {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock,
-                Client.FULL_ACCESS);
+                FULL_ACCESS_CLIENT);
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Client client) throws Exception {
@@ -469,7 +471,7 @@ public class EventStreamControllerTest {
                                                               final Integer streamKeepAliveLimit,
                                                               final String cursorsStr) throws IOException {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, batchLimit, streamLimit, batchTimeout, streamTimeout,
-                streamKeepAliveLimit, cursorsStr, requestMock, responseMock, Client.FULL_ACCESS);
+                streamKeepAliveLimit, cursorsStr, requestMock, responseMock, FULL_ACCESS_CLIENT);
     }
 
 }

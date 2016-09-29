@@ -144,7 +144,7 @@ public class FloodService {
 
     private boolean isBlocked(final String path, final String name) {
         try {
-            return floodersCache.getCurrentData(path + "/" + name) == null ? false : true;
+            return floodersCache.getCurrentData(path + "/" + name) != null;
         } catch (final Exception e) {
             LOG.error(e.getMessage(), e);
         }

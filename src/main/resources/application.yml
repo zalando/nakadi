@@ -53,7 +53,7 @@ nakadi:
     connectionTimeoutMs: 10000
   oauth2:
     mode: BASIC
-    adminClientId: stups_nakadi
+    adminClientId: adminClientId
     tokenInfoUrl: https://example.com/tokeninfo
     clientId: stups_aruha-event-store-poc
     scopes:
