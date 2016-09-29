@@ -16,12 +16,11 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -29,7 +28,6 @@ import org.zalando.nakadi.utils.JsonTestHelper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -54,18 +52,19 @@ public class EventPublishingControllerTest {
     public static final String TOPIC = "my-topic";
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
 
-    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private final MetricRegistry metricRegistry;
-    private final JsonTestHelper jsonHelper;
-    private final EventPublisher publisher;
-    private final FeatureToggleService featureToggleService;
-    private final SecuritySettings settings;
+    private ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
+    private MetricRegistry metricRegistry;
+    private JsonTestHelper jsonHelper;
+    private EventPublisher publisher;
+    private FeatureToggleService featureToggleService;
+    private SecuritySettings settings;
 
-    private final MockMvc mockMvc;
-    private final EventTypeMetricRegistry eventTypeMetricRegistry;
-    private final FloodService floodService;
+    private MockMvc mockMvc;
+    private EventTypeMetricRegistry eventTypeMetricRegistry;
+    private FloodService floodService;
 
-    public EventPublishingControllerTest() throws NakadiException, ExecutionException {
+    @Before
+    public void setUp() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
@@ -73,6 +72,8 @@ public class EventPublishingControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
         floodService = Mockito.mock(FloodService.class);
+        Mockito.when(floodService.isProductionBlocked(any())).thenReturn(false);
+        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
 
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, floodService);
@@ -83,12 +84,6 @@ public class EventPublishingControllerTest {
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
-    }
-
-    @Before
-    public void setUp() {
-        Mockito.when(floodService.isProductionBlocked(any())).thenReturn(false);
-        Mockito.when(floodService.getRetryAfterStr()).thenReturn("300");
     }
 
     @Test
@@ -179,7 +174,6 @@ public class EventPublishingControllerTest {
         Mockito.when(floodService.isProductionBlocked(any())).thenReturn(true);
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isTooManyRequests())
-                .andExpect(content().string(""))
                 .andExpect(header().string("Retry-After", "300"));
     }
 

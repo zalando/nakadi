@@ -97,7 +97,7 @@ public class NakadiControllerAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NO_CONTENT);
     }
 
-    public static void unblockFlooder(FloodService.Flooder flooder) throws JsonProcessingException {
+    public static void unblockFlooder(final FloodService.Flooder flooder) throws JsonProcessingException {
         given()
                 .body(MAPPER.writeValueAsString(flooder))
                 .contentType(ContentType.JSON)
