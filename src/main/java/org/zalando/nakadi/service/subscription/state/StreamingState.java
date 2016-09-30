@@ -110,7 +110,9 @@ class StreamingState extends State {
         }
 
         if(isSubscriptionConsumptionBlocked()) {
-            shutdownGracefully("Consumption is blocked");
+            final String message = "Consumption is blocked";
+            sendMetadata(message);
+            shutdownGracefully(message);
             return;
         }
 
