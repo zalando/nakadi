@@ -48,7 +48,7 @@ public class StreamingContext implements SubscriptionStreamer {
 
     private final Logger log;
 
-    private StreamingContext(Builder builder) {
+    private StreamingContext(final Builder builder) {
         this.out = builder.out;
         this.parameters = builder.parameters;
         this.session = builder.session;
