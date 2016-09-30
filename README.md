@@ -27,7 +27,7 @@
     - [Event Stream Keepalives](#event-stream-keepalives)
   - [Subscriptions](#subscriptions)
     - [Creating Subscriptions](#creating-subscriptions)
-    - [Reading Events from Subscriptions](#reading-events-from-subscriptions)
+    - [Reading Events from Subscriptions](#reading-events-from-subscription)
     - [Subscription Cursors](#subscription-cursors)
     - [Committing Cursors](#committing-cursors)
     - [Checking Current Position](#checking-current-position)
