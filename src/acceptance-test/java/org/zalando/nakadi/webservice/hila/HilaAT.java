@@ -292,7 +292,7 @@ public class HilaAT extends BaseAT {
         NakadiControllerAT.blockFlooder(flooder);
 
         TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "batch_flush_timeout=1")
+                .create(URL, subscription.getId(), "")
                 .start();
         Thread.sleep(2000);
         Assert.assertEquals(MoreStatus.TOO_MANY_REQUESTS.getStatusCode(), client.getResponseCode());
@@ -301,9 +301,27 @@ public class HilaAT extends BaseAT {
         NakadiControllerAT.unblockFlooder(flooder);
 
         client = TestStreamingClient
-                .create(URL, subscription.getId(), "batch_flush_timeout=1")
+                .create(URL, subscription.getId(), "")
                 .start();
         Thread.sleep(2000);
         Assert.assertEquals(HttpStatus.SC_OK, client.getResponseCode());
+    }
+
+    @Test(timeout = 10000)
+    public void whenConsumerIsBlockedDuringConsumption() throws Exception {
+        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
+        final FloodService.Flooder flooder =
+                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
+        NakadiControllerAT.blockFlooder(flooder);
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(6)));
+
+        Assert.assertEquals("Consumption is blocked",
+                client.getBatches().get(client.getBatches().size() - 1).getMetadata().getDebug());
+        NakadiControllerAT.unblockFlooder(flooder);
     }
 }

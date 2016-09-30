@@ -6,12 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
-import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.service.FloodService;
 
 import java.io.IOException;
@@ -303,7 +303,6 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    @SuppressWarnings("unchecked")
     public void whenReadEventsForBlockedConsumerThen429() throws Exception {
         final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
 
@@ -340,6 +339,30 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.OK.value());
     }
+
+    @Test(timeout = 10000)
+    public void whenReadEventsConsumerIsBlocked() throws Exception {
+        final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                NakadiControllerAT.blockFlooder(flooder);
+            } catch (final Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        given()
+                .header(new Header("X-nakadi-cursors", xNakadiCursors))
+                .param("batch_limit", "1")
+                .param("stream_timeout", "60")
+                .param("batch_flush_timeout", "10")
+                .when()
+                .get(STREAM_ENDPOINT);
+
+        NakadiControllerAT.unblockFlooder(flooder);
+    }
+
 
     private static String createStreamEndpointUrl(final String eventType) {
         return format("/event-types/{0}/events", eventType);
