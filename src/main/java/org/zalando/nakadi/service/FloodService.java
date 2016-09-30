@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -17,6 +16,7 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,10 +27,6 @@ public class FloodService {
 
     private static final Logger LOG = LoggerFactory.getLogger(FloodService.class);
     private static final String PATH_FLOODER = "/nakadi/flooders";
-    private static final String PATH_FLOODER_CONSUMER_APP = PATH_FLOODER + Type.CONSUMER_APP;
-    private static final String PATH_FLOODER_PRODUCER_APP = PATH_FLOODER + Type.PRODUCER_APP;
-    private static final String PATH_FLOODER_CONSUMER_ET = PATH_FLOODER + Type.CONSUMER_ET;
-    private static final String PATH_FLOODER_PRODUCER_ET = PATH_FLOODER + Type.PRODUCER_ET;
 
     private final EventTypeCache eventTypeCache;
     private final SubscriptionDbRepository subscriptionDbRepository;
@@ -64,36 +60,53 @@ public class FloodService {
         this.floodersCache.close();
     }
 
-    public boolean isProductionBlocked(final String etName) {
-        return isBlocked(PATH_FLOODER_PRODUCER_ET, etName) ||
-                isAppBlocked(PATH_FLOODER_PRODUCER_APP, etName);
-    }
-
-    public boolean isConsumptionBlocked(final String etName) {
-        return isBlocked(PATH_FLOODER_CONSUMER_ET, etName) ||
-                isAppBlocked(PATH_FLOODER_CONSUMER_APP, etName);
-    }
-
-    public boolean isSubscriptionConsumptionBlocked(final String subscriptionId) {
+    public boolean isBlocked(final Type type, final String name) {
         try {
-            return subscriptionDbRepository.getSubscription(subscriptionId).getEventTypes().stream()
-                    .map(etName -> isConsumptionBlocked(etName)).findFirst().orElse(false);
+            final boolean blocked = floodersCache.getCurrentData(type + "/" + name) != null;
+            if (blocked) {
+                LOG.info("{} {} is blocked", type.name(), name);
+            }
+            return blocked;
+        } catch (final Exception e) {
+            LOG.error(e.getMessage(), e);
+        }
+        return false;
+    }
+
+    public boolean isProductionBlocked(final String etName, final String appId) {
+        return isBlocked(Type.PRODUCER_ET, etName) || isBlocked(Type.PRODUCER_APP, appId);
+    }
+
+    public boolean isConsumptionBlocked(final String etName, final String appId) {
+        return isBlocked(Type.CONSUMER_ET, etName) || isBlocked(Type.CONSUMER_APP, appId);
+    }
+
+    public boolean isSubscriptionConsumptionBlocked(final String subscriptionId, final String appId) {
+        try {
+            return isSubscriptionConsumptionBlocked(
+                    subscriptionDbRepository.getSubscription(subscriptionId).getEventTypes(), appId);
         } catch (final NakadiException e) {
             LOG.error(e.getMessage(), e);
         }
         return false;
     }
 
+    public boolean isSubscriptionConsumptionBlocked(final Collection<String> etNames, final String appId) {
+            return etNames.stream()
+                    .map(etName -> isBlocked(Type.CONSUMER_ET, etName)).findFirst().orElse(false) ||
+                    isBlocked(Type.CONSUMER_APP, appId);
+    }
+
     public Map<String, Map> getFlooders() {
         return new HashedMap() {
             {
                 put("consumers", new HashMap<String, Set<String>>() {{
-                    put("event_types", getChildren(PATH_FLOODER_CONSUMER_ET));
-                    put("apps", getChildren(PATH_FLOODER_CONSUMER_APP));
+                    put("event_types", getChildren(Type.CONSUMER_ET));
+                    put("apps", getChildren(Type.CONSUMER_APP));
                 }});
                 put("producers", new HashMap<String, Set<String>>() {{
-                    put("event_types", getChildren(PATH_FLOODER_PRODUCER_ET));
-                    put("apps", getChildren(PATH_FLOODER_PRODUCER_APP));
+                    put("event_types", getChildren(Type.PRODUCER_ET));
+                    put("apps", getChildren(Type.PRODUCER_APP));
                 }});
             }
         };
@@ -127,39 +140,20 @@ public class FloodService {
         }
     }
 
-    private Set<String> getChildren(final String path) {
-        final Map<String, ChildData> currentChildren = floodersCache.getCurrentChildren(path);
+    private Set<String> getChildren(final Type type) {
+        final Map<String, ChildData> currentChildren = floodersCache.getCurrentChildren(type.toString());
         return currentChildren == null ? Collections.emptySet() : currentChildren.keySet();
     }
 
-    private boolean isAppBlocked(final String path, final String etName) {
-        try {
-            final EventType eventType = eventTypeCache.getEventType(etName);
-            return isBlocked(path, eventType.getOwningApplication());
-        } catch (final NakadiException ne) {
-            LOG.error(ne.getMessage(), ne);
-        }
-        return false;
-    }
-
-    private boolean isBlocked(final String path, final String name) {
-        try {
-            return floodersCache.getCurrentData(path + "/" + name) != null;
-        } catch (final Exception e) {
-            LOG.error(e.getMessage(), e);
-        }
-        return false;
-    }
-
     private String createFlooderPath(final Flooder flooder) {
-        return PATH_FLOODER + flooder.getType() + "/" + flooder.getName();
+        return flooder.getType() + "/" + flooder.getName();
     }
 
     public enum Type {
-        CONSUMER_APP("/consumers/apps"),
-        CONSUMER_ET("/consumers/event_types"),
-        PRODUCER_APP("/producers/apps"),
-        PRODUCER_ET("/producers/event_types");
+        CONSUMER_APP("/nakadi/flooders/consumers/apps"),
+        CONSUMER_ET("/nakadi/flooders/consumers/event_types"),
+        PRODUCER_APP("/nakadi/flooders/producers/apps"),
+        PRODUCER_ET("/nakadi/flooders/producers/event_types");
 
         private final String value;
 

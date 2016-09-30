@@ -95,7 +95,7 @@ public class EventStreamController {
 
         return outputStream -> {
 
-            if  (floodService.isConsumptionBlocked(eventTypeName)) {
+            if  (floodService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setHeader("Retry-After", floodService.getRetryAfterStr());
                 return;
@@ -126,7 +126,9 @@ public class EventStreamController {
                         .withStreamLimit(streamLimit)
                         .withBatchTimeout(batchTimeout)
                         .withStreamTimeout(streamTimeout)
-                        .withStreamKeepAliveLimit(streamKeepAliveLimit);
+                        .withStreamKeepAliveLimit(streamKeepAliveLimit)
+                        .withEtName(eventTypeName)
+                        .withConsumingAppId(client.getClientId());
 
                 // deserialize cursors
                 List<Cursor> cursors = null;
@@ -168,7 +170,7 @@ public class EventStreamController {
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
-                        streamConfig);
+                        streamConfig, floodService);
 
                 outputStream.flush(); // Flush status code to client
 

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
@@ -125,7 +126,8 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @Nullable
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
-            final HttpServletRequest request, final HttpServletResponse response) throws IOException {
+            final HttpServletRequest request, final HttpServletResponse response, final Client client)
+            throws IOException {
 
         return outputStream -> {
 
@@ -139,7 +141,7 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
-                if  (floodService.isSubscriptionConsumptionBlocked(subscriptionId)) {
+                if  (floodService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                     response.setHeader("Retry-After", floodService.getRetryAfterStr());
                     return;
@@ -147,8 +149,9 @@ public class SubscriptionStreamController {
 
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
-                        nakadiSettings.getDefaultCommitTimeoutSeconds());
-                streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output, connectionReady);
+                        nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
+                streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output,
+                        connectionReady, floodService);
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);

@@ -16,6 +16,7 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorTokenService;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 
@@ -57,7 +58,8 @@ public class SubscriptionStreamerFactory {
             final String subscriptionId,
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
-            final AtomicBoolean connectionReady) throws NoSuchSubscriptionException, ServiceUnavailableException,
+            final AtomicBoolean connectionReady,
+            final FloodService floodService) throws NoSuchSubscriptionException, ServiceUnavailableException,
             InternalNakadiException, NoSuchEventTypeException {
 
         final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
@@ -65,20 +67,22 @@ public class SubscriptionStreamerFactory {
         final Session session = Session.generate(1);
         final String loggingPath = "subscription." + subscriptionId + "." + session.getId();
         // Create streaming context
-        return new StreamingContext(
-                output,
-                streamParameters,
-                session,
-                executorService,
-                new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get(), loggingPath),
-                new KafkaClient(subscription, topicRepository, eventTypeRepository),
-                new ExactWeightRebalancer(),
-                kafkaPollTimeout,
-                loggingPath,
-                connectionReady,
-                eventTypesForTopics,
-                cursorTokenService,
-                objectMapper);
+        return new StreamingContext.Builder()
+                .setOut(output)
+                .setParameters(streamParameters)
+                .setSession(session)
+                .setTimer(executorService)
+                .setZkClient(new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get(), loggingPath))
+                .setKafkaClient(new KafkaClient(subscription, topicRepository, eventTypeRepository))
+                .setRebalancer(new ExactWeightRebalancer())
+                .setKafkaPollTimeout(kafkaPollTimeout)
+                .setLoggingPath(loggingPath)
+                .setConnectionReady(connectionReady)
+                .setEventTypesForTopics(eventTypesForTopics)
+                .setCursorTokenService(cursorTokenService)
+                .setObjectMapper(objectMapper)
+                .setFloodService(floodService)
+                .build();
     }
 
     private Map<String, String> createTopicsMap(final Set<String> eventTypes) throws InternalNakadiException,

@@ -1,8 +1,11 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.CursorTokenService;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
@@ -20,10 +23,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StreamingContext implements SubscriptionStreamer {
+
+    public static final State DEAD_STATE = new DummyState();
+
     private final StreamParameters parameters;
     private final Session session;
     private final ZkSubscriptionClient zkClient;
@@ -34,48 +38,32 @@ public class StreamingContext implements SubscriptionStreamer {
     private final Map<String, String> eventTypesForTopics;
     private final CursorTokenService cursorTokenService;
     private final ObjectMapper objectMapper;
-
+    private final FloodService floodService;
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
-
     private final String loggingPath;
-
     private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
 
-    public static final State DEAD_STATE = new DummyState();
-
     private final Logger log;
 
-    StreamingContext(
-            final SubscriptionOutput out,
-            final StreamParameters parameters,
-            final Session session,
-            final ScheduledExecutorService timer,
-            final ZkSubscriptionClient zkClient,
-            final KafkaClient kafkaClient,
-            final BiFunction<Session[], Partition[], Partition[]> rebalancer,
-            final long kafkaPollTimeout,
-            final String loggingPath,
-            final AtomicBoolean connectionReady,
-            final Map<String, String> eventTypesForTopics,
-            final CursorTokenService cursorTokenService,
-            final ObjectMapper objectMapper) {
-        this.out = out;
-        this.parameters = parameters;
-        this.session = session;
-        this.rebalancer = rebalancer;
-        this.timer = timer;
-        this.zkClient = zkClient;
-        this.kafkaClient = kafkaClient;
-        this.kafkaPollTimeout = kafkaPollTimeout;
-        this.loggingPath = loggingPath + ".stream";
-        this.log = LoggerFactory.getLogger(loggingPath);
-        this.connectionReady = connectionReady;
-        this.eventTypesForTopics = eventTypesForTopics;
-        this.cursorTokenService = cursorTokenService;
-        this.objectMapper = objectMapper;
+    private StreamingContext(Builder builder) {
+        this.out = builder.out;
+        this.parameters = builder.parameters;
+        this.session = builder.session;
+        this.rebalancer = builder.rebalancer;
+        this.timer = builder.timer;
+        this.zkClient = builder.zkClient;
+        this.kafkaClient = builder.kafkaClient;
+        this.kafkaPollTimeout = builder.kafkaPollTimeout;
+        this.loggingPath = builder.loggingPath + ".stream";
+        this.log = LoggerFactory.getLogger(builder.loggingPath);
+        this.connectionReady = builder.connectionReady;
+        this.eventTypesForTopics = builder.eventTypesForTopics;
+        this.cursorTokenService = builder.cursorTokenService;
+        this.objectMapper = builder.objectMapper;
+        this.floodService = builder.floodService;
     }
 
     public StreamParameters getParameters() {
@@ -176,6 +164,11 @@ public class StreamingContext implements SubscriptionStreamer {
         return connectionReady.get();
     }
 
+    public boolean isSubscriptionConsumptionBlocked() {
+        return floodService.isSubscriptionConsumptionBlocked(eventTypesForTopics.values(), parameters
+                .getConsumingAppId());
+    }
+
     public Map<String, String> getEventTypesForTopics() {
         return eventTypesForTopics;
     }
@@ -199,6 +192,98 @@ public class StreamingContext implements SubscriptionStreamer {
                 }
             });
         }
+    }
+
+    public static final class Builder {
+        private SubscriptionOutput out;
+        private StreamParameters parameters;
+        private Session session;
+        private ScheduledExecutorService timer;
+        private ZkSubscriptionClient zkClient;
+        private KafkaClient kafkaClient;
+        private BiFunction<Session[], Partition[], Partition[]> rebalancer;
+        private long kafkaPollTimeout;
+        private String loggingPath;
+        private AtomicBoolean connectionReady;
+        private Map<String, String> eventTypesForTopics;
+        private CursorTokenService cursorTokenService;
+        private ObjectMapper objectMapper;
+        private FloodService floodService;
+
+        public Builder setOut(final SubscriptionOutput out) {
+            this.out = out;
+            return this;
+        }
+
+        public Builder setParameters(final StreamParameters parameters) {
+            this.parameters = parameters;
+            return this;
+        }
+
+        public Builder setSession(final Session session) {
+            this.session = session;
+            return this;
+        }
+
+        public Builder setTimer(final ScheduledExecutorService timer) {
+            this.timer = timer;
+            return this;
+        }
+
+        public Builder setZkClient(final ZkSubscriptionClient zkClient) {
+            this.zkClient = zkClient;
+            return this;
+        }
+
+        public Builder setKafkaClient(final KafkaClient kafkaClient) {
+            this.kafkaClient = kafkaClient;
+            return this;
+        }
+
+        public Builder setRebalancer(final BiFunction<Session[], Partition[], Partition[]> rebalancer) {
+            this.rebalancer = rebalancer;
+            return this;
+        }
+
+        public Builder setKafkaPollTimeout(final long kafkaPollTimeout) {
+            this.kafkaPollTimeout = kafkaPollTimeout;
+            return this;
+        }
+
+        public Builder setLoggingPath(final String loggingPath) {
+            this.loggingPath = loggingPath;
+            return this;
+        }
+
+        public Builder setConnectionReady(final AtomicBoolean connectionReady) {
+            this.connectionReady = connectionReady;
+            return this;
+        }
+
+        public Builder setEventTypesForTopics(final Map<String, String> eventTypesForTopics) {
+            this.eventTypesForTopics = eventTypesForTopics;
+            return this;
+        }
+
+        public Builder setCursorTokenService(final CursorTokenService cursorTokenService) {
+            this.cursorTokenService = cursorTokenService;
+            return this;
+        }
+
+        public Builder setObjectMapper(final ObjectMapper objectMapper) {
+            this.objectMapper = objectMapper;
+            return this;
+        }
+
+        public Builder setFloodService(final FloodService floodService) {
+            this.floodService = floodService;
+            return this;
+        }
+
+        public StreamingContext build() {
+            return new StreamingContext(this);
+        }
+
     }
 
 }

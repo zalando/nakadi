@@ -71,7 +71,7 @@ public class EventPublishingControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
         floodService = Mockito.mock(FloodService.class);
-        Mockito.when(floodService.isProductionBlocked(any())).thenReturn(false);
+        Mockito.when(floodService.isProductionBlocked(any(), any())).thenReturn(false);
 
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, floodService);

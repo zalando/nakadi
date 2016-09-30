@@ -85,6 +85,7 @@ public class EventStreamControllerTest {
     private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
     private static final Set<String> SCOPE_READ = Collections.singleton("oauth2.scope.read");
     private static final Client FULL_ACCESS_CLIENT = new FullAccessClient("clientId");
+    private static final String CLIENT_ID = "clientId";
 
     private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
@@ -125,7 +126,7 @@ public class EventStreamControllerTest {
         when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
 
         floodService = Mockito.mock(FloodService.class);
-        Mockito.when(floodService.isConsumptionBlocked(any())).thenReturn(false);
+        Mockito.when(floodService.isConsumptionBlocked(any(), any())).thenReturn(false);
 
         controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
         eventStreamFactoryMock, metricRegistry, crutch, floodService);
@@ -145,7 +146,7 @@ public class EventStreamControllerTest {
     public void whenNoParamsThenDefaultsAreUsed() throws Exception {
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture()))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any()))
                 .thenReturn(eventStreamMock);
 
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
@@ -251,7 +252,7 @@ public class EventStreamControllerTest {
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture()))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any()))
                 .thenReturn(eventStreamMock);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 1, 1, 0, null);
@@ -278,7 +279,7 @@ public class EventStreamControllerTest {
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture()))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any()))
                 .thenReturn(eventStreamMock);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(1, 2, 3, 4, 5,
@@ -307,7 +308,7 @@ public class EventStreamControllerTest {
         verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_TOPIC),
                 eq(ImmutableList.of(new Cursor("0", "0"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
-                eq(streamConfig));
+                eq(streamConfig), any());
         verify(eventStreamMock, times(1)).streamEvents(any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
@@ -345,7 +346,7 @@ public class EventStreamControllerTest {
             }
             return null;
         }).when(eventStream).streamEvents(any());
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(eventStream);
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server
         final StreamingResponseBody responseBody = createStreamingResponseBody();
@@ -391,7 +392,7 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(mock(EventStream.class));
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(mock(EventStream.class));
 
         writeStream(SCOPE_READ);
 
@@ -408,7 +409,7 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any())).thenReturn(mock(EventStream.class));
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(mock(EventStream.class));
 
         writeStream(Collections.emptySet());
 

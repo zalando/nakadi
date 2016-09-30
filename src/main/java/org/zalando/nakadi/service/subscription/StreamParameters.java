@@ -35,10 +35,12 @@ public class StreamParameters {
     // Applies to stream. Timeout without commits.
     public final long commitTimeoutMillis;
 
+    private final String consumingAppId;
+
     private StreamParameters(
             final int batchLimitEvents, @Nullable final Long streamLimitEvents, final long batchTimeoutMillis,
             @Nullable final Long streamTimeoutMillis, @Nullable final Integer batchKeepAliveIterations,
-            final int maxUncommittedMessages, final long commitTimeoutMillis) {
+            final int maxUncommittedMessages, final long commitTimeoutMillis, final String consumingAppId) {
         this.batchLimitEvents = batchLimitEvents;
         this.streamLimitEvents = Optional.ofNullable(streamLimitEvents);
         this.batchTimeoutMillis = batchTimeoutMillis;
@@ -46,6 +48,7 @@ public class StreamParameters {
         this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
         this.maxUncommittedMessages = maxUncommittedMessages;
         this.commitTimeoutMillis = commitTimeoutMillis;
+        this.consumingAppId = consumingAppId;
     }
 
     public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {
@@ -60,6 +63,10 @@ public class StreamParameters {
         return batchKeepAliveIterations.map(it -> keepAlive.allMatch(v -> v >= it)).orElse(false);
     }
 
+    public String getConsumingAppId() {
+        return consumingAppId;
+    }
+
     public static StreamParameters of(
             final int batchLimitEvents,
             @Nullable final Long streamLimitEvents,
@@ -67,7 +74,8 @@ public class StreamParameters {
             @Nullable final Long streamTimeoutSeconds,
             @Nullable final Integer batchKeepAliveIterations,
             final int maxUncommittedMessages,
-            final long commitTimeoutSeconds) {
+            final long commitTimeoutSeconds,
+            final String consumingAppId) {
         return new StreamParameters(
                 batchLimitEvents,
                 streamLimitEvents,
@@ -75,6 +83,7 @@ public class StreamParameters {
                 Optional.ofNullable(streamTimeoutSeconds).map(TimeUnit.SECONDS::toMillis).orElse(null),
                 batchKeepAliveIterations,
                 maxUncommittedMessages,
-                TimeUnit.SECONDS.toMillis(commitTimeoutSeconds));
+                TimeUnit.SECONDS.toMillis(commitTimeoutSeconds),
+                consumingAppId);
     }
 }

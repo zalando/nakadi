@@ -56,7 +56,7 @@ public class EventPublishingController {
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
-            if  (floodService.isProductionBlocked(eventTypeName)) {
+            if  (floodService.isProductionBlocked(eventTypeName, client.getClientId())) {
                 return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                         .header("Retry-After", floodService.getRetryAfterStr()).build();
             }
