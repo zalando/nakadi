@@ -432,11 +432,11 @@ This can be treated as a keep-alive control for some load balancers.
 
 ### Subscriptions
 Using subscriptions users are able to consume events from event-types in a "high level" way when 
-Nakadi stores the offsets and manages the rebalancing of consuming clients. So the clients using 
+Nakadi stores the offsets and manages the rebalancing of consuming clients. The clients using 
 subscriptions can stay really stateless. It is possible to subscribe to multiple event-types in 
 one subscription* so that within one connection it is possible to read events from many event-types.
 
-(\* This possibility will be enabled soon)
+_(\* This possibility will be enabled soon)_
 
 The typical workflow when using subscriptions if following:
 1) create subscription specifying the event-types you want to read;
@@ -445,6 +445,8 @@ The typical workflow when using subscriptions if following:
 
 If you closed the connection and after some time started reading again - you get events from the 
 point of your latest commit.
+Also, it is not necessary to commit each batch you get. When you commit the cursor, all events that
+are before this cursor will also be considered committed.
 
 If you need more that one client for your subscription to distribute the load - you can start 
 reading the subscription with multiple clients and Nakadi will balance the load among your clients. 
@@ -456,6 +458,9 @@ then if you start reading events by a single client - you will get events from a
 by this client. If you connect by a second client - 3 partitions will be transferred from first client
 to a second client and each client will be getting data from 3 partitions. So the maximum possible 
 number of clients for this subscription is 6 (in that case each one will read from one subscription)_
+
+Bellow please find basic examples of Subscription API usage. For more detailed description and advanced
+configuration please take a look at Nakadi [swagger](api/nakadi-event-bus-api.yaml) file.
 
 ### Creating subscriptions
 The subscription can be created by posting to `/subscriptions`resourse.
@@ -482,14 +487,44 @@ Content-Type: application/json;charset=UTF-8
   "created_at": "2016-09-23T16:35:13.273Z"
 }
 ```
-### Subscription cursors
+
 ### Reading events
 Reading events is possible by sending GET request to `/subscriptions/{subscription-id}/events` endpoint 
 ```sh
 curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/events"
 ```
-todo...
+The response is a stream that groups events into JSON batches separated by endline character.
 
+The output looks like this:
+```sh
+{"cursor":{"partition":"5","offset":"543","event_type":"aruha-test-hila","cursor_token":"b75c3102-98a4-4385-a5fd-b96f1d7872f2"},"events":[{"metadata":{"occurred_at":"1996-10-15T16:39:57+07:00","eid":"1f5a76d8-db49-4144-ace7-e683e8ff4ba4","event_type":"aruha-test-hila","partition":"5","received_at":"2016-09-30T09:19:00.525Z","flow_id":"blahbloh"},"data_op":"C","data":{"order_number":"abc","id":"111"},"data_type":"blah"},"info":{"debug":"Stream started"}]}
+{"cursor":{"partition":"5","offset":"544","event_type":"aruha-test-hila","cursor_token":"a28568a9-1ca0-4d9f-b519-dd6dd4b7a610"},"events":[{"metadata":{"occurred_at":"1996-10-15T16:39:57+07:00","eid":"1f5a76d8-db49-4144-ace7-e683e8ff4ba4","event_type":"aruha-test-hila","partition":"5","received_at":"2016-09-30T09:19:00.741Z","flow_id":"blahbloh"},"data_op":"C","data":{"order_number":"abc","id":"111"},"data_type":"blah"}]}
+{"cursor":{"partition":"5","offset":"545","event_type":"aruha-test-hila","cursor_token":"a241c147-c186-49ad-a96e-f1e8566de738"},"events":[{"metadata":{"occurred_at":"1996-10-15T16:39:57+07:00","eid":"1f5a76d8-db49-4144-ace7-e683e8ff4ba4","event_type":"aruha-test-hila","partition":"5","received_at":"2016-09-30T09:19:00.741Z","flow_id":"blahbloh"},"data_op":"C","data":{"order_number":"abc","id":"111"},"data_type":"blah"}]}
+{"cursor":{"partition":"0","offset":"545","event_type":"aruha-test-hila","cursor_token":"bf6ee7a9-0fe5-4946-b6d6-30895baf0599"}}
+{"cursor":{"partition":"1","offset":"545","event_type":"aruha-test-hila","cursor_token":"9ed8058a-95be-4611-a33d-f862d6dc4af5"}}
+```
+Each batch contains the following fields:
+
+- `cursor`: the cursor of the batch which should be used for committing the batch;
+- `events`: the array of events of this batch;
+- `info`: optional field that can hold some useful information (e.g. the reason why the stream was closed by Nakadi)
+
+### Subscription cursors
+In Subscription API cursors have the following structure:
+```sh
+{
+  "partition": "5",
+  "offset": "543",
+  "event_type": "aruha-test-hila",
+  "cursor_token": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
+}
+```
+Fields are:
+
+- `partition`: the partition this batch comes from;
+- `offset`: the offset of this batch; user should not do any operations with offset, for him it should be just a string;
+- `event_type`: specifies the event-type of the cursor (as in one stream there can be events of different event-types);
+- `cursor_token`: cursor token generated by Nakadi; useless for the user;
 ### Committing 
 ### Checking currently committed cursors
 ### Rebalance
