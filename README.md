@@ -439,10 +439,9 @@ one subscription* so that within one connection it is possible to read events fr
 _(\* This possibility will be enabled soon)_
 
 The typical workflow when using subscriptions if following:
-
-1) create subscription specifying the event-types you want to read;
-2) start reading events from your subscription;
-3) periodically commit the cursors you get in event batches;
+1. create subscription specifying the event-types you want to read;
+2. start reading events from your subscription;
+3. periodically commit the cursors you get in event batches;
 
 If you closed the connection and after some time started reading again - you get events from the 
 point of your latest commit.
