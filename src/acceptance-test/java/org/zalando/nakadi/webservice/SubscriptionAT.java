@@ -215,7 +215,7 @@ public class SubscriptionAT extends BaseAT {
 
         when().delete("/subscriptions/{sid}", subscription.getId())
                 .then()
-                .statusCode(HttpStatus.SC_OK);
+                .statusCode(HttpStatus.SC_NO_CONTENT);
 
         when().get("/subscriptions/{sid}", subscription.getId())
                 .then()

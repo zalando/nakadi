@@ -456,10 +456,10 @@ public class SubscriptionControllerTest {
     }
 
     @Test
-    public void whenDeleteSubscriptionThenOk() throws Exception {
+    public void whenDeleteSubscriptionThenNoContent() throws Exception {
         mockGetFromRepoSubscriptionWithOwningApp("sid", "nakadiClientId");
         mockMvcBuilder.build().perform(delete("/subscriptions/sid"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @Test

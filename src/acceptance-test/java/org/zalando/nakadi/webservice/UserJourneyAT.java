@@ -241,7 +241,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         jsonRequestSpec()
                 .delete("/subscriptions/{sid}", subscription.getId())
                 .then()
-                .statusCode(OK.value());
+                .statusCode(NO_CONTENT.value());
     }
 
     @After
