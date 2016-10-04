@@ -142,7 +142,7 @@ public class EventStreamControllerTest {
         final MockMvc mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
                         new MappingJackson2HttpMessageConverter(objectMapper))
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, "test"))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
 
         mockMvc.perform(

@@ -88,7 +88,7 @@ public class CursorsControllerTest {
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService, "test"))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
     }
 
