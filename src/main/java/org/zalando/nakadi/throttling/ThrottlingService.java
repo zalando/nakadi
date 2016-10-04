@@ -44,6 +44,12 @@ public class ThrottlingService {
         return getThrottleResult(throttleMetrics, now);
     }
 
+    public ThrottleResult current(final String application, final String eventType) {
+        final long now = Instant.now().getMillis();
+        final ThrottleMetrics throttleMetrics = metricsFor(application, eventType);
+        return getThrottleResult(throttleMetrics, now);
+    }
+
     private ThrottleResult getThrottleResult(final ThrottleMetrics metrics, final long now) {
         //return metrics for the 15 last minutes
         final long batches = metrics.getBatches().measure(now);

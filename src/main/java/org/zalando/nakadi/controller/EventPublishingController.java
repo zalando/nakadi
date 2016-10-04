@@ -27,6 +27,7 @@ import org.zalando.problem.ThrowableProblem;
 import javax.ws.rs.core.Response;
 
 import static org.springframework.http.ResponseEntity.status;
+import static org.springframework.web.bind.annotation.RequestMethod.HEAD;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -67,6 +68,12 @@ public class EventPublishingController {
         }
     }
 
+    @RequestMapping(value = "/event-types/{eventTypeName}/events", method = HEAD)
+    public ResponseEntity<?> headEvent(@PathVariable final String eventTypeName, final Client client) {
+        final ThrottleResult result = throttlingService.current(client.getId(), eventTypeName);
+        return rateLimitHeaders(ResponseEntity.status(HttpStatus.NO_CONTENT), result).build();
+    }
+
     private ResponseEntity<?> postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
@@ -81,7 +88,7 @@ public class EventPublishingController {
             eventTypeMetrics.reportSizing(eventCount, size);
             final ThrottleResult result = throttlingService.mark(client.getId(), eventTypeName, size, eventCount);
             return result.isThrottled()
-                    ? rateLimitHeaders(ResponseEntity.status(429), result).build()
+                    ? rateLimitHeaders(ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS), result).build()
                     : response(publisher.publish(eventsAsJsonObjects, eventTypeName, client), result);
 
         } catch (final JSONException e) {
