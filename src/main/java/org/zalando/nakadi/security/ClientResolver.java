@@ -1,7 +1,6 @@
 package org.zalando.nakadi.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,14 +27,11 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     private final SecuritySettings settings;
     private final FeatureToggleService featureToggleService;
-    private final String defaultId;
 
     @Autowired
-    public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService,
-                          @Value("${nakadi.oauth2.adminClientId}") final String defaultId) {
+    public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService) {
         this.settings = settings;
         this.featureToggleService = featureToggleService;
-        this.defaultId = defaultId;
     }
 
     @Override
@@ -50,7 +46,7 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                                   final WebDataBinderFactory binderFactory) throws Exception {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
         final String id = settings.getAuthMode() == OFF
-                ? defaultId
+                ? settings.getAdminClientId()
                 : clientId.orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
 
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
