@@ -458,7 +458,7 @@ point of your latest commit.
 Also, it is not necessary to commit each batch you get. When you commit the cursor, all events that
 are before this cursor will also be considered committed.
 
-If you need more that one client for your subscription to distribute the load - you can start 
+If you need more than one client for your subscription to distribute the load - you can start 
 reading the subscription with multiple clients and Nakadi will balance the load among your clients. 
 The balancing units are partitions, so the number of clients of your subscription can't be higher 
 than the total number of all partitions of the event-types of your subscription. 
@@ -601,13 +601,13 @@ The output will contain the statistics for all partitions of the stream. Like th
           "partition": "0",
           "state": "reassigning",
           "unconsumed_events": 2115,
-          "client_id": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
+          "stream_id": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
         },
         {
           "partition": "1",
           "state": "assigned",
           "unconsumed_events": 1029,
-          "client_id": "ae1e39c3-219d-49a9-b444-777b4b03e84c"
+          "stream_id": "ae1e39c3-219d-49a9-b444-777b4b03e84c"
         }
       ]
     }
