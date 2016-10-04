@@ -1,55 +1,54 @@
-package org.zalando.nakadi.metrics;
+package org.zalando.nakadi.throttling;
 
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.SlidingTimeWindowReservoir;
-import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.util.ZkConfigurationService;
 
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class ThrottlingService {
 
-    private static final Duration THROTTLING_PERIOD = Duration.standardMinutes(15);
     private static final String BYTES_LIMIT = "nakadi.throttling.bytesLimit";
     private static final String MESSAGES_LIMIT = "nakadi.throttling.messagesLimit";
     private static final String BATCHES_LIMIT = "nakadi.throttling.batchesLimit";
+    private final long windowSize;
+    private final int samples;
 
     private final ConcurrentMap<ThrottleKey, ThrottleMetrics> metrics = new ConcurrentHashMap<>();
-    private final MetricRegistry metricRegistry;
     private final ZkConfigurationService zkConfigurationService;
 
     @Autowired
-    public ThrottlingService(final MetricRegistry metricRegistry, final ZkConfigurationService zkConfigurationService) {
-        this.metricRegistry = metricRegistry;
+    public ThrottlingService(@Value("${nakadi.throttling.windowSize}") final long windowSize,
+                             @Value("${nakadi.throttling.samples}") final int samples,
+                             final ZkConfigurationService zkConfigurationService) {
+        this.windowSize = windowSize;
+        this.samples = samples;
         this.zkConfigurationService = zkConfigurationService;
     }
 
     public ThrottleResult mark(final String application, final String eventType, final int size,
                                final int messagesCount) {
+        long now = Instant.now().getMillis();
         ThrottleMetrics throttleMetrics = metricsFor(application, eventType);
 
-        ThrottleResult current = getThrottleResult(throttleMetrics);
+        ThrottleResult current = getThrottleResult(throttleMetrics, now);
         if (current.isThrottled()) {
             return current;
         }
-        throttleMetrics.mark(size, messagesCount);
-        return getThrottleResult(throttleMetrics);
+        throttleMetrics.mark(size, messagesCount, now);
+        return getThrottleResult(throttleMetrics, now);
     }
 
-    private ThrottleResult getThrottleResult(ThrottleMetrics metrics) {
+    private ThrottleResult getThrottleResult(ThrottleMetrics metrics, long now) {
         //return metrics for the 15 last minutes
-        final long batches = metrics.getBatches().getCount();
-        final long bytes = Arrays.stream(metrics.getBytes().getSnapshot().getValues()).sum();
-        final long messages = Arrays.stream(metrics.getMessages().getSnapshot().getValues()).sum();
+        final long batches = (long) metrics.getBatches().measure(now);
+        final long bytes = (long) metrics.getBytes().measure(now);
+        final long messages = (long) metrics.getMessages().measure(now);
 
         final long bytesLimit = zkConfigurationService.getLong(BYTES_LIMIT);
         final long messagesLimit = zkConfigurationService.getLong(MESSAGES_LIMIT);
@@ -59,7 +58,8 @@ public class ThrottlingService {
         final long messagesRemaining = remaining(messagesLimit, messages);
         final long batchesRemaining = remaining(batchesLimit, batches);
 
-        Instant reset = Instant.now().plus(THROTTLING_PERIOD);
+        //TODO
+        Instant reset = Instant.now();
         return new ThrottleResult(bytesLimit, bytesRemaining, messagesLimit, messagesRemaining, batchesLimit,
                 batchesRemaining, reset);
     }
@@ -71,18 +71,7 @@ public class ThrottlingService {
 
     private ThrottleMetrics metricsFor(final String application, final String eventType) {
         return metrics.computeIfAbsent(ThrottleKey.key(application, eventType),
-                key -> {
-                    Histogram bytesHistogram = new Histogram(new SlidingTimeWindowReservoir(15, TimeUnit.MINUTES));
-                    Histogram batchesHistogram = new Histogram(new SlidingTimeWindowReservoir(15, TimeUnit.MINUTES));
-                    Histogram messagesHistogram = new Histogram(new SlidingTimeWindowReservoir(15, TimeUnit.MINUTES));
-                    metricRegistry.register(MetricUtils.throttlingMetricNameFor(application, eventType, "bytes"),
-                            bytesHistogram);
-                    metricRegistry.register(MetricUtils.throttlingMetricNameFor(application, eventType, "messages"),
-                            messagesHistogram);
-                    metricRegistry.register(MetricUtils.throttlingMetricNameFor(application, eventType, "batches"),
-                            batchesHistogram);
-                    return new ThrottleMetrics(bytesHistogram, messagesHistogram, batchesHistogram);
-                });
+                key -> new ThrottleMetrics(windowSize, samples));
     }
 
     private static class ThrottleKey {

@@ -10,7 +10,6 @@ public class Client {
         this.permissions = permissions;
     }
 
-
     public String getId() {
         return id;
     }

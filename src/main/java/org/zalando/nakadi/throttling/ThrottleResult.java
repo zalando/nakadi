@@ -1,4 +1,4 @@
-package org.zalando.nakadi.metrics;
+package org.zalando.nakadi.throttling;
 
 import org.joda.time.Instant;
 

@@ -4,16 +4,9 @@ public class MetricUtils {
 
     public static final String NAKADI_PREFIX = "nakadi.";
     public static final String EVENTTYPES_PREFIX = NAKADI_PREFIX + "eventtypes.";
-    public static final String THROTTLING_PREFIX = NAKADI_PREFIX + "throttling.";
 
     public static String metricNameFor(final String eventTypeName, final String metricName) {
         return EVENTTYPES_PREFIX + eventTypeName.replace('.', '#') + "." + metricName;
-    }
-
-    public static String throttlingMetricNameFor(final String application, final String eventTypeName,
-                                                 final String metricName) {
-        return THROTTLING_PREFIX +  application.replace('.', '#') + "."
-                + eventTypeName.replace('.', '#') + "." + metricName;
     }
 
 }

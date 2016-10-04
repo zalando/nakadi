@@ -19,7 +19,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.metrics.ThrottlingService;
+import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
