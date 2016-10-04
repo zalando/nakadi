@@ -16,7 +16,7 @@ public class SampledTotal {
     }
 
     public void record(final Long value, final long timeMs) {
-        AtomicLong sample = current(timeMs);
+        final AtomicLong sample = current(timeMs);
         sample.addAndGet(value);
     }
 
@@ -26,7 +26,7 @@ public class SampledTotal {
     }
 
     private AtomicLong current(final long timeMs) {
-        long timeBucket = (timeMs / windowMs) * windowMs;
+        final long timeBucket = (timeMs / windowMs) * windowMs;
         return samples.computeIfAbsent(timeBucket, key -> new AtomicLong());
     }
 

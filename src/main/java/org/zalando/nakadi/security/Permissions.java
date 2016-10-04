@@ -18,7 +18,6 @@ public interface Permissions {
         }
     };
 
-
     boolean isOwner(String clientId);
 
     void checkScopes(Set<String> allowedScopes) throws IllegalScopeException;
