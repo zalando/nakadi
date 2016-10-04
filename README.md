@@ -525,6 +525,9 @@ Each batch contains the following fields:
 Please also note that when stream is started the client receives a header `X-Nakadi-StreamId` which
 should be used when committing cursors.
 
+To see a full list of parameters which can be used to control a stream of events please see 
+an API specification in [swagger](api/nakadi-event-bus-api.yaml) file.
+
 #### Subscription Cursors
 In Subscription API cursors have the following structure:
 ```sh
@@ -612,6 +615,7 @@ curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579
 
 The output will contain the statistics for all partitions of the stream. Like this:
 ```sh
+HTTP/1.1 200 OK
 {
   "items": [
     {
@@ -640,7 +644,10 @@ To delete subscription one should run DELETE request on /subscriptions/{subscrip
 ```sh
 curl -v -X DELETE "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
 ```
-
+Success answer:
+```sh
+HTTP/1.1 204 NO CONTENT
+```
 #### Getting and Listing Subscriptions
 Getting single subscription by id:
 ```sh
