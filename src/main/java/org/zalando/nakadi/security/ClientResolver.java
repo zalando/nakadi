@@ -32,7 +32,7 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
 
     @Autowired
     public ClientResolver(final SecuritySettings settings, final FeatureToggleService featureToggleService,
-                          @Value("${nakadi.oauth2.adminClientId}") String defaultId) {
+                          @Value("${nakadi.oauth2.adminClientId}") final String defaultId) {
         this.settings = settings;
         this.featureToggleService = featureToggleService;
         this.defaultId = defaultId;

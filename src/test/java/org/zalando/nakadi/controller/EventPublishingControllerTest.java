@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.joda.time.Instant;
 import org.json.JSONArray;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -19,6 +20,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
+import org.zalando.nakadi.throttling.ThrottleResult;
 import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
@@ -33,7 +35,9 @@ import java.util.concurrent.ExecutionException;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -70,7 +74,10 @@ public class EventPublishingControllerTest {
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
+        doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         throttlingService = mock(ThrottlingService.class);
+        doReturn(new ThrottleResult(1, 1, 1, 1, 1, 1, Instant.now())).when(throttlingService)
+                .mark(any(), any(), anyInt(), anyInt());
 
         final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry,
                 throttlingService);
