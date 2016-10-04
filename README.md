@@ -577,6 +577,26 @@ The possible success answers from commit endpoints are:
 less or equal to already committed one. In a case of this response code user will get a json in a 
 response body with a list of cursors and the results of their commits.
 
+The timeout for commit is 60 seconds. If you open the stream, read data and don't commit
+anything for 60 seconds - the stream will be closed from Nakadi side. (But please note
+that if there are no events available to send and you get only empty batches - there is no need
+to commit, Nakadi will close connection only if there is some uncommitted data and no
+commits happened for 60 seconds)
+
+If the connection is closed for some reason - you still have 60 seconds to commit the events
+you received (from the moment when the events were sent to you). After that your session
+will be considered closed and it will be not possible to do commits with that `X-Nakadi-StreamId`.
+If the commit was not done - then the next time you start reading from a subscription you
+will get data from the last point of your commit, and you will again receive the events you
+haven't committed.
+
+When a rebalance happens and a partition is transferred to another client - the commit timeout
+of 60 seconds saves the day again. The first client will have 60 seconds to do the commit for that partition,
+after that the partition is started to stream to a new client. So if the commit wasn't done in 60 seconds then 
+the streaming will start from a point of last successful commit. In other case if the commit was done by the 
+first client - the data from this partition will be immediately streamed to second client (because there is no 
+uncommitted data left and there is no need to wait any more)
+ 
 #### Checking Current Position
 To see what is current position of subscription it's possible to run the request:
 ```sh
