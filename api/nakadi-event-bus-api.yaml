@@ -1558,7 +1558,7 @@ definitions:
                 that case the property will be absent).
             stream_id:
               type: string
-              description: the id of client that consumes data from this partition
+              description: the id of the stream that consumes data from this partition
           required:
             - partition
             - state
