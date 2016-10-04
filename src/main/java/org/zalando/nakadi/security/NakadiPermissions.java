@@ -15,7 +15,7 @@ public class NakadiPermissions implements Permissions {
     }
 
     @Override
-    public boolean isOwner(String clientId) {
+    public boolean isOwner(final String clientId) {
         return this.clientId.equals(clientId);
     }
 

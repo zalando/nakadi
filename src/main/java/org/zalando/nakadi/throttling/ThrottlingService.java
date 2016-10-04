@@ -33,10 +33,10 @@ public class ThrottlingService {
 
     public ThrottleResult mark(final String application, final String eventType, final int size,
                                final int messagesCount) {
-        long now = Instant.now().getMillis();
-        ThrottleMetrics throttleMetrics = metricsFor(application, eventType);
+        final long now = Instant.now().getMillis();
+        final ThrottleMetrics throttleMetrics = metricsFor(application, eventType);
 
-        ThrottleResult current = getThrottleResult(throttleMetrics, now);
+        final ThrottleResult current = getThrottleResult(throttleMetrics, now);
         if (current.isThrottled()) {
             return current;
         }
@@ -44,7 +44,7 @@ public class ThrottlingService {
         return getThrottleResult(throttleMetrics, now);
     }
 
-    private ThrottleResult getThrottleResult(ThrottleMetrics metrics, long now) {
+    private ThrottleResult getThrottleResult(final ThrottleMetrics metrics, final long now) {
         //return metrics for the 15 last minutes
         final long batches = (long) metrics.getBatches().measure(now);
         final long bytes = (long) metrics.getBytes().measure(now);
@@ -58,14 +58,14 @@ public class ThrottlingService {
         final long messagesRemaining = remaining(messagesLimit, messages);
         final long batchesRemaining = remaining(batchesLimit, batches);
 
-        //TODO
-        Instant reset = Instant.now();
+        //TODO calculate correct reset time
+        final Instant reset = Instant.now();
         return new ThrottleResult(bytesLimit, bytesRemaining, messagesLimit, messagesRemaining, batchesLimit,
                 batchesRemaining, reset);
     }
 
     private long remaining(final long limit, final long value) {
-        long remaining = limit - value;
+        final long remaining = limit - value;
         return remaining <= 0 ? 0 : remaining;
     }
 
@@ -79,20 +79,20 @@ public class ThrottlingService {
         private final String eventType;
         private final String application;
 
-        public static ThrottleKey key(String application, String eventType) {
+        public static ThrottleKey key(final String application, final String eventType) {
             return new ThrottleKey(eventType, application);
         }
 
-        private ThrottleKey(String eventType, String application) {
+        private ThrottleKey(final String eventType, final String application) {
             this.eventType = eventType;
             this.application = application;
         }
 
         @Override
-        public boolean equals(Object o) {
+        public boolean equals(final Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            ThrottleKey that = (ThrottleKey) o;
+            final ThrottleKey that = (ThrottleKey) o;
             return Objects.equals(eventType, that.eventType) &&
                     Objects.equals(application, that.application);
         }

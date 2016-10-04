@@ -5,7 +5,7 @@ public class Client {
     private final String id;
     private final Permissions permissions;
 
-    public Client(String id, Permissions permissions) {
+    public Client(final String id, final Permissions permissions) {
         this.id = id;
         this.permissions = permissions;
     }

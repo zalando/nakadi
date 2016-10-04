@@ -20,7 +20,7 @@ public class SampledTotal {
         this.expireAge = samplesAmount * windowMs;
     }
 
-    public void record(double value, long timeMs) {
+    public void record(final double value, final long timeMs) {
         Sample sample = current(timeMs);
         if (sample.isComplete(timeMs, windowMs)) {
             sample = advance(timeMs);
@@ -28,25 +28,25 @@ public class SampledTotal {
         samples.set(current, update(sample, value, timeMs));
     }
 
-    private Sample advance(long timeMs) {
+    private Sample advance(final long timeMs) {
         current = (current + 1) % samplesCount;
         if (this.current >= samples.size()) {
-            Sample sample = newSample(timeMs);
+            final Sample sample = newSample(timeMs);
             samples.add(sample);
             return sample;
         } else {
-            Sample sample = current(timeMs);
+            final Sample sample = current(timeMs);
             samples.set(current, newSample(timeMs));
             return sample;
         }
     }
 
-    public double measure(long now) {
+    public double measure(final long now) {
         purgeObsoleteSamples(now);
         return combine(samples);
     }
 
-    private Sample current(long timeMs) {
+    private Sample current(final long timeMs) {
         if (samples.size() == 0) {
             samples.add(newSample(timeMs));
         }
@@ -54,19 +54,19 @@ public class SampledTotal {
     }
 
 
-    private Sample update(Sample sample, double value, long now) {
+    private Sample update(final Sample sample, final double value, final long now) {
         return new Sample(sample.getValue() + value, now);
     }
 
-    private double combine(List<Sample> samples) {
+    private double combine(final List<Sample> samples) {
         return samples.stream().mapToDouble(Sample::getValue).sum();
     }
 
-    private Sample newSample(long timeMs) {
+    private Sample newSample(final long timeMs) {
         return new Sample(0, timeMs);
     }
 
-    private void purgeObsoleteSamples(long now) {
+    private void purgeObsoleteSamples(final long now) {
         samples = samples.stream().map(sample -> sample.isExpire(now, expireAge) ? newSample(now) : sample)
                 .collect(Collectors.toList());
     }
@@ -76,16 +76,16 @@ public class SampledTotal {
         private final long lastWindowMs;
         private final double value;
 
-        public Sample(double value, long now) {
+        public Sample(final double value, final long now) {
             this.lastWindowMs = now;
             this.value = value;
         }
 
-        public boolean isComplete(long timeMs, long windowMs) {
+        public boolean isComplete(final long timeMs, final long windowMs) {
             return timeMs - lastWindowMs >= windowMs;
         }
 
-        public boolean isExpire(long now, long expireAge) {
+        public boolean isExpire(final long now, final long expireAge) {
             return now - lastWindowMs >= expireAge;
         }
 

@@ -38,9 +38,9 @@ public class ZkConfigurationService {
                 });
     }
 
-    private String getValue(String key) {
+    private String getValue(final String key) {
         try {
-            byte[] data = zooKeeperHolder.get().getData().forPath(PREFIX + key);
+            final byte[] data = zooKeeperHolder.get().getData().forPath(PREFIX + key);
             return new String(data, CHARSET);
         } catch (Exception e) {
             LOG.error("Can't obtain value from ZK", e);
@@ -48,7 +48,7 @@ public class ZkConfigurationService {
         }
     }
 
-    public Long getLong(String key) {
+    public Long getLong(final String key) {
         try {
             return Long.parseLong(cache.getUnchecked(key));
         } catch (NumberFormatException e) {

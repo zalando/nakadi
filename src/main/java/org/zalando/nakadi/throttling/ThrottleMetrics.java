@@ -24,7 +24,7 @@ public class ThrottleMetrics {
         return batches;
     }
 
-    public void mark(final long size, final long messageCount, long now) {
+    public void mark(final long size, final long messageCount, final long now) {
         bytes.record(size, now);
         messages.record(messageCount, now);
         batches.record(1, now);
