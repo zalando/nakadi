@@ -46,9 +46,9 @@ public class ThrottlingService {
 
     private ThrottleResult getThrottleResult(final ThrottleMetrics metrics, final long now) {
         //return metrics for the 15 last minutes
-        final long batches = (long) metrics.getBatches().measure(now);
-        final long bytes = (long) metrics.getBytes().measure(now);
-        final long messages = (long) metrics.getMessages().measure(now);
+        final long batches = metrics.getBatches().measure(now);
+        final long bytes = metrics.getBytes().measure(now);
+        final long messages = metrics.getMessages().measure(now);
 
         final long bytesLimit = zkConfigurationService.getLong(BYTES_LIMIT);
         final long messagesLimit = zkConfigurationService.getLong(MESSAGES_LIMIT);

@@ -70,7 +70,7 @@ nakadi:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
   throttling:
     bytesLimit: 10737418240 # 10 GB per 15 minutes
-    messagesLimit: 10 # million per 15 minutes
+    messagesLimit: 1000000 # million per 15 minutes
     batchesLimit: 1000000000 # million per 15 minutes
     # 15 minutes aggregation
     windowSize: 30000 # 30 seconds
