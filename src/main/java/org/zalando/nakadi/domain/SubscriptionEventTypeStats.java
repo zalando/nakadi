@@ -32,16 +32,16 @@ public class SubscriptionEventTypeStats {
         private final String state;
         @JsonInclude(JsonInclude.Include.NON_NULL)
         private final Long unconsumedEvents;
-        private final String clientId;
+        private final String streamId;
 
         public Partition(final String partition,
                          final String state,
                          @Nullable final Long unconsumedEvents,
-                         final String clientId) {
+                         final String streamId) {
             this.partition = partition;
             this.state = state;
             this.unconsumedEvents = unconsumedEvents;
-            this.clientId = clientId;
+            this.streamId = streamId;
         }
 
         public String getPartition() {
@@ -57,8 +57,8 @@ public class SubscriptionEventTypeStats {
             return unconsumedEvents;
         }
 
-        public String getClientId() {
-            return clientId;
+        public String getStreamId() {
+            return streamId;
         }
     }
 }
