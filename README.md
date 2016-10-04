@@ -555,13 +555,13 @@ curl -v -X POST \
     -d '{
       "items": [
         {
-          "partition": "5",
+          "partition": "0",
           "offset": "543",
           "event_type": "order.ORDER_RECEIVED",
           "cursor_token": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
         },
         {
-          "partition": "2",
+          "partition": "1",
           "offset": "923",
           "event_type": "order.ORDER_RECEIVED",
           "cursor_token": "a28568a9-1ca0-4d9f-b519-dd6dd4b7a610"
@@ -605,8 +605,26 @@ To see what is current position of subscription it's possible to run the request
 ```sh
 curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors"
 ```
-The response will be a list of current cursors that reflect the last committed offsets.
-
+The response will be a list of current cursors that reflect the last committed offsets:
+```sh
+HTTP/1.1 200 OK
+{
+  "items": [
+    {
+      "partition": "0",
+      "offset": "8361",
+      "event_type": "order.ORDER_RECEIVED",
+      "cursor_token": "35e7480a-ecd3-488a-8973-3aecd3b678ad"
+    },
+    {
+      "partition": "1",
+      "offset": "6214",
+      "event_type": "order.ORDER_RECEIVED",
+      "cursor_token": "d1e5d85e-1d8d-4a22-815d-1be1c8c65c84"
+    }
+  ]
+}
+```
 #### Subscription Statistics
 To get statistics of subscription the folowing request should be used:
 ```sh
@@ -646,17 +664,54 @@ curl -v -X DELETE "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1
 ```
 Success answer:
 ```sh
-HTTP/1.1 204 NO CONTENT
+HTTP/1.1 204 No Content
 ```
 #### Getting and Listing Subscriptions
 Getting single subscription by id:
 ```sh
 curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
 ```
+Example answer:
+```sh
+HTTP/1.1 200 OK
+{
+  "owning_application": "order-service",
+  "event_types": [
+    "order.ORDER_RECEIVED"
+  ],
+  "consumer_group": "default",
+  "read_from": "end",
+  "id": "038fc871-1d2c-4e2e-aa29-1579e8f2e71f",
+  "created_at": "2016-09-23T16:35:13.273Z"
+}
+```
 
 Getting list of subscriptions:
 ```sh
 curl -v -X GET "http://localhost:8080/subscriptions"
+```
+Example answer:
+```sh
+HTTP/1.1 200 OK
+{
+  "items": [
+    {
+      "owning_application": "order-service",
+      "event_types": [
+        "order.ORDER_RECEIVED"
+      ],
+      "consumer_group": "default",
+      "read_from": "end",
+      "id": "038fc871-1d2c-4e2e-aa29-1579e8f2e71f",
+      "created_at": "2016-09-23T16:35:13.273Z"
+    }
+  ],
+  "_links": {
+    "next": {
+      "href": "/subscriptions?offset=20&limit=20"
+    }
+  }
+}
 ```
 It's possible to filter the list with following parameters: `event_type`, `owning_application`. 
 Also, pagination parameters are available: `offset`, `limit`.
