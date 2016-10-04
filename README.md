@@ -479,8 +479,7 @@ curl -v -X POST -H "Content-type: application/json" \
   "http://localhost:8080/subscriptions" -d '{
     "owning_application": "order-service",
     "event_types": ["order.ORDER_RECEIVED"]
-  }'
-    
+  }'    
 ```
 In response you will get the whole subscription object that was created including the id.
 ```sh
@@ -549,25 +548,25 @@ Fields are:
 Cursors can be committed by posting to `/subscriptions/{subscriptionId}/cursors`. Example:
 ```sh
 curl -v -X POST \
-    -H "Content-type: application/json" \
-    -H "X-Nakadi-StreamId: ae1e39c3-219d-49a9-b444-777b4b03e84c" \    
-    "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors" \
-    -d '{
-      "items": [
-        {
-          "partition": "0",
-          "offset": "543",
-          "event_type": "order.ORDER_RECEIVED",
-          "cursor_token": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
-        },
-        {
-          "partition": "1",
-          "offset": "923",
-          "event_type": "order.ORDER_RECEIVED",
-          "cursor_token": "a28568a9-1ca0-4d9f-b519-dd6dd4b7a610"
-        }
-      ]
-    }'
+  -H "Content-type: application/json" \
+  -H "X-Nakadi-StreamId: ae1e39c3-219d-49a9-b444-777b4b03e84c" \    
+  "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors" \
+  -d '{
+    "items": [
+      {
+        "partition": "0",
+        "offset": "543",
+        "event_type": "order.ORDER_RECEIVED",
+        "cursor_token": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
+      },
+      {
+        "partition": "1",
+        "offset": "923",
+        "event_type": "order.ORDER_RECEIVED",
+        "cursor_token": "a28568a9-1ca0-4d9f-b519-dd6dd4b7a610"
+      }
+    ]
+  }'
 ```
 Please be aware that `X-Nakadi-StreamId` header is required when doing a commit.
 The value should be the same as you get in `X-Nakadi-StreamId` header when opening a stream of events. 
