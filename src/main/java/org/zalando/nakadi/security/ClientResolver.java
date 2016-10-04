@@ -50,7 +50,7 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                 : clientId.orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
 
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
-                || clientId.filter(settings.getAdminClientId()::equals).isPresent()) {
+                || id.equals(settings.getAdminClientId())) {
             return new Client(id, Permissions.FULL_ACCESS);
         }
 
