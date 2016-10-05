@@ -185,7 +185,10 @@ public class CursorsService {
             throws RuntimeException {
         try {
             final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, topic, partition);
-            final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
+            String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
+            if ("-1".equals(currentOffset)) {
+                currentOffset = Cursor.BEFORE_OLDEST_OFFSET;
+            }
             return new SubscriptionCursor(partition, currentOffset, eventType, cursorTokenService.generateToken());
         } catch (final Exception e) {
             throw new RuntimeException(e);
