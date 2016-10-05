@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
 import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
 import static java.util.stream.IntStream.rangeClosed;
@@ -107,11 +108,15 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 5000)
-    public void whenCommitBEGINThenSuccess() throws Exception {
+    public void whenNoEventsThenBeginOffsetIsUsed() throws Exception {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
         waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        when().get("/subscriptions/{sid}/cursors", subscription.getId())
+                .then()
+                .body("items[0].offset", equalTo(Cursor.BEFORE_OLDEST_OFFSET));
 
         final int commitResult = commitCursors(subscription.getId(),
                 ImmutableList.of(new SubscriptionCursor("0", Cursor.BEFORE_OLDEST_OFFSET, eventType.getName(), "abc")),
