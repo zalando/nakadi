@@ -469,6 +469,12 @@ by this client. If you connect by a second client - 3 partitions will be transfe
 to a second client and each client will be getting data from 3 partitions. So the maximum possible 
 number of clients for this subscription is 6 (in that case each one will read from one subscription)_
 
+Nakadi Subscription API provides at-least-once delivery guarantee. The duplication of event can
+happen in a case of errors when [committing events](#committing-cursors). However the events which 
+were successfully committed will never be duplicated.
+The best way to handle events duplication on consumer side is to be idempotent and to check `eid` 
+field of event metadata for duplication. 
+
 Bellow please find basic examples of Subscription API usage. For more detailed description and advanced
 configuration please take a look at Nakadi [swagger](api/nakadi-event-bus-api.yaml) file.
 
