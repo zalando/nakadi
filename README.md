@@ -578,7 +578,7 @@ Please be aware that `X-Nakadi-StreamId` header is required when doing a commit.
 The value should be the same as you get in `X-Nakadi-StreamId` header when opening a stream of events. 
 Also, each client can commit only the batches that were sent to him.
 
-The possible success answers from commit endpoints are:
+The possible successful answers from commit endpoints are:
 
 - `204`: cursors were successfully committed and offset was increased;
 - `200`: cursors were committed but at least one of the cursors didn't increase the offset as it was 
@@ -667,7 +667,7 @@ To delete subscription one should run DELETE request on /subscriptions/{subscrip
 ```sh
 curl -v -X DELETE "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
 ```
-Success answer:
+Successful answer:
 ```sh
 HTTP/1.1 204 No Content
 ```
