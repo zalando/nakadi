@@ -467,7 +467,7 @@ _E.g. if you have a subscription for two event-types A and B having 2 and 4 part
 then if you start reading events by a single client - you will get events from all 6 partitions
 by this client. If you connect by a second client - 3 partitions will be transferred from first client
 to a second client and each client will be getting data from 3 partitions. So the maximum possible 
-number of clients for this subscription is 6 (in that case each one will read from one subscription)_
+number of clients for this subscription is 6 (in that case each one will read from one partition)_
 
 Nakadi Subscription API provides at-least-once delivery guarantee. The duplication of event can
 happen in a case of errors when [committing events](#committing-cursors). However the events which 
@@ -535,7 +535,7 @@ an API specification in [swagger](api/nakadi-event-bus-api.yaml) file.
 
 #### Subscription Cursors
 The cursors in the Subscription API have the following structure:
-```sh
+```json
 {
   "partition": "5",
   "offset": "543",
@@ -611,7 +611,7 @@ You can also check the current position of your subscription:
 curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors"
 ```
 The response will be a list of current cursors that reflect the last committed offsets:
-```sh
+```
 HTTP/1.1 200 OK
 {
   "items": [
@@ -637,7 +637,7 @@ curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579
 ```
 
 The output will contain the statistics for all partitions of the stream:
-```sh
+```
 HTTP/1.1 200 OK
 {
   "items": [
@@ -668,7 +668,7 @@ To delete subscription one should run DELETE request on /subscriptions/{subscrip
 curl -v -X DELETE "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
 ```
 Successful answer:
-```sh
+```
 HTTP/1.1 204 No Content
 ```
 #### Getting and Listing Subscriptions
@@ -677,7 +677,7 @@ Getting single subscription by id:
 curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
 ```
 Example answer:
-```sh
+```
 HTTP/1.1 200 OK
 {
   "owning_application": "order-service",
@@ -696,7 +696,7 @@ Getting list of subscriptions:
 curl -v -X GET "http://localhost:8080/subscriptions"
 ```
 Example answer:
-```sh
+```
 HTTP/1.1 200 OK
 {
   "items": [
@@ -756,14 +756,14 @@ installing the most recent docker-compose version.
 ### What does the project already implement?
 
 * [x] REST abstraction over Kafka-like queues
-* [ ] Support of event filtering per subscriptions
 * [x] creation of event types
 * [x] low-level interface
     * manual client side partition management is needed
     * no support of commits
-* [ ] high-level interface
+* [x] high-level interface (Subscription API)
     * automatic redistribution of partitions between consuming clients
     * commits should be issued to move server-side cursors
+* [ ] Support of event filtering per subscriptions
 
 ## Contributing
 
