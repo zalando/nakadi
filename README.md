@@ -534,7 +534,7 @@ To see a full list of parameters which can be used to control a stream of events
 an API specification in [swagger](api/nakadi-event-bus-api.yaml) file.
 
 #### Subscription Cursors
-In Subscription API cursors have the following structure:
+The cursors in the Subscription API have the following structure:
 ```json
 {
   "partition": "5",
@@ -606,7 +606,7 @@ first client - the data from this partition will be immediately streamed to seco
 uncommitted data left and there is no need to wait any more)
  
 #### Checking Current Position
-To see what is current position of subscription it's possible to run the request:
+You can also check the current position of your subscription:
 ```sh
 curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors"
 ```
@@ -631,12 +631,12 @@ HTTP/1.1 200 OK
 }
 ```
 #### Subscription Statistics
-To get statistics of subscription the folowing request should be used:
+The API also provides statistics on your subscription:
 ```sh
 curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/stats"
 ```
 
-The output will contain the statistics for all partitions of the stream. Like this:
+The output will contain the statistics for all partitions of the stream:
 ```
 HTTP/1.1 200 OK
 {
@@ -718,7 +718,7 @@ HTTP/1.1 200 OK
   }
 }
 ```
-It's possible to filter the list with following parameters: `event_type`, `owning_application`. 
+It's possible to filter the list with the following parameters: `event_type`, `owning_application`. 
 Also, pagination parameters are available: `offset`, `limit`.
 
 ## Build and Development
