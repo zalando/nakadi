@@ -7,21 +7,34 @@ import org.springframework.stereotype.Component;
 @Component
 public class KafkaSettings {
 
-    private final long kafkaPollTimeoutMs;
-    private final long kafkaSendTimeoutMs;
+    // kafka client requires this property to be int
+    // https://github.com/apache/kafka/blob/d9206500bf2f99ce93f6ad64c7a89483100b3b5f/clients/src/main/java/org/apache
+    // /kafka/clients/producer/ProducerConfig.java#L261
+    private final int requestTimeoutMs;
+    // kafka client requires this property to be int
+    // https://github.com/apache/kafka/blob/d9206500bf2f99ce93f6ad64c7a89483100b3b5f/clients/src/main/java/org/apache
+    // /kafka/clients/producer/ProducerConfig.java#L232
+    private final int batchSize;
+    private final long lingerMs;
 
     @Autowired
-    public KafkaSettings(@Value("${nakadi.kafka.poll.timeoutMs}") final long kafkaPollTimeoutMs,
-                         @Value("${nakadi.kafka.send.timeoutMs}") final long kafkaSendTimeoutMs) {
-        this.kafkaPollTimeoutMs = kafkaPollTimeoutMs;
-        this.kafkaSendTimeoutMs = kafkaSendTimeoutMs;
+    public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
+                         @Value("${nakadi.kafka.batch.size}") final int batchSize,
+                         @Value("${nakadi.kafka.linger.ms}") final long lingerMs) {
+        this.requestTimeoutMs = requestTimeoutMs;
+        this.batchSize = batchSize;
+        this.lingerMs = lingerMs;
     }
 
-    public long getKafkaPollTimeoutMs() {
-        return kafkaPollTimeoutMs;
+    public int getRequestTimeoutMs() {
+        return requestTimeoutMs;
     }
 
-    public long getKafkaSendTimeoutMs() {
-        return kafkaSendTimeoutMs;
+    public int getBatchSize() {
+        return batchSize;
+    }
+
+    public long getLingerMs() {
+        return lingerMs;
     }
 }

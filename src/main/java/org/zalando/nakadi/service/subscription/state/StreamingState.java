@@ -1,9 +1,12 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
@@ -18,9 +21,11 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 
 class StreamingState extends State {
     private ZKSubscription topologyChangeSubscription;
@@ -30,10 +35,11 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<Partition.PartitionKey, Long> releasingPartitions = new HashMap<>();
-    private boolean pollPaused = false;
+    private boolean pollPaused;
     private long lastCommitMillis;
-    private long committedEvents = 0;
-    private long sentEvents = 0;
+    private long committedEvents;
+    private long sentEvents;
+    private long batchesSent;
 
     @Override
     public void onEnter() {
@@ -47,7 +53,11 @@ class StreamingState extends State {
         scheduleTask(this::checkBatchTimeouts, getParameters().batchTimeoutMillis, TimeUnit.MILLISECONDS);
 
         getParameters().streamTimeoutMillis.ifPresent(
-                timeout -> scheduleTask(() ->this.shutdownGracefully("Stream timeout reached"), timeout,
+                timeout -> scheduleTask(() -> {
+                            final String debugMessage = "Stream timeout reached";
+                            this.sendMetadata(debugMessage);
+                            this.shutdownGracefully(debugMessage);
+                        }, timeout,
                         TimeUnit.MILLISECONDS));
 
         this.lastCommitMillis = System.currentTimeMillis();
@@ -60,7 +70,9 @@ class StreamingState extends State {
         if (hasUncommitted) {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
-                shutdownGracefully("Commit timeout reached");
+                final String debugMessage = "Commit timeout reached";
+                sendMetadata(debugMessage);
+                shutdownGracefully(debugMessage);
             } else {
                 scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis - millisFromLastCommit,
                         TimeUnit.MILLISECONDS);
@@ -70,8 +82,14 @@ class StreamingState extends State {
         }
     }
 
+    private void sendMetadata(final String metadata) {
+        offsets.entrySet().stream().findFirst()
+                .ifPresent(pk -> flushData(pk.getKey(), new TreeMap<>(), Optional.of(metadata)));
+    }
+
     private void shutdownGracefully(final String reason) {
         getLog().info("Shutting down gracefully. Reason: {}", reason);
+
         final Map<Partition.PartitionKey, Long> uncommitted = offsets.entrySet().stream()
                 .filter(e -> !e.getValue().isCommitted())
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
@@ -114,8 +132,8 @@ class StreamingState extends State {
 
     private long getMessagesAllowedToSend() {
         final long unconfirmed = offsets.values().stream().mapToLong(PartitionData::getUnconfirmed).sum();
-        final long allowDueWindowSize = getParameters().windowSizeMessages - unconfirmed;
-        return getParameters().getMessagesAllowedToSend(allowDueWindowSize, this.sentEvents);
+        final long limit = getParameters().maxUncommittedMessages - unconfirmed;
+        return getParameters().getMessagesAllowedToSend(limit, this.sentEvents);
     }
 
     private void checkBatchTimeouts() {
@@ -140,7 +158,7 @@ class StreamingState extends State {
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, freeSlots),
                     getParameters().batchTimeoutMillis))) {
-                flushData(e.getKey(), toSend);
+                flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
@@ -156,18 +174,42 @@ class StreamingState extends State {
         }
     }
 
-    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data) {
-        final String evt = EventStream.createStreamEvent(
-                pk.partition,
-                String.valueOf(offsets.get(pk).getSentOffset()),
-                new ArrayList<>(data.values()),
-                Optional.empty());
+    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
+        final Optional<String> metadata) {
         try {
-            getOut().streamData(evt.getBytes(EventStream.UTF8));
+            final long numberOffset = offsets.get(pk).getSentOffset();
+            final String offset = numberOffset < 0 ? Cursor.BEFORE_OLDEST_OFFSET : String.valueOf(numberOffset);
+            final String batch = serializeBatch(pk, offset, new ArrayList<>(data.values()), metadata);
+            getOut().streamData(batch.getBytes(EventStream.UTF8));
+            batchesSent++;
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
             shutdownGracefully("Failed to write data to output");
         }
+    }
+
+    private String serializeBatch(final Partition.PartitionKey partitionKey, final String offset,
+                                  final List<String> events, final Optional<String> metadata)
+            throws JsonProcessingException {
+
+        final String eventType = getContext().getEventTypesForTopics().get(partitionKey.getTopic());
+        final String token = getContext().getCursorTokenService().generateToken();
+        final SubscriptionCursor cursor = new SubscriptionCursor(partitionKey.getPartition(), offset, eventType, token);
+        final String cursorSerialized = getContext().getObjectMapper().writeValueAsString(cursor);
+
+        final StringBuilder builder = new StringBuilder()
+                .append("{\"cursor\":")
+                .append(cursorSerialized);
+        if (!events.isEmpty()) {
+            builder.append(",\"events\":[");
+            events.stream().forEach(event -> builder.append(event).append(","));
+            builder.deleteCharAt(builder.length() - 1).append("]");
+        }
+        if (metadata.isPresent()) {
+            builder.append(",\"info\":{\"debug\":\"").append(metadata.get()).append("\"}");
+        }
+        builder.append("}").append(EventStream.BATCH_SEPARATOR);
+        return builder.toString();
     }
 
     @Override
@@ -297,7 +339,7 @@ class StreamingState extends State {
             final Map<Partition.PartitionKey, TopicPartition> kafkaKeys = currentNakadiAssignment.stream().collect(
                     Collectors.toMap(
                             k -> k,
-                            k -> new TopicPartition(k.topic, Integer.valueOf(k.partition))));
+                            k -> new TopicPartition(k.getTopic(), Integer.valueOf(k.getPartition()))));
             // Ignore order
             kafkaConsumer.assign(new ArrayList<>(kafkaKeys.values()));
             // Check if offsets are available in kafka
@@ -347,7 +389,9 @@ class StreamingState extends State {
                 streamToOutput();
             }
             if (getParameters().isStreamLimitReached(committedEvents)) {
-                shutdownGracefully("Stream limit in events reached: " + committedEvents);
+                final String debugMessage = "Stream limit in events reached: " + committedEvents;
+                sendMetadata(debugMessage);
+                shutdownGracefully(debugMessage);
             }
             if (releasingPartitions.containsKey(key) && data.isCommitted()) {
                 reassignCommitted();

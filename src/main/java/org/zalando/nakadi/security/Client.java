@@ -1,6 +1,5 @@
 package org.zalando.nakadi.security;
 
-import org.zalando.nakadi.exceptions.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 
 import java.util.Set;
@@ -9,12 +8,16 @@ public interface Client {
 
     Client FULL_ACCESS = new Client() {
         @Override
-        public void checkId(final String clientId) {}
+        public boolean idMatches(final String clientId) {
+            return true;
+        }
+
         @Override
-        public void checkScopes(final Set<String> allowedScopes) {}
+        public void checkScopes(final Set<String> allowedScopes) {
+        }
     };
 
-    void checkId(final String clientId) throws IllegalClientIdException;
+    boolean idMatches(String clientId);
 
-    void checkScopes(final Set<String> allowedScopes) throws IllegalScopeException;
+    void checkScopes(Set<String> allowedScopes) throws IllegalScopeException;
 }

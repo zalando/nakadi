@@ -25,6 +25,15 @@
     - [Event Stream Structure](#event-stream-structure)
     - [Cursors, Offsets and Partitions](#cursors-offsets-and-partitions)
     - [Event Stream Keepalives](#event-stream-keepalives)
+  - [Subscriptions](#subscriptions)
+    - [Creating Subscriptions](#creating-subscriptions)
+    - [Reading Events from Subscriptions](#reading-events-from-subscription)
+    - [Subscription Cursors](#subscription-cursors)
+    - [Committing Cursors](#committing-cursors)
+    - [Checking Current Position](#checking-current-position)
+    - [Subscription Statistics](#subscription-statistics)
+    - [Deleting Subscription](#deleting-subscription)
+    - [Getting and Listing Subscriptions](#getting-and-listing-subscriptions)
 - [Build and Development](#build-and-development)
   - [Building](#building)
   - [Dependencies](#dependencies)
@@ -37,7 +46,7 @@
 
 The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide an event broker infrastructure to:
 
-- Abstract event delivery via a secured [RESTful API](/api/nakadi-event-bus-api.yaml). This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology. Access to the API can be managed and secured using OAuth scopes.
+- Abstract event delivery via a secured [RESTful API](api/nakadi-event-bus-api.yaml). This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology. Access to the API can be managed and secured using OAuth scopes.
 
 - Enable convenient development of event-driven applications and asynchronous microservices. Event types can be defined with schemas and managed via a registry. Nakadi also has optional support for events describing business processes and data changes using standard primitives for identity, timestamps, event types, and causality. 
 
@@ -60,7 +69,7 @@ More detailed information can be found on the [manual](http://zalando.github.io/
 
 ## Quickstart
 
-You can run the project locally using [Docker](https://www.docker.com/).
+You can run the project locally using [Docker](https://www.docker.com/). Note that Nakadi requires very recent versions of docker and docker-compose. See [Dependencies](#dependencies) for more information.
 
 ### Running a Server
 
@@ -106,7 +115,7 @@ running, you might want to run this command:
 ```sh
 eval "$(docker-machine env default)"
 ```
-Note: Docker Beta for Mac OS (1.12.0-rc3-beta18) currently is not supported due to the bug in networking host configuration.
+Note: Docker for Mac OS (previously in beta) version 1.12 (1.12.0 or 1.12.1) currently is not supported due to the [bug](https://github.com/docker/docker/issues/22753#issuecomment-242711639) in networking host configuration.
 
 ## API Overview and Usage
 
@@ -428,6 +437,290 @@ HTTP/1.1 200 OK
 
 This can be treated as a keep-alive control for some load balancers.
 
+### Subscriptions
+Using subscriptions users are able to consume events from event-types in a "high level" way when 
+Nakadi stores the offsets and manages the rebalancing of consuming clients. The clients using 
+subscriptions can stay really stateless. It is possible to subscribe to multiple event-types in 
+one subscription* so that within one connection it is possible to read events from many event-types.
+
+_(\* This possibility will be enabled soon)_
+
+The typical workflow when using subscriptions is following:
+
+1) create subscription specifying the event-types you want to read;
+
+2) start reading events from your subscription;
+
+3) commit the cursors you get in event batches;
+
+If you closed the connection and after some time started reading again - you get events from the 
+point of your latest commit.
+Also, it is not necessary to commit each batch you get. When you commit the cursor, all events that
+are before this cursor will also be considered committed.
+
+If you need more than one client for your subscription to distribute the load - you can start 
+reading the subscription with multiple clients and Nakadi will balance the load among your clients. 
+The balancing units are partitions, so the number of clients of your subscription can't be higher 
+than the total number of all partitions of the event-types of your subscription. 
+
+_E.g. if you have a subscription for two event-types A and B having 2 and 4 partitions accordingly
+then if you start reading events by a single client - you will get events from all 6 partitions
+by this client. If you connect by a second client - 3 partitions will be transferred from first client
+to a second client and each client will be getting data from 3 partitions. So the maximum possible 
+number of clients for this subscription is 6 (in that case each one will read from one partition)_
+
+Nakadi Subscription API provides at-least-once delivery guarantee. The duplication of event can
+happen in a case of errors when [committing events](#committing-cursors). However the events which 
+were successfully committed will never be duplicated.
+The best way to handle events duplication on consumer side is to be idempotent and to check `eid` 
+field of event metadata for duplication. 
+
+Bellow please find basic examples of Subscription API usage. For more detailed description and advanced
+configuration please take a look at Nakadi [swagger](api/nakadi-event-bus-api.yaml) file.
+
+#### Creating Subscriptions
+The subscription can be created by posting to `/subscriptions`resourse.
+```sh
+curl -v -X POST -H "Content-type: application/json" \
+  "http://localhost:8080/subscriptions" -d '{
+    "owning_application": "order-service",
+    "event_types": ["order.ORDER_RECEIVED"]
+  }'    
+```
+In response you will get the whole subscription object that was created including the id.
+```sh
+HTTP/1.1 201 Created
+Content-Type: application/json;charset=UTF-8
+{
+  "owning_application": "order-service",
+  "event_types": [
+    "order.ORDER_RECEIVED"
+  ],
+  "consumer_group": "default",
+  "read_from": "end",
+  "id": "038fc871-1d2c-4e2e-aa29-1579e8f2e71f",
+  "created_at": "2016-09-23T16:35:13.273Z"
+}
+```
+
+#### Reading Events from Subscription
+Reading events is possible by sending GET request to `/subscriptions/{subscription-id}/events` endpoint 
+```sh
+curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/events"
+```
+The response is a stream that groups events into JSON batches separated by endline character.
+
+The output looks like this:
+```sh
+HTTP/1.1 200 OK
+X-Nakadi-StreamId: 70779f46-950d-4e48-9fca-10c413845e7f
+Transfer-Encoding: chunked
+{"cursor":{"partition":"5","offset":"543","event_type":"order.ORDER_RECEIVED","cursor_token":"b75c3102-98a4-4385-a5fd-b96f1d7872f2"},"events":[{"metadata":{"occurred_at":"1996-10-15T16:39:57+07:00","eid":"1f5a76d8-db49-4144-ace7-e683e8ff4ba4","event_type":"aruha-test-hila","partition":"5","received_at":"2016-09-30T09:19:00.525Z","flow_id":"blahbloh"},"data_op":"C","data":{"order_number":"abc","id":"111"},"data_type":"blah"},"info":{"debug":"Stream started"}]}
+{"cursor":{"partition":"5","offset":"544","event_type":"order.ORDER_RECEIVED","cursor_token":"a28568a9-1ca0-4d9f-b519-dd6dd4b7a610"},"events":[{"metadata":{"occurred_at":"1996-10-15T16:39:57+07:00","eid":"1f5a76d8-db49-4144-ace7-e683e8ff4ba4","event_type":"aruha-test-hila","partition":"5","received_at":"2016-09-30T09:19:00.741Z","flow_id":"blahbloh"},"data_op":"C","data":{"order_number":"abc","id":"111"},"data_type":"blah"}]}
+{"cursor":{"partition":"5","offset":"545","event_type":"order.ORDER_RECEIVED","cursor_token":"a241c147-c186-49ad-a96e-f1e8566de738"},"events":[{"metadata":{"occurred_at":"1996-10-15T16:39:57+07:00","eid":"1f5a76d8-db49-4144-ace7-e683e8ff4ba4","event_type":"aruha-test-hila","partition":"5","received_at":"2016-09-30T09:19:00.741Z","flow_id":"blahbloh"},"data_op":"C","data":{"order_number":"abc","id":"111"},"data_type":"blah"}]}
+{"cursor":{"partition":"0","offset":"545","event_type":"order.ORDER_RECEIVED","cursor_token":"bf6ee7a9-0fe5-4946-b6d6-30895baf0599"}}
+{"cursor":{"partition":"1","offset":"545","event_type":"order.ORDER_RECEIVED","cursor_token":"9ed8058a-95be-4611-a33d-f862d6dc4af5"}}
+```
+Each batch contains the following fields:
+
+- `cursor`: the cursor of the batch which should be used for committing the batch;
+- `events`: the array of events of this batch;
+- `info`: optional field that can hold some useful information (e.g. the reason why the stream was closed by Nakadi)
+
+Please also note that when stream is started the client receives a header `X-Nakadi-StreamId` which
+should be used when committing cursors.
+
+To see a full list of parameters which can be used to control a stream of events please see 
+an API specification in [swagger](api/nakadi-event-bus-api.yaml) file.
+
+#### Subscription Cursors
+In Subscription API cursors have the following structure:
+```json
+{
+  "partition": "5",
+  "offset": "543",
+  "event_type": "order.ORDER_RECEIVED",
+  "cursor_token": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
+}
+```
+Fields are:
+
+- `partition`: the partition this batch comes from;
+- `offset`: the offset of this batch; user should not do any operations with offset, for him it should be just a string;
+- `event_type`: specifies the event-type of the cursor (as in one stream there can be events of different event-types);
+- `cursor_token`: cursor token generated by Nakadi; useless for the user;
+
+#### Committing Cursors
+Cursors can be committed by posting to `/subscriptions/{subscriptionId}/cursors`. Example:
+```sh
+curl -v -X POST \
+  -H "Content-type: application/json" \
+  -H "X-Nakadi-StreamId: ae1e39c3-219d-49a9-b444-777b4b03e84c" \    
+  "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors" \
+  -d '{
+    "items": [
+      {
+        "partition": "0",
+        "offset": "543",
+        "event_type": "order.ORDER_RECEIVED",
+        "cursor_token": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
+      },
+      {
+        "partition": "1",
+        "offset": "923",
+        "event_type": "order.ORDER_RECEIVED",
+        "cursor_token": "a28568a9-1ca0-4d9f-b519-dd6dd4b7a610"
+      }
+    ]
+  }'
+```
+Please be aware that `X-Nakadi-StreamId` header is required when doing a commit.
+The value should be the same as you get in `X-Nakadi-StreamId` header when opening a stream of events. 
+Also, each client can commit only the batches that were sent to him.
+
+The possible successful answers from commit endpoints are:
+
+- `204`: cursors were successfully committed and offset was increased;
+- `200`: cursors were committed but at least one of the cursors didn't increase the offset as it was 
+less or equal to already committed one. In a case of this response code user will get a json in a 
+response body with a list of cursors and the results of their commits.
+
+The timeout for commit is 60 seconds. If you open the stream, read data and don't commit
+anything for 60 seconds - the stream will be closed from Nakadi side. (But please note
+that if there are no events available to send and you get only empty batches - there is no need
+to commit, Nakadi will close connection only if there is some uncommitted data and no
+commits happened for 60 seconds)
+
+If the connection is closed for some reason - you still have 60 seconds to commit the events
+you received (from the moment when the events were sent to you). After that your session
+will be considered closed and it will be not possible to do commits with that `X-Nakadi-StreamId`.
+If the commit was not done - then the next time you start reading from a subscription you
+will get data from the last point of your commit, and you will again receive the events you
+haven't committed.
+
+When a rebalance happens and a partition is transferred to another client - the commit timeout
+of 60 seconds saves the day again. The first client will have 60 seconds to do the commit for that partition,
+after that the partition is started to stream to a new client. So if the commit wasn't done in 60 seconds then 
+the streaming will start from a point of last successful commit. In other case if the commit was done by the 
+first client - the data from this partition will be immediately streamed to second client (because there is no 
+uncommitted data left and there is no need to wait any more)
+ 
+#### Checking Current Position
+To see what is current position of subscription it's possible to run the request:
+```sh
+curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/cursors"
+```
+The response will be a list of current cursors that reflect the last committed offsets:
+```
+HTTP/1.1 200 OK
+{
+  "items": [
+    {
+      "partition": "0",
+      "offset": "8361",
+      "event_type": "order.ORDER_RECEIVED",
+      "cursor_token": "35e7480a-ecd3-488a-8973-3aecd3b678ad"
+    },
+    {
+      "partition": "1",
+      "offset": "6214",
+      "event_type": "order.ORDER_RECEIVED",
+      "cursor_token": "d1e5d85e-1d8d-4a22-815d-1be1c8c65c84"
+    }
+  ]
+}
+```
+#### Subscription Statistics
+To get statistics of subscription the folowing request should be used:
+```sh
+curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f/stats"
+```
+
+The output will contain the statistics for all partitions of the stream. Like this:
+```
+HTTP/1.1 200 OK
+{
+  "items": [
+    {
+      "event_type": "order.ORDER_RECEIVED",
+      "partitions": [
+        {
+          "partition": "0",
+          "state": "reassigning",
+          "unconsumed_events": 2115,
+          "stream_id": "b75c3102-98a4-4385-a5fd-b96f1d7872f2"
+        },
+        {
+          "partition": "1",
+          "state": "assigned",
+          "unconsumed_events": 1029,
+          "stream_id": "ae1e39c3-219d-49a9-b444-777b4b03e84c"
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Deleting Subscription
+To delete subscription one should run DELETE request on /subscriptions/{subscriptionId}
+```sh
+curl -v -X DELETE "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
+```
+Successful answer:
+```
+HTTP/1.1 204 No Content
+```
+#### Getting and Listing Subscriptions
+Getting single subscription by id:
+```sh
+curl -v -X GET "http://localhost:8080/subscriptions/038fc871-1d2c-4e2e-aa29-1579e8f2e71f"
+```
+Example answer:
+```
+HTTP/1.1 200 OK
+{
+  "owning_application": "order-service",
+  "event_types": [
+    "order.ORDER_RECEIVED"
+  ],
+  "consumer_group": "default",
+  "read_from": "end",
+  "id": "038fc871-1d2c-4e2e-aa29-1579e8f2e71f",
+  "created_at": "2016-09-23T16:35:13.273Z"
+}
+```
+
+Getting list of subscriptions:
+```sh
+curl -v -X GET "http://localhost:8080/subscriptions"
+```
+Example answer:
+```
+HTTP/1.1 200 OK
+{
+  "items": [
+    {
+      "owning_application": "order-service",
+      "event_types": [
+        "order.ORDER_RECEIVED"
+      ],
+      "consumer_group": "default",
+      "read_from": "end",
+      "id": "038fc871-1d2c-4e2e-aa29-1579e8f2e71f",
+      "created_at": "2016-09-23T16:35:13.273Z"
+    }
+  ],
+  "_links": {
+    "next": {
+      "href": "/subscriptions?offset=20&limit=20"
+    }
+  }
+}
+```
+It's possible to filter the list with following parameters: `event_type`, `owning_application`. 
+Also, pagination parameters are available: `offset`, `limit`.
+
 ## Build and Development
 
 ### Building
@@ -455,17 +748,22 @@ For working with an IDE, the `eclipse` IDE task is available and you'll be able 
 
 The Nakadi server is a Java 8 [Spring Boot](http://projects.spring.io/spring-boot/) application. It uses [Kafka 0.9](http://kafka.apache.org/090/documentation.html) as its broker and [PostgreSQL 9.5](http://www.postgresql.org/docs/9.5/static/release-9-5.html) as its supporting database.
 
+Nakadi requires recent versions of docker and docker-compose. In
+particular, docker-compose >= v1.7.0 is required. See [Install Docker
+Compose](https://docs.docker.com/compose/install/) for information on
+installing the most recent docker-compose version.
+
 ### What does the project already implement?
 
 * [x] REST abstraction over Kafka-like queues
-* [ ] Support of event filtering per subscriptions
 * [x] creation of event types
 * [x] low-level interface
     * manual client side partition management is needed
     * no support of commits
-* [ ] high-level interface
+* [x] high-level interface (Subscription API)
     * automatic redistribution of partitions between consuming clients
     * commits should be issued to move server-side cursors
+* [ ] Support of event filtering per subscriptions
 
 ## Contributing
 

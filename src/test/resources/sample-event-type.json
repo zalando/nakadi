@@ -1,6 +1,6 @@
 {
   "name": "NAME_PLACEHOLDER",
-  "owning_application": "article-producer",
+  "owning_application": "OWNING_APP_PLACEHOLDER",
   "category": "undefined",
   "schema": {
     "type": "json_schema",

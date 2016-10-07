@@ -9,15 +9,18 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static java.text.MessageFormat.format;
 
 public class TestStreamingClient implements Runnable {
 
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    public static final String SESSION_ID_UNKNOWN = "UNKNOWN";
 
     private final String baseUrl;
     private final String subscriptionId;
@@ -26,6 +29,8 @@ public class TestStreamingClient implements Runnable {
 
     private final List<StreamBatch> batches;
     private InputStream inputStream;
+    private String sessionId;
+    private Optional<String> token;
 
     public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params) {
         this.baseUrl = baseUrl;
@@ -33,6 +38,14 @@ public class TestStreamingClient implements Runnable {
         this.params = params;
         this.batches = Lists.newArrayList();
         this.running = false;
+        this.sessionId = SESSION_ID_UNKNOWN;
+        this.token = Optional.empty();
+    }
+
+    public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params,
+                               final Optional<String> token) {
+        this(baseUrl, subscriptionId, params);
+        this.token = token;
     }
 
     public static TestStreamingClient create(final String baseUrl, final String subscriptionId, final String params) {
@@ -43,7 +56,13 @@ public class TestStreamingClient implements Runnable {
     public void run() {
         try {
             final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
-            inputStream = new URL(url).openStream();
+            final HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            token.ifPresent(token -> conn.setRequestProperty("Authorization", "Bearer " + token));
+            if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                throw new IOException("Response code is " + conn.getResponseCode());
+            }
+            sessionId = conn.getHeaderField("X-Nakadi-StreamId");
+            inputStream = conn.getInputStream();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             running = true;
 
@@ -104,5 +123,9 @@ public class TestStreamingClient implements Runnable {
 
     public boolean isRunning() {
         return running;
+    }
+
+    public String getSessionId() {
+        return sessionId;
     }
 }

@@ -34,6 +34,11 @@ def dockerImageTag = "$dockerImageName:$dockerImageVersion"
 
 def dockerBuildTimeout = 300
 
+def dockerFile = "Dockerfile"
+if (project.hasProperty('dockerFile')) {
+    dockerFile = project.property("dockerFile")
+}
+
 repositories {
     mavenCentral()
 }
@@ -205,8 +210,8 @@ task generateScmSourceJson() {
 task buildDockerImage {
     dependsOn bootRepackage, generateScmSourceJson
     doLast {
-        println "Building docker image with tag: $dockerImageTag"
-        if (execAndWait("docker build -t " + dockerImageTag + " .", dockerBuildTimeout) != 0) {
+        println "Building docker image with tag: $dockerImageTag from dockerfile: $dockerFile"
+        if (execAndWait("docker build -t " + dockerImageTag + " -f " + dockerFile + " .", dockerBuildTimeout) != 0) {
             throw new GradleException("docker build failed.")
         }
     }
@@ -220,6 +225,17 @@ task pushDockerImage {
         if (execAndWait("docker push " + dockerImageTag, dockerBuildTimeout) != 0) {
             throw new GradleException("docker push failed.")
         }
+    }
+}
+
+task testInitNakadi(type: Exec) {
+    environment "SPRING_PROFILES_ACTIVE", "acceptanceTest"
+    commandLine "bash", "-c", "docker-compose up -d --build"
+    doLast {
+        println "Waiting for Nakadi to start up"
+        long start = System.currentTimeMillis()
+        waitForNakadi()
+        println "Nakadi is fully started in " + (System.currentTimeMillis() - start) + " ms"
     }
 }
 
@@ -267,12 +283,12 @@ task stopStorages(type: Exec) {
 }
 
 task fullTest(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'initNakadi', 'test', 'acceptanceTest']
+    tasks = ['clean', 'bootRepackage', 'testInitNakadi', 'test', 'acceptanceTest']
     finalizedBy stopNakadi
 }
 
 task fullAcceptanceTest(type: GradleBuild) {
-    tasks = ['clean', 'bootRepackage', 'initNakadi', 'acceptanceTest']
+    tasks = ['clean', 'bootRepackage', 'testInitNakadi', 'acceptanceTest']
     finalizedBy stopNakadi
 }
 
@@ -285,6 +301,7 @@ test {
     testLogging {
         events "passed", "skipped", "failed"
     }
+    testLogging.exceptionFormat = 'full'
 }
 
 acceptanceTest {

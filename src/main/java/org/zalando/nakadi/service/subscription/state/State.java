@@ -87,4 +87,8 @@ public abstract class State {
     protected void unregisterSession() {
         context.unregisterSession();
     }
+
+    public StreamingContext getContext() {
+        return context;
+    }
 }

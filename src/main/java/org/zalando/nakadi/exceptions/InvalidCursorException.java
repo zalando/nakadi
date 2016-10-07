@@ -4,6 +4,7 @@ import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
 
 public class InvalidCursorException extends Exception {
+
     private final CursorError error;
     private final Cursor cursor;
 
@@ -34,6 +35,8 @@ public class InvalidCursorException extends Exception {
                 return "offset must not be null";
             case NULL_PARTITION:
                 return "partition must not be null";
+            case FORBIDDEN:
+                return "invalid stream id";
             default:
                 return "invalid offset " + cursor.getOffset() + " for partition " + cursor.getPartition();
         }

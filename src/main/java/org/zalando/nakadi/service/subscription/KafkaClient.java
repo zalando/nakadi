@@ -2,7 +2,7 @@ package org.zalando.nakadi.service.subscription;
 
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.ExceptionWrapper;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -30,14 +30,14 @@ public class KafkaClient {
             for (final String eventTypeName : subscription.getEventTypes()) {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
                 final String topic = eventType.getTopic();
-                topicRepository.materializePositions(topic, subscription.getStartFrom())
+                topicRepository.materializePositions(topic, subscription.getReadFrom())
                         .entrySet()
                         .forEach(
                                 e -> offsets.put(new Partition.PartitionKey(topic, e.getKey()), e.getValue() - 1));
             }
             return offsets;
         } catch (final NakadiException e) {
-            throw new ExceptionWrapper(e);
+            throw new NakadiRuntimeException(e);
         }
     }
 
