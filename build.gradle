@@ -328,7 +328,7 @@ jacocoTestReport {
     }
 }
 
-check.dependsOn jacocoTestReport
+test.dependsOn jacocoTestReport
 
 checkstyle {
     configFile = new File(rootDir, "checkstyle.xml")
