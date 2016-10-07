@@ -14,7 +14,7 @@ before_script:
   - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
 
 # run test suits in parallel
-script: gradle checkstyle --stacktrace
+script: gradle check --stacktrace
 
 after_success:
   - codecov
