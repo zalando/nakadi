@@ -38,7 +38,7 @@ public class BlockEventPublishingAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
     }
 
-    private Response publishEvent(EventType eventType) {
+    private Response publishEvent(final EventType eventType) {
         return given()
                 .body("[{\"blah\":\"bloh\"}]")
                 .contentType(ContentType.JSON)
