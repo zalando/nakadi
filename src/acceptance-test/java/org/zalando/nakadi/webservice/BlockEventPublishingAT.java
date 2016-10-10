@@ -1,6 +1,7 @@
 package org.zalando.nakadi.webservice;
 
 import com.jayway.restassured.http.ContentType;
+import com.jayway.restassured.response.Response;
 import org.apache.http.HttpStatus;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
@@ -13,37 +14,35 @@ import java.text.MessageFormat;
 
 import static com.jayway.restassured.RestAssured.given;
 
-public class EventPublishingAT extends BaseAT {
+public class BlockEventPublishingAT extends BaseAT {
 
     @Test
     public void whenPublishingToBlockedEventTypeThen429() throws IOException {
         final EventType eventType = NakadiTestUtils.createEventType();
 
-        given()
-                .body("[{\"blah\":\"bloh\"}]")
-                .contentType(ContentType.JSON)
-                .post(MessageFormat.format("/event-types/{0}/events", eventType.getName()))
+        publishEvent(eventType)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
         final FloodService.Flooder flooder =
                 new FloodService.Flooder(eventType.getName(), FloodService.Type.PRODUCER_ET);
         NakadiControllerAT.blockFlooder(flooder);
-        given()
-                .body("[{\"blah\":\"bloh\"}]")
-                .contentType(ContentType.JSON)
-                .post(MessageFormat.format("/event-types/{0}/events", eventType.getName()))
+        publishEvent(eventType)
                 .then()
                 .statusCode(MoreStatus.TOO_MANY_REQUESTS.getStatusCode())
                 .header("Retry-After", "300");
 
         NakadiControllerAT.unblockFlooder(flooder);
-        given()
-                .body("[{\"blah\":\"bloh\"}]")
-                .contentType(ContentType.JSON)
-                .post(MessageFormat.format("/event-types/{0}/events", eventType.getName()))
+        publishEvent(eventType)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
+    }
+
+    private Response publishEvent(EventType eventType) {
+        return given()
+                .body("[{\"blah\":\"bloh\"}]")
+                .contentType(ContentType.JSON)
+                .post(MessageFormat.format("/event-types/{0}/events", eventType.getName()));
     }
 
 }

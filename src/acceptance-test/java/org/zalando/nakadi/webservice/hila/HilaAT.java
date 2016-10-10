@@ -291,20 +291,20 @@ public class HilaAT extends BaseAT {
                 new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
         NakadiControllerAT.blockFlooder(flooder);
 
-        TestStreamingClient client = TestStreamingClient
+        final TestStreamingClient client1 = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        Thread.sleep(2000);
-        Assert.assertEquals(MoreStatus.TOO_MANY_REQUESTS.getStatusCode(), client.getResponseCode());
-        Assert.assertEquals("300", client.getHeaderValue("Retry-After"));
+        waitFor(() -> {
+            Assert.assertEquals(MoreStatus.TOO_MANY_REQUESTS.getStatusCode(), client1.getResponseCode());
+            Assert.assertEquals("300", client1.getHeaderValue("Retry-After"));
+        });
 
         NakadiControllerAT.unblockFlooder(flooder);
 
-        client = TestStreamingClient
+        final TestStreamingClient client2 = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        Thread.sleep(2000);
-        Assert.assertEquals(HttpStatus.SC_OK, client.getResponseCode());
+        waitFor(() -> Assert.assertEquals(HttpStatus.SC_OK, client2.getResponseCode()));
     }
 
     @Test(timeout = 10000)

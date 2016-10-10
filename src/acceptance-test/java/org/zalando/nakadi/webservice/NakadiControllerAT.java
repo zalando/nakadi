@@ -25,7 +25,7 @@ import static com.jayway.restassured.RestAssured.given;
 
 public class NakadiControllerAT extends BaseAT {
 
-    private static final String FLOODERS_URL = "/nakadi/flooders";
+    private static final String FLOODERS_URL = "/settings/flooders";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
@@ -97,7 +97,7 @@ public class NakadiControllerAT extends BaseAT {
         given()
                 .body(MAPPER.writeValueAsString(flooder))
                 .contentType(ContentType.JSON)
-                .post("/nakadi/flooders")
+                .post(FLOODERS_URL)
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
     }

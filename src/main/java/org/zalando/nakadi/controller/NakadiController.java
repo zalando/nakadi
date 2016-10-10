@@ -14,7 +14,7 @@ import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.util.FeatureToggleService;
 
 @RestController
-@RequestMapping(value = "/nakadi")
+@RequestMapping(value = "/settings")
 public class NakadiController {
 
     private final FloodService floodService;

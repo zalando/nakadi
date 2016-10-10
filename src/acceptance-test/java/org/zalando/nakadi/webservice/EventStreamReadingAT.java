@@ -64,13 +64,7 @@ public class EventStreamReadingAT extends BaseAT {
         kafkaHelper.writeMultipleMessageToPartition(TEST_PARTITION, TEST_TOPIC, DUMMY_EVENT, eventsPushed);
 
         // ACT //
-        final Response response = given()
-                .header(new Header("X-nakadi-cursors", xNakadiCursors))
-                .param("batch_limit", "5")
-                .param("stream_timeout", "2")
-                .param("batch_flush_timeout", "2")
-                .when()
-                .get(STREAM_ENDPOINT);
+        final Response response = readEvents();
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
@@ -306,43 +300,36 @@ public class EventStreamReadingAT extends BaseAT {
     public void whenReadEventsForBlockedConsumerThen429() throws Exception {
         final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
 
-        given()
-                .header(new Header("X-nakadi-cursors", xNakadiCursors))
-                .param("batch_limit", "5")
-                .param("stream_timeout", "2")
-                .param("batch_flush_timeout", "2")
-                .when()
-                .get(STREAM_ENDPOINT)
+        readEvents()
                 .then()
                 .statusCode(HttpStatus.OK.value());
 
         NakadiControllerAT.blockFlooder(flooder);
-        given()
-                .header(new Header("X-nakadi-cursors", xNakadiCursors))
-                .param("batch_limit", "5")
-                .param("stream_timeout", "2")
-                .param("batch_flush_timeout", "2")
-                .when()
-                .get(STREAM_ENDPOINT)
+        readEvents()
                 .then()
                 .statusCode(HttpStatus.TOO_MANY_REQUESTS.value())
                 .header("Retry-After", "300");
 
         NakadiControllerAT.unblockFlooder(flooder);
-        given()
+        readEvents()
+                .then()
+                .statusCode(HttpStatus.OK.value());
+    }
+
+    private Response readEvents() {
+        return given()
                 .header(new Header("X-nakadi-cursors", xNakadiCursors))
                 .param("batch_limit", "5")
                 .param("stream_timeout", "2")
                 .param("batch_flush_timeout", "2")
                 .when()
-                .get(STREAM_ENDPOINT)
-                .then()
-                .statusCode(HttpStatus.OK.value());
+                .get(STREAM_ENDPOINT);
     }
 
     @Test(timeout = 10000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
         final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
+        // blocking streaming client after 3 seconds
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
@@ -352,6 +339,8 @@ public class EventStreamReadingAT extends BaseAT {
             }
         }).start();
 
+        // read events from the stream until we are blocked otherwise TestTimedOutException will be thrown and test
+        // is considered to be failed
         given()
                 .header(new Header("X-nakadi-cursors", xNakadiCursors))
                 .param("batch_limit", "1")

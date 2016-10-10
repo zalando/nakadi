@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 
+import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -143,6 +144,7 @@ public class TestStreamingClient implements Runnable {
         return responseCode;
     }
 
+    @Nullable
     public String getHeaderValue(final String name) {
         final List<String> values = headers.get(name);
         if (values == null) {
