@@ -87,7 +87,7 @@ public class EventTypeService {
             LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
 
             try {
-                eventTypeRepository.removeEventType(eventType.getTopic());
+                eventTypeRepository.archiveEventType(eventType.getName());
             } catch (final NakadiException e1) {
                 return Result.problem(e.asProblem());
             }
@@ -113,7 +113,7 @@ public class EventTypeService {
                 return Result.conflict("Not possible to remove event-type as it has subscriptions");
             }
 
-            eventTypeRepository.removeEventType(eventTypeName);
+            eventTypeRepository.archiveEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.get().getTopic());
             return Result.ok();
         } catch (final TopicDeletionException e) {

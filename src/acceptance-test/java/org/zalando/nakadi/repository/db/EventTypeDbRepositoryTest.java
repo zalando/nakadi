@@ -1,6 +1,10 @@
 package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -8,9 +12,7 @@ import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 import java.io.IOException;
 import java.util.List;
@@ -66,6 +68,20 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.saveEventType(eventType);
         repository.saveEventType(eventType);
+    }
+
+    @Test
+    public void whenCreateETWithNameWhichIsArchivedThenCreated() throws Exception {
+        final EventType eventType1 = buildDefaultEventType();
+        final EventType eventType2 = EventTypeTestBuilder.builder().name(eventType1.getName()).build();
+
+        repository.saveEventType(eventType1);
+        repository.archiveEventType(eventType1.getName());
+        repository.saveEventType(eventType2);
+        final EventType eventTypeFromDb = repository.findByName(eventType2.getName());
+
+        Assert.assertEquals(eventType2.getName(), eventTypeFromDb.getName());
+        Assert.assertFalse(eventTypeFromDb.isArchived());
     }
 
     @Test
@@ -137,14 +153,15 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void whenRemoveThenDeleteFromDatabase() throws Exception {
+    public void whenSetDeletedThenSetDeletedInDatabase() throws Exception {
         final EventType eventType = buildDefaultEventType();
         insertEventType(eventType);
 
-        repository.removeEventType(eventType.getName());
+        repository.archiveEventType(eventType.getName());
 
-        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
-        assertThat("Number of rows should encrease", rows, equalTo(0));
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type WHERE et_archived = TRUE",
+                Integer.class);
+        assertThat("Number of rows should encrease", rows, equalTo(1));
     }
 
     private void insertEventType(final EventType eventType) throws Exception {

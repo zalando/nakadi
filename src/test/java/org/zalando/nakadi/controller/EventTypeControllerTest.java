@@ -299,13 +299,13 @@ public class EventTypeControllerTest {
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
         Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-        Mockito.doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
+        Mockito.doNothing().when(eventTypeRepository).archiveEventType(eventType.getName());
 
         Mockito.doNothing().when(topicRepository).deleteTopic(eventType.getTopic());
 
         deleteEventType(eventType.getName()).andExpect(status().isOk()).andExpect(content().string(""));
 
-        verify(eventTypeRepository, times(1)).removeEventType(eventType.getName());
+        verify(eventTypeRepository, times(1)).archiveEventType(eventType.getName());
         verify(topicRepository, times(1)).deleteTopic(eventType.getTopic());
     }
 
@@ -441,7 +441,7 @@ public class EventTypeControllerTest {
         final String eventTypeName = randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
 
-        Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
+        Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).archiveEventType(
             eventTypeName);
         Mockito.doReturn(Optional.of(buildDefaultEventType())).when(eventTypeRepository).findByNameO(eventTypeName);
 
@@ -495,7 +495,7 @@ public class EventTypeControllerTest {
 
         Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(any(EventType.class));
 
-        Mockito.doNothing().when(eventTypeRepository).removeEventType(et.getName());
+        Mockito.doNothing().when(eventTypeRepository).archiveEventType(et.getName());
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE);
 
@@ -505,7 +505,7 @@ public class EventTypeControllerTest {
 
         verify(eventTypeRepository, times(1)).saveEventType(any(EventType.class));
         verify(topicRepository, times(1)).createTopic(any(EventType.class));
-        verify(eventTypeRepository, times(1)).removeEventType(randomUUID.toString());
+        verify(eventTypeRepository, times(1)).archiveEventType(et.getName());
     }
 
     @Test

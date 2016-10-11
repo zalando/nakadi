@@ -59,6 +59,9 @@ public class EventType {
 
     private Set<String> readScopes;
 
+    @JsonIgnore
+    private boolean archived;
+
     public EventType() {
         this.validationStrategies = Collections.emptyList();
         this.enrichmentStrategies = Collections.emptyList();
@@ -190,5 +193,13 @@ public class EventType {
 
     public void setReadScopes(final Set<String> readScopes) {
         this.readScopes = readScopes == null ? Collections.emptySet() : readScopes;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(final boolean archived) {
+        this.archived = archived;
     }
 }
