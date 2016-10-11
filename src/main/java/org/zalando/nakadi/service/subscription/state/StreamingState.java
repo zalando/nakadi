@@ -35,10 +35,11 @@ class StreamingState extends State {
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<Partition.PartitionKey, Long> releasingPartitions = new HashMap<>();
-    private boolean pollPaused = false;
+    private boolean pollPaused;
     private long lastCommitMillis;
-    private long committedEvents = 0;
-    private long sentEvents = 0;
+    private long committedEvents;
+    private long sentEvents;
+    private long batchesSent;
 
     @Override
     public void onEnter() {
@@ -166,11 +167,7 @@ class StreamingState extends State {
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, freeSlots),
                     getParameters().batchTimeoutMillis))) {
-                if (sentEvents == 0) {
-                    flushData(e.getKey(), toSend, Optional.of("Stream started"));
-                } else {
-                    flushData(e.getKey(), toSend, Optional.empty());
-                }
+                flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
@@ -193,6 +190,7 @@ class StreamingState extends State {
             final String offset = numberOffset < 0 ? Cursor.BEFORE_OLDEST_OFFSET : String.valueOf(numberOffset);
             final String batch = serializeBatch(pk, offset, new ArrayList<>(data.values()), metadata);
             getOut().streamData(batch.getBytes(EventStream.UTF8));
+            batchesSent++;
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
             shutdownGracefully("Failed to write data to output");

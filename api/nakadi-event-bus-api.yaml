@@ -687,8 +687,8 @@ paths:
       parameters:
         - $ref: '#/parameters/SubscriptionId'
       responses:
-        '200':
-          description: OK
+        '204':
+          description: Subscription was deleted
         '404':
           description: Subscription not found
           schema:
@@ -783,13 +783,6 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
 
   /subscriptions/{subscription_id}/events:
     get:
@@ -854,13 +847,6 @@ paths:
             already equals the maximal value - the total amount of this subscription partitions.
           schema:
             $ref: '#/definitions/Problem'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
 
   /subscriptions/{subscription_id}/stats:
     get:
@@ -1556,9 +1542,9 @@ definitions:
                 The amount of events in this partition that are not yet consumed within this subscription. May be not
                 determined at the moment when no events were yet consumed from the partition in this subscription (in
                 that case the property will be absent).
-            client_id:
+            stream_id:
               type: string
-              description: the id of client that consumes data from this partition
+              description: the id of the stream that consumes data from this partition
           required:
             - partition
             - state

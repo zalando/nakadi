@@ -128,7 +128,8 @@ public class SubscriptionController {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
 
-        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId, client), request);
+        return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId, client), request,
+                HttpStatus.NO_CONTENT);
     }
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)

@@ -328,7 +328,10 @@ jacocoTestReport {
     }
 }
 
-check.dependsOn jacocoTestReport
+task testWithReport() {
+    dependsOn test
+    finalizedBy jacocoTestReport
+}
 
 checkstyle {
     configFile = new File(rootDir, "checkstyle.xml")

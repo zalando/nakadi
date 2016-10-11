@@ -447,7 +447,7 @@ public class KafkaTopicRepositoryTest {
         final KafkaFactory kafkaFactory = mock(KafkaFactory.class);
 
         when(kafkaFactory.getConsumer()).thenReturn(consumer);
-        when(kafkaFactory.getProducer()).thenReturn(kafkaProducer);
+        when(kafkaFactory.takeProducer()).thenReturn(kafkaProducer);
 
         return kafkaFactory;
     }
