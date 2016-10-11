@@ -379,6 +379,14 @@ paths:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              description: |
+                Number of seconds the client ought to wait before making a follow-up request.
+              type: number
+
     get:
       tags:
         - stream-api
@@ -463,6 +471,13 @@ paths:
           description: Unprocessable entity
           schema:
             $ref: '#/definitions/Problem'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              description: |
+                Number of seconds the client ought to wait before making a follow-up request.
+              type: number
 
   /event-types/{name}/partitions:
     get:
@@ -847,6 +862,13 @@ paths:
             already equals the maximal value - the total amount of this subscription partitions.
           schema:
             $ref: '#/definitions/Problem'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              description: |
+                Number of seconds the client ought to wait before making a follow-up request.
+              type: number
 
   /subscriptions/{subscription_id}/stats:
     get:
