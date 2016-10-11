@@ -26,13 +26,13 @@ public class BlockEventPublishingAT extends BaseAT {
 
         final FloodService.Flooder flooder =
                 new FloodService.Flooder(eventType.getName(), FloodService.Type.PRODUCER_ET);
-        NakadiControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blockFlooder(flooder);
         publishEvent(eventType)
                 .then()
                 .statusCode(MoreStatus.TOO_MANY_REQUESTS.getStatusCode())
                 .header("Retry-After", "300");
 
-        NakadiControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.unblockFlooder(flooder);
         publishEvent(eventType)
                 .then()
                 .statusCode(HttpStatus.SC_OK);

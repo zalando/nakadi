@@ -304,13 +304,13 @@ public class EventStreamReadingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.OK.value());
 
-        NakadiControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blockFlooder(flooder);
         readEvents()
                 .then()
                 .statusCode(HttpStatus.TOO_MANY_REQUESTS.value())
                 .header("Retry-After", "300");
 
-        NakadiControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.unblockFlooder(flooder);
         readEvents()
                 .then()
                 .statusCode(HttpStatus.OK.value());
@@ -333,7 +333,7 @@ public class EventStreamReadingAT extends BaseAT {
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
-                NakadiControllerAT.blockFlooder(flooder);
+                SettingsControllerAT.blockFlooder(flooder);
             } catch (final Exception e) {
                 e.printStackTrace();
             }
@@ -349,7 +349,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .when()
                 .get(STREAM_ENDPOINT);
 
-        NakadiControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.unblockFlooder(flooder);
     }
 
 

@@ -23,7 +23,7 @@ import java.util.Set;
 
 import static com.jayway.restassured.RestAssured.given;
 
-public class NakadiControllerAT extends BaseAT {
+public class SettingsControllerAT extends BaseAT {
 
     private static final String FLOODERS_URL = "/settings/flooders";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();

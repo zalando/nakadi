@@ -19,7 +19,7 @@ import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.BaseAT;
-import org.zalando.nakadi.webservice.NakadiControllerAT;
+import org.zalando.nakadi.webservice.SettingsControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.problem.MoreStatus;
@@ -294,7 +294,7 @@ public class HilaAT extends BaseAT {
     public void whenConsumerIsBlocked429() throws Exception {
         final FloodService.Flooder flooder =
                 new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
-        NakadiControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blockFlooder(flooder);
 
         final TestStreamingClient client1 = TestStreamingClient
                 .create(URL, subscription.getId(), "")
@@ -304,7 +304,7 @@ public class HilaAT extends BaseAT {
             Assert.assertEquals("300", client1.getHeaderValue("Retry-After"));
         });
 
-        NakadiControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.unblockFlooder(flooder);
 
         final TestStreamingClient client2 = TestStreamingClient
                 .create(URL, subscription.getId(), "")
@@ -321,12 +321,12 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
         final FloodService.Flooder flooder =
                 new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
-        NakadiControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blockFlooder(flooder);
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(6)));
 
         Assert.assertEquals("Consumption is blocked",
                 client.getBatches().get(client.getBatches().size() - 1).getMetadata().getDebug());
-        NakadiControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.unblockFlooder(flooder);
     }
 }

@@ -15,16 +15,16 @@ import org.zalando.nakadi.util.FeatureToggleService;
 
 @RestController
 @RequestMapping(value = "/settings")
-public class NakadiController {
+public class SettingsController {
 
     private final FloodService floodService;
     private final FeatureToggleService featureToggleService;
     private final SecuritySettings securitySettings;
 
     @Autowired
-    public NakadiController(final FloodService floodService,
-                            final FeatureToggleService featureToggleService,
-                            final SecuritySettings securitySettings) {
+    public SettingsController(final FloodService floodService,
+                              final FeatureToggleService featureToggleService,
+                              final SecuritySettings securitySettings) {
         this.floodService = floodService;
         this.featureToggleService = featureToggleService;
         this.securitySettings = securitySettings;
