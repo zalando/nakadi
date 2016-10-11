@@ -87,6 +87,18 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         }
     }
 
+    public void deleteSubscription(final String id) throws NoSuchSubscriptionException, ServiceUnavailableException {
+        try {
+            final int rowsDeleted = jdbcTemplate.update("DELETE FROM zn_data.subscription WHERE s_id = ?", id);
+            if (rowsDeleted == 0) {
+                throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist");
+            }
+        } catch (final DataAccessException e) {
+            LOG.error("Database error when deleting subscription", e);
+            throw new ServiceUnavailableException("Error occurred when running database request");
+        }
+    }
+
     public List<Subscription> listSubscriptions(final Set<String> eventTypes, final Optional<String> owningApplication,
                                                 final int offset, final int limit) throws ServiceUnavailableException {
 

@@ -105,6 +105,18 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
+    public void deleteSubscription() {
+        try {
+            final String subscriptionPath = getSubscriptionPath("");
+            curatorFramework.delete().guaranteed().deletingChildrenIfNeeded().forPath(subscriptionPath);
+        } catch (final KeeperException.NoNodeException nne) {
+            log.warn("Subscription to delete is not found in Zookeeper: {}", subscriptionId);
+        } catch (final Exception e) {
+            throw new NakadiRuntimeException(e);
+        }
+    }
+
+    @Override
     public void fillEmptySubscription(final Map<Partition.PartitionKey, Long> partitionToOffset) {
         try {
             log.info("Creating sessions root");

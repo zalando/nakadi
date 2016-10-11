@@ -231,11 +231,17 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
         // get cursors
         jsonRequestSpec()
-                .get("/subscriptions/" + subscription.getId() + "/cursors")
+                .get("/subscriptions/{sid}/cursors", subscription.getId())
                 .then()
                 .statusCode(OK.value())
                 .body("items[0].partition", equalTo("0"))
                 .body("items[0].offset", equalTo("3"));
+
+        // delete subscription
+        jsonRequestSpec()
+                .delete("/subscriptions/{sid}", subscription.getId())
+                .then()
+                .statusCode(NO_CONTENT.value());
     }
 
     @After

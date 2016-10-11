@@ -44,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 public class CursorsControllerTest {
@@ -159,6 +160,13 @@ public class CursorsControllerTest {
         getCursors().andExpect(status().is(HttpStatus.NOT_IMPLEMENTED.value()));
     }
 
+    @Test
+    public void whenCommitCursorWithoutEventTypeThenUnprocessableEntity() throws Exception {
+        checkForProblem(
+                postCursorsString("{\"items\":[{\"offset\":\"0\",\"partition\":\"0\",\"cursor_token\":\"x\"}]}"),
+                invalidProblem("items[0].event_type", "may not be null"));
+    }
+
     private ResultActions getCursors() throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = get("/subscriptions/" + SUBSCRIPTION_ID + "/cursors");
         return mockMvc.perform(requestBuilder);
@@ -172,7 +180,8 @@ public class CursorsControllerTest {
     }
 
     private ResultActions postCursors(final List<SubscriptionCursor> cursors) throws Exception {
-        return postCursorsString(objectMapper.writeValueAsString(cursors));
+        final ItemsWrapper<SubscriptionCursor> cursorsWrapper = new ItemsWrapper<>(cursors);
+        return postCursorsString(objectMapper.writeValueAsString(cursorsWrapper));
     }
 
     private ResultActions postCursorsString(final String cursors) throws Exception {

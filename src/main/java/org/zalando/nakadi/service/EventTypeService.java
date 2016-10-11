@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.collect.ImmutableSet;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -24,6 +26,7 @@ import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
@@ -47,18 +50,21 @@ public class EventTypeService {
     private final Enrichment enrichment;
     private final UUIDGenerator uuidGenerator;
     private final FeatureToggleService featureToggleService;
+    private final SubscriptionDbRepository subscriptionRepository;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                             final PartitionResolver partitionResolver, final Enrichment enrichment,
                             final UUIDGenerator uuidGenerator,
-                            final FeatureToggleService featureToggleService) {
+                            final FeatureToggleService featureToggleService,
+                            final SubscriptionDbRepository subscriptionRepository) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.uuidGenerator = uuidGenerator;
         this.featureToggleService = featureToggleService;
+        this.subscriptionRepository = subscriptionRepository;
     }
 
     public List<EventType> list() {
@@ -99,7 +105,14 @@ public class EventTypeService {
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
             }
-            client.checkId(eventType.get().getOwningApplication());
+            if (!client.idMatches(eventType.get().getOwningApplication())) {
+                return Result.forbidden("You don't have access to this event type");
+            }
+            final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
+                    ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
+            if (!subscriptions.isEmpty()) {
+                return Result.conflict("Not possible to remove event-type as it has subscriptions");
+            }
 
             eventTypeRepository.removeEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.get().getTopic());
@@ -116,7 +129,9 @@ public class EventTypeService {
     public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
         try {
             final EventType original = eventTypeRepository.findByName(eventTypeName);
-            client.checkId(original.getOwningApplication());
+            if (!client.idMatches(original.getOwningApplication())) {
+                return Result.forbidden("You don't have access to this event type");
+            }
 
             validateUpdate(eventTypeName, eventType);
             enrichment.validate(eventType);

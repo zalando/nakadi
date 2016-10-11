@@ -18,11 +18,11 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
@@ -43,6 +43,7 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -56,19 +57,21 @@ import java.util.Set;
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -449,6 +452,42 @@ public class SubscriptionControllerTest {
 
         postSubscriptionWithScope(subscriptionBase,  Collections.singleton("oauth.read.scope"))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    public void whenDeleteSubscriptionThenNoContent() throws Exception {
+        mockGetFromRepoSubscriptionWithOwningApp("sid", "nakadiClientId");
+        mockMvcBuilder.build().perform(delete("/subscriptions/sid"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    public void whenDeleteSubscriptionThatDoesNotExistThenNotFound() throws Exception {
+        mockGetFromRepoSubscriptionWithOwningApp("sid", "nakadiClientId");
+
+        doThrow(new NoSuchSubscriptionException("dummy message"))
+                .when(subscriptionRepository).deleteSubscription("sid");
+
+        checkForProblem(
+                mockMvcBuilder.build().perform(delete("/subscriptions/sid")),
+                Problem.valueOf(NOT_FOUND, "dummy message"));
+    }
+
+    @Test
+    public void whenDeleteSubscriptionAndOwningAppDoesNotMatchThenForbidden() throws Exception {
+        mockGetFromRepoSubscriptionWithOwningApp("sid", "wrongApp");
+        checkForProblem(
+                mockMvcBuilder.build().perform(delete("/subscriptions/sid")),
+                Problem.valueOf(FORBIDDEN, "You don't have access to this subscription"));
+    }
+
+    private void mockGetFromRepoSubscriptionWithOwningApp(final String subscriptionId, final String owningApplication)
+            throws NoSuchSubscriptionException, ServiceUnavailableException {
+        final Subscription subscription = RandomSubscriptionBuilder.builder()
+                .withId(subscriptionId)
+                .withOwningApplication(owningApplication)
+                .build();
+        when(subscriptionRepository.getSubscription(subscriptionId)).thenReturn(subscription);
     }
 
     private Optional<EventType> getEventTypeWithReadScope() {
