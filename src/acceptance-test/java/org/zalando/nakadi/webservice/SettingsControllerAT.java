@@ -2,8 +2,8 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
 import com.jayway.restassured.http.ContentType;
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
 import org.junit.After;
@@ -18,8 +18,6 @@ import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Set;
 
 import static com.jayway.restassured.RestAssured.given;
 
@@ -70,18 +68,16 @@ public class SettingsControllerAT extends BaseAT {
                 .get(FLOODERS_URL)
                 .then()
                 .statusCode(HttpStatus.SC_OK)
-                .content(JSON_HELPER.matchesObject(new HashedMap() {
-                    {
-                        put("consumers", new HashMap<String, Set<String>>() {{
-                            put("event_types", Collections.singleton(eventType.getName()));
-                            put("apps", Collections.emptySet());
-                        }});
-                        put("producers", new HashMap<String, Set<String>>() {{
-                            put("event_types", Collections.emptySet());
-                            put("apps", Collections.emptySet());
-                        }});
-                    }
-                }));
+                .content(JSON_HELPER.matchesObject(
+                        ImmutableMap.of(
+                                "consumers",  ImmutableMap.of(
+                                        "event_types", Collections.singleton(eventType.getName()),
+                                        "apps", Collections.emptySet()),
+                                "producers", ImmutableMap.of(
+                                        "event_types", Collections.emptySet(),
+                                        "apps", Collections.emptySet()))
+                        )
+                );
     }
 
     private void clearFloodersData() {

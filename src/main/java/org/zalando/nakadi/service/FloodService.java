@@ -1,6 +1,6 @@
 package org.zalando.nakadi.service;
 
-import org.apache.commons.collections.map.HashedMap;
+import com.google.common.collect.ImmutableMap;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.ChildData;
 import org.apache.curator.framework.recipes.cache.TreeCache;
@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
@@ -18,7 +17,6 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,18 +26,15 @@ public class FloodService {
     private static final Logger LOG = LoggerFactory.getLogger(FloodService.class);
     private static final String PATH_FLOODER = "/nakadi/flooders";
 
-    private final EventTypeCache eventTypeCache;
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final ZooKeeperHolder zooKeeperHolder;
     private final String retryAfterStr;
     private TreeCache floodersCache;
 
     @Autowired
-    public FloodService(final EventTypeCache eventTypeCache,
-                        final SubscriptionDbRepository subscriptionDbRepository,
+    public FloodService(final SubscriptionDbRepository subscriptionDbRepository,
                         final ZooKeeperHolder zooKeeperHolder,
                         final NakadiSettings nakadiSettings) {
-        this.eventTypeCache = eventTypeCache;
         this.zooKeeperHolder = zooKeeperHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.retryAfterStr = String.valueOf(nakadiSettings.getRetryAfter());
@@ -60,9 +55,9 @@ public class FloodService {
         this.floodersCache.close();
     }
 
-    public boolean isBlocked(final Type type, final String name) {
+    private boolean isBlocked(final Type type, final String name) {
         try {
-            final boolean blocked = floodersCache.getCurrentData(type + "/" + name) != null;
+            final boolean blocked = floodersCache.getCurrentData(type.getZkPath() + "/" + name) != null;
             if (blocked) {
                 LOG.info("{} {} is blocked", type.name(), name);
             }
@@ -98,18 +93,13 @@ public class FloodService {
     }
 
     public Map<String, Map> getFlooders() {
-        return new HashedMap() {
-            {
-                put("consumers", new HashMap<String, Set<String>>() {{
-                    put("event_types", getChildren(Type.CONSUMER_ET));
-                    put("apps", getChildren(Type.CONSUMER_APP));
-                }});
-                put("producers", new HashMap<String, Set<String>>() {{
-                    put("event_types", getChildren(Type.PRODUCER_ET));
-                    put("apps", getChildren(Type.PRODUCER_APP));
-                }});
-            }
-        };
+        return ImmutableMap.of(
+                "consumers",  ImmutableMap.of(
+                        "event_types", getChildren(Type.CONSUMER_ET),
+                        "apps", getChildren(Type.CONSUMER_APP)),
+                "producers", ImmutableMap.of(
+                        "event_types", getChildren(Type.PRODUCER_ET),
+                        "apps", getChildren(Type.PRODUCER_APP)));
     }
 
     public String getRetryAfterStr() {
@@ -141,7 +131,7 @@ public class FloodService {
     }
 
     private Set<String> getChildren(final Type type) {
-        final Map<String, ChildData> currentChildren = floodersCache.getCurrentChildren(type.toString());
+        final Map<String, ChildData> currentChildren = floodersCache.getCurrentChildren(type.getZkPath());
         return currentChildren == null ? Collections.emptySet() : currentChildren.keySet();
     }
 
@@ -155,15 +145,14 @@ public class FloodService {
         PRODUCER_APP("/nakadi/flooders/producers/apps"),
         PRODUCER_ET("/nakadi/flooders/producers/event_types");
 
-        private final String value;
+        private final String zkPath;
 
-        Type(final String value) {
-            this.value = value;
+        Type(final String zkPath) {
+            this.zkPath = zkPath;
         }
 
-        @Override
-        public String toString() {
-            return value;
+        public String getZkPath() {
+            return zkPath;
         }
     }
 

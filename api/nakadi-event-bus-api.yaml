@@ -1018,7 +1018,7 @@ paths:
     post:
       tags:
         - settings-api
-      description: Blocks publication/consumtion for particular app or event type.
+      description: Blocks publication/consumption for particular app or event type.
       parameters:
         - name: flooder
           in: body
@@ -1028,15 +1028,15 @@ paths:
           required: true
       responses:
         '204':
-          description: Abusive client was successfully blocked.
+          description: Abusive client or event type was successfully blocked.
     delete:
       tags:
         - settings-api
-      description: Unblocks publication/consumtion for particular app or event type.
+      description: Unblocks publication/consumption for particular app or event type.
       parameters:
         - name: flooder
           in: body
-          description: Abusive client to be unblocked
+          description: Abusive client or event type to be unblocked
           schema:
             $ref: '#/definitions/Flooder'
           required: true
