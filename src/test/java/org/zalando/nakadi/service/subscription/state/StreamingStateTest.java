@@ -1,16 +1,17 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.apache.kafka.clients.consumer.Consumer;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.service.subscription.KafkaClient;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+
 import java.util.Collections;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 public class StreamingStateTest {
 
@@ -42,7 +43,8 @@ public class StreamingStateTest {
                 100L,
                 100,
                 100,
-                100
+                100,
+                "consumingAppId"
         );
         Mockito.when(contextMock.getParameters()).thenReturn(spMock);
 

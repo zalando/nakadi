@@ -3,11 +3,14 @@ package org.zalando.nakadi.util;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class FeatureToggleServiceZk implements FeatureToggleService {
 
@@ -43,5 +46,21 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
 
     private Boolean isFeatureEnabledInZk(final Feature feature) throws Exception {
         return null != zkHolder.get().checkExists().forPath(PREFIX + feature.getId());
+    }
+
+    public void setFeature(final FeatureWrapper feature) {
+        try {
+            final CuratorFramework curator = zkHolder.get();
+            final String path = PREFIX + feature.getFeature().getId();
+            if (feature.isEnabled()) {
+                curator.create().creatingParentsIfNeeded().forPath(path);
+            } else {
+                curator.delete().forPath(path);
+            }
+        } catch (final KeeperException.NoNodeException nne) {
+            LOG.debug("Feature {} was disabled", feature.getFeature().getId());
+        } catch (final Exception e) {
+            throw new RuntimeException("Issue occurred while accessing zk", e);
+        }
     }
 }
