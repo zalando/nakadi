@@ -901,6 +901,8 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
       description: |
         Lists all of the enrichment strategies supported by this Nakadi installation. Special or
         custom strategies besides the defaults will be listed here.
@@ -920,6 +922,8 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
       description: |
         Lists all of the partition resolution strategies supported by this installation of Nakadi.
         Special or custom strategies besides the defaults will be listed here.
