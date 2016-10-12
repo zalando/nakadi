@@ -59,7 +59,7 @@ info:
     ---------------------------------
 
     In this document, you'll find:
-    
+
     * The Schema Registry API, including configuration possibilities for the Schema, Validation,
     Enrichment and Partitioning of Events, and their effects on reception of Events.
 
@@ -276,10 +276,10 @@ paths:
         Deletes an `EventType` identified by its name. All events in the `EventType`'s stream' will
         also be removed. **Note**: deletion happens asynchronously, which has the following
         consequences:
-         
+
          * Creation of an equally named `EventType` before the underlying topic deletion is complete
          might not succeed (failure is a 409 Conflict).
- 
+
          * Events in the stream may be visible for a short period of time before being removed.
 
       parameters:
@@ -946,7 +946,7 @@ paths:
       tags:
         - schema-registry-api
       description: |
-        Lists all of the partition resolution strategies supported by this installation of Nakadi. 
+        Lists all of the partition resolution strategies supported by this installation of Nakadi.
         Special or custom strategies besides the defaults will be listed here.
 
         Nakadi currently offers these inbuilt strategies:
@@ -980,7 +980,10 @@ paths:
     get:
       tags:
         - settings-api
-      description: Lists all blocked abusive producers/consumers divided by app and event type.
+      description: |
+        Lists all blocked abusive producers/consumers divided by app and event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
       responses:
         '200':
           description: Lists all blocked abusive producers/consumers.
@@ -1018,7 +1021,10 @@ paths:
     post:
       tags:
         - settings-api
-      description: Blocks publication/consumption for particular app or event type.
+      description: |
+        Blocks publication/consumption for particular app or event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
       parameters:
         - name: flooder
           in: body
@@ -1048,7 +1054,10 @@ paths:
     get:
       tags:
         - settings-api
-      description: Lists all available features.
+      description: |
+        Lists all available features.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
       responses:
         '200':
           description: A list of all available features.
@@ -1065,7 +1074,10 @@ paths:
     post:
       tags:
         - settings-api
-      description: Enables or disables feature depends on the payload
+      description: |
+        Enables or disables feature depends on the payload
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
       parameters:
         - name: flooder
           in: body
