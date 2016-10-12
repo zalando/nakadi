@@ -29,6 +29,7 @@ import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
@@ -62,19 +63,21 @@ public class EventStreamController {
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
+    private final FloodService floodService;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
-                                 final ClosedConnectionsCrutch closedConnectionsCrutch) {
-
+                                 final ClosedConnectionsCrutch closedConnectionsCrutch,
+                                 final FloodService floodService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
+        this.floodService = floodService;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
@@ -91,6 +94,12 @@ public class EventStreamController {
             throws IOException {
 
         return outputStream -> {
+
+            if  (floodService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
+                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                response.setHeader("Retry-After", floodService.getRetryAfterStr());
+                return;
+            }
 
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
@@ -117,7 +126,9 @@ public class EventStreamController {
                         .withStreamLimit(streamLimit)
                         .withBatchTimeout(batchTimeout)
                         .withStreamTimeout(streamTimeout)
-                        .withStreamKeepAliveLimit(streamKeepAliveLimit);
+                        .withStreamKeepAliveLimit(streamKeepAliveLimit)
+                        .withEtName(eventTypeName)
+                        .withConsumingAppId(client.getClientId());
 
                 // deserialize cursors
                 List<Cursor> cursors = null;
@@ -159,7 +170,7 @@ public class EventStreamController {
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
-                        streamConfig);
+                        streamConfig, floodService);
 
                 outputStream.flush(); // Flush status code to client
 

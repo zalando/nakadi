@@ -23,10 +23,12 @@ public class EventStreamConfig {
     private final int batchTimeout;
     private final int streamTimeout;
     private final int streamKeepAliveLimit;
+    private final String etName;
+    private final String consumingAppId;
 
     private EventStreamConfig(final String topic, final Map<String, String> cursors, final int batchLimit,
                              final int streamLimit, final int batchTimeout, final int streamTimeout,
-                             final int streamKeepAliveLimit) {
+                             final int streamKeepAliveLimit, final String etName, final String consumingAppId) {
         this.topic = topic;
         this.cursors = cursors;
         this.batchLimit = batchLimit;
@@ -34,6 +36,8 @@ public class EventStreamConfig {
         this.batchTimeout = batchTimeout;
         this.streamTimeout = streamTimeout;
         this.streamKeepAliveLimit = streamKeepAliveLimit;
+        this.etName = etName;
+        this.consumingAppId = consumingAppId;
     }
 
     public String getTopic() {
@@ -62,6 +66,14 @@ public class EventStreamConfig {
 
     public int getStreamKeepAliveLimit() {
         return streamKeepAliveLimit;
+    }
+
+    public String getEtName() {
+        return etName;
+    }
+
+    public String getConsumingAppId() {
+        return consumingAppId;
     }
 
     @Override
@@ -113,6 +125,8 @@ public class EventStreamConfig {
         private int batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
         private int streamTimeout = STREAM_TIMEOUT_DEFAULT;
         private int streamKeepAliveLimit = STREAM_KEEP_ALIVE_LIMIT_DEFAULT;
+        private String etName;
+        private String consumingAppId;
 
         public Builder withTopic(final String topic) {
             this.topic = topic;
@@ -163,6 +177,17 @@ public class EventStreamConfig {
             return this;
         }
 
+        public Builder withEtName(final String etName) {
+            this.etName = etName;
+            return this;
+        }
+
+        public Builder withConsumingAppId(final String consumingAppId) {
+            this.consumingAppId = consumingAppId;
+            return this;
+        }
+
+
         public EventStreamConfig build() throws UnprocessableEntityException {
             if (topic == null) {
                 throw new IllegalStateException("Topic should be specified");
@@ -172,7 +197,7 @@ public class EventStreamConfig {
                 throw new UnprocessableEntityException("stream_timeout can't be lower than batch_flush_timeout");
             }
             return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout,
-                    streamKeepAliveLimit);
+                    streamKeepAliveLimit, etName, consumingAppId);
         }
     }
 

@@ -4,20 +4,19 @@ import org.zalando.nakadi.exceptions.IllegalScopeException;
 
 import java.util.Set;
 
-public interface Client {
+public abstract class Client {
 
-    Client FULL_ACCESS = new Client() {
-        @Override
-        public boolean idMatches(final String clientId) {
-            return true;
-        }
+    private final String clientId;
 
-        @Override
-        public void checkScopes(final Set<String> allowedScopes) {
-        }
-    };
+    public Client(final String clientId) {
+        this.clientId = clientId;
+    }
 
-    boolean idMatches(String clientId);
+    public abstract boolean idMatches(String clientId);
 
-    void checkScopes(Set<String> allowedScopes) throws IllegalScopeException;
+    public abstract void checkScopes(Set<String> allowedScopes) throws IllegalScopeException;
+
+    public String getClientId() {
+        return clientId;
+    }
 }

@@ -6,12 +6,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
-import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
+import org.zalando.nakadi.service.FloodService;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -63,13 +64,7 @@ public class EventStreamReadingAT extends BaseAT {
         kafkaHelper.writeMultipleMessageToPartition(TEST_PARTITION, TEST_TOPIC, DUMMY_EVENT, eventsPushed);
 
         // ACT //
-        final Response response = given()
-                .header(new Header("X-nakadi-cursors", xNakadiCursors))
-                .param("batch_limit", "5")
-                .param("stream_timeout", "2")
-                .param("batch_flush_timeout", "2")
-                .when()
-                .get(STREAM_ENDPOINT);
+        final Response response = readEvents();
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value()).header(HttpHeaders.TRANSFER_ENCODING, "chunked");
@@ -300,6 +295,63 @@ public class EventStreamReadingAT extends BaseAT {
                 .and()
                 .body("detail", equalTo("non existing partition very_wrong_partition"));
     }
+
+    @Test(timeout = 10000)
+    public void whenReadEventsForBlockedConsumerThen429() throws Exception {
+        final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
+
+        readEvents()
+                .then()
+                .statusCode(HttpStatus.OK.value());
+
+        SettingsControllerAT.blockFlooder(flooder);
+        readEvents()
+                .then()
+                .statusCode(HttpStatus.TOO_MANY_REQUESTS.value())
+                .header("Retry-After", "300");
+
+        SettingsControllerAT.unblockFlooder(flooder);
+        readEvents()
+                .then()
+                .statusCode(HttpStatus.OK.value());
+    }
+
+    private Response readEvents() {
+        return given()
+                .header(new Header("X-nakadi-cursors", xNakadiCursors))
+                .param("batch_limit", "5")
+                .param("stream_timeout", "2")
+                .param("batch_flush_timeout", "2")
+                .when()
+                .get(STREAM_ENDPOINT);
+    }
+
+    @Test(timeout = 10000)
+    public void whenReadEventsConsumerIsBlocked() throws Exception {
+        final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
+        // blocking streaming client after 3 seconds
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                SettingsControllerAT.blockFlooder(flooder);
+            } catch (final Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        // read events from the stream until we are blocked otherwise TestTimedOutException will be thrown and test
+        // is considered to be failed
+        given()
+                .header(new Header("X-nakadi-cursors", xNakadiCursors))
+                .param("batch_limit", "1")
+                .param("stream_timeout", "60")
+                .param("batch_flush_timeout", "10")
+                .when()
+                .get(STREAM_ENDPOINT);
+
+        SettingsControllerAT.unblockFlooder(flooder);
+    }
+
 
     private static String createStreamEndpointUrl(final String eventType) {
         return format("/event-types/{0}/events", eventType);
