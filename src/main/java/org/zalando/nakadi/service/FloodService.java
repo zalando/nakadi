@@ -136,7 +136,7 @@ public class FloodService {
     }
 
     private String createFlooderPath(final Flooder flooder) {
-        return flooder.getType() + "/" + flooder.getName();
+        return flooder.getType().getZkPath() + "/" + flooder.getName();
     }
 
     public enum Type {
