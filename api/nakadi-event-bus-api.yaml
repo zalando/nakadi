@@ -142,7 +142,7 @@ paths:
       description: |
         Creates a new `EventType`.
 
-        The fields validation-strategies, enrichment-strategies and partition-resolution-strategy
+        The fields enrichment-strategies and partition-resolution-strategy
         have all an effect on the incoming Event of this EventType. For its impacts on the reception
         of events please consult the Event submission API methods.
 
@@ -872,31 +872,6 @@ paths:
               - items
         '404':
           description: Subscription not found
-          schema:
-            $ref: '#/definitions/Problem'
-
-  '/registry/validation-strategies':
-    get:
-      tags:
-        - schema-registry-api
-      description: |
-        Lists all of the validation strategies supported by this installation of Nakadi.
-
-        If the EventType creation is to have special validations (besides the default), one can consult over
-        this method the available possibilities.
-      responses:
-        '200':
-          description: Returns a list of all validation strategies known to Nakadi
-          schema:
-            type: array
-            items:
-              type: string
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
           schema:
             $ref: '#/definitions/Problem'
 
