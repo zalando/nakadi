@@ -1639,8 +1639,10 @@ definitions:
           The schema as string in the syntax defined in the field type. Failure to respect the
           syntax will fail any operation on an EventType.
 
-          To have a generic, undefined schema it is possible to define the schema as `"schema":
-          "{\"additionalProperties\": true}"`.
+          When defining a schema, every property should be explicitly defined with its type. It means that,
+          additionalProperties true is not accepted.
+
+          The complete list of not allowed attributes is: additionalProperties, not and patternProperties.
     required:
       - type
       - schema
