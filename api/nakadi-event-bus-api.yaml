@@ -1613,6 +1613,18 @@ definitions:
           contains at least one of the scopes in this list.
           If no scopes provided then anyone can consume from this event type.
 
+      created_at:
+        type: string
+        pattern: date-time
+        description: |
+          Date and time when this event type was created.
+
+      updated_at:
+        type: string
+        pattern: date-time
+        description: |
+          Date and time when this event type was last updated.
+
     required:
       - name
       - category
