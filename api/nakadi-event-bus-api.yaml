@@ -1553,7 +1553,7 @@ definitions:
 
           There are 2 compatibility modes:
 
-          - 'migration': Schema changes are not allowed. These is for legacy event types that are not compatible.
+          - 'legacy': Schema changes are not allowed. This is used only by legacy event types that are not compatible.
 
           - 'compatible': Schema changes never break existing consumers. Every event published since the first version
             is still valid based on the newest schema.
