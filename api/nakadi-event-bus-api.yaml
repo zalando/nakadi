@@ -1564,10 +1564,8 @@ definitions:
         type: string
         enum:
           - none
-          - forwards
-          - backwards
-          - full
-        default: forwards
+          - compatible
+        default: compatible
 
       schema:
         type: object
