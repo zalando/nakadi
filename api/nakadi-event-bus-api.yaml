@@ -1162,7 +1162,7 @@ definitions:
           If set by the producer Event will be rejected.
         format: date-time
         example: '1996-12-19T16:39:57-08:00'
-      schema_version:
+      version:
         type: string
         description: |
           Version of the schema used for validating this event. This is enriched upon reception.
@@ -1542,31 +1542,25 @@ definitions:
 
       compatibility_mode:
         description: |
-          *Note*: only 'forwards' compatibility mode is currently supported.
-
           Compatibility modes provides a mean for event owners to evolve their schema, given changes
-          are done within the limits defined by such field.
+          respect the semantics defined by this field.
 
-          It's designed to be flexible enough so that producers can evolve their schema while not
+          It's designed to be flexible enough so that producers can evolve their schemas while not
           inadvertently breaking existent consumers.
 
-          Changes to this values are not allowed, since it would break a predefined contract,
+          Once defined, the compatibility mode is fixed, since otherwise it would break a predefined contract,
           jeopardizing the value of this feature.
 
-          There are 4 compatibility modes:
+          There are 2 compatibility modes:
 
           - 'none': Every schema change is allowed. Coordination between producers and consumers
             must be done accordingly when backward incompatible changes are to be rolled out.
 
-          - 'forwards': changes never break existing consumers.
+          - 'compatible': changes never break existing consumers. Every event published since the first version is still
+            valid based on the newest schema.
 
-          - 'backwards': every event published since the first version is still valid based on the
-            newest schema.
-
-          - 'full': Both 'forwards' and 'backwards'.
-
-          For a complete explanation on which changes are allowed for each mode check the algorithm
-          specification page.
+          When in compatible mode, it' allowed to add new optional properties to an existing schema, but no other
+          changes are allowed.
         type: string
         enum:
           - none
