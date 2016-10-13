@@ -1553,13 +1553,13 @@ definitions:
 
           There are 2 compatibility modes:
 
-          - 'fixed': Schema changes are not allowed.
+          - 'migration': Schema changes are not allowed. These is for legacy event types that are not compatible.
 
           - 'compatible': Schema changes never break existing consumers. Every event published since the first version
             is still valid based on the newest schema.
 
-          When in compatible mode, it' allowed to add new optional properties to an existing schema, but no other
-          changes are allowed.
+          When in compatible mode, it's allowed to add new optional properties and definitions to an existing schema,
+          but no other changes are allowed.
         type: string
         enum:
           - none
