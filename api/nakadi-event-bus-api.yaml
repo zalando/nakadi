@@ -1573,12 +1573,6 @@ definitions:
         description: |
           The most recent schema for this EventType. Submitted events will be validated against it.
 
-      schema_versions:
-        type: array
-        items:
-          type: string
-        description: List of links to previous schemas.
-
       partition_key_fields:
         type: array
         items:
