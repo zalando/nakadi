@@ -1,13 +1,14 @@
 package org.zalando.nakadi.webservice.hila;
 
-import org.zalando.nakadi.domain.Cursor;
+import org.junit.Before;
+import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
@@ -15,13 +16,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.intersection;
-import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
@@ -29,6 +23,12 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 
 public class HilaRebalanceAT extends BaseAT {
 
@@ -38,7 +38,7 @@ public class HilaRebalanceAT extends BaseAT {
     @Before
     public void before() throws IOException {
         eventType = createBusinessEventTypeWithPartitions(8);
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType.getName())
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
@@ -54,7 +54,7 @@ public class HilaRebalanceAT extends BaseAT {
 
         // create a session
         final TestStreamingClient clientA = TestStreamingClient
-                .create(URL, subscription.getId(), "")
+                .create(URL, subscription.getId(), "max_uncommitted_events=100")
                 .start();
         waitFor(() -> assertThat(clientA.getBatches(), hasSize(40)));
 
@@ -67,15 +67,15 @@ public class HilaRebalanceAT extends BaseAT {
                         equalTo(5L)));
 
         // commit what we consumed
-        final List<Cursor> cursors = range(0, 8)
+        final List<SubscriptionCursor> cursors = range(0, 8)
                 .boxed()
-                .map(partition -> new Cursor(String.valueOf(partition), "4"))
+                .map(partition -> new SubscriptionCursor(String.valueOf(partition), "4", eventType.getName(), "token"))
                 .collect(toList());
-        commitCursors(subscription.getId(), cursors);
+        commitCursors(subscription.getId(), cursors, clientA.getSessionId());
 
         // create second session for the same subscription
         final TestStreamingClient clientB = TestStreamingClient
-                .create(URL, subscription.getId(), "stream_limit=20")
+                .create(URL, subscription.getId(), "stream_limit=20&max_uncommitted_events=100")
                 .start();
 
         // wait for rebalance process to start
@@ -103,9 +103,11 @@ public class HilaRebalanceAT extends BaseAT {
 
         // commit what we consumed, as clientB has already consumed what was required by stream_limit - it should
         // be closed right after everything is committed
-        final List<Cursor> lastCursors = getLastCursorsForPartitions(clientA, clientAPartitionsAfterRebalance);
-        lastCursors.addAll(getLastCursorsForPartitions(clientB, clientBPartitions));
-        commitCursors(subscription.getId(), lastCursors);
+        final List<SubscriptionCursor> lastCursorsA = getLastCursorsForPartitions(clientA,
+                clientAPartitionsAfterRebalance);
+        final List<SubscriptionCursor> lastCursorsB = getLastCursorsForPartitions(clientB, clientBPartitions);
+        commitCursors(subscription.getId(), lastCursorsA, clientA.getSessionId());
+        commitCursors(subscription.getId(), lastCursorsB, clientB.getSessionId());
         waitFor(() -> assertThat(clientB.isRunning(), is(false)));
 
         // wait for rebalance process to start
@@ -122,24 +124,25 @@ public class HilaRebalanceAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenNotCommittedThenEventsAreReplayedAfterRebalance() {
-        range(0, 20)
+        range(0, 2)
                 .forEach(x -> publishBusinessEventWithUserDefinedPartition(
                         eventType.getName(), "blah" + x, String.valueOf(x % 8)));
 
         final TestStreamingClient clientA = TestStreamingClient
-                .create(URL, subscription.getId(), "commit_timeout=2")
+                .create(URL, subscription.getId(), "")
                 .start();
-        waitFor(() -> assertThat(clientA.getBatches(), hasSize(20)));
+        waitFor(() -> assertThat(clientA.getBatches(), hasSize(2)));
 
         final TestStreamingClient clientB = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
 
         // after commit_timeout of first client exceeds it is closed and all events are resent to second client
-        waitFor(() -> assertThat(clientB.getBatches(), hasSize(20)));
+        waitFor(() -> assertThat(clientB.getBatches(), hasSize(2)), 10000);
     }
 
-    public List<Cursor> getLastCursorsForPartitions(final TestStreamingClient client, final Set<String> partitions) {
+    public List<SubscriptionCursor> getLastCursorsForPartitions(final TestStreamingClient client,
+                                                                final Set<String> partitions) {
         if (!client.getBatches().isEmpty()) {
             return partitions.stream()
                     .map(partition -> client.getBatches().stream()

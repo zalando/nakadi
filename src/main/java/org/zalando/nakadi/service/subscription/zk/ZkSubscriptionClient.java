@@ -36,6 +36,11 @@ public interface ZkSubscriptionClient {
     boolean createSubscription();
 
     /**
+     * Deletes subscription wiht all its data in zookeeper
+     */
+    void deleteSubscription();
+
+    /**
      * Fills subscription object using partitions information provided (mapping from (topic, partition) to real offset
      * (NOT "BEGIN"). Generated object in zk will look like this
      * nakadi
@@ -128,4 +133,6 @@ public interface ZkSubscriptionClient {
      * @param partitions topic ids and partition ids of transferred data.
      */
     void transfer(String sessionId, Collection<Partition.PartitionKey> partitions);
+
+    ZkSubscriptionNode getZkSubscriptionNodeLocked();
 }

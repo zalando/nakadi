@@ -11,8 +11,11 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -38,16 +41,22 @@ public class SubscriptionStreamController {
     private final FeatureToggleService featureToggleService;
     private final ObjectMapper jsonMapper;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
+    private final NakadiSettings nakadiSettings;
+    private final FloodService floodService;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
                                         final FeatureToggleService featureToggleService,
                                         final ObjectMapper objectMapper,
-                                        final ClosedConnectionsCrutch closedConnectionsCrutch) {
+                                        final ClosedConnectionsCrutch closedConnectionsCrutch,
+                                        final NakadiSettings nakadiSettings,
+                                        final FloodService floodService) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
+        this.nakadiSettings = nakadiSettings;
+        this.floodService = floodService;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -67,7 +76,7 @@ public class SubscriptionStreamController {
                 headersSent = true;
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
-                response.setHeader("X-Nakadi-SessionId", sessionId);
+                response.setHeader("X-Nakadi-StreamId", sessionId);
                 out.flush();
             }
         }
@@ -109,15 +118,16 @@ public class SubscriptionStreamController {
     @RequestMapping(value = "/subscriptions/{subscription_id}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("subscription_id") final String subscriptionId,
-            @RequestParam(value = "window_size", required = false, defaultValue = "100") final int windowSize,
-            @RequestParam(value = "commit_timeout", required = false, defaultValue = "30") final int commitTimeout,
+            @RequestParam(value = "max_uncommitted_events", required = false, defaultValue = "10")
+            final int maxUncommittedSize,
             @RequestParam(value = "batch_limit", required = false, defaultValue = "1") final int batchLimit,
             @Nullable @RequestParam(value = "stream_limit", required = false) final Long streamLimit,
             @RequestParam(value = "batch_flush_timeout", required = false, defaultValue = "30") final int batchTimeout,
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @Nullable
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
-            final HttpServletRequest request, final HttpServletResponse response) throws IOException {
+            final HttpServletRequest request, final HttpServletResponse response, final Client client)
+            throws IOException {
 
         return outputStream -> {
 
@@ -131,9 +141,17 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
+                if  (floodService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                    response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                    response.setHeader("Retry-After", floodService.getRetryAfterStr());
+                    return;
+                }
+
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
-                        streamTimeout, streamKeepAliveLimit, windowSize, commitTimeout);
-                streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output, connectionReady);
+                        streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
+                        nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
+                streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output,
+                        connectionReady, floodService);
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
@@ -145,4 +163,5 @@ public class SubscriptionStreamController {
             }
         };
     }
+
 }

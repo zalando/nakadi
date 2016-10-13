@@ -4,19 +4,22 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.response.Response;
+import com.jayway.restassured.specification.RequestSpecification;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,7 +28,6 @@ import java.util.UUID;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
-import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.randomSubscription;
 
 public class NakadiTestUtils {
 
@@ -89,27 +91,46 @@ public class NakadiTestUtils {
     }
 
     public static Subscription createSubscriptionForEventType(final String eventType) throws IOException {
-        final SubscriptionBase subscriptionBase = randomSubscription()
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType)
                 .buildSubscriptionBase();
         return createSubscription(subscriptionBase);
     }
 
     public static Subscription createSubscription(final SubscriptionBase subscription) throws IOException {
-        final Response response = given()
+        return createSubscription(given(), subscription);
+    }
+
+    public static Subscription createSubscription(final RequestSpecification requestSpec,
+                                                  final SubscriptionBase subscription) throws IOException {
+        final Response response = requestSpec
                 .body(MAPPER.writeValueAsString(subscription))
                 .contentType(JSON)
                 .post("/subscriptions");
         return MAPPER.readValue(response.print(), Subscription.class);
     }
 
-    public static int commitCursors(final String subscriptionId, final List<Cursor> cursors)
+    public static int commitCursors(final String subscriptionId, final List<SubscriptionCursor> cursors,
+                                    final String streamId) throws JsonProcessingException {
+        return commitCursors(given(), subscriptionId, cursors, streamId);
+    }
+
+    public static int commitCursors(final RequestSpecification requestSpec, final String subscriptionId,
+                                    final List<SubscriptionCursor> cursors, final String streamId)
             throws JsonProcessingException {
-        return given()
-                .body(MAPPER.writeValueAsString(cursors))
+        return requestSpec
+                .body(MAPPER.writeValueAsString(new ItemsWrapper<>(cursors)))
                 .contentType(JSON)
-                .put(format("/subscriptions/{0}/cursors", subscriptionId))
+                .header("X-Nakadi-StreamId", streamId)
+                .post(format("/subscriptions/{0}/cursors", subscriptionId))
                 .getStatusCode();
+    }
+
+    public static Response getSubscriptionStat(final Subscription subscription)
+            throws IOException {
+        return given()
+                .contentType(JSON)
+                .get("/subscriptions/{subscription_id}/stats", subscription.getId());
     }
 
 }

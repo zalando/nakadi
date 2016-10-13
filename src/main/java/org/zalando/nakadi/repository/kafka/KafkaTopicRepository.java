@@ -1,18 +1,34 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import java.util.Arrays;
+import static java.util.Collections.unmodifiableList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import static java.util.stream.Collectors.toList;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.producer.BufferExhaustedException;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.InterruptException;
-import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.errors.NotLeaderForPartitionException;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +37,12 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
+import static org.zalando.nakadi.domain.CursorError.EMPTY_PARTITION;
+import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
+import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
+import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
+import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
+import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
@@ -37,32 +59,14 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toList;
-import static org.zalando.nakadi.domain.CursorError.EMPTY_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
-import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
-import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
-import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 @Component
 @Profile("!test")
@@ -71,7 +75,6 @@ public class KafkaTopicRepository implements TopicRepository {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
 
     private final ZooKeeperHolder zkFactory;
-    private final Producer<String, String> kafkaProducer;
     private final KafkaFactory kafkaFactory;
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
@@ -86,7 +89,6 @@ public class KafkaTopicRepository implements TopicRepository {
                                 final ZookeeperSettings zookeeperSettings,
                                 final KafkaPartitionsCalculator partitionsCalculator) {
         this.zkFactory = zkFactory;
-        this.kafkaProducer = kafkaFactory.getProducer();
         this.kafkaFactory = kafkaFactory;
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
@@ -162,94 +164,161 @@ public class KafkaTopicRepository implements TopicRepository {
                 .anyMatch(partition::equals);
     }
 
-    @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
-        final CountDownLatch done = new CountDownLatch(batch.size());
-
-        for (final BatchItem item : batch) {
-            final ProducerRecord<String, String> record = new ProducerRecord<>(topicId,
-                    toKafkaPartition(item.getPartition()), item.getPartition(), item.getEvent().toString());
-
-            item.setStep(EventPublishingStep.PUBLISHING);
-
-            try {
-                kafkaProducer.send(record, kafkaSendCallback(item, done));
-            } catch (InterruptException | SerializationException | BufferExhaustedException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                throw new EventPublishingException("Error publishing message to kafka", e);
-            }
-        }
-
+    private static CompletableFuture<Exception> publishItem(
+            final Producer<String, String> producer, final String topicId, final BatchItem item)
+            throws EventPublishingException {
         try {
-            final boolean isSuccessful = done.await(kafkaSettings.getKafkaSendTimeoutMs(), TimeUnit.MILLISECONDS);
+            final CompletableFuture<Exception> result = new CompletableFuture<>();
+            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
+                    topicId,
+                    toKafkaPartition(item.getPartition()),
+                    item.getPartition(),
+                    item.getEvent().toString());
 
-            if (!isSuccessful) {
-                failBatch(batch, "timed out");
-                throw new EventPublishingException("Timeout publishing events");
-            }
-        } catch (final InterruptedException e) {
-            failBatch(batch, "internal error");
+            producer.send(kafkaRecord, ((metadata, exception) -> {
+                if (null != exception) {
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+                    result.complete(exception);
+                } else {
+                    item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
+                    result.complete(null);
+                }
+            }));
+            return result;
+        } catch (final InterruptException e) {
+            Thread.currentThread().interrupt();
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka", e);
+        } catch (final RuntimeException e) {
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
     }
 
-    private void failBatch(final List<BatchItem> batch, final String reason) {
-        for (final BatchItem item : batch) {
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason);
+    private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
+        if (null == exception) {
+            return false;
+        }
+        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class).
+                filter(clazz -> clazz.isAssignableFrom(exception.getClass()))
+                .findAny().isPresent();
+    }
+
+    @Override
+    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
+        batch.forEach(item -> Preconditions.checkNotNull(
+                item.getPartition(), "BatchItem partition can't be null at the moment of publishing!"));
+        final Producer<String, String> producer = kafkaFactory.takeProducer();
+        final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
+        try {
+            for (final BatchItem item : batch) {
+                item.setStep(EventPublishingStep.PUBLISHING);
+                sendFutures.put(item, publishItem(producer, topicId, item));
+            }
+            final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
+                    sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
+            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+
+            // Now lets check for errors
+            final Optional<Exception> needReset = sendFutures.entrySet().stream()
+                    .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
+                    .map(entry -> entry.getValue().getNow(null))
+                    .findAny();
+            if (needReset.isPresent()) {
+                LOG.info("Terminating producer while publishing to topic " + topicId +
+                        " because of unrecoverable exception", needReset.get());
+                kafkaFactory.terminateProducer(producer);
+            }
+        } catch (final TimeoutException ex) {
+            failUnpublished(batch, "timed out");
+            throw new EventPublishingException("Error publishing message to kafka", ex);
+        } catch (final ExecutionException ex) {
+            failUnpublished(batch, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka", ex);
+        } catch (final InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            failUnpublished(batch, "interrupted");
+            throw new EventPublishingException("Error publishing message to kafka", ex);
+        } finally {
+            kafkaFactory.releaseProducer(producer);
+        }
+        final boolean atLeastOneFailed = batch.stream()
+                .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
+        if (atLeastOneFailed) {
+            failUnpublished(batch, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka");
         }
     }
 
-    private Callback kafkaSendCallback(final BatchItem item, final CountDownLatch done) {
-        return (metadata, exception) -> {
-            if (exception == null) {
-                item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
-            } else {
-                LOG.error("Failed to publish event", exception);
-                item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            }
+    private long createSendTimeout() {
+        return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
+    }
 
-            done.countDown();
-        };
+    private void failUnpublished(final List<BatchItem> batch, final String reason) {
+        batch.stream()
+                .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
+                .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
     }
 
     @Override
     public List<TopicPartition> listPartitions(final String topicId) throws ServiceUnavailableException {
-
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
-
             final List<org.apache.kafka.common.TopicPartition> kafkaTPs = consumer
                     .partitionsFor(topicId)
                     .stream()
                     .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
                     .collect(toList());
 
-            consumer.assign(kafkaTPs);
-
-            final org.apache.kafka.common.TopicPartition[] tpArray =
-                    kafkaTPs.toArray(new org.apache.kafka.common.TopicPartition[kafkaTPs.size()]);
-
-            consumer.seekToBeginning(tpArray);
-            final Map<Integer, Long> earliestOffsets = getPositions(consumer, kafkaTPs);
-
-            consumer.seekToEnd(tpArray);
-            final Map<Integer, Long> latestOffsets = getPositions(consumer, kafkaTPs);
-
-            return kafkaTPs
-                    .stream()
-                    .map(tp -> {
-                        final int partition = tp.partition();
-                        final TopicPartition topicPartition = new TopicPartition(topicId, toNakadiPartition(partition));
-
-                        final Long latestOffset = latestOffsets.get(partition);
-                        topicPartition.setNewestAvailableOffset(transformNewestOffset(latestOffset));
-
-                        topicPartition.setOldestAvailableOffset(toNakadiOffset(earliestOffsets.get(partition)));
-                        return topicPartition;
-                    })
-                    .collect(toList());
+            return toNakadiTopicPartition(consumer, kafkaTPs);
         } catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
+    }
+
+    @Override
+    public List<TopicPartition> listPartitions(final Set<String> topics) throws ServiceUnavailableException {
+        try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+            final List<org.apache.kafka.common.TopicPartition> kafkaTPs = consumer.listTopics().entrySet().stream()
+                    .filter(entry -> topics.contains(entry.getKey()))
+                    .flatMap(entry -> entry.getValue().stream()
+                            .map(partitionInfo -> new org.apache.kafka.common.TopicPartition(entry.getKey(),
+                                    partitionInfo.partition()))
+                    )
+                    .collect(toList());
+
+            return toNakadiTopicPartition(consumer, kafkaTPs);
+        } catch (final Exception e) {
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+        }
+    }
+
+    private List<TopicPartition> toNakadiTopicPartition(final Consumer<String, String> consumer,
+                                                        final List<org.apache.kafka.common.TopicPartition> kafkaTPs) {
+        consumer.assign(kafkaTPs);
+
+        final org.apache.kafka.common.TopicPartition[] tpArray =
+                kafkaTPs.toArray(new org.apache.kafka.common.TopicPartition[kafkaTPs.size()]);
+
+        consumer.seekToBeginning(tpArray);
+        final Map<Integer, Long> earliestOffsets = getPositions(consumer, kafkaTPs);
+
+        consumer.seekToEnd(tpArray);
+        final Map<Integer, Long> latestOffsets = getPositions(consumer, kafkaTPs);
+
+        return kafkaTPs
+                .stream()
+                .map(tp -> {
+                    final int partition = tp.partition();
+                    final String topic = tp.topic();
+                    final TopicPartition topicPartition = new TopicPartition(topic, toNakadiPartition(partition));
+
+                    final Long latestOffset = latestOffsets.get(partition);
+                    topicPartition.setNewestAvailableOffset(transformNewestOffset(latestOffset));
+
+                    topicPartition.setOldestAvailableOffset(toNakadiOffset(earliestOffsets.get(partition)));
+                    return topicPartition;
+                })
+                .collect(toList());
     }
 
     @Override
@@ -281,10 +350,15 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public List<String> listPartitionNames(final String topicId) {
-        return unmodifiableList(kafkaFactory.getProducer().partitionsFor(topicId)
-                .stream()
-                .map(partitionInfo -> toNakadiPartition(partitionInfo.partition()))
-                .collect(toList()));
+        final Producer<String, String> producer = kafkaFactory.takeProducer();
+        try {
+            return unmodifiableList(producer.partitionsFor(topicId)
+                    .stream()
+                    .map(partitionInfo -> toNakadiPartition(partitionInfo.partition()))
+                    .collect(toList()));
+        } finally {
+            kafkaFactory.releaseProducer(producer);
+        }
     }
 
     private String transformNewestOffset(final Long newestOffset) {
@@ -321,8 +395,7 @@ public class KafkaTopicRepository implements TopicRepository {
             topicPartition.setNewestAvailableOffset(transformNewestOffset(latestOffset));
 
             return topicPartition;
-        }
-        catch (final Exception e) {
+        } catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partition offsets", e);
         }
     }
@@ -346,8 +419,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (Cursor.BEFORE_OLDEST_OFFSET.equals(offset)) {
                 final TopicPartition tp = getPartition(topic, partition);
                 kafkaOffset = toKafkaOffset(tp.getOldestAvailableOffset());
-            }
-            else {
+            } else {
                 kafkaOffset = toKafkaOffset(offset) + 1L;
             }
 
@@ -355,7 +427,7 @@ public class KafkaTopicRepository implements TopicRepository {
             kafkaCursors.add(kafkaCursor);
         }
 
-        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, kafkaSettings.getKafkaPollTimeoutMs());
+        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs());
     }
 
     public int compareOffsets(final String firstOffset, final String secondOffset) {
@@ -376,10 +448,10 @@ public class KafkaTopicRepository implements TopicRepository {
             validateCursorForNulls(cursor);
 
             final TopicPartition topicPartition = partitions
-                        .stream()
-                        .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
-                        .findFirst()
-                        .orElseThrow(() -> new InvalidCursorException(PARTITION_NOT_FOUND, cursor));
+                    .stream()
+                    .filter(tp -> tp.getPartitionId().equals(cursor.getPartition()))
+                    .findFirst()
+                    .orElseThrow(() -> new InvalidCursorException(PARTITION_NOT_FOUND, cursor));
 
             if (Cursor.BEFORE_OLDEST_OFFSET.equals(cursor.getOffset())) {
                 continue;
@@ -400,7 +472,9 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public void validateCommitCursors(final String topic, final List<Cursor> cursors) throws InvalidCursorException {
+    @Override
+    public void validateCommitCursors(final String topic, final List<? extends Cursor> cursors)
+            throws InvalidCursorException {
         final List<String> partitions = this.listPartitionNames(topic);
         for (final Cursor cursor : cursors) {
             validateCursorForNulls(cursor);
@@ -417,7 +491,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private void validateCursorForNulls(final Cursor cursor) throws InvalidCursorException {
         if (cursor.getPartition() == null) {
-            throw  new InvalidCursorException(NULL_PARTITION, cursor);
+            throw new InvalidCursorException(NULL_PARTITION, cursor);
         }
         if (cursor.getOffset() == null) {
             throw new InvalidCursorException(NULL_OFFSET, cursor);
@@ -436,8 +510,7 @@ public class KafkaTopicRepository implements TopicRepository {
             zkUtils = ZkUtils.apply(connectionString, zookeeperSettings.getZkSessionTimeoutMs(),
                     zookeeperSettings.getZkConnectionTimeoutMs(), false);
             action.execute(zkUtils);
-        }
-        finally {
+        } finally {
             if (zkUtils != null) {
                 zkUtils.close();
             }
@@ -459,7 +532,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private int calculatePartitionsAccordingLoad(final int messagesPerMinute, final int avgEventSizeBytes) {
-        final float throughoutputMbPerSec = ((float)messagesPerMinute * (float)avgEventSizeBytes)
+        final float throughoutputMbPerSec = ((float) messagesPerMinute * (float) avgEventSizeBytes)
                 / (1024.f * 1024.f * 60.f);
         return partitionsCalculator.getBestPartitionsCount(avgEventSizeBytes, throughoutputMbPerSec);
     }

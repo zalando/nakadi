@@ -223,7 +223,9 @@ public abstract class AuthenticationTest {
             new Endpoint(GET, "/subscriptions", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(PUT, "/subscriptions/foo/cursors", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
             new Endpoint(GET, "/subscriptions/foo/cursors", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
-            new Endpoint(GET, "/subscriptions/foo", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
+            new Endpoint(GET, "/subscriptions/foo", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(DELETE, "/subscriptions/foo", TOKEN_WITH_EVENT_STREAM_READ_SCOPE),
+            new Endpoint(GET, "/subscriptions/foo/stats", TOKEN_WITH_EVENT_STREAM_READ_SCOPE));
 
     protected static final List<Endpoint> ENDPOINTS_FOR_UID_SCOPE = ImmutableList.of(
             new Endpoint(GET, "/metrics", TOKEN_WITH_UID_SCOPE),

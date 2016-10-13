@@ -30,7 +30,7 @@ public class RandomSubscriptionBuilder {
         eventTypes = ImmutableSet.of(randomTextString());
     }
 
-    public static RandomSubscriptionBuilder randomSubscription() {
+    public static RandomSubscriptionBuilder builder() {
         return new RandomSubscriptionBuilder();
     }
 
@@ -76,7 +76,7 @@ public class RandomSubscriptionBuilder {
         subscription.setOwningApplication(owningApplication);
         subscription.setEventTypes(eventTypes);
         subscription.setConsumerGroup(consumerGroup);
-        subscription.setStartFrom(startFrom);
+        subscription.setReadFrom(startFrom);
         return subscription;
     }
 
@@ -85,7 +85,7 @@ public class RandomSubscriptionBuilder {
         subscriptionBase.setOwningApplication(owningApplication);
         subscriptionBase.setEventTypes(eventTypes);
         subscriptionBase.setConsumerGroup(consumerGroup);
-        subscriptionBase.setStartFrom(startFrom);
+        subscriptionBase.setReadFrom(startFrom);
         return subscriptionBase;
     }
 

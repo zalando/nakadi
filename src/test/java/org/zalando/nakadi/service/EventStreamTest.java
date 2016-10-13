@@ -46,7 +46,8 @@ public class EventStreamTest {
                 .withBatchTimeout(1)
                 .build();
         final OutputStream outputStreamMock = mock(OutputStream.class);
-        final EventStream eventStream = new EventStream(emptyConsumer(), outputStreamMock, config);
+        final EventStream eventStream =
+                new EventStream(emptyConsumer(), outputStreamMock, config, mock(FloodService.class));
 
         final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true)));
         thread.start();
@@ -73,7 +74,8 @@ public class EventStreamTest {
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .build();
-        final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
+        final EventStream eventStream =
+                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(FloodService.class));
         final AtomicBoolean streamOpen = new AtomicBoolean(true);
         final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen));
         thread.start();
@@ -100,7 +102,8 @@ public class EventStreamTest {
                 .withStreamTimeout(1)
                 .withBatchTimeout(1)
                 .build();
-        final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
+        final EventStream eventStream =
+                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(FloodService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -114,7 +117,8 @@ public class EventStreamTest {
                 .withBatchLimit(1)
                 .withStreamLimit(1)
                 .build();
-        final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config);
+        final EventStream eventStream =
+                new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config, mock(FloodService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -129,12 +133,13 @@ public class EventStreamTest {
                 .withBatchTimeout(1)
                 .withStreamKeepAliveLimit(1)
                 .build();
-        final EventStream eventStream = new EventStream(emptyConsumer(), mock(OutputStream.class), config);
+        final EventStream eventStream =
+                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(FloodService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void whenNoEventsToReadThenKeepAliveIsSent() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -147,10 +152,11 @@ public class EventStreamTest {
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        final EventStream eventStream = new EventStream(emptyConsumer(), out, config);
+        final EventStream eventStream = new EventStream(emptyConsumer(), out, config, mock(FloodService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
+
         Arrays
                 .stream(batches)
                 .forEach(batch ->
@@ -170,7 +176,8 @@ public class EventStreamTest {
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        final EventStream eventStream = new EventStream(nCountDummyConsumerForPartition(12, "0"), out, config);
+        final EventStream eventStream =
+                new EventStream(nCountDummyConsumerForPartition(12, "0"), out, config, mock(FloodService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -201,7 +208,8 @@ public class EventStreamTest {
                         new ConsumedEvent("event" + index, TOPIC, "0", String.valueOf(index)))
                 .collect(Collectors.toList()));
 
-        final EventStream eventStream = new EventStream(predefinedConsumer(events), out, config);
+        final EventStream eventStream =
+                new EventStream(predefinedConsumer(events), out, config, mock(FloodService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -242,7 +250,8 @@ public class EventStreamTest {
         events.add(new ConsumedEvent(DUMMY, TOPIC, "1", "0"));
         events.add(new ConsumedEvent(DUMMY, TOPIC, "2", "0"));
 
-        final EventStream eventStream = new EventStream(predefinedConsumer(events), out, config);
+        final EventStream eventStream =
+                new EventStream(predefinedConsumer(events), out, config, mock(FloodService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -294,6 +303,11 @@ public class EventStreamTest {
 
     private static String jsonBatch(final String partition, final String offset,
                                     final Optional<List<String>> eventsOrNone) {
+        return jsonBatch(partition, offset, eventsOrNone, Optional.empty());
+    }
+
+    private static String jsonBatch(final String partition, final String offset,
+                                    final Optional<List<String>> eventsOrNone, final Optional<String> metadata) {
         final String eventsStr = eventsOrNone
                 .map(events -> {
                     final StringBuilder builder = new StringBuilder(",\"events\":[");
@@ -302,7 +316,10 @@ public class EventStreamTest {
                     return builder.toString();
                 })
                 .orElse("");
-        return String.format("{\"cursor\":{\"partition\":\"%s\",\"offset\":\"%s\"}%s}", partition, offset, eventsStr);
+        final String metadataStr = metadata.map(m -> ",\"metadata\":{\"debug\":\""+m+"\"}").orElse("");
+
+        return String.format("{\"cursor\":{\"partition\":\"%s\",\"offset\":\"%s\"}%s%s}", partition, offset, eventsStr,
+                metadataStr);
     }
 
 }

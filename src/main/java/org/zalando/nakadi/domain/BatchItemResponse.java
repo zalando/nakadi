@@ -1,9 +1,9 @@
 package org.zalando.nakadi.domain;
 
 public class BatchItemResponse {
-    private EventPublishingStatus publishingStatus = EventPublishingStatus.ABORTED;
+    private volatile EventPublishingStatus publishingStatus = EventPublishingStatus.ABORTED;
+    private volatile String detail = "";
     private EventPublishingStep step = EventPublishingStep.NONE;
-    private String detail = "";
     private String eid = "";
 
     public String getEid() {

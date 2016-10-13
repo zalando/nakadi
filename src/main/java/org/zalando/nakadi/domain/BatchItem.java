@@ -1,8 +1,8 @@
 package org.zalando.nakadi.domain;
 
-import org.json.JSONObject;
-
 import java.util.Optional;
+import javax.annotation.Nullable;
+import org.json.JSONObject;
 
 public class BatchItem {
     private final BatchItemResponse response;
@@ -13,8 +13,7 @@ public class BatchItem {
         this.response = new BatchItemResponse();
         this.event = event;
 
-        Optional.
-                ofNullable(event.optJSONObject("metadata"))
+        Optional.ofNullable(event.optJSONObject("metadata"))
                 .map(e -> e.optString("eid", null))
                 .ifPresent(this.response::setEid);
     }
@@ -27,20 +26,25 @@ public class BatchItem {
         this.partition = partition;
     }
 
+    @Nullable
     public String getPartition() {
-        return this.partition;
+        return partition;
     }
 
     public BatchItemResponse getResponse() {
-        return this.response;
+        return response;
     }
 
     public void setStep(final EventPublishingStep step) {
-        this.response.setStep(step);
+        response.setStep(step);
     }
 
-    public synchronized void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
-        this.response.setPublishingStatus(publishingStatus);
-        this.response.setDetail(detail);
+    public EventPublishingStep getStep() {
+        return response.getStep();
+    }
+
+    public void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
+        response.setPublishingStatus(publishingStatus);
+        response.setDetail(detail);
     }
 }

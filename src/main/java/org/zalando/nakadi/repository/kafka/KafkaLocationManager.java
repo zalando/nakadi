@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.apache.curator.framework.CuratorFramework;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -21,17 +21,17 @@ import java.util.Properties;
 public class KafkaLocationManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaLocationManager.class);
-
     private static final String BROKERS_IDS_PATH = "/brokers/ids";
 
     private final ZooKeeperHolder zkFactory;
-
-    private Properties kafkaProperties;
+    private final Properties kafkaProperties;
+    private final KafkaSettings kafkaSettings;
 
     @Autowired
-    public KafkaLocationManager(final ZooKeeperHolder zkFactory) {
+    public KafkaLocationManager(final ZooKeeperHolder zkFactory, final KafkaSettings kafkaSettings) {
         this.zkFactory = zkFactory;
         this.kafkaProperties = buildKafkaProperties(fetchBrokers());
+        this.kafkaSettings = kafkaSettings;
     }
 
     static class Broker {
@@ -98,15 +98,18 @@ public class KafkaLocationManager {
         }
     }
 
-    public Properties getKafkaProperties() {
+    public Properties getKafkaConsumerProperties() {
         return (Properties) kafkaProperties.clone();
     }
 
     public Properties getKafkaProducerProperties() {
-        final Properties producerProps = getKafkaProperties();
+        final Properties producerProps = getKafkaConsumerProperties();
         producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         producerProps.put("acks", "all");
+        producerProps.put("request.timeout.ms", kafkaSettings.getRequestTimeoutMs());
+        producerProps.put("batch.size", kafkaSettings.getBatchSize());
+        producerProps.put("linger.ms", kafkaSettings.getLingerMs());
         return producerProps;
     }
 }
