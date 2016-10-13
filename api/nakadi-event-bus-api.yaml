@@ -1556,7 +1556,7 @@ definitions:
           - 'none': Every schema change is allowed. Coordination between producers and consumers
             must be done accordingly when backward incompatible changes are to be rolled out.
 
-          - 'compatible': changes never break existing consumers. Every event published since the first version is still
+          - 'compatible': Changes never break existing consumers. Every event published since the first version is still
             valid based on the newest schema.
 
           When in compatible mode, it' allowed to add new optional properties to an existing schema, but no other
