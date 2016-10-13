@@ -1553,11 +1553,10 @@ definitions:
 
           There are 2 compatibility modes:
 
-          - 'none': Every schema change is allowed. Coordination between producers and consumers
-            must be done accordingly when backward incompatible changes are to be rolled out.
+          - 'fixed': Schema changes are not allowed.
 
-          - 'compatible': Changes never break existing consumers. Every event published since the first version is still
-            valid based on the newest schema.
+          - 'compatible': Schema changes never break existing consumers. Every event published since the first version
+            is still valid based on the newest schema.
 
           When in compatible mode, it' allowed to add new optional properties to an existing schema, but no other
           changes are allowed.
