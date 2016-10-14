@@ -1550,7 +1550,7 @@ definitions:
           Once defined, the compatibility mode is fixed, since otherwise it would break a predefined contract,
           jeopardizing the value of this feature.
 
-          There are 2 compatibility modes:
+          List of available compatibility modes:
 
           - 'deprecated': Schema changes are not allowed. This is used only by legacy event types that are not
             compatible. This option is not available for new event types. Additional properties are allowed.
