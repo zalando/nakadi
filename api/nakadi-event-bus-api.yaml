@@ -1552,8 +1552,8 @@ definitions:
 
           There are 2 compatibility modes:
 
-          - 'legacy': Schema changes are not allowed. This is used only by legacy event types that are not compatible.
-            This option is not available for new event types.
+          - 'deprecated': Schema changes are not allowed. This is used only by legacy event types that are not
+            compatible. This option is not available for new event types. Additional properties are allowed.
 
           - 'incompatible': Any schema modification is accepted, even if it might break existing producers or consumers.
 
