@@ -1555,6 +1555,8 @@ definitions:
 
           - 'legacy': Schema changes are not allowed. This is used only by legacy event types that are not compatible.
 
+          - 'incompatible': Any schema modification is accepted, even if it might break existing producers or consumers.
+
           - 'compatible': Schema changes never break existing consumers. Every event published since the first version
             is still valid based on the newest schema.
 
