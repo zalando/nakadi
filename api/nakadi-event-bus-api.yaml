@@ -1553,6 +1553,7 @@ definitions:
           There are 2 compatibility modes:
 
           - 'legacy': Schema changes are not allowed. This is used only by legacy event types that are not compatible.
+            This option is not available for new event types.
 
           - 'incompatible': Any schema modification is accepted, even if it might break existing producers or consumers.
 
