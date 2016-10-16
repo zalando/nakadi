@@ -33,6 +33,9 @@ before_install:
   - curl http://www.jpm4j.org/install/script | sudo sh
   - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
 
+install:
+  - ./gradlew compileJava compileTestJava assemble
+
 before_script:
   - sudo /etc/init.d/postgresql stop
 
