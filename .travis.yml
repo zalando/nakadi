@@ -42,14 +42,14 @@ before_script:
 env:
   global:
     - DOCKER_COMPOSE_VERSION="1.7.1"
-  matrix:
-    - TEST_SUITE="./gradlew checkstyle --stacktrace"                  # checkstyle
-    - TEST_SUITE="travis_wait ./gradlew testWithReport --stacktrace"  # unit tests with coverage report
-    - TEST_SUITE="./gradlew fullAcceptanceTest --stacktrace"          # acceptances tests
 
 # run test suits in parallel
-script: "$TEST_SUITE"
+script:
+  - ./gradlew checkstyle --stacktrace                  # checkstyle
+  - travis_wait ./gradlew testWithReport --stacktrace  # unit tests with coverage report
+  - ./gradlew fullAcceptanceTest --stacktrace          # acceptances tests
 
 after_success:
+  # only testWithReport generates coverage report
   - test -e build/reports/jacoco/test/jacocoTestReport.xml && codecov
   - test -e build/reports/jacoco/test/jacocoTestReport.xml && codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
