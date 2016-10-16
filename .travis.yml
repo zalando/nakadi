@@ -12,6 +12,15 @@ services:
 addons:
   hostname: localhost
 
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+
 before_install:
   - docker --version
   # install docker-compose
@@ -29,9 +38,9 @@ env:
   global:
     - DOCKER_COMPOSE_VERSION="1.7.1"
   matrix:
-    - TEST_SUITE="gradle checkstyle --stacktrace"                  # checkstyle
-    - TEST_SUITE="travis_wait gradle testWithReport --stacktrace"  # unit tests with coverage report
-    - TEST_SUITE="gradle fullAcceptanceTest --stacktrace"          # acceptances tests
+    - TEST_SUITE="./gradlew checkstyle --stacktrace"                  # checkstyle
+    - TEST_SUITE="travis_wait ./gradlew testWithReport --stacktrace"  # unit tests with coverage report
+    - TEST_SUITE="./gradlew fullAcceptanceTest --stacktrace"          # acceptances tests
 
 # run test suits in parallel
 script: "$TEST_SUITE"
