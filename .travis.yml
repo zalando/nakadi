@@ -42,12 +42,13 @@ before_script:
 env:
   global:
     - DOCKER_COMPOSE_VERSION="1.7.1"
+  matrix:
+    - TEST_SUITE="./gradlew checkstyle --stacktrace"                  # checkstyle
+    - TEST_SUITE="travis_wait ./gradlew testWithReport --stacktrace"  # unit tests with coverage report
+    - TEST_SUITE="./gradlew fullAcceptanceTest --stacktrace"          # acceptances tests
 
 # run test suits in parallel
-script:
-  - ./gradlew checkstyle --stacktrace                  # checkstyle
-  - travis_wait ./gradlew testWithReport --stacktrace  # unit tests with coverage report
-  - ./gradlew fullAcceptanceTest --stacktrace          # acceptances tests
+script: "$TEST_SUITE"
 
 after_success:
   # only testWithReport generates coverage report
