@@ -2,7 +2,9 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.http.HttpStatus;
 import org.hamcrest.core.StringContains;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
@@ -13,11 +15,14 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.SettingsControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
+import org.zalando.problem.MoreStatus;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -25,6 +30,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.RestAssured.when;
 import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
 import static java.util.stream.IntStream.rangeClosed;
@@ -107,11 +113,15 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 5000)
-    public void whenCommitBEGINThenSuccess() throws Exception {
+    public void whenNoEventsThenBeginOffsetIsUsed() throws Exception {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
         waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        when().get("/subscriptions/{sid}/cursors", subscription.getId())
+                .then()
+                .body("items[0].offset", equalTo(Cursor.BEFORE_OLDEST_OFFSET));
 
         final int commitResult = commitCursors(subscription.getId(),
                 ImmutableList.of(new SubscriptionCursor("0", Cursor.BEFORE_OLDEST_OFFSET, eventType.getName(), "abc")),
@@ -280,4 +290,43 @@ public class HilaAT extends BaseAT {
                 .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
     }
 
+    @Test(timeout = 10000)
+    public void whenConsumerIsBlocked429() throws Exception {
+        final FloodService.Flooder flooder =
+                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
+        SettingsControllerAT.blockFlooder(flooder);
+
+        final TestStreamingClient client1 = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> {
+            Assert.assertEquals(MoreStatus.TOO_MANY_REQUESTS.getStatusCode(), client1.getResponseCode());
+            Assert.assertEquals("300", client1.getHeaderValue("Retry-After"));
+        });
+
+        SettingsControllerAT.unblockFlooder(flooder);
+
+        final TestStreamingClient client2 = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> Assert.assertEquals(HttpStatus.SC_OK, client2.getResponseCode()));
+    }
+
+    @Test(timeout = 10000)
+    public void whenConsumerIsBlockedDuringConsumption() throws Exception {
+        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "")
+                .start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
+        final FloodService.Flooder flooder =
+                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
+        SettingsControllerAT.blockFlooder(flooder);
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(6)));
+
+        Assert.assertEquals("Consumption is blocked",
+                client.getBatches().get(client.getBatches().size() - 1).getMetadata().getDebug());
+        SettingsControllerAT.unblockFlooder(flooder);
+    }
 }

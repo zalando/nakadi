@@ -21,6 +21,7 @@ import org.zalando.nakadi.throttling.ThrottleResult;
 import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
@@ -39,27 +40,35 @@ public class EventPublishingController {
     private final EventPublisher publisher;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
     private final ThrottlingService throttlingService;
+    private final FloodService floodService;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
                                      final EventTypeMetricRegistry eventTypeMetricRegistry,
-                                     final ThrottlingService throttlingService) {
+                                     final ThrottlingService throttlingService,
+                                     final FloodService floodService) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
         this.throttlingService = throttlingService;
+        this.floodService = floodService;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
     public ResponseEntity<?> postEvent(@PathVariable final String eventTypeName,
                                     @RequestBody final String eventsAsString,
-                                    final NativeWebRequest nativeWebRequest,
+                                    final NativeWebRequest request,
                                     final Client client) {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
+            if  (floodService.isProductionBlocked(eventTypeName, client.getId())) {
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .header("Retry-After", floodService.getRetryAfterStr()).build();
+            }
+
             final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
-                    nativeWebRequest, eventTypeMetrics, client);
+                    request, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {

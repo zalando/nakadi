@@ -73,7 +73,7 @@ public class EventPublisher {
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
             return aborted(EventPublishingStep.PARTITIONING, batch);
-        } catch (EnrichmentException e) {
+        } catch (final EnrichmentException e) {
             LOG.debug("Event enrichment error: {}", e.getMessage());
             return aborted(EventPublishingStep.ENRICHING, batch);
         } catch (final EventPublishingException e) {

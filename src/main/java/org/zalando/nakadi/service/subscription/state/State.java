@@ -1,13 +1,14 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.service.subscription.KafkaClient;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public abstract class State {
     private StreamingContext context;
@@ -61,6 +62,10 @@ public abstract class State {
 
     protected boolean isConnectionReady() {
         return context.isConnectionReady();
+    }
+
+    protected boolean isSubscriptionConsumptionBlocked() {
+        return context.isSubscriptionConsumptionBlocked();
     }
 
     public void scheduleTask(final Runnable task, final long timeout, final TimeUnit unit) {

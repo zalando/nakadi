@@ -59,7 +59,7 @@ info:
     ---------------------------------
 
     In this document, you'll find:
-    
+
     * The Schema Registry API, including configuration possibilities for the Schema, Validation,
     Enrichment and Partitioning of Events, and their effects on reception of Events.
 
@@ -142,7 +142,7 @@ paths:
       description: |
         Creates a new `EventType`.
 
-        The fields validation-strategies, enrichment-strategies and partition-resolution-strategy
+        The fields enrichment-strategies and partition-resolution-strategy
         have all an effect on the incoming Event of this EventType. For its impacts on the reception
         of events please consult the Event submission API methods.
 
@@ -276,10 +276,10 @@ paths:
         Deletes an `EventType` identified by its name. All events in the `EventType`'s stream' will
         also be removed. **Note**: deletion happens asynchronously, which has the following
         consequences:
-         
+
          * Creation of an equally named `EventType` before the underlying topic deletion is complete
          might not succeed (failure is a 409 Conflict).
- 
+
          * Events in the stream may be visible for a short period of time before being removed.
 
       parameters:
@@ -379,6 +379,14 @@ paths:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              description: |
+                Number of seconds the client ought to wait before making a follow-up request.
+              type: number
+
     get:
       tags:
         - stream-api
@@ -463,6 +471,13 @@ paths:
           description: Unprocessable entity
           schema:
             $ref: '#/definitions/Problem'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              description: |
+                Number of seconds the client ought to wait before making a follow-up request.
+              type: number
 
   /event-types/{name}/partitions:
     get:
@@ -847,6 +862,13 @@ paths:
             already equals the maximal value - the total amount of this subscription partitions.
           schema:
             $ref: '#/definitions/Problem'
+        '429':
+          description: Too many requests
+          headers:
+            Retry-After:
+              description: |
+                Number of seconds the client ought to wait before making a follow-up request.
+              type: number
 
   /subscriptions/{subscription_id}/stats:
     get:
@@ -875,35 +897,12 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  '/registry/validation-strategies':
-    get:
-      tags:
-        - schema-registry-api
-      description: |
-        Lists all of the validation strategies supported by this installation of Nakadi.
-
-        If the EventType creation is to have special validations (besides the default), one can consult over
-        this method the available possibilities.
-      responses:
-        '200':
-          description: Returns a list of all validation strategies known to Nakadi
-          schema:
-            type: array
-            items:
-              type: string
-        '500':
-          description: Server error
-          schema:
-            $ref: '#/definitions/Problem'
-        '503':
-          description: Service (temporarily) unavailable
-          schema:
-            $ref: '#/definitions/Problem'
-
   '/registry/enrichment-strategies':
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
       description: |
         Lists all of the enrichment strategies supported by this Nakadi installation. Special or
         custom strategies besides the defaults will be listed here.
@@ -923,8 +922,10 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
       description: |
-        Lists all of the partition resolution strategies supported by this installation of Nakadi. 
+        Lists all of the partition resolution strategies supported by this installation of Nakadi.
         Special or custom strategies besides the defaults will be listed here.
 
         Nakadi currently offers these inbuilt strategies:
@@ -953,6 +954,119 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
+
+  /settings/flooders:
+    get:
+      tags:
+        - settings-api
+      description: |
+        Lists all blocked abusive producers/consumers divided by app and event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      responses:
+        '200':
+          description: Lists all blocked abusive producers/consumers.
+          schema:
+            type: object
+            properties:
+              producers:
+                description: a list of all blocked producers.
+                type: object
+                properties:
+                  event_types:
+                    description: a list of all blocked event types for publishing events.
+                    type: array
+                    items:
+                      type: string
+                  apps:
+                    description: a list of all blocked apps for publishing events.
+                    type: array
+                    items:
+                      type: string
+              consumers:
+                description: a list of all blocked consumers.
+                type: object
+                properties:
+                  event_types:
+                    description: a list of all blocked event types for consuming events.
+                    type: array
+                    items:
+                      type: string
+                  apps:
+                    description: a list of all blocked apps for consuming events.
+                    type: array
+                    items:
+                      type: string
+    post:
+      tags:
+        - settings-api
+      description: |
+        Blocks publication/consumption for particular app or event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: flooder
+          in: body
+          description: Abusive client to be blocked
+          schema:
+            $ref: '#/definitions/Flooder'
+          required: true
+      responses:
+        '204':
+          description: Abusive client or event type was successfully blocked.
+    delete:
+      tags:
+        - settings-api
+      description: Unblocks publication/consumption for particular app or event type.
+      parameters:
+        - name: flooder
+          in: body
+          description: Abusive client or event type to be unblocked
+          schema:
+            $ref: '#/definitions/Flooder'
+          required: true
+      responses:
+        '204':
+          description: Abusive client was successfully unblocked.
+
+  /settings/features:
+    get:
+      tags:
+        - settings-api
+      description: |
+        Lists all available features.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      responses:
+        '200':
+          description: A list of all available features.
+          schema:
+            type: object
+            properties:
+              items:
+                description: list of features.
+                type: array
+                items:
+                  $ref: '#/definitions/Feature'
+            required:
+              - items
+    post:
+      tags:
+        - settings-api
+      description: |
+        Enables or disables feature depends on the payload
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: flooder
+          in: body
+          schema:
+            $ref: '#/definitions/Feature'
+          required: true
+      responses:
+        '204':
+          description: Feature was successfully accepted.
+
 
 
 # ################################### #
@@ -983,7 +1097,7 @@ definitions:
       Metadata for this Event.
 
       Contains commons fields for both Business and DataChange Events. Most are enriched by Nakadi
-      upon reception, but they in general MIGHT be set by the client.  
+      upon reception, but they in general MIGHT be set by the client.
     properties:
       eid:
         description: |
@@ -1050,8 +1164,8 @@ definitions:
     description: |
       A Business Event.
 
-      Usually represents a status transition in a Business process.    
-    allOf:  
+      Usually represents a status transition in a Business process.
+    allOf:
       - $ref: '#/definitions/Event'
       - type: object
         properties:
@@ -1064,11 +1178,11 @@ definitions:
     description: |
       A Data change Event.
 
-      Represents a change on a resource. Also contains indicators for the data 
+      Represents a change on a resource. Also contains indicators for the data
       type and the type of operation performed.
     allOf:
       - $ref: '#/definitions/Event'
-      - type: object        
+      - type: object
         properties:
           data_type:
             type: string
@@ -1326,13 +1440,13 @@ definitions:
         type: string
         description: |
           Name of this EventType. The name is constrained by a regular expression.
-          
+
           Note: the name can encode the owner/responsible for this EventType and ideally should
           follow a common pattern that makes it easy to read an understand, but this level of
           structure is not enforced. For example a team name and data type can be used such as
-          'acme-team.price-change'.        
+          'acme-team.price-change'.
         pattern: '[a-zA-Z][-0-9a-zA-Z_]*(\.[a-zA-Z][-0-9a-zA-Z_]*)*'
-        example: order.order_cancelled, acme-platform.users  
+        example: order.order_cancelled, acme-platform.users
       owning_application:
         type: string
         description: |
@@ -1361,7 +1475,7 @@ definitions:
           - `business`: Events of this category will be BusinessEvents. The effective schema for
             validation contains `metadata` and any additionally defined properties passed in the
             `EventTypeSchema` directly on top level of the Event. If name conflicts arise, creation
-            of this EventType will be rejected. 
+            of this EventType will be rejected.
 
       enrichment_strategies:
         description: |
@@ -1542,9 +1656,9 @@ definitions:
                 The amount of events in this partition that are not yet consumed within this subscription. May be not
                 determined at the moment when no events were yet consumed from the partition in this subscription (in
                 that case the property will be absent).
-            client_id:
+            stream_id:
               type: string
-              description: the id of client that consumes data from this partition
+              description: the id of the stream that consumes data from this partition
           required:
             - partition
             - state
@@ -1622,6 +1736,35 @@ definitions:
         type: string
         format: uri
         example: '/subscriptions?offset=20&limit=10'
+
+  Flooder:
+    description: Abusive consumer or producer
+    type: object
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+        enum:
+          - CONSUMER_APP
+          - CONSUMER_ET
+          - PRODUCER_APP
+          - PRODUCER_ET
+    required:
+      - name
+      - type
+
+  Feature:
+    description: Feature of Nakadi to be enabled or disabled
+    type: object
+    properties:
+      feature:
+        type: string
+      enabled:
+        type: boolean
+    required:
+      - feature
+      - enabled
 
 parameters:
   EventTypeName:

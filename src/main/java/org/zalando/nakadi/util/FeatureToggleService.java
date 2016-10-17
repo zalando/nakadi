@@ -2,10 +2,22 @@ package org.zalando.nakadi.util;
 
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 public interface FeatureToggleService {
 
-    boolean isFeatureEnabled(final Feature feature);
+    void setFeature(FeatureWrapper feature);
+
+    boolean isFeatureEnabled(Feature feature);
+
+    default List<FeatureWrapper> getFeatures() {
+        return Arrays.stream(Feature.values())
+                .map(feature -> new FeatureWrapper(feature, isFeatureEnabled(feature)))
+                .collect(Collectors.toList());
+    }
 
     enum Feature {
 
@@ -17,7 +29,6 @@ public interface FeatureToggleService {
         CHECK_PARTITIONS_KEYS("check_partitions_keys"),
         CHECK_OWNING_APPLICATION("check_owning_application");
 
-
         private final String id;
 
         Feature(final String id) {
@@ -26,6 +37,27 @@ public interface FeatureToggleService {
 
         public String getId() {
             return id;
+        }
+    }
+
+    class FeatureWrapper {
+        private Feature feature;
+        private boolean enabled;
+
+        public FeatureWrapper() {
+        }
+
+        public FeatureWrapper(final Feature feature, final boolean enabled) {
+            this.feature = feature;
+            this.enabled = enabled;
+        }
+
+        public Feature getFeature() {
+            return feature;
+        }
+
+        public boolean isEnabled() {
+            return enabled;
         }
     }
 }

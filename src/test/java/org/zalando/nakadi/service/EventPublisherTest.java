@@ -21,27 +21,30 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.NakadiPermissions;
 import org.zalando.nakadi.security.Permissions;
-import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.validation.EventTypeValidator;
-import org.zalando.nakadi.validation.ValidationError;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.isEmptyString;
-import static org.hamcrest.core.IsEqual.equalTo;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.validation.EventTypeValidator;
+import org.zalando.nakadi.validation.ValidationError;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.isEmptyString;
+import static org.hamcrest.core.IsEqual.equalTo;
+import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.createBatch;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 

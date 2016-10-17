@@ -24,21 +24,22 @@ import static java.util.function.Function.identity;
 public class EventStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
-
     public static final String BATCH_SEPARATOR = "\n";
     public static final Charset UTF8 = Charset.forName("UTF-8");
 
     private final OutputStream outputStream;
-
     private final EventConsumer eventConsumer;
-
     private final EventStreamConfig config;
+    private final FloodService floodService;
 
-    public EventStream(final EventConsumer eventConsumer, final OutputStream outputStream,
-            final EventStreamConfig config) {
+    public EventStream(final EventConsumer eventConsumer,
+                       final OutputStream outputStream,
+                       final EventStreamConfig config,
+                       final FloodService floodService) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
+        this.floodService = floodService;
     }
 
     public void streamEvents(final AtomicBoolean connectionReady) {
@@ -53,7 +54,8 @@ public class EventStream {
             final long start = currentTimeMillis();
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
 
-            while (connectionReady.get()) {
+            while (connectionReady.get() &&
+                    !floodService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
 
                 if (eventOrEmpty.isPresent()) {

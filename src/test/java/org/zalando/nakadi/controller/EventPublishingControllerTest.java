@@ -4,6 +4,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.joda.time.Instant;
 import org.json.JSONArray;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -16,7 +17,6 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
@@ -25,12 +25,12 @@ import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -56,18 +56,20 @@ public class EventPublishingControllerTest {
     private static final String TOPIC = "my-topic";
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
 
-    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private final MetricRegistry metricRegistry;
-    private final JsonTestHelper jsonHelper;
-    private final EventPublisher publisher;
-    private final FeatureToggleService featureToggleService;
-    private final SecuritySettings settings;
+    private ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
+    private MetricRegistry metricRegistry;
+    private JsonTestHelper jsonHelper;
+    private EventPublisher publisher;
+    private FeatureToggleService featureToggleService;
+    private SecuritySettings settings;
 
-    private final MockMvc mockMvc;
-    private final EventTypeMetricRegistry eventTypeMetricRegistry;
-    private final ThrottlingService throttlingService;
+    private MockMvc mockMvc;
+    private EventTypeMetricRegistry eventTypeMetricRegistry;
+    private ThrottlingService throttlingService;
+    private FloodService floodService;
 
-    public EventPublishingControllerTest() throws NakadiException, ExecutionException {
+    @Before
+    public void setUp() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
@@ -79,8 +81,11 @@ public class EventPublishingControllerTest {
         doReturn(new ThrottleResult(1, 1, 1, 1, 1, 1, Instant.now())).when(throttlingService)
                 .mark(any(), any(), anyInt(), anyInt());
 
-        final EventPublishingController controller = new EventPublishingController(publisher, eventTypeMetricRegistry,
-                throttlingService);
+        floodService = Mockito.mock(FloodService.class);
+        Mockito.when(floodService.isProductionBlocked(any(), any())).thenReturn(false);
+
+        final EventPublishingController controller =
+                new EventPublishingController(publisher, eventTypeMetricRegistry, throttlingService, floodService);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
                 = new MappingJackson2HttpMessageConverter(objectMapper);
