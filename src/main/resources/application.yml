@@ -73,10 +73,3 @@ nakadi:
     windowSize: 30000 # 30 seconds
     samples: 30
   flood.retry.after: 300 # seconds
-
-spring:
-  profiles: acceptanceTest
-nakadi:
-  stream:
-    default:
-      commitTimeout: 5 # seconds
