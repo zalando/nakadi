@@ -115,6 +115,8 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_type.read']
       description: Returns a list of all registered `EventType`s
       parameters:
         - name: X-Flow-Id
@@ -201,6 +203,8 @@ paths:
     get:
       tags:
         - schema-registry-api
+      security:
+        - oauth2: ['nakadi.event_type.read']
       description: |
         Returns the `EventType` identified by its name.
       parameters:
