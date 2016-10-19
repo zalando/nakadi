@@ -1544,7 +1544,7 @@ definitions:
 
       compatibility_mode:
         description: |
-          Compatibility modes provides a mean for event owners to evolve their schema, given changes
+          Compatibility modes provide a mean for event owners to evolve their schema, given changes
           respect the semantics defined by this field.
 
           It's designed to be flexible enough so that producers can evolve their schemas while not
