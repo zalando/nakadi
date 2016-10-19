@@ -1567,9 +1567,6 @@ definitions:
           When in compatible mode, it's allowed to add new optional properties and definitions to an existing schema,
           but no other changes are allowed.
         type: string
-        enum:
-          - none
-          - compatible
         default: compatible
 
       schema:
