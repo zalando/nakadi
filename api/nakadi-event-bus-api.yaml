@@ -501,6 +501,8 @@ paths:
         convenience.
     responses:
         '200':
+          schema:
+            type: object
           description: |
             Schema as JSON.
         '401':
