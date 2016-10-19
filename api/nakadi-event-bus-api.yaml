@@ -68,7 +68,7 @@ info:
     Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
 
-  version: '0.7.0'
+  version: '0.8.0'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
