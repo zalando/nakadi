@@ -1165,7 +1165,6 @@ definitions:
         example: '1996-12-19T16:39:57-08:00'
       version:
         type: string
-        readOnly: true
         description: |
           Version of the schema used for validating this event. This is enriched upon reception.
           Clients consuming events should deserialize events only when differences between their
@@ -1640,6 +1639,7 @@ definitions:
     properties:
       version:
         type: string
+        readOnly: true
         description: |
           Automatically generated value based on semantic versioning. Should not be modified by clients.
         default: '1.0.0'
