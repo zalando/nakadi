@@ -76,7 +76,7 @@ public class EventPublishingControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
-        ThrottlingService throttlingService = mock(ThrottlingService.class);
+        final ThrottlingService throttlingService = mock(ThrottlingService.class);
         doReturn(new ThrottleResult(1, 1, 1, 1, 1, 1, Instant.now())).when(throttlingService)
                 .mark(any(), any(), anyInt(), anyInt());
 
