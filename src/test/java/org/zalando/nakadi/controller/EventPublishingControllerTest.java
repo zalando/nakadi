@@ -65,7 +65,6 @@ public class EventPublishingControllerTest {
 
     private MockMvc mockMvc;
     private EventTypeMetricRegistry eventTypeMetricRegistry;
-    private ThrottlingService throttlingService;
     private FloodService floodService;
 
     @Before
@@ -77,7 +76,7 @@ public class EventPublishingControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
-        throttlingService = mock(ThrottlingService.class);
+        ThrottlingService throttlingService = mock(ThrottlingService.class);
         doReturn(new ThrottleResult(1, 1, 1, 1, 1, 1, Instant.now())).when(throttlingService)
                 .mark(any(), any(), anyInt(), anyInt());
 
