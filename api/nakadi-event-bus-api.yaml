@@ -1165,6 +1165,7 @@ definitions:
         example: '1996-12-19T16:39:57-08:00'
       version:
         type: string
+        readOnly: true
         description: |
           Version of the schema used for validating this event. This is enriched upon reception.
           Clients consuming events should desserialize events only when differences between their
