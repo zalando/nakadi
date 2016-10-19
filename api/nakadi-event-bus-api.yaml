@@ -487,10 +487,6 @@ paths:
             type: array
             items:
               $ref: '#/definitions/EventTypeSchema'
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
 
   '/event-types/{name}/schemas/{version}':
     get:
@@ -505,10 +501,6 @@ paths:
             type: object
           description: |
             Schema as JSON.
-        '401':
-          description: Client is not authenticated
-          schema:
-            $ref: '#/definitions/Problem'
 
   '/event-types/{name}/partitions':
     get:
