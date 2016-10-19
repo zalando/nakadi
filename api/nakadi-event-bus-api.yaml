@@ -1168,7 +1168,7 @@ definitions:
         readOnly: true
         description: |
           Version of the schema used for validating this event. This is enriched upon reception.
-          Clients consuming events should desserialize events only when differences between their
+          Clients consuming events should deserialize events only when differences between their
           schema and the one used to validate differs on minor level, for example, from '1.1.0' to
           '1.2.0'.
       parent_eids:
