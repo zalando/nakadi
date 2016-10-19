@@ -1157,6 +1157,7 @@ definitions:
         example: '1996-12-19T16:39:57-08:00'
       received_at:
         type: string
+        readOnly: true
         description: |
           Timestamp of the reception of the Event by Nakadi. This is enriched upon reception of
           the Event.
@@ -1165,6 +1166,7 @@ definitions:
         example: '1996-12-19T16:39:57-08:00'
       version:
         type: string
+        readOnly: true
         description: |
           Version of the schema used for validating this event. This is enriched upon reception.
           Clients consuming events should deserialize events only when differences between their
