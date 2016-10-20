@@ -1548,16 +1548,16 @@ definitions:
 
           List of available compatibility modes:
 
-          - 'deprecated': Schema changes are not allowed. This is used only by legacy event types that are not
-            compatible. This option is not available for new event types. Additional properties are allowed.
+          - 'deprecated': Schema changes are not allowed. This is used only by legacy event types. This option is not
+            available for new event types. Schema validation is lenient and allow fields that are not defined. Also,
+            it's possible to use the full json schema specification for defining schemas.
 
           - 'incompatible': Any schema modification is accepted, even if it might break existing producers or consumers.
 
           - 'compatible': Schema changes never break existing consumers. Every event published since the first version
-            is still valid based on the newest schema.
-
-          When in compatible mode, it's allowed to add new optional properties and definitions to an existing schema,
-          but no other changes are allowed.
+            is still valid based on the newest schema. When in compatible mode, it's allowed to add new optional
+            properties and definitions to an existing schema, but no other changes are allowed. If additionalProperties
+            or patternProperties are used the wrapping object is closed for change.
         type: string
         default: compatible
 
