@@ -2,6 +2,10 @@ package org.zalando.nakadi.config;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.zalando.nakadi.metrics.MonitoringRequestFilter;
+import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.util.FlowIdRequestFilter;
+import org.zalando.nakadi.util.GzipBodyRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;
@@ -19,10 +23,6 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
-import org.zalando.nakadi.metrics.MonitoringRequestFilter;
-import org.zalando.nakadi.security.ClientResolver;
-import org.zalando.nakadi.util.FlowIdRequestFilter;
-import org.zalando.nakadi.util.GzipBodyRequestFilter;
 
 import javax.servlet.Filter;
 import java.util.List;
