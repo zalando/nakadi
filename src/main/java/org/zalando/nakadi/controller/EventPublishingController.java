@@ -17,18 +17,17 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.throttling.ThrottleResult;
-import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.throttling.ThrottleResult;
+import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
 import javax.ws.rs.core.Response;
 
 import static org.springframework.http.ResponseEntity.status;
-import static org.springframework.web.bind.annotation.RequestMethod.HEAD;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
@@ -75,12 +74,6 @@ public class EventPublishingController {
             eventTypeMetrics.incrementResponseCount(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }
-    }
-
-    @RequestMapping(value = "/event-types/{eventTypeName}/events", method = HEAD)
-    public ResponseEntity<?> headEvent(@PathVariable final String eventTypeName, final Client client) {
-        final ThrottleResult result = throttlingService.current(client.getId(), eventTypeName);
-        return rateLimitHeaders(ResponseEntity.status(HttpStatus.NO_CONTENT), result).build();
     }
 
     private ResponseEntity<?> postEventInternal(final String eventTypeName,
