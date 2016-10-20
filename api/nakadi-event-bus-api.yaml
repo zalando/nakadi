@@ -1658,7 +1658,7 @@ definitions:
           When defining a schema, every property should be explicitly defined with its type. It means that,
           additionalProperties true is not accepted.
 
-          The complete list of not allowed attributes is: additionalProperties, not and patternProperties.
+          The complete list of not allowed attributes is: additionalProperties=true, not and patternProperties.
     required:
       - type
       - schema
