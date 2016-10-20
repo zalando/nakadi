@@ -77,7 +77,7 @@ public class EventPublishingControllerTest {
         settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         final ThrottlingService throttlingService = mock(ThrottlingService.class);
-        doReturn(new ThrottleResult(1, 1, 1, 1, 1, 1, Instant.now())).when(throttlingService)
+        doReturn(new ThrottleResult(1, 1, 1, 1, 1, 1, Instant.now(), false)).when(throttlingService)
                 .mark(any(), any(), anyInt(), anyInt());
 
         floodService = Mockito.mock(FloodService.class);

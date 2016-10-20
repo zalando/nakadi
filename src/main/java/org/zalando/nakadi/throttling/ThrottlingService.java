@@ -36,21 +36,16 @@ public class ThrottlingService {
         final long now = Instant.now().getMillis();
         final ThrottleMetrics throttleMetrics = metricsFor(application, eventType);
 
-        final ThrottleResult current = getThrottleResult(throttleMetrics, now);
-        if (current.isThrottled()) {
-            return current;
+        ThrottleResult result = getThrottleResult(throttleMetrics, size, messagesCount, now);
+        if (!result.isThrottled()) {
+            throttleMetrics.mark(size, messagesCount, now);
+            return result;
         }
-        throttleMetrics.mark(size, messagesCount, now);
-        return getThrottleResult(throttleMetrics, now);
+        return result;
     }
 
-    public ThrottleResult current(final String application, final String eventType) {
-        final long now = Instant.now().getMillis();
-        final ThrottleMetrics throttleMetrics = metricsFor(application, eventType);
-        return getThrottleResult(throttleMetrics, now);
-    }
-
-    private ThrottleResult getThrottleResult(final ThrottleMetrics metrics, final long now) {
+    private ThrottleResult getThrottleResult(final ThrottleMetrics metrics, final long size, final long messagesCount,
+                                             final long now) {
         //return metrics for the 15 last minutes
         final long batches = metrics.getBatches().measure(now);
         final long bytes = metrics.getBytes().measure(now);
@@ -60,19 +55,31 @@ public class ThrottlingService {
         final long messagesLimit = zkConfigurationService.getLong(MESSAGES_LIMIT);
         final long batchesLimit = zkConfigurationService.getLong(BATCHES_LIMIT);
 
-        final long bytesRemaining = remaining(bytesLimit, bytes);
-        final long messagesRemaining = remaining(messagesLimit, messages);
-        final long batchesRemaining = remaining(batchesLimit, batches);
+        final long bytesRemaining = bytesLimit - bytes;
+        final long messagesRemaining = messagesLimit - messages;
+        final long batchesRemaining = batchesLimit - batches;
 
-        //TODO calculate correct reset time
-        final Instant reset = Instant.now();
-        return new ThrottleResult(bytesLimit, bytesRemaining, messagesLimit, messagesRemaining, batchesLimit,
-                batchesRemaining, reset);
+        final long bytesAfter = bytesRemaining - size;
+        final long messagesAfter = messagesRemaining - messagesCount;
+        final long batchesAfter = batchesRemaining - 1;
+
+        boolean throttled = batchesAfter < 0 || bytesAfter < 0 || messagesAfter < 0;
+
+        final Instant reset = Instant.now().plus(windowSize);
+        if (throttled) {
+            return new ThrottleResult(bytesLimit, remaining(bytesRemaining),
+                    messagesLimit, remaining(messagesRemaining),
+                    batchesLimit, remaining(batchesRemaining),
+                    reset, true);
+        }
+        return new ThrottleResult(bytesLimit, batchesAfter,
+                messagesLimit, messagesAfter,
+                batchesLimit, batchesAfter,
+                reset, false);
     }
 
-    private long remaining(final long limit, final long value) {
-        final long remaining = limit - value;
-        return remaining <= 0 ? 0 : remaining;
+    private long remaining(final long value) {
+        return value <= 0 ? 0 : value;
     }
 
     private ThrottleMetrics metricsFor(final String application, final String eventType) {

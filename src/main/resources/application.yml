@@ -82,3 +82,10 @@ nakadi:
   stream:
     default:
       commitTimeout: 5 # seconds
+  throttling:
+    bytesLimit: 1048576 # 1 MB
+    messagesLimit: 10
+    batchesLimit: 10
+    # 1 minute aggregation
+    windowSize: 30000 # 30 seconds
+    samples: 2
