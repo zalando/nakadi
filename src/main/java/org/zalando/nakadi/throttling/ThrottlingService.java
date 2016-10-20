@@ -36,7 +36,7 @@ public class ThrottlingService {
         final long now = Instant.now().getMillis();
         final ThrottleMetrics throttleMetrics = metricsFor(application, eventType);
 
-        ThrottleResult result = getThrottleResult(throttleMetrics, size, messagesCount, now);
+        final ThrottleResult result = getThrottleResult(throttleMetrics, size, messagesCount, now);
         if (!result.isThrottled()) {
             throttleMetrics.mark(size, messagesCount, now);
             return result;
@@ -63,7 +63,7 @@ public class ThrottlingService {
         final long messagesAfter = messagesRemaining - messagesCount;
         final long batchesAfter = batchesRemaining - 1;
 
-        boolean throttled = batchesAfter < 0 || bytesAfter < 0 || messagesAfter < 0;
+        final boolean throttled = batchesAfter < 0 || bytesAfter < 0 || messagesAfter < 0;
 
         final Instant reset = Instant.now().plus(windowSize);
         if (throttled) {
