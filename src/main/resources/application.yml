@@ -22,6 +22,12 @@ spring:
     maxActive: 20
     testOnBorrow: true
     validationQuery: SELECT 1
+
+hystrix.command.default.execution.isolation.strategy: SEMAPHORE
+hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
+hystrix.command.default.circuitBreaker.requestVolumeThreshold: 3
+hystrix.command.default.circuitBreaker.sleepWindowInMilliseconds: 5000
+
 nakadi:
   topic:
     min:
@@ -40,7 +46,7 @@ nakadi:
         commitTimeout: 60 # 1 minute
   featureToggle.default: false
   kafka:
-    request.timeout.ms: 30000
+    request.timeout.ms: 7000
     instanceType: t2.large
     poll.timeoutMs: 100
     send.timeoutMs: 5000
