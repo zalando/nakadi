@@ -25,7 +25,7 @@ spring:
 
 hystrix.command.default.execution.isolation.strategy: SEMAPHORE
 hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
-hystrix.command.default.circuitBreaker.requestVolumeThreshold: 3
+hystrix.command.default.circuitBreaker.requestVolumeThreshold: 20
 hystrix.command.default.circuitBreaker.sleepWindowInMilliseconds: 5000
 
 nakadi:
