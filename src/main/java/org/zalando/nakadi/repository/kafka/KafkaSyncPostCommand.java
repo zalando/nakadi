@@ -21,6 +21,7 @@ import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -101,6 +102,7 @@ public class KafkaSyncPostCommand extends HystrixCommand<KafkaSyncPostCommand.Co
             throws EventPublishingException {
         final List<Exception> exceptions = sendFutures.entrySet().stream()
                 .map(entry -> entry.getValue().getNow(null))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
         if (!exceptions.isEmpty()) {
             LOG.error("Exceptions while publishing batches to kafka: {}", exceptions);
