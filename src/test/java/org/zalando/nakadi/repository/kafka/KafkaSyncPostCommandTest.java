@@ -70,7 +70,7 @@ public class KafkaSyncPostCommandTest {
                 Collections.singletonList(batchItem),
                 kafkaFactory,
                 10000,
-                5000);
+                10000);
     }
 
     private class TestProducer implements Producer<String, String> {
