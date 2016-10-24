@@ -65,7 +65,7 @@ public class KafkaSyncPostCommandTest {
         Assert.assertTrue(batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
     }
 
-    private KafkaSyncPostCommand createCommand(BatchItem batchItem) {
+    private KafkaSyncPostCommand createCommand(final BatchItem batchItem) {
         return new KafkaSyncPostCommand("topic-1",
                 Collections.singletonList(batchItem),
                 kafkaFactory,
@@ -76,17 +76,17 @@ public class KafkaSyncPostCommandTest {
 
         private Exception exception;
 
-        public void setException(Exception exception) {
+        public void setException(final Exception exception) {
             this.exception = exception;
         }
 
         @Override
-        public Future<RecordMetadata> send(ProducerRecord<String, String> record) {
+        public Future<RecordMetadata> send(final ProducerRecord<String, String> record) {
             return null;
         }
 
         @Override
-        public Future<RecordMetadata> send(ProducerRecord<String, String> record, Callback callback) {
+        public Future<RecordMetadata> send(final ProducerRecord<String, String> record, final Callback callback) {
             callback.onCompletion(null, exception);
             return null;
         }
@@ -97,7 +97,7 @@ public class KafkaSyncPostCommandTest {
         }
 
         @Override
-        public List<PartitionInfo> partitionsFor(String topic) {
+        public List<PartitionInfo> partitionsFor(final String topic) {
             return null;
         }
 
@@ -112,7 +112,7 @@ public class KafkaSyncPostCommandTest {
         }
 
         @Override
-        public void close(long timeout, TimeUnit unit) {
+        public void close(final long timeout, final TimeUnit unit) {
 
         }
     }
