@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.SubscriptionBase;
@@ -167,9 +166,6 @@ public class KafkaTopicRepository implements TopicRepository {
             if (cause instanceof EventPublishingException) {
                 throw (EventPublishingException) cause;
             }
-            batch.stream()
-                    .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
-                    .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error"));
             throw new EventPublishingException("Error publishing message to kafka", hre);
         }
     }
