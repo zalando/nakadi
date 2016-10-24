@@ -91,10 +91,9 @@ public class KafkaSyncPostCommandTest {
             return null;
         }
 
-        // intentionally left empty for testing purposes
         @Override
         public void flush() {
-
+            // intentionally left empty for testing purposes
         }
 
         @Override
@@ -107,16 +106,14 @@ public class KafkaSyncPostCommandTest {
             return null;
         }
 
-        // intentionally left empty for testing purposes
         @Override
         public void close() {
-
+            // intentionally left empty for testing purposes
         }
 
-        // intentionally left empty for testing purposes
         @Override
         public void close(final long timeout, final TimeUnit unit) {
-
+            // intentionally left empty for testing purposes
         }
     }
 
