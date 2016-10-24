@@ -36,8 +36,7 @@ import java.util.stream.Stream;
 public class KafkaSyncPostCommand extends HystrixCommand<KafkaSyncPostCommand.CommandResult> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSyncPostCommand.class);
-    private static final String GROUP_KEY_SUFFIX = "kafka-sync-post-";
-    private static final int HYSTRIX_COMMAND_TIMEOUT_DELTA = 5000;
+    private static final String GROUP_KEY_PREFIX = "kafka-sync-post-";
 
     private final String topicId;
     private final List<BatchItem> batch;
@@ -47,9 +46,10 @@ public class KafkaSyncPostCommand extends HystrixCommand<KafkaSyncPostCommand.Co
     public KafkaSyncPostCommand(final String topicId,
                                 final List<BatchItem> batch,
                                 final KafkaFactory kafkaFactory,
-                                final long sendTimeout) {
-        super(HystrixCommandGroupKey.Factory.asKey(GROUP_KEY_SUFFIX + topicId),
-                (int) sendTimeout + HYSTRIX_COMMAND_TIMEOUT_DELTA);
+                                final long sendTimeout,
+                                final long hystrixCommandTimeoutDeltaMs) {
+        super(HystrixCommandGroupKey.Factory.asKey(GROUP_KEY_PREFIX + topicId),
+                (int) (sendTimeout + hystrixCommandTimeoutDeltaMs));
         this.topicId = topicId;
         this.batch = batch;
         this.kafkaFactory = kafkaFactory;
@@ -118,11 +118,10 @@ public class KafkaSyncPostCommand extends HystrixCommand<KafkaSyncPostCommand.Co
     }
 
     private boolean hasKafkaConnectionException(final List<Exception> exceptions) {
-        return exceptions.stream().filter(ex ->
+        return exceptions.stream().anyMatch(ex ->
                 ex instanceof org.apache.kafka.common.errors.TimeoutException ||
                 ex instanceof NetworkException ||
-                ex instanceof UnknownServerException)
-                .findFirst().isPresent();
+                ex instanceof UnknownServerException);
     }
 
     private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {

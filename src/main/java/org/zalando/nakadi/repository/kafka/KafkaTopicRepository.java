@@ -157,7 +157,8 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
         try {
             final KafkaSyncPostCommand.CommandResult result =
-                    new KafkaSyncPostCommand(topicId, batch, kafkaFactory, createSendTimeout()).execute();
+                    new KafkaSyncPostCommand(topicId, batch, kafkaFactory, createSendTimeout(),
+                            nakadiSettings.getHystrixCommandTimeoutDeltaMs()).execute();
             if (result.isFailed()) {
                 throw result.getException();
             }

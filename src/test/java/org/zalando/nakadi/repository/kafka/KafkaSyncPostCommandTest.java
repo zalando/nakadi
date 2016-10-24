@@ -69,7 +69,8 @@ public class KafkaSyncPostCommandTest {
         return new KafkaSyncPostCommand("topic-1",
                 Collections.singletonList(batchItem),
                 kafkaFactory,
-                10000);
+                10000,
+                5000);
     }
 
     private class TestProducer implements Producer<String, String> {
