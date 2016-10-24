@@ -10,9 +10,9 @@ import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 public class ThrottlingAT extends BaseAT {
 
     @Test(timeout = 30000)
-    public void throttleAfter10Messages() throws Exception {
+    public void throttleAfter100Messages() throws Exception {
         final EventType eventType = createEventType();
-        rangeClosed(0, 9)
+        rangeClosed(1, 200)
                 .forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo" + x + "\"}")
                         .then().statusCode(200));
 
