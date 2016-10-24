@@ -147,7 +147,6 @@ dependencies {
         exclude module: "json"
     }
     compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.0'
-//    compile 'com.netflix.hystrix:hystrix-core:1.5.6'
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'
