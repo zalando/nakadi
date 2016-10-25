@@ -22,12 +22,6 @@ spring:
     maxActive: 20
     testOnBorrow: true
     validationQuery: SELECT 1
-
-hystrix.command.default.execution.isolation.strategy: SEMAPHORE
-hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
-hystrix.command.default.circuitBreaker.requestVolumeThreshold: 20
-hystrix.command.default.circuitBreaker.sleepWindowInMilliseconds: 5000
-
 nakadi:
   topic:
     min:
@@ -72,7 +66,6 @@ nakadi:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
   flood.retry.after: 300 # seconds
-  hystrix.command.timeout.delta.ms: 5000
 ---
 
 spring:
