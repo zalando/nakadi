@@ -29,10 +29,10 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
-import org.zalando.nakadi.security.FullAccessClient;
-import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.NakadiPermissions;
+import org.zalando.nakadi.security.Permissions;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
@@ -68,6 +68,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -84,8 +85,6 @@ public class EventStreamControllerTest {
     private static final String TEST_TOPIC = "test-topic";
     private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
     private static final Set<String> SCOPE_READ = Collections.singleton("oauth2.scope.read");
-    private static final Client FULL_ACCESS_CLIENT = new FullAccessClient("clientId");
-    private static final String CLIENT_ID = "clientId";
 
     private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
@@ -133,6 +132,7 @@ public class EventStreamControllerTest {
 
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
+        doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
@@ -424,7 +424,8 @@ public class EventStreamControllerTest {
     }
 
     private void writeStream(final Set<String> scopes) throws Exception {
-        final StreamingResponseBody responseBody = createStreamingResponseBody(new NakadiClient("clientId", scopes));
+        final StreamingResponseBody responseBody = createStreamingResponseBody(new Client("clientId",
+                new NakadiPermissions("clientId", scopes)));
         final OutputStream outputStream = mock(OutputStream.class);
         responseBody.writeTo(outputStream);
     }
@@ -457,7 +458,7 @@ public class EventStreamControllerTest {
 
     protected StreamingResponseBody createStreamingResponseBody() throws IOException {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock,
-                FULL_ACCESS_CLIENT);
+                new Client("test", Permissions.FULL_ACCESS));
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Client client) throws Exception {
@@ -472,7 +473,8 @@ public class EventStreamControllerTest {
                                                               final Integer streamKeepAliveLimit,
                                                               final String cursorsStr) throws IOException {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, batchLimit, streamLimit, batchTimeout, streamTimeout,
-                streamKeepAliveLimit, cursorsStr, requestMock, responseMock, FULL_ACCESS_CLIENT);
+                streamKeepAliveLimit, cursorsStr, requestMock, responseMock,
+                new Client("test", Permissions.FULL_ACCESS));
     }
 
 }

@@ -130,7 +130,6 @@ public class EventTypeControllerTest {
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
-
     }
 
     @Test

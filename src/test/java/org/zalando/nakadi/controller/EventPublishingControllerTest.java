@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.joda.time.Instant;
 import org.json.JSONArray;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,8 +20,10 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.throttling.ThrottleResult;
+import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.FloodService;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -32,7 +35,9 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,7 +53,7 @@ import static org.zalando.nakadi.domain.EventPublishingStep.VALIDATING;
 
 public class EventPublishingControllerTest {
 
-    public static final String TOPIC = "my-topic";
+    private static final String TOPIC = "my-topic";
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
 
     private ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
@@ -70,11 +75,16 @@ public class EventPublishingControllerTest {
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
+        doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
+        final ThrottlingService throttlingService = mock(ThrottlingService.class);
+        doReturn(new ThrottleResult(1, 1, 1, 1, 1, 1, Instant.now(), false)).when(throttlingService)
+                .mark(any(), any(), anyInt(), anyInt());
+
         floodService = Mockito.mock(FloodService.class);
         Mockito.when(floodService.isProductionBlocked(any(), any())).thenReturn(false);
 
         final EventPublishingController controller =
-                new EventPublishingController(publisher, eventTypeMetricRegistry, floodService);
+                new EventPublishingController(publisher, eventTypeMetricRegistry, throttlingService, floodService);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
                 = new MappingJackson2HttpMessageConverter(objectMapper);

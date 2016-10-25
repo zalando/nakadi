@@ -141,7 +141,7 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
-                if  (floodService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                if  (floodService.isSubscriptionConsumptionBlocked(subscriptionId, client.getId())) {
                     response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                     response.setHeader("Retry-After", floodService.getRetryAfterStr());
                     return;
@@ -149,7 +149,7 @@ public class SubscriptionStreamController {
 
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
-                        nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
+                        nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getId());
                 streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output,
                         connectionReady, floodService);
                 streamer.stream();

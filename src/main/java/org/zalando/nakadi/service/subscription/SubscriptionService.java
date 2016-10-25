@@ -103,7 +103,7 @@ public class SubscriptionService {
         eventTypeMapping.values().stream()
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+                .forEach(eventType -> client.getPermissions().checkScopes(eventType.getReadScopes()));
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
@@ -188,7 +188,7 @@ public class SubscriptionService {
     public Result<Void> deleteSubscription(final String subscriptionId, final Client client) {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            if (!client.idMatches(subscription.getOwningApplication())) {
+            if (!client.getPermissions().isOwner(subscription.getOwningApplication())) {
                 return Result.forbidden("You don't have access to this subscription");
             }
 

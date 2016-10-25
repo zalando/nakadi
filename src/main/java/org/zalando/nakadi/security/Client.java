@@ -1,22 +1,20 @@
 package org.zalando.nakadi.security;
 
-import org.zalando.nakadi.exceptions.IllegalScopeException;
+public class Client {
 
-import java.util.Set;
+    private final String id;
+    private final Permissions permissions;
 
-public abstract class Client {
-
-    private final String clientId;
-
-    public Client(final String clientId) {
-        this.clientId = clientId;
+    public Client(final String id, final Permissions permissions) {
+        this.id = id;
+        this.permissions = permissions;
     }
 
-    public abstract boolean idMatches(String clientId);
+    public String getId() {
+        return id;
+    }
 
-    public abstract void checkScopes(Set<String> allowedScopes) throws IllegalScopeException;
-
-    public String getClientId() {
-        return clientId;
+    public Permissions getPermissions() {
+        return permissions;
     }
 }

@@ -71,8 +71,16 @@ nakadi:
   auth:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
+  throttling:
+    bytesLimit: 10737418240 # 10 GB per 15 minutes
+    messagesLimit: 10000000 # 10 million per 15 minutes
+    batchesLimit: 1000000 # million per 15 minutes
+    # 15 minutes aggregation
+    windowSize: 30000 # 30 seconds
+    samples: 30
   flood.retry.after: 300 # seconds
   hystrix.command.timeout.delta.ms: 5000
+
 ---
 
 spring:
@@ -81,3 +89,10 @@ nakadi:
   stream:
     default:
       commitTimeout: 5 # seconds
+  throttling:
+    bytesLimit: 1048576 # 1 MB
+    messagesLimit: 200
+    batchesLimit: 200
+    # 1 minute aggregation
+    windowSize: 30000 # 30 seconds
+    samples: 2

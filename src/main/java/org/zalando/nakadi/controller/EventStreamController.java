@@ -95,7 +95,7 @@ public class EventStreamController {
 
         return outputStream -> {
 
-            if  (floodService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
+            if  (floodService.isConsumptionBlocked(eventTypeName, client.getId())) {
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setHeader("Retry-After", floodService.getRetryAfterStr());
                 return;
@@ -113,7 +113,7 @@ public class EventStreamController {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
                 final String topic = eventType.getTopic();
 
-                client.checkScopes(eventType.getReadScopes());
+                client.getPermissions().checkScopes(eventType.getReadScopes());
 
                 // validate parameters
                 if (!topicRepository.topicExists(topic)) {
@@ -128,7 +128,7 @@ public class EventStreamController {
                         .withStreamTimeout(streamTimeout)
                         .withStreamKeepAliveLimit(streamKeepAliveLimit)
                         .withEtName(eventTypeName)
-                        .withConsumingAppId(client.getClientId());
+                        .withConsumingAppId(client.getId());
 
                 // deserialize cursors
                 List<Cursor> cursors = null;

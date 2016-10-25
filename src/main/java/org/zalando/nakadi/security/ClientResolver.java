@@ -25,7 +25,6 @@ import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICA
 @Component
 public class ClientResolver implements HandlerMethodArgumentResolver {
 
-    private static final String FULL_ACCESS_CLIENT_ID = "FullAccessClientId";
     private final SecuritySettings settings;
     private final FeatureToggleService featureToggleService;
 
@@ -46,14 +45,16 @@ public class ClientResolver implements HandlerMethodArgumentResolver {
                                   final NativeWebRequest request,
                                   final WebDataBinderFactory binderFactory) throws Exception {
         final Optional<String> clientId = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+        final String id = settings.getAuthMode() == OFF
+                ? settings.getAdminClientId()
+                : clientId.orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+
         if (!featureToggleService.isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS)
-                || clientId.filter(settings.getAdminClientId()::equals).isPresent()
-                || settings.getAuthMode() == OFF) {
-            return new FullAccessClient(clientId.orElse(FULL_ACCESS_CLIENT_ID));
+                || id.equals(settings.getAdminClientId())) {
+            return new Client(id, Permissions.FULL_ACCESS);
         }
 
-        return clientId.map(client -> new NakadiClient(client, getScopes()))
-                .orElseThrow(() -> new UnauthorizedUserException("Client unauthorized"));
+        return new Client(id, new NakadiPermissions(id, getScopes()));
     }
 
     private Set<String> getScopes() {
