@@ -1,0 +1,12 @@
+[
+  {
+    "schema": {
+      "not": {
+        "type": "string"
+      }
+    },
+    "errors": [
+      "Forbidden attribute \"not\" found in #/"
+    ]
+  }
+]
