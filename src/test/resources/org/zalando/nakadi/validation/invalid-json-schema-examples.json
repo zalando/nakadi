@@ -8,5 +8,19 @@
     "errors": [
       "Forbidden attribute \"not\" found in #/"
     ]
+  },
+  {
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "not": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "errors": [
+      "Forbidden attribute \"not\" found in #/properties/attempt_of_defining_a_crazy_schema"
+    ]
   }
 ]

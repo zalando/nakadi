@@ -19,16 +19,16 @@ public class SchemaCompatibilityChecker {
     public List<SchemaIncompatibility> checkConstraints(final JSONObject schema) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<SchemaIncompatibility>();
 
-        recursiveCheckConstraints(schema, new Stack<String>(), incompatibilities);
+        recursiveCheckConstraints(schema.toMap(), new Stack<String>(), incompatibilities);
 
         return incompatibilities;
     }
 
     private void recursiveCheckConstraints(
-            final JSONObject schema,
+            final Map<String, Object> schema,
             final Stack<String> jsonPath,
             final List<SchemaIncompatibility> schemaIncompatibilities) {
-        for (final Map.Entry<String, Object> jsonProperty : schema.toMap().entrySet()) {
+        for (final Map.Entry<String, Object> jsonProperty : schema.entrySet()) {
 
 
             for (final JsonAttributeConstraint constraint : CONSTRAINTS) {
@@ -38,12 +38,11 @@ public class SchemaCompatibilityChecker {
                 }
             }
 
-//            if (jsonProperty.getValue() instanceof JSONObject) {
-//            jsonPath.push(jsonProperty.getKey());
-//                recursiveCheckConstraints((JSONObject) jsonProperty.getValue(), jsonPath, schemaIncompatibilities);
-//            jsonPath.pop();
-//            }
-
+            if (jsonProperty.getValue() instanceof Map) {
+                jsonPath.push(jsonProperty.getKey());
+                recursiveCheckConstraints((Map<String, Object>) jsonProperty.getValue(), jsonPath, schemaIncompatibilities);
+                jsonPath.pop();
+            }
         }
     }
 }
