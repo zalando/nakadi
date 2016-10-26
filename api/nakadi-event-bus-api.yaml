@@ -498,9 +498,9 @@ paths:
     responses:
         '200':
           schema:
-            type: object
+            $ref: '#/definitions/EventTypeSchema'
           description: |
-            Schema as JSON.
+            Schema object.
 
   '/event-types/{name}/partitions':
     get:
