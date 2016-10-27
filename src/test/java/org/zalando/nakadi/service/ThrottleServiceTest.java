@@ -7,6 +7,8 @@ import org.zalando.nakadi.throttling.ThrottleResult;
 import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.nakadi.util.ZkConfigurationService;
 
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -16,9 +18,9 @@ public class ThrottleServiceTest {
 
     @Before
     public void setUp() {
-        when(zkConfigurationService.getLong("nakadi.throttling.bytesLimit", 10L)).thenReturn(10L);
-        when(zkConfigurationService.getLong("nakadi.throttling.messagesLimit", 10L)).thenReturn(10L);
-        when(zkConfigurationService.getLong("nakadi.throttling.batchesLimit", 10L)).thenReturn(3L);
+        when(zkConfigurationService.getLong(eq("nakadi.throttling.bytesLimit"), anyLong())).thenReturn(10L);
+        when(zkConfigurationService.getLong(eq("nakadi.throttling.messagesLimit"), anyLong())).thenReturn(10L);
+        when(zkConfigurationService.getLong(eq("nakadi.throttling.batchesLimit"), anyLong())).thenReturn(3L);
     }
 
     @Test
