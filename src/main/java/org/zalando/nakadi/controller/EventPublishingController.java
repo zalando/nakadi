@@ -139,6 +139,6 @@ public class EventPublishingController {
                 .header("X-Rate-Batches-Remaining", Long.toString(result.getBatchesRemaining()))
                 .header("X-Rate-Messages-Limit", Long.toString(result.getMessagesLimit()))
                 .header("X-Rate-Messages-Remaining", Long.toString(result.getMessagesRemaining()))
-                .header("X-Rate-Reset", Long.toString(result.getReset().getMillis()));
+                .header("X-Rate-Reset", Long.toString(result.getResetAt().getMillis()));
     }
 }

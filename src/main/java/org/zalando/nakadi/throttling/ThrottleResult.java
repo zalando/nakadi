@@ -10,19 +10,19 @@ public class ThrottleResult {
     private final long messagesRemaining;
     private final long batchesLimit;
     private final long batchesRemaining;
-    private final Instant reset;
+    private final Instant resetAt;
     private final boolean throttled;
 
     public ThrottleResult(final long bytesLimit, final long bytesRemaining, final long messagesLimit,
                           final long messagesRemaining, final long batchesLimit, final long batchesRemaining,
-                          final Instant reset, final boolean throttled) {
+                          final Instant resetAt, final boolean throttled) {
         this.bytesLimit = bytesLimit;
         this.bytesRemaining = bytesRemaining;
         this.messagesLimit = messagesLimit;
         this.messagesRemaining = messagesRemaining;
         this.batchesLimit = batchesLimit;
         this.batchesRemaining = batchesRemaining;
-        this.reset = reset;
+        this.resetAt = resetAt;
         this.throttled = throttled;
     }
 
@@ -50,8 +50,8 @@ public class ThrottleResult {
         return batchesRemaining;
     }
 
-    public Instant getReset() {
-        return reset;
+    public Instant getResetAt() {
+        return resetAt;
     }
 
     public boolean isThrottled() {

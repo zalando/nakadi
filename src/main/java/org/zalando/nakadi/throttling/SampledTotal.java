@@ -1,23 +1,28 @@
 package org.zalando.nakadi.throttling;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.TimeUnit;
 
 public class SampledTotal {
 
-    private final ConcurrentHashMap<Long, AtomicLong> samples;
-    private final long windowMs;
+    private final ConcurrentHashMap<Long, Long> samples;
+    private final long windowLengthMs;
     private final long expireAge;
 
-    public SampledTotal(final long windowMs, final int samplesAmount) {
-        this.windowMs = windowMs;
+    public SampledTotal(final long windowLength, final TimeUnit unit, final int samplesAmount) {
+        this.windowLengthMs = unit.toMillis(windowLength);
         this.samples = new ConcurrentHashMap<>();
-        this.expireAge = samplesAmount * windowMs;
+        this.expireAge = samplesAmount * windowLength;
     }
 
     public void record(final Long value, final long timeMs) {
-        final AtomicLong sample = current(timeMs);
-        sample.addAndGet(value);
+        final long timeBucket = (timeMs / windowLengthMs) * windowLengthMs;
+        samples.compute(timeBucket, (k, v) -> {
+            if (v == null) {
+                return 1L;
+            } else {
+                return v + value;
+            }});
     }
 
     public Long measure(final long now) {
@@ -25,13 +30,8 @@ public class SampledTotal {
         return combine();
     }
 
-    private AtomicLong current(final long timeMs) {
-        final long timeBucket = (timeMs / windowMs) * windowMs;
-        return samples.computeIfAbsent(timeBucket, key -> new AtomicLong());
-    }
-
     private long combine() {
-        return samples.values().stream().mapToLong(AtomicLong::get).sum();
+        return samples.values().stream().mapToLong(v -> v).sum();
     }
 
     private void cleanup(final long now) {

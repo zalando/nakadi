@@ -1,32 +1,34 @@
 package org.zalando.nakadi.throttling;
 
+import java.util.concurrent.TimeUnit;
+
 public class ThrottleMetrics {
 
-    private final SampledTotal bytes;
-    private final SampledTotal messages;
-    private final SampledTotal batches;
+    private final SampledTotal byteCount;
+    private final SampledTotal messageCount;
+    private final SampledTotal batchCount;
 
-    public ThrottleMetrics(final long windowSize, final int samples) {
-        this.bytes = new SampledTotal(windowSize, samples);
-        this.messages = new SampledTotal(windowSize, samples);
-        this.batches = new SampledTotal(windowSize, samples);
+    public ThrottleMetrics(final long windowLengthMs, final int sampleCount) {
+        this.byteCount = new SampledTotal(windowLengthMs, TimeUnit.MILLISECONDS, sampleCount);
+        this.messageCount = new SampledTotal(windowLengthMs, TimeUnit.MILLISECONDS, sampleCount);
+        this.batchCount = new SampledTotal(windowLengthMs, TimeUnit.MILLISECONDS, sampleCount);
     }
 
-    public SampledTotal getBytes() {
-        return bytes;
+    public SampledTotal getByteCount() {
+        return byteCount;
     }
 
-    public SampledTotal getMessages() {
-        return messages;
+    public SampledTotal getMessageCount() {
+        return messageCount;
     }
 
-    public SampledTotal getBatches() {
-        return batches;
+    public SampledTotal getBatchCount() {
+        return batchCount;
     }
 
-    public void mark(final long size, final long messageCount, final long now) {
-        bytes.record(size, now);
-        messages.record(messageCount, now);
-        batches.record(1L, now);
+    public void mark(final long byteCount, final long messageCount, final long now) {
+        this.byteCount.record(byteCount, now);
+        this.messageCount.record(messageCount, now);
+        this.batchCount.record(1L, now);
     }
 }

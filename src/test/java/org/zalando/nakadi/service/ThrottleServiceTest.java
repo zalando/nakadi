@@ -16,9 +16,9 @@ public class ThrottleServiceTest {
 
     @Before
     public void setUp() {
-        when(zkConfigurationService.getLong("nakadi.throttling.bytesLimit")).thenReturn(10L);
-        when(zkConfigurationService.getLong("nakadi.throttling.messagesLimit")).thenReturn(10L);
-        when(zkConfigurationService.getLong("nakadi.throttling.batchesLimit")).thenReturn(3L);
+        when(zkConfigurationService.getLong("nakadi.throttling.bytesLimit", 10L)).thenReturn(10L);
+        when(zkConfigurationService.getLong("nakadi.throttling.messagesLimit", 10L)).thenReturn(10L);
+        when(zkConfigurationService.getLong("nakadi.throttling.batchesLimit", 10L)).thenReturn(3L);
     }
 
     @Test

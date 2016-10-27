@@ -21,30 +21,27 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.NakadiPermissions;
 import org.zalando.nakadi.security.Permissions;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.validation.EventTypeValidator;
+import org.zalando.nakadi.validation.ValidationError;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.isEmptyString;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-
-import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.validation.EventTypeValidator;
-import org.zalando.nakadi.validation.ValidationError;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.Matchers.isEmptyString;
-import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatch;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 
@@ -52,6 +49,7 @@ public class EventPublisherTest {
 
     private static final Set<String> SCOPE_WRITE = Collections.singleton("oauth2.scope.write");
     private static final String CLIENT_ID = "clientId";
+    private static final Client FULL_ACCESS_CLIENT = new Client("test", Permissions.FULL_ACCESS);
 
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
@@ -67,8 +65,7 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType, event);
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
@@ -82,8 +79,7 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType, event);
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
         verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
@@ -97,8 +93,7 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, event, "error");
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(createBatch(event), eventType);
@@ -114,8 +109,7 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, event, "error");
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -141,8 +135,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType, event);
         mockFaultPartition(eventType, event);
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
     }
@@ -156,8 +149,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultPartition(eventType, event);
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -183,8 +175,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFailedPublishing();
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.FAILED));
         verify(topicRepository, times(1)).syncPostBatch(any(), any());
@@ -199,8 +190,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType, event);
         mockFaultEnrichment();
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, times(1)).getValidator(eventType.getName());
@@ -217,8 +207,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultEnrichment();
 
-        final EventPublishResult result = publisher.publish(batch, eventType.getName(), new Client("test",
-                Permissions.FULL_ACCESS));
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 

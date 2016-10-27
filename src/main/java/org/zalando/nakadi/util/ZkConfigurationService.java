@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -19,7 +20,7 @@ public class ZkConfigurationService {
     private static final Logger LOG = LoggerFactory.getLogger(ZkConfigurationService.class);
     private static final String PREFIX = "/nakadi/configuration/";
 
-    private static final Charset CHARSET = Charset.forName("UTF-8");
+    private static final Charset CHARSET = StandardCharsets.UTF_8;
 
     private final ZooKeeperHolder zooKeeperHolder;
     private final LoadingCache<String, String> cache;
@@ -38,6 +39,15 @@ public class ZkConfigurationService {
                 });
     }
 
+    public Long getLong(final String key, final Long fallback) {
+        try {
+            return Long.parseLong(cache.getUnchecked(key));
+        } catch (NumberFormatException e) {
+            LOG.error("Can't obtain value from ZK", e);
+            return fallback;
+        }
+    }
+
     private String getValue(final String key) {
         try {
             final byte[] data = zooKeeperHolder.get().getData().forPath(PREFIX + key);
@@ -45,15 +55,6 @@ public class ZkConfigurationService {
         } catch (Exception e) {
             LOG.error("Can't obtain value from ZK", e);
             return context.getEnvironment().getProperty(key);
-        }
-    }
-
-    public Long getLong(final String key) {
-        try {
-            return Long.parseLong(cache.getUnchecked(key));
-        } catch (NumberFormatException e) {
-            LOG.error("Can't obtain value from ZK", e);
-            throw new IllegalArgumentException(e);
         }
     }
 }
