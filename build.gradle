@@ -136,8 +136,8 @@ dependencies {
     compile 'org.zalando:nakadi-plugin-api:1.0.5'
 
     // kafka & zookeeper
-    compile 'org.apache.kafka:kafka-clients:0.9.0.0'
-    compile 'org.apache.kafka:kafka_2.11:0.9.0.0'
+    compile 'org.apache.kafka:kafka-clients:0.9.0.1'
+    compile 'org.apache.kafka:kafka_2.11:0.9.0.1'
     compile 'org.apache.curator:curator-framework:2.9.1'
     compile 'org.apache.curator:curator-recipes:2.9.1'
 
