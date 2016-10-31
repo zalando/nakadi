@@ -32,7 +32,7 @@ public class SettingsController {
 
     @RequestMapping(path = "/flooders", method = RequestMethod.GET)
     public ResponseEntity<?> getFlooders(final Client client) {
-        if (!client.idMatches(securitySettings.getAdminClientId())) {
+        if (isNotAdmin(client)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(floodService.getFlooders());
@@ -40,7 +40,7 @@ public class SettingsController {
 
     @RequestMapping(value = "/flooders", method = RequestMethod.POST)
     public ResponseEntity blockFlooders(@RequestBody final FloodService.Flooder flooder, final Client client) {
-        if (!client.idMatches(securitySettings.getAdminClientId())) {
+        if (isNotAdmin(client)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         floodService.blockFlooder(flooder);
@@ -49,7 +49,7 @@ public class SettingsController {
 
     @RequestMapping(value = "/flooders", method = RequestMethod.DELETE)
     public ResponseEntity unblockFlooder(@RequestBody final FloodService.Flooder flooder, final Client client) {
-        if (!client.idMatches(securitySettings.getAdminClientId())) {
+        if (isNotAdmin(client)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         floodService.unblockFlooder(flooder);
@@ -58,7 +58,7 @@ public class SettingsController {
 
     @RequestMapping(path = "/features", method = RequestMethod.GET)
     public ResponseEntity<?> getFeatures(final Client client) {
-        if (!client.idMatches(securitySettings.getAdminClientId())) {
+        if (isNotAdmin(client)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(new ItemsWrapper<>(featureToggleService.getFeatures()));
@@ -67,10 +67,14 @@ public class SettingsController {
     @RequestMapping(path = "/features", method = RequestMethod.POST)
     public ResponseEntity<?> setFeature(@RequestBody final FeatureToggleService.FeatureWrapper featureWrapper,
                                         final Client client) {
-        if (!client.idMatches(securitySettings.getAdminClientId())) {
+        if (isNotAdmin(client)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         featureToggleService.setFeature(featureWrapper);
         return ResponseEntity.noContent().build();
+    }
+
+    private boolean isNotAdmin(Client client) {
+        return !client.getClientId().equals(securitySettings.getAdminClientId());
     }
 }
