@@ -9,21 +9,18 @@ import org.zalando.nakadi.util.ZkConfigurationService;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class ThrottlingService {
 
     private static final String BYTES_LIMIT = "nakadi.throttling.bytesLimit";
-    private static final String MESSAGES_LIMIT = "nakadi.throttling.messagesLimit";
-    private static final String BATCHES_LIMIT = "nakadi.throttling.batchesLimit";
 
-    private static final Long BYTES_LIMIT_FALLBACK = 10737418240L;
-    private static final Long MESSAGES_LIMIT_FALLBACK = 10000000L;
-    private static final Long BATCHES_LIMIT_FALLBACK = 1000000L;
+    private static final Long BYTES_LIMIT_FALLBACK = 1073741824L;
     private final long windowLengthMs;
     private final int sampleCount;
 
-    private final ConcurrentMap<ThrottleKey, ThrottleMetrics> metrics = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ThrottleKey, SampledTotal> metrics = new ConcurrentHashMap<>();
     private final ZkConfigurationService zkConfigurationService;
 
     @Autowired
@@ -35,60 +32,39 @@ public class ThrottlingService {
         this.zkConfigurationService = zkConfigurationService;
     }
 
-    public ThrottleResult mark(final String application, final String eventType, final int size,
-                               final int messagesCount) {
+    public ThrottleResult mark(final String application, final String eventType, final long size) {
         final long now = Instant.now().getMillis();
-        final ThrottleMetrics throttleMetrics = metricsFor(application, eventType);
+        final SampledTotal sampledTotal = metricsFor(application, eventType);
 
-        final ThrottleResult result = getThrottleResult(throttleMetrics, size, messagesCount, now);
+        final ThrottleResult result = getThrottleResult(sampledTotal, size, now);
         if (!result.isThrottled()) {
-            throttleMetrics.mark(size, messagesCount, now);
+            sampledTotal.record(size, now);
             return result;
         }
         return result;
     }
 
-    private ThrottleResult getThrottleResult(final ThrottleMetrics metrics, final long size, final long messagesCount,
-                                             final long now) {
-        //return metrics for the 15 last minutes
-        final long batches = metrics.getBatchCount().measure(now);
-        final long bytes = metrics.getByteCount().measure(now);
-        final long messages = metrics.getMessageCount().measure(now);
-
+    private ThrottleResult getThrottleResult(final SampledTotal metrics, final long size, final long now) {
+        final long bytes = metrics.measure(now);
         final long bytesLimit = zkConfigurationService.getLong(BYTES_LIMIT, BYTES_LIMIT_FALLBACK);
-        final long messagesLimit = zkConfigurationService.getLong(MESSAGES_LIMIT, MESSAGES_LIMIT_FALLBACK);
-        final long batchesLimit = zkConfigurationService.getLong(BATCHES_LIMIT, BATCHES_LIMIT_FALLBACK);
-
         final long bytesRemaining = bytesLimit - bytes;
-        final long messagesRemaining = messagesLimit - messages;
-        final long batchesRemaining = batchesLimit - batches;
-
         final long bytesAfter = bytesRemaining - size;
-        final long messagesAfter = messagesRemaining - messagesCount;
-        final long batchesAfter = batchesRemaining - 1;
-
-        final boolean throttled = batchesAfter < 0 || bytesAfter < 0 || messagesAfter < 0;
+        final boolean throttled = bytesAfter < 0;
 
         final Instant reset = Instant.now().plus(windowLengthMs);
         if (throttled) {
-            return new ThrottleResult(bytesLimit, remaining(bytesRemaining),
-                    messagesLimit, remaining(messagesRemaining),
-                    batchesLimit, remaining(batchesRemaining),
-                    reset, true);
+            return new ThrottleResult(bytesLimit, remaining(bytesRemaining), reset, true);
         }
-        return new ThrottleResult(bytesLimit, batchesAfter,
-                messagesLimit, messagesAfter,
-                batchesLimit, batchesAfter,
-                reset, false);
+        return new ThrottleResult(bytesLimit, bytesAfter, reset, false);
     }
 
     private long remaining(final long value) {
         return value <= 0 ? 0 : value;
     }
 
-    private ThrottleMetrics metricsFor(final String application, final String eventType) {
+    private SampledTotal metricsFor(final String application, final String eventType) {
         return metrics.computeIfAbsent(ThrottleKey.key(application, eventType),
-                key -> new ThrottleMetrics(windowLengthMs, sampleCount));
+                key -> new SampledTotal(windowLengthMs, TimeUnit.MILLISECONDS, sampleCount));
     }
 
     private static class ThrottleKey {

@@ -20,12 +20,12 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
-import org.zalando.nakadi.throttling.ThrottleResult;
-import org.zalando.nakadi.throttling.ThrottlingService;
-import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.throttling.ThrottleResult;
+import org.zalando.nakadi.throttling.ThrottlingService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 
@@ -35,7 +35,7 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -77,8 +77,8 @@ public class EventPublishingControllerTest {
         settings = mock(SecuritySettings.class);
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         final ThrottlingService throttlingService = mock(ThrottlingService.class);
-        doReturn(new ThrottleResult(1, 1, 1, 1, 1, 1, Instant.now(), false)).when(throttlingService)
-                .mark(any(), any(), anyInt(), anyInt());
+        doReturn(new ThrottleResult(1, 1, Instant.now(), false)).when(throttlingService)
+                .mark(any(), any(), anyLong());
 
         floodService = Mockito.mock(FloodService.class);
         Mockito.when(floodService.isProductionBlocked(any(), any())).thenReturn(false);

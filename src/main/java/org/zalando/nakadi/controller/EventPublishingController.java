@@ -88,7 +88,7 @@ public class EventPublishingController {
             final int eventCount = eventsAsJsonObjects.length();
             final int size = eventsAsString.getBytes().length;
             eventTypeMetrics.reportSizing(eventCount, size);
-            final ThrottleResult result = throttlingService.mark(client.getId(), eventTypeName, size, eventCount);
+            final ThrottleResult result = throttlingService.mark(client.getId(), eventTypeName, size);
             return result.isThrottled()
                     ? rateLimitHeaders(ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS), result).build()
                     : response(publisher.publish(eventsAsJsonObjects, eventTypeName, client), result);
@@ -135,10 +135,6 @@ public class EventPublishingController {
         return builder
                 .header("X-Rate-Bytes-Limit", Long.toString(result.getBytesLimit()))
                 .header("X-Rate-Bytes-Remaining", Long.toString(result.getBytesRemaining()))
-                .header("X-Rate-Batches-Limit", Long.toString(result.getBatchesLimit()))
-                .header("X-Rate-Batches-Remaining", Long.toString(result.getBatchesRemaining()))
-                .header("X-Rate-Messages-Limit", Long.toString(result.getMessagesLimit()))
-                .header("X-Rate-Messages-Remaining", Long.toString(result.getMessagesRemaining()))
                 .header("X-Rate-Reset", Long.toString(result.getResetAt().getMillis()));
     }
 }
