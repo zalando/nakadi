@@ -74,7 +74,7 @@ public class SettingsController {
         return ResponseEntity.noContent().build();
     }
 
-    private boolean isNotAdmin(Client client) {
+    private boolean isNotAdmin(final Client client) {
         return !client.getClientId().equals(securitySettings.getAdminClientId());
     }
 }
