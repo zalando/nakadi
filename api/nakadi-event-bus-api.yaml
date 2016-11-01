@@ -1550,7 +1550,7 @@ definitions:
           inadvertently breaking existent consumers.
 
           Once defined, the compatibility mode is fixed, since otherwise it would break a predefined contract,
-          jeopardizing the value of this feature.
+          declared by the producer.
 
           List of available compatibility modes:
 
