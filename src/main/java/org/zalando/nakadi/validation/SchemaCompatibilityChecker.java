@@ -6,8 +6,7 @@ import org.everit.json.schema.CombinedSchema;
 import org.everit.json.schema.ObjectSchema;
 import org.everit.json.schema.ReferenceSchema;
 import org.everit.json.schema.Schema;
-import org.everit.json.schema.loader.SchemaLoader;
-import org.json.JSONObject;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
 import org.zalando.nakadi.validation.schema.PatternPropertiesConstraint;
 import org.zalando.nakadi.validation.schema.SchemaConstraint;
@@ -18,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
 
+@Component
 public class SchemaCompatibilityChecker {
 
     final private List<SchemaConstraint> CONSTRAINTS = Lists.newArrayList();
@@ -27,14 +27,7 @@ public class SchemaCompatibilityChecker {
         CONSTRAINTS.add(new PatternPropertiesConstraint("patternProperties"));
     }
 
-    public List<SchemaIncompatibility> checkConstraints(final JSONObject jsonSchema) {
-        final Schema schema = SchemaLoader
-                .builder()
-                .schemaJson(jsonSchema)
-                .build()
-                .load()
-                .build();
-
+    public List<SchemaIncompatibility> checkConstraints(final Schema schema) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<SchemaIncompatibility>();
 
         recursiveCheckConstraints(schema, new Stack<String>(), incompatibilities);

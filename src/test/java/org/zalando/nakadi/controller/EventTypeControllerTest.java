@@ -44,6 +44,7 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.validation.SchemaCompatibilityChecker;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
@@ -99,6 +100,7 @@ public class EventTypeControllerTest {
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+    private final SchemaCompatibilityChecker schemaCompatibilityChecker = new SchemaCompatibilityChecker();
 
     private MockMvc mockMvc;
 
@@ -106,7 +108,7 @@ public class EventTypeControllerTest {
     public void init() throws Exception {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
-                partitionResolver, enrichment, uuid, featureToggleService, subscriptionRepository);
+                partitionResolver, enrichment, uuid, featureToggleService, subscriptionRepository, schemaCompatibilityChecker);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
@@ -266,6 +268,21 @@ public class EventTypeControllerTest {
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
                                         .string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPOSTInvalidSchemaThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.getSchema().setSchema(
+                "{\"not\": {\"type\": \"object\"} }");
+        eventType.setCategory(BUSINESS);
+
+        final Problem expectedProblem =
+                new InvalidEventTypeException("Invalid schema: Forbidden attribute \"not\" found in #/").asProblem();
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                .string(matchesProblem(expectedProblem)));
     }
 
     @Test

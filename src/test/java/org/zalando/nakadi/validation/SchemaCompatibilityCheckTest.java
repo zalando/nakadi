@@ -1,5 +1,7 @@
 package org.zalando.nakadi.validation;
 
+import org.everit.json.schema.Schema;
+import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
@@ -28,7 +30,7 @@ public class SchemaCompatibilityCheckTest {
 
         for(final Iterator<Object> i = invalidTestCases.iterator(); i.hasNext();) {
             final JSONObject testCase = (JSONObject) i.next();
-            final JSONObject schema = testCase.getJSONObject("schema");
+            final Schema schema = SchemaLoader.load(testCase.getJSONObject("schema"));
             final List<String> errorMessages = testCase
                     .getJSONArray("errors")
                     .toList()
@@ -36,6 +38,7 @@ public class SchemaCompatibilityCheckTest {
                     .map(Object::toString)
                     .collect(toList());
             final String description = testCase.getString("description");
+
 
             assertThat(description, checker.checkConstraints(schema).stream().map(Object::toString).collect(toList()),
                     is(errorMessages));
