@@ -1062,7 +1062,7 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
-        - name: flooder
+        - name: feature
           in: body
           schema:
             $ref: '#/definitions/Feature'

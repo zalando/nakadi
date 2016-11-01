@@ -25,7 +25,7 @@ import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICA
 @Component
 public class ClientResolver implements HandlerMethodArgumentResolver {
 
-    private static final String FULL_ACCESS_CLIENT_ID = "FullAccessClientId";
+    private static final String FULL_ACCESS_CLIENT_ID = "adminClientId";
     private final SecuritySettings settings;
     private final FeatureToggleService featureToggleService;
 
