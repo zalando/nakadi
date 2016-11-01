@@ -7,7 +7,6 @@ import org.junit.Test;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.CoreMatchers.is;
@@ -36,66 +35,10 @@ public class SchemaCompatibilityCheckTest {
                     .stream()
                     .map(Object::toString)
                     .collect(toList());
+            final String description = testCase.getString("description");
 
-            assertThat(checker.checkConstraints(schema).stream().map(Object::toString).collect(toList()),
+            assertThat(description, checker.checkConstraints(schema).stream().map(Object::toString).collect(toList()),
                     is(errorMessages));
         }
     }
-
-    @Test
-    public void checksCompatibilityBetweenTwoOldAndNew() {
-
-    }
-
-//    @Test
-//    public void whenNotAttributeUsedThenIncompatible() {
-//
-//    }
-//
-//    @Test
-//    public void whenPatternPropertiesUsedThenIncompatible() {
-//
-//    }
-//
-//    @Test
-//    public void whenTypeUndefinedThenIncompatible() {
-//
-//    }
-//
-//    @Test
-//    public void whenArrayOfTypesThenIncompatible() {
-//
-//    }
-//
-//    @Test
-//    public void whenNoChangesThenCompatible() {
-//        final SchemaCompatibilityChecker checker = new SchemaCompatibilityChecker();
-//        final JSONObject oldSchema = new JSONObject();
-//        final JSONObject newSchema = new JSONObject();
-//    }
-//
-//    @Test
-//    public void whenAddOptionalFieldThenCompatible() {
-//
-//    }
-//
-//    @Test
-//    public void whenNewOptionalFieldIsIncompatibleThenIncompatible() {
-//
-//    }
-//
-//    @Test
-//    public void whenAddRequiredFieldThenIncompatible() {
-//
-//    }
-//
-//    @Test
-//    public void whenAddDefinitionsThenCompatible() {
-//
-//    }
-//
-//    @Test
-//    public void whenAddedDefinitionIsIncompatibleThenIncompatible() {
-//
-//    }
 }
