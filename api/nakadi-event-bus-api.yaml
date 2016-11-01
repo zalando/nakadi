@@ -484,9 +484,15 @@ paths:
     responses:
         '200':
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/EventTypeSchema'
+            type: object
+            properties:
+              items:
+                description: list of schemas.
+                type: array
+                items:
+                  $ref: '#/definitions/EventTypeSchema'
+            required:
+              - items
 
   '/event-types/{name}/schemas/{version}':
     get:
