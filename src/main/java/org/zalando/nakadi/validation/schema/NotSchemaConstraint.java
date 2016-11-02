@@ -7,7 +7,7 @@ import org.zalando.nakadi.validation.SchemaIncompatibility;
 import java.util.List;
 import java.util.Optional;
 
-public class NotSchemaConstraint implements SchemaConstraint {
+public class NotSchemaConstraint extends SchemaConstraint {
     @Override
     public Optional<SchemaIncompatibility> validate(final List<String> jsonPath, final Schema schema) {
         if (schema instanceof NotSchema) {
@@ -15,9 +15,5 @@ public class NotSchemaConstraint implements SchemaConstraint {
         } else {
             return Optional.empty();
         }
-    }
-
-    private String jsonPathString(final List<String> jsonPath) {
-        return "#/" + String.join("/", jsonPath);
     }
 }

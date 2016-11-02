@@ -6,6 +6,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.config.ValidatorConfig;
 
 import java.util.Iterator;
 import java.util.List;
@@ -20,7 +21,7 @@ public class SchemaCompatibilityCheckTest {
 
     @Before
     public void setUp() {
-        this.checker = new SchemaCompatibilityChecker();
+        this.checker = new ValidatorConfig().schemaCompatibilityChecker();
     }
 
     @Test

@@ -6,6 +6,10 @@ import org.zalando.nakadi.validation.SchemaIncompatibility;
 import java.util.List;
 import java.util.Optional;
 
-public interface SchemaConstraint {
-    Optional<SchemaIncompatibility> validate(final List<String> jsonPath, final Schema schema);
+public abstract class SchemaConstraint {
+    public abstract Optional<SchemaIncompatibility> validate(final List<String> jsonPath, final Schema schema);
+
+    protected String jsonPathString(final List<String> jsonPath) {
+        return "#/" + String.join("/", jsonPath);
+    }
 }

@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.config.ValidatorConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
@@ -100,7 +101,8 @@ public class EventTypeControllerTest {
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
-    private final SchemaCompatibilityChecker schemaCompatibilityChecker = new SchemaCompatibilityChecker();
+    private final SchemaCompatibilityChecker schemaCompatibilityChecker = new ValidatorConfig()
+            .schemaCompatibilityChecker();
 
     private MockMvc mockMvc;
 

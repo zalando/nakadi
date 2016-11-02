@@ -1,14 +1,10 @@
 package org.zalando.nakadi.validation;
 
-import com.google.common.collect.Lists;
 import org.everit.json.schema.ArraySchema;
 import org.everit.json.schema.CombinedSchema;
 import org.everit.json.schema.ObjectSchema;
 import org.everit.json.schema.ReferenceSchema;
 import org.everit.json.schema.Schema;
-import org.springframework.stereotype.Component;
-import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
-import org.zalando.nakadi.validation.schema.PatternPropertiesConstraint;
 import org.zalando.nakadi.validation.schema.SchemaConstraint;
 
 import java.util.ArrayList;
@@ -17,12 +13,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
 
-@Component
 public class SchemaCompatibilityChecker {
 
-    private static final List<SchemaConstraint> CONSTRAINTS = Lists.newArrayList(
-            new NotSchemaConstraint(),
-            new PatternPropertiesConstraint("patternProperties"));
+    private final List<SchemaConstraint> constraints;
+
+    public SchemaCompatibilityChecker(final List<SchemaConstraint> constraints) {
+        this.constraints = constraints;
+    }
 
     public List<SchemaIncompatibility> checkConstraints(final Schema schema) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<SchemaIncompatibility>();
@@ -37,7 +34,7 @@ public class SchemaCompatibilityChecker {
             final Stack<String> jsonPath,
             final List<SchemaIncompatibility> schemaIncompatibilities) {
 
-        for (final SchemaConstraint constraint : CONSTRAINTS) {
+        for (final SchemaConstraint constraint : constraints) {
             final Optional<SchemaIncompatibility> incompatibility = constraint.validate(jsonPath, schema);
             if (incompatibility.isPresent()) {
                 schemaIncompatibilities.add(incompatibility.get());
