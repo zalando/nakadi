@@ -23,6 +23,7 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
@@ -282,6 +283,20 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem =
                 new InvalidEventTypeException("Invalid schema: Forbidden attribute \"not\" found in #/").asProblem();
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                .string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPOSTDeprecatedCompatibilityModeThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCompatibilityMode(CompatibilityMode.DEPRECATED);
+
+        final Problem expectedProblem =
+                new InvalidEventTypeException(
+                        "\"compatibility_mode\" should be either \"compatible\" or \"none\"").asProblem();
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()

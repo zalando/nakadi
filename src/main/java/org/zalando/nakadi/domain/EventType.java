@@ -59,6 +59,9 @@ public class EventType {
 
     private Set<String> readScopes;
 
+    @Nullable
+    private CompatibilityMode compatibilityMode;
+
     public EventType() {
         this.validationStrategies = Collections.emptyList();
         this.enrichmentStrategies = Collections.emptyList();
@@ -190,5 +193,17 @@ public class EventType {
 
     public void setReadScopes(final Set<String> readScopes) {
         this.readScopes = readScopes == null ? Collections.emptySet() : readScopes;
+    }
+
+    public CompatibilityMode getCompatibilityMode() {
+        if (null == compatibilityMode) {
+            return CompatibilityMode.DEPRECATED;
+        } else {
+            return compatibilityMode;
+        }
+    }
+
+    public void setCompatibilityMode(final CompatibilityMode compatibilityMode) {
+        this.compatibilityMode = compatibilityMode;
     }
 }

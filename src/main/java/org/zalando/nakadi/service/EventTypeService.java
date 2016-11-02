@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -209,6 +210,11 @@ public class EventTypeService {
 
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
+            }
+
+            if (eventType.getCompatibilityMode() == CompatibilityMode.DEPRECATED) {
+                throw new InvalidEventTypeException(
+                        "\"compatibility_mode\" should be either \"compatible\" or \"none\"");
             }
 
             validatePartitionKeys(Optional.of(schema), eventType);
