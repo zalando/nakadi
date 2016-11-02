@@ -24,7 +24,7 @@ public class SchemaCompatibilityChecker {
     public List<SchemaIncompatibility> checkConstraints(final Schema schema) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<>();
 
-        recursiveCheckConstraints(schema, new Stack<String>(), incompatibilities);
+        recursiveCheckConstraints(schema, new Stack<>(), incompatibilities);
 
         return incompatibilities;
     }
