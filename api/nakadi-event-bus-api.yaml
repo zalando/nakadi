@@ -383,13 +383,10 @@ paths:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
 
     get:
       tags:
@@ -475,13 +472,10 @@ paths:
           description: Unprocessable entity
           schema:
             $ref: '#/definitions/Problem'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
 
   /event-types/{name}/partitions:
     get:
@@ -866,13 +860,10 @@ paths:
             already equals the maximal value - the total amount of this subscription partitions.
           schema:
             $ref: '#/definitions/Problem'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
 
   /subscriptions/{subscription_id}/stats:
     get:
@@ -959,17 +950,17 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /settings/flooders:
+  /settings/blacklist:
     get:
       tags:
         - settings-api
       description: |
-        Lists all blocked abusive producers/consumers divided by app and event type.
+        Lists all blocked producers/consumers divided by app and event type.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       responses:
         '200':
-          description: Lists all blocked abusive producers/consumers.
+          description: Lists all blocked producers/consumers.
           schema:
             type: object
             properties:
@@ -1001,7 +992,9 @@ paths:
                     type: array
                     items:
                       type: string
-    post:
+
+  /settings/blacklist/{blacklist_type}/{name}:
+    put:
       tags:
         - settings-api
       description: |
@@ -1009,29 +1002,32 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
-        - name: flooder
-          in: body
-          description: Abusive client to be blocked
-          schema:
-            $ref: '#/definitions/Flooder'
+        - $ref: '#/parameters/BlacklistType'
+        - name: name
+          in: path
+          description: Name of the client to block.
+          type: string
           required: true
       responses:
         '204':
-          description: Abusive client or event type was successfully blocked.
+          description: Client or event type was successfully blocked.
     delete:
       tags:
         - settings-api
-      description: Unblocks publication/consumption for particular app or event type.
+      description: |
+        Unblocks publication/consumption for particular app or event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
       parameters:
-        - name: flooder
-          in: body
-          description: Abusive client or event type to be unblocked
-          schema:
-            $ref: '#/definitions/Flooder'
+        - $ref: '#/parameters/BlacklistType'
+        - name: name
+          in: path
+          description: Name of the client to unblock.
+          type: string
           required: true
       responses:
         '204':
-          description: Abusive client was successfully unblocked.
+          description: Client was successfully unblocked.
 
   /settings/features:
     get:
@@ -1741,23 +1737,6 @@ definitions:
         format: uri
         example: '/subscriptions?offset=20&limit=10'
 
-  Flooder:
-    description: Abusive consumer or producer
-    type: object
-    properties:
-      name:
-        type: string
-      type:
-        type: string
-        enum:
-          - CONSUMER_APP
-          - CONSUMER_ET
-          - PRODUCER_APP
-          - PRODUCER_ET
-    required:
-      - name
-      - type
-
   Feature:
     description: Feature of Nakadi to be enabled or disabled
     type: object
@@ -1856,3 +1835,17 @@ parameters:
     format: int32
     required: false
     default: 0
+
+  BlacklistType:
+    name: type
+    in: path
+    description: |
+      Type of the blacklist to put client into.
+
+      List of available types:
+      - 'CONSUMER_APP': consumer application.
+      - 'CONSUMER_ET': consumer event type.
+      - 'PRODUCER_APP': producer application.
+      - 'PRODUCER_ET': producer event type.
+    type: string
+    required: true
