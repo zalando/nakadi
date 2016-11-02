@@ -177,6 +177,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
+                    LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
                     result.complete(exception);
                 } else {
@@ -225,8 +226,8 @@ public class KafkaTopicRepository implements TopicRepository {
                     .map(entry -> entry.getValue().getNow(null))
                     .findAny();
             if (needReset.isPresent()) {
-                LOG.info("Terminating producer while publishing to topic " + topicId +
-                        " because of unrecoverable exception", needReset.get());
+                LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
+                        topicId, needReset.get());
                 kafkaFactory.terminateProducer(producer);
             }
         } catch (final TimeoutException ex) {
