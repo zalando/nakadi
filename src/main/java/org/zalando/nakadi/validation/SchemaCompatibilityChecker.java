@@ -20,12 +20,9 @@ import java.util.Stack;
 @Component
 public class SchemaCompatibilityChecker {
 
-    final private List<SchemaConstraint> CONSTRAINTS = Lists.newArrayList();
-
-    public SchemaCompatibilityChecker() {
-        CONSTRAINTS.add(new NotSchemaConstraint());
-        CONSTRAINTS.add(new PatternPropertiesConstraint("patternProperties"));
-    }
+    private static final List<SchemaConstraint> CONSTRAINTS = Lists.newArrayList(
+            new NotSchemaConstraint(),
+            new PatternPropertiesConstraint("patternProperties"));
 
     public List<SchemaIncompatibility> checkConstraints(final Schema schema) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<SchemaIncompatibility>();
@@ -58,7 +55,8 @@ public class SchemaCompatibilityChecker {
         }
     }
 
-    private void recursiveCheckConstraints(final CombinedSchema schema, final Stack<String> jsonPath, final List<SchemaIncompatibility> schemaIncompatibilities) {
+    private void recursiveCheckConstraints(final CombinedSchema schema, final Stack<String> jsonPath,
+                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
         if (!schema.getSubschemas().isEmpty()) {
             for (final Schema innerSchema : schema.getSubschemas()) {
                 recursiveCheckConstraints(innerSchema, jsonPath, schemaIncompatibilities);
@@ -66,13 +64,15 @@ public class SchemaCompatibilityChecker {
         }
     }
 
-    private void recursiveCheckConstraints(final ReferenceSchema schema, final Stack<String> jsonPath, final List<SchemaIncompatibility> schemaIncompatibilities) {
+    private void recursiveCheckConstraints(final ReferenceSchema schema, final Stack<String> jsonPath,
+                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
         if (schema.getReferredSchema() != null) {
             recursiveCheckConstraints(schema.getReferredSchema(), jsonPath, schemaIncompatibilities);
         }
     }
 
-    private void recursiveCheckConstraints(final ArraySchema schema, final Stack<String> jsonPath, final List<SchemaIncompatibility> schemaIncompatibilities) {
+    private void recursiveCheckConstraints(final ArraySchema schema, final Stack<String> jsonPath,
+                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
         if (schema.getItemSchemas() != null) {
             jsonPath.push("items");
             for (final Schema innerSchema : schema.getItemSchemas()) {
@@ -92,7 +92,8 @@ public class SchemaCompatibilityChecker {
         }
     }
 
-    private void recursiveCheckConstraints(final ObjectSchema schema, final Stack<String> jsonPath, final List<SchemaIncompatibility> schemaIncompatibilities) {
+    private void recursiveCheckConstraints(final ObjectSchema schema, final Stack<String> jsonPath,
+                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
         jsonPath.push("properties");
         for (final Map.Entry<String, Schema> innerSchema : schema.getPropertySchemas().entrySet()) {
             jsonPath.push(innerSchema.getKey());

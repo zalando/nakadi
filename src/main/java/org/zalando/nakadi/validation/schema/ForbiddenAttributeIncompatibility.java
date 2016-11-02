@@ -1,12 +1,9 @@
 package org.zalando.nakadi.validation.schema;
 
-import org.everit.json.schema.loader.internal.JSONPointer;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 
-import java.util.List;
-
 public class ForbiddenAttributeIncompatibility extends SchemaIncompatibility {
-    final private String attribute;
+    private final String attribute;
 
     public ForbiddenAttributeIncompatibility(final String jsonPath, final String attribute) {
         super(jsonPath);
