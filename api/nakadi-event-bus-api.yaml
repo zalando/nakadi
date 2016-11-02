@@ -383,13 +383,8 @@ paths:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for client or event type
           schema:
             $ref: '#/definitions/Problem'
 
@@ -477,13 +472,8 @@ paths:
           description: Unprocessable entity
           schema:
             $ref: '#/definitions/Problem'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for client or event type
           schema:
             $ref: '#/definitions/Problem'
 
@@ -870,13 +860,8 @@ paths:
             already equals the maximal value - the total amount of this subscription partitions.
           schema:
             $ref: '#/definitions/Problem'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for client or event type
           schema:
             $ref: '#/definitions/Problem'
 
