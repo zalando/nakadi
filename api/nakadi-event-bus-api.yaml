@@ -1039,7 +1039,10 @@ paths:
     delete:
       tags:
         - settings-api
-      description: Unblocks publication/consumption for particular app or event type.
+      description: |
+        Unblocks publication/consumption for particular app or event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
       parameters:
         - name: type
           in: path
