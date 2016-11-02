@@ -965,17 +965,17 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /settings/flooders:
+  /settings/blacklist:
     get:
       tags:
         - settings-api
       description: |
-        Lists all blocked abusive producers/consumers divided by app and event type.
+        Lists all blocked producers/consumers divided by app and event type.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       responses:
         '200':
-          description: Lists all blocked abusive producers/consumers.
+          description: Lists all blocked producers/consumers.
           schema:
             type: object
             properties:
@@ -1008,7 +1008,7 @@ paths:
                     items:
                       type: string
 
-  /settings/flooders/{flooder_type}/{name}:
+  /settings/blacklist/{blacklist_type}/{name}:
     put:
       tags:
         - settings-api
@@ -1017,15 +1017,15 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
-        - $ref: '#/parameters/FlooderType'
+        - $ref: '#/parameters/BlacklistType'
         - name: name
           in: path
-          description: Name of the client to block
+          description: Name of the client to block.
           type: string
           required: true
       responses:
         '204':
-          description: Abusive client or event type was successfully blocked.
+          description: Client or event type was successfully blocked.
     delete:
       tags:
         - settings-api
@@ -1034,15 +1034,15 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
-        - $ref: '#/parameters/FlooderType'
+        - $ref: '#/parameters/BlacklistType'
         - name: name
           in: path
-          description: Name of the client to unblock
+          description: Name of the client to unblock.
           type: string
           required: true
       responses:
         '204':
-          description: Abusive client was successfully unblocked.
+          description: Client was successfully unblocked.
 
   /settings/features:
     get:
@@ -1851,11 +1851,11 @@ parameters:
     required: false
     default: 0
 
-  FlooderType:
+  BlacklistType:
     name: type
     in: path
     description: |
-      Type of the client to block.
+      Type of the blacklist to put client into.
 
       List of available types:
       - 'CONSUMER_APP': consumer application.
