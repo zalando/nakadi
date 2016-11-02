@@ -1082,7 +1082,7 @@ paths:
                   $ref: '#/definitions/Feature'
             required:
               - items
-    put:
+    post:
       tags:
         - settings-api
       description: |
