@@ -384,7 +384,7 @@ paths:
             items:
               $ref: '#/definitions/BatchItemResponse'
         '403':
-          description: Access is forbidden for client or event type
+          description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
 
@@ -473,7 +473,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access is forbidden for client or event type
+          description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
 
@@ -861,7 +861,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access is forbidden for client or event type
+          description: Access is forbidden for the client or event type
           schema:
             $ref: '#/definitions/Problem'
 
