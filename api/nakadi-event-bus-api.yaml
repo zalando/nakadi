@@ -1008,7 +1008,7 @@ paths:
                     items:
                       type: string
 
-  /settings/flooders/{type}/{name}:
+  /settings/flooders/{flooder_type}/{name}:
     put:
       tags:
         - settings-api
@@ -1017,17 +1017,7 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
-        - name: type
-          in: path
-          description: |
-            Type of the client to block.
-            List of available types:
-            - CONSUMER_APP
-            - CONSUMER_ET
-            - PRODUCER_APP
-            - PRODUCER_ET
-          type: string
-          required: true
+        - $ref: '#/parameters/FlooderType'
         - name: name
           in: path
           description: Name of the client to block
@@ -1044,17 +1034,7 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
-        - name: type
-          in: path
-          description: |
-            Type of the client to unblock
-            List of available types:
-            - CONSUMER_APP
-            - CONSUMER_ET
-            - PRODUCER_APP
-            - PRODUCER_ET
-          type: string
-          required: true
+        - $ref: '#/parameters/FlooderType'
         - name: name
           in: path
           description: Name of the client to unblock
@@ -1870,3 +1850,17 @@ parameters:
     format: int32
     required: false
     default: 0
+
+  FlooderType:
+    name: type
+    in: path
+    description: |
+      Type of the client to block.
+
+      List of available types:
+      - 'CONSUMER_APP': consumer application.
+      - 'CONSUMER_ET': consumer event type.
+      - 'PRODUCER_APP': producer application.
+      - 'PRODUCER_ET': producer event type.
+    type: string
+    required: true
