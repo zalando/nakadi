@@ -225,9 +225,9 @@ public class EventTypeService {
         final List<SchemaIncompatibility> incompatibilities = schemaCompatibilityChecker.checkConstraints(schema);
 
         if (!incompatibilities.isEmpty()) {
-            final String erroMessage = incompatibilities.stream().map(Object::toString)
+            final String errorMessage = incompatibilities.stream().map(Object::toString)
                     .collect(Collectors.joining(", "));
-            throw new InvalidEventTypeException("Invalid schema: " + erroMessage);
+            throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
         }
     }
 
