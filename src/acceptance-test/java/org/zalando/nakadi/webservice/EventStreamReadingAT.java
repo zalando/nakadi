@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
@@ -297,7 +298,7 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenReadEventsForBlockedConsumerThen429() throws Exception {
+    public void whenReadEventsForBlockedConsumerThen403() throws Exception {
 
         readEvents()
                 .then()
@@ -306,8 +307,8 @@ public class EventStreamReadingAT extends BaseAT {
         SettingsControllerAT.blacklist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         readEvents()
                 .then()
-                .statusCode(HttpStatus.TOO_MANY_REQUESTS.value())
-                .header("Retry-After", "300");
+                .statusCode(403)
+                .body("detail", Matchers.equalTo("Application or event type is blocked"));
 
         SettingsControllerAT.whitelist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         readEvents()

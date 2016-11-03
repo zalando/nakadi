@@ -39,7 +39,7 @@ public class SettingsControllerAT extends BaseAT {
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         Assert.assertNotNull(CURATOR.checkExists()
-                .forPath("/nakadi/flooders/consumers/event_types/" + eventType.getName()));
+                .forPath("/nakadi/blacklist/consumers/event_types/" + eventType.getName()));
     }
 
     @Test
@@ -50,7 +50,7 @@ public class SettingsControllerAT extends BaseAT {
         whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         Assert.assertNull(CURATOR.checkExists()
-                .forPath("/nakadi/flooders/consumers/event_types/" + eventType.getName()));
+                .forPath("/nakadi/blacklist/consumers/event_types/" + eventType.getName()));
     }
 
     @Test
@@ -77,8 +77,8 @@ public class SettingsControllerAT extends BaseAT {
 
     private void clearFloodersData() {
         try {
-            CURATOR.delete().deletingChildrenIfNeeded().forPath("/nakadi/flooders/consumers");
-            CURATOR.delete().deletingChildrenIfNeeded().forPath("/nakadi/flooders/producers");
+            CURATOR.delete().deletingChildrenIfNeeded().forPath("/nakadi/blacklist/consumers");
+            CURATOR.delete().deletingChildrenIfNeeded().forPath("/nakadi/blacklist/producers");
         } catch (final Exception exception) {
             // nothing to do
         }
@@ -87,7 +87,7 @@ public class SettingsControllerAT extends BaseAT {
     public static void blacklist(final String name, final BlacklistService.Type type) throws IOException {
         given()
                 .contentType(ContentType.JSON)
-                .put(String.format("%s/%s/%s"), BLACKLIST_URL, type, name)
+                .put(String.format("%s/%s/%s", BLACKLIST_URL, type, name))
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
     }
@@ -95,7 +95,7 @@ public class SettingsControllerAT extends BaseAT {
     public static void whitelist(final String name, final BlacklistService.Type type) throws JsonProcessingException {
         given()
                 .contentType(ContentType.JSON)
-                .delete(String.format("%s/%s/%s"), BLACKLIST_URL, type, name)
+                .delete(String.format("%s/%s/%s", BLACKLIST_URL, type, name))
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
     }
