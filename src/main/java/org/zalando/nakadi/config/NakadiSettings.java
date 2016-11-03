@@ -15,7 +15,6 @@ public class NakadiSettings {
     private final long defaultCommitTimeoutSeconds;
     private final long kafkaPollTimeoutMs;
     private final long kafkaSendTimeoutMs;
-    private final long retryAfter;
 
     @Autowired
     public NakadiSettings(@Value("${nakadi.topic.max.partitionNum}") final int maxTopicPartitionCount,
@@ -25,8 +24,7 @@ public class NakadiSettings {
                           @Value("${nakadi.topic.default.rotationMs}") final long defaultTopicRotationMs,
                           @Value("${nakadi.stream.default.commitTimeout}") final long defaultCommitTimeoutSeconds,
                           @Value("${nakadi.kafka.poll.timeoutMs}") final long kafkaPollTimeoutMs,
-                          @Value("${nakadi.kafka.send.timeoutMs}") final long kafkaSendTimeoutMs,
-                          @Value("${nakadi.flood.retry.after}") final long retryAfter) {
+                          @Value("${nakadi.kafka.send.timeoutMs}") final long kafkaSendTimeoutMs) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
         this.defaultTopicPartitionCount = defaultTopicPartitionCount;
         this.defaultTopicReplicaFactor = defaultTopicReplicaFactor;
@@ -35,7 +33,6 @@ public class NakadiSettings {
         this.defaultCommitTimeoutSeconds = defaultCommitTimeoutSeconds;
         this.kafkaPollTimeoutMs = kafkaPollTimeoutMs;
         this.kafkaSendTimeoutMs = kafkaSendTimeoutMs;
-        this.retryAfter = retryAfter;
     }
 
     public int getDefaultTopicPartitionCount() {
@@ -70,7 +67,4 @@ public class NakadiSettings {
         return kafkaSendTimeoutMs;
     }
 
-    public long getRetryAfter() {
-        return retryAfter;
-    }
 }
