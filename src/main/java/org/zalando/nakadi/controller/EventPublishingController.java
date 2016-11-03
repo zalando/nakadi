@@ -22,6 +22,7 @@ import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.FloodService;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
+import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
@@ -56,9 +57,9 @@ public class EventPublishingController {
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
-            if  (floodService.isProductionBlocked(eventTypeName, client.getClientId())) {
-                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                        .header("Retry-After", floodService.getRetryAfterStr()).build();
+            if (floodService.isProductionBlocked(eventTypeName, client.getClientId())) {
+                return Responses.create(
+                        Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"), request);
             }
 
             final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,

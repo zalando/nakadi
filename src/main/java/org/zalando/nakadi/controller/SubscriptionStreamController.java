@@ -88,9 +88,9 @@ public class SubscriptionStreamController {
                 headersSent = true;
                 try {
                     if (ex instanceof NakadiException) {
-                        writeProblemResponse(((NakadiException) ex).asProblem());
+                        writeProblemResponse(response, out, ((NakadiException) ex).asProblem());
                     } else {
-                        writeProblemResponse(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
+                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
                                 "Failed to continue streaming"));
                     }
                 } catch (final IOException e) {
@@ -99,12 +99,6 @@ public class SubscriptionStreamController {
             } else {
                 LOG.warn("Exception found while streaming, but no data could be provided to client", ex);
             }
-        }
-
-        void writeProblemResponse(final Problem problem) throws IOException {
-            response.setStatus(problem.getStatus().getStatusCode());
-            response.setContentType("application/problem+json");
-            jsonMapper.writer().writeValue(out, problem);
         }
 
         @Override
@@ -142,8 +136,8 @@ public class SubscriptionStreamController {
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
                 if  (floodService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
-                    response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-                    response.setHeader("Retry-After", floodService.getRetryAfterStr());
+                    writeProblemResponse(response, outputStream,
+                            Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
                     return;
                 }
 
@@ -162,6 +156,14 @@ public class SubscriptionStreamController {
                 outputStream.close();
             }
         };
+    }
+
+    private void writeProblemResponse(final HttpServletResponse response,
+                                      final OutputStream outputStream,
+                                      final Problem problem) throws IOException {
+        response.setStatus(problem.getStatus().getStatusCode());
+        response.setContentType("application/problem+json");
+        jsonMapper.writer().writeValue(outputStream, problem);
     }
 
 }

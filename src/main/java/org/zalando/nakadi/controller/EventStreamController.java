@@ -96,8 +96,8 @@ public class EventStreamController {
         return outputStream -> {
 
             if  (floodService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
-                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-                response.setHeader("Retry-After", floodService.getRetryAfterStr());
+                writeProblemResponse(response, outputStream,
+                        Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
                 return;
             }
 
