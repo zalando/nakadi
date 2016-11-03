@@ -24,15 +24,13 @@ public class BlockEventPublishingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
-        final BlacklistService.Flooder flooder =
-                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
-        SettingsControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
         publishEvent(eventType)
                 .then()
                 .statusCode(MoreStatus.TOO_MANY_REQUESTS.getStatusCode())
                 .header("Retry-After", "300");
 
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
         publishEvent(eventType)
                 .then()
                 .statusCode(HttpStatus.SC_OK);

@@ -298,19 +298,18 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenReadEventsForBlockedConsumerThen429() throws Exception {
-        final BlacklistService.Flooder flooder = new BlacklistService.Flooder(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
 
         readEvents()
                 .then()
                 .statusCode(HttpStatus.OK.value());
 
-        SettingsControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blacklist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         readEvents()
                 .then()
                 .statusCode(HttpStatus.TOO_MANY_REQUESTS.value())
                 .header("Retry-After", "300");
 
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         readEvents()
                 .then()
                 .statusCode(HttpStatus.OK.value());
@@ -328,12 +327,11 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
-        final BlacklistService.Flooder flooder = new BlacklistService.Flooder(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         // blocking streaming client after 3 seconds
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
-                SettingsControllerAT.blockFlooder(flooder);
+                SettingsControllerAT.blacklist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
             } catch (final Exception e) {
                 e.printStackTrace();
             }
@@ -349,7 +347,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .when()
                 .get(STREAM_ENDPOINT);
 
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
     }
 
 

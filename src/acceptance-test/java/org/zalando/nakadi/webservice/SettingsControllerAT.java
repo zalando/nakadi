@@ -23,7 +23,7 @@ import static com.jayway.restassured.RestAssured.given;
 
 public class SettingsControllerAT extends BaseAT {
 
-    private static final String FLOODERS_URL = "/settings/flooders";
+    private static final String BLACKLIST_URL = "/settings/blacklist";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
@@ -36,7 +36,7 @@ public class SettingsControllerAT extends BaseAT {
     @Test
     public void testBlockFlooder() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
-        blockFlooder(new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET));
+        blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         Assert.assertNotNull(CURATOR.checkExists()
                 .forPath("/nakadi/flooders/consumers/event_types/" + eventType.getName()));
@@ -45,11 +45,9 @@ public class SettingsControllerAT extends BaseAT {
     @Test
     public void testUnblockFlooder() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
-        final BlacklistService.Flooder flooder =
-                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-        blockFlooder(flooder);
+        blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
-        unblockFlooder(flooder);
+        whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         Assert.assertNull(CURATOR.checkExists()
                 .forPath("/nakadi/flooders/consumers/event_types/" + eventType.getName()));
@@ -58,14 +56,11 @@ public class SettingsControllerAT extends BaseAT {
     @Test
     public void testGetFlooders() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
-
-        final BlacklistService.Flooder flooder =
-                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-        blockFlooder(flooder);
+        blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         given()
                 .contentType(ContentType.JSON)
-                .get(FLOODERS_URL)
+                .get(BLACKLIST_URL)
                 .then()
                 .statusCode(HttpStatus.SC_OK)
                 .content(JSON_HELPER.matchesObject(
@@ -89,20 +84,18 @@ public class SettingsControllerAT extends BaseAT {
         }
     }
 
-    public static void blockFlooder(final BlacklistService.Flooder flooder) throws IOException {
+    public static void blacklist(final String name, final BlacklistService.Type type) throws IOException {
         given()
-                .body(MAPPER.writeValueAsString(flooder))
                 .contentType(ContentType.JSON)
-                .post(FLOODERS_URL)
+                .put(String.format("%s/%s/%s"), BLACKLIST_URL, type, name)
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
     }
 
-    public static void unblockFlooder(final BlacklistService.Flooder flooder) throws JsonProcessingException {
+    public static void whitelist(final String name, final BlacklistService.Type type) throws JsonProcessingException {
         given()
-                .body(MAPPER.writeValueAsString(flooder))
                 .contentType(ContentType.JSON)
-                .delete(FLOODERS_URL)
+                .delete(String.format("%s/%s/%s"), BLACKLIST_URL, type, name)
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
     }

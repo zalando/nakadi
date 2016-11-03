@@ -39,7 +39,8 @@ public class BlacklistService {
     @PostConstruct
     public void initIt() {
         try {
-            this.blacklistCache = TreeCache.newBuilder(zooKeeperHolder.get(), PATH_BLACKLIST).setCacheData(false).build();
+            this.blacklistCache =
+                    TreeCache.newBuilder(zooKeeperHolder.get(), PATH_BLACKLIST).setCacheData(false).build();
             this.blacklistCache.start();
         } catch (final Exception e) {
             LOG.error(e.getMessage(), e);

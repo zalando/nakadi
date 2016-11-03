@@ -292,9 +292,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenConsumerIsBlocked429() throws Exception {
-        final BlacklistService.Flooder flooder =
-                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-        SettingsControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         final TestStreamingClient client1 = TestStreamingClient
                 .create(URL, subscription.getId(), "")
@@ -304,7 +302,7 @@ public class HilaAT extends BaseAT {
             Assert.assertEquals("300", client1.getHeaderValue("Retry-After"));
         });
 
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         final TestStreamingClient client2 = TestStreamingClient
                 .create(URL, subscription.getId(), "")
@@ -319,14 +317,12 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
-        final BlacklistService.Flooder flooder =
-                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-        SettingsControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(6)));
 
         Assert.assertEquals("Consumption is blocked",
                 client.getBatches().get(client.getBatches().size() - 1).getMetadata().getDebug());
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
     }
 }
