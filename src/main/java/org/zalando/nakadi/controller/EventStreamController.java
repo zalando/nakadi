@@ -29,7 +29,7 @@ import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
@@ -63,21 +63,21 @@ public class EventStreamController {
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
-    private final FloodService floodService;
+    private final BlacklistService blacklistService;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
-                                 final FloodService floodService) {
+                                 final BlacklistService blacklistService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
-        this.floodService = floodService;
+        this.blacklistService = blacklistService;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
@@ -95,7 +95,7 @@ public class EventStreamController {
 
         return outputStream -> {
 
-            if  (floodService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
+            if  (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
                 writeProblemResponse(response, outputStream,
                         Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
                 return;
@@ -170,7 +170,7 @@ public class EventStreamController {
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
                 final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
-                        streamConfig, floodService);
+                        streamConfig, blacklistService);
 
                 outputStream.flush(); // Flush status code to client
 

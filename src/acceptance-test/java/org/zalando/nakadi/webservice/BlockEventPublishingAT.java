@@ -5,7 +5,7 @@ import com.jayway.restassured.response.Response;
 import org.apache.http.HttpStatus;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.problem.MoreStatus;
 
@@ -24,8 +24,8 @@ public class BlockEventPublishingAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
-        final FloodService.Flooder flooder =
-                new FloodService.Flooder(eventType.getName(), FloodService.Type.PRODUCER_ET);
+        final BlacklistService.Flooder flooder =
+                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
         SettingsControllerAT.blockFlooder(flooder);
         publishEvent(eventType)
                 .then()

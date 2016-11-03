@@ -11,7 +11,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
@@ -36,7 +36,7 @@ public class SettingsControllerAT extends BaseAT {
     @Test
     public void testBlockFlooder() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
-        blockFlooder(new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET));
+        blockFlooder(new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET));
 
         Assert.assertNotNull(CURATOR.checkExists()
                 .forPath("/nakadi/flooders/consumers/event_types/" + eventType.getName()));
@@ -45,8 +45,8 @@ public class SettingsControllerAT extends BaseAT {
     @Test
     public void testUnblockFlooder() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
-        final FloodService.Flooder flooder =
-                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
+        final BlacklistService.Flooder flooder =
+                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
         blockFlooder(flooder);
 
         unblockFlooder(flooder);
@@ -59,8 +59,8 @@ public class SettingsControllerAT extends BaseAT {
     public void testGetFlooders() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
 
-        final FloodService.Flooder flooder =
-                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
+        final BlacklistService.Flooder flooder =
+                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
         blockFlooder(flooder);
 
         given()
@@ -89,7 +89,7 @@ public class SettingsControllerAT extends BaseAT {
         }
     }
 
-    public static void blockFlooder(final FloodService.Flooder flooder) throws IOException {
+    public static void blockFlooder(final BlacklistService.Flooder flooder) throws IOException {
         given()
                 .body(MAPPER.writeValueAsString(flooder))
                 .contentType(ContentType.JSON)
@@ -98,7 +98,7 @@ public class SettingsControllerAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NO_CONTENT);
     }
 
-    public static void unblockFlooder(final FloodService.Flooder flooder) throws JsonProcessingException {
+    public static void unblockFlooder(final BlacklistService.Flooder flooder) throws JsonProcessingException {
         given()
                 .body(MAPPER.writeValueAsString(flooder))
                 .contentType(ContentType.JSON)

@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -21,30 +20,27 @@ import java.util.Map;
 import java.util.Set;
 
 @Component
-public class FloodService {
+public class BlacklistService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FloodService.class);
-    private static final String PATH_FLOODER = "/nakadi/flooders";
+    private static final Logger LOG = LoggerFactory.getLogger(BlacklistService.class);
+    private static final String PATH_BLACKLIST = "/nakadi/blacklist";
 
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final ZooKeeperHolder zooKeeperHolder;
-    private final String retryAfterStr;
-    private TreeCache floodersCache;
+    private TreeCache blacklistCache;
 
     @Autowired
-    public FloodService(final SubscriptionDbRepository subscriptionDbRepository,
-                        final ZooKeeperHolder zooKeeperHolder,
-                        final NakadiSettings nakadiSettings) {
+    public BlacklistService(final SubscriptionDbRepository subscriptionDbRepository,
+                            final ZooKeeperHolder zooKeeperHolder) {
         this.zooKeeperHolder = zooKeeperHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
-        this.retryAfterStr = String.valueOf(nakadiSettings.getRetryAfter());
     }
 
     @PostConstruct
     public void initIt() {
         try {
-            this.floodersCache = TreeCache.newBuilder(zooKeeperHolder.get(), PATH_FLOODER).setCacheData(false).build();
-            this.floodersCache.start();
+            this.blacklistCache = TreeCache.newBuilder(zooKeeperHolder.get(), PATH_BLACKLIST).setCacheData(false).build();
+            this.blacklistCache.start();
         } catch (final Exception e) {
             LOG.error(e.getMessage(), e);
         }
@@ -52,12 +48,12 @@ public class FloodService {
 
     @PreDestroy
     public void cleanUp() {
-        this.floodersCache.close();
+        this.blacklistCache.close();
     }
 
     private boolean isBlocked(final Type type, final String name) {
         try {
-            final boolean blocked = floodersCache.getCurrentData(type.getZkPath() + "/" + name) != null;
+            final boolean blocked = blacklistCache.getCurrentData(type.getZkPath() + "/" + name) != null;
             if (blocked) {
                 LOG.info("{} {} is blocked", type.name(), name);
             }
@@ -92,7 +88,7 @@ public class FloodService {
                     isBlocked(Type.CONSUMER_APP, appId);
     }
 
-    public Map<String, Map> getFlooders() {
+    public Map<String, Map> getBlacklist() {
         return ImmutableMap.of(
                 "consumers",  ImmutableMap.of(
                         "event_types", getChildren(Type.CONSUMER_ET),
@@ -102,14 +98,10 @@ public class FloodService {
                         "apps", getChildren(Type.PRODUCER_APP)));
     }
 
-    public String getRetryAfterStr() {
-        return retryAfterStr;
-    }
-
-    public void blockFlooder(final Flooder flooder) throws RuntimeException {
+    public void blacklist(final String name, final Type type) throws RuntimeException {
         try {
             final CuratorFramework curator = zooKeeperHolder.get();
-            final String path = createFlooderPath(flooder);
+            final String path = createFlooderPath(name, type);
             if (curator.checkExists().forPath(path) == null) {
                 curator.create().creatingParentsIfNeeded().forPath(path);
             }
@@ -118,10 +110,10 @@ public class FloodService {
         }
     }
 
-    public void unblockFlooder(final Flooder flooder) throws RuntimeException {
+    public void whitelist(final String name, final Type type) throws RuntimeException {
         try {
             final CuratorFramework curator = zooKeeperHolder.get();
-            final String path = createFlooderPath(flooder);
+            final String path = createFlooderPath(name, type);
             if (curator.checkExists().forPath(path) != null) {
                 curator.delete().forPath(path);
             }
@@ -131,19 +123,19 @@ public class FloodService {
     }
 
     private Set<String> getChildren(final Type type) {
-        final Map<String, ChildData> currentChildren = floodersCache.getCurrentChildren(type.getZkPath());
+        final Map<String, ChildData> currentChildren = blacklistCache.getCurrentChildren(type.getZkPath());
         return currentChildren == null ? Collections.emptySet() : currentChildren.keySet();
     }
 
-    private String createFlooderPath(final Flooder flooder) {
-        return flooder.getType().getZkPath() + "/" + flooder.getName();
+    private String createFlooderPath(final String name, final Type type) {
+        return type.getZkPath() + "/" + name;
     }
 
     public enum Type {
-        CONSUMER_APP("/nakadi/flooders/consumers/apps"),
-        CONSUMER_ET("/nakadi/flooders/consumers/event_types"),
-        PRODUCER_APP("/nakadi/flooders/producers/apps"),
-        PRODUCER_ET("/nakadi/flooders/producers/event_types");
+        CONSUMER_APP("/nakadi/blacklist/consumers/apps"),
+        CONSUMER_ET("/nakadi/blacklist/consumers/event_types"),
+        PRODUCER_APP("/nakadi/blacklist/producers/apps"),
+        PRODUCER_ET("/nakadi/blacklist/producers/event_types");
 
         private final String zkPath;
 
@@ -153,35 +145,6 @@ public class FloodService {
 
         public String getZkPath() {
             return zkPath;
-        }
-    }
-
-    public static class Flooder {
-        private String name;
-        private FloodService.Type type;
-
-        public Flooder() {
-        }
-
-        public Flooder(final String name, final Type type) {
-            this.name = name;
-            this.type = type;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(final String name) {
-            this.name = name;
-        }
-
-        public FloodService.Type getType() {
-            return type;
-        }
-
-        public void setType(final FloodService.Type type) {
-            this.type = type;
         }
     }
 

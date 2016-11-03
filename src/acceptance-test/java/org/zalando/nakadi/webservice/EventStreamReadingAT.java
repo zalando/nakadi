@@ -12,7 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -298,7 +298,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenReadEventsForBlockedConsumerThen429() throws Exception {
-        final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
+        final BlacklistService.Flooder flooder = new BlacklistService.Flooder(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
 
         readEvents()
                 .then()
@@ -328,7 +328,7 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
-        final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
+        final BlacklistService.Flooder flooder = new BlacklistService.Flooder(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         // blocking streaming client after 3 seconds
         new Thread(() -> {
             try {

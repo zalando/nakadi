@@ -16,7 +16,7 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorTokenService;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 
@@ -59,7 +59,7 @@ public class SubscriptionStreamerFactory {
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
             final AtomicBoolean connectionReady,
-            final FloodService floodService) throws NoSuchSubscriptionException, ServiceUnavailableException,
+            final BlacklistService blacklistService) throws NoSuchSubscriptionException, ServiceUnavailableException,
             InternalNakadiException, NoSuchEventTypeException {
 
         final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
@@ -81,7 +81,7 @@ public class SubscriptionStreamerFactory {
                 .setEventTypesForTopics(eventTypesForTopics)
                 .setCursorTokenService(cursorTokenService)
                 .setObjectMapper(objectMapper)
-                .setFloodService(floodService)
+                .setBlacklistService(blacklistService)
                 .build();
     }
 

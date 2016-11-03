@@ -15,7 +15,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -42,7 +42,7 @@ public class SubscriptionStreamController {
     private final ObjectMapper jsonMapper;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final NakadiSettings nakadiSettings;
-    private final FloodService floodService;
+    private final BlacklistService blacklistService;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -50,13 +50,13 @@ public class SubscriptionStreamController {
                                         final ObjectMapper objectMapper,
                                         final ClosedConnectionsCrutch closedConnectionsCrutch,
                                         final NakadiSettings nakadiSettings,
-                                        final FloodService floodService) {
+                                        final BlacklistService blacklistService) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.nakadiSettings = nakadiSettings;
-        this.floodService = floodService;
+        this.blacklistService = blacklistService;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -135,7 +135,7 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
-                if  (floodService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                if  (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     writeProblemResponse(response, outputStream,
                             Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
                     return;
@@ -145,7 +145,7 @@ public class SubscriptionStreamController {
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
                         nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
                 streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output,
-                        connectionReady, floodService);
+                        connectionReady, blacklistService);
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);

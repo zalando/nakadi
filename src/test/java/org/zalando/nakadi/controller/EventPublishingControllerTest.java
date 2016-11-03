@@ -22,7 +22,7 @@ import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 
@@ -60,7 +60,7 @@ public class EventPublishingControllerTest {
 
     private MockMvc mockMvc;
     private EventTypeMetricRegistry eventTypeMetricRegistry;
-    private FloodService floodService;
+    private BlacklistService blacklistService;
 
     @Before
     public void setUp() throws Exception {
@@ -70,11 +70,11 @@ public class EventPublishingControllerTest {
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
-        floodService = Mockito.mock(FloodService.class);
-        Mockito.when(floodService.isProductionBlocked(any(), any())).thenReturn(false);
+        blacklistService = Mockito.mock(BlacklistService.class);
+        Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
 
         final EventPublishingController controller =
-                new EventPublishingController(publisher, eventTypeMetricRegistry, floodService);
+                new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
                 = new MappingJackson2HttpMessageConverter(objectMapper);

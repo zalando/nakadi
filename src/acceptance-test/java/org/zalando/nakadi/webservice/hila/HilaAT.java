@@ -15,7 +15,7 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.BaseAT;
@@ -292,8 +292,8 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenConsumerIsBlocked429() throws Exception {
-        final FloodService.Flooder flooder =
-                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
+        final BlacklistService.Flooder flooder =
+                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
         SettingsControllerAT.blockFlooder(flooder);
 
         final TestStreamingClient client1 = TestStreamingClient
@@ -319,8 +319,8 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
-        final FloodService.Flooder flooder =
-                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
+        final BlacklistService.Flooder flooder =
+                new BlacklistService.Flooder(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
         SettingsControllerAT.blockFlooder(flooder);
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(6)));
