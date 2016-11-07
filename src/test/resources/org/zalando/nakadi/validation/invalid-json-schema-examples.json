@@ -1,0 +1,188 @@
+[
+  {
+    "description": "Invalid property at the root level",
+    "schema": {
+      "not": {
+        "type": "string"
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/"]
+  },
+  {
+    "description": "Invalid property in nested object",
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "not": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/properties/attempt_of_defining_a_crazy_schema"]
+  },
+  {
+    "description": "Invalid property nested within an array",
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "type": "array",
+          "items": [
+            {
+              "not": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/properties/attempt_of_defining_a_crazy_schema/items"]
+  },
+  {
+    "description": "Invalid property nested within an array",
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "type": "array",
+          "items":  {
+            "not": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/properties/attempt_of_defining_a_crazy_schema/items"]
+  },
+  {
+    "description": "Invalid property nested within an additionalItems",
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "type": "array",
+          "additionalItems":  {
+            "not": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/properties/attempt_of_defining_a_crazy_schema/additionalItems"]
+  },
+  {
+    "description": "Validates all occurences of invalid properties",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "nested_attribute": {
+          "properties": {
+            "nested_nested_attribute": {
+              "not": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "attempt_of_defining_a_crazy_schema": {
+          "not": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "errors": [
+      "Forbidden attribute \"not\" found in #/properties/nested_attribute/properties/nested_nested_attribute",
+      "Forbidden attribute \"not\" found in #/properties/attempt_of_defining_a_crazy_schema"
+    ]
+  },
+  {
+    "description": "Invalid property in nested object",
+    "schema": {
+      "properties": {
+        "not": {
+          "type": "string"
+        }
+      }
+    },
+    "errors": []
+  },
+  {
+    "description": "Check presense of forbidden attributes in dependencies",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "credit_card": { "type": "number" }
+      },
+      "required": ["name"],
+      "dependencies": {
+        "credit_card": {
+          "not": {
+            "properties": {
+              "billing_address": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/dependencies/credit_card"]
+  },
+  {
+    "description": "Invalid property in additionalProperties",
+    "schema": {
+      "additionalProperties": {
+        "not": {
+          "type": "string"
+        }
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/additionalProperties"]
+  },
+  {
+    "description": "Invalid property in additionalProperties",
+    "schema": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/notString" },
+      "definitions": {
+        "notString": {
+          "not": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/items"]
+  },
+  {
+    "description": "Successfully validates self referencing schemas",
+    "schema": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/paradox" },
+      "definitions": {
+        "paradox": {
+          "not": {
+            "$ref": "#/definitions/paradox"
+          }
+        }
+      }
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/items"]
+  },
+  {
+    "description": "Invalid attribute in combined schemas",
+    "schema": {
+      "anyOf": [
+        {
+          "not": {
+           "type": "string"
+          }
+        }
+      ]
+    },
+    "errors": ["Forbidden attribute \"not\" found in #/"]
+  }
+]

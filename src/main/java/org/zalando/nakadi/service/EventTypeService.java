@@ -30,6 +30,8 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.validation.SchemaCompatibilityChecker;
+import org.zalando.nakadi.validation.SchemaIncompatibility;
 
 import java.util.List;
 import java.util.Objects;
@@ -50,13 +52,15 @@ public class EventTypeService {
     private final UUIDGenerator uuidGenerator;
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
+    private final SchemaCompatibilityChecker schemaCompatibilityChecker;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                             final PartitionResolver partitionResolver, final Enrichment enrichment,
                             final UUIDGenerator uuidGenerator,
                             final FeatureToggleService featureToggleService,
-                            final SubscriptionDbRepository subscriptionRepository) {
+                            final SubscriptionDbRepository subscriptionRepository,
+                            final SchemaCompatibilityChecker schemaCompatibilityChecker) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
@@ -64,6 +68,7 @@ public class EventTypeService {
         this.uuidGenerator = uuidGenerator;
         this.featureToggleService = featureToggleService;
         this.subscriptionRepository = subscriptionRepository;
+        this.schemaCompatibilityChecker = schemaCompatibilityChecker;
     }
 
     public List<EventType> list() {
@@ -207,11 +212,22 @@ public class EventTypeService {
             }
 
             validatePartitionKeys(Optional.of(schema), eventType);
+            validateJsonSchemaConstraints(schema);
 
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
             throw new InvalidEventTypeException("schema must be a valid json-schema");
+        }
+    }
+
+    private void validateJsonSchemaConstraints(final Schema schema) throws InvalidEventTypeException {
+        final List<SchemaIncompatibility> incompatibilities = schemaCompatibilityChecker.checkConstraints(schema);
+
+        if (!incompatibilities.isEmpty()) {
+            final String errorMessage = incompatibilities.stream().map(Object::toString)
+                    .collect(Collectors.joining(", "));
+            throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
         }
     }
 

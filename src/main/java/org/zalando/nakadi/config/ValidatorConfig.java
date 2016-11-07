@@ -1,9 +1,16 @@
 package org.zalando.nakadi.config;
 
-import org.zalando.nakadi.validation.EventTypeOptionsValidator;
+import com.google.common.collect.Lists;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.zalando.nakadi.validation.EventTypeOptionsValidator;
+import org.zalando.nakadi.validation.SchemaCompatibilityChecker;
+import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
+import org.zalando.nakadi.validation.schema.PatternPropertiesConstraint;
+import org.zalando.nakadi.validation.schema.SchemaConstraint;
+
+import java.util.List;
 
 @Configuration
 public class ValidatorConfig {
@@ -13,5 +20,14 @@ public class ValidatorConfig {
             @Value("${nakadi.topic.min.retentionMs}") final long minTopicRetentionMs,
             @Value("${nakadi.topic.max.retentionMs}") final long maxTopicRetentionMs) {
         return new EventTypeOptionsValidator(minTopicRetentionMs, maxTopicRetentionMs);
+    }
+
+    @Bean
+    public SchemaCompatibilityChecker schemaCompatibilityChecker() {
+        final List<SchemaConstraint> constraints = Lists.newArrayList(
+                new NotSchemaConstraint(),
+                new PatternPropertiesConstraint());
+
+        return new SchemaCompatibilityChecker(constraints);
     }
 }
