@@ -47,7 +47,7 @@ public class EventStreamTest {
                 .build();
         final OutputStream outputStreamMock = mock(OutputStream.class);
         final EventStream eventStream =
-                new EventStream(emptyConsumer(), outputStreamMock, config, mock(FloodService.class));
+                new EventStream(emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class));
 
         final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true)));
         thread.start();
@@ -75,7 +75,7 @@ public class EventStreamTest {
                 .withBatchTimeout(1)
                 .build();
         final EventStream eventStream =
-                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(FloodService.class));
+                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class));
         final AtomicBoolean streamOpen = new AtomicBoolean(true);
         final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen));
         thread.start();
@@ -103,7 +103,7 @@ public class EventStreamTest {
                 .withBatchTimeout(1)
                 .build();
         final EventStream eventStream =
-                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(FloodService.class));
+                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -118,7 +118,7 @@ public class EventStreamTest {
                 .withStreamLimit(1)
                 .build();
         final EventStream eventStream =
-                new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config, mock(FloodService.class));
+                new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -134,7 +134,7 @@ public class EventStreamTest {
                 .withStreamKeepAliveLimit(1)
                 .build();
         final EventStream eventStream =
-                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(FloodService.class));
+                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -152,7 +152,7 @@ public class EventStreamTest {
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        final EventStream eventStream = new EventStream(emptyConsumer(), out, config, mock(FloodService.class));
+        final EventStream eventStream = new EventStream(emptyConsumer(), out, config, mock(BlacklistService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -177,7 +177,7 @@ public class EventStreamTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream =
-                new EventStream(nCountDummyConsumerForPartition(12, "0"), out, config, mock(FloodService.class));
+                new EventStream(nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -209,7 +209,7 @@ public class EventStreamTest {
                 .collect(Collectors.toList()));
 
         final EventStream eventStream =
-                new EventStream(predefinedConsumer(events), out, config, mock(FloodService.class));
+                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -251,7 +251,7 @@ public class EventStreamTest {
         events.add(new ConsumedEvent(DUMMY, TOPIC, "2", "0"));
 
         final EventStream eventStream =
-                new EventStream(predefinedConsumer(events), out, config, mock(FloodService.class));
+                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class));
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);

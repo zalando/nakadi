@@ -19,9 +19,10 @@ import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
+import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
@@ -36,15 +37,15 @@ public class EventPublishingController {
 
     private final EventPublisher publisher;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
-    private final FloodService floodService;
+    private final BlacklistService blacklistService;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
                                      final EventTypeMetricRegistry eventTypeMetricRegistry,
-                                     final FloodService floodService) {
+                                     final BlacklistService blacklistService) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
-        this.floodService = floodService;
+        this.blacklistService = blacklistService;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -56,9 +57,9 @@ public class EventPublishingController {
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
-            if  (floodService.isProductionBlocked(eventTypeName, client.getClientId())) {
-                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                        .header("Retry-After", floodService.getRetryAfterStr()).build();
+            if (blacklistService.isProductionBlocked(eventTypeName, client.getClientId())) {
+                return Responses.create(
+                        Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"), request);
             }
 
             final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,

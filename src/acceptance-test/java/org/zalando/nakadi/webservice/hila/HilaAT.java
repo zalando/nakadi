@@ -15,14 +15,13 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.SettingsControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
-import org.zalando.problem.MoreStatus;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -291,20 +290,15 @@ public class HilaAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenConsumerIsBlocked429() throws Exception {
-        final FloodService.Flooder flooder =
-                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
-        SettingsControllerAT.blockFlooder(flooder);
+    public void whenConsumerIsBlocked403() throws Exception {
+        SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         final TestStreamingClient client1 = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
-        waitFor(() -> {
-            Assert.assertEquals(MoreStatus.TOO_MANY_REQUESTS.getStatusCode(), client1.getResponseCode());
-            Assert.assertEquals("300", client1.getHeaderValue("Retry-After"));
-        });
+        waitFor(() -> Assert.assertEquals(403, client1.getResponseCode()));
 
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         final TestStreamingClient client2 = TestStreamingClient
                 .create(URL, subscription.getId(), "")
@@ -319,14 +313,12 @@ public class HilaAT extends BaseAT {
                 .create(URL, subscription.getId(), "")
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
-        final FloodService.Flooder flooder =
-                new FloodService.Flooder(eventType.getName(), FloodService.Type.CONSUMER_ET);
-        SettingsControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(6)));
 
         Assert.assertEquals("Consumption is blocked",
                 client.getBatches().get(client.getBatches().size() - 1).getMetadata().getDebug());
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
     }
 }

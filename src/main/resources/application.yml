@@ -65,7 +65,6 @@ nakadi:
   auth:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
-  flood.retry.after: 300 # seconds
 ---
 
 spring:

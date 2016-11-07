@@ -6,13 +6,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -297,20 +298,19 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenReadEventsForBlockedConsumerThen429() throws Exception {
-        final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
+    public void whenReadEventsForBlockedConsumerThen403() throws Exception {
 
         readEvents()
                 .then()
                 .statusCode(HttpStatus.OK.value());
 
-        SettingsControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blacklist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         readEvents()
                 .then()
-                .statusCode(HttpStatus.TOO_MANY_REQUESTS.value())
-                .header("Retry-After", "300");
+                .statusCode(403)
+                .body("detail", Matchers.equalTo("Application or event type is blocked"));
 
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         readEvents()
                 .then()
                 .statusCode(HttpStatus.OK.value());
@@ -328,12 +328,11 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
-        final FloodService.Flooder flooder = new FloodService.Flooder(EVENT_TYPE_NAME, FloodService.Type.CONSUMER_ET);
         // blocking streaming client after 3 seconds
         new Thread(() -> {
             try {
                 Thread.sleep(3000);
-                SettingsControllerAT.blockFlooder(flooder);
+                SettingsControllerAT.blacklist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
             } catch (final Exception e) {
                 e.printStackTrace();
             }
@@ -349,7 +348,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .when()
                 .get(STREAM_ENDPOINT);
 
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
     }
 
 
