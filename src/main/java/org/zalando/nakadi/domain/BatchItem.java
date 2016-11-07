@@ -1,13 +1,15 @@
 package org.zalando.nakadi.domain;
 
-import java.util.Optional;
-import javax.annotation.Nullable;
 import org.json.JSONObject;
+
+import javax.annotation.Nullable;
+import java.util.Optional;
 
 public class BatchItem {
     private final BatchItemResponse response;
     private final JSONObject event;
     private String partition;
+    private int brokerId;
 
     public BatchItem(final JSONObject event) {
         this.response = new BatchItemResponse();
@@ -29,6 +31,14 @@ public class BatchItem {
     @Nullable
     public String getPartition() {
         return partition;
+    }
+
+    public void setBrokerId(int brokerId) {
+        this.brokerId = brokerId;
+    }
+
+    public int getBrokerId() {
+        return brokerId;
     }
 
     public BatchItemResponse getResponse() {
