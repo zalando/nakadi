@@ -9,14 +9,15 @@ import java.util.Optional;
 
 public class PatternPropertiesConstraint extends SchemaConstraint {
 
-    static final String ATTRIBUTE = "patternProperties";
+    private static final String ATTRIBUTE = "patternProperties";
 
     @Override
     public Optional<SchemaIncompatibility> validate(final List<String> jsonPath, final Schema schema) {
         if (schema instanceof ObjectSchema) {
             final ObjectSchema objectSchema = (ObjectSchema) schema;
             if (!objectSchema.getPatternProperties().isEmpty()) {
-                return Optional.of(new ForbiddenAttributeIncompatibility(jsonPathString(jsonPath), this.ATTRIBUTE));
+                return Optional.of(new ForbiddenAttributeIncompatibility(jsonPathString(jsonPath),
+                        PatternPropertiesConstraint.ATTRIBUTE));
             }
         }
         return Optional.empty();
