@@ -9,11 +9,7 @@ import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.errors.InterruptException;
-import org.apache.kafka.common.errors.NotLeaderForPartitionException;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,19 +36,13 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import rx.Observable;
 
-import javax.annotation.Nullable;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -167,91 +157,32 @@ public class KafkaTopicRepository implements TopicRepository {
                 .anyMatch(partition::equals);
     }
 
-    private CompletableFuture<Exception> postItem(
-            final Producer<String, String> producer, final String topicId, final BatchItem item)
-            throws EventPublishingException {
-        try {
-            final CompletableFuture<Exception> result = new CompletableFuture<>();
-            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
-                    topicId,
-                    toKafkaPartition(item.getPartition()),
-                    item.getPartition(),
-                    item.getEvent().toString());
-
-            producer.send(kafkaRecord, ((metadata, exception) -> {
-                if (null != exception) {
-                    LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                    result.complete(exception);
-                } else {
-                    item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
-                    result.complete(null);
-                }
-            }));
-            return result;
-        } catch (final InterruptException e) {
-            Thread.currentThread().interrupt();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
-        } catch (final RuntimeException e) {
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
-        }
-    }
-
-    private boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
-        if (null == exception) {
-            return false;
-        }
-        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class).
-                filter(clazz -> clazz.isAssignableFrom(exception.getClass()))
-                .findAny().isPresent();
-    }
-
     @Override
     public void syncPostBatch(final String topicId, final List<BatchItem> batches) throws EventPublishingException {
         batches.forEach(item -> Preconditions.checkNotNull(
                 item.getPartition(), "BatchItem partition can't be null at the moment of publishing!"));
         final Producer<String, String> producer = kafkaFactory.takeProducer();
-        final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
         try {
             final List<PartitionInfo> partitionInfos;
             partitionInfos = producer.partitionsFor(topicId);
-            batches.stream().forEach(batch ->  batch.setBrokerId(partitionInfos.stream()
+            batches.stream().forEach(batch -> batch.setBrokerId(partitionInfos.stream()
                     .filter(pi -> pi.partition() == Integer.valueOf(batch.getPartition()))
                     .map(pi -> pi.leader().id())
                     .findFirst().get()));
-            for (final BatchItem item : batches) {
-                item.setStep(EventPublishingStep.PUBLISHING);
-                sendFutures.put(item, postItem(producer, topicId, item));
-            }
-            final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
-                    sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
 
-            // Now lets check for errors
-            final Optional<Exception> needReset = sendFutures.entrySet().stream()
-                    .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
-                    .map(entry -> entry.getValue().getNow(null))
-                    .findAny();
-            if (needReset.isPresent()) {
-                LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
-                        topicId, needReset.get());
-                kafkaFactory.terminateProducer(producer);
-            }
-        } catch (final TimeoutException ex) {
-            failUnpublished(batches, "timed out");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
-        } catch (final ExecutionException ex) {
-            failUnpublished(batches, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
-        } catch (final InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            failUnpublished(batches, "interrupted");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
+            Observable.merge(batches.stream()
+                    .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
+                    .map(item -> new ProducerSendCommand(kafkaFactory, topicId, item, createSendTimeout()).observe())
+                    .collect(Collectors.toList()))
+                    .subscribe(
+                            item -> {},
+                            error -> {},
+                            () -> {}
+                    );
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
+
         final boolean atLeastOneFailed = batches.stream()
                 .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
         if (atLeastOneFailed) {
@@ -262,12 +193,6 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private long createSendTimeout() {
         return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
-    }
-
-    private void failUnpublished(final List<BatchItem> batch, final String reason) {
-        batch.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
-                .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
     }
 
     @Override
