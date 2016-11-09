@@ -59,7 +59,6 @@ public class EventType {
 
     private Set<String> readScopes;
 
-    @Nullable
     private CompatibilityMode compatibilityMode;
 
     public EventType() {
@@ -69,7 +68,7 @@ public class EventType {
         this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
-        this.compatibilityMode = CompatibilityMode.DEPRECATED;
+        this.compatibilityMode = CompatibilityMode.COMPATIBLE;
     }
 
     public EventType(final String name, final String topic, final String owningApplication,
@@ -199,11 +198,7 @@ public class EventType {
     }
 
     public CompatibilityMode getCompatibilityMode() {
-        if (null == compatibilityMode) {
-            return CompatibilityMode.DEPRECATED;
-        } else {
-            return compatibilityMode;
-        }
+        return compatibilityMode;
     }
 
     public void setCompatibilityMode(final CompatibilityMode compatibilityMode) {
