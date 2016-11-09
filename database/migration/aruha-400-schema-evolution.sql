@@ -16,5 +16,3 @@ SET et_event_type_object  = jsonb_set(et_event_type_object, '{schema,created_at}
 
 INSERT INTO zn_data.event_type_schema (ets_event_type_name, ets_schema_object)
 SELECT et_name, et_event_type_object -> 'schema' FROM zn_data.event_type;
-
-
