@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.netflix.hystrix.exception.HystrixRuntimeException;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -51,9 +52,12 @@ public class ProducerSendCommandTest {
             return null;
         });
 
-        new ProducerSendCommand(kafkaFactory, "my-topic-1", batchItem, 10000).execute();
-        Assert.assertTrue(batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-        Assert.assertTrue(batchItem.getResponse().getDetail().equals("timed out"));
+        try {
+            new ProducerSendCommand(kafkaFactory, "my-topic-1", batchItem, 10000).execute();
+        } catch (final HystrixRuntimeException hre) {
+            Assert.assertTrue(batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
+            Assert.assertTrue(batchItem.getResponse().getDetail().equals("timed out"));
+        }
     }
 
     @Test
@@ -62,20 +66,27 @@ public class ProducerSendCommandTest {
         batchItem.setPartition("0");
         kafkaProducer.setException(new TimeoutException());
 
-        new ProducerSendCommand(kafkaFactory, "my-topic-1", batchItem, 10000).execute();
-        Assert.assertTrue(batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-        Assert.assertTrue(batchItem.getResponse().getDetail().equals("timed out"));
+        try {
+            new ProducerSendCommand(kafkaFactory, "my-topic-1", batchItem, 10000).execute();
+            Assert.fail();
+        } catch (final HystrixRuntimeException hre) {
+            Assert.assertTrue(batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
+            Assert.assertTrue(batchItem.getResponse().getDetail().equals("timed out"));
+        }
     }
 
     @Test
     public void testHystrixTimeoutException() throws Exception {
         final BatchItem batchItem = new BatchItem(new JSONObject());
         batchItem.setPartition("0");
-        kafkaProducer.setWaitOnSend(true);
+        kafkaProducer.setWaitOnSend(true).setUseCallback(false);
 
-        new ProducerSendCommand(kafkaFactory, "my-topic-1", batchItem, 100).execute();
-        Assert.assertTrue(batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-        Assert.assertTrue(batchItem.getResponse().getDetail().equals("timed out"));
+        try {
+            new ProducerSendCommand(kafkaFactory, "my-topic-1", batchItem, 100).execute();
+            Assert.fail();
+        } catch (final HystrixRuntimeException hre) {
+            Assert.assertTrue(batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.ABORTED);
+        }
     }
 
     @Test
@@ -93,6 +104,7 @@ public class ProducerSendCommandTest {
 
         private Exception exception;
         private boolean waitOnSend;
+        private boolean useCallback = true;
 
         public TestProducer setException(final Exception exception) {
             this.exception = exception;
@@ -104,6 +116,11 @@ public class ProducerSendCommandTest {
             return this;
         }
 
+        public TestProducer setUseCallback(final boolean useCallback) {
+            this.useCallback = useCallback;
+            return this;
+        }
+
         @Override
         public Future<RecordMetadata> send(final ProducerRecord<String, String> record) {
             return null;
@@ -111,7 +128,6 @@ public class ProducerSendCommandTest {
 
         @Override
         public Future<RecordMetadata> send(final ProducerRecord<String, String> record, final Callback callback) {
-            callback.onCompletion(null, exception);
             if (waitOnSend) {
                 try {
                     Thread.sleep(20000);
@@ -119,7 +135,10 @@ public class ProducerSendCommandTest {
                     e.printStackTrace();
                 }
             }
-             return null;
+            if (useCallback) {
+                callback.onCompletion(null, exception);
+            }
+            return null;
         }
 
         @Override

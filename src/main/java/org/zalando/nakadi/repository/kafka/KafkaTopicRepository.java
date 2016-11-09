@@ -184,7 +184,7 @@ public class KafkaTopicRepository implements TopicRepository {
                                 throw new RuntimeException("Error publishing message to kafka");
                         },
                         error -> {
-                            // just in case Hystrix could not handle exception in fallback
+                            LOG.error("Hystrix command error for topic {}", topicId, error);
                             throw new RuntimeException("Error publishing message to kafka", error);
                         }
                 );
