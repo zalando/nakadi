@@ -6,17 +6,18 @@ import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
+import org.apache.kafka.common.errors.TimeoutException;
+import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 
-import javax.annotation.Nullable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Stream;
 
 public class ProducerSendCommand extends HystrixCommand<BatchItem> {
 
@@ -57,8 +58,10 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
                         kafkaFactory.terminateProducer(producer);
                     }
 
-                    
-                    // TODO throw timeout
+                    if (hasKafkaConnectionException(exception)) {
+                        LOG.warn("Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), exception);
+                        throw new Exception();
+                    }
                 }
             } finally {
                 kafkaFactory.releaseProducer(producer);
@@ -75,10 +78,15 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
         return batchItem;
     }
 
-    private boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
-        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class).
-                filter(clazz -> clazz.isAssignableFrom(exception.getClass()))
-                .findAny().isPresent();
+    private boolean isExceptionShouldLeadToReset(final Exception exception) {
+        return exception instanceof NotLeaderForPartitionException ||
+                exception instanceof UnknownTopicOrPartitionException;
+    }
+
+    private boolean hasKafkaConnectionException(final Exception exception) {
+        return exception instanceof TimeoutException ||
+                exception instanceof NetworkException ||
+                exception instanceof UnknownServerException;
     }
 
     private class NakadiCallback implements Callback {

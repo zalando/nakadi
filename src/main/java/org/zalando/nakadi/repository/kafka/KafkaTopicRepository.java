@@ -26,7 +26,6 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -158,7 +157,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batches) throws EventPublishingException {
+    public void syncPostBatch(final String topicId, final List<BatchItem> batches) throws RuntimeException {
         batches.forEach(item -> Preconditions.checkNotNull(
                 item.getPartition(), "BatchItem partition can't be null at the moment of publishing!"));
         final Producer<String, String> producer = kafkaFactory.takeProducer();
@@ -174,21 +173,32 @@ public class KafkaTopicRepository implements TopicRepository {
                     .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
                     .map(item -> new ProducerSendCommand(kafkaFactory, topicId, item, createSendTimeout()).observe())
                     .collect(Collectors.toList()))
+                    .toBlocking()
                     .subscribe(
-                            item -> {},
-                            error -> {},
-                            () -> {}
+                            item -> {
+                                // TODO throw exception if batch failed
+                                LOG.error("Observable.onNext: " + item);
+                                if (item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
+                                    throw new RuntimeException("Error publishing message to kafka");
+                            },
+                            error -> {
+                                // TODO throw exception command failed
+                                LOG.error("Observable.onError: " + error);
+                                throw new RuntimeException("Error publishing message to kafka", error);
+                            }
                     );
+            LOG.error("Pass through, beee");
+
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
 
-        final boolean atLeastOneFailed = batches.stream()
-                .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-        if (atLeastOneFailed) {
-            failUnpublished(batches, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka");
-        }
+//        final boolean atLeastOneFailed = batches.stream()
+//                .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
+//        if (atLeastOneFailed) {
+//            failUnpublished(batches, "internal error");
+//            throw new EventPublishingException("Error publishing message to kafka");
+//        }
     }
 
     private long createSendTimeout() {
