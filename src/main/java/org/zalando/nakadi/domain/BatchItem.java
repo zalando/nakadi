@@ -33,7 +33,7 @@ public class BatchItem {
         return partition;
     }
 
-    public void setBrokerId(int brokerId) {
+    public void setBrokerId(final int brokerId) {
         this.brokerId = brokerId;
     }
 
