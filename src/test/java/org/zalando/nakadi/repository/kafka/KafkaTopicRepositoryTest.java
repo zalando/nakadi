@@ -2,7 +2,20 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.GetChildrenBuilder;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.producer.BufferExhaustedException;
 import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
+import org.json.JSONObject;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
@@ -11,26 +24,15 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
-import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.api.GetChildrenBuilder;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.producer.BufferExhaustedException;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.PartitionInfo;
-import org.json.JSONObject;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -217,7 +219,11 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
-        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(100L);
+
+        final String topic = EXPECTED_PRODUCER_RECORD.topic();
+        when(kafkaProducer.partitionsFor(topic)).thenReturn(
+                Collections.singletonList(new PartitionInfo(topic, 1, new Node(1, "host", 9091), null, null)));
 
         Mockito
                 .doReturn(mock(Future.class))
@@ -225,9 +231,9 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(topic, batch);
             fail();
-        } catch (final EventPublishingException e) {
+        } catch (final RuntimeException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("timed out"));
         }
@@ -240,15 +246,21 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
+
+        final String topic = EXPECTED_PRODUCER_RECORD.topic();
+        when(kafkaProducer.partitionsFor(topic)).thenReturn(
+                Collections.singletonList(new PartitionInfo(topic, 1, new Node(1, "host", 9091), null, null)));
+
         Mockito
                 .doThrow(BufferExhaustedException.class)
                 .when(kafkaProducer)
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(topic, batch);
             fail();
-        } catch (final EventPublishingException e) {
+        } catch (final RuntimeException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("internal error"));
         }
@@ -263,6 +275,14 @@ public class KafkaTopicRepositoryTest {
         secondItem.setPartition("2");
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
 
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
+
+        final String topic = EXPECTED_PRODUCER_RECORD.topic();
+        final List<PartitionInfo> parts = new LinkedList<>();
+        parts.add(new PartitionInfo(topic, 1, new Node(1, "host", 9091), null, null));
+        parts.add(new PartitionInfo(topic, 2, new Node(1, "host", 9091), null, null));
+        when(kafkaProducer.partitionsFor(topic)).thenReturn(parts);
+
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
             final Callback callback = (Callback) invocation.getArguments()[1];
@@ -275,9 +295,9 @@ public class KafkaTopicRepositoryTest {
         });
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(topic, batch);
             fail();
-        } catch (final EventPublishingException e) {
+        } catch (final RuntimeException e) {
             assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
             assertThat(firstItem.getResponse().getDetail(), equalTo(""));
             assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));

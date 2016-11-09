@@ -161,44 +161,32 @@ public class KafkaTopicRepository implements TopicRepository {
         batches.forEach(item -> Preconditions.checkNotNull(
                 item.getPartition(), "BatchItem partition can't be null at the moment of publishing!"));
         final Producer<String, String> producer = kafkaFactory.takeProducer();
+        final List<PartitionInfo> partitionInfos;
         try {
-            final List<PartitionInfo> partitionInfos;
             partitionInfos = producer.partitionsFor(topicId);
-            batches.stream().forEach(batch -> batch.setBrokerId(partitionInfos.stream()
-                    .filter(pi -> pi.partition() == Integer.valueOf(batch.getPartition()))
-                    .map(pi -> pi.leader().id())
-                    .findFirst().get()));
-
-            Observable.merge(batches.stream()
-                    .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
-                    .map(item -> new ProducerSendCommand(kafkaFactory, topicId, item, createSendTimeout()).observe())
-                    .collect(Collectors.toList()))
-                    .toBlocking()
-                    .subscribe(
-                            item -> {
-                                // TODO throw exception if batch failed
-                                LOG.error("Observable.onNext: " + item);
-                                if (item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
-                                    throw new RuntimeException("Error publishing message to kafka");
-                            },
-                            error -> {
-                                // TODO throw exception command failed
-                                LOG.error("Observable.onError: " + error);
-                                throw new RuntimeException("Error publishing message to kafka", error);
-                            }
-                    );
-            LOG.error("Pass through, beee");
-
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
 
-//        final boolean atLeastOneFailed = batches.stream()
-//                .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-//        if (atLeastOneFailed) {
-//            failUnpublished(batches, "internal error");
-//            throw new EventPublishingException("Error publishing message to kafka");
-//        }
+        batches.stream().forEach(batch -> batch.setBrokerId(partitionInfos.stream()
+                .filter(pi -> pi.partition() == Integer.valueOf(batch.getPartition()))
+                .map(pi -> pi.leader().id())
+                .findFirst().get()));
+
+        Observable.merge(batches.stream()
+                .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
+                .map(item -> new ProducerSendCommand(kafkaFactory, topicId, item, createSendTimeout()).observe())
+                .collect(Collectors.toList()))
+                .toBlocking()
+                .subscribe(
+                        item -> {
+                            if (item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
+                                throw new RuntimeException("Error publishing message to kafka");
+                        },
+                        error -> {
+                            throw new RuntimeException("Error publishing message to kafka", error);
+                        }
+                );
     }
 
     private long createSendTimeout() {

@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class ProducerSendCommand extends HystrixCommand<BatchItem> {
 
@@ -27,6 +28,7 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
     private final KafkaFactory kafkaFactory;
     private final String topicId;
     private final BatchItem batchItem;
+    private final long timeout;
 
     protected ProducerSendCommand(final KafkaFactory kafkaFactory,
                                   final String topicId,
@@ -36,6 +38,7 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
         this.kafkaFactory = kafkaFactory;
         this.topicId = topicId;
         this.batchItem = batchItem;
+        this.timeout = timeout;
     }
 
     @Override
@@ -51,7 +54,7 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
             try {
                 final NakadiCallback callback = new NakadiCallback();
                 producer.send(kafkaRecord, callback);
-                final Exception exception = callback.result.get();
+                final Exception exception = callback.result.get(timeout, TimeUnit.MILLISECONDS);
                 if (exception != null) {
                     if (isExceptionShouldLeadToReset(exception)) {
                         LOG.warn("Terminating producer while publishing to topic {}", topicId, exception);
@@ -59,8 +62,9 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
                     }
 
                     if (hasKafkaConnectionException(exception)) {
-                        LOG.warn("Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), exception);
-                        throw new Exception();
+                        LOG.error("Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), exception);
+                        batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
+                        throw new Exception("Kafka timeout exception");
                     }
                 }
             } finally {
@@ -73,6 +77,10 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
             Thread.currentThread().interrupt();
             batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "interrupted");
             LOG.error("Error publishing message to kafka", ex);
+        } catch (final java.util.concurrent.TimeoutException ex) {
+            batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
+            LOG.error("Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), ex);
+            throw new Exception("Kafka timeout exception");
         }
 
         return batchItem;
