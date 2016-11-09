@@ -23,7 +23,7 @@ public class ValidatorConfig {
     }
 
     @Bean
-    public SchemaEvolutionService schemaCompatibilityChecker() {
+    public SchemaEvolutionService schemaEvolutionService() {
         final List<SchemaConstraint> constraints = Lists.newArrayList(
                 new NotSchemaConstraint(),
                 new PatternPropertiesConstraint());

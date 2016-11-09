@@ -103,7 +103,7 @@ public class EventTypeControllerTest {
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
-            .schemaCompatibilityChecker();
+            .schemaEvolutionService();
 
     private MockMvc mockMvc;
 

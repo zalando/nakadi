@@ -26,7 +26,7 @@ public class SchemaEvolutionServiceTest {
 
     @Before
     public void setUp() {
-        this.service = new ValidatorConfig().schemaCompatibilityChecker();
+        this.service = new ValidatorConfig().schemaEvolutionService();
     }
 
     @Test(expected = InvalidEventTypeException.class)
