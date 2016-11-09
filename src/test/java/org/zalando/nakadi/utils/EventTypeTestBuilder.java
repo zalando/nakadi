@@ -2,6 +2,7 @@ package org.zalando.nakadi.utils;
 
 import com.google.common.collect.Lists;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -33,6 +34,7 @@ public class EventTypeTestBuilder {
     private EventTypeOptions options;
     private Set<String> writeScopes;
     private Set<String> readScopes;
+    private CompatibilityMode compatibilityMode;
 
     public EventTypeTestBuilder() {
         this.name = TestUtils.randomValidEventTypeName();
@@ -47,6 +49,7 @@ public class EventTypeTestBuilder {
         this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
+        this.compatibilityMode = CompatibilityMode.COMPATIBLE;
     }
 
     public EventTypeTestBuilder name(final String name) {
@@ -119,10 +122,15 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder compatibilityMode(final CompatibilityMode compatibilityMode) {
+        this.compatibilityMode = compatibilityMode;
+        return this;
+    }
 
     public EventType build() {
         return new EventType(name, topic, owningApplication, category, validationStrategies, enrichmentStrategies,
-                partitionStrategy, partitionKeyFields, schema, defaultStatistic, options, writeScopes, readScopes);
+                partitionStrategy, partitionKeyFields, schema, defaultStatistic, options, writeScopes, readScopes,
+                compatibilityMode);
     }
 
     public static EventTypeTestBuilder builder() {

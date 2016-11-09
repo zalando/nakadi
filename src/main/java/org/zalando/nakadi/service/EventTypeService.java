@@ -31,7 +31,7 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
-import org.zalando.nakadi.validation.SchemaCompatibilityChecker;
+import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 
 import java.util.List;
@@ -53,7 +53,7 @@ public class EventTypeService {
     private final UUIDGenerator uuidGenerator;
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
-    private final SchemaCompatibilityChecker schemaCompatibilityChecker;
+    private final SchemaEvolutionService schemaEvolutionService;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
@@ -61,7 +61,7 @@ public class EventTypeService {
                             final UUIDGenerator uuidGenerator,
                             final FeatureToggleService featureToggleService,
                             final SubscriptionDbRepository subscriptionRepository,
-                            final SchemaCompatibilityChecker schemaCompatibilityChecker) {
+                            final SchemaEvolutionService schemaEvolutionService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
@@ -69,7 +69,7 @@ public class EventTypeService {
         this.uuidGenerator = uuidGenerator;
         this.featureToggleService = featureToggleService;
         this.subscriptionRepository = subscriptionRepository;
-        this.schemaCompatibilityChecker = schemaCompatibilityChecker;
+        this.schemaEvolutionService = schemaEvolutionService;
     }
 
     public List<EventType> list() {
@@ -138,7 +138,11 @@ public class EventTypeService {
                 return Result.forbidden("You don't have access to this event type");
             }
 
-            validateUpdate(eventTypeName, eventType);
+            validateName(eventTypeName, eventType);
+            validatePartitionKeys(Optional.empty(), eventType);
+            schemaEvolutionService.evolve(original, eventType);
+            eventType.setDefaultStatistic(
+                    validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.update(eventType);
@@ -167,17 +171,6 @@ public class EventTypeService {
         }
     }
 
-    private void validateUpdate(final String name, final EventType eventType) throws NoSuchEventTypeException,
-            InternalNakadiException, InvalidEventTypeException, NoSuchPartitionStrategyException {
-        final EventType existingEventType = eventTypeRepository.findByName(name);
-
-        validateName(name, eventType);
-        validatePartitionKeys(Optional.empty(), eventType);
-        validateSchemaChange(eventType, existingEventType);
-        eventType.setDefaultStatistic(
-                validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
-    }
-
     private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing,
             final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
         if (existing != null && newStatistics == null) {
@@ -192,13 +185,6 @@ public class EventTypeService {
     private void validateName(final String name, final EventType eventType) throws InvalidEventTypeException {
         if (!eventType.getName().equals(name)) {
             throw new InvalidEventTypeException("path does not match resource name");
-        }
-    }
-
-    private void validateSchemaChange(final EventType eventType, final EventType existingEventType)
-            throws InvalidEventTypeException {
-        if (!existingEventType.getSchema().equals(eventType.getSchema())) {
-            throw new InvalidEventTypeException("schema must not be changed");
         }
     }
 
@@ -228,7 +214,7 @@ public class EventTypeService {
     }
 
     private void validateJsonSchemaConstraints(final Schema schema) throws InvalidEventTypeException {
-        final List<SchemaIncompatibility> incompatibilities = schemaCompatibilityChecker.checkConstraints(schema);
+        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.checkConstraints(schema);
 
         if (!incompatibilities.isEmpty()) {
             final String errorMessage = incompatibilities.stream().map(Object::toString)

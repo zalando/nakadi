@@ -46,7 +46,7 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
-import org.zalando.nakadi.validation.SchemaCompatibilityChecker;
+import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
@@ -102,7 +102,7 @@ public class EventTypeControllerTest {
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
-    private final SchemaCompatibilityChecker schemaCompatibilityChecker = new ValidatorConfig()
+    private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaCompatibilityChecker();
 
     private MockMvc mockMvc;
@@ -112,7 +112,7 @@ public class EventTypeControllerTest {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid, featureToggleService, subscriptionRepository,
-                schemaCompatibilityChecker);
+                schemaEvolutionService);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
@@ -457,7 +457,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPUTEventTypeWithWrongPartitionKeyToBuisnesCategoryFieldsThen422() throws Exception {
+    public void whenPUTEventTypeWithWrongPartitionKeyToBusinessCategoryFieldsThen422() throws Exception {
 
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionKeyFields(Collections.singletonList("blabla"))

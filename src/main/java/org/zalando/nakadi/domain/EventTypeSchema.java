@@ -1,5 +1,8 @@
 package org.zalando.nakadi.domain;
 
+import org.joda.time.DateTime;
+
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 
 public class EventTypeSchema {
@@ -13,6 +16,12 @@ public class EventTypeSchema {
 
     @NotNull
     private String schema;
+
+    @Nullable
+    private Version version;
+
+    @Nullable
+    private DateTime createdAt;
 
     public EventTypeSchema() {}
 
@@ -35,6 +44,26 @@ public class EventTypeSchema {
 
     public void setSchema(final String schema) {
         this.schema = schema;
+    }
+
+    public Version getVersion() {
+        if (this.version == null) {
+            return new Version(1, 0, 0);
+        } else {
+            return version;
+        }
+    }
+
+    public void setVersion(final Version version) {
+        this.version = version;
+    }
+
+    public DateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(final DateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     @Override

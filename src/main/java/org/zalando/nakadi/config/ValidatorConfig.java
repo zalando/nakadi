@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
-import org.zalando.nakadi.validation.SchemaCompatibilityChecker;
+import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
 import org.zalando.nakadi.validation.schema.PatternPropertiesConstraint;
 import org.zalando.nakadi.validation.schema.SchemaConstraint;
@@ -23,11 +23,11 @@ public class ValidatorConfig {
     }
 
     @Bean
-    public SchemaCompatibilityChecker schemaCompatibilityChecker() {
+    public SchemaEvolutionService schemaCompatibilityChecker() {
         final List<SchemaConstraint> constraints = Lists.newArrayList(
                 new NotSchemaConstraint(),
                 new PatternPropertiesConstraint());
 
-        return new SchemaCompatibilityChecker(constraints);
+        return new SchemaEvolutionService(constraints);
     }
 }

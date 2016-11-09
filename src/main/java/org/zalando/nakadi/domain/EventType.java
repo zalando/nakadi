@@ -69,6 +69,7 @@ public class EventType {
         this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
+        this.compatibilityMode = CompatibilityMode.DEPRECATED;
     }
 
     public EventType(final String name, final String topic, final String owningApplication,
@@ -79,7 +80,8 @@ public class EventType {
                      final List<String> partitionKeyFields, final EventTypeSchema schema,
                      final EventTypeStatistics defaultStatistic,
                      final EventTypeOptions options, final Set<String> writeScopes,
-                     final Set<String> readScopes) {
+                     final Set<String> readScopes,
+                     final CompatibilityMode compatibilityMode) {
         this.name = name;
         this.topic = topic;
         this.owningApplication = owningApplication;
@@ -93,6 +95,7 @@ public class EventType {
         this.options = options;
         this.writeScopes = writeScopes;
         this.readScopes = readScopes;
+        this.compatibilityMode = compatibilityMode;
     }
 
     public String getName() {
