@@ -122,7 +122,7 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
         }
 
         @VisibleForTesting
-        void setResult(CompletableFuture<Exception> result) {
+        void setResult(final CompletableFuture<Exception> result) {
             this.result = result;
         }
     }

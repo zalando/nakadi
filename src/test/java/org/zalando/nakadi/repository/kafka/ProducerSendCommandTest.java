@@ -99,7 +99,7 @@ public class ProducerSendCommandTest {
             return this;
         }
 
-        public TestProducer setWaitOnSend(boolean waitOnSend) {
+        public TestProducer setWaitOnSend(final boolean waitOnSend) {
             this.waitOnSend = waitOnSend;
             return this;
         }
