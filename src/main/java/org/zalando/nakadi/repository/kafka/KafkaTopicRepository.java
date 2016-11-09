@@ -182,11 +182,7 @@ public class KafkaTopicRepository implements TopicRepository {
                         item -> {
                             if (item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
                                 throw new RuntimeException("Error publishing message to kafka");
-                        },
-                        error -> {
-                            throw new RuntimeException("Error publishing message to kafka", error);
-                        }
-                );
+                        });
     }
 
     private long createSendTimeout() {

@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommandGroupKey;
 import org.apache.kafka.clients.producer.Callback;
@@ -86,6 +87,13 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
         return batchItem;
     }
 
+    @Override
+    protected BatchItem getFallback() {
+        LOG.error("Fallback: Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), getExecutionException());
+        batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
+        return batchItem;
+    }
+
     private boolean isExceptionShouldLeadToReset(final Exception exception) {
         return exception instanceof NotLeaderForPartitionException ||
                 exception instanceof UnknownTopicOrPartitionException;
@@ -97,9 +105,10 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
                 exception instanceof UnknownServerException;
     }
 
-    private class NakadiCallback implements Callback {
+    @VisibleForTesting
+    class NakadiCallback implements Callback {
 
-        private final CompletableFuture<Exception> result = new CompletableFuture<>();
+        private CompletableFuture<Exception> result = new CompletableFuture<>();
 
         @Override
         public void onCompletion(final RecordMetadata metadata, final Exception exception) {
@@ -111,6 +120,11 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
                 batchItem.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
                 result.complete(null);
             }
+        }
+
+        @VisibleForTesting
+        void setResult(CompletableFuture<Exception> result) {
+            this.result = result;
         }
     }
 }
