@@ -46,18 +46,16 @@ public class EventTypeSchema {
         this.schema = schema;
     }
 
+    @Nullable
     public Version getVersion() {
-        if (this.version == null) {
-            return new Version(1, 0, 0);
-        } else {
-            return version;
-        }
+        return version;
     }
 
     public void setVersion(final Version version) {
         this.version = version;
     }
 
+    @Nullable
     public DateTime getCreatedAt() {
         return createdAt;
     }
