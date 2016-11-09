@@ -63,8 +63,6 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
                     }
 
                     if (hasKafkaConnectionException(exception)) {
-                        LOG.error("Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), exception);
-                        batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
                         throw new Exception("Kafka timeout exception");
                     }
                 }
@@ -89,7 +87,8 @@ public class ProducerSendCommand extends HystrixCommand<BatchItem> {
 
     @Override
     protected BatchItem getFallback() {
-        LOG.error("Fallback: Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), getExecutionException());
+        LOG.error("Fallback: Kafka timeout: {} on broker {}",
+                topicId, batchItem.getBrokerId(), getExecutionException());
         batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
         return batchItem;
     }

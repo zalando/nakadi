@@ -182,7 +182,12 @@ public class KafkaTopicRepository implements TopicRepository {
                         item -> {
                             if (item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
                                 throw new RuntimeException("Error publishing message to kafka");
-                        });
+                        },
+                        error -> {
+                            // just in case Hystrix could not handle exception in fallback
+                            throw new RuntimeException("Error publishing message to kafka", error);
+                        }
+                );
     }
 
     private long createSendTimeout() {
