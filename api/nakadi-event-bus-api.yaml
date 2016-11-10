@@ -1519,7 +1519,7 @@ definitions:
 
           If set it MUST be a valid required field as defined in the schema.
 
-      default_statistics:
+      default_statistic:
         type: object
         $ref: '#/definitions/EventTypeStatistics'
         description: |
