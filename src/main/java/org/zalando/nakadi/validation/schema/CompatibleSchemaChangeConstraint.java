@@ -10,7 +10,9 @@ public class CompatibleSchemaChangeConstraint implements SchemaEvolutionConstrai
     @Override
     public Optional<SchemaEvolutionIncompatibility> validate(final EventType original, final EventType eventType) {
         if (original.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
-            return Optional.empty();
+            if(!original.getSchema().getSchema().equals(eventType.getSchema().getSchema())) {
+                return Optional.of(new SchemaEvolutionIncompatibility("not yet implemented schema changes"));
+            }
         }
         return Optional.empty();
     }

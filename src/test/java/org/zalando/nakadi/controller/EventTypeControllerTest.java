@@ -581,7 +581,7 @@ public class EventTypeControllerTest {
         persistedEventType.setName(eventType.getName());
         persistedEventType.getSchema().setSchema("different");
 
-        final Problem expectedProblem = new InvalidEventTypeException("schema must not be changed").asProblem();
+        final Problem expectedProblem = new InvalidEventTypeException("not yet implemented schema changes").asProblem();
 
         Mockito.doReturn(persistedEventType).when(eventTypeRepository).findByName(persistedEventType.getName());
 

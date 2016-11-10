@@ -17,6 +17,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import static org.zalando.nakadi.utils.TestUtils.randomDate;
+
 public class EventTypeTestBuilder {
 
     public static final String DEFAULT_OWNING_APPLICATION = "event-producer-application";
@@ -47,6 +49,8 @@ public class EventTypeTestBuilder {
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.partitionKeyFields = Lists.newArrayList();
         this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, DEFAULT_SCHEMA);
+        this.schema.setVersion(new Version("1.0.0"));
+        this.schema.setCreatedAt(randomDate());
         this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
