@@ -69,8 +69,8 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     @Transactional
     public void update(final EventType eventType) throws InternalNakadiException {
         try {
-            final String sql = "SELECT ets_schema_object ->> 'version' " +
-                    "FROM zn_data.event_type_schema WHERE ets_event_type_name = ?";
+            final String sql = "SELECT et_event_type_object -> 'schema' ->> 'version' " +
+                    "FROM zn_data.event_type WHERE et_name = ?";
             final String currentVersion = jdbcTemplate.queryForObject(sql, String.class, eventType.getName());
             if (!currentVersion.equals(eventType.getSchema().getVersion().toString())) {
                 insertEventTypeSchema(eventType);
