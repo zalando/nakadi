@@ -5,31 +5,26 @@ import org.everit.json.schema.CombinedSchema;
 import org.everit.json.schema.ObjectSchema;
 import org.everit.json.schema.ReferenceSchema;
 import org.everit.json.schema.Schema;
-import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.validation.schema.SchemaCompatibilityCheckResult;
 import org.zalando.nakadi.validation.schema.SchemaConstraint;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
-import java.util.stream.Collectors;
 
 public class SchemaEvolutionService {
 
-    private final List<SchemaConstraint> constraints;
+    private final List<SchemaConstraint> jsonSchemaConstraints;
+    private final List<SchemaEvolutionConstraint> schemaEvolutionConstraints;
 
-    public SchemaEvolutionService(final List<SchemaConstraint> constraints) {
-        this.constraints = constraints;
-    }
-
-    public SchemaCompatibilityCheckResult checkCompatibility(final EventTypeSchema oldSchema,
-                                                             final EventTypeSchema newSchema) {
-        return new SchemaCompatibilityCheckResult();
+    public SchemaEvolutionService(final List<SchemaConstraint> jsonSchemaConstraints,
+                                  final List<SchemaEvolutionConstraint> schemaEvolutionConstraints) {
+        this.jsonSchemaConstraints = jsonSchemaConstraints;
+        this.schemaEvolutionConstraints = schemaEvolutionConstraints;
     }
 
     public List<SchemaIncompatibility> checkConstraints(final Schema schema) {
@@ -45,7 +40,7 @@ public class SchemaEvolutionService {
             final Stack<String> jsonPath,
             final List<SchemaIncompatibility> schemaIncompatibilities) {
 
-        for (final SchemaConstraint constraint : constraints) {
+        for (final SchemaConstraint constraint : jsonSchemaConstraints) {
             final Optional<SchemaIncompatibility> incompatibility = constraint.validate(jsonPath, schema);
             if (incompatibility.isPresent()) {
                 schemaIncompatibilities.add(incompatibility.get());
@@ -123,23 +118,9 @@ public class SchemaEvolutionService {
         jsonPath.pop();
     }
 
-    public void evolve(final EventType existingEventType, final EventType eventType) throws InvalidEventTypeException {
-        if (eventType.getCompatibilityMode() != existingEventType.getCompatibilityMode()) {
-            throw new InvalidEventTypeException("changing compatibility_mode is not allowed");
-        } else if (existingEventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
-            final SchemaCompatibilityCheckResult result = this
-                    .checkCompatibility(existingEventType.getSchema(), eventType.getSchema());
-            if (!result.isCompatible()) {
-                final String errorMessage = result.getIncompatibilities().stream().map(Object::toString)
-                        .collect(Collectors.joining(", "));
-                throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
-            } else {
-                eventType.getSchema().setVersion(result.getVersion());
-            }
-        } else if (existingEventType.getCompatibilityMode() == CompatibilityMode.DEPRECATED) {
-            if (!existingEventType.getSchema().equals(eventType.getSchema())) {
-                throw new InvalidEventTypeException("schema must not be changed");
-            }
-        }
+    public Optional<SchemaEvolutionIncompatibility> evolve(final EventType original, final EventType eventType) {
+        return schemaEvolutionConstraints.stream()
+                .map(c -> c.validate(original, eventType)).filter(Optional::isPresent).findFirst()
+                .orElse(Optional.empty());
     }
 }

@@ -1,76 +1,57 @@
 package org.zalando.nakadi.validation;
 
+import com.google.common.collect.Lists;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.config.ValidatorConfig;
-import org.zalando.nakadi.domain.CompatibilityMode;
+import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
+import org.zalando.nakadi.validation.schema.SchemaConstraint;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 import static java.util.stream.Collectors.toList;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.zalando.nakadi.utils.IsOptional.isAbsent;
 import static org.zalando.nakadi.utils.TestUtils.readFile;
 
 public class SchemaEvolutionServiceTest {
     private SchemaEvolutionService service;
+    private SchemaEvolutionConstraint evolutionConstraint = mock(SchemaEvolutionConstraint.class);
 
     @Before
     public void setUp() {
-        this.service = new ValidatorConfig().schemaEvolutionService();
+        final List<SchemaConstraint> constraints = Lists.newArrayList(new NotSchemaConstraint());
+        final List<SchemaEvolutionConstraint> evolutionConstraints= Lists.newArrayList(evolutionConstraint);
+
+        this.service = new SchemaEvolutionService(constraints, evolutionConstraints);
     }
 
-    @Test(expected = InvalidEventTypeException.class)
-    public void whenChangeCompatibilityModeThenFail() throws Exception {
+    @Test
+    public void checkEvolutionConstraints() throws Exception {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
-        final EventType oldEventType = builder.compatibilityMode(CompatibilityMode.DEPRECATED).build();
-        final EventType newEventType = builder.compatibilityMode(CompatibilityMode.COMPATIBLE).build();
-
-        service.evolve(oldEventType, newEventType);
-    }
-
-    @Test(expected = InvalidEventTypeException.class)
-    public void whenDeprecatedModeDoNotAllowSchemaChange() throws Exception {
-        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder()
-                .compatibilityMode(CompatibilityMode.DEPRECATED);
-        final EventType oldEventType = builder.schema("{\"type\":\"string\"}").build();
-        final EventType newEventType = builder.schema("{\"type\":\"number\"}").build();
-
-        service.evolve(oldEventType, newEventType);
-    }
-
-    @Test
-    public void whenDeprecatedModeButNoChangesThenKeepVersion() throws Exception {
-        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder()
-                .compatibilityMode(CompatibilityMode.DEPRECATED)
-                .schema("{\"type\":\"string\"}");
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.build();
 
-        service.evolve(oldEventType, newEventType);
+        Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
 
-        assertThat(newEventType.getSchema().getVersion().toString(), is(equalTo("1.0.0")));
-    }
+        final Optional<SchemaEvolutionIncompatibility> incompatibility = service.evolve(oldEventType, newEventType);
 
-    @Test
-    public void whenCompatibleModeButNoChangesThenKeepVersion() throws Exception {
-        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder()
-                .compatibilityMode(CompatibilityMode.COMPATIBLE);
-        final EventType oldEventType = builder.build();
-        final EventType newEventType = builder.build();
+        assertThat(incompatibility, isAbsent());
 
-        service.evolve(oldEventType, newEventType);
-
-        assertThat(newEventType.getSchema().getVersion().toString(), is(equalTo("1.0.0")));
+        verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
 
     @Test

@@ -33,6 +33,7 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
 import java.util.List;
 import java.util.Objects;
@@ -140,7 +141,7 @@ public class EventTypeService {
 
             validateName(eventTypeName, eventType);
             validatePartitionKeys(Optional.empty(), eventType);
-            schemaEvolutionService.evolve(original, eventType);
+            validateSchemaEvolution(original, eventType);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
             enrichment.validate(eventType);
@@ -155,6 +156,15 @@ public class EventTypeService {
         } catch (final NakadiException e) {
             LOG.error("Unable to update event type", e);
             return Result.problem(e.asProblem());
+        }
+    }
+
+    private void validateSchemaEvolution(final EventType original, final EventType eventType)
+            throws InvalidEventTypeException {
+        final Optional<SchemaEvolutionIncompatibility> incompatibility = schemaEvolutionService
+                .evolve(original, eventType);
+        if (incompatibility.isPresent()) {
+            throw new InvalidEventTypeException(incompatibility.get().getReason());
         }
     }
 

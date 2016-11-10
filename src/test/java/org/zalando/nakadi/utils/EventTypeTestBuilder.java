@@ -10,6 +10,7 @@ import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import java.util.Collections;
@@ -124,6 +125,14 @@ public class EventTypeTestBuilder {
 
     public EventTypeTestBuilder compatibilityMode(final CompatibilityMode compatibilityMode) {
         this.compatibilityMode = compatibilityMode;
+        return this;
+    }
+
+    public EventTypeTestBuilder version(final String version) {
+        final EventTypeSchema schema = new EventTypeSchema();
+        schema.setSchema(this.schema.getSchema());
+        schema.setVersion(new Version(version));
+        this.schema = schema;
         return this;
     }
 

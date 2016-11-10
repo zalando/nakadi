@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -38,6 +39,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     public void saveEventType(final EventType eventType) throws InternalNakadiException,
             DuplicatedEventTypeNameException {
         try {
+            eventType.getSchema().setVersion(new Version("1.0.0"));
             eventType.getSchema().setCreatedAt(new DateTime(DateTimeZone.UTC));
             jdbcTemplate.update(
                     "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, ?::jsonb)",
