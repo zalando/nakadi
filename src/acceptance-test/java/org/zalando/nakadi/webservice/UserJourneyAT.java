@@ -99,11 +99,11 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("schema.type[0]", notNullValue())
                 .body("schema.schema[0]", notNullValue());
 
-        final String updateEvetyTypeBody = getUpdateEventType();
+        final String updateEventTypeBody = getUpdateEventType();
 
         // update event-type
         jsonRequestSpec()
-                .body(updateEvetyTypeBody)
+                .body(updateEventTypeBody)
                 .when()
                 .put("/event-types/" + eventTypeName)
                 .then()
