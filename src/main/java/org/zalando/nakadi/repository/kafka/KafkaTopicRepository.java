@@ -26,6 +26,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -42,6 +43,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -157,7 +159,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batchItems) throws RuntimeException {
+    public void syncPostBatch(final String topicId, final List<BatchItem> batchItems) throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
@@ -169,27 +171,40 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.setTopic(topicId);
             });
 
-            batchItems.stream()
+            final List<ProducerSendCommand.NakadiCallback> callbacks = batchItems.stream()
                     .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
                     .map(item -> new ProducerSendCommand(producer, item).execute())
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toList())
-                    .forEach(callback -> {
-                        try {
-                            new ProducerSentCallbackCommand(callback,
-                                    () -> kafkaFactory.terminateProducer(producer),
-                                    createSendTimeout()).execute();
-                        } catch (final HystrixRuntimeException hre) {
-                            // all logged inside command
-                        }
-                    });
+                    .collect(Collectors.toList());
 
-            batchItems.forEach(item -> {
-                if (item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
-                    throw new RuntimeException("Error publishing message to kafka");
-            });
+            waitCallbacksCompleted(producer, callbacks, createSendTimeout());
+
+            for (final BatchItem batchItem: batchItems) {
+                if (batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
+                    throw new EventPublishingException("Error publishing message to kafka");
+            }
         } finally {
             kafkaFactory.releaseProducer(producer);
+        }
+    }
+
+    private void waitCallbacksCompleted(final Producer<String, String> producer,
+                                        final List<ProducerSendCommand.NakadiCallback> callbacks,
+                                        long timeout)
+            throws EventPublishingException{
+        for (final ProducerSendCommand.NakadiCallback callback : callbacks) {
+            long start = System.currentTimeMillis();
+            try {
+                new ProducerSentCallbackCommand(callback,
+                        () -> kafkaFactory.terminateProducer(producer),
+                        timeout).execute();
+            } catch (final HystrixRuntimeException hre) {
+                // logged inside command
+                if (hre.getCause() instanceof TimeoutException) {
+                    throw new EventPublishingException("Error publishing message to kafka", hre);
+                }
+            }
+            timeout -= System.currentTimeMillis() - start;
         }
     }
 

@@ -6,7 +6,6 @@ import com.netflix.hystrix.HystrixCommandKey;
 import com.netflix.hystrix.HystrixCommandProperties;
 import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
-import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
@@ -16,6 +15,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
 
@@ -44,6 +44,7 @@ public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
         final String topic = batchItem.getTopic();
         try {
             LOG.debug("Waiting for callback from Kafka");
+
             callback.getResult().get(timeout, TimeUnit.MILLISECONDS);
             batchItem.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
         } catch (final ExecutionException ex) {
@@ -53,7 +54,7 @@ public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
             if (hasKafkaConnectionException(ex.getCause())) {
                 LOG.error("Kafka timeout: {} on broker {}", topic, batchItem.getBrokerId(), ex);
                 batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
-                throw new Exception("Kafka timeout exception");
+                throw new Exception("Kafka timeout exception", ex);
             }
 
             if (isExceptionShouldLeadToReset(ex.getCause())) {
@@ -64,10 +65,10 @@ public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
             Thread.currentThread().interrupt();
             LOG.error("Error publishing message to kafka", ex);
             batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "interrupted");
-        } catch (final java.util.concurrent.TimeoutException ex) {
+        } catch (final TimeoutException ex) {
             LOG.error("Kafka timeout: {} on broker {}", topic, batchItem.getBrokerId(), ex);
             batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
-            throw new Exception("Kafka timeout exception");
+            throw ex;
         } catch (final Throwable th) {
             LOG.error("Error publishing message to kafka", th);
             batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
@@ -76,13 +77,14 @@ public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
         return batchItem;
     }
 
+
     private boolean isExceptionShouldLeadToReset(final Throwable exception) {
         return exception instanceof NotLeaderForPartitionException ||
                 exception instanceof UnknownTopicOrPartitionException;
     }
 
     private boolean hasKafkaConnectionException(final Throwable exception) {
-        return exception instanceof TimeoutException ||
+        return exception instanceof org.apache.kafka.common.errors.TimeoutException ||
                 exception instanceof NetworkException ||
                 exception instanceof UnknownServerException;
     }
