@@ -9,7 +9,10 @@ import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.zalando.nakadi.utils.IsOptional.isAbsent;
 import static org.zalando.nakadi.utils.IsOptional.isPresent;
 
 public class ChangeVersionAndCreatedAtConstraintTest {
@@ -38,6 +41,8 @@ public class ChangeVersionAndCreatedAtConstraintTest {
         final EventType newET = builder.schema(newSchema).build();
         final SchemaEvolutionConstraint constraint = new ChangeVersionAndCreatedAtConstraint();
 
-        assertThat(constraint.validate(oldET, newET), isPresent());
+        assertThat(constraint.validate(oldET, newET), isAbsent());
+        assertThat(newET.getSchema().getCreatedAt(), is(equalTo(oldET.getSchema().getCreatedAt())));
+
     }
 }

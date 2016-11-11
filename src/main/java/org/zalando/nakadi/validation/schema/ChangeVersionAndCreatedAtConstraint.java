@@ -11,8 +11,8 @@ public class ChangeVersionAndCreatedAtConstraint implements SchemaEvolutionConst
         if (original.getSchema().equals(eventType.getSchema())) {
             if (!original.getSchema().getVersion().equals(eventType.getSchema().getVersion())) {
                 return Optional.of(new SchemaEvolutionIncompatibility("changing schema version is not allowed"));
-            } else if (!original.getSchema().getCreatedAt().equals(eventType.getSchema().getCreatedAt())) {
-                return Optional.of(new SchemaEvolutionIncompatibility("changing schema created_at is not allowed"));
+            } else {
+                eventType.getSchema().setCreatedAt(original.getSchema().getCreatedAt());
             }
         }
         return Optional.empty();
