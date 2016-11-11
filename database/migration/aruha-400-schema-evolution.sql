@@ -8,6 +8,9 @@ CREATE INDEX ON zn_data.event_type_schema USING gin (ets_schema_object);
 CREATE INDEX ON zn_data.event_type_schema ((ets_schema_object->>'version'));
 CREATE INDEX ON zn_data.event_type_schema ((ets_schema_object->>'created_at'));
 
+CREATE UNIQUE INDEX ON zn_data.event_type_schema ((ets_schema_object->>'version'),
+                                                  (ets_event_type_name));
+
 UPDATE zn_data.event_type
 SET et_event_type_object  = jsonb_set(et_event_type_object, '{schema,version}', '"1.0.0"', false);
 
