@@ -3,121 +3,85 @@ package org.zalando.nakadi.repository.kafka;
 import com.google.common.annotations.VisibleForTesting;
 import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommandGroupKey;
+import com.netflix.hystrix.HystrixCommandKey;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.errors.NetworkException;
-import org.apache.kafka.common.errors.NotLeaderForPartitionException;
-import org.apache.kafka.common.errors.TimeoutException;
-import org.apache.kafka.common.errors.UnknownServerException;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 
+import javax.annotation.Nullable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
-public class ProducerSendCommand extends HystrixCommand<BatchItem> {
+public class ProducerSendCommand extends HystrixCommand<ProducerSendCommand.NakadiCallback> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProducerSendCommand.class);
-    private static final String GROUP_PREFIX = "broker-";
 
-    private final KafkaFactory kafkaFactory;
-    private final String topicId;
+    private final Producer producer;
     private final BatchItem batchItem;
-    private final long timeout;
 
-    protected ProducerSendCommand(final KafkaFactory kafkaFactory,
-                                  final String topicId,
-                                  final BatchItem batchItem,
-                                  final long timeout) {
-        super(HystrixCommandGroupKey.Factory.asKey(GROUP_PREFIX + batchItem.getBrokerId()), (int) timeout);
-        this.kafkaFactory = kafkaFactory;
-        this.topicId = topicId;
+    protected ProducerSendCommand(final Producer producer,
+                                  final BatchItem batchItem) {
+        super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("kafka"))
+                .andCommandKey(HystrixCommandKey.Factory.asKey("broker-" + batchItem.getBrokerId())));
+        this.producer = producer;
         this.batchItem = batchItem;
-        this.timeout = timeout;
     }
 
     @Override
-    protected BatchItem run() throws Exception {
+    @Nullable
+    protected NakadiCallback run() {
+        final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
+                batchItem.getTopic(),
+                KafkaCursor.toKafkaPartition(batchItem.getPartition()),
+                batchItem.getPartition(),
+                batchItem.getEvent().toString());
+        final NakadiCallback callback = new NakadiCallback(batchItem);
         try {
-            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
-                    topicId,
-                    KafkaCursor.toKafkaPartition(batchItem.getPartition()),
-                    batchItem.getPartition(),
-                    batchItem.getEvent().toString());
-
-            final Producer<String, String> producer = kafkaFactory.takeProducer();
-            try {
-                final NakadiCallback callback = new NakadiCallback();
-                producer.send(kafkaRecord, callback);
-                final Exception exception = callback.result.get(timeout, TimeUnit.MILLISECONDS);
-                if (exception != null) {
-                    if (isExceptionShouldLeadToReset(exception)) {
-                        LOG.warn("Terminating producer while publishing to topic {}", topicId, exception);
-                        kafkaFactory.terminateProducer(producer);
-                    }
-
-                    if (hasKafkaConnectionException(exception)) {
-                        LOG.error("Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), exception);
-                        batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
-                        throw new Exception("Kafka timeout exception");
-                    }
-                }
-            } finally {
-                kafkaFactory.releaseProducer(producer);
-            }
-        } catch (final ExecutionException | RuntimeException ex) {
+            producer.send(kafkaRecord, callback);
+            LOG.debug("Sent command to Kafka");
+            return callback;
+        } catch (final Exception ex) {
+            LOG.error("Error publishing message to kafka", ex);
             batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            LOG.error("Error publishing message to kafka", ex);
-        } catch (final InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "interrupted");
-            LOG.error("Error publishing message to kafka", ex);
-        } catch (final java.util.concurrent.TimeoutException ex) {
-            batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
-            LOG.error("Kafka timeout: {} on broker {}", topicId, batchItem.getBrokerId(), ex);
-            throw new Exception("Kafka timeout exception");
+        }
+        return null;
+    }
+
+    static class NakadiCallback implements Callback {
+
+        private final BatchItem batchItem;
+        private CompletableFuture<Exception> result;
+
+        NakadiCallback(final BatchItem batchItem) {
+            this.batchItem = batchItem;
+            this.result = new CompletableFuture<>();
         }
 
-        return batchItem;
-    }
-
-    private boolean isExceptionShouldLeadToReset(final Exception exception) {
-        return exception instanceof NotLeaderForPartitionException ||
-                exception instanceof UnknownTopicOrPartitionException;
-    }
-
-    private boolean hasKafkaConnectionException(final Exception exception) {
-        return exception instanceof TimeoutException ||
-                exception instanceof NetworkException ||
-                exception instanceof UnknownServerException;
-    }
-
-    @VisibleForTesting
-    class NakadiCallback implements Callback {
-
-        private CompletableFuture<Exception> result = new CompletableFuture<>();
-
+        // called on producer thread
         @Override
         public void onCompletion(final RecordMetadata metadata, final Exception exception) {
-            if (null != exception) {
-                LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
-                batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                result.complete(exception);
-            } else {
-                batchItem.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
+            if (null == exception) {
                 result.complete(null);
+            } else {
+                result.completeExceptionally(exception);
             }
         }
 
         @VisibleForTesting
         void setResult(final CompletableFuture<Exception> result) {
             this.result = result;
+        }
+
+        BatchItem getBatchItem() {
+            return batchItem;
+        }
+
+        CompletableFuture<Exception> getResult() {
+            return result;
         }
     }
 }

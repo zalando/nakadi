@@ -8,8 +8,9 @@ import java.util.Optional;
 public class BatchItem {
     private final BatchItemResponse response;
     private final JSONObject event;
+    private String topic;
     private String partition;
-    private int brokerId;
+    private String brokerId;
 
     public BatchItem(final JSONObject event) {
         this.response = new BatchItemResponse();
@@ -33,12 +34,20 @@ public class BatchItem {
         return partition;
     }
 
-    public void setBrokerId(final int brokerId) {
+    public void setBrokerId(final String brokerId) {
         this.brokerId = brokerId;
     }
 
-    public int getBrokerId() {
+    public String getBrokerId() {
         return brokerId;
+    }
+
+    public String getTopic() {
+        return topic;
+    }
+
+    public void setTopic(String topic) {
+        this.topic = topic;
     }
 
     public BatchItemResponse getResponse() {

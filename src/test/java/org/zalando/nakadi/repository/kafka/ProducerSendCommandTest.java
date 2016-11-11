@@ -46,8 +46,8 @@ public class ProducerSendCommandTest {
         final CompletableFuture cf = Mockito.mock(CompletableFuture.class);
         Mockito.when(cf.get(10000, TimeUnit.MILLISECONDS)).thenThrow(new java.util.concurrent.TimeoutException());
         Mockito.when(producer.send(Mockito.any(), Mockito.any())).thenAnswer(invocation -> {
-            final ProducerSendCommand.NakadiCallback callback =
-                    (ProducerSendCommand.NakadiCallback) invocation.getArguments()[1];
+            final NakadiCallback callback =
+                    (NakadiCallback) invocation.getArguments()[1];
             callback.setResult(cf);
             return null;
         });

@@ -4,12 +4,12 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.netflix.hystrix.exception.HystrixRuntimeException;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.common.PartitionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,11 +35,11 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import rx.Observable;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -157,37 +157,40 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batches) throws RuntimeException {
-        batches.forEach(item -> Preconditions.checkNotNull(
-                item.getPartition(), "BatchItem partition can't be null at the moment of publishing!"));
+    public void syncPostBatch(final String topicId, final List<BatchItem> batchItems) throws RuntimeException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
-        final List<PartitionInfo> partitionInfos;
         try {
-            partitionInfos = producer.partitionsFor(topicId);
+            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
+                    .collect(Collectors.toMap(p -> String.valueOf(p.partition()),p -> String.valueOf(p.leader().id())));
+            batchItems.forEach(item -> {
+                Preconditions.checkNotNull(
+                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
+                item.setBrokerId(partitionToBroker.get(item.getPartition()));
+                item.setTopic(topicId);
+            });
+
+            batchItems.stream()
+                    .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
+                    .map(item -> new ProducerSendCommand(producer, item).execute())
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList())
+                    .forEach(callback -> {
+                        try {
+                            new ProducerSentCallbackCommand(callback,
+                                    () -> kafkaFactory.terminateProducer(producer),
+                                    createSendTimeout()).execute();
+                        } catch (final HystrixRuntimeException hre) {
+                            // all logged inside command
+                        }
+                    });
+
+            batchItems.forEach(item -> {
+                if (item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
+                    throw new RuntimeException("Error publishing message to kafka");
+            });
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
-
-        batches.stream().forEach(batch -> batch.setBrokerId(partitionInfos.stream()
-                .filter(pi -> pi.partition() == Integer.valueOf(batch.getPartition()))
-                .map(pi -> pi.leader().id())
-                .findFirst().get()));
-
-        Observable.merge(batches.stream()
-                .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
-                .map(item -> new ProducerSendCommand(kafkaFactory, topicId, item, createSendTimeout()).observe())
-                .collect(Collectors.toList()))
-                .toBlocking()
-                .subscribe(
-                        item -> {
-                            if (item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
-                                throw new RuntimeException("Error publishing message to kafka");
-                        },
-                        error -> {
-                            LOG.error("Hystrix command error for topic {}", topicId, error);
-                            throw new RuntimeException("Error publishing message to kafka", error);
-                        }
-                );
     }
 
     private long createSendTimeout() {
