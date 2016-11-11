@@ -15,7 +15,6 @@ import org.zalando.nakadi.validation.schema.SchemaConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,8 +58,8 @@ public class SchemaEvolutionServiceTest {
         final JSONArray invalidTestCases = new JSONArray(
                 readFile("org/zalando/nakadi/validation/invalid-json-schema-examples.json"));
 
-        for(final Iterator<Object> i = invalidTestCases.iterator(); i.hasNext();) {
-            final JSONObject testCase = (JSONObject) i.next();
+        for(final Object testCaseObject : invalidTestCases) {
+            final JSONObject testCase = (JSONObject) testCaseObject;
             final Schema schema = SchemaLoader.load(testCase.getJSONObject("schema"));
             final List<String> errorMessages = testCase
                     .getJSONArray("errors")
