@@ -19,8 +19,19 @@ public class ChangeVersionAndCreatedAtConstraintTest {
     @Test
     public void whenNoChangesKeepVersion() {
         final EventTypeTestBuilder builder = new EventTypeTestBuilder().compatibilityMode(CompatibilityMode.DEPRECATED);
-        final EventType oldET = builder.version("1.0.0").build();
-        final EventType newET = builder.version("1.1.0").build();
+
+        final EventTypeSchema oldSchema = new EventTypeSchema();
+        oldSchema.setSchema("{}");
+        oldSchema.setVersion(new Version("1.0.0"));
+        oldSchema.setCreatedAt(new DateTime(DateTimeZone.UTC));
+
+        final EventTypeSchema newSchema = new EventTypeSchema();
+        newSchema.setSchema("{}");
+        newSchema.setVersion(new Version("1.1.0"));
+        newSchema.setCreatedAt(oldSchema.getCreatedAt());
+
+        final EventType oldET = builder.schema(oldSchema).build();
+        final EventType newET = builder.schema(newSchema).build();
         final SchemaEvolutionConstraint constraint = new ChangeVersionAndCreatedAtConstraint();
 
         assertThat(constraint.validate(oldET, newET), isPresent());

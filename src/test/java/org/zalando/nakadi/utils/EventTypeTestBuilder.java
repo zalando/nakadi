@@ -132,14 +132,6 @@ public class EventTypeTestBuilder {
         return this;
     }
 
-    public EventTypeTestBuilder version(final String version) {
-        final EventTypeSchema schema = new EventTypeSchema();
-        schema.setSchema(this.schema.getSchema());
-        schema.setVersion(new Version(version));
-        this.schema = schema;
-        return this;
-    }
-
     public EventType build() {
         return new EventType(name, topic, owningApplication, category, validationStrategies, enrichmentStrategies,
                 partitionStrategy, partitionKeyFields, schema, defaultStatistic, options, writeScopes, readScopes,
