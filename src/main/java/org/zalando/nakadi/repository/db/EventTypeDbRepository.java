@@ -87,7 +87,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
 
     private void insertEventTypeSchema(final EventType eventType) throws JsonProcessingException {
         jdbcTemplate.update(
-                "INSERT INTO zn_data.event_type_schema (ets_event_type_name, ets_schema_object ) VALUES (?, ?::jsonb)",
+                "INSERT INTO zn_data.event_type_schema (ets_event_type_name, ets_schema_object) VALUES (?, ?::jsonb)",
                 eventType.getName(),
                 jsonMapper.writer().writeValueAsString(eventType.getSchema()));
     }
