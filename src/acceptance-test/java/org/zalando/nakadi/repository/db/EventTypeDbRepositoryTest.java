@@ -190,7 +190,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat("Number of rows should encrease", rows, equalTo(0));
 
         final int schemaRows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
-        assertThat("Number of rows should encrease", schemaRows, equalTo(0));
+        assertThat("Number of rows should decrease", schemaRows, equalTo(0));
     }
 
     private void insertEventType(final EventType eventType) throws Exception {
