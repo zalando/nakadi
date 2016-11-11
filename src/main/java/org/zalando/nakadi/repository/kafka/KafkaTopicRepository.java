@@ -206,8 +206,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     throw new EventPublishingException("Error publishing message to kafka", hre);
                 }
             }
-            if ((commandTimeout -= System.currentTimeMillis() - start) < 0)
-                throw new EventPublishingException("Error publishing message to kafka");
+            commandTimeout -= System.currentTimeMillis() - start;
         }
     }
 
