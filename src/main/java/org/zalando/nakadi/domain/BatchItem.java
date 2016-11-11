@@ -46,7 +46,7 @@ public class BatchItem {
         return topic;
     }
 
-    public void setTopic(String topic) {
+    public void setTopic(final String topic) {
         this.topic = topic;
     }
 

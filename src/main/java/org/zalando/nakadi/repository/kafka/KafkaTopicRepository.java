@@ -43,7 +43,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -190,21 +189,25 @@ public class KafkaTopicRepository implements TopicRepository {
 
     private void waitCallbacksCompleted(final Producer<String, String> producer,
                                         final List<ProducerSendCommand.NakadiCallback> callbacks,
-                                        long timeout)
-            throws EventPublishingException{
+                                        final long timeout)
+            throws EventPublishingException {
+        long commandTimeout = timeout;
         for (final ProducerSendCommand.NakadiCallback callback : callbacks) {
-            long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
             try {
                 new ProducerSentCallbackCommand(callback,
                         () -> kafkaFactory.terminateProducer(producer),
-                        timeout).execute();
+                        commandTimeout).execute();
             } catch (final HystrixRuntimeException hre) {
-                // logged inside command
-                if (hre.getCause() instanceof TimeoutException) {
+                if (hre.getFailureType() == HystrixRuntimeException.FailureType.TIMEOUT) {
+                    final BatchItem batchItem = callback.getBatchItem();
+                    LOG.error("Kafka timeout: {} on broker {}", batchItem.getTopic(), batchItem.getBrokerId(), hre);
+                    batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
                     throw new EventPublishingException("Error publishing message to kafka", hre);
                 }
             }
-            timeout -= System.currentTimeMillis() - start;
+            if ((commandTimeout -= System.currentTimeMillis() - start) < 0)
+                throw new EventPublishingException("Error publishing message to kafka");
         }
     }
 

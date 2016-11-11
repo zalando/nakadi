@@ -24,6 +24,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -233,7 +234,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.syncPostBatch(topic, batch);
             fail();
-        } catch (final RuntimeException e) {
+        } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("timed out"));
         }
@@ -260,7 +261,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.syncPostBatch(topic, batch);
             fail();
-        } catch (final RuntimeException e) {
+        } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("internal error"));
         }
@@ -297,7 +298,7 @@ public class KafkaTopicRepositoryTest {
         try {
             kafkaTopicRepository.syncPostBatch(topic, batch);
             fail();
-        } catch (final RuntimeException e) {
+        } catch (final EventPublishingException e) {
             assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
             assertThat(firstItem.getResponse().getDetail(), equalTo(""));
             assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));

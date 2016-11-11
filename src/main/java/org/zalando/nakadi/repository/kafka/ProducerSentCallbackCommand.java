@@ -14,8 +14,6 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
 
@@ -24,7 +22,6 @@ public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
 
     private final ProducerSendCommand.NakadiCallback callback;
     private final Runnable producerTerminator;
-    private final long timeout;
 
     protected ProducerSentCallbackCommand(final ProducerSendCommand.NakadiCallback callback,
                                           final Runnable producerTerminator,
@@ -35,7 +32,6 @@ public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
                         HystrixCommandProperties.Setter().withExecutionTimeoutInMilliseconds((int) timeout)));
         this.callback = callback;
         this.producerTerminator = producerTerminator;
-        this.timeout = timeout;
     }
 
     @Override
@@ -44,8 +40,7 @@ public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
         final String topic = batchItem.getTopic();
         try {
             LOG.debug("Waiting for callback from Kafka");
-
-            callback.getResult().get(timeout, TimeUnit.MILLISECONDS);
+            callback.getResult().get();
             batchItem.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
         } catch (final ExecutionException ex) {
             LOG.error("Error publishing message to kafka", ex);
@@ -65,18 +60,10 @@ public class ProducerSentCallbackCommand extends HystrixCommand<BatchItem> {
             Thread.currentThread().interrupt();
             LOG.error("Error publishing message to kafka", ex);
             batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "interrupted");
-        } catch (final TimeoutException ex) {
-            LOG.error("Kafka timeout: {} on broker {}", topic, batchItem.getBrokerId(), ex);
-            batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
-            throw ex;
-        } catch (final Throwable th) {
-            LOG.error("Error publishing message to kafka", th);
-            batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
         }
 
         return batchItem;
     }
-
 
     private boolean isExceptionShouldLeadToReset(final Throwable exception) {
         return exception instanceof NotLeaderForPartitionException ||

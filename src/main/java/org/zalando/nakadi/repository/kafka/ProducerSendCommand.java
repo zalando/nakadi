@@ -44,7 +44,7 @@ public class ProducerSendCommand extends HystrixCommand<ProducerSendCommand.Naka
             producer.send(kafkaRecord, callback);
             LOG.debug("Sent command to Kafka");
             return callback;
-        } catch (final Exception ex) {
+        } catch (final RuntimeException ex) {
             LOG.error("Error publishing message to kafka", ex);
             batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
         }
