@@ -113,6 +113,7 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     }
 
     @Override
+    @Transactional
     public void removeEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
         try {
             jdbcTemplate.update("DELETE FROM zn_data.event_type_schema WHERE ets_event_type_name = ?", name);
