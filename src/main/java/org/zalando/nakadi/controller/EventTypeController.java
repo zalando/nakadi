@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
@@ -64,7 +65,7 @@ public class EventTypeController {
     }
 
     @RequestMapping(method = RequestMethod.POST)
-    public ResponseEntity<?> create(@Valid @RequestBody final EventType eventType,
+    public ResponseEntity<?> create(@Valid @RequestBody final EventTypeBase eventType,
                                     final Errors errors,
                                     final NativeWebRequest request) {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_CREATION)) {
@@ -91,7 +92,7 @@ public class EventTypeController {
         return status(HttpStatus.CREATED).build();
     }
 
-    private void setDefaultEventTypeOptions(final EventType eventType) {
+    private void setDefaultEventTypeOptions(final EventTypeBase eventType) {
         final EventTypeOptions options = eventType.getOptions();
         if (options.getRetentionTime() == null) {
             options.setRetentionTime(nakadiSettings.getDefaultTopicRetentionMs());
@@ -116,7 +117,7 @@ public class EventTypeController {
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.PUT)
     public ResponseEntity<?> update(
             @PathVariable("name") final String name,
-            @RequestBody @Valid final EventType eventType,
+            @RequestBody @Valid final EventTypeBase eventType,
             final Errors errors,
             final NativeWebRequest request,
             final Client client) {

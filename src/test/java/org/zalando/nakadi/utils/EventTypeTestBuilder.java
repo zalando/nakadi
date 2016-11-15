@@ -1,16 +1,19 @@
 package org.zalando.nakadi.utils;
 
 import com.google.common.collect.Lists;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.EventTypeSchemaBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ValidationStrategyConfiguration;
-import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import java.util.Collections;
@@ -38,6 +41,8 @@ public class EventTypeTestBuilder {
     private Set<String> writeScopes;
     private Set<String> readScopes;
     private CompatibilityMode compatibilityMode;
+    private DateTime createdAt;
+    private DateTime updatedAt;
 
     public EventTypeTestBuilder() {
         this.name = TestUtils.randomValidEventTypeName();
@@ -48,13 +53,14 @@ public class EventTypeTestBuilder {
         this.enrichmentStrategies = Lists.newArrayList();
         this.partitionStrategy = PartitionStrategy.RANDOM_STRATEGY;
         this.partitionKeyFields = Lists.newArrayList();
-        this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, DEFAULT_SCHEMA);
-        this.schema.setVersion(new Version("1.0.0"));
-        this.schema.setCreatedAt(randomDate());
+        this.schema = new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchema.Type.JSON_SCHEMA, DEFAULT_SCHEMA),
+                "1.0.0", randomDate());
         this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
         this.compatibilityMode = CompatibilityMode.COMPATIBLE;
+        this.createdAt = new DateTime(DateTimeZone.UTC);
+        this.updatedAt = this.createdAt;
     }
 
     public EventTypeTestBuilder name(final String name) {
@@ -98,12 +104,14 @@ public class EventTypeTestBuilder {
     }
 
     public EventTypeTestBuilder schema(final JSONObject json) {
-        this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, json.toString());
+        this.schema = new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchema.Type.JSON_SCHEMA, json.toString()),
+                "1.0.0", randomDate());
         return this;
     }
 
     public EventTypeTestBuilder schema(final String json) {
-        this.schema = new EventTypeSchema(EventTypeSchema.Type.JSON_SCHEMA, json);
+        this.schema = new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchema.Type.JSON_SCHEMA, json),
+                "1.0.0", randomDate());
         return this;
     }
 
@@ -132,10 +140,21 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder createdAt(final DateTime createdAt) {
+        this.createdAt = createdAt;
+        return this;
+    }
+
+    public EventTypeTestBuilder updatedAt(final DateTime updatedAt) {
+        this.updatedAt = updatedAt;
+        return this;
+    }
+
     public EventType build() {
-        return new EventType(name, topic, owningApplication, category, validationStrategies, enrichmentStrategies,
-                partitionStrategy, partitionKeyFields, schema, defaultStatistic, options, writeScopes, readScopes,
-                compatibilityMode);
+        final EventTypeBase eventTypeBase = new EventTypeBase(name, topic, owningApplication, category,
+                validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
+                defaultStatistic, options, writeScopes, readScopes, compatibilityMode);
+        return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
     }
 
     public static EventTypeTestBuilder builder() {

@@ -25,6 +25,7 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -308,7 +309,7 @@ public class EventTypeControllerTest {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "some-name");
 
         Mockito.doThrow(new DuplicatedEventTypeNameException("some-name")).when(eventTypeRepository).saveEventType(any(
-                EventType.class));
+                EventTypeBase.class));
 
         postEventType(buildDefaultEventType()).andExpect(status().isConflict())
                                               .andExpect(content().contentType("application/problem+json")).andExpect(
@@ -319,7 +320,7 @@ public class EventTypeControllerTest {
     public void whenPostAndTopicExistsReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "dummy message");
         final EventType et = buildDefaultEventType();
-        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
 
         Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository).createTopic(any());
 
@@ -513,7 +514,7 @@ public class EventTypeControllerTest {
     public void whenCreateSuccessfullyThen201() throws Exception {
         final EventType et = buildDefaultEventType();
 
-        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
         Mockito.doNothing().when(topicRepository).createTopic(any());
 
         postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
@@ -526,7 +527,7 @@ public class EventTypeControllerTest {
     public void whenTopicCreationFailsRemoveEventTypeFromRepositoryAnd500() throws Exception {
 
         final EventType et = buildDefaultEventType();
-        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
 
         Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(any(EventType.class));
 
@@ -712,7 +713,7 @@ public class EventTypeControllerTest {
 
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
 
-        final ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
+        final ArgumentCaptor<EventTypeBase> eventTypeCaptor = ArgumentCaptor.forClass(EventTypeBase.class);
         Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
         Assert.assertEquals(TOPIC_RETENTION_TIME_MS,
                 eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
@@ -724,7 +725,7 @@ public class EventTypeControllerTest {
 
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
 
-        final ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
+        final ArgumentCaptor<EventTypeBase> eventTypeCaptor = ArgumentCaptor.forClass(EventTypeBase.class);
         Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
         Assert.assertEquals(TOPIC_RETENTION_TIME_MS,
                 eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());

@@ -5,7 +5,11 @@ import org.everit.json.schema.CombinedSchema;
 import org.everit.json.schema.ObjectSchema;
 import org.everit.json.schema.ReferenceSchema;
 import org.everit.json.schema.Schema;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.validation.schema.SchemaConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
@@ -118,9 +122,20 @@ public class SchemaEvolutionService {
         jsonPath.pop();
     }
 
-    public Optional<SchemaEvolutionIncompatibility> evolve(final EventType original, final EventType eventType) {
-        return schemaEvolutionConstraints.stream()
+    public EventType evolve(final EventType original, final EventTypeBase eventType) throws InvalidEventTypeException {
+        final Optional<SchemaEvolutionIncompatibility> incompatibility = schemaEvolutionConstraints.stream()
                 .map(c -> c.validate(original, eventType)).filter(Optional::isPresent).findFirst()
                 .orElse(Optional.empty());
+
+        if (incompatibility.isPresent()) {
+            throw new InvalidEventTypeException(incompatibility.get().getReason());
+        } else {
+            return this.bumpVersion(original, eventType);
+        }
+    }
+
+    private EventType bumpVersion(final EventType original, final EventTypeBase eventType) {
+        final DateTime now = new DateTime(DateTimeZone.UTC);
+        return new EventType(eventType, "1.0.0", original.getCreatedAt(), now);
     }
 }

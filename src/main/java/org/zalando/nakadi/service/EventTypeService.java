@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -33,7 +34,6 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
-import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
 import java.util.List;
 import java.util.Objects;
@@ -77,14 +77,14 @@ public class EventTypeService {
         return eventTypeRepository.list();
     }
 
-    public Result<Void> create(final EventType eventType) {
+    public Result<Void> create(final EventTypeBase eventType) {
         try {
             assignTopic(eventType);
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
-            eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(eventType);
+            final EventType savedEventType =  eventTypeRepository.saveEventType(eventType);
+            topicRepository.createTopic(savedEventType);
             return Result.ok();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
@@ -132,16 +132,16 @@ public class EventTypeService {
         }
     }
 
-    public Result<Void> update(final String eventTypeName, final EventType eventType, final Client client) {
+    public Result<Void> update(final String eventTypeName, final EventTypeBase eventTypeBase, final Client client) {
         try {
             final EventType original = eventTypeRepository.findByName(eventTypeName);
             if (!client.idMatches(original.getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }
 
-            validateName(eventTypeName, eventType);
-            validatePartitionKeys(Optional.empty(), eventType);
-            validateSchemaEvolution(original, eventType);
+            validateName(eventTypeName, eventTypeBase);
+            validatePartitionKeys(Optional.empty(), eventTypeBase);
+            final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
             enrichment.validate(eventType);
@@ -156,15 +156,6 @@ public class EventTypeService {
         } catch (final NakadiException e) {
             LOG.error("Unable to update event type", e);
             return Result.problem(e.asProblem());
-        }
-    }
-
-    private void validateSchemaEvolution(final EventType original, final EventType eventType)
-            throws InvalidEventTypeException {
-        final Optional<SchemaEvolutionIncompatibility> incompatibility = schemaEvolutionService
-                .evolve(original, eventType);
-        if (incompatibility.isPresent()) {
-            throw new InvalidEventTypeException(incompatibility.get().getReason());
         }
     }
 
@@ -192,13 +183,13 @@ public class EventTypeService {
         return newStatistics;
     }
 
-    private void validateName(final String name, final EventType eventType) throws InvalidEventTypeException {
+    private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {
         if (!eventType.getName().equals(name)) {
             throw new InvalidEventTypeException("path does not match resource name");
         }
     }
 
-    private void validateSchema(final EventType eventType) throws InvalidEventTypeException {
+    private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {
             final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
 
@@ -233,7 +224,7 @@ public class EventTypeService {
         }
     }
 
-    private void validatePartitionKeys(final Optional<Schema> schemaO, final EventType eventType)
+    private void validatePartitionKeys(final Optional<Schema> schemaO, final EventTypeBase eventType)
             throws InvalidEventTypeException, JSONException, SchemaException {
         if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
             return;
@@ -252,7 +243,7 @@ public class EventTypeService {
         }
     }
 
-    private void assignTopic(final EventType eventType) {
+    private void assignTopic(final EventTypeBase eventType) {
         eventType.setTopic(uuidGenerator.randomUUID().toString());
     }
 

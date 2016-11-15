@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Version;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -36,21 +36,22 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
 
     @Override
     @Transactional
-    public void saveEventType(final EventType eventType) throws InternalNakadiException,
+    public EventType saveEventType(final EventTypeBase eventTypeBase) throws InternalNakadiException,
             DuplicatedEventTypeNameException {
         try {
-            eventType.getSchema().setVersion(new Version("1.0.0"));
-            eventType.getSchema().setCreatedAt(new DateTime(DateTimeZone.UTC));
+            final DateTime now = new DateTime(DateTimeZone.UTC);
+            final EventType eventType = new EventType(eventTypeBase, "1.0.0", now, now);
             jdbcTemplate.update(
                     "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) VALUES (?, ?, ?::jsonb)",
-                    eventType.getName(),
-                    eventType.getTopic(),
+                    eventTypeBase.getName(),
+                    eventTypeBase.getTopic(),
                     jsonMapper.writer().writeValueAsString(eventType));
             insertEventTypeSchema(eventType);
+            return eventType;
         } catch (JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during persistence of event type", e);
         } catch (DuplicateKeyException e) {
-            throw new DuplicatedEventTypeNameException("EventType " + eventType.getName() + " already exists.", e);
+            throw new DuplicatedEventTypeNameException("EventType " + eventTypeBase.getName() + " already exists.", e);
         }
     }
 

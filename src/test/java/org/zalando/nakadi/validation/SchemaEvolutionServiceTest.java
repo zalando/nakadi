@@ -9,21 +9,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
 import org.zalando.nakadi.validation.schema.SchemaConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
-import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
 import java.util.List;
 import java.util.Optional;
 
 import static java.util.stream.Collectors.toList;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.zalando.nakadi.utils.IsOptional.isAbsent;
 import static org.zalando.nakadi.utils.TestUtils.readFile;
 
 public class SchemaEvolutionServiceTest {
@@ -46,9 +46,9 @@ public class SchemaEvolutionServiceTest {
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
 
-        final Optional<SchemaEvolutionIncompatibility> incompatibility = service.evolve(oldEventType, newEventType);
+        final EventType eventType = service.evolve(oldEventType, newEventType);
 
-        assertThat(incompatibility, isAbsent());
+        assertThat(eventType.getSchema().getVersion(), is(equalTo(new Version("1.0.0"))));
 
         verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
