@@ -36,8 +36,8 @@ nakadi:
       rotationMs: 86400000 # 1 day
   stream:
     timeoutMs: 31536000000 # 1 year :-P
-    default:
-        commitTimeout: 60 # 1 minute
+    default.commitTimeout: 60 # 1 minute
+    maxConnections: 5
   featureToggle.default: false
   kafka:
     request.timeout.ms: 30000
