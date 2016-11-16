@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -101,6 +102,8 @@ public class ConsumerLimitingService {
                     .getChildren()
                     .forPath(zkPath);
             return children == null || children.size() < maxConnections;
+        } catch (final KeeperException.NoNodeException nne) {
+            return true;
         } catch (Exception e) {
             LOG.error("Zookeeper error when getting consumer nodes", e);
             throw new NakadiRuntimeException(e);
