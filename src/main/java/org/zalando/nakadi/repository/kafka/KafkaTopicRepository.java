@@ -9,7 +9,9 @@ import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -157,6 +159,22 @@ public class KafkaTopicRepository implements TopicRepository {
                 .anyMatch(partition::equals);
     }
 
+    /**
+     * Post to Kafka is divided into two Hystrix commands because
+     * {@link org.apache.kafka.clients.producer.KafkaProducer#send(ProducerRecord, Callback)} is not blocking and
+     * {@link org.apache.kafka.clients.producer.Callback} is returned in producer thread. That's why we post message
+     * in {@link org.zalando.nakadi.repository.kafka.ProducerSendCommand} and
+     * wait for callback in {@link org.zalando.nakadi.repository.kafka.ProducerSentCallbackCommand}
+     *
+     * It allows to not send messages to Kafka when circuit breaker is opened.
+     *
+     * @see org.zalando.nakadi.repository.kafka.ProducerSendCommand
+     * @see org.zalando.nakadi.repository.kafka.ProducerSentCallbackCommand
+     *
+     * @param topicId
+     * @param batchItems
+     * @throws EventPublishingException
+     */
     @Override
     public void syncPostBatch(final String topicId, final List<BatchItem> batchItems) throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
@@ -170,6 +188,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.setTopic(topicId);
             });
 
+            // send message to Kafka in asynch mode, it will fail sending in circuit is opened
             final List<ProducerSendCommand.NakadiCallback> callbacks = batchItems.stream()
                     .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
                     .map(item -> new ProducerSendCommand(producer, item).execute())
@@ -191,22 +210,25 @@ public class KafkaTopicRepository implements TopicRepository {
                                         final List<ProducerSendCommand.NakadiCallback> callbacks,
                                         final long timeout)
             throws EventPublishingException {
-        long commandTimeout = timeout;
+        final long finishAt = System.currentTimeMillis() + timeout;
         for (final ProducerSendCommand.NakadiCallback callback : callbacks) {
-            final long start = System.currentTimeMillis();
+            final long left = finishAt - System.currentTimeMillis();
+            if (left <= 0) {
+                throw new EventPublishingException("Error publishing message to kafka. Post timeout is reached.");
+            }
             try {
                 new ProducerSentCallbackCommand(callback,
                         () -> kafkaFactory.terminateProducer(producer),
-                        commandTimeout).execute();
+                        left).execute();
             } catch (final HystrixRuntimeException hre) {
+                final BatchItem batchItem = callback.getBatchItem();
+                LOG.error("Hystrix exception while processing topic {} on broker {}",
+                        batchItem.getTopic(), batchItem.getBrokerId(), hre);
                 if (hre.getFailureType() == HystrixRuntimeException.FailureType.TIMEOUT) {
-                    final BatchItem batchItem = callback.getBatchItem();
-                    LOG.error("Kafka timeout: {} on broker {}", batchItem.getTopic(), batchItem.getBrokerId(), hre);
                     batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
                     throw new EventPublishingException("Error publishing message to kafka", hre);
                 }
             }
-            commandTimeout -= System.currentTimeMillis() - start;
         }
     }
 
