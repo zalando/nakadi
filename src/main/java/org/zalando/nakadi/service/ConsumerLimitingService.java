@@ -32,7 +32,7 @@ public class ConsumerLimitingService {
         this.maxConnections = maxConnections;
     }
 
-    public List<String> acquireConnectionSlots(final String client, final String eventType,
+    public List<ConnectionSlot> acquireConnectionSlots(final String client, final String eventType,
                                                final List<String> partitions)
             throws NoConnectionSlotsException, ServiceUnavailableException {
         try {
@@ -47,8 +47,11 @@ public class ConsumerLimitingService {
             }
 
             @SuppressWarnings("UnnecessaryLocalVariable")
-            final List<String> connectionIds = partitions.stream()
-                    .map(partition -> acquireConnection(client, eventType, partition))
+            final List<ConnectionSlot> connectionIds = partitions.stream()
+                    .map(partition -> {
+                        final String connectionId = acquireConnection(client, eventType, partition);
+                        return new ConnectionSlot(client, eventType, partition, connectionId);
+                    })
                     .collect(toList());
             return connectionIds;
         } catch (final NakadiRuntimeException e) {
@@ -56,17 +59,21 @@ public class ConsumerLimitingService {
         }
     }
 
-    private void releaseConnection(final String client, final String eventType, final String partition,
-                                   final String connectionId) {
-        final String parent = zkPathForConsumer(client, eventType, partition);
-        final String zkPath = format("{0}/{1}", parent, connectionId);
+    public void releaseConnectionSlots(final List<ConnectionSlot> connectionSlots) {
+        connectionSlots.forEach(this::releaseConnection);
+    }
+
+    private void releaseConnection(final ConnectionSlot connectionSlot) {
+        final String parent = zkPathForConsumer(connectionSlot.getClient(), connectionSlot.getEventType(),
+                connectionSlot.getPartition());
+        final String zkPath = format("{0}/{1}", parent, connectionSlot.getConnectionId());
         try {
             zkHolder.get()
                     .delete()
+                    .guaranteed()
                     .forPath(zkPath);
         } catch (final Exception e) {
-            LOG.error("Zookeeper error deleting consumer node", e);
-            throw new NakadiRuntimeException(e);
+            LOG.error("Zookeeper error when deleting consumer node", e);
         }
     }
 
@@ -95,7 +102,7 @@ public class ConsumerLimitingService {
                     .forPath(zkPath);
             return children == null || children.size() < maxConnections;
         } catch (Exception e) {
-            LOG.error("Zookeeper error getting consumer nodes", e);
+            LOG.error("Zookeeper error when getting consumer nodes", e);
             throw new NakadiRuntimeException(e);
         }
     }
@@ -103,4 +110,5 @@ public class ConsumerLimitingService {
     private String zkPathForConsumer(final String client, final String eventType, final String partition) {
         return format("/nakadi/consumers/{0}|{1}|{2}", client, eventType, partition);
     }
+
 }

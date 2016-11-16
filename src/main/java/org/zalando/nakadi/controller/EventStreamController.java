@@ -4,6 +4,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,11 +26,13 @@ import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.ConnectionSlot;
+import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
@@ -64,13 +67,15 @@ public class EventStreamController {
     private final MetricRegistry metricRegistry;
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final BlacklistService blacklistService;
+    private final ConsumerLimitingService consumerLimitingService;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
-                                 final BlacklistService blacklistService) {
+                                 final BlacklistService blacklistService,
+                                 final ConsumerLimitingService consumerLimitingService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
@@ -78,6 +83,7 @@ public class EventStreamController {
         this.metricRegistry = metricRegistry;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.blacklistService = blacklistService;
+        this.consumerLimitingService = consumerLimitingService;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
@@ -104,6 +110,8 @@ public class EventStreamController {
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
             EventConsumer eventConsumer = null;
+
+            List<ConnectionSlot> connectionSlots = ImmutableList.of();
 
             try {
                 consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
@@ -155,6 +163,13 @@ public class EventStreamController {
                             .collect(Collectors.toList());
                 }
 
+                // acquire connection slots to limit the number of simultaneous connections from one client
+                final List<String> partitions = cursors.stream()
+                        .map(Cursor::getPartition)
+                        .collect(Collectors.toList());
+                connectionSlots = consumerLimitingService.acquireConnectionSlots(client.getClientId(), eventTypeName,
+                        partitions);
+
                 eventConsumer = topicRepository.createEventConsumer(topic, cursors);
 
                 final Map<String, String> streamCursors = cursors
@@ -178,7 +193,7 @@ public class EventStreamController {
             } catch (final NoSuchEventTypeException e) {
                 writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
             } catch (final NakadiException e) {
-                LOG.error("Error while trying to stream events. Respond with SERVICE_UNAVAILABLE.", e);
+                LOG.error("Error while trying to stream events.", e);
                 writeProblemResponse(response, outputStream, e.asProblem());
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
@@ -189,6 +204,7 @@ public class EventStreamController {
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());
             } finally {
                 connectionReady.set(false);
+                consumerLimitingService.releaseConnectionSlots(connectionSlots);
                 if (consumerCounter != null) {
                     consumerCounter.dec();
                 }
