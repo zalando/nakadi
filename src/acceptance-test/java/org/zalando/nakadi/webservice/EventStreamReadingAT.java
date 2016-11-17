@@ -16,17 +16,23 @@ import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.service.BlacklistService;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.jayway.restassured.RestAssured.given;
 import static java.text.MessageFormat.format;
+import static java.util.stream.IntStream.range;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
@@ -327,6 +333,48 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
+    public void whenExceedMaxConsumersNumThen429() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+        final List<CompletableFuture<Integer>> statusCodeFutures = range(0, 8)
+                .mapToObj(x -> createConsumingConnection())
+                .collect(Collectors.toList());
+
+        assertThat("first 5 connections should be accepted",
+                countStatusCode(statusCodeFutures, HttpStatus.OK.value()),
+                equalTo(5));
+
+        assertThat("last 3 connections should be rejected",
+                countStatusCode(statusCodeFutures, HttpStatus.TOO_MANY_REQUESTS.value()),
+                equalTo(3));
+    }
+
+    private int countStatusCode(final List<CompletableFuture<Integer>> futures, final int statusCode) {
+        return (int) futures.stream()
+                .filter(future -> {
+                    try {
+                        return future.get(5, TimeUnit.SECONDS) == statusCode;
+                    } catch (Exception e) {
+                        throw new AssertionError("Failed to get future result");
+                    }
+                })
+                .count();
+    }
+
+    private CompletableFuture<Integer> createConsumingConnection() {
+        final CompletableFuture<Integer> future = new CompletableFuture<>();
+        new Thread(() -> {
+            try {
+                final HttpURLConnection conn = (HttpURLConnection) new URL(URL + STREAM_ENDPOINT).openConnection();
+                final int responseCode = conn.getResponseCode();
+                future.complete(responseCode);
+                Thread.sleep(10000); // just keeps the thread from finishing to keep connection open
+            } catch (IOException | InterruptedException e) {
+                throw new AssertionError();
+            }
+        }).start();
+        return future;
+    }
+
+    @Test(timeout = 10000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
         // blocking streaming client after 3 seconds
         new Thread(() -> {
@@ -405,8 +453,7 @@ public class EventStreamReadingAT extends BaseAT {
         if (batch.containsKey("events")) {
             final List<String> events = (List<String>) batch.get("events");
             assertThat(events.size(), equalTo(expectedEventNum));
-        }
-        else {
+        } else {
             assertThat(0, equalTo(expectedEventNum));
         }
     }
