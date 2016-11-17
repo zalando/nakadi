@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import org.apache.curator.framework.recipes.locks.InterProcessLock;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -11,52 +12,65 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 
 import java.util.List;
 import java.util.UUID;
 
 import static java.text.MessageFormat.format;
 import static java.util.stream.Collectors.toList;
+import static org.zalando.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 
 @Service
 public class ConsumerLimitingService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
 
-    private ZooKeeperHolder zkHolder;
-    private int maxConnections;
+    private final ZooKeeperHolder zkHolder;
+    private final int maxConnections;
+    private final ZooKeeperLockFactory zkLockFactory;
 
     @Autowired
     public ConsumerLimitingService(final ZooKeeperHolder zkHolder,
+                                   final ZooKeeperLockFactory zkLockFactory,
                                    @Value("${nakadi.stream.maxConnections}") final int maxConnections) {
         this.zkHolder = zkHolder;
+        this.zkLockFactory = zkLockFactory;
         this.maxConnections = maxConnections;
     }
 
     public List<ConnectionSlot> acquireConnectionSlots(final String client, final String eventType,
-                                               final List<String> partitions)
+                                                       final List<String> partitions)
             throws NoConnectionSlotsException, ServiceUnavailableException {
         try {
-            final List<String> notAllowed = partitions.stream()
-                    .filter(partition -> !connectionAllowed(client, eventType, partition))
-                    .collect(toList());
-            if (!notAllowed.isEmpty()) {
-                final String msg = format("You exceeded the maximum number of simultaneous connections to a single " +
-                        "partition for event type '{0}', partition(s): {1}; max limit is {2} connections per client",
-                        eventType, String.join(", ", notAllowed), maxConnections);
-                throw new NoConnectionSlotsException(msg);
-            }
+            final String lockPath = format("/nakadi/consumers/locks/{0}|{1}", client, eventType);
+            final InterProcessLock lock = zkLockFactory.createLock(lockPath);
 
-            @SuppressWarnings("UnnecessaryLocalVariable")
-            final List<ConnectionSlot> connectionIds = partitions.stream()
-                    .map(partition -> {
-                        final String connectionId = acquireConnection(client, eventType, partition);
-                        return new ConnectionSlot(client, eventType, partition, connectionId);
-                    })
-                    .collect(toList());
-            return connectionIds;
-        } catch (final NakadiRuntimeException e) {
-            throw new ServiceUnavailableException("Error communicating with zookeeper", e.getException());
+            return runLocked(() -> {
+                final List<String> notAllowed = partitions.stream()
+                        .filter(partition -> !connectionAllowed(client, eventType, partition))
+                        .collect(toList());
+                if (!notAllowed.isEmpty()) {
+                    final String msg = format("You exceeded the maximum number of simultaneous connections to a " +
+                            "single partition for event type '{0}', partition(s): {1}; max limit is {2} connections " +
+                            "per client", eventType, String.join(", ", notAllowed), maxConnections);
+                    throw new NoConnectionSlotsException(msg);
+                }
+
+                @SuppressWarnings("UnnecessaryLocalVariable")
+                final List<ConnectionSlot> connectionIds = partitions.stream()
+                        .map(partition -> {
+                            final String connectionId = acquireConnection(client, eventType, partition);
+                            return new ConnectionSlot(client, eventType, partition, connectionId);
+                        })
+                        .collect(toList());
+                return connectionIds;
+            }, lock);
+
+        } catch (final NoConnectionSlotsException | ServiceUnavailableException e) {
+            throw e;
+        } catch (final Exception e) {
+            throw new ServiceUnavailableException("Error communicating with zookeeper", e);
         }
     }
 
@@ -111,7 +125,7 @@ public class ConsumerLimitingService {
     }
 
     private String zkPathForConsumer(final String client, final String eventType, final String partition) {
-        return format("/nakadi/consumers/{0}|{1}|{2}", client, eventType, partition);
+        return format("/nakadi/consumers/connections/{0}|{1}|{2}", client, eventType, partition);
     }
 
 }
