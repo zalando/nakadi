@@ -333,7 +333,8 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
-    public void whenExceedMaxConsumersNumThen429() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    public void whenExceedMaxConsumersNumThen429() throws IOException, InterruptedException, ExecutionException,
+            TimeoutException {
         final List<CompletableFuture<Integer>> statusCodeFutures = range(0, 8)
                 .mapToObj(x -> createConsumingConnection())
                 .collect(Collectors.toList());
