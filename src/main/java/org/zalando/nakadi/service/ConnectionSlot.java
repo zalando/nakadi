@@ -36,4 +36,24 @@ public class ConnectionSlot {
     public String getConnectionId() {
         return connectionId;
     }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final ConnectionSlot that = (ConnectionSlot) o;
+        return client.equals(that.client)
+                && eventType.equals(that.eventType)
+                && partition.equals(that.partition)
+                && connectionId.equals(that.connectionId);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = client.hashCode();
+        result = 31 * result + eventType.hashCode();
+        result = 31 * result + partition.hashCode();
+        result = 31 * result + connectionId.hashCode();
+        return result;
+    }
 }
