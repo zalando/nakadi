@@ -45,7 +45,7 @@ public class ConsumerLimitingServiceAT extends BaseAT {
     }
 
     @Test
-    public void whenAcquiрeConnectionSlotsThenDataInZk() throws Exception {
+    public void whenAcquireConnectionSlotsThenDataInZk() throws Exception {
         final ImmutableList<String> partitions = ImmutableList.of("0", "1", "2", "3");
 
         final List<ConnectionSlot> connectionSlots = limitingService.acquireConnectionSlots(client, eventType,

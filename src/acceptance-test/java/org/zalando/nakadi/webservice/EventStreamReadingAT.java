@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -335,8 +336,10 @@ public class EventStreamReadingAT extends BaseAT {
     @Test(timeout = 10000)
     public void whenExceedMaxConsumersNumThen429() throws IOException, InterruptedException, ExecutionException,
             TimeoutException {
+        final String etName = NakadiTestUtils.createEventType().getName();
+
         final List<CompletableFuture<Integer>> statusCodeFutures = range(0, 8)
-                .mapToObj(x -> createConsumingConnection())
+                .mapToObj(x -> createConsumingConnection(etName))
                 .collect(Collectors.toList());
 
         assertThat("first 5 connections should be accepted",
@@ -360,11 +363,12 @@ public class EventStreamReadingAT extends BaseAT {
                 .count();
     }
 
-    private CompletableFuture<Integer> createConsumingConnection() {
+    private CompletableFuture<Integer> createConsumingConnection(final String etName) {
         final CompletableFuture<Integer> future = new CompletableFuture<>();
         new Thread(() -> {
             try {
-                final HttpURLConnection conn = (HttpURLConnection) new URL(URL + STREAM_ENDPOINT).openConnection();
+                final java.net.URL url = new URL(URL + createStreamEndpointUrl(etName));
+                final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 final int responseCode = conn.getResponseCode();
                 future.complete(responseCode);
                 Thread.sleep(10000); // just keeps the thread from finishing to keep connection open
