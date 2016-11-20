@@ -132,6 +132,7 @@ dependencies {
     compile 'org.zalando:problem-spring-web:0.5.0'
     compile 'org.zalando:jackson-datatype-problem:0.5.0'
     compile 'org.zalando:nakadi-plugin-api:1.0.5'
+    compile 'org.echocat.jomon:runtime:1.6.2'
 
     // kafka & zookeeper
     compile 'org.apache.kafka:kafka-clients:0.9.0.1'
@@ -161,7 +162,6 @@ dependencies {
         exclude module: "hamcrest-library"
     }
     testCompile 'com.jayway.jsonpath:json-path:2.2.0'
-    testCompile 'org.echocat.jomon:runtime:1.6.2'
     testRuntime 'org.pegdown:pegdown:1.1.0'
 }
 // end::dependencies[]

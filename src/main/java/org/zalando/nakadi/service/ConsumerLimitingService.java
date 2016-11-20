@@ -1,127 +1,169 @@
 package org.zalando.nakadi.service;
 
-import org.apache.curator.framework.recipes.locks.InterProcessLock;
+import com.google.common.collect.ImmutableList;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.exceptions.ConnectionSlotOccupiedException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 import static java.text.MessageFormat.format;
-import static java.util.stream.Collectors.toList;
-import static org.zalando.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
 @Service
 public class ConsumerLimitingService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
+    private static final List<String> SLOT_NAMES = ImmutableList.of("a", "b", "c", "d", "e");
+    private static final String ERROR_MSG = "You exceeded the maximum number of simultaneous connections to a single " +
+            "partition for event type '{0}', partition(s): {1}; max limit is {2} connections per client";
 
     private final ZooKeeperHolder zkHolder;
     private final int maxConnections;
-    private final ZooKeeperLockFactory zkLockFactory;
 
     @Autowired
     public ConsumerLimitingService(final ZooKeeperHolder zkHolder,
-                                   final ZooKeeperLockFactory zkLockFactory,
                                    @Value("${nakadi.stream.maxConnections}") final int maxConnections) {
         this.zkHolder = zkHolder;
-        this.zkLockFactory = zkLockFactory;
         this.maxConnections = maxConnections;
     }
 
+    @SuppressWarnings("unchecked")
     public List<ConnectionSlot> acquireConnectionSlots(final String client, final String eventType,
                                                        final List<String> partitions)
             throws NoConnectionSlotsException, ServiceUnavailableException {
+
+        final List<Optional<ConnectionSlot>> slots = new ArrayList<>();
         try {
-            final String lockPath = format("/nakadi/consumers/locks/{0}|{1}", client, eventType);
-            final InterProcessLock lock = zkLockFactory.createLock(lockPath);
-
-            return runLocked(() -> {
-                final List<String> notAllowed = partitions.stream()
-                        .filter(partition -> !connectionAllowed(client, eventType, partition))
-                        .collect(toList());
-                if (!notAllowed.isEmpty()) {
-                    final String msg = format("You exceeded the maximum number of simultaneous connections to a " +
-                            "single partition for event type '{0}', partition(s): {1}; max limit is {2} connections " +
-                            "per client", eventType, String.join(", ", notAllowed), maxConnections);
-                    throw new NoConnectionSlotsException(msg);
+            // acquire slots for all partitions
+            for (final String partition : partitions) {
+                Optional<ConnectionSlot> connectionSlot = Optional.empty();
+                try {
+                    connectionSlot = executeWithRetry(
+                            () -> acquireConnectionSlot(client, eventType, partition),
+                            new RetryForSpecifiedCountStrategy<Optional<ConnectionSlot>>(5)
+                                    .withExceptionsThatForceRetry(ConnectionSlotOccupiedException.class)
+                                    .withWaitBetweenEachTry(0L, 100L));
+                } catch (ConnectionSlotOccupiedException e) {
+                    LOG.info(format("Failed to capture consuming connection slot after 5 tries for client '{0}', " +
+                            "event-type '{1}', partition {2}", client, eventType, partition));
                 }
+                slots.add(connectionSlot);
+            }
 
-                @SuppressWarnings("UnnecessaryLocalVariable")
-                final List<ConnectionSlot> connectionIds = partitions.stream()
-                        .map(partition -> {
-                            final String connectionId = acquireConnection(client, eventType, partition);
-                            return new ConnectionSlot(client, eventType, partition, connectionId);
-                        })
-                        .collect(toList());
-                return connectionIds;
-            }, lock);
-
-        } catch (final NoConnectionSlotsException | ServiceUnavailableException e) {
-            throw e;
+            if (slots.stream().allMatch(Optional::isPresent)) {
+                // if slots for all partitions were acquired - the connection is successful
+                return slots.stream()
+                        .map(Optional::get)
+                        .collect(Collectors.toList());
+            } else {
+                // if a slot for at least one partition wasn't acquired - connection can't be created
+                final String failedPartitions = partitions.stream()
+                        .filter(p -> !slots.stream().anyMatch(s -> s.isPresent() && s.get().getPartition().equals(p)))
+                        .collect(Collectors.joining(", "));
+                final String msg = format(ERROR_MSG, eventType, failedPartitions, maxConnections);
+                throw new NoConnectionSlotsException(msg);
+            }
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error communicating with zookeeper", e);
+            // in a case of failure release slots for partitions that already acquired slots
+            slots.stream()
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .forEach(this::releaseConnectionSlot);
+            if (e instanceof NoConnectionSlotsException) {
+                throw e;
+            } else {
+                throw new ServiceUnavailableException("Error communicating with zookeeper", e);
+            }
         }
     }
 
     public void releaseConnectionSlots(final List<ConnectionSlot> connectionSlots) {
-        connectionSlots.forEach(this::releaseConnection);
+        connectionSlots.forEach(this::releaseConnectionSlot);
     }
 
-    private void releaseConnection(final ConnectionSlot connectionSlot) {
-        final String parent = zkPathForConsumer(connectionSlot.getClient(), connectionSlot.getEventType(),
-                connectionSlot.getPartition());
-        final String zkPath = format("{0}/{1}", parent, connectionSlot.getConnectionId());
+    private void releaseConnectionSlot(final ConnectionSlot slot) {
+        final String parent = zkPathForConsumer(slot.getClient(), slot.getEventType(), slot.getPartition());
+        final String zkPath = format("{0}/{1}", parent, slot.getConnectionId());
         try {
             zkHolder.get()
                     .delete()
                     .guaranteed()
                     .forPath(zkPath);
+            deletePartitionNodeIfPossible(slot, parent);
         } catch (final Exception e) {
-            LOG.error("Zookeeper error when deleting consumer node", e);
+            LOG.error("Zookeeper error when deleting consumer connection node", e);
         }
     }
 
-    private String acquireConnection(final String client, final String eventType, final String partition) {
+    private void deletePartitionNodeIfPossible(final ConnectionSlot slot, final String parent) throws Exception {
+        try {
+            zkHolder.get()
+                    .delete()
+                    .forPath(parent);
+        } catch (final KeeperException.NotEmptyException e) {
+            // if the node has children - we should not delete it
+        } catch (final Exception e) {
+            LOG.error("Zookeeper error when trying delete consumer node", e);
+        }
+    }
+
+    private Optional<ConnectionSlot> acquireConnectionSlot(final String client, final String eventType,
+                                                           final String partition)
+            throws ConnectionSlotOccupiedException {
+
         final String parent = zkPathForConsumer(client, eventType, partition);
-        final String connectionId = UUID.randomUUID().toString();
-        final String zkPath = format("{0}/{1}", parent, connectionId);
+        List<String> children = ImmutableList.of();
+        try {
+            children = zkHolder.get()
+                    .getChildren()
+                    .forPath(parent);
+        } catch (final KeeperException.NoNodeException e) {
+            // no node = no children
+        } catch (Exception e) {
+            LOG.error("Zookeeper error when getting consumer nodes", e);
+            throw new NakadiRuntimeException(e);
+        }
+
+        if (children.size() >= maxConnections) {
+            return Optional.empty();
+        }
+
+        final List<String> occupiedSlots = children;
+        final List<String> availableSlots = SLOT_NAMES.stream()
+                .filter(slot -> !occupiedSlots.contains(slot))
+                .collect(Collectors.toList());
+        final int slotIndex = new Random().nextInt(availableSlots.size());
+        final String slot = availableSlots.get(slotIndex);
+
+        final String zkPath = parent + "/" + slot;
         try {
             zkHolder.get()
                     .create()
                     .creatingParentsIfNeeded()
                     .withMode(CreateMode.EPHEMERAL)
                     .forPath(zkPath);
+        } catch (final KeeperException.NodeExistsException e) {
+            throw new ConnectionSlotOccupiedException();
         } catch (Exception e) {
             LOG.error("Zookeeper error when creating consumer node", e);
             throw new NakadiRuntimeException(e);
         }
-        return connectionId;
-    }
-
-    private boolean connectionAllowed(final String client, final String eventType, final String partition) {
-        final String zkPath = zkPathForConsumer(client, eventType, partition);
-        try {
-            final List<String> children = zkHolder.get()
-                    .getChildren()
-                    .forPath(zkPath);
-            return children == null || children.size() < maxConnections;
-        } catch (final KeeperException.NoNodeException nne) {
-            return true;
-        } catch (Exception e) {
-            LOG.error("Zookeeper error when getting consumer nodes", e);
-            throw new NakadiRuntimeException(e);
-        }
+        return Optional.of(new ConnectionSlot(client, eventType, partition, slot));
     }
 
     private String zkPathForConsumer(final String client, final String eventType, final String partition) {

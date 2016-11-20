@@ -7,7 +7,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import org.zalando.nakadi.service.ConnectionSlot;
 import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.utils.TestUtils;
@@ -40,8 +39,7 @@ public class ConsumerLimitingServiceAT extends BaseAT {
 
         final ZooKeeperHolder zkHolder = Mockito.mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
-        final ZooKeeperLockFactory zkLockFactory = new ZooKeeperLockFactory(zkHolder);
-        limitingService = new ConsumerLimitingService(zkHolder, zkLockFactory, 5);
+        limitingService = new ConsumerLimitingService(zkHolder, 5);
     }
 
     @Test
