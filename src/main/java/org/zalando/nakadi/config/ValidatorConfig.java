@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
+import org.zalando.nakadi.validation.schema.AdditionalPropertiesConstraint;
+import org.zalando.nakadi.validation.schema.AdditionalItemsConstraint;
 import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;
 import org.zalando.nakadi.validation.schema.CompatibleSchemaChangeConstraint;
 import org.zalando.nakadi.validation.schema.DeprecatedSchemaChangeConstraint;
@@ -30,7 +32,10 @@ public class ValidatorConfig {
     public SchemaEvolutionService schemaEvolutionService() {
         final List<SchemaConstraint> constraints = Lists.newArrayList(
                 new NotSchemaConstraint(),
-                new PatternPropertiesConstraint());
+                new PatternPropertiesConstraint(),
+                new AdditionalPropertiesConstraint(),
+                new AdditionalItemsConstraint()
+        );
 
         final List<SchemaEvolutionConstraint> schemaEvolutionConstraints = Lists.newArrayList(
                 new CompatibilityModeChangeConstraint(),

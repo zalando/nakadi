@@ -48,4 +48,8 @@ public class Version {
         result = 31 * result + patch;
         return result;
     }
+
+    public Version bumpMinor() {
+        return new Version(this.major, this.minor + 1, 0);
+    }
 }
