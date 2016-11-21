@@ -45,8 +45,7 @@ public class StreamParameters {
         this.streamLimitEvents = Optional.ofNullable(streamLimitEvents);
         this.batchTimeoutMillis = batchTimeoutMillis;
         this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutSeconds)
-                .map(TimeUnit.SECONDS::toMillis)
-                .filter(aLong -> aLong.longValue() != 0);
+                .map(TimeUnit.SECONDS::toMillis).filter(timeout -> timeout.longValue() != 0);
         this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
         this.maxUncommittedMessages = maxUncommittedMessages;
         this.commitTimeoutMillis = commitTimeoutMillis;
