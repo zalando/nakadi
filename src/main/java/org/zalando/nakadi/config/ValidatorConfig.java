@@ -5,10 +5,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
-import org.zalando.nakadi.validation.SchemaCompatibilityChecker;
+import org.zalando.nakadi.validation.SchemaEvolutionService;
+import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;
+import org.zalando.nakadi.validation.schema.CompatibleSchemaChangeConstraint;
+import org.zalando.nakadi.validation.schema.DeprecatedSchemaChangeConstraint;
 import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
 import org.zalando.nakadi.validation.schema.PatternPropertiesConstraint;
 import org.zalando.nakadi.validation.schema.SchemaConstraint;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 
 import java.util.List;
 
@@ -23,11 +27,17 @@ public class ValidatorConfig {
     }
 
     @Bean
-    public SchemaCompatibilityChecker schemaCompatibilityChecker() {
+    public SchemaEvolutionService schemaEvolutionService() {
         final List<SchemaConstraint> constraints = Lists.newArrayList(
                 new NotSchemaConstraint(),
                 new PatternPropertiesConstraint());
 
-        return new SchemaCompatibilityChecker(constraints);
+        final List<SchemaEvolutionConstraint> schemaEvolutionConstraints = Lists.newArrayList(
+                new CompatibilityModeChangeConstraint(),
+                new CompatibleSchemaChangeConstraint(),
+                new DeprecatedSchemaChangeConstraint()
+        );
+
+        return new SchemaEvolutionService(constraints, schemaEvolutionConstraints);
     }
 }

@@ -23,7 +23,9 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -45,7 +47,7 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
-import org.zalando.nakadi.validation.SchemaCompatibilityChecker;
+import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
@@ -101,8 +103,8 @@ public class EventTypeControllerTest {
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
-    private final SchemaCompatibilityChecker schemaCompatibilityChecker = new ValidatorConfig()
-            .schemaCompatibilityChecker();
+    private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
+            .schemaEvolutionService();
 
     private MockMvc mockMvc;
 
@@ -111,7 +113,7 @@ public class EventTypeControllerTest {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid, featureToggleService, subscriptionRepository,
-                schemaCompatibilityChecker);
+                schemaEvolutionService);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
@@ -289,11 +291,25 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenPOSTDeprecatedCompatibilityModeThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setCompatibilityMode(CompatibilityMode.DEPRECATED);
+
+        final Problem expectedProblem =
+                new InvalidEventTypeException(
+                        "\"compatibility_mode\" should be either \"compatible\" or \"none\"").asProblem();
+
+        postEventType(eventType).andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json")).andExpect(content()
+                .string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
     public void whenPostDuplicatedEventTypeReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "some-name");
 
         Mockito.doThrow(new DuplicatedEventTypeNameException("some-name")).when(eventTypeRepository).saveEventType(any(
-                EventType.class));
+                EventTypeBase.class));
 
         postEventType(buildDefaultEventType()).andExpect(status().isConflict())
                                               .andExpect(content().contentType("application/problem+json")).andExpect(
@@ -304,7 +320,7 @@ public class EventTypeControllerTest {
     public void whenPostAndTopicExistsReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "dummy message");
         final EventType et = buildDefaultEventType();
-        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
 
         Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository).createTopic(any());
 
@@ -442,7 +458,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPUTEventTypeWithWrongPartitionKeyToBuisnesCategoryFieldsThen422() throws Exception {
+    public void whenPUTEventTypeWithWrongPartitionKeyToBusinessCategoryFieldsThen422() throws Exception {
 
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionKeyFields(Collections.singletonList("blabla"))
@@ -498,7 +514,7 @@ public class EventTypeControllerTest {
     public void whenCreateSuccessfullyThen201() throws Exception {
         final EventType et = buildDefaultEventType();
 
-        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
         Mockito.doNothing().when(topicRepository).createTopic(any());
 
         postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
@@ -511,7 +527,7 @@ public class EventTypeControllerTest {
     public void whenTopicCreationFailsRemoveEventTypeFromRepositoryAnd500() throws Exception {
 
         final EventType et = buildDefaultEventType();
-        Mockito.doNothing().when(eventTypeRepository).saveEventType(any(EventType.class));
+        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
 
         Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(any(EventType.class));
 
@@ -566,7 +582,7 @@ public class EventTypeControllerTest {
         persistedEventType.setName(eventType.getName());
         persistedEventType.getSchema().setSchema("different");
 
-        final Problem expectedProblem = new InvalidEventTypeException("schema must not be changed").asProblem();
+        final Problem expectedProblem = new InvalidEventTypeException("not yet implemented schema changes").asProblem();
 
         Mockito.doReturn(persistedEventType).when(eventTypeRepository).findByName(persistedEventType.getName());
 
@@ -697,7 +713,7 @@ public class EventTypeControllerTest {
 
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
 
-        final ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
+        final ArgumentCaptor<EventTypeBase> eventTypeCaptor = ArgumentCaptor.forClass(EventTypeBase.class);
         Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
         Assert.assertEquals(TOPIC_RETENTION_TIME_MS,
                 eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
@@ -709,7 +725,7 @@ public class EventTypeControllerTest {
 
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
 
-        final ArgumentCaptor<EventType> eventTypeCaptor = ArgumentCaptor.forClass(EventType.class);
+        final ArgumentCaptor<EventTypeBase> eventTypeCaptor = ArgumentCaptor.forClass(EventTypeBase.class);
         Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
         Assert.assertEquals(TOPIC_RETENTION_TIME_MS,
                 eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());

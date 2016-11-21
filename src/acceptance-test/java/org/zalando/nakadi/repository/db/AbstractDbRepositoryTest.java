@@ -20,10 +20,10 @@ public abstract class AbstractDbRepositoryTest {
     protected JdbcTemplate template;
     protected Connection connection;
     protected ObjectMapper mapper;
-    protected String repositoryTable;
+    protected String[] dependencyTables;
 
-    public AbstractDbRepositoryTest(final String repositoryTable) {
-        this.repositoryTable = repositoryTable;
+    public AbstractDbRepositoryTest(final String[] dependencyTables) {
+        this.dependencyTables = dependencyTables;
     }
 
     @Before
@@ -46,7 +46,8 @@ public abstract class AbstractDbRepositoryTest {
     }
 
     private void clearRepositoryTable() {
-        template.execute("DELETE FROM " + repositoryTable);
+        for (final String table : dependencyTables) {
+            template.execute("DELETE FROM " + table);
+        }
     }
-
 }

@@ -5,7 +5,14 @@ import org.everit.json.schema.CombinedSchema;
 import org.everit.json.schema.ObjectSchema;
 import org.everit.json.schema.ReferenceSchema;
 import org.everit.json.schema.Schema;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.validation.schema.SchemaConstraint;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
+import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,12 +20,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
 
-public class SchemaCompatibilityChecker {
+public class SchemaEvolutionService {
 
-    private final List<SchemaConstraint> constraints;
+    private final List<SchemaConstraint> jsonSchemaConstraints;
+    private final List<SchemaEvolutionConstraint> schemaEvolutionConstraints;
 
-    public SchemaCompatibilityChecker(final List<SchemaConstraint> constraints) {
-        this.constraints = constraints;
+    public SchemaEvolutionService(final List<SchemaConstraint> jsonSchemaConstraints,
+                                  final List<SchemaEvolutionConstraint> schemaEvolutionConstraints) {
+        this.jsonSchemaConstraints = jsonSchemaConstraints;
+        this.schemaEvolutionConstraints = schemaEvolutionConstraints;
     }
 
     public List<SchemaIncompatibility> checkConstraints(final Schema schema) {
@@ -34,7 +44,7 @@ public class SchemaCompatibilityChecker {
             final Stack<String> jsonPath,
             final List<SchemaIncompatibility> schemaIncompatibilities) {
 
-        for (final SchemaConstraint constraint : constraints) {
+        for (final SchemaConstraint constraint : jsonSchemaConstraints) {
             final Optional<SchemaIncompatibility> incompatibility = constraint.validate(jsonPath, schema);
             if (incompatibility.isPresent()) {
                 schemaIncompatibilities.add(incompatibility.get());
@@ -110,5 +120,22 @@ public class SchemaCompatibilityChecker {
             recursiveCheckConstraints(schema.getSchemaOfAdditionalProperties(), jsonPath, schemaIncompatibilities);
         }
         jsonPath.pop();
+    }
+
+    public EventType evolve(final EventType original, final EventTypeBase eventType) throws InvalidEventTypeException {
+        final Optional<SchemaEvolutionIncompatibility> incompatibility = schemaEvolutionConstraints.stream()
+                .map(c -> c.validate(original, eventType)).filter(Optional::isPresent).findFirst()
+                .orElse(Optional.empty());
+
+        if (incompatibility.isPresent()) {
+            throw new InvalidEventTypeException(incompatibility.get().getReason());
+        } else {
+            return this.bumpVersion(original, eventType);
+        }
+    }
+
+    private EventType bumpVersion(final EventType original, final EventTypeBase eventType) {
+        final DateTime now = new DateTime(DateTimeZone.UTC);
+        return new EventType(eventType, "1.0.0", original.getCreatedAt(), now);
     }
 }
