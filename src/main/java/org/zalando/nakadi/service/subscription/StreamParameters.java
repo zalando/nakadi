@@ -39,12 +39,14 @@ public class StreamParameters {
 
     private StreamParameters(
             final int batchLimitEvents, @Nullable final Long streamLimitEvents, final long batchTimeoutMillis,
-            @Nullable final Long streamTimeoutMillis, @Nullable final Integer batchKeepAliveIterations,
+            @Nullable final Long streamTimeoutSeconds, @Nullable final Integer batchKeepAliveIterations,
             final int maxUncommittedMessages, final long commitTimeoutMillis, final String consumingAppId) {
         this.batchLimitEvents = batchLimitEvents;
         this.streamLimitEvents = Optional.ofNullable(streamLimitEvents);
         this.batchTimeoutMillis = batchTimeoutMillis;
-        this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutMillis);
+        this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutSeconds)
+                .map(TimeUnit.SECONDS::toMillis)
+                .filter(aLong -> aLong.longValue() != 0);
         this.batchKeepAliveIterations = Optional.ofNullable(batchKeepAliveIterations);
         this.maxUncommittedMessages = maxUncommittedMessages;
         this.commitTimeoutMillis = commitTimeoutMillis;
@@ -80,7 +82,7 @@ public class StreamParameters {
                 batchLimitEvents,
                 streamLimitEvents,
                 TimeUnit.SECONDS.toMillis(batchTimeoutSeconds),
-                Optional.ofNullable(streamTimeoutSeconds).map(TimeUnit.SECONDS::toMillis).orElse(null),
+                streamTimeoutSeconds,
                 batchKeepAliveIterations,
                 maxUncommittedMessages,
                 TimeUnit.SECONDS.toMillis(commitTimeoutSeconds),
