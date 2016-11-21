@@ -104,17 +104,17 @@ public class ConsumerLimitingService {
                     .delete()
                     .guaranteed()
                     .forPath(zkPath);
-            deletePartitionNodeIfPossible(slot, parent);
+            deletePartitionNodeIfPossible(parent);
         } catch (final Exception e) {
             LOG.error("Zookeeper error when deleting consumer connection node", e);
         }
     }
 
-    private void deletePartitionNodeIfPossible(final ConnectionSlot slot, final String parent) throws Exception {
+    public void deletePartitionNodeIfPossible(final String nodePath) {
         try {
             zkHolder.get()
                     .delete()
-                    .forPath(parent);
+                    .forPath(nodePath);
         } catch (final KeeperException.NotEmptyException e) {
             // if the node has children - we should not delete it
         } catch (final Exception e) {

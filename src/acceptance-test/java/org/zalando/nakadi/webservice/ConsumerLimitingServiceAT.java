@@ -52,7 +52,7 @@ public class ConsumerLimitingServiceAT extends BaseAT {
         assertThat("4 connection slots were created in ZK", connectionSlots, hasSize(4));
 
         for (final String partition : partitions) {
-            final String path = format("/nakadi/consumers/connections/{0}|{1}|{2}", client, eventType, partition);
+            final String path = zkPathForConsumer(partition);
 
             assertThat("Node for partition should be created",
                     CURATOR.checkExists().forPath(path),
@@ -74,8 +74,7 @@ public class ConsumerLimitingServiceAT extends BaseAT {
 
         range(0, 5).forEach(x -> {
             try {
-                final String path = format("/nakadi/consumers/connections/{0}|{1}|{2}/{3}", client, eventType, parition,
-                        randomUUID());
+                final String path = zkPathForConsumer(parition) + "/" + randomUUID();
                 CURATOR.create().creatingParentsIfNeeded().forPath(path);
             } catch (Exception e) {
                 throw new AssertionError("Error occurred when accessing Zookeeper");
@@ -90,18 +89,22 @@ public class ConsumerLimitingServiceAT extends BaseAT {
         final String connectionId = randomUUID();
         final String partition = "0";
 
-        final String path = format("/nakadi/consumers/connections/{0}|{1}|{2}/{3}", client, eventType, partition,
-                connectionId);
-        CURATOR.create().creatingParentsIfNeeded().forPath(path);
+        final String partitionPath = zkPathForConsumer(partition);
+        final String connectionPath = partitionPath + "/" + connectionId;
+        CURATOR.create().creatingParentsIfNeeded().forPath(connectionPath);
 
         final ImmutableList<ConnectionSlot> connectionSlots =
                 ImmutableList.of(new ConnectionSlot(client, eventType, partition, connectionId));
 
         limitingService.releaseConnectionSlots(connectionSlots);
 
-        assertThat("Zk node should be deleted",
-                CURATOR.checkExists().forPath(path),
+        assertThat("partition and connection Zk nodes should be deleted",
+                CURATOR.checkExists().forPath(partitionPath),
                 nullValue());
+    }
+
+    private String zkPathForConsumer(final String partition) {
+        return format("/nakadi/consumers/connections/{0}|{1}|{2}", client, eventType, partition);
     }
 
 }
