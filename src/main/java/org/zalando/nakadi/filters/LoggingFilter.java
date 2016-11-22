@@ -21,8 +21,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(final HttpServletRequest request,
                                     final HttpServletResponse response, final FilterChain filterChain)
-            throws ServletException, IOException
-    {
+            throws ServletException, IOException {
         final long start = System.currentTimeMillis();
 
         //execute request
