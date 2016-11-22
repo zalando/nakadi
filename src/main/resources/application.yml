@@ -18,10 +18,15 @@ spring:
     username: nakadi
     password: nakadi
     driverClassName: org.postgresql.Driver
-    initialSize: 2
-    maxActive: 20
+    initialSize: 3
+    maxActive: 3
+    minIdle: 1
+    maxIdle: 1
     testOnBorrow: true
     validationQuery: SELECT 1
+    testWhileIdle: true
+    timeBetweenEvictionRunsMillis: 5000
+    minEvictableIdleTimeMillis: 60000
 nakadi:
   topic:
     min:
