@@ -32,6 +32,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -199,6 +200,9 @@ public class KafkaTopicRepository implements TopicRepository {
                 if (batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
                     throw new EventPublishingException("Error publishing message to kafka");
             }
+        } catch (final HystrixRuntimeException hre) {
+            LOG.debug("Failed to send bacth to kafka due to {}", hre.getFailureType(), hre);
+            throw new EventPublishingException("Error publishing message to kafka", hre);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
@@ -210,10 +214,8 @@ public class KafkaTopicRepository implements TopicRepository {
             throws EventPublishingException {
         final long finishAt = System.currentTimeMillis() + timeout;
         for (final ProducerSendCommand.NakadiCallback callback : callbacks) {
-            final long left = finishAt - System.currentTimeMillis();
-            if (left <= 0) {
-                throw new EventPublishingException("Error publishing message to kafka. Post timeout is reached.");
-            }
+            long left = finishAt - System.currentTimeMillis();
+            left = left <= 0 ? 0 : left; // special case to process all remain Hystrix commands in case of timeout
             try {
                 new ProducerSentCallbackCommand(callback,
                         () -> kafkaFactory.terminateProducer(producer),

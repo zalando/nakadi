@@ -12,7 +12,9 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -38,6 +40,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.lang.String.valueOf;
 import static java.util.Arrays.asList;
@@ -303,6 +307,75 @@ public class KafkaTopicRepositoryTest {
             assertThat(firstItem.getResponse().getDetail(), equalTo(""));
             assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(secondItem.getResponse().getDetail(), equalTo("internal error"));
+        }
+    }
+
+    @Test
+    public void whenKafkaPublishTimeoutThenCircuitIsOpened() throws Exception {
+
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
+
+        final String topic = EXPECTED_PRODUCER_RECORD.topic();
+        final List<PartitionInfo> parts = new LinkedList<>();
+        parts.add(new PartitionInfo(topic, 1, new Node(1, "host", 9091), null, null));
+        when(kafkaProducer.partitionsFor(topic)).thenReturn(parts);
+
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            callback.onCompletion(null, new TimeoutException());
+            return null;
+        });
+
+        final List<BatchItem> batches = new LinkedList<>();
+        BatchItem batchItem = null;
+        for (int i = 0; i < 1000; i++) {
+            try {
+                batchItem = new BatchItem(new JSONObject());
+                batchItem.setPartition("1");
+                batches.add(batchItem);
+                kafkaTopicRepository.syncPostBatch(topic, ImmutableList.of(batchItem));
+                fail();
+            } catch (final EventPublishingException e) {
+            }
+        }
+
+        Assert.assertTrue(batches.stream()
+                .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
+                .count() >= 1);
+        Assert.assertTrue(batches.stream()
+                .filter(i -> i.getResponse().getPublishingStatus() == EventPublishingStatus.ABORTED)
+                .count() >= 1);
+    }
+
+    @Test
+    public void whenKafkaPublishAndWholeRequestTimeoutThenEveryCallbackProcessed() throws Exception {
+
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(0L);
+        when(kafkaSettings.getRequestTimeoutMs()).thenReturn(0);
+
+        final String topic = EXPECTED_PRODUCER_RECORD.topic();
+        final List<PartitionInfo> parts = new LinkedList<>();
+        parts.add(new PartitionInfo(topic, 1, new Node(1, "host", 9091), null, null));
+        when(kafkaProducer.partitionsFor(topic)).thenReturn(parts);
+
+        when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
+            final Callback callback = (Callback) invocation.getArguments()[1];
+            callback.onCompletion(null, new TimeoutException());
+            return null;
+        });
+
+        List<BatchItem> batchItems = IntStream.range(0, 1000).mapToObj(partition -> {
+            final BatchItem batchItem = new BatchItem(new JSONObject());
+            batchItem.setPartition(String.valueOf(partition));
+            return batchItem;
+        }).collect(Collectors.toList());
+        try {
+            kafkaTopicRepository.syncPostBatch(topic, batchItems);
+        } catch (final EventPublishingException e) {
+            batchItems.stream().forEach(batchItem -> {
+                Assert.assertEquals(EventPublishingStatus.FAILED, batchItem.getResponse().getPublishingStatus());
+                Assert.assertEquals("timed out", batchItem.getResponse().getDetail());
+            });
         }
     }
 
