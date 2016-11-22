@@ -14,6 +14,7 @@ import org.everit.json.schema.loader.SchemaLoader;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
@@ -78,7 +79,7 @@ public class SchemaEvolutionService {
 
         if (incompatibility.isPresent()) {
             throw new InvalidEventTypeException(incompatibility.get().getReason());
-        } else {
+        } else if (original.getCompatibilityMode().equals(CompatibilityMode.COMPATIBLE)) {
             final List<SchemaIncompatibility> incompatibilities = this.checkConstraints(schema(original),
                     schema(eventType));
             if (!incompatibilities.isEmpty()) {
@@ -86,8 +87,8 @@ public class SchemaEvolutionService {
                         .collect(Collectors.joining(", "));
                 throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
             }
-            return this.bumpVersion(original, eventType);
         }
+        return this.bumpVersion(original, eventType);
     }
 
     private Schema schema(final EventTypeBase eventType) {
@@ -103,7 +104,7 @@ public class SchemaEvolutionService {
             return new EventType(eventType, original.getSchema().getVersion().bumpMinor().toString(),
                     original.getCreatedAt(), now);
         } else {
-            return new EventType(eventType, "1.0.0", original.getCreatedAt(), now);
+            return new EventType(eventType, original.getSchema().getVersion().toString(), original.getCreatedAt(), now);
         }
     }
 
