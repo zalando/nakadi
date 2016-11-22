@@ -1,6 +1,4 @@
 {
-    "id": "http://json-schema.org/draft/schema#",
-    "$schema": "http://json-schema.org/draft/schema#",
     "description": "Core schema meta-schema",
     "definitions": {
         "schemaArray": {
@@ -69,13 +67,6 @@
             "type": "string",
             "format": "regex"
         },
-        "additionalItems": {
-            "anyOf": [
-                { "type": "boolean" },
-                { "$ref": "#" }
-            ],
-            "default": {}
-        },
         "items": {
             "anyOf": [
                 { "$ref": "#" },
@@ -93,24 +84,12 @@
         "maxProperties": { "$ref": "#/definitions/positiveInteger" },
         "minProperties": { "$ref": "#/definitions/positiveIntegerDefault0" },
         "required": { "$ref": "#/definitions/stringArray" },
-        "additionalProperties": {
-            "anyOf": [
-                { "type": "boolean" },
-                { "$ref": "#" }
-            ],
-            "default": {}
-        },
         "definitions": {
             "type": "object",
             "additionalProperties": { "$ref": "#" },
             "default": {}
         },
         "properties": {
-            "type": "object",
-            "additionalProperties": { "$ref": "#" },
-            "default": {}
-        },
-        "patternProperties": {
             "type": "object",
             "additionalProperties": { "$ref": "#" },
             "default": {}
@@ -144,9 +123,9 @@
         "format": { "type": "string" },
         "allOf": { "$ref": "#/definitions/schemaArray" },
         "anyOf": { "$ref": "#/definitions/schemaArray" },
-        "oneOf": { "$ref": "#/definitions/schemaArray" },
-        "not": { "$ref": "#" }
+        "oneOf": { "$ref": "#/definitions/schemaArray" }
     },
+    "additionalProperties": false,
     "dependencies": {
         "exclusiveMaximum": [ "maximum" ],
         "exclusiveMinimum": [ "minimum" ]

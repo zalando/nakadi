@@ -1,10 +1,12 @@
 package org.zalando.nakadi.validation;
 
+
 import org.everit.json.schema.ArraySchema;
 import org.everit.json.schema.CombinedSchema;
 import org.everit.json.schema.ObjectSchema;
 import org.everit.json.schema.ReferenceSchema;
 import org.everit.json.schema.Schema;
+import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -12,13 +14,12 @@ import org.json.JSONObject;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
 import org.zalando.nakadi.validation.schema.SchemaChangeIncompatibility;
-import org.zalando.nakadi.validation.schema.SchemaConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -27,108 +28,41 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
-import static org.everit.json.schema.CombinedSchema.*;
+import static org.everit.json.schema.CombinedSchema.ALL_CRITERION;
+import static org.everit.json.schema.CombinedSchema.ANY_CRITERION;
+import static org.everit.json.schema.CombinedSchema.ValidationCriterion;
 
 public class SchemaEvolutionService {
 
-    private final List<SchemaConstraint> jsonSchemaConstraints;
     private final List<SchemaEvolutionConstraint> schemaEvolutionConstraints;
+    private final Schema metaSchema;
 
-    public SchemaEvolutionService(final List<SchemaConstraint> jsonSchemaConstraints,
-                                  final List<SchemaEvolutionConstraint> schemaEvolutionConstraints) {
-        this.jsonSchemaConstraints = jsonSchemaConstraints;
+    public SchemaEvolutionService(final Schema metaSchema, final List<SchemaEvolutionConstraint> schemaEvolutionConstraints) {
+        this.metaSchema = metaSchema;
         this.schemaEvolutionConstraints = schemaEvolutionConstraints;
     }
 
-    public List<SchemaIncompatibility> checkConstraints(final Schema schema) {
+    public List<SchemaIncompatibility> checkConstraints(final JSONObject schemaJson) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<>();
 
-        recursiveCheckConstraints(schema, new Stack<>(), incompatibilities);
-
-        return incompatibilities;
-    }
-
-    private void recursiveCheckConstraints(
-            final Schema schema,
-            final Stack<String> jsonPath,
-            final List<SchemaIncompatibility> schemaIncompatibilities) {
-
-        for (final SchemaConstraint constraint : jsonSchemaConstraints) {
-            final Optional<SchemaIncompatibility> incompatibility = constraint.validate(jsonPath, schema);
-            if (incompatibility.isPresent()) {
-                schemaIncompatibilities.add(incompatibility.get());
-            }
-        }
-
-        if (schema instanceof ObjectSchema) {
-            recursiveCheckConstraints((ObjectSchema) schema, jsonPath, schemaIncompatibilities);
-        } else if (schema instanceof ArraySchema) {
-            recursiveCheckConstraints((ArraySchema) schema, jsonPath, schemaIncompatibilities);
-        } else if (schema instanceof ReferenceSchema) {
-            recursiveCheckConstraints((ReferenceSchema) schema, jsonPath, schemaIncompatibilities);
-        } else if (schema instanceof CombinedSchema) {
-            recursiveCheckConstraints((CombinedSchema) schema, jsonPath, schemaIncompatibilities);
+        try {
+            metaSchema.validate(schemaJson);
+        } catch (final ValidationException e) {
+            collectErrorMessages(e, incompatibilities);
+        } finally {
+            return incompatibilities;
         }
     }
 
-    private void recursiveCheckConstraints(final CombinedSchema schema, final Stack<String> jsonPath,
-                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
-        if (!schema.getSubschemas().isEmpty()) {
-            for (final Schema innerSchema : schema.getSubschemas()) {
-                recursiveCheckConstraints(innerSchema, jsonPath, schemaIncompatibilities);
-            }
+    private void collectErrorMessages(final ValidationException e, final List<SchemaIncompatibility> incompatibilities) {
+        if (e.getCausingExceptions().isEmpty()) {
+            incompatibilities.add(new ForbiddenAttributeIncompatibility(e.getPointerToViolation(), e.getErrorMessage()));
+        } else {
+            e.getCausingExceptions().stream()
+                    .forEach(causingException -> {
+                        collectErrorMessages(causingException, incompatibilities);
+                    });
         }
-    }
-
-    private void recursiveCheckConstraints(final ReferenceSchema schema, final Stack<String> jsonPath,
-                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
-        if (schema.getReferredSchema() != null) {
-            recursiveCheckConstraints(schema.getReferredSchema(), jsonPath, schemaIncompatibilities);
-        }
-    }
-
-    private void recursiveCheckConstraints(final ArraySchema schema, final Stack<String> jsonPath,
-                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
-        if (schema.getItemSchemas() != null) {
-            jsonPath.push("items");
-            for (final Schema innerSchema : schema.getItemSchemas()) {
-                recursiveCheckConstraints(innerSchema, jsonPath, schemaIncompatibilities);
-            }
-            jsonPath.pop();
-        }
-        if(schema.getAllItemSchema() != null) {
-            jsonPath.push("items");
-            recursiveCheckConstraints(schema.getAllItemSchema(), jsonPath, schemaIncompatibilities);
-            jsonPath.pop();
-        }
-        if(schema.getSchemaOfAdditionalItems() != null) {
-            jsonPath.push("additionalItems");
-            recursiveCheckConstraints(schema.getSchemaOfAdditionalItems(), jsonPath, schemaIncompatibilities);
-            jsonPath.pop();
-        }
-    }
-
-    private void recursiveCheckConstraints(final ObjectSchema schema, final Stack<String> jsonPath,
-                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
-        jsonPath.push("properties");
-        for (final Map.Entry<String, Schema> innerSchema : schema.getPropertySchemas().entrySet()) {
-            jsonPath.push(innerSchema.getKey());
-            recursiveCheckConstraints(innerSchema.getValue(), jsonPath, schemaIncompatibilities);
-            jsonPath.pop();
-        }
-        jsonPath.pop();
-        jsonPath.push("dependencies");
-        for (final Map.Entry<String, Schema> innerSchema : schema.getSchemaDependencies().entrySet()) {
-            jsonPath.push(innerSchema.getKey());
-            recursiveCheckConstraints(innerSchema.getValue(), jsonPath, schemaIncompatibilities);
-            jsonPath.pop();
-        }
-        jsonPath.pop();
-        jsonPath.push("additionalProperties");
-        if (schema.getSchemaOfAdditionalProperties() != null) {
-            recursiveCheckConstraints(schema.getSchemaOfAdditionalProperties(), jsonPath, schemaIncompatibilities);
-        }
-        jsonPath.pop();
     }
 
     public EventType evolve(final EventType original, final EventTypeBase eventType) throws InvalidEventTypeException {

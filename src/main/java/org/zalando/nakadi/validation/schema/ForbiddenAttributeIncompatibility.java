@@ -3,19 +3,15 @@ package org.zalando.nakadi.validation.schema;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 
 public class ForbiddenAttributeIncompatibility extends SchemaIncompatibility {
-    private final String attribute;
+    private final String reason;
 
-    public ForbiddenAttributeIncompatibility(final String jsonPath, final String attribute) {
+    public ForbiddenAttributeIncompatibility(final String jsonPath, final String reason) {
         super(jsonPath);
-        this.attribute = attribute;
-    }
-
-    public String getAttribute() {
-        return attribute;
+        this.reason = reason;
     }
 
     @Override
     public String toString() {
-        return "Forbidden attribute \"" + this.attribute + "\" found in " + this.getJsonPath();
+        return "Invalid schema found in [" + this.getJsonPath() + "]: " + this.reason;
     }
 }

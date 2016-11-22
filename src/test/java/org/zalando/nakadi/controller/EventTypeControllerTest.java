@@ -54,6 +54,7 @@ import org.zalando.problem.ThrowableProblem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -107,6 +108,9 @@ public class EventTypeControllerTest {
             .schemaEvolutionService();
 
     private MockMvc mockMvc;
+
+    public EventTypeControllerTest() throws IOException {
+    }
 
     @Before
     public void init() throws Exception {

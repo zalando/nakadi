@@ -1,7 +1,8 @@
 package org.zalando.nakadi.validation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
+import com.google.common.io.Resources;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONArray;
@@ -9,15 +10,12 @@ import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
-import org.zalando.nakadi.validation.schema.SchemaConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
-import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,14 +30,13 @@ import static org.zalando.nakadi.utils.TestUtils.readFile;
 public class SchemaEvolutionServiceTest {
     private SchemaEvolutionService service;
     private SchemaEvolutionConstraint evolutionConstraint = mock(SchemaEvolutionConstraint.class);
-    private ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
 
     @Before
-    public void setUp() {
-        final List<SchemaConstraint> constraints = Lists.newArrayList(new NotSchemaConstraint());
+    public void setUp() throws IOException {
         final List<SchemaEvolutionConstraint> evolutionConstraints= Lists.newArrayList(evolutionConstraint);
-
-        this.service = new SchemaEvolutionService(constraints, evolutionConstraints);
+        final JSONObject metaSchemaJson = new JSONObject(Resources.toString(Resources.getResource("schema.json"), Charsets.UTF_8));
+        final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
+        this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints);
     }
 
     @Test
@@ -64,7 +61,7 @@ public class SchemaEvolutionServiceTest {
 
         for(final Object testCaseObject : testCases) {
             final JSONObject testCase = (JSONObject) testCaseObject;
-            final Schema schema = SchemaLoader.load(testCase.getJSONObject("schema"));
+            final JSONObject schemaJson = testCase.getJSONObject("schema");
             final List<String> errorMessages = testCase
                     .getJSONArray("errors")
                     .toList()
@@ -73,8 +70,7 @@ public class SchemaEvolutionServiceTest {
                     .collect(toList());
             final String description = testCase.getString("description");
 
-
-            assertThat(description, service.checkConstraints(schema).stream().map(Object::toString).collect(toList()),
+            assertThat(description, service.checkConstraints(schemaJson).stream().map(Object::toString).collect(toList()),
                     is(errorMessages));
         }
     }
