@@ -129,13 +129,13 @@ public class ConsumerLimitingService {
             throws ConnectionSlotOccupiedException {
 
         final String parent = zkPathForConsumer(client, eventType, partition);
-        List<String> children = ImmutableList.of();
+        List<String> children;
         try {
             children = zkHolder.get()
                     .getChildren()
                     .forPath(parent);
         } catch (final KeeperException.NoNodeException e) {
-            // no node = no children
+            children = ImmutableList.of();
         } catch (Exception e) {
             LOG.error("Zookeeper error when getting consumer nodes", e);
             throw new NakadiRuntimeException(e);
