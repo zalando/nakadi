@@ -367,7 +367,7 @@ public class EventStreamReadingAT extends BaseAT {
         final CompletableFuture<Integer> future = new CompletableFuture<>();
         new Thread(() -> {
             try {
-                final java.net.URL url = new URL(URL + createStreamEndpointUrl(etName));
+                final URL url = new URL(URL + createStreamEndpointUrl(etName));
                 final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 final int responseCode = conn.getResponseCode();
                 future.complete(responseCode);
