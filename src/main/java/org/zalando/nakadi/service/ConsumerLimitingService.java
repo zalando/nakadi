@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.text.MessageFormat.format;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -30,18 +31,24 @@ public class ConsumerLimitingService {
     public static final String CONNECTIONS_ZK_PATH = "/nakadi/consumers/connections";
 
     private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
-    private static final List<String> SLOT_NAMES = ImmutableList.of("a", "b", "c", "d", "e");
+
     private static final String ERROR_MSG = "You exceeded the maximum number of simultaneous connections to a single " +
             "partition for event type '{0}', partition(s): {1}; max limit is {2} connections per client";
 
     private final ZooKeeperHolder zkHolder;
     private final int maxConnections;
+    private final List<String> slotNames;
 
     @Autowired
     public ConsumerLimitingService(final ZooKeeperHolder zkHolder,
                                    @Value("${nakadi.stream.maxConnections}") final int maxConnections) {
         this.zkHolder = zkHolder;
         this.maxConnections = maxConnections;
+
+        slotNames = IntStream.range(0, maxConnections)
+                .boxed()
+                .map(String::valueOf)
+                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
@@ -146,7 +153,7 @@ public class ConsumerLimitingService {
         }
 
         final List<String> occupiedSlots = children;
-        final List<String> availableSlots = SLOT_NAMES.stream()
+        final List<String> availableSlots = slotNames.stream()
                 .filter(slot -> !occupiedSlots.contains(slot))
                 .collect(Collectors.toList());
         final int slotIndex = new Random().nextInt(availableSlots.size());
