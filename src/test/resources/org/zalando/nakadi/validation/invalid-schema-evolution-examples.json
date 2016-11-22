@@ -181,7 +181,7 @@
         }
       ]
     },
-    "errors": ["Incompatibility found in \"#/anyOf[0]/properties/foo\": schema types must be the same"]
+    "errors": ["Incompatibility found in \"#/anyOf/0/properties/foo\": schema types must be the same"]
   },
   {
     "description": "Do not allow changes to validation criteria in composed schema type",
@@ -284,7 +284,7 @@
         }
       }
     },
-    "errors": ["Incompatibility found in \"#/\": required properties cannot be changed"]
+    "errors": ["Incompatibility found in \"#/required\": change not allowed"]
   },
   {
     "description": "Do not allow required array to be added",
@@ -303,7 +303,7 @@
       },
       "required": ["foo"]
     },
-    "errors": ["Incompatibility found in \"#/\": required properties cannot be changed"]
+    "errors": ["Incompatibility found in \"#/required\": change not allowed"]
   },
   {
     "description": "Do not allow required array to be changed",
@@ -323,7 +323,7 @@
       },
       "required": ["bar"]
     },
-    "errors": ["Incompatibility found in \"#/\": required properties cannot be changed"]
+    "errors": ["Incompatibility found in \"#/required\": change not allowed"]
   },
   {
     "description": "Do not allow changes to maxProperties",
@@ -333,7 +333,7 @@
     "update_schema": {
       "maxProperties": 1
     },
-    "errors": ["Incompatibility found in \"#/\": maxProperties cannot be changed"]
+    "errors": ["Incompatibility found in \"#/maxProperties\": change not allowed"]
   },
   {
     "description": "Do not allow changes to minProperties",
@@ -343,7 +343,7 @@
     "update_schema": {
       "minProperties": 1
     },
-    "errors": ["Incompatibility found in \"#/\": minProperties cannot be changed"]
+    "errors": ["Incompatibility found in \"#/minProperties\": change not allowed"]
   },
   {
     "description": "Do not allow changes to minProperties",
@@ -353,7 +353,7 @@
     "update_schema": {
       "minProperties": 1
     },
-    "errors": ["Incompatibility found in \"#/\": minProperties cannot be changed"]
+    "errors": ["Incompatibility found in \"#/minProperties\": change not allowed"]
   },
   {
     "description": "Do not allow changes to all items schema",
@@ -416,7 +416,7 @@
       "type": "array",
       "maxItems": 1
     },
-    "errors": ["Incompatibility found in \"#/\": maxItems cannot be changed"]
+    "errors": ["Incompatibility found in \"#/maxItems\": change not allowed"]
   },
   {
     "description": "Do not allow changes to minItems",
@@ -428,7 +428,7 @@
       "type": "array",
       "minItems": 1
     },
-    "errors": ["Incompatibility found in \"#/\": minItems cannot be changed"]
+    "errors": ["Incompatibility found in \"#/minItems\": change not allowed"]
   },
   {
     "description": "Do not allow changes to minItems",
@@ -439,18 +439,7 @@
     "update_schema": {
       "type": "array"
     },
-    "errors": ["Incompatibility found in \"#/\": uniqueItems cannot be changed"]
-  },
-  {
-    "description": "Do not allow changes to uniqueItems",
-    "original_schema": {
-      "type": "array",
-      "uniqueItems": true
-    },
-    "update_schema": {
-      "type": "array"
-    },
-    "errors": ["Incompatibility found in \"#/\": uniqueItems cannot be changed"]
+    "errors": ["Incompatibility found in \"#/uniqueItems\": change not allowed"]
   },
   {
     "description": "Do not allow incompatible changes to reference schemas",
