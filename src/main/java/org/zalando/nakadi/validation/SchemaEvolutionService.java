@@ -232,11 +232,12 @@ public class SchemaEvolutionService {
             } else {
                 final Iterator<Schema> originalIterator = original.getItemSchemas().iterator();
                 final Iterator<Schema> updateIterator = update.getItemSchemas().iterator();
-                final int index = 0;
+                int index = 0;
                 while (originalIterator.hasNext()) {
-                    jsonPath.push("items[" + index + "]");
+                    jsonPath.push("items/" + index);
                     recursiveCheck(originalIterator.next(), updateIterator.next(), jsonPath, incompatibilities);
                     jsonPath.pop();
+                    index += 1;
                 }
             }
         }
@@ -343,11 +344,12 @@ public class SchemaEvolutionService {
             } else {
                 final Iterator<Schema> originalIterator = combinedSchemaOriginal.getSubschemas().iterator();
                 final Iterator<Schema> updateIterator = combinedSchemaUpdate.getSubschemas().iterator();
-                final int index = 0;
+                int index = 0;
                 while (originalIterator.hasNext()) {
                     jsonPath.push(validationCriteria(combinedSchemaOriginal.getCriterion()) + "/" + index);
                     recursiveCheck(originalIterator.next(), updateIterator.next(), jsonPath, incompatibilities);
                     jsonPath.pop();
+                    index += 1;
                 }
             }
         }

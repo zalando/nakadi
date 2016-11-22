@@ -404,7 +404,7 @@
         }
       ]
     },
-    "errors": ["Incompatibility found in \"#/items[0]\": schema types must be the same"]
+    "errors": ["Incompatibility found in \"#/items/0\": schema types must be the same"]
   },
   {
     "description": "Do not allow changes to maxItems",
