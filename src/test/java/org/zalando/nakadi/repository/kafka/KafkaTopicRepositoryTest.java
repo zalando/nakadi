@@ -328,7 +328,7 @@ public class KafkaTopicRepositoryTest {
 
         final List<BatchItem> batches = new LinkedList<>();
         BatchItem batchItem = null;
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 5000; i++) {
             try {
                 batchItem = new BatchItem(new JSONObject());
                 batchItem.setPartition("1");
