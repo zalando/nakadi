@@ -9,11 +9,14 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;
 import org.zalando.nakadi.validation.schema.CompatibleSchemaChangeConstraint;
 import org.zalando.nakadi.validation.schema.DeprecatedSchemaChangeConstraint;
+import org.zalando.nakadi.validation.schema.PartitionKeyFieldsConstraint;
+import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 
 import java.io.IOException;
@@ -37,7 +40,9 @@ public class ValidatorConfig {
         final List<SchemaEvolutionConstraint> schemaEvolutionConstraints = Lists.newArrayList(
                 new CompatibilityModeChangeConstraint(),
                 new CompatibleSchemaChangeConstraint(),
-                new DeprecatedSchemaChangeConstraint()
+                new DeprecatedSchemaChangeConstraint(),
+                new PartitionKeyFieldsConstraint(),
+                new PartitionStrategyConstraint()
         );
 
         return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints);
