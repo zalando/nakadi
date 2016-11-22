@@ -27,6 +27,8 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 @Service
 public class ConsumerLimitingService {
 
+    public static final String CONNECTIONS_ZK_PATH = "/nakadi/consumers/connections";
+
     private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
     private static final List<String> SLOT_NAMES = ImmutableList.of("a", "b", "c", "d", "e");
     private static final String ERROR_MSG = "You exceeded the maximum number of simultaneous connections to a single " +
@@ -167,7 +169,7 @@ public class ConsumerLimitingService {
     }
 
     private String zkPathForConsumer(final String client, final String eventType, final String partition) {
-        return format("/nakadi/consumers/connections/{0}|{1}|{2}", client, eventType, partition);
+        return format("{0}/{1}|{2}|{3}", CONNECTIONS_ZK_PATH, client, eventType, partition);
     }
 
 }

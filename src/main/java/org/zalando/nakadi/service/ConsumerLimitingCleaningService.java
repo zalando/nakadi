@@ -16,8 +16,12 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import java.nio.charset.Charset;
 
+import static org.zalando.nakadi.service.ConsumerLimitingService.CONNECTIONS_ZK_PATH;
+
 @Service
-public class ConsumerLimitingCleanService {
+public class ConsumerLimitingCleaningService {
+
+    public static final String CLEANING_ZK_PATH = "/nakadi/consumers/cleaning";
 
     private static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
     private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
@@ -28,8 +32,8 @@ public class ConsumerLimitingCleanService {
     private final ConsumerLimitingService limitingService;
 
     @Autowired
-    public ConsumerLimitingCleanService(final ZooKeeperHolder zkHolder, final ObjectMapper objectMapper,
-                                        final ConsumerLimitingService limitingService) {
+    public ConsumerLimitingCleaningService(final ZooKeeperHolder zkHolder, final ObjectMapper objectMapper,
+                                           final ConsumerLimitingService limitingService) {
         this.zkHolder = zkHolder;
         this.objectMapper = objectMapper;
         this.limitingService = limitingService;
@@ -37,6 +41,8 @@ public class ConsumerLimitingCleanService {
 
     @Scheduled(fixedRate = HANGING_NODES_CLEAN_PERIOD_H * 3600000)
     public void cleanHangingNodes() {
+        LOG.info("Trying to run cleaning of 'hanging' connection ZK nodes");
+
         if (!timeToRunCleaning()) {
             return;
         }
@@ -44,6 +50,7 @@ public class ConsumerLimitingCleanService {
             return;
         }
         try {
+            LOG.info("Cleaning of 'hanging' connection ZK nodes will be performed on this instance");
             cleanHangingConsumersNodes();
             updateCleaningTimestamp();
         } catch (JsonProcessingException e) {
@@ -60,8 +67,8 @@ public class ConsumerLimitingCleanService {
         // the nodes that have children will fail to be removed
         zkHolder.get()
                 .getChildren()
-                .forPath("/nakadi/consumers/connections")
-                .forEach(limitingService::deletePartitionNodeIfPossible);
+                .forPath(CONNECTIONS_ZK_PATH)
+                .forEach(child -> limitingService.deletePartitionNodeIfPossible(CONNECTIONS_ZK_PATH + "/" + child));
     }
 
     private void deleteCleaningLockNode() {
@@ -71,7 +78,7 @@ public class ConsumerLimitingCleanService {
             zkHolder.get()
                     .delete()
                     .guaranteed()
-                    .forPath("/nakadi/consumers/cleaning/lock");
+                    .forPath(CLEANING_ZK_PATH + "/lock");
         } catch (Exception e) {
             LOG.error("Zookeeper error when deleting consumer cleaning lock-node", e);
         }
@@ -83,7 +90,7 @@ public class ConsumerLimitingCleanService {
             zkHolder.get()
                     .create()
                     .creatingParentsIfNeeded()
-                    .forPath("nakadi/consumers/cleaning/latest");
+                    .forPath(CLEANING_ZK_PATH + "/latest");
         } catch (final KeeperException.NodeExistsException e) {
             // "latest" node may already exist - this is ok
         }
@@ -92,7 +99,7 @@ public class ConsumerLimitingCleanService {
         final byte[] currentTimeAsBytes = objectMapper.writeValueAsString(now).getBytes(CHARSET_UTF8);
         zkHolder.get()
                 .setData()
-                .forPath("nakadi/consumers/cleaning/latest", currentTimeAsBytes);
+                .forPath(CLEANING_ZK_PATH + "/latest", currentTimeAsBytes);
     }
 
     private boolean createCleaningLockNode() {
@@ -101,7 +108,7 @@ public class ConsumerLimitingCleanService {
                     .create()
                     .creatingParentsIfNeeded()
                     .withMode(CreateMode.EPHEMERAL)
-                    .forPath("/nakadi/consumers/cleaning/lock");
+                    .forPath(CLEANING_ZK_PATH + "/lock");
         } catch (final KeeperException.NodeExistsException e) {
             // another node already performs cleaning
             LOG.info("Consumers deprecated nodes cleaning is cancelled as it is performed on other node", e);
@@ -117,7 +124,7 @@ public class ConsumerLimitingCleanService {
         try {
             final byte[] data = zkHolder.get()
                     .getData()
-                    .forPath("nakadi/consumers/cleaning/latest");
+                    .forPath(CLEANING_ZK_PATH + "/latest");
             final DateTime lastCleaned = objectMapper.readValue(new String(data, CHARSET_UTF8), DateTime.class);
             final DateTime now = new DateTime(DateTimeZone.UTC);
             return Hours.hoursBetween(lastCleaned, now).getHours() > HANGING_NODES_CLEAN_PERIOD_H;
