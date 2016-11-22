@@ -64,9 +64,11 @@ public class ProducerSendCommand extends HystrixCommand<ProducerSendCommand.Naka
         // called on producer thread
         @Override
         public void onCompletion(final RecordMetadata metadata, final Exception exception) {
+            LOG.debug("Received callback from Kafka");
             if (null == exception) {
                 result.complete(null);
             } else {
+                LOG.debug("Exception in callback from Kafka", exception);
                 result.completeExceptionally(exception);
             }
         }
