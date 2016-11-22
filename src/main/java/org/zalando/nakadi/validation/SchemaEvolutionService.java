@@ -2,10 +2,14 @@ package org.zalando.nakadi.validation;
 
 
 import org.everit.json.schema.ArraySchema;
+import org.everit.json.schema.BooleanSchema;
 import org.everit.json.schema.CombinedSchema;
+import org.everit.json.schema.EnumSchema;
+import org.everit.json.schema.NumberSchema;
 import org.everit.json.schema.ObjectSchema;
 import org.everit.json.schema.ReferenceSchema;
 import org.everit.json.schema.Schema;
+import org.everit.json.schema.StringSchema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.joda.time.DateTime;
@@ -127,7 +131,13 @@ public class SchemaEvolutionService {
             return;
         }
 
-        if (original instanceof CombinedSchema) {
+        if (original instanceof StringSchema) {
+            recursiveCheckConstraints((StringSchema) original, (StringSchema) update, jsonPath, schemaIncompatibilities);
+        } else if (original instanceof NumberSchema) {
+            recursiveCheckConstraints((NumberSchema) original, (NumberSchema) update, jsonPath, schemaIncompatibilities);
+        } else if (original instanceof EnumSchema) {
+            recursiveCheckConstraints((EnumSchema) original, (EnumSchema) update, jsonPath, schemaIncompatibilities);
+        } else if (original instanceof CombinedSchema) {
             recursiveCheckConstraints((CombinedSchema) original, (CombinedSchema) update, jsonPath, schemaIncompatibilities);
         } else if (original instanceof ObjectSchema) {
             recursiveCheckConstraints((ObjectSchema) original, (ObjectSchema) update, jsonPath, schemaIncompatibilities);
@@ -135,6 +145,46 @@ public class SchemaEvolutionService {
             recursiveCheckConstraints((ArraySchema) original, (ArraySchema) update, jsonPath, schemaIncompatibilities);
         } else if (original instanceof ReferenceSchema) {
             recursiveCheckConstraints((ReferenceSchema) original, (ReferenceSchema) update, jsonPath, schemaIncompatibilities);
+        }
+    }
+
+    private void recursiveCheckConstraints(final StringSchema stringSchemaOriginal, final StringSchema stringSchemaUpdate, final Stack<String> jsonPath, final List<SchemaIncompatibility> schemaIncompatibilities) {
+        if (stringSchemaOriginal.getMaxLength() != stringSchemaUpdate.getMaxLength()) {
+            jsonPath.push("maxLength");
+            schemaIncompatibilities.add(new SchemaChangeIncompatibility("change not allowed", jsonPathString(jsonPath)));
+            jsonPath.pop();
+        } else if (stringSchemaOriginal.getMinLength() != stringSchemaUpdate.getMinLength()) {
+            jsonPath.push("minLength");
+            schemaIncompatibilities.add(new SchemaChangeIncompatibility("change not allowed", jsonPathString(jsonPath)));
+            jsonPath.pop();
+        } else if (stringSchemaOriginal.getPattern() != stringSchemaUpdate.getPattern()) {
+            jsonPath.push("pattern");
+            schemaIncompatibilities.add(new SchemaChangeIncompatibility("change not allowed", jsonPathString(jsonPath)));
+            jsonPath.pop();
+        }
+    }
+
+    private void recursiveCheckConstraints(final NumberSchema numberSchemaOriginal, final NumberSchema numberSchemaUpdate, final Stack<String> jsonPath, final List<SchemaIncompatibility> schemaIncompatibilities) {
+        if (numberSchemaOriginal.getMaximum() != numberSchemaUpdate.getMaximum()) {
+            jsonPath.push("maximum");
+            schemaIncompatibilities.add(new SchemaChangeIncompatibility("change not allowed", jsonPathString(jsonPath)));
+            jsonPath.pop();
+        } else if (numberSchemaOriginal.getMinimum() != numberSchemaUpdate.getMinimum()) {
+            jsonPath.push("minimum");
+            schemaIncompatibilities.add(new SchemaChangeIncompatibility("change not allowed", jsonPathString(jsonPath)));
+            jsonPath.pop();
+        } else if (numberSchemaOriginal.getMultipleOf() != numberSchemaUpdate.getMultipleOf()) {
+            jsonPath.push("multipleOf");
+            schemaIncompatibilities.add(new SchemaChangeIncompatibility("change not allowed", jsonPathString(jsonPath)));
+            jsonPath.pop();
+        }
+    }
+
+    private void recursiveCheckConstraints(final EnumSchema enumSchemaOriginal, final EnumSchema enumSchemaUpdate, final Stack<String> jsonPath, final List<SchemaIncompatibility> schemaIncompatibilities) {
+        if (!enumSchemaOriginal.getPossibleValues().equals(enumSchemaUpdate.getPossibleValues())) {
+            jsonPath.push("enum");
+            schemaIncompatibilities.add(new SchemaChangeIncompatibility("change not allowed", jsonPathString(jsonPath)));
+            jsonPath.pop();
         }
     }
 
@@ -179,7 +229,9 @@ public class SchemaEvolutionService {
         }
     }
 
-    private void recursiveCheckConstraints(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaIncompatibility> schemaIncompatibilities) {
+    private void recursiveCheckConstraints(final ObjectSchema original, final ObjectSchema update,
+                                           final Stack<String> jsonPath,
+                                           final List<SchemaIncompatibility> schemaIncompatibilities) {
         jsonPath.push("properties");
         for (final Map.Entry<String, Schema> property : original.getPropertySchemas().entrySet()) {
             jsonPath.push(property.getKey());

@@ -10,6 +10,90 @@
     "errors": ["Incompatibility found in \"#/\": schema types must be the same"]
   },
   {
+    "description": "Do not allow changes to minLength string schema",
+    "original_schema": {
+      "type": "string",
+      "minLength": 10
+    },
+    "update_schema": {
+      "type": "string",
+      "minLength": 11
+    },
+    "errors": ["Incompatibility found in \"#/minLength\": change not allowed"]
+  },
+  {
+    "description": "Do not allow changes to maxLength string schema",
+    "original_schema": {
+      "type": "string",
+      "maxLength": 10
+    },
+    "update_schema": {
+      "type": "string",
+      "maxLength": 12
+    },
+    "errors": ["Incompatibility found in \"#/maxLength\": change not allowed"]
+  },
+  {
+    "description": "Do not allow changes to pattern string schema",
+    "original_schema": {
+      "type": "string",
+      "pattern": "date-time"
+    },
+    "update_schema": {
+      "type": "string",
+      "pattern": "uuid"
+    },
+    "errors": ["Incompatibility found in \"#/pattern\": change not allowed"]
+  },
+  {
+    "description": "Do not allow changes to maximum number schema",
+    "original_schema": {
+      "type": "number",
+      "maximum": 10
+    },
+    "update_schema": {
+      "type": "number",
+      "maximum": 11
+    },
+    "errors": ["Incompatibility found in \"#/maximum\": change not allowed"]
+  },
+  {
+    "description": "Do not allow changes to minimum number schema",
+    "original_schema": {
+      "type": "number",
+      "minimum": 10
+    },
+    "update_schema": {
+      "type": "number",
+      "minimum": 11
+    },
+    "errors": ["Incompatibility found in \"#/minimum\": change not allowed"]
+  },
+  {
+    "description": "Do not allow changes to multipleOf number schema",
+    "original_schema": {
+      "type": "number",
+      "multipleOf": 10
+    },
+    "update_schema": {
+      "type": "number",
+      "multipleOf": 11
+    },
+    "errors": ["Incompatibility found in \"#/multipleOf\": change not allowed"]
+  },
+  {
+    "description": "Do not allow changes to enum schema",
+    "original_schema": {
+      "type": "string",
+      "enum": ["red"]
+    },
+    "update_schema": {
+      "type": "string",
+      "enum": ["blue"]
+    },
+    "errors": ["Incompatibility found in \"#/enum\": change not allowed"]
+  },
+  {
     "description": "Do not allow changes to type array",
     "original_schema": {
       "type": ["object"]
