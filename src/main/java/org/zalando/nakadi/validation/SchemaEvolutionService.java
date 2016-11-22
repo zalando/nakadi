@@ -2,7 +2,6 @@ package org.zalando.nakadi.validation;
 
 
 import org.everit.json.schema.ArraySchema;
-import org.everit.json.schema.BooleanSchema;
 import org.everit.json.schema.CombinedSchema;
 import org.everit.json.schema.EnumSchema;
 import org.everit.json.schema.NumberSchema;
