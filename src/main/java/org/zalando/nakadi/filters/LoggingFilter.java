@@ -19,19 +19,20 @@ public class LoggingFilter extends OncePerRequestFilter {
     private static final Logger LOG = LoggerFactory.getLogger(LoggingFilter.class);
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(final HttpServletRequest request,
+                                    final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException
     {
-        long start = System.currentTimeMillis();
+        final long start = System.currentTimeMillis();
 
         //execute request
         try {
             filterChain.doFilter(request, response);
         } finally {
-            long time = System.currentTimeMillis();
-            Long timing = time - start;
-            Optional<String> userAgent = Optional.ofNullable(request.getHeader("User-Agent"));
-            Optional<String> user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
+            final long time = System.currentTimeMillis();
+            final Long timing = time - start;
+            final Optional<String> userAgent = Optional.ofNullable(request.getHeader("User-Agent"));
+            final Optional<String> user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
             LOG.info("{} \"{}\" \"{}\" \"{}\" {} {} ms",
                     request.getMethod(),
                     request.getRequestURI(),
