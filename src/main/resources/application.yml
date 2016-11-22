@@ -9,7 +9,7 @@ logging:
   level:
     ROOT: INFO
     org.springframework.web: INFO
-    org.springframework.security.web.access.intercept: DEBUG
+    org.springframework.security.web.access.intercept: INFO
     org.apache.kafka: WARN
     org.zalando.nakadi: DEBUG
 spring:
