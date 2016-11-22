@@ -34,7 +34,8 @@ public class SchemaEvolutionServiceTest {
     @Before
     public void setUp() throws IOException {
         final List<SchemaEvolutionConstraint> evolutionConstraints= Lists.newArrayList(evolutionConstraint);
-        final JSONObject metaSchemaJson = new JSONObject(Resources.toString(Resources.getResource("schema.json"), Charsets.UTF_8));
+        final JSONObject metaSchemaJson = new JSONObject(Resources.toString(Resources.getResource("schema.json"),
+                Charsets.UTF_8));
         final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
         this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints);
     }
@@ -70,8 +71,8 @@ public class SchemaEvolutionServiceTest {
                     .collect(toList());
             final String description = testCase.getString("description");
 
-            assertThat(description, service.checkConstraints(schemaJson).stream().map(Object::toString).collect(toList()),
-                    is(errorMessages));
+            assertThat(description, service.checkConstraints(schemaJson).stream().map(Object::toString)
+                            .collect(toList()), is(errorMessages));
         }
     }
 
