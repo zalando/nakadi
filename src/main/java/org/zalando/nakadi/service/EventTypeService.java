@@ -141,6 +141,8 @@ public class EventTypeService {
 
             validateName(eventTypeName, eventTypeBase);
             validatePartitionKeys(Optional.empty(), eventTypeBase);
+            final JSONObject schemaAsJson = new JSONObject(eventTypeBase.getSchema().getSchema());
+            validateJsonSchemaConstraints(schemaAsJson);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
