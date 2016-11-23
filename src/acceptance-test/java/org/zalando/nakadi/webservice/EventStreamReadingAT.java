@@ -338,24 +338,49 @@ public class EventStreamReadingAT extends BaseAT {
             TimeoutException {
         final String etName = NakadiTestUtils.createEventType().getName();
 
-        final List<CompletableFuture<Integer>> statusCodeFutures = range(0, 8)
+        // try to create 8 consuming connections
+        final List<CompletableFuture<HttpURLConnection>> connectionFutures = range(0, 8)
                 .mapToObj(x -> createConsumingConnection(etName))
                 .collect(Collectors.toList());
 
         assertThat("first 5 connections should be accepted",
-                countStatusCode(statusCodeFutures, HttpStatus.OK.value()),
+                countStatusCode(connectionFutures, HttpStatus.OK.value()),
                 equalTo(5));
 
         assertThat("last 3 connections should be rejected",
-                countStatusCode(statusCodeFutures, HttpStatus.TOO_MANY_REQUESTS.value()),
+                countStatusCode(connectionFutures, HttpStatus.TOO_MANY_REQUESTS.value()),
                 equalTo(3));
+
+        // close one of open connections
+        for (final CompletableFuture<HttpURLConnection> conn : connectionFutures) {
+            if (conn.get().getResponseCode() == HttpStatus.OK.value()) {
+                conn.get().disconnect();
+                break;
+            }
+        }
+
+        // wait for Nakadi to recognize thаt connection is closed
+        Thread.sleep(1000);
+
+        // try to create 3 more connections
+        final List<CompletableFuture<HttpURLConnection>> moreConnectionFutures = range(0, 3)
+                .mapToObj(x -> createConsumingConnection(etName))
+                .collect(Collectors.toList());
+
+        assertThat("one more connection should be accepted",
+                countStatusCode(moreConnectionFutures, HttpStatus.OK.value()),
+                equalTo(1));
+
+        assertThat("other 2 connections should be rejected as we had only one new free slot",
+                countStatusCode(moreConnectionFutures, HttpStatus.TOO_MANY_REQUESTS.value()),
+                equalTo(2));
     }
 
-    private int countStatusCode(final List<CompletableFuture<Integer>> futures, final int statusCode) {
+    private int countStatusCode(final List<CompletableFuture<HttpURLConnection>> futures, final int statusCode) {
         return (int) futures.stream()
                 .filter(future -> {
                     try {
-                        return future.get(5, TimeUnit.SECONDS) == statusCode;
+                        return future.get(5, TimeUnit.SECONDS).getResponseCode() == statusCode;
                     } catch (Exception e) {
                         throw new AssertionError("Failed to get future result");
                     }
@@ -363,16 +388,15 @@ public class EventStreamReadingAT extends BaseAT {
                 .count();
     }
 
-    private CompletableFuture<Integer> createConsumingConnection(final String etName) {
-        final CompletableFuture<Integer> future = new CompletableFuture<>();
+    private CompletableFuture<HttpURLConnection> createConsumingConnection(final String etName) {
+        final CompletableFuture<HttpURLConnection> future = new CompletableFuture<>();
         new Thread(() -> {
             try {
                 final URL url = new URL(URL + createStreamEndpointUrl(etName));
                 final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                final int responseCode = conn.getResponseCode();
-                future.complete(responseCode);
-                Thread.sleep(10000); // just keeps the thread from finishing to keep connection open
-            } catch (IOException | InterruptedException e) {
+                conn.getResponseCode(); // wait till the response code comes
+                future.complete(conn);
+            } catch (IOException e) {
                 throw new AssertionError();
             }
         }).start();
