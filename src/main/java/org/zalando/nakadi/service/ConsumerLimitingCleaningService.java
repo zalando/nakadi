@@ -68,7 +68,7 @@ public class ConsumerLimitingCleaningService {
         zkHolder.get()
                 .getChildren()
                 .forPath(CONNECTIONS_ZK_PATH)
-                .forEach(child -> limitingService.deletePartitionNodeIfPossible(CONNECTIONS_ZK_PATH + "/" + child));
+                .forEach(limitingService::deletePartitionNodeIfPossible);
     }
 
     private void deleteCleaningLockNode() {

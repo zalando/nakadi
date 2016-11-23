@@ -106,24 +106,25 @@ public class ConsumerLimitingService {
     }
 
     private void releaseConnectionSlot(final ConnectionSlot slot) {
-        final String parent = zkPathForConsumer(slot.getClient(), slot.getEventType(), slot.getPartition());
-        final String zkPath = format("{0}/{1}", parent, slot.getConnectionId());
+        final String consumerNode = zkNodeNameForConsumer(slot.getClient(), slot.getEventType(), slot.getPartition());
+        final String connectionNodePath = format("{0}/{1}/{2}",
+                CONNECTIONS_ZK_PATH, consumerNode, slot.getConnectionId());
         try {
             zkHolder.get()
                     .delete()
                     .guaranteed()
-                    .forPath(zkPath);
-            deletePartitionNodeIfPossible(parent);
+                    .forPath(connectionNodePath);
+            deletePartitionNodeIfPossible(consumerNode);
         } catch (final Exception e) {
             LOG.error("Zookeeper error when deleting consumer connection node", e);
         }
     }
 
-    public void deletePartitionNodeIfPossible(final String nodePath) {
+    public void deletePartitionNodeIfPossible(final String nodeName) {
         try {
             zkHolder.get()
                     .delete()
-                    .forPath(nodePath);
+                    .forPath(CONNECTIONS_ZK_PATH + "/" + nodeName);
         } catch (final KeeperException.NotEmptyException e) {
             // if the node has children - we should not delete it
         } catch (final Exception e) {
@@ -176,7 +177,11 @@ public class ConsumerLimitingService {
     }
 
     private String zkPathForConsumer(final String client, final String eventType, final String partition) {
-        return format("{0}/{1}|{2}|{3}", CONNECTIONS_ZK_PATH, client, eventType, partition);
+        return CONNECTIONS_ZK_PATH + "/" + zkNodeNameForConsumer(client, eventType, partition);
+    }
+
+    private String zkNodeNameForConsumer(final String client, final String eventType, final String partition) {
+        return format("{0}|{1}|{2}", client, eventType, partition);
     }
 
 }
