@@ -64,7 +64,7 @@ public class ConsumerLimitingService {
                 try {
                     connectionSlot = executeWithRetry(
                             () -> acquireConnectionSlot(client, eventType, partition),
-                            new RetryForSpecifiedCountStrategy<Optional<ConnectionSlot>>(5)
+                            new RetryForSpecifiedCountStrategy<Optional<ConnectionSlot>>(maxConnections)
                                     .withExceptionsThatForceRetry(ConnectionSlotOccupiedException.class)
                                     .withWaitBetweenEachTry(0L, 100L));
                 } catch (ConnectionSlotOccupiedException e) {
