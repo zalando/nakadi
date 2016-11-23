@@ -4,31 +4,12 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import java.util.Arrays;
-import static java.util.Collections.unmodifiableList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import static java.util.stream.Collectors.toList;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
+import com.netflix.hystrix.exception.HystrixRuntimeException;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.errors.InterruptException;
-import org.apache.kafka.common.errors.NotLeaderForPartitionException;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,12 +18,6 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
-import static org.zalando.nakadi.domain.CursorError.EMPTY_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
-import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
-import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
-import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
@@ -59,14 +34,32 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.Collectors.toList;
+import static org.zalando.nakadi.domain.CursorError.EMPTY_PARTITION;
+import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
+import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
+import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
+import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
+import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 
 @Component
 @Profile("!test")
@@ -164,101 +157,82 @@ public class KafkaTopicRepository implements TopicRepository {
                 .anyMatch(partition::equals);
     }
 
-    private static CompletableFuture<Exception> publishItem(
-            final Producer<String, String> producer, final String topicId, final BatchItem item)
-            throws EventPublishingException {
-        try {
-            final CompletableFuture<Exception> result = new CompletableFuture<>();
-            final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
-                    topicId,
-                    toKafkaPartition(item.getPartition()),
-                    item.getPartition(),
-                    item.getEvent().toString());
-
-            producer.send(kafkaRecord, ((metadata, exception) -> {
-                if (null != exception) {
-                    LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                    result.complete(exception);
-                } else {
-                    item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
-                    result.complete(null);
-                }
-            }));
-            return result;
-        } catch (final InterruptException e) {
-            Thread.currentThread().interrupt();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
-        } catch (final RuntimeException e) {
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
-        }
-    }
-
-    private static boolean isExceptionShouldLeadToReset(@Nullable final Exception exception) {
-        if (null == exception) {
-            return false;
-        }
-        return Stream.of(NotLeaderForPartitionException.class, UnknownTopicOrPartitionException.class).
-                filter(clazz -> clazz.isAssignableFrom(exception.getClass()))
-                .findAny().isPresent();
-    }
-
+    /**
+     * Post to Kafka is divided into two Hystrix commands because
+     * {@link org.apache.kafka.clients.producer.KafkaProducer#send(ProducerRecord, Callback)} is not blocking and
+     * {@link org.apache.kafka.clients.producer.Callback} is returned in producer thread. That's why we post message
+     * in {@link org.zalando.nakadi.repository.kafka.ProducerSendCommand} and
+     * wait for callback in {@link org.zalando.nakadi.repository.kafka.ProducerSentCallbackCommand}
+     *
+     * It allows to not send messages to Kafka when circuit breaker is opened.
+     *
+     * @see org.zalando.nakadi.repository.kafka.ProducerSendCommand
+     * @see org.zalando.nakadi.repository.kafka.ProducerSentCallbackCommand
+     *
+     * @param topicId
+     * @param batchItems
+     * @throws EventPublishingException
+     */
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
-        batch.forEach(item -> Preconditions.checkNotNull(
-                item.getPartition(), "BatchItem partition can't be null at the moment of publishing!"));
+    public void syncPostBatch(final String topicId, final List<BatchItem> batchItems) throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
-        final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
         try {
-            for (final BatchItem item : batch) {
-                item.setStep(EventPublishingStep.PUBLISHING);
-                sendFutures.put(item, publishItem(producer, topicId, item));
-            }
-            final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
-                    sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
+                    .collect(Collectors.toMap(p -> String.valueOf(p.partition()),p -> String.valueOf(p.leader().id())));
+            batchItems.forEach(item -> {
+                Preconditions.checkNotNull(
+                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
+                item.setBrokerId(partitionToBroker.get(item.getPartition()));
+                item.setTopic(topicId);
+            });
 
-            // Now lets check for errors
-            final Optional<Exception> needReset = sendFutures.entrySet().stream()
-                    .filter(entry -> isExceptionShouldLeadToReset(entry.getValue().getNow(null)))
-                    .map(entry -> entry.getValue().getNow(null))
-                    .findAny();
-            if (needReset.isPresent()) {
-                LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
-                        topicId, needReset.get());
-                kafkaFactory.terminateProducer(producer);
+            // send message to Kafka in asynch mode, it will fail sending in circuit is opened
+            final List<ProducerSendCommand.NakadiCallback> callbacks = batchItems.stream()
+                    .peek(item -> item.setStep(EventPublishingStep.PUBLISHING))
+                    .map(item -> new ProducerSendCommand(producer, item).execute())
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            waitCallbacksCompleted(producer, callbacks, createSendTimeout());
+
+            for (final BatchItem batchItem: batchItems) {
+                if (batchItem.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED)
+                    throw new EventPublishingException("Error publishing message to kafka");
             }
-        } catch (final TimeoutException ex) {
-            failUnpublished(batch, "timed out");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
-        } catch (final ExecutionException ex) {
-            failUnpublished(batch, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
-        } catch (final InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            failUnpublished(batch, "interrupted");
-            throw new EventPublishingException("Error publishing message to kafka", ex);
+        } catch (final HystrixRuntimeException hre) {
+            LOG.debug("Failed to send bacth to kafka due to {}", hre.getFailureType(), hre);
+            throw new EventPublishingException("Error publishing message to kafka", hre);
         } finally {
             kafkaFactory.releaseProducer(producer);
         }
-        final boolean atLeastOneFailed = batch.stream()
-                .anyMatch(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED);
-        if (atLeastOneFailed) {
-            failUnpublished(batch, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka");
+    }
+
+    private void waitCallbacksCompleted(final Producer<String, String> producer,
+                                        final List<ProducerSendCommand.NakadiCallback> callbacks,
+                                        final long timeout)
+            throws EventPublishingException {
+        final long finishAt = System.currentTimeMillis() + timeout;
+        for (final ProducerSendCommand.NakadiCallback callback : callbacks) {
+            long left = finishAt - System.currentTimeMillis();
+            left = left <= 0 ? 0 : left; // special case to process all remain Hystrix commands in case of timeout
+            try {
+                new ProducerSentCallbackCommand(callback,
+                        () -> kafkaFactory.terminateProducer(producer),
+                        left).execute();
+            } catch (final HystrixRuntimeException hre) {
+                final BatchItem batchItem = callback.getBatchItem();
+                LOG.error("Hystrix exception while processing topic {} on broker {}",
+                        batchItem.getTopic(), batchItem.getBrokerId(), hre);
+                if (hre.getFailureType() == HystrixRuntimeException.FailureType.TIMEOUT) {
+                    batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
+                    throw new EventPublishingException("Error publishing message to kafka", hre);
+                }
+            }
         }
     }
 
     private long createSendTimeout() {
         return nakadiSettings.getKafkaSendTimeoutMs() + kafkaSettings.getRequestTimeoutMs();
-    }
-
-    private void failUnpublished(final List<BatchItem> batch, final String reason) {
-        batch.stream()
-                .filter(item -> item.getResponse().getPublishingStatus() != EventPublishingStatus.SUBMITTED)
-                .forEach(item -> item.updateStatusAndDetail(EventPublishingStatus.FAILED, reason));
     }
 
     @Override
