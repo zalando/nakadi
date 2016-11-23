@@ -27,7 +27,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         final String user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
         final String method = request.getMethod();
         final String path = request.getRequestURI();
-        LOG.info("{} \"{}\" \"{}\" \"{}\"",
+        LOG.info("[ACCESS_LOG_BEGIN] {} \"{}\" \"{}\" \"{}\"",
                 method,
                 path,
                 userAgent,
@@ -38,7 +38,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         } finally {
             final long time = System.currentTimeMillis();
             final Long timing = time - start;
-            LOG.info("{} \"{}\" \"{}\" \"{}\" {} {} ms",
+            LOG.info("[ACCESS_LOG_END] {} \"{}\" \"{}\" \"{}\" {} {} ms",
                     method,
                     path,
                     userAgent,
