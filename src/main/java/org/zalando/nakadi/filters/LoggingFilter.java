@@ -23,20 +23,26 @@ public class LoggingFilter extends OncePerRequestFilter {
                                     final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
         final long start = System.currentTimeMillis();
-
+        final String userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
+        final String user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
+        final String method = request.getMethod();
+        final String path = request.getRequestURI();
+        LOG.info("{} \"{}\" \"{}\" \"{}\"",
+                method,
+                path,
+                userAgent,
+                user);
         //execute request
         try {
             filterChain.doFilter(request, response);
         } finally {
             final long time = System.currentTimeMillis();
             final Long timing = time - start;
-            final Optional<String> userAgent = Optional.ofNullable(request.getHeader("User-Agent"));
-            final Optional<String> user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName);
             LOG.info("{} \"{}\" \"{}\" \"{}\" {} {} ms",
-                    request.getMethod(),
-                    request.getRequestURI(),
-                    userAgent.orElse("-"),
-                    user.orElse("-"),
+                    method,
+                    path,
+                    userAgent,
+                    user,
                     response.getStatus(),
                     timing);
         }
