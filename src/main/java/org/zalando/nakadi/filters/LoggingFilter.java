@@ -23,22 +23,17 @@ public class LoggingFilter extends OncePerRequestFilter {
                                     final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
         final long start = System.currentTimeMillis();
-        final String userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
-        final String user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
-        final String method = request.getMethod();
-        final String path = request.getRequestURI();
-        LOG.info("[ACCESS_LOG_BEGIN] {} \"{}\" \"{}\" \"{}\"",
-                method,
-                path,
-                userAgent,
-                user);
-        //execute request
         try {
+            //execute request
             filterChain.doFilter(request, response);
         } finally {
             final long time = System.currentTimeMillis();
             final Long timing = time - start;
-            LOG.info("[ACCESS_LOG_END] {} \"{}\" \"{}\" \"{}\" {} {} ms",
+            final String userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("-");
+            final String user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
+            final String method = request.getMethod();
+            final String path = request.getRequestURI();
+            LOG.info("[ACCESS_LOG] {} \"{}\" \"{}\" \"{}\" {} {} ms",
                     method,
                     path,
                     userAgent,
