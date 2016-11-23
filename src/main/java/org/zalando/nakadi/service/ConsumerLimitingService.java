@@ -33,7 +33,7 @@ public class ConsumerLimitingService {
     private static final Logger LOG = LoggerFactory.getLogger(ConsumerLimitingService.class);
 
     private static final String ERROR_MSG = "You exceeded the maximum number of simultaneous connections to a single " +
-            "partition for event type '{0}', partition(s): {1}; max limit is {2} connections per client";
+            "partition for event type: {0}, partition(s): {1}; max limit is {2} connections per client";
 
     private final ZooKeeperHolder zkHolder;
     private final int maxConnections;
@@ -68,8 +68,8 @@ public class ConsumerLimitingService {
                                     .withExceptionsThatForceRetry(ConnectionSlotOccupiedException.class)
                                     .withWaitBetweenEachTry(0L, 100L));
                 } catch (ConnectionSlotOccupiedException e) {
-                    LOG.info(format("Failed to capture consuming connection slot after 5 tries for client '{0}', " +
-                            "event-type '{1}', partition {2}", client, eventType, partition));
+                    LOG.info("Failed to capture consuming connection slot after 5 tries for client '{}', " +
+                            "event-type '{}', partition {}", client, eventType, partition);
                 }
                 slots.add(connectionSlot);
             }
