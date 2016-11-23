@@ -171,7 +171,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 15000)
     public void whenCommitTimeoutReachedSessionIsClosed() throws Exception {
 
-        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
+        publishEvent(eventType.getName(), "{\"foo\":\"bar\"}");
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "") // commit_timeout is 5 seconds for test
