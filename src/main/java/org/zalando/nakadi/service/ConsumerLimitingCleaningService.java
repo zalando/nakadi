@@ -24,7 +24,7 @@ public class ConsumerLimitingCleaningService {
     public static final String CLEANING_ZK_PATH = "/nakadi/consumers/cleaning";
 
     private static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
-    private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConsumerLimitingCleaningService.class);
     private static final int HANGING_NODES_CLEAN_PERIOD_H = 6;
 
     private final ZooKeeperHolder zkHolder;

@@ -30,7 +30,7 @@ public class ConsumerLimitingService {
 
     public static final String CONNECTIONS_ZK_PATH = "/nakadi/consumers/connections";
 
-    private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConsumerLimitingService.class);
 
     private static final String ERROR_MSG = "You exceeded the maximum number of simultaneous connections to a single " +
             "partition for event type '{0}', partition(s): {1}; max limit is {2} connections per client";
