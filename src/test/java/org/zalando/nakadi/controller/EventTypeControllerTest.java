@@ -286,8 +286,8 @@ public class EventTypeControllerTest {
                 "{\"not\": {\"type\": \"object\"} }");
         eventType.setCategory(BUSINESS);
 
-        final Problem expectedProblem =
-                new InvalidEventTypeException("Invalid schema: Invalid schema found in [#]: extraneous key [not] is not permitted").asProblem();
+        final Problem expectedProblem = new InvalidEventTypeException("Invalid schema: Invalid schema found in [#]: " +
+                "extraneous key [not] is not permitted").asProblem();
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
