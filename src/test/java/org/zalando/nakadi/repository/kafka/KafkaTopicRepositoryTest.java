@@ -364,7 +364,7 @@ public class KafkaTopicRepositoryTest {
             return null;
         });
 
-        List<BatchItem> batchItems = IntStream.range(0, 1000).mapToObj(partition -> {
+        List<BatchItem> batchItems = IntStream.range(0, 100).mapToObj(partition -> {
             final BatchItem batchItem = new BatchItem(new JSONObject());
             batchItem.setPartition(String.valueOf(partition));
             return batchItem;
