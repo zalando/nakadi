@@ -142,8 +142,6 @@ public class EventTypeService {
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
-            enrichment.validate(eventType);
-            partitionResolver.validate(eventType);
             eventTypeRepository.update(eventType);
             return Result.ok();
         } catch (final InvalidEventTypeException e) {
