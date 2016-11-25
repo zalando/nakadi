@@ -40,8 +40,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
-
 @Component
 public class EventTypeService {
 
@@ -140,7 +138,6 @@ public class EventTypeService {
             }
 
             validateName(eventTypeName, eventTypeBase);
-            validatePartitionKeys(Optional.empty(), eventTypeBase);
             validateSchema(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
@@ -205,8 +202,7 @@ public class EventTypeService {
                         "\"compatibility_mode\" should be either \"compatible\" or \"none\"");
             }
 
-            validatePartitionKeys(Optional.of(schema), eventType);
-            validateJsonSchemaConstraints(schemaAsJson);
+            validatePartitionKeys(schema, eventType);
 
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
@@ -225,17 +221,8 @@ public class EventTypeService {
         }
     }
 
-    private void validatePartitionKeys(final Optional<Schema> schemaO, final EventTypeBase eventType)
+    private void validatePartitionKeys(final Schema schema, final EventTypeBase eventType)
             throws InvalidEventTypeException, JSONException, SchemaException {
-        if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
-            return;
-        }
-        final Schema schema = schemaO.orElseGet(() -> {
-            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
-            return SchemaLoader.load(schemaAsJson);
-        });
-
-
         final List<String> absentFields = eventType.getPartitionKeyFields().stream()
                 .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
                 .collect(Collectors.toList());

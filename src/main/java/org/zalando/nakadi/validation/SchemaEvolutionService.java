@@ -54,9 +54,9 @@ public class SchemaEvolutionService {
             metaSchema.validate(schemaJson);
         } catch (final ValidationException e) {
             collectErrorMessages(e, incompatibilities);
-        } finally {
-            return incompatibilities;
         }
+
+        return incompatibilities;
     }
 
     private void collectErrorMessages(final ValidationException e,
