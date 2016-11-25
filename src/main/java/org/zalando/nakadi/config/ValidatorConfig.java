@@ -14,6 +14,7 @@ import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.schema.CompatibilityModeChangeConstraint;
 import org.zalando.nakadi.validation.schema.CompatibleSchemaChangeConstraint;
 import org.zalando.nakadi.validation.schema.DeprecatedSchemaChangeConstraint;
+import org.zalando.nakadi.validation.schema.EnrichmentStrategyConstraint;
 import org.zalando.nakadi.validation.schema.PartitionKeyFieldsConstraint;
 import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
@@ -42,7 +43,8 @@ public class ValidatorConfig {
                 new CompatibleSchemaChangeConstraint(),
                 new DeprecatedSchemaChangeConstraint(),
                 new PartitionKeyFieldsConstraint(),
-                new PartitionStrategyConstraint()
+                new PartitionStrategyConstraint(),
+                new EnrichmentStrategyConstraint()
         );
 
         return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints);

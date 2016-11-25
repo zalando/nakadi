@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.sun.security.auth.UserPrincipal;
 import org.hamcrest.core.StringContains;
@@ -24,6 +25,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
 import org.zalando.nakadi.domain.CompatibilityMode;
+import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -55,6 +57,7 @@ import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -220,14 +223,11 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTWithInvalidPartitionStrategyThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
+
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionKeyFields(Lists.newArrayList("invalid_key")).build();
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
-
-        Mockito
-                .doThrow(InvalidEventTypeException.class)
-                .when(partitionResolver)
-                .validate(any());
 
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
@@ -694,16 +694,17 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTWithInvalidEnrichmentStrategyThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
+        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
+        builder.enrichmentStrategies(Lists.newArrayList(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT));
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
+        final EventType original = builder.build();
 
-        Mockito
-                .doThrow(InvalidEventTypeException.class)
-                .when(enrichment)
-                .validate(any());
+        builder.enrichmentStrategies(new ArrayList<>());
+        final EventType update = builder.build();
 
-        putEventType(eventType, eventType.getName())
+        Mockito.doReturn(original).when(eventTypeRepository).findByName(any());
+
+        putEventType(update, update.getName())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
     }
