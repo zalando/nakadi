@@ -204,6 +204,9 @@ public class EventTypeService {
 
             validatePartitionKeys(schema, eventType);
 
+            if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
+                validateJsonSchemaConstraints(schemaAsJson);
+            }
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
