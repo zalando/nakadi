@@ -25,7 +25,7 @@ import static org.zalando.nakadi.utils.TestUtils.randomDate;
 public class EventTypeTestBuilder {
 
     public static final String DEFAULT_OWNING_APPLICATION = "event-producer-application";
-    private static final String DEFAULT_SCHEMA = "{ \"price\": 1000 }";
+    private static final String DEFAULT_SCHEMA = "{ \"properties\": { \"foo\": { \"type\": \"string\" } } }";
 
     private String name;
     private String topic;

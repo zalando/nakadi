@@ -65,7 +65,8 @@ public class EventTypeAT extends BaseAT {
 
         final String body = MAPPER.writer().writeValueAsString(eventType);
 
-        given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
+        given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
 
         final EventType retrievedEventType = MAPPER.readValue(given()
                 .header("accept", "application/json").get(ENDPOINT + "/" + eventType.getName())

@@ -65,7 +65,7 @@ public class NakadiTestUtils {
     }
 
     public static EventType buildSimpleEventType() {
-        return EventTypeTestBuilder.builder().schema(new JSONObject("{\"additional_properties\":true}")).build();
+        return EventTypeTestBuilder.builder().build();
     }
 
     public static void publishEvent(final String eventType, final String event) {

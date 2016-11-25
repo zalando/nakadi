@@ -141,6 +141,7 @@ public class EventTypeService {
 
             validateName(eventTypeName, eventTypeBase);
             validatePartitionKeys(Optional.empty(), eventTypeBase);
+            validateSchema(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
@@ -205,7 +206,7 @@ public class EventTypeService {
             }
 
             validatePartitionKeys(Optional.of(schema), eventType);
-            validateJsonSchemaConstraints(schema);
+            validateJsonSchemaConstraints(schemaAsJson);
 
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
@@ -214,7 +215,7 @@ public class EventTypeService {
         }
     }
 
-    private void validateJsonSchemaConstraints(final Schema schema) throws InvalidEventTypeException {
+    private void validateJsonSchemaConstraints(final JSONObject schema) throws InvalidEventTypeException {
         final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.checkConstraints(schema);
 
         if (!incompatibilities.isEmpty()) {

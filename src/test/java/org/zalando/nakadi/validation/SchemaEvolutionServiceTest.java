@@ -1,6 +1,8 @@
 package org.zalando.nakadi.validation;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
+import com.google.common.io.Resources;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONArray;
@@ -11,10 +13,9 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.validation.schema.NotSchemaConstraint;
-import org.zalando.nakadi.validation.schema.SchemaConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,11 +32,12 @@ public class SchemaEvolutionServiceTest {
     private SchemaEvolutionConstraint evolutionConstraint = mock(SchemaEvolutionConstraint.class);
 
     @Before
-    public void setUp() {
-        final List<SchemaConstraint> constraints = Lists.newArrayList(new NotSchemaConstraint());
+    public void setUp() throws IOException {
         final List<SchemaEvolutionConstraint> evolutionConstraints= Lists.newArrayList(evolutionConstraint);
-
-        this.service = new SchemaEvolutionService(constraints, evolutionConstraints);
+        final JSONObject metaSchemaJson = new JSONObject(Resources.toString(Resources.getResource("schema.json"),
+                Charsets.UTF_8));
+        final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
+        this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints);
     }
 
     @Test
@@ -55,12 +57,12 @@ public class SchemaEvolutionServiceTest {
 
     @Test
     public void checksJsonSchemaConstraints() throws Exception {
-        final JSONArray invalidTestCases = new JSONArray(
+        final JSONArray testCases = new JSONArray(
                 readFile("org/zalando/nakadi/validation/invalid-json-schema-examples.json"));
 
-        for(final Object testCaseObject : invalidTestCases) {
+        for(final Object testCaseObject : testCases) {
             final JSONObject testCase = (JSONObject) testCaseObject;
-            final Schema schema = SchemaLoader.load(testCase.getJSONObject("schema"));
+            final JSONObject schemaJson = testCase.getJSONObject("schema");
             final List<String> errorMessages = testCase
                     .getJSONArray("errors")
                     .toList()
@@ -69,9 +71,32 @@ public class SchemaEvolutionServiceTest {
                     .collect(toList());
             final String description = testCase.getString("description");
 
+            assertThat(description, service.checkConstraints(schemaJson).stream().map(Object::toString)
+                            .collect(toList()), is(errorMessages));
+        }
+    }
 
-            assertThat(description, service.checkConstraints(schema).stream().map(Object::toString).collect(toList()),
-                    is(errorMessages));
+    @Test
+    public void checkJsonSchemaCompatibility() throws Exception {
+        final JSONArray testCases = new JSONArray(
+                readFile("org/zalando/nakadi/validation/invalid-schema-evolution-examples.json"));
+
+        for(final Object testCaseObject : testCases) {
+            final JSONObject testCase = (JSONObject) testCaseObject;
+            final Schema original = SchemaLoader.load(testCase.getJSONObject("original_schema"));
+            final Schema update = SchemaLoader.load(testCase.getJSONObject("update_schema"));
+            final List<String> errorMessages = testCase
+                    .getJSONArray("errors")
+                    .toList()
+                    .stream()
+                    .map(Object::toString)
+                    .collect(toList());
+            final String description = testCase.getString("description");
+
+            assertThat(description, service.checkConstraints(original, update).stream()
+                    .map(Object::toString)
+                    .collect(toList()), is(errorMessages));
+
         }
     }
 }
