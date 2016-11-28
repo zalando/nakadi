@@ -42,7 +42,7 @@ public class StreamParameters {
             @Nullable final Long streamTimeoutSeconds, @Nullable final Integer batchKeepAliveIterations,
             final int maxUncommittedMessages, final long commitTimeoutMillis, final String consumingAppId) {
         this.batchLimitEvents = batchLimitEvents;
-        this.streamLimitEvents = Optional.ofNullable(streamLimitEvents);
+        this.streamLimitEvents = Optional.ofNullable(streamLimitEvents).filter(v -> v != 0);
         this.batchTimeoutMillis = batchTimeoutMillis;
         this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutSeconds)
                 .map(TimeUnit.SECONDS::toMillis).filter(timeout -> timeout.longValue() != 0);
@@ -53,13 +53,11 @@ public class StreamParameters {
     }
 
     public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {
-        return streamLimitEvents.filter(v -> v != 0)
-                .map(v -> Math.max(0, Math.min(limit, v - sentSoFar))).orElse(limit);
+        return streamLimitEvents.map(v -> Math.max(0, Math.min(limit, v - sentSoFar))).orElse(limit);
     }
 
     public boolean isStreamLimitReached(final long commitedEvents) {
-        return streamLimitEvents.filter(v -> v != 0)
-                .map(v -> v <= commitedEvents).orElse(false);
+        return streamLimitEvents.map(v -> v <= commitedEvents).orElse(false);
     }
 
     public boolean isKeepAliveLimitReached(final IntStream keepAlive) {
