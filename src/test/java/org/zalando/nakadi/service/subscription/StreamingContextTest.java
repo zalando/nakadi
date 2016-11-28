@@ -43,7 +43,7 @@ public class StreamingContextTest {
                 .setEventTypesForTopics(null)
                 .setCursorTokenService(null)
                 .setObjectMapper(null)
-                .setFloodService(null)
+                .setBlacklistService(null)
                 .build();
     }
 

@@ -12,30 +12,45 @@ services:
 addons:
   hostname: localhost
 
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+  - rm -f  $HOME/.cache/pip/log/debug.log
+
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+    - $HOME/.cache/pip
+
 before_install:
   - docker --version
   # install docker-compose
   - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
-
-before_script:
-  - sudo /etc/init.d/postgresql stop
   - pip install --user codecov
   - curl http://www.jpm4j.org/install/script | sudo sh
   - sudo jpm install com.codacy:codacy-coverage-reporter:assembly
+
+install:
+  - ./gradlew compileJava compileTestJava assemble
+
+before_script:
+  - sudo /etc/init.d/postgresql stop
 
 env:
   global:
     - DOCKER_COMPOSE_VERSION="1.7.1"
   matrix:
-    - TEST_SUITE="gradle checkstyle --stacktrace"                  # checkstyle
-    - TEST_SUITE="travis_wait gradle testWithReport --stacktrace"  # unit tests with coverage report
-    - TEST_SUITE="gradle fullAcceptanceTest --stacktrace"          # acceptances tests
+    - TEST_SUITE="./gradlew checkstyle --stacktrace"                  # checkstyle
+    - TEST_SUITE="travis_wait ./gradlew testWithReport --stacktrace"  # unit tests with coverage report
+    - TEST_SUITE="./gradlew fullAcceptanceTest --stacktrace"          # acceptances tests
 
 # run test suits in parallel
 script: "$TEST_SUITE"
 
 after_success:
-  - codecov
-  - codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml
+  # only testWithReport generates coverage report
+  - test -e build/reports/jacoco/test/jacocoTestReport.xml && codecov
+  - test -e build/reports/jacoco/test/jacocoTestReport.xml && codacy-coverage-reporter -l Java -r build/reports/jacoco/test/jacocoTestReport.xml

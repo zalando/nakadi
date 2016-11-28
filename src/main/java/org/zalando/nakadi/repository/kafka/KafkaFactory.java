@@ -47,12 +47,10 @@ public class KafkaFactory {
         lock.lock();
         try {
             if (null != activeProducer) {
-                useCountMetric.inc();
                 useCount.get(activeProducer).incrementAndGet();
                 return activeProducer;
             } else if (canCreate) {
                 activeProducer = createProducerInstance();
-                useCountMetric.inc();
                 useCount.put(activeProducer, new AtomicInteger(1));
                 LOG.info("New producer instance created: " + activeProducer);
                 return activeProducer;

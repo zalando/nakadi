@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.CursorTokenService;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
@@ -38,7 +38,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final Map<String, String> eventTypesForTopics;
     private final CursorTokenService cursorTokenService;
     private final ObjectMapper objectMapper;
-    private final FloodService floodService;
+    private final BlacklistService blacklistService;
     private final ScheduledExecutorService timer;
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
@@ -63,7 +63,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.eventTypesForTopics = builder.eventTypesForTopics;
         this.cursorTokenService = builder.cursorTokenService;
         this.objectMapper = builder.objectMapper;
-        this.floodService = builder.floodService;
+        this.blacklistService = builder.blacklistService;
     }
 
     public StreamParameters getParameters() {
@@ -165,7 +165,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isSubscriptionConsumptionBlocked() {
-        return floodService.isSubscriptionConsumptionBlocked(eventTypesForTopics.values(), parameters
+        return blacklistService.isSubscriptionConsumptionBlocked(eventTypesForTopics.values(), parameters
                 .getConsumingAppId());
     }
 
@@ -208,7 +208,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private Map<String, String> eventTypesForTopics;
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
-        private FloodService floodService;
+        private BlacklistService blacklistService;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -275,8 +275,8 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setFloodService(final FloodService floodService) {
-            this.floodService = floodService;
+        public Builder setBlacklistService(final BlacklistService blacklistService) {
+            this.blacklistService = blacklistService;
             return this;
         }
 

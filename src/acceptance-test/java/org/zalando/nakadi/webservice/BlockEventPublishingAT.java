@@ -3,11 +3,11 @@ package org.zalando.nakadi.webservice;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import org.apache.http.HttpStatus;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
-import org.zalando.problem.MoreStatus;
 
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -17,22 +17,20 @@ import static com.jayway.restassured.RestAssured.given;
 public class BlockEventPublishingAT extends BaseAT {
 
     @Test
-    public void whenPublishingToBlockedEventTypeThen429() throws IOException {
+    public void whenPublishingToBlockedEventTypeThen403() throws IOException {
         final EventType eventType = NakadiTestUtils.createEventType();
 
         publishEvent(eventType)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
-        final FloodService.Flooder flooder =
-                new FloodService.Flooder(eventType.getName(), FloodService.Type.PRODUCER_ET);
-        SettingsControllerAT.blockFlooder(flooder);
+        SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
         publishEvent(eventType)
                 .then()
-                .statusCode(MoreStatus.TOO_MANY_REQUESTS.getStatusCode())
-                .header("Retry-After", "300");
+                .statusCode(403)
+                .body("detail", Matchers.equalTo("Application or event type is blocked"));
 
-        SettingsControllerAT.unblockFlooder(flooder);
+        SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
         publishEvent(eventType)
                 .then()
                 .statusCode(HttpStatus.SC_OK);

@@ -37,7 +37,7 @@ import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.FloodService;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
@@ -99,7 +99,7 @@ public class EventStreamControllerTest {
     private MetricRegistry metricRegistry;
     private FeatureToggleService featureToggleService;
     private SecuritySettings settings;
-    private FloodService floodService;
+    private BlacklistService blacklistService;
     private MockMvc mockMvc;
 
     @Before
@@ -125,11 +125,11 @@ public class EventStreamControllerTest {
         final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
         when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
 
-        floodService = Mockito.mock(FloodService.class);
-        Mockito.when(floodService.isConsumptionBlocked(any(), any())).thenReturn(false);
+        blacklistService = Mockito.mock(BlacklistService.class);
+        Mockito.when(blacklistService.isConsumptionBlocked(any(), any())).thenReturn(false);
 
         controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
-        eventStreamFactoryMock, metricRegistry, crutch, floodService);
+        eventStreamFactoryMock, metricRegistry, crutch, blacklistService);
 
         featureToggleService = mock(FeatureToggleService.class);
         settings = mock(SecuritySettings.class);
