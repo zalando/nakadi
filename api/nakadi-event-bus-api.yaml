@@ -484,6 +484,8 @@ paths:
           schema:
             type: object
             properties:
+              _links:
+                $ref: '#/definitions/PaginationLinks'
               items:
                 description: list of schemas.
                 type: array
@@ -491,6 +493,7 @@ paths:
                   $ref: '#/definitions/EventTypeSchema'
             required:
               - items
+              - _links
 
   '/event-types/{name}/schemas/{version}':
     get:
