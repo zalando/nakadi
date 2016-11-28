@@ -1167,9 +1167,7 @@ definitions:
         readOnly: true
         description: |
           Version of the schema used for validating this event. This is enriched upon reception.
-          Clients consuming events should deserialize events only when differences between their
-          schema and the one used to validate differs on minor level, for example, from '1.1.0' to
-          '1.2.0'.
+          This string uses semantic versioning, which is better defined in the `EventTypeSchema` object.
       parent_eids:
         type: array
         items:
