@@ -175,7 +175,7 @@ This example shows a `business` category event type with a simple schema for an
 order number -
 
 ```sh
-curl -v -XPOST http://localhost:8080/event-types -d '{
+curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/json" -d '{
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
   "category": "business",
@@ -191,7 +191,7 @@ curl -v -XPOST http://localhost:8080/event-types -d '{
 This example shows an `undefined` category event type with a wilcard schema -
 
 ```sh
-curl -v -XPOST http://localhost:8080/event-types -d '{
+curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/json" -d '{
   "name": "undef",
   "owning_application": "jinteki",
   "category": "undefined",
@@ -302,7 +302,7 @@ Content-Type: application/json;charset=UTF-8
 Events for an event type can be published by posting to its "events" collection:
 
 ```sh
-curl -v -XPOST http://localhost:8080/event-types/order.ORDER_RECEIVED/events -d '[
+curl -v -XPOST http://localhost:8080/event-types/order.ORDER_RECEIVED/events -H "Content-type: application/json" -d '[
   {
     "order_number": "24873243241",
     "metadata": {
