@@ -16,9 +16,6 @@ info:
     * The **schema** of the Event of this EventType. The schema defines the accepted format of
     Events of an EventType and will be, if so desired, enforced by Nakadi. Usually Nakadi will
     respect the schema for the EventTypes in accordance to how an owning Application defines them.
-    **Note:** *Currently the specification of the schema must be pushed into Nakadi on EventType
-    creation; in the future, assuming that Applications will expose the schema for its owned
-    resources, Nakadi might support fetching the schema directly from them.*
 
     * The expected **validation** and **enrichment** procedures upon reception of an Event.
     Validation define conditions for the acceptance of the incoming Event and are strictly enforced
@@ -240,8 +237,7 @@ paths:
 
         The name field cannot be changed. Attempting to do so will result in a 422 failure.
 
-        At this moment changes in the schema are not supported and will produce a 422
-        failure. (todo: define conditions for backwards compatible extensions in the schema)
+        Modifications to the schema are constrained by the specified `compatibility_mode`.
       parameters:
         - name: name
           in: path
@@ -477,7 +473,34 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /event-types/{name}/partitions:
+  '/event-types/{name}/schemas':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        List of schemas ordered from most recent to oldest.
+    responses:
+        '200':
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/EventTypeSchema'
+
+  '/event-types/{name}/schemas/{version}':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        Retrieves a given schema version. A special `{version}` key named 'latest' is provided for
+        convenience.
+    responses:
+        '200':
+          schema:
+            type: object
+          description: |
+            Schema as JSON.
+
+  '/event-types/{name}/partitions':
     get:
       tags:
         - unmanaged-api
@@ -1126,12 +1149,21 @@ definitions:
         example: '1996-12-19T16:39:57-08:00'
       received_at:
         type: string
+        readOnly: true
         description: |
           Timestamp of the reception of the Event by Nakadi. This is enriched upon reception of
           the Event.
           If set by the producer Event will be rejected.
         format: date-time
         example: '1996-12-19T16:39:57-08:00'
+      version:
+        type: string
+        readOnly: true
+        description: |
+          Version of the schema used for validating this event. This is enriched upon reception.
+          Clients consuming events should deserialize events only when differences between their
+          schema and the one used to validate differs on minor level, for example, from '1.1.0' to
+          '1.2.0'.
       parent_eids:
         type: array
         items:
@@ -1503,11 +1535,37 @@ definitions:
         type: string
         default: 'random'
 
+      compatibility_mode:
+        description: |
+          Compatibility modes provide a mean for event owners to evolve their schema, given changes
+          respect the semantics defined by this field.
+
+          It's designed to be flexible enough so that producers can evolve their schemas while not
+          inadvertently breaking existent consumers.
+
+          Once defined, the compatibility mode is fixed, since otherwise it would break a predefined contract,
+          jeopardizing the value of this feature.
+
+          List of available compatibility modes:
+
+          - 'deprecated': Schema changes are not allowed. This is used only by legacy event types that are not
+            compatible. This option is not available for new event types. Additional properties are allowed.
+
+          - 'incompatible': Any schema modification is accepted, even if it might break existing producers or consumers.
+
+          - 'compatible': Schema changes never break existing consumers. Every event published since the first version
+            is still valid based on the newest schema.
+
+          When in compatible mode, it's allowed to add new optional properties and definitions to an existing schema,
+          but no other changes are allowed.
+        type: string
+        default: compatible
+
       schema:
         type: object
         $ref: '#/definitions/EventTypeSchema'
         description: |
-          The schema for this EventType. Submitted events will be validated against it.
+          The most recent schema for this EventType. Submitted events will be validated against it.
 
       partition_key_fields:
         type: array
@@ -1550,6 +1608,18 @@ definitions:
           contains at least one of the scopes in this list.
           If no scopes provided then anyone can consume from this event type.
 
+      created_at:
+        type: string
+        pattern: date-time
+        description: |
+          Date and time when this event type was created.
+
+      updated_at:
+        type: string
+        pattern: date-time
+        description: |
+          Date and time when this event type was last updated.
+
     required:
       - name
       - category
@@ -1558,6 +1628,12 @@ definitions:
 
   EventTypeSchema:
     properties:
+      version:
+        type: string
+        readOnly: true
+        description: |
+          Automatically generated value based on semantic versioning. Should not be modified by clients.
+        default: '1.0.0'
       type:
         type: string
         enum:
@@ -1567,13 +1643,14 @@ definitions:
           future there could be others.
       schema:
         type: string
-        $ref: '#/definitions/EventTypeSchema'
         description: |
           The schema as string in the syntax defined in the field type. Failure to respect the
           syntax will fail any operation on an EventType.
 
-          To have a generic, undefined schema it is possible to define the schema as `"schema":
-          "{\"additionalProperties\": true}"`.
+          When defining a schema, every property should be explicitly defined with its type. It means that,
+          additionalProperties true is not accepted.
+
+          The complete list of not allowed attributes is: additionalProperties, not and patternProperties.
     required:
       - type
       - schema
