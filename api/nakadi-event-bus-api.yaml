@@ -1543,8 +1543,8 @@ definitions:
 
       compatibility_mode:
         description: |
-          Compatibility modes provide a mean for event owners to evolve their schema, given changes
-          respect the semantics defined by this field.
+          Compatibility mode provides a mean for event owners to evolve their schema, given changes respect the
+          semantics defined by this field.
 
           It's designed to be flexible enough so that producers can evolve their schemas while not
           inadvertently breaking existent consumers.
@@ -1552,18 +1552,20 @@ definitions:
           Once defined, the compatibility mode is fixed, since otherwise it would break a predefined contract,
           declared by the producer.
 
-          List of available compatibility modes:
+          List of compatibility modes:
 
           - 'deprecated': Schema changes are not allowed. This is used only by legacy event types. This option is not
             available for new event types. Schema validation is lenient and allow fields that are not defined. Also,
             it's possible to use the full json schema specification for defining schemas.
 
-          - 'none': Any schema modification is accepted, even if it might break existing producers or consumers.
+          - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
+            validating events, no additional properties are accepted unless explicitly stated in the schema.
 
-          - 'compatible': Schema changes never break existing consumers. Every event published since the first version
-            is still valid based on the newest schema. When in compatible mode, it's allowed to add new optional
-            properties and definitions to an existing schema, but no other changes are allowed. If additionalProperties
-            or patternProperties are used the wrapping object is closed for change.
+          - 'compatible': Consumers can reliably parse events produced under different versions. Every event published
+            since the first version is still valid based on the newest schema. When in compatible mode, it's allowed to
+            add new optional properties and definitions to an existing schema, but no other changes are allowed.
+            Under this mode, the following json-schema attributes are not supported: `not`, `patternProperties`,
+            `additionalProperties` and `additionalItems`. When validating events, additional properties is `false`.
         type: string
         default: compatible
 
@@ -1660,8 +1662,6 @@ definitions:
         description: |
           The schema as string in the syntax defined in the field type. Failure to respect the
           syntax will fail any operation on an EventType.
-
-          The complete list of not allowed attributes is: not and patternProperties.
     required:
       - type
       - schema
