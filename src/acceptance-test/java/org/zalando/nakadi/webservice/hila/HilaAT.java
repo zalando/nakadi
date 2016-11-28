@@ -321,4 +321,19 @@ public class HilaAT extends BaseAT {
                 client.getBatches().get(client.getBatches().size() - 1).getMetadata().getDebug());
         SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
     }
+
+    @Test(timeout = 15000)
+    public void whenStreamTimeout0ThenInfiniteStreaming() throws Exception {
+        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "stream_timeout=0")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
+        Assert.assertFalse(client.getBatches().stream().anyMatch(streamBatch -> {
+                    if (streamBatch.getMetadata() != null)
+                        return streamBatch.getMetadata().getDebug().equals("Stream timeout reached");
+                    return false;
+                }));
+    }
 }
