@@ -18,8 +18,8 @@ spring:
     username: nakadi
     password: nakadi
     driverClassName: org.postgresql.Driver
-    initialSize: 3
-    maxActive: 3
+    initialSize: 2
+    maxActive: 2
     minIdle: 1
     maxIdle: 1
     testOnBorrow: true
