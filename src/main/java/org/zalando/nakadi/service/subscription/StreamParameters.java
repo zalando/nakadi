@@ -53,11 +53,13 @@ public class StreamParameters {
     }
 
     public long getMessagesAllowedToSend(final long limit, final long sentSoFar) {
-        return streamLimitEvents.map(v -> Math.max(0, Math.min(limit, v - sentSoFar))).orElse(limit);
+        return streamLimitEvents.filter(v -> v != 0)
+                .map(v -> Math.max(0, Math.min(limit, v - sentSoFar))).orElse(limit);
     }
 
     public boolean isStreamLimitReached(final long commitedEvents) {
-        return streamLimitEvents.map(v -> v <= commitedEvents).orElse(false);
+        return streamLimitEvents.filter(v -> v != 0)
+                .map(v -> v <= commitedEvents).orElse(false);
     }
 
     public boolean isKeepAliveLimitReached(final IntStream keepAlive) {
