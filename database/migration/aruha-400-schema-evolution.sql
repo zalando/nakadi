@@ -12,7 +12,13 @@ CREATE UNIQUE INDEX ON zn_data.event_type_schema ((ets_schema_object->>'version'
                                                   (ets_event_type_name));
 
 UPDATE zn_data.event_type
-SET et_event_type_object  = jsonb_set(et_event_type_object, '{schema,version}', '"1.0.0"', false);
+SET et_event_type_object  = jsonb_set(et_event_type_object, '{schema,version}', '"0.1.0"', false);
+
+UPDATE zn_data.event_type
+SET et_event_type_object  = jsonb_set(et_event_type_object, '{created_at}', '"2016-11-09T19:32:00Z"', false);
+
+UPDATE zn_data.event_type
+SET et_event_type_object  = jsonb_set(et_event_type_object, '{updated_at}', '"2016-11-09T19:32:00Z"', false);
 
 UPDATE zn_data.event_type
 SET et_event_type_object  = jsonb_set(et_event_type_object, '{schema,created_at}', '"2016-11-09T19:32:00Z"', false);
