@@ -213,7 +213,7 @@ public class EventTypeService {
     }
 
     private void validateJsonSchemaConstraints(final JSONObject schema) throws InvalidEventTypeException {
-        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.checkConstraints(schema);
+        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.collectIncompatibilities(schema);
 
         if (!incompatibilities.isEmpty()) {
             final String errorMessage = incompatibilities.stream().map(Object::toString)
