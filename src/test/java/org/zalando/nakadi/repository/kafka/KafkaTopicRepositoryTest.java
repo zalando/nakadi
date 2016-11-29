@@ -385,7 +385,7 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batches = new LinkedList<>();
         for (int i = 0; i < 1000; i++) {
             try {
-                BatchItem batchItem = new BatchItem(new JSONObject());
+                final BatchItem batchItem = new BatchItem(new JSONObject());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
                 kafkaTopicRepository.syncPostBatch(topic, ImmutableList.of(batchItem));
