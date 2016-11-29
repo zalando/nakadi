@@ -195,7 +195,7 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            if (eventType.getCompatibilityMode() == CompatibilityMode.DEPRECATED) {
+            if (eventType.getCompatibilityMode() == CompatibilityMode.FIXED) {
                 throw new InvalidEventTypeException(
                         "\"compatibility_mode\" should be either \"compatible\" or \"none\"");
             }

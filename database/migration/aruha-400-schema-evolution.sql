@@ -18,7 +18,7 @@ UPDATE zn_data.event_type
 SET et_event_type_object  = jsonb_set(et_event_type_object, '{schema,created_at}', '"2016-11-09T19:32:00Z"', false);
 
 UPDATE zn_data.event_type
-SET et_event_type_object  = jsonb_set(et_event_type_object, '{compatibility_mode}', '"deprecated"', false);
+SET et_event_type_object  = jsonb_set(et_event_type_object, '{compatibility_mode}', '"fixed"', false);
 
 INSERT INTO zn_data.event_type_schema (ets_event_type_name, ets_schema_object)
 SELECT et_name, et_event_type_object -> 'schema' FROM zn_data.event_type;

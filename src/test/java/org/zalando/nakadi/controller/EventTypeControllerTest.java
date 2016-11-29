@@ -293,9 +293,9 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPOSTDeprecatedCompatibilityModeThen422() throws Exception {
+    public void whenPOSTFixedCompatibilityModeThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setCompatibilityMode(CompatibilityMode.DEPRECATED);
+        eventType.setCompatibilityMode(CompatibilityMode.FIXED);
 
         final Problem expectedProblem =
                 new InvalidEventTypeException(
