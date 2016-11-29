@@ -38,7 +38,7 @@ public class BatchItem {
         return brokerId;
     }
 
-    public void setBrokerId(String brokerId) {
+    public void setBrokerId(final String brokerId) {
         this.brokerId = brokerId;
     }
 

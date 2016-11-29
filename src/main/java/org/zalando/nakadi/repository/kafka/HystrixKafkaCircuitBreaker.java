@@ -13,16 +13,20 @@ import com.netflix.hystrix.strategy.properties.HystrixPropertiesFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Class wraps Hystrix API to count success/failures without using Hystrix command. In general we just use Hystrix to
+ * collect metrics and check for opened circuit.
+ */
 public class HystrixKafkaCircuitBreaker {
 
-    private static final HystrixCommandGroupKey hystrixCommandGroupKey = HystrixCommandGroupKey.Factory.asKey("kafka");
+    private static final HystrixCommandGroupKey HYSTRIX_CMD_GROUP_KEY = HystrixCommandGroupKey.Factory.asKey("kafka");
 
     private final HystrixCommandKey commandKey;
     private final HystrixCommandProperties commandProperties;
     private final HystrixThreadPoolKey threadPoolKey;
     private final HystrixCommandMetrics hystrixCommandMetrics;
     private final HystrixCircuitBreaker circuitBreaker;
-    private final AtomicInteger concurrentExecutionCount = new AtomicInteger();
+    private final AtomicInteger concurrentExecutionCount;
 
     public HystrixKafkaCircuitBreaker(final String brokerId) {
         commandKey = HystrixCommandKey.Factory.asKey(brokerId);
@@ -30,35 +34,38 @@ public class HystrixKafkaCircuitBreaker {
         threadPoolKey = HystrixThreadPoolKey.Factory.asKey(brokerId);
         hystrixCommandMetrics = HystrixCommandMetrics.getInstance(
                 commandKey,
-                hystrixCommandGroupKey,
+                HYSTRIX_CMD_GROUP_KEY,
                 threadPoolKey,
                 commandProperties);
         circuitBreaker = HystrixCircuitBreaker.Factory.getInstance(
                 commandKey,
-                hystrixCommandGroupKey,
+                HYSTRIX_CMD_GROUP_KEY,
                 commandProperties,
                 hystrixCommandMetrics);
+        concurrentExecutionCount = new AtomicInteger();
     }
 
     public boolean allowRequest() {
         return circuitBreaker.allowRequest();
     }
 
-    public void markCommandStart() {
-        int currentCount = concurrentExecutionCount.incrementAndGet();
+    public void markStart() {
+        final int currentCount = concurrentExecutionCount.incrementAndGet();
         HystrixThreadEventStream.getInstance().commandExecutionStarted(commandKey, threadPoolKey,
                 HystrixCommandProperties.ExecutionIsolationStrategy.SEMAPHORE, currentCount);
     }
 
-    public void markCommandDoneSuccessfully() {
+    public void markStop() {
         concurrentExecutionCount.decrementAndGet();
+    }
+
+    public void markSuccessfully() {
         HystrixThreadEventStream.getInstance()
                 .executionDone(ExecutionResult.from(HystrixEventType.SUCCESS), commandKey, threadPoolKey);
         circuitBreaker.markSuccess();
     }
 
-    public void markCommandDoneFailure() {
-        concurrentExecutionCount.decrementAndGet();
+    public void markFailure() {
         HystrixThreadEventStream.getInstance()
                 .executionDone(ExecutionResult.from(HystrixEventType.FAILURE), commandKey, threadPoolKey);
     }
