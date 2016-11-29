@@ -250,7 +250,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 } else {
                     LOG.warn("Short circuiting request to Kafka due to timeout for topic {} on broker with id {}. {}",
                             topicId, item.getBrokerId(), circuitBreaker.getMetrics());
-                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
+                    item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
                 }
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
