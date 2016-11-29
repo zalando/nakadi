@@ -173,9 +173,10 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     private static CompletableFuture<Exception> publishItem(
-            final Producer<String, String> producer, final String topicId, final BatchItem item, final
-            HystrixKafkaCircuitBreaker circuitBreaker)
-            throws EventPublishingException {
+            final Producer<String, String> producer,
+            final String topicId,
+            final BatchItem item,
+            final HystrixKafkaCircuitBreaker circuitBreaker) throws EventPublishingException {
         try {
             final CompletableFuture<Exception> result = new CompletableFuture<>();
             final ProducerRecord<String, String> kafkaRecord = new ProducerRecord<>(
@@ -184,17 +185,18 @@ public class KafkaTopicRepository implements TopicRepository {
                     item.getPartition(),
                     item.getEvent().toString());
 
+            circuitBreaker.markStart();
             producer.send(kafkaRecord, ((metadata, exception) -> {
                 if (null != exception) {
                     LOG.warn("Failed to publish to kafka topic {}", topicId, exception);
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-                    if (hasKafkaConnectionException(exception)){
-                        circuitBreaker.markCommandDoneFailure();
+                    if (hasKafkaConnectionException(exception)) {
+                        circuitBreaker.markFailure();
                     }
                     result.complete(exception);
                 } else {
                     item.updateStatusAndDetail(EventPublishingStatus.SUBMITTED, "");
-                    circuitBreaker.markCommandDoneSuccessfully();
+                    circuitBreaker.markSuccessfully();
                     result.complete(null);
                 }
             }));
@@ -205,6 +207,8 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final RuntimeException e) {
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
+        } finally {
+            circuitBreaker.markStop();
         }
     }
 
@@ -227,29 +231,25 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
-        final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
-                .collect(Collectors.toMap(p -> String.valueOf(p.partition()),p -> String.valueOf(p.leader().id())));
-        batch.forEach(item -> {
-            Preconditions.checkNotNull(
-                    item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
-            item.setBrokerId(partitionToBroker.get(item.getPartition()));
-        });
-
-        final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
         try {
+            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
+                    .collect(Collectors.toMap(p -> String.valueOf(p.partition()),p -> String.valueOf(p.leader().id())));
+            batch.forEach(item -> {
+                Preconditions.checkNotNull(
+                        item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
+                item.setBrokerId(partitionToBroker.get(item.getPartition()));
+            });
+
+            final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.PUBLISHING);
-                HystrixKafkaCircuitBreaker breaker = circuitBreakers.putIfAbsent(item.getBrokerId(), new
-                        HystrixKafkaCircuitBreaker(item.getBrokerId()));
-                if (breaker == null) {
-                    breaker = circuitBreakers.get(item.getBrokerId());
-                }
-                if (breaker.allowRequest()) {
-                    breaker.markCommandStart();
-                    sendFutures.put(item, publishItem(producer, topicId, item, breaker));
+                final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
+                        item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(item.getBrokerId()));
+                if (circuitBreaker.allowRequest()) {
+                    sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
                 } else {
                     LOG.warn("Short circuiting request to Kafka due to timeout for topic {} on broker with id {}. {}",
-                            topicId, item.getBrokerId(), breaker.getMetrics());
+                            topicId, item.getBrokerId(), circuitBreaker.getMetrics());
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "timed out");
                 }
             }
