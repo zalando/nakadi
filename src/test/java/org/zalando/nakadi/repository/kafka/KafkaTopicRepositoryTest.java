@@ -221,8 +221,9 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
 
+        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
-
         Mockito
                 .doReturn(mock(Future.class))
                 .when(kafkaProducer)
@@ -243,6 +244,9 @@ public class KafkaTopicRepositoryTest {
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
+
+        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
 
         Mockito
                 .doThrow(BufferExhaustedException.class)
@@ -266,6 +270,10 @@ public class KafkaTopicRepositoryTest {
         final BatchItem secondItem = new BatchItem(new JSONObject());
         secondItem.setPartition("2");
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
+
+        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null),
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 2, new Node(1, "host", 9091), null, null)));
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final ProducerRecord record = (ProducerRecord) invocation.getArguments()[0];
@@ -371,10 +379,8 @@ public class KafkaTopicRepositoryTest {
 
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(1000L);
 
-        final String topic = EXPECTED_PRODUCER_RECORD.topic();
-        final List<PartitionInfo> parts = new LinkedList<>();
-        parts.add(new PartitionInfo(topic, 1, new Node(1, "host", 9091), null, null));
-        when(kafkaProducer.partitionsFor(topic)).thenReturn(parts);
+        when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
+                new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
 
         when(kafkaProducer.send(any(), any())).thenAnswer(invocation -> {
             final Callback callback = (Callback) invocation.getArguments()[1];
@@ -388,7 +394,7 @@ public class KafkaTopicRepositoryTest {
                 final BatchItem batchItem = new BatchItem(new JSONObject());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
-                kafkaTopicRepository.syncPostBatch(topic, ImmutableList.of(batchItem));
+                kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));
                 fail();
             } catch (final EventPublishingException e) {
             }
