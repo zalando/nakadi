@@ -33,6 +33,7 @@ import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
@@ -53,6 +54,7 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 
 @RestController
 public class EventStreamController {
@@ -68,6 +70,7 @@ public class EventStreamController {
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final BlacklistService blacklistService;
     private final ConsumerLimitingService consumerLimitingService;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
@@ -75,7 +78,8 @@ public class EventStreamController {
                                  final MetricRegistry metricRegistry,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
-                                 final ConsumerLimitingService consumerLimitingService) {
+                                 final ConsumerLimitingService consumerLimitingService,
+                                 final FeatureToggleService featureToggleService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
@@ -84,6 +88,7 @@ public class EventStreamController {
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.blacklistService = blacklistService;
         this.consumerLimitingService = consumerLimitingService;
+        this.featureToggleService = featureToggleService;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
@@ -114,9 +119,6 @@ public class EventStreamController {
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
 
             try {
-                consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
-                consumerCounter.inc();
-
                 @SuppressWarnings("UnnecessaryLocalVariable")
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
                 final String topic = eventType.getTopic();
@@ -164,11 +166,16 @@ public class EventStreamController {
                 }
 
                 // acquire connection slots to limit the number of simultaneous connections from one client
-                final List<String> partitions = cursors.stream()
-                        .map(Cursor::getPartition)
-                        .collect(Collectors.toList());
-                connectionSlots = consumerLimitingService.acquireConnectionSlots(client.getClientId(), eventTypeName,
-                        partitions);
+                if (featureToggleService.isFeatureEnabled(LIMIT_CONSUMERS_NUMBER)) {
+                    final List<String> partitions = cursors.stream()
+                            .map(Cursor::getPartition)
+                            .collect(Collectors.toList());
+                    connectionSlots = consumerLimitingService.acquireConnectionSlots(
+                            client.getClientId(), eventTypeName, partitions);
+                }
+
+                consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
+                consumerCounter.inc();
 
                 eventConsumer = topicRepository.createEventConsumer(topic, cursors);
 

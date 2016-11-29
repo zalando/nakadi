@@ -132,10 +132,12 @@ public class EventStreamControllerTest {
         final ConsumerLimitingService consumerLimitingService = Mockito.mock(ConsumerLimitingService.class);
         when(consumerLimitingService.acquireConnectionSlots(any(), any(), any())).thenReturn(ImmutableList.of());
 
-        controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
-        eventStreamFactoryMock, metricRegistry, crutch, blacklistService, consumerLimitingService);
-
         featureToggleService = mock(FeatureToggleService.class);
+
+        controller = new EventStreamController(
+                eventTypeRepository, topicRepositoryMock, objectMapper, eventStreamFactoryMock, metricRegistry, crutch,
+                blacklistService, consumerLimitingService, featureToggleService);
+
         settings = mock(SecuritySettings.class);
 
         mockMvc = standaloneSetup(controller)
