@@ -402,7 +402,7 @@ public class KafkaTopicRepositoryTest {
 
         Assert.assertTrue(batches.stream()
                 .filter(item -> item.getResponse().getPublishingStatus() == EventPublishingStatus.FAILED &&
-                        item.getResponse().getDetail().equals("timed out"))
+                        item.getResponse().getDetail().equals("short circuited"))
                 .count() >= 1);
     }
 
