@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.Stack;
 import java.util.stream.Collectors;
@@ -42,8 +43,9 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_CHANGED;
 public class SchemaDiff {
     public List<SchemaChange> collectChanges(final Schema original, final Schema update) {
         final List<SchemaChange> changes = new ArrayList<>();
+        final Stack<String> jsonPath = new Stack<>();
 
-        recursiveCheck(original, update, new Stack<>(), changes);
+        recursiveCheck(original, update, jsonPath, changes);
 
         return changes;
     }
@@ -68,15 +70,15 @@ public class SchemaDiff {
             return;
         }
 
-        if (original.getId() != update.getId()) {
+        if (!Objects.equals(original.getId(), update.getId())) {
             addChange(ID_CHANGED, jsonPath, changes);
         }
 
-        if (original.getTitle() != update.getTitle()) {
+        if (!Objects.equals(original.getTitle(), update.getTitle())) {
             addChange(TITLE_CHANGED, jsonPath, changes);
         }
 
-        if (original.getDescription() != update.getDescription()) {
+        if (!Objects.equals(original.getDescription(), update.getDescription())) {
             addChange(DESCRIPTION_CHANGED, jsonPath, changes);
         }
 
@@ -99,11 +101,11 @@ public class SchemaDiff {
 
     private void recursiveCheck(final StringSchema stringSchemaOriginal, final StringSchema stringSchemaUpdate,
                                 final Stack<String> jsonPath, final List<SchemaChange> changes) {
-        if (stringSchemaOriginal.getMaxLength() != stringSchemaUpdate.getMaxLength()) {
+        if (!Objects.equals(stringSchemaOriginal.getMaxLength(), stringSchemaUpdate.getMaxLength())) {
             jsonPath.push("maxLength");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
-        } else if (stringSchemaOriginal.getMinLength() != stringSchemaUpdate.getMinLength()) {
+        } else if (!Objects.equals(stringSchemaOriginal.getMinLength(), stringSchemaUpdate.getMinLength())) {
             jsonPath.push("minLength");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
@@ -116,15 +118,15 @@ public class SchemaDiff {
 
     private void recursiveCheck(final NumberSchema numberSchemaOriginal, final NumberSchema numberSchemaUpdate,
                                 final Stack<String> jsonPath, final List<SchemaChange> changes) {
-        if (numberSchemaOriginal.getMaximum() != numberSchemaUpdate.getMaximum()) {
+        if (!Objects.equals(numberSchemaOriginal.getMaximum(), numberSchemaUpdate.getMaximum())) {
             jsonPath.push("maximum");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
-        } else if (numberSchemaOriginal.getMinimum() != numberSchemaUpdate.getMinimum()) {
+        } else if (!Objects.equals(numberSchemaOriginal.getMinimum(), numberSchemaUpdate.getMinimum())) {
             jsonPath.push("minimum");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
-        } else if (numberSchemaOriginal.getMultipleOf() != numberSchemaUpdate.getMultipleOf()) {
+        } else if (!Objects.equals(numberSchemaOriginal.getMultipleOf(), numberSchemaUpdate.getMultipleOf())) {
             jsonPath.push("multipleOf");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
@@ -183,13 +185,13 @@ public class SchemaDiff {
         }
         jsonPath.pop();
 
-        if (original.getMaxItems() != update.getMaxItems()) {
+        if (!Objects.equals(original.getMaxItems(), update.getMaxItems())) {
             jsonPath.push("maxItems");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
         }
 
-        if (original.getMinItems() != update.getMinItems()) {
+        if (!Objects.equals(original.getMinItems(), update.getMinItems())) {
             jsonPath.push("minItems");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
@@ -271,13 +273,13 @@ public class SchemaDiff {
             jsonPath.pop();
         }
 
-        if (original.getMaxProperties() != update.getMaxProperties()) {
+        if (!Objects.equals(original.getMaxProperties(), update.getMaxProperties())) {
             jsonPath.push("maxProperties");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
         }
 
-        if (original.getMinProperties() != update.getMinProperties()) {
+        if (!Objects.equals(original.getMinProperties(), update.getMinProperties())) {
             jsonPath.push("minProperties");
             addChange(ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
             jsonPath.pop();
