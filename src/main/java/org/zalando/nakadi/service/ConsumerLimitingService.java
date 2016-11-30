@@ -24,10 +24,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static java.text.MessageFormat.format;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode.BUILD_INITIAL_CACHE;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -88,12 +88,12 @@ public class ConsumerLimitingService {
                 // if slots for all partitions were acquired - the connection is successful
                 return slots.stream()
                         .map(Optional::get)
-                        .collect(Collectors.toList());
+                        .collect(toList());
             } else {
                 // if a slot for at least one partition wasn't acquired - connection can't be created
                 final String failedPartitions = partitions.stream()
                         .filter(p -> !slots.stream().anyMatch(s -> s.isPresent() && s.get().getPartition().equals(p)))
-                        .collect(Collectors.joining(", "));
+                        .collect(joining(", "));
                 final String msg = format(ERROR_MSG, eventType, failedPartitions, maxConnections);
                 throw new NoConnectionSlotsException(msg);
             }
