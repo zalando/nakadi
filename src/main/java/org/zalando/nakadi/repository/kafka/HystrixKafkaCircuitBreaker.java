@@ -55,10 +55,6 @@ public class HystrixKafkaCircuitBreaker {
                 HystrixCommandProperties.ExecutionIsolationStrategy.SEMAPHORE, currentCount);
     }
 
-    public void markStop() {
-        concurrentExecutionCount.decrementAndGet();
-    }
-
     public void markSuccessfully() {
         concurrentExecutionCount.decrementAndGet();
         HystrixThreadEventStream.getInstance()
