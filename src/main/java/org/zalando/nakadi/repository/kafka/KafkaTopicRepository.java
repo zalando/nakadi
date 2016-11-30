@@ -192,6 +192,8 @@ public class KafkaTopicRepository implements TopicRepository {
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
                     if (hasKafkaConnectionException(exception)) {
                         circuitBreaker.markFailure();
+                    } else {
+                        circuitBreaker.markSuccessfully();
                     }
                     result.complete(exception);
                 } else {
@@ -202,11 +204,11 @@ public class KafkaTopicRepository implements TopicRepository {
             }));
             return result;
         } catch (final InterruptException e) {
-            circuitBreaker.markStop();
+            circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         } catch (final RuntimeException e) {
-            circuitBreaker.markStop();
+            circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         }
@@ -225,7 +227,6 @@ public class KafkaTopicRepository implements TopicRepository {
         return exception instanceof org.apache.kafka.common.errors.TimeoutException ||
                 exception instanceof NetworkException ||
                 exception instanceof UnknownServerException;
-
     }
 
     @Override
@@ -244,7 +245,7 @@ public class KafkaTopicRepository implements TopicRepository {
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.PUBLISHING);
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
-                        item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(item.getBrokerId()));
+                        item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
                 if (circuitBreaker.allowRequest()) {
                     sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
                 } else {

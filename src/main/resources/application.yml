@@ -32,6 +32,8 @@ hystrix.command.default.execution.isolation.strategy: SEMAPHORE
 hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
 hystrix.command.default.circuitBreaker.requestVolumeThreshold: 20
 hystrix.command.default.circuitBreaker.sleepWindowInMilliseconds: 5000
+hystrix.command.default.circuitBreaker.errorThresholdPercentage: 20
+hystrix.command.default.metrics.rollingStats.timeInMilliseconds: 30000
 
 nakadi:
   topic:
