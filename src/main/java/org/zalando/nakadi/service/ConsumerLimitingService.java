@@ -1,6 +1,8 @@
 package org.zalando.nakadi.service;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
@@ -8,24 +10,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.ConnectionSlotOccupiedException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static java.text.MessageFormat.format;
+import static java.util.stream.Collectors.toList;
+import static org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode.BUILD_INITIAL_CACHE;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 
-@Service
+@Component
 public class ConsumerLimitingService {
 
     public static final String CONNECTIONS_ZK_PATH = "/nakadi/consumers/connections";
@@ -39,6 +47,9 @@ public class ConsumerLimitingService {
     private final int maxConnections;
     private final List<String> slotNames;
 
+    private static final ConcurrentMap<String, PathChildrenCache> slotsCaches = Maps.newConcurrentMap();
+    private static final List<ConnectionSlot> acquiredSlots = Collections.synchronizedList(Lists.newArrayList());
+
     @Autowired
     public ConsumerLimitingService(final ZooKeeperHolder zkHolder,
                                    @Value("${nakadi.stream.maxConnections}") final int maxConnections) {
@@ -48,7 +59,7 @@ public class ConsumerLimitingService {
         slotNames = IntStream.range(0, maxConnections)
                 .boxed()
                 .map(String::valueOf)
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     @SuppressWarnings("unchecked")
@@ -118,6 +129,28 @@ public class ConsumerLimitingService {
         } catch (final Exception e) {
             LOG.error("Zookeeper error when deleting consumer connection node", e);
         }
+
+        acquiredSlots.remove(slot);
+        try {
+            deleteCacheIfPossible(slot);
+        } catch (final Exception e) {
+            LOG.error("Zookeeper error when deleting consumer connections cache", e);
+        }
+    }
+
+    private void deleteCacheIfPossible(final ConnectionSlot slot) throws IOException {
+        final boolean hasMoreConnectionsToPartition = acquiredSlots.stream()
+                .anyMatch(s -> s.getPartition().equals(slot.getPartition())
+                        && s.getClient().equals(slot.getClient())
+                        && s.getEventType().equals(slot.getEventType()));
+        if (!hasMoreConnectionsToPartition) {
+            final String consumerPath = zkPathForConsumer(slot.getClient(), slot.getEventType(), slot.getPartition());
+            final PathChildrenCache cache = slotsCaches.getOrDefault(consumerPath, null);
+            if (cache != null) {
+                slotsCaches.remove(consumerPath);
+                cache.close();
+            }
+        }
     }
 
     public void deletePartitionNodeIfPossible(final String nodeName) {
@@ -137,26 +170,15 @@ public class ConsumerLimitingService {
             throws ConnectionSlotOccupiedException {
 
         final String parent = zkPathForConsumer(client, eventType, partition);
-        List<String> children;
-        try {
-            children = zkHolder.get()
-                    .getChildren()
-                    .forPath(parent);
-        } catch (final KeeperException.NoNodeException e) {
-            children = ImmutableList.of();
-        } catch (Exception e) {
-            LOG.error("Zookeeper error when getting consumer nodes", e);
-            throw new NakadiRuntimeException(e);
-        }
 
-        if (children.size() >= maxConnections) {
+        final List<String> occupiedSlots = getChildrenCached(parent);
+        if (occupiedSlots.size() >= maxConnections) {
             return Optional.empty();
         }
 
-        final List<String> occupiedSlots = children;
         final List<String> availableSlots = slotNames.stream()
                 .filter(slot -> !occupiedSlots.contains(slot))
-                .collect(Collectors.toList());
+                .collect(toList());
         final int slotIndex = new Random().nextInt(availableSlots.size());
         final String slot = availableSlots.get(slotIndex);
 
@@ -173,7 +195,30 @@ public class ConsumerLimitingService {
             LOG.error("Zookeeper error when creating consumer node", e);
             throw new NakadiRuntimeException(e);
         }
-        return Optional.of(new ConnectionSlot(client, eventType, partition, slot));
+
+        final ConnectionSlot acquiredSlot = new ConnectionSlot(client, eventType, partition, slot);
+        acquiredSlots.add(acquiredSlot);
+        return Optional.of(acquiredSlot);
+    }
+
+    private List<String> getChildrenCached(final String zkPath) {
+        try {
+            PathChildrenCache cache = slotsCaches.getOrDefault(zkPath, null);
+            if (cache == null) {
+                cache = new PathChildrenCache(zkHolder.get(), zkPath, false);
+                cache.start(BUILD_INITIAL_CACHE);
+                slotsCaches.put(zkPath, cache);
+            }
+            return cache.getCurrentData().stream()
+                    .map(childData -> {
+                        final String[] pathParts = childData.getPath().split("/");
+                        return pathParts[pathParts.length - 1];
+                    })
+                    .collect(toList());
+        } catch (Exception e) {
+            LOG.error("Zookeeper error when getting consumer nodes", e);
+            throw new NakadiRuntimeException(e);
+        }
     }
 
     private String zkPathForConsumer(final String client, final String eventType, final String partition) {
