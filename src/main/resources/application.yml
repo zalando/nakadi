@@ -9,9 +9,9 @@ logging:
   level:
     ROOT: INFO
     org.springframework.web: INFO
-    org.springframework.security.web.access.intercept: DEBUG
     org.apache.kafka: WARN
     org.zalando.nakadi: DEBUG
+    org.zalando.nakadi.config: INFO
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
