@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 
 import static org.everit.json.schema.CombinedSchema.ALL_CRITERION;
 import static org.everit.json.schema.CombinedSchema.ANY_CRITERION;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_ITEMS_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ATTRIBUTE_VALUE_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.COMPOSITION_METHOD_CHANGED;
@@ -172,6 +173,15 @@ public class SchemaDiff {
                 }
             }
         }
+
+        jsonPath.push("additionalItems");
+        if (original.permitsAdditionalItems() != update.permitsAdditionalItems()) {
+            addChange(ADDITIONAL_ITEMS_CHANGED, jsonPath, changes);
+        } else {
+            recursiveCheck(original.getSchemaOfAdditionalItems(), update.getSchemaOfAdditionalItems(), jsonPath,
+                    changes);
+        }
+        jsonPath.pop();
 
         if (original.getMaxItems() != update.getMaxItems()) {
             jsonPath.push("maxItems");

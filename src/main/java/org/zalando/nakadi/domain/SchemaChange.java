@@ -18,7 +18,8 @@ public class SchemaChange {
         SUB_SCHEMA_CHANGED,
         DEPENDENCY_SCHEMA_REMOVED,
         REQUIRED_ARRAY_CHANGED,
-        ADDITIONAL_PROPERTIES_CHANGED
+        ADDITIONAL_PROPERTIES_CHANGED,
+        ADDITIONAL_ITEMS_CHANGED
     }
 
     private final String jsonPath;

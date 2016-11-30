@@ -541,5 +541,29 @@
       }
     },
     "errors": ["TYPE_CHANGED #/additionalProperties"]
+  },
+  {
+    "description": "Detect changes to boolean additional items",
+    "original_schema": {
+      "additionalItems": true
+    },
+    "update_schema": {
+      "additionalItems": false
+    },
+    "errors": ["ADDITIONAL_ITEMS_CHANGED #/additionalItems"]
+  },
+  {
+    "description": "Detect changes to additional items schema",
+    "original_schema": {
+      "additionalItems": {
+        "type": "string"
+      }
+    },
+    "update_schema": {
+      "additionalItems": {
+        "type": "number"
+      }
+    },
+    "errors": ["TYPE_CHANGED #/additionalItems"]
   }
 ]
