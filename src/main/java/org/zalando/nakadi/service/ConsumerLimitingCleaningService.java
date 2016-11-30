@@ -126,7 +126,7 @@ public class ConsumerLimitingCleaningService {
                     .forPath(CLEANING_ZK_PATH + "/latest");
             final DateTime lastCleaned = objectMapper.readValue(new String(data, CHARSET_UTF8), DateTime.class);
             final DateTime now = new DateTime(DateTimeZone.UTC);
-            return lastCleaned.getMillis() - now.getMillis() > HANGING_NODES_CLEAN_PERIOD_MS;
+            return now.getMillis() - lastCleaned.getMillis() > HANGING_NODES_CLEAN_PERIOD_MS;
         } catch (final KeeperException.NoNodeException e) {
             // if the node doesn't exist - that means that the clean
             // was never performed and we need to perform it
