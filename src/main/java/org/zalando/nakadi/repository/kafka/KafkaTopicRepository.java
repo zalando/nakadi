@@ -202,13 +202,13 @@ public class KafkaTopicRepository implements TopicRepository {
             }));
             return result;
         } catch (final InterruptException e) {
+            circuitBreaker.markStop();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
         } catch (final RuntimeException e) {
+            circuitBreaker.markStop();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
             throw new EventPublishingException("Error publishing message to kafka", e);
-        } finally {
-            circuitBreaker.markStop();
         }
     }
 

@@ -60,12 +60,14 @@ public class HystrixKafkaCircuitBreaker {
     }
 
     public void markSuccessfully() {
+        concurrentExecutionCount.decrementAndGet();
         HystrixThreadEventStream.getInstance()
                 .executionDone(ExecutionResult.from(HystrixEventType.SUCCESS), commandKey, threadPoolKey);
         circuitBreaker.markSuccess();
     }
 
     public void markFailure() {
+        concurrentExecutionCount.decrementAndGet();
         HystrixThreadEventStream.getInstance()
                 .executionDone(ExecutionResult.from(HystrixEventType.FAILURE), commandKey, threadPoolKey);
     }
