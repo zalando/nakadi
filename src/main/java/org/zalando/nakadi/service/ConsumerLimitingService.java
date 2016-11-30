@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
@@ -47,8 +46,8 @@ public class ConsumerLimitingService {
     private final int maxConnections;
     private final List<String> slotNames;
 
-    private static final ConcurrentMap<String, PathChildrenCache> slotsCaches = Maps.newConcurrentMap();
-    private static final List<ConnectionSlot> acquiredSlots = Collections.synchronizedList(Lists.newArrayList());
+    private static final ConcurrentMap<String, PathChildrenCache> SLOTS_CACHES = Maps.newConcurrentMap();
+    private static final List<ConnectionSlot> ACQUIRED_SLOTS = Collections.synchronizedList(Lists.newArrayList());
 
     @Autowired
     public ConsumerLimitingService(final ZooKeeperHolder zkHolder,
@@ -130,7 +129,7 @@ public class ConsumerLimitingService {
             LOG.error("Zookeeper error when deleting consumer connection node", e);
         }
 
-        acquiredSlots.remove(slot);
+        ACQUIRED_SLOTS.remove(slot);
         try {
             deleteCacheIfPossible(slot);
         } catch (final Exception e) {
@@ -139,15 +138,15 @@ public class ConsumerLimitingService {
     }
 
     private void deleteCacheIfPossible(final ConnectionSlot slot) throws IOException {
-        final boolean hasMoreConnectionsToPartition = acquiredSlots.stream()
+        final boolean hasMoreConnectionsToPartition = ACQUIRED_SLOTS.stream()
                 .anyMatch(s -> s.getPartition().equals(slot.getPartition())
                         && s.getClient().equals(slot.getClient())
                         && s.getEventType().equals(slot.getEventType()));
         if (!hasMoreConnectionsToPartition) {
             final String consumerPath = zkPathForConsumer(slot.getClient(), slot.getEventType(), slot.getPartition());
-            final PathChildrenCache cache = slotsCaches.getOrDefault(consumerPath, null);
+            final PathChildrenCache cache = SLOTS_CACHES.getOrDefault(consumerPath, null);
             if (cache != null) {
-                slotsCaches.remove(consumerPath);
+                SLOTS_CACHES.remove(consumerPath);
                 cache.close();
             }
         }
@@ -197,17 +196,17 @@ public class ConsumerLimitingService {
         }
 
         final ConnectionSlot acquiredSlot = new ConnectionSlot(client, eventType, partition, slot);
-        acquiredSlots.add(acquiredSlot);
+        ACQUIRED_SLOTS.add(acquiredSlot);
         return Optional.of(acquiredSlot);
     }
 
     private List<String> getChildrenCached(final String zkPath) {
         try {
-            PathChildrenCache cache = slotsCaches.getOrDefault(zkPath, null);
+            PathChildrenCache cache = SLOTS_CACHES.getOrDefault(zkPath, null);
             if (cache == null) {
                 cache = new PathChildrenCache(zkHolder.get(), zkPath, false);
                 cache.start(BUILD_INITIAL_CACHE);
-                slotsCaches.put(zkPath, cache);
+                SLOTS_CACHES.put(zkPath, cache);
             }
             return cache.getCurrentData().stream()
                     .map(childData -> {
