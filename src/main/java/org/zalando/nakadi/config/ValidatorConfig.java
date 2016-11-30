@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.ATTRIBUTE_VALUE_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.COMPOSITION_METHOD_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.DEPENDENCY_ARRAY_CHANGED;
@@ -74,7 +75,6 @@ public class ValidatorConfig {
 
         final Map<SchemaChange.Type, Version.Level> changeToLevel = new HashMap<>();
         changeToLevel.put(DESCRIPTION_CHANGED, PATCH);
-        changeToLevel.put(DESCRIPTION_CHANGED, PATCH);
         changeToLevel.put(TITLE_CHANGED, PATCH);
         changeToLevel.put(PROPERTIES_ADDED, MINOR);
         changeToLevel.put(ID_CHANGED, MAJOR);
@@ -90,6 +90,7 @@ public class ValidatorConfig {
         changeToLevel.put(SUB_SCHEMA_CHANGED, MAJOR);
         changeToLevel.put(DEPENDENCY_SCHEMA_REMOVED, MAJOR);
         changeToLevel.put(REQUIRED_ARRAY_CHANGED, MAJOR);
+        changeToLevel.put(ADDITIONAL_PROPERTIES_CHANGED, MAJOR);
 
         final Map<SchemaChange.Type, String> errorMessage = new HashMap<>();
         errorMessage.put(SCHEMA_REMOVED, "change not allowed");
@@ -104,6 +105,7 @@ public class ValidatorConfig {
         errorMessage.put(SUB_SCHEMA_CHANGED, "sub schema changed");
         errorMessage.put(DEPENDENCY_SCHEMA_REMOVED, "dependency schema removed");
         errorMessage.put(REQUIRED_ARRAY_CHANGED, "required array changed");
+        errorMessage.put(ADDITIONAL_PROPERTIES_CHANGED, "change not allowed");
 
         final SchemaDiff diff = new SchemaDiff();
 

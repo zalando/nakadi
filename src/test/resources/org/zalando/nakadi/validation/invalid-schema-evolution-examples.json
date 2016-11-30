@@ -517,5 +517,29 @@
       }
     },
     "errors": ["TYPE_CHANGED #/items/$ref"]
+  },
+  {
+    "description": "Detect changes to boolean additional properties",
+    "original_schema": {
+      "additionalProperties": true
+    },
+    "update_schema": {
+      "additionalProperties": false
+    },
+    "errors": ["ADDITIONAL_PROPERTIES_CHANGED #/additionalProperties"]
+  },
+  {
+    "description": "Detect changes to additional properties schema",
+    "original_schema": {
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "update_schema": {
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "errors": ["TYPE_CHANGED #/additionalProperties"]
   }
 ]
