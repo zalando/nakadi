@@ -262,7 +262,8 @@ public class SchemaDiff {
         if (original.permitsAdditionalProperties() != update.permitsAdditionalProperties()) {
             addChange(ADDITIONAL_PROPERTIES_CHANGED, jsonPath, changes);
         } else {
-            recursiveCheck(original.getSchemaOfAdditionalProperties(), update.getSchemaOfAdditionalProperties(), jsonPath, changes);
+            recursiveCheck(original.getSchemaOfAdditionalProperties(), update.getSchemaOfAdditionalProperties(),
+                    jsonPath, changes);
         }
         jsonPath.pop();
 
