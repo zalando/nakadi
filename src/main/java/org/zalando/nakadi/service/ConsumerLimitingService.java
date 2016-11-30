@@ -78,8 +78,8 @@ public class ConsumerLimitingService {
                                     .withExceptionsThatForceRetry(ConnectionSlotOccupiedException.class)
                                     .withWaitBetweenEachTry(0L, 100L));
                 } catch (ConnectionSlotOccupiedException e) {
-                    LOG.info("Failed to capture consuming connection slot after 5 tries for client '{}', " +
-                            "event-type '{}', partition {}", client, eventType, partition);
+                    LOG.info("Failed to capture consuming connection slot after {} tries for client '{}', " +
+                            "event-type '{}', partition {}", maxConnections, client, eventType, partition);
                 }
                 slots.add(connectionSlot);
             }
