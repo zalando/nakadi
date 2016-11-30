@@ -6,7 +6,6 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.Hours;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +24,7 @@ public class ConsumerLimitingCleaningService {
 
     private static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
     private static final Logger LOG = LoggerFactory.getLogger(ConsumerLimitingCleaningService.class);
-    private static final int HANGING_NODES_CLEAN_PERIOD_H = 6;
+    private static final int HANGING_NODES_CLEAN_PERIOD_MS = 6 * 60 * 60 * 1000; // 6 hours
 
     private final ZooKeeperHolder zkHolder;
     private final ObjectMapper objectMapper;
@@ -39,7 +38,7 @@ public class ConsumerLimitingCleaningService {
         this.limitingService = limitingService;
     }
 
-    @Scheduled(fixedRate = HANGING_NODES_CLEAN_PERIOD_H * 60 * 60 * 1000)
+    @Scheduled(fixedRate = HANGING_NODES_CLEAN_PERIOD_MS)
     public void cleanHangingNodes() {
         LOG.info("Trying to run cleaning of 'hanging' connection ZK nodes");
 
@@ -127,7 +126,7 @@ public class ConsumerLimitingCleaningService {
                     .forPath(CLEANING_ZK_PATH + "/latest");
             final DateTime lastCleaned = objectMapper.readValue(new String(data, CHARSET_UTF8), DateTime.class);
             final DateTime now = new DateTime(DateTimeZone.UTC);
-            return Hours.hoursBetween(lastCleaned, now).getHours() > HANGING_NODES_CLEAN_PERIOD_H;
+            return lastCleaned.getMillis() - now.getMillis() > HANGING_NODES_CLEAN_PERIOD_MS;
         } catch (final KeeperException.NoNodeException e) {
             // if the node doesn't exist - that means that the clean
             // was never performed and we need to perform it
