@@ -39,7 +39,7 @@ public class ConsumerLimitingCleaningService {
         this.limitingService = limitingService;
     }
 
-    @Scheduled(fixedRate = HANGING_NODES_CLEAN_PERIOD_H * 3600000)
+    @Scheduled(fixedRate = HANGING_NODES_CLEAN_PERIOD_H * 60 * 60 * 1000)
     public void cleanHangingNodes() {
         LOG.info("Trying to run cleaning of 'hanging' connection ZK nodes");
 
