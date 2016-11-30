@@ -28,7 +28,7 @@ public interface FeatureToggleService {
         CHECK_APPLICATION_LEVEL_PERMISSIONS("check_application_level_permissions"),
         CHECK_PARTITIONS_KEYS("check_partitions_keys"),
         CHECK_OWNING_APPLICATION("check_owning_application"),
-        LIMIT_CONSUMERS_NUMBER("limit_consumers_number");;
+        LIMIT_CONSUMERS_NUMBER("limit_consumers_number");
 
         private final String id;
 
