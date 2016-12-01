@@ -201,23 +201,22 @@ public class ConsumerLimitingService {
     }
 
     private List<String> getChildrenCached(final String zkPath) {
-        try {
-            PathChildrenCache cache = SLOTS_CACHES.getOrDefault(zkPath, null);
-            if (cache == null) {
-                cache = new PathChildrenCache(zkHolder.get(), zkPath, false);
-                cache.start(BUILD_INITIAL_CACHE);
-                SLOTS_CACHES.put(zkPath, cache);
+        final PathChildrenCache cache = SLOTS_CACHES.computeIfAbsent(zkPath, key -> {
+            try {
+                final PathChildrenCache newCache = new PathChildrenCache(zkHolder.get(), key, false);
+                newCache.start(BUILD_INITIAL_CACHE);
+                return newCache;
+            } catch (final Exception e) {
+                LOG.error("Zookeeper error when getting consumer nodes", e);
+                throw new NakadiRuntimeException(e);
             }
-            return cache.getCurrentData().stream()
-                    .map(childData -> {
-                        final String[] pathParts = childData.getPath().split("/");
-                        return pathParts[pathParts.length - 1];
-                    })
-                    .collect(toList());
-        } catch (Exception e) {
-            LOG.error("Zookeeper error when getting consumer nodes", e);
-            throw new NakadiRuntimeException(e);
-        }
+        });
+        return cache.getCurrentData().stream()
+                .map(childData -> {
+                    final String[] pathParts = childData.getPath().split("/");
+                    return pathParts[pathParts.length - 1];
+                })
+                .collect(toList());
     }
 
     private String zkPathForConsumer(final String client, final String eventType, final String partition) {
