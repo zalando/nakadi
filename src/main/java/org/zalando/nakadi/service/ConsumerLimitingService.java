@@ -144,9 +144,8 @@ public class ConsumerLimitingService {
                         && s.getEventType().equals(slot.getEventType()));
         if (!hasMoreConnectionsToPartition) {
             final String consumerPath = zkPathForConsumer(slot.getClient(), slot.getEventType(), slot.getPartition());
-            final PathChildrenCache cache = SLOTS_CACHES.getOrDefault(consumerPath, null);
+            final PathChildrenCache cache = SLOTS_CACHES.remove(consumerPath);
             if (cache != null) {
-                SLOTS_CACHES.remove(consumerPath);
                 cache.close();
             }
         }
