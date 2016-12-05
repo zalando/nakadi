@@ -97,7 +97,7 @@ public class SchemaEvolutionService {
     }
 
     private Version.Level semanticOfChange(final List<SchemaChange> changes) {
-        return changes.stream().map(changeToLevel::get).reduce(NO_CHANGES, (acc, change) -> {
+        return changes.stream().map(SchemaChange::getType).map(changeToLevel::get).reduce(NO_CHANGES, (acc, change) -> {
             if (Version.Level.valueOf(change.toString()).ordinal() < Version.Level.valueOf(acc.toString()).ordinal()) {
                 return change;
             } else {
