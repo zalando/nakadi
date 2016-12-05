@@ -249,8 +249,6 @@ public class KafkaTopicRepository implements TopicRepository {
                 if (circuitBreaker.allowRequest()) {
                     sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
                 } else {
-                    LOG.warn("Short circuiting request to Kafka due to timeout for topic {} on broker with id {}. {}",
-                            topicId, item.getBrokerId(), circuitBreaker.getMetrics());
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
                 }
             }
