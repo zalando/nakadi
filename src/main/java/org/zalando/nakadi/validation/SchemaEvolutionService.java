@@ -83,7 +83,8 @@ public class SchemaEvolutionService {
             final Version.Level changeLevel = semanticOfChange(changes);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE && changeLevel == MAJOR) {
-                final String errorMessage = changes.stream().filter(change -> MAJOR.equals(change.getType()))
+                final String errorMessage = changes.stream()
+                        .filter(change -> MAJOR.equals(changeToLevel.get(change.getType())))
                         .map(this::formatErrorMessage)
                         .collect(Collectors.joining(", "));
                 throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
