@@ -1,25 +1,75 @@
 package org.zalando.nakadi.validation;
 
+import com.google.common.collect.Lists;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class JsonSchemaLoader {
     public static final String DATA_CHANGE_WRAP_FIELD = "data";
 
-    public static JSONObject effectiveSchema(final EventType eventType) throws JSONException {
+    public JSONObject effectiveSchema(final EventType eventType) throws JSONException {
         final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
+
+        if (eventType.getCompatibilityMode().equals(CompatibilityMode.COMPATIBLE)) {
+            this.enforceStrictValidation(schema);
+        }
 
         switch (eventType.getCategory()) {
             case BUSINESS: return addMetadata(schema, eventType);
             case DATA: return wrapSchemaInData(schema, eventType);
             default: return schema;
         }
+    }
+
+    private void enforceStrictValidation(final JSONObject schema) {
+        final List<String> keywordsWithNestedSchemas = Lists.newArrayList("definitions", "dependencies", "properties");
+        final List<String> keywordsWithArrayOfSchemas = Lists.newArrayList("anyOf", "allOf", "oneOf");
+
+        if (schema.length() == 0) {
+            schema.put("additionalProperties", false);
+        }
+
+        if (Optional.ofNullable(schema.optString("type")).map(type -> type.equals("object")).orElse(false)) {
+            schema.put("additionalProperties", false);
+        }
+
+        if (Optional.ofNullable(schema.optString("type")).map(type -> type.equals("array")).orElse(false)) {
+            schema.put("additionalItems", false);
+        }
+
+        if (schema.opt("items") != null) {
+            schema.put("additionalItems", false);
+
+            Optional.ofNullable(schema.optJSONArray("items"))
+                    .ifPresent(items -> items.forEach(item -> enforceStrictValidation((JSONObject) item)));
+
+            Optional.ofNullable(schema.optJSONObject("items")).ifPresent(this::enforceStrictValidation);
+        }
+
+        keywordsWithNestedSchemas.forEach(keyword -> {
+            if (schema.has(keyword)) {
+                schema.put("additionalProperties", false);
+                schema.getJSONObject(keyword).keySet()
+                        .forEach(key -> enforceStrictValidation(schema.getJSONObject(keyword).getJSONObject(key)));
+
+            }
+        });
+
+        keywordsWithArrayOfSchemas.forEach(keyword -> {
+            if (schema.has(keyword)) {
+                schema.getJSONArray(keyword)
+                        .forEach(object -> enforceStrictValidation((JSONObject)object));
+            }
+        });
     }
 
     private static JSONObject wrapSchemaInData(final JSONObject schema, final EventType eventType) {
