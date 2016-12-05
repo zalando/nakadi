@@ -60,7 +60,7 @@ public class SchemaDiff {
             return;
         }
 
-        if (original == null || update == null) {
+        if (update == null) {
             addChange(SCHEMA_REMOVED, jsonPath, changes);
             return;
         }
