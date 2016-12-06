@@ -187,5 +187,75 @@
         }
       ]
     }
+  },
+  {
+    "description": "Strict if mixed type",
+    "original_schema": {
+      "type": ["string", "object"]
+    },
+    "effective_schema": {
+      "type": ["string", "object"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if has required keyword",
+    "original_schema": {
+      "required": ["foo"]
+    },
+    "effective_schema": {
+      "required": ["foo"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if has minProperties keyword",
+    "original_schema": {
+      "minProperties": 1
+    },
+    "effective_schema": {
+      "minProperties": 1,
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if has maxProperties keyword",
+    "original_schema": {
+      "maxProperties": 1
+    },
+    "effective_schema": {
+      "maxProperties": 1,
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if has minItems keyword",
+    "original_schema": {
+      "minItems": 1
+    },
+    "effective_schema": {
+      "minItems": 1,
+      "additionalItems": false
+    }
+  },
+  {
+    "description": "Strict if has maxItems keyword",
+    "original_schema": {
+      "maxItems": 1
+    },
+    "effective_schema": {
+      "maxItems": 1,
+      "additionalItems": false
+    }
+  },
+  {
+    "description": "Strict if has uniqueItems keyword",
+    "original_schema": {
+      "uniqueItems": 1
+    },
+    "effective_schema": {
+      "uniqueItems": 1,
+      "additionalItems": false
+    }
   }
 ]
