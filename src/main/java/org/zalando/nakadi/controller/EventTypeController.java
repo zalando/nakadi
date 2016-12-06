@@ -140,14 +140,4 @@ public class EventTypeController {
         }
         return status(HttpStatus.OK).body(result.getValue());
     }
-
-    @RequestMapping(value = "/{name:.+}/schemas/{version:.+}", method = RequestMethod.GET)
-    public ResponseEntity<?> getLatestSchema(@PathVariable final String name, @PathVariable final String version,
-                                             final NativeWebRequest request) {
-        final Result<EventTypeSchema> schemaResult = eventTypeService.getSchema(name, version);
-        if (!schemaResult.isSuccessful()) {
-            return Responses.create(schemaResult.getProblem(), request);
-        }
-        return status(HttpStatus.OK).body(schemaResult.getValue().getSchema());
-    }
 }

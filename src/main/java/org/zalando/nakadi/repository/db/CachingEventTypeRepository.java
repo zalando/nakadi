@@ -59,12 +59,6 @@ public class CachingEventTypeRepository implements EventTypeRepository {
     }
 
     @Override
-    public EventTypeSchema findSchemaVersionByEventTypeName(final String eventTypeName, final String version)
-            throws InternalNakadiException, NoSuchSchemaException, IllegalVersionNumberException {
-        return repository.findSchemaVersionByEventTypeName(eventTypeName, version);
-    }
-
-    @Override
     public void update(final EventType eventType) throws InternalNakadiException, NoSuchEventTypeException {
         final EventType original = this.repository.findByName(eventType.getName());
         this.repository.update(eventType);

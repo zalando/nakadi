@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -34,4 +35,14 @@ public class SchemaController {
         return Responses.create(result.getProblem(), request);
     }
 
+    @RequestMapping("/event-types/{name}/schemas/{version}")
+    public ResponseEntity<?> getSchemaVersion(@PathVariable("name") final String name,
+                                              @PathVariable("version") final String version,
+                                              final NativeWebRequest request) {
+        final Result<EventTypeSchema> result = schemaService.getSchemaVersion(name, version);
+        if (!result.isSuccessful())
+            return Responses.create(result.getProblem(), request);
+
+        return ResponseEntity.status(HttpStatus.OK).body(result.getValue().getSchema());
+    }
 }

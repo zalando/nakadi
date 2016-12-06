@@ -72,25 +72,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
     }
 
     @Override
-    public EventTypeSchema findSchemaVersionByEventTypeName(final String eventTypeName, final String version)
-            throws InternalNakadiException, NoSuchSchemaException, IllegalVersionNumberException {
-        final Pattern versionPattern = Pattern.compile("\\d+\\.\\d+\\.\\d+");
-        final Matcher versionMatcher = versionPattern.matcher(version);
-        if (!versionMatcher.matches()) {
-            throw new IllegalVersionNumberException(version);
-        }
-        final String sql = "SELECT et_event_type_object -> 'schema' ->> 'schema' FROM zn_data.event_type " +
-                "WHERE et_name = ? AND et_event_type_object -> 'schema' ->> 'version' = ?";
-
-        try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{eventTypeName, version}, new EventTypeSchemaMapper());
-        } catch (EmptyResultDataAccessException e) {
-            throw new NoSuchSchemaException("EventType \"" + eventTypeName
-                    + "\" has no schema with version \"" + version + "\"", e);
-        }
-    }
-
-    @Override
     @Transactional
     public void update(final EventType eventType) throws InternalNakadiException {
         try {
@@ -124,18 +105,6 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
                 final EventType eventType = jsonMapper.readValue(rs.getString("et_event_type_object"), EventType.class);
                 eventType.setTopic(rs.getString("et_topic"));
                 return eventType;
-            } catch (IOException e) {
-                throw new SQLException(e);
-            }
-        }
-    }
-
-    private class EventTypeSchemaMapper implements RowMapper<EventTypeSchema> {
-        @Override
-        public EventTypeSchema mapRow(final ResultSet rs, final int rowNum) throws SQLException {
-            try {
-                final EventTypeSchema eventTypeSchema = jsonMapper.readValue(rs.getString(0), EventTypeSchema.class);
-                return eventTypeSchema;
             } catch (IOException e) {
                 throw new SQLException(e);
             }

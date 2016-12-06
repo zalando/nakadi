@@ -14,18 +14,15 @@ import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.IllegalVersionNumberException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.NoSuchSchemaException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
@@ -172,30 +169,6 @@ public class EventTypeService {
             return Result.problem(e.asProblem());
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type " + eventTypeName, e);
-            return Result.problem(e.asProblem());
-        }
-    }
-
-    public Result<EventTypeSchema> getSchema(final String eventTypeName, final String version) {
-        if (version.equals("latest")) {
-            final Result<EventType> eventTypeResult = get(eventTypeName);
-            if (!eventTypeResult.isSuccessful())
-                return Result.problem(eventTypeResult.getProblem());
-
-            return Result.ok(eventTypeResult.getValue().getSchema());
-        }
-
-        try {
-            final EventTypeSchema schema = eventTypeRepository.findSchemaVersionByEventTypeName(eventTypeName, version);
-            return Result.ok(schema);
-        } catch (final IllegalVersionNumberException e) {
-            LOG.debug("Malformed version number: {}", version);
-            return Result.problem(e.asProblem());
-        } catch (final NoSuchSchemaException e) {
-            LOG.debug("Could not find EventTypeSchema version: {} for EventType: {}", version, eventTypeName);
-            return Result.problem(e.asProblem());
-        } catch (final InternalNakadiException e) {
-            LOG.error("Problem loading event type schema version " + version + " for EventType " + eventTypeName, e);
             return Result.problem(e.asProblem());
         }
     }
