@@ -2,12 +2,10 @@ package org.zalando.nakadi.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.problem.Problem;
 
 import javax.ws.rs.core.Response;
-import java.util.List;
 
 @Component
 public class SchemaService {
@@ -32,9 +30,10 @@ public class SchemaService {
                     "'offset' parameter can't be lower than 0"));
         }
 
-        final List<EventTypeSchema> schemas = schemaRepository.getSchemas(name, offset, limit + 1);
         return Result.ok(paginationService
-                .paginate(schemas, offset,  limit, "/schemas", () -> schemaRepository.getSchemasCount(name)));
+                .paginate(offset,  limit, "/schemas",
+                        (o, l) -> schemaRepository.getSchemas(name, o, l),
+                        () -> schemaRepository.getSchemasCount(name)));
     }
 
 }

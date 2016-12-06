@@ -12,11 +12,12 @@ import java.util.function.Supplier;
 @Component
 public class PaginationService {
 
-    public PaginationWrapper paginate(final List items,
-                                      final int offset,
+    public PaginationWrapper paginate(final int offset,
                                       final int limit,
                                       final String path,
+                                      final ItemsSupplier itemsSupplier,
                                       final Supplier<Integer> countSupplier) {
+        final List items = itemsSupplier.queryOneMore(offset, limit);
         final PaginationLinks paginationLinks;
         if (items.isEmpty() && offset != 0 && limit != 0) {
             final int count = countSupplier.get();
@@ -53,6 +54,15 @@ public class PaginationService {
         }
 
         return new PaginationLinks(prevLink, nextLink);
+    }
+
+    public interface ItemsSupplier {
+
+        List query(final int offset, final int limit);
+
+        default List  queryOneMore(final int offset, final int limit) {
+            return query(offset, limit + 1);
+        }
     }
 
 }
