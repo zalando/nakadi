@@ -15,6 +15,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
+import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
@@ -140,12 +141,13 @@ public class EventTypeController {
         return status(HttpStatus.OK).body(result.getValue());
     }
 
-    @RequestMapping(value = "/{name:.+}/schemas/latest", method = RequestMethod.GET)
-    public ResponseEntity<?> getLatestSchema(@PathVariable final String name, final NativeWebRequest request) {
-        final Result<EventType> eventTypeResult = eventTypeService.get(name);
-        if (!eventTypeResult.isSuccessful()) {
-            return Responses.create(eventTypeResult.getProblem(), request);
+    @RequestMapping(value = "/{name:.+}/schemas/{version:.+}", method = RequestMethod.GET)
+    public ResponseEntity<?> getLatestSchema(@PathVariable final String name, @PathVariable final String version,
+                                             final NativeWebRequest request) {
+        final Result<EventTypeSchema> schemaResult = eventTypeService.getSchema(name, version);
+        if (!schemaResult.isSuccessful()) {
+            return Responses.create(schemaResult.getProblem(), request);
         }
-        return status(HttpStatus.OK).body(eventTypeResult.getValue().getSchema().getSchema());
+        return status(HttpStatus.OK).body(schemaResult.getValue().getSchema());
     }
 }

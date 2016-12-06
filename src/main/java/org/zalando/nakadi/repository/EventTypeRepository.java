@@ -2,9 +2,12 @@ package org.zalando.nakadi.repository;
 
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.IllegalVersionNumberException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.NoSuchSchemaException;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +17,9 @@ public interface EventTypeRepository {
     EventType saveEventType(EventTypeBase eventType) throws InternalNakadiException, DuplicatedEventTypeNameException;
 
     EventType findByName(String name) throws InternalNakadiException, NoSuchEventTypeException;
+
+    EventTypeSchema findSchemaVersionByEventTypeName(String eventTypeName, String version)
+            throws InternalNakadiException, NoSuchSchemaException, IllegalVersionNumberException;
 
     void update(EventType eventType) throws InternalNakadiException, NoSuchEventTypeException;
 
