@@ -98,7 +98,6 @@ dependencies {
     compile 'org.springframework:spring-context:4.2.0.RELEASE'
     compile 'org.springframework:spring-web:4.2.0.RELEASE'
     compile 'org.springframework:spring-webmvc:4.2.0.RELEASE'
-    compile 'org.springframework.data:spring-data-commons-core:1.4.1.RELEASE'
 
     // oauth
     compile 'org.springframework.security.oauth:spring-security-oauth2:2.0.8.RELEASE'
