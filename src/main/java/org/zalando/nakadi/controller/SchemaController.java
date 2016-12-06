@@ -34,15 +34,4 @@ public class SchemaController {
         return Responses.create(result.getProblem(), request);
     }
 
-    @RequestMapping(value = "/event-types/{name}/schemas/{version}")
-    public ResponseEntity<?> getSchemaVersion(
-            @PathVariable("name") final String name,
-            @PathVariable("version") final String version,
-            final NativeWebRequest request) {
-        final Result<?> result = schemaService.getSchema(name, version);
-        if (result.isSuccessful())
-            return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
-        return Responses.create(result.getProblem(), request);
-    }
-
 }

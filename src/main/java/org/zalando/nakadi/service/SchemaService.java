@@ -8,13 +8,9 @@ import org.zalando.problem.Problem;
 
 import javax.ws.rs.core.Response;
 import java.util.List;
-import java.util.regex.Pattern;
 
 @Component
 public class SchemaService {
-
-    private static final Pattern PATTERN_SCHEMA = Pattern.compile("\\d+\\.\\d+\\.\\d+|latest");
-    private static final String KEY_LATEST_VERSION = "latest";
 
     private final SchemaRepository schemaRepository;
     private final PaginationService paginationService;
@@ -41,19 +37,4 @@ public class SchemaService {
                 .paginate(schemas, offset,  limit, "/schemas", () -> schemaRepository.getSchemasCount(name)));
     }
 
-    public Result<?> getSchema(final String name, final String version) {
-        if (!PATTERN_SCHEMA.matcher(version).matches())
-            return Result.problem(
-                    Problem.valueOf(Response.Status.PRECONDITION_FAILED, "Schema version format is wrong"));
-
-        if (KEY_LATEST_VERSION.equalsIgnoreCase(version)) {
-            return beautifyResult(schemaRepository.getLatestSchemaByName(name));
-        }
-
-        return beautifyResult(schemaRepository.getSchemaByName(name, version));
-    }
-
-    private Result<?> beautifyResult(final EventTypeSchema schema) {
-        return schema == null ? Result.notFound("Schema is not found") : Result.ok(schema);
-    }
 }

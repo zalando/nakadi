@@ -35,32 +35,6 @@ public class SchemaRepository extends AbstractDbRepository {
                 Integer.class);
     }
 
-    public EventTypeSchema getSchemaByName(final String name, final String version) {
-        final List<EventTypeSchema> eventTypeSchemas = jdbcTemplate.query(
-                "SELECT ets_schema_object FROM zn_data.event_type_schema " +
-                        "WHERE ets_event_type_name = ? AND ets_schema_object->>'version' = ?",
-                new Object[]{name, version},
-                new SchemaRowMapper());
-
-        if (eventTypeSchemas.isEmpty()) {
-            return null;
-        }
-        return eventTypeSchemas.get(0);
-    }
-
-    public EventTypeSchema getLatestSchemaByName(final String name) {
-        final List<EventTypeSchema> eventTypeSchemas = jdbcTemplate.query(
-                "SELECT ets_schema_object FROM zn_data.event_type_schema " +
-                        "WHERE ets_event_type_name = ? ORDER BY ets_schema_object->>'version' DESC LIMIT 1",
-                new Object[]{name},
-                new SchemaRowMapper());
-
-        if (eventTypeSchemas.isEmpty()) {
-            return null;
-        }
-        return eventTypeSchemas.get(0);
-    }
-
     private final class SchemaRowMapper implements RowMapper<EventTypeSchema> {
         @Override
         public EventTypeSchema mapRow(ResultSet rs, int rowNum) throws SQLException {
