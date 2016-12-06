@@ -46,6 +46,13 @@ public class NakadiTestUtils {
                 .post("/event-types");
     }
 
+    public static void updateEventTypeInNakadi(final EventType eventType) throws JsonProcessingException {
+        given()
+                .body(MAPPER.writeValueAsString(eventType))
+                .contentType(JSON)
+                .put("/event-types/" + eventType.getName());
+    }
+
     public static EventType createBusinessEventTypeWithPartitions(final int partitionNum)
             throws JsonProcessingException {
         final EventTypeStatistics statistics = new EventTypeStatistics();

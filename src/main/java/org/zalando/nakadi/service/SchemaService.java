@@ -15,6 +15,7 @@ public class SchemaService {
 
     private static final Pattern PATTERN_SCHEMA = Pattern.compile("\\d+\\.\\d+\\.\\d+|latest");
     private static final String KEY_LATEST_VERSION = "latest";
+
     private final SchemaRepository schemaRepository;
     private final PaginationService paginationService;
 
@@ -37,7 +38,7 @@ public class SchemaService {
 
         final List<EventTypeSchema> schemas = schemaRepository.getSchemas(name, offset, limit + 1);
         return Result.ok(paginationService
-                .paginate(schemas, offset,  limit, () -> schemaRepository.getSchemasCount(name)));
+                .paginate(schemas, offset,  limit, "/schemas", () -> schemaRepository.getSchemasCount(name)));
     }
 
     public Result<?> getSchema(final String name, final String version) {
