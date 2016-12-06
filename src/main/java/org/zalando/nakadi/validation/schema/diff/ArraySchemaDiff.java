@@ -1,5 +1,7 @@
 package org.zalando.nakadi.validation.schema.diff;
 
+import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableList;
 import org.everit.json.schema.ArraySchema;
 import org.everit.json.schema.Schema;
 import org.zalando.nakadi.domain.SchemaChange;
@@ -16,38 +18,16 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.NUMBER_OF_ITEMS_CHANGE
 public class ArraySchemaDiff {
     static void recursiveCheck(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath,
                                        final List<SchemaChange> changes) {
-        jsonPath.push("items");
-        SchemaDiff.recursiveCheck(original.getAllItemSchema(), update.getAllItemSchema(), jsonPath, changes);
-        jsonPath.pop();
+        compareItemSchemaObject(original, update, jsonPath, changes);
 
-        if ((original.getItemSchemas() != null && update.getItemSchemas() == null)
-                || (original.getItemSchemas() == null && update.getItemSchemas() != null)) {
-            SchemaDiff.addChange(NUMBER_OF_ITEMS_CHANGED, jsonPath, changes);
-        } else if (original.getItemSchemas() != null && update.getItemSchemas() != null) {
-            if (original.getItemSchemas().size() != update.getItemSchemas().size()) {
-                SchemaDiff.addChange(NUMBER_OF_ITEMS_CHANGED, jsonPath, changes);
-            } else {
-                final Iterator<Schema> originalIterator = original.getItemSchemas().iterator();
-                final Iterator<Schema> updateIterator = update.getItemSchemas().iterator();
-                int index = 0;
-                while (originalIterator.hasNext()) {
-                    jsonPath.push("items/" + index);
-                    SchemaDiff.recursiveCheck(originalIterator.next(), updateIterator.next(), jsonPath, changes);
-                    jsonPath.pop();
-                    index += 1;
-                }
-            }
-        }
+        compareItemSchemaArray(original, update, jsonPath, changes);
 
-        jsonPath.push("additionalItems");
-        if (original.permitsAdditionalItems() != update.permitsAdditionalItems()) {
-            SchemaDiff.addChange(ADDITIONAL_ITEMS_CHANGED, jsonPath, changes);
-        } else {
-            SchemaDiff.recursiveCheck(original.getSchemaOfAdditionalItems(), update.getSchemaOfAdditionalItems(),
-                    jsonPath, changes);
-        }
-        jsonPath.pop();
+        compareAdditionalItems(original, update, jsonPath, changes);
 
+        compareAttributes(original, update, jsonPath, changes);
+    }
+
+    private static void compareAttributes(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
         if (!Objects.equals(original.getMaxItems(), update.getMaxItems())) {
             SchemaDiff.addChange("maxItems", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
         }
@@ -59,5 +39,42 @@ public class ArraySchemaDiff {
         if (original.needsUniqueItems() != update.needsUniqueItems()) {
             SchemaDiff.addChange("uniqueItems", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
         }
+    }
+
+    private static void compareAdditionalItems(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+        jsonPath.push("additionalItems");
+        if (original.permitsAdditionalItems() != update.permitsAdditionalItems()) {
+            SchemaDiff.addChange(ADDITIONAL_ITEMS_CHANGED, jsonPath, changes);
+        } else {
+            SchemaDiff.recursiveCheck(original.getSchemaOfAdditionalItems(), update.getSchemaOfAdditionalItems(),
+                    jsonPath, changes);
+        }
+        jsonPath.pop();
+    }
+
+    private static void compareItemSchemaArray(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+        final List<Schema> emptyList = ImmutableList.of();
+        final List<Schema> originalSchemas = MoreObjects.firstNonNull(original.getItemSchemas(), emptyList);
+        final List<Schema> updateSchemas = MoreObjects.firstNonNull(update.getItemSchemas(), emptyList);
+
+        if (originalSchemas.size() != updateSchemas.size()) {
+            SchemaDiff.addChange(NUMBER_OF_ITEMS_CHANGED, jsonPath, changes);
+        } else {
+            final Iterator<Schema> originalIterator = originalSchemas.iterator();
+            final Iterator<Schema> updateIterator = updateSchemas.iterator();
+            int index = 0;
+            while (originalIterator.hasNext()) {
+                jsonPath.push("items/" + index);
+                SchemaDiff.recursiveCheck(originalIterator.next(), updateIterator.next(), jsonPath, changes);
+                jsonPath.pop();
+                index += 1;
+            }
+        }
+    }
+
+    private static void compareItemSchemaObject(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+        jsonPath.push("items");
+        SchemaDiff.recursiveCheck(original.getAllItemSchema(), update.getAllItemSchema(), jsonPath, changes);
+        jsonPath.pop();
     }
 }

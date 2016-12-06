@@ -24,24 +24,42 @@ public class ObjectSchemaDiff {
     static void recursiveCheck(final ObjectSchema original, final ObjectSchema update,
                                        final Stack<String> jsonPath,
                                        final List<SchemaChange> changes) {
-        jsonPath.push("properties");
-        for (final Map.Entry<String, Schema> property : original.getPropertySchemas().entrySet()) {
-            jsonPath.push(property.getKey());
-            if (!update.getPropertySchemas().containsKey(property.getKey())) {
-                SchemaDiff.addChange(PROPERTY_REMOVED, jsonPath, changes);
-            } else {
-                SchemaDiff.recursiveCheck(property.getValue(), update.getPropertySchemas().get(property.getKey()),
-                        jsonPath, changes);
-            }
-            jsonPath.pop();
+        compareProperties(original, update, jsonPath, changes);
+
+        compareDependencies(original, update, jsonPath, changes);
+
+        compareAdditionalProperties(original, update, jsonPath, changes);
+
+        compareAttributes(original, update, jsonPath, changes);
+    }
+
+    private static void compareAttributes(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+        if (!(original.getRequiredProperties().containsAll(update.getRequiredProperties())
+                && update.getRequiredProperties().containsAll(original.getRequiredProperties()))) {
+            SchemaDiff.addChange("required", REQUIRED_ARRAY_CHANGED, jsonPath, changes);
         }
 
-        if (update.getPropertySchemas().size() > original.getPropertySchemas().size()) {
-            SchemaDiff.addChange(PROPERTIES_ADDED, jsonPath, changes);
+        if (!Objects.equals(original.getMaxProperties(), update.getMaxProperties())) {
+            SchemaDiff.addChange("maxProperties", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
         }
 
+        if (!Objects.equals(original.getMinProperties(), update.getMinProperties())) {
+            SchemaDiff.addChange("minProperties", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
+        }
+    }
+
+    private static void compareAdditionalProperties(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+        jsonPath.push("additionalProperties");
+        if (original.permitsAdditionalProperties() != update.permitsAdditionalProperties()) {
+            SchemaDiff.addChange(ADDITIONAL_PROPERTIES_CHANGED, jsonPath, changes);
+        } else {
+            SchemaDiff.recursiveCheck(original.getSchemaOfAdditionalProperties(),
+                    update.getSchemaOfAdditionalProperties(), jsonPath, changes);
+        }
         jsonPath.pop();
+    }
 
+    private static void compareDependencies(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
         jsonPath.push("dependencies");
         for (final Map.Entry<String, Set<String>> dependency : original.getPropertyDependencies().entrySet()) {
             jsonPath.push(dependency.getKey());
@@ -74,27 +92,23 @@ public class ObjectSchemaDiff {
             }
         }
         jsonPath.pop();
+    }
 
-        jsonPath.push("additionalProperties");
-        if (original.permitsAdditionalProperties() != update.permitsAdditionalProperties()) {
-            SchemaDiff.addChange(ADDITIONAL_PROPERTIES_CHANGED, jsonPath, changes);
-        } else {
-            SchemaDiff.recursiveCheck(original.getSchemaOfAdditionalProperties(),
-                    update.getSchemaOfAdditionalProperties(), jsonPath, changes);
+    private static void compareProperties(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+        jsonPath.push("properties");
+        for (final Map.Entry<String, Schema> property : original.getPropertySchemas().entrySet()) {
+            jsonPath.push(property.getKey());
+            if (!update.getPropertySchemas().containsKey(property.getKey())) {
+                SchemaDiff.addChange(PROPERTY_REMOVED, jsonPath, changes);
+            } else {
+                SchemaDiff.recursiveCheck(property.getValue(), update.getPropertySchemas().get(property.getKey()),
+                        jsonPath, changes);
+            }
+            jsonPath.pop();
+        }
+        if (update.getPropertySchemas().size() > original.getPropertySchemas().size()) {
+            SchemaDiff.addChange(PROPERTIES_ADDED, jsonPath, changes);
         }
         jsonPath.pop();
-
-        if (!(original.getRequiredProperties().containsAll(update.getRequiredProperties())
-                && update.getRequiredProperties().containsAll(original.getRequiredProperties()))) {
-            SchemaDiff.addChange("required", REQUIRED_ARRAY_CHANGED, jsonPath, changes);
-        }
-
-        if (!Objects.equals(original.getMaxProperties(), update.getMaxProperties())) {
-            SchemaDiff.addChange("maxProperties", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
-        }
-
-        if (!Objects.equals(original.getMinProperties(), update.getMinProperties())) {
-            SchemaDiff.addChange("minProperties", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
-        }
     }
 }
