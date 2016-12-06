@@ -1,6 +1,5 @@
 package org.zalando.nakadi.validation.schema;
 
-import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 
@@ -10,11 +9,11 @@ public class CompatibleSchemaChangeConstraint implements SchemaEvolutionConstrai
     // TODO: to be done next
     @Override
     public Optional<SchemaEvolutionIncompatibility> validate(final EventType original, final EventTypeBase eventType) {
-        if (original.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
-            if(!original.getSchema().getSchema().equals(eventType.getSchema().getSchema())) {
-                return Optional.of(new SchemaEvolutionIncompatibility("not yet implemented schema changes"));
-            }
-        }
+//        if (original.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
+//            if(!original.getSchema().getSchema().equals(eventType.getSchema().getSchema())) {
+//                return Optional.of(new SchemaEvolutionIncompatibility("not yet implemented schema changes"));
+//            }
+//        }
         return Optional.empty();
     }
 }

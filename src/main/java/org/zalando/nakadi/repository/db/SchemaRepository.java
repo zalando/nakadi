@@ -13,18 +13,26 @@ import java.sql.SQLException;
 import java.util.List;
 
 @Component
-public class SchemaRepository extends AbstractDbRepository /*implements PagingAndSortingRepository*/ {
+public class SchemaRepository extends AbstractDbRepository {
 
     @Autowired
     public SchemaRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper) {
         super(jdbcTemplate, objectMapper);
     }
 
-    public List<EventTypeSchema> getSchemas(final String name) {
+    public List<EventTypeSchema> getSchemas(final String name, final int offset, final int limit) {
         return jdbcTemplate.query(
-                "SELECT ets_schema_object FROM zn_data.event_type_schema WHERE ets_event_type_name = ?",
-                new Object[]{name},
+                "SELECT ets_schema_object FROM zn_data.event_type_schema " +
+                        "WHERE ets_event_type_name = ? ORDER BY ets_schema_object->>'version' DESC LIMIT ? OFFSET ? ",
+                new Object[]{name, limit, offset},
                 new SchemaRowMapper());
+    }
+
+    public int getSchemasCount(final String name) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM zn_data.event_type_schema WHERE ets_event_type_name = ?",
+                new Object[]{name},
+                Integer.class);
     }
 
     public EventTypeSchema getSchemaByName(final String name, final String version) {
@@ -40,7 +48,7 @@ public class SchemaRepository extends AbstractDbRepository /*implements PagingAn
         return eventTypeSchemas.get(0);
     }
 
-    public EventTypeSchema getLastSchemaByName(final String name) {
+    public EventTypeSchema getLatestSchemaByName(final String name) {
         final List<EventTypeSchema> eventTypeSchemas = jdbcTemplate.query(
                 "SELECT ets_schema_object FROM zn_data.event_type_schema " +
                         "WHERE ets_event_type_name = ? ORDER BY ets_schema_object->>'version' DESC LIMIT 1",
