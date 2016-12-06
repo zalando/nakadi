@@ -15,7 +15,6 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
-import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;

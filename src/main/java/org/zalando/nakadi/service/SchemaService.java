@@ -44,7 +44,7 @@ public class SchemaService {
                 .paginate(schemas, offset,  limit, "/schemas", () -> schemaRepository.getSchemasCount(name)));
     }
 
-    public Result<EventTypeSchema> getSchemaVersion(String name, String version) {
+    public Result<EventTypeSchema> getSchemaVersion(final String name, final String version) {
         try {
             final EventTypeSchema schema = schemaRepository.getSchemaVersion(name, version);
             return Result.ok(schema);

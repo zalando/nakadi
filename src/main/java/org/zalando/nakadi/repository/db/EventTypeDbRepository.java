@@ -15,20 +15,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.IllegalVersionNumberException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchSchemaException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @DB
 @Component
