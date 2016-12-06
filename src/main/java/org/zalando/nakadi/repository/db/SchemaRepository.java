@@ -37,7 +37,7 @@ public class SchemaRepository extends AbstractDbRepository {
 
     private final class SchemaRowMapper implements RowMapper<EventTypeSchema> {
         @Override
-        public EventTypeSchema mapRow(ResultSet rs, int rowNum) throws SQLException {
+        public EventTypeSchema mapRow(final ResultSet rs, final int rowNum) throws SQLException {
             try {
                 return jsonMapper.readValue(rs.getString("ets_schema_object"), EventTypeSchema.class);
             } catch (IOException e) {
