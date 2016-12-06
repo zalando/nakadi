@@ -580,23 +580,6 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPUTDifferentEventTypeSchemaThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        final EventType persistedEventType = buildDefaultEventType();
-        persistedEventType.setName(eventType.getName());
-        persistedEventType.getSchema().setSchema("different");
-
-        final Problem expectedProblem = new InvalidEventTypeException("not yet implemented schema changes").asProblem();
-
-        Mockito.doReturn(persistedEventType).when(eventTypeRepository).findByName(persistedEventType.getName());
-
-        putEventType(eventType, persistedEventType.getName()).andExpect(status().isUnprocessableEntity())
-                                                             .andExpect(content().contentType(
-                                                                     "application/problem+json")).andExpect(content()
-                                                                     .string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenPUTInexistingEventTypeThen404() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
