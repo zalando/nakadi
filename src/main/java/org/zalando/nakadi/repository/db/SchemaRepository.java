@@ -3,9 +3,13 @@ package org.zalando.nakadi.repository.db;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventTypeSchema;
 
+import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
 @Component
@@ -17,25 +21,47 @@ public class SchemaRepository extends AbstractDbRepository /*implements PagingAn
     }
 
     public List<EventTypeSchema> getSchemas(final String name) {
-        return jdbcTemplate.queryForList(
-                "SELECT * FROM zn_data.event_type_schema WHERE name = ?",
+        return jdbcTemplate.query(
+                "SELECT ets_schema_object FROM zn_data.event_type_schema WHERE ets_event_type_name = ?",
                 new Object[]{name},
-                EventTypeSchema.class);
+                new SchemaRowMapper());
     }
 
     public EventTypeSchema getSchemaByName(final String name, final String version) {
-        return jdbcTemplate.queryForObject(
-                "SELECT * FROM zn_data.event_type_schema WHERE name = ? AND version = ?",
-                EventTypeSchema.class,
-                new Object[]{name, version});
+        final List<EventTypeSchema> eventTypeSchemas = jdbcTemplate.query(
+                "SELECT ets_schema_object FROM zn_data.event_type_schema " +
+                        "WHERE ets_event_type_name = ? AND ets_schema_object->>'version' = ?",
+                new Object[]{name, version},
+                new SchemaRowMapper());
+
+        if (eventTypeSchemas.isEmpty()) {
+            return null;
+        }
+        return eventTypeSchemas.get(0);
     }
 
     public EventTypeSchema getLastSchemaByName(final String name) {
-        return jdbcTemplate.queryForObject(
-                "SELECT * FROM zn_data.event_type_schema WHERE name = ? ORDER BY version DESC LIMIT 1",
-                EventTypeSchema.class,
-                new Object[]{name});
+        final List<EventTypeSchema> eventTypeSchemas = jdbcTemplate.query(
+                "SELECT ets_schema_object FROM zn_data.event_type_schema " +
+                        "WHERE ets_event_type_name = ? ORDER BY ets_schema_object->>'version' DESC LIMIT 1",
+                new Object[]{name},
+                new SchemaRowMapper());
+
+        if (eventTypeSchemas.isEmpty()) {
+            return null;
+        }
+        return eventTypeSchemas.get(0);
     }
 
+    private final class SchemaRowMapper implements RowMapper<EventTypeSchema> {
+        @Override
+        public EventTypeSchema mapRow(ResultSet rs, int rowNum) throws SQLException {
+            try {
+                return jsonMapper.readValue(rs.getString("ets_schema_object"), EventTypeSchema.class);
+            } catch (IOException e) {
+                throw new SQLException(e);
+            }
+        }
+    }
 
 }

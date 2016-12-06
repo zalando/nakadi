@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
 @Component
 public class SchemaService {
 
-    private static final Pattern PATTERN_SCHEMA = Pattern.compile("/(\\d+\\.\\d+\\.\\d+)|(latest)/i");
-    private static final String LATEST = "latest";
+    private static final Pattern PATTERN_SCHEMA = Pattern.compile("\\d+\\.\\d+\\.\\d+|latest");
+    private static final String KEY_LATEST_VERSION = "latest";
     private final SchemaRepository schemaRepository;
 
     @Autowired
@@ -26,15 +26,19 @@ public class SchemaService {
         return Result.ok(schemaRepository.getSchemas(name));
     }
 
-    public Result<EventTypeSchema> getSchema(final String name, final String version) {
+    public Result<?> getSchema(final String name, final String version) {
         if (!PATTERN_SCHEMA.matcher(version).matches())
             return Result.problem(
                     Problem.valueOf(Response.Status.PRECONDITION_FAILED, "Schema version format is wrong"));
 
-        if (LATEST.equalsIgnoreCase(version))
-            return Result.ok(schemaRepository.getLastSchemaByName(name));
+        if (KEY_LATEST_VERSION.equalsIgnoreCase(version)) {
+            return beautifyResult(schemaRepository.getLastSchemaByName(name));
+        }
 
-        return Result.ok(schemaRepository.getSchemaByName(name, version));
+        return beautifyResult(schemaRepository.getSchemaByName(name, version));
     }
 
+    private Result<?> beautifyResult(final EventTypeSchema schema) {
+        return schema == null ? Result.notFound("Schema is not found") : Result.ok(schema);
+    }
 }
