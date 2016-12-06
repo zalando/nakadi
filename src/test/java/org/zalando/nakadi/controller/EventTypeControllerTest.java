@@ -753,37 +753,6 @@ public class EventTypeControllerTest {
                         "Field \\\"options.retention_time\\\" can not be less than 100")));
     }
 
-    @Test
-    public void whenGetLatestSchemaThen200() throws Exception {
-        final EventType defaultEventType = buildDefaultEventType();
-
-        final String eventTypeName = defaultEventType.getName();
-
-        Mockito.doReturn(defaultEventType).when(eventTypeRepository).findByName(eventTypeName);
-
-        getLatestSchema(eventTypeName)
-                .andExpect(status().is2xxSuccessful())
-                .andExpect(content().json(defaultEventType.getSchema().getSchema()));
-    }
-
-    @Test
-    public void askingForTheSchemaOfANonExistingEventTypeResultsIn404() throws Exception {
-        final String eventTypeName = randomValidEventTypeName();
-        when(eventTypeRepository.findByName(anyString())).thenThrow(new NoSuchEventTypeException(
-                String.format("EventType '%s' does not exist.", eventTypeName)));
-
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/"
-                + eventTypeName + "/schemas/latest").accept(APPLICATION_JSON);
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND,
-                "EventType '" + eventTypeName + "' does not exist.");
-
-        mockMvc.perform(requestBuilder).andExpect(status().is(404))
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                .andExpect(content().string(
-                matchesProblem(expectedProblem)));
-    }
-
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
         return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }
