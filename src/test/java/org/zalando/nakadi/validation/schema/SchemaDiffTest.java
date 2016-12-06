@@ -6,6 +6,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.io.IOException;
 import java.util.List;

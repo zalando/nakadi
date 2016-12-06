@@ -18,7 +18,7 @@ import org.zalando.nakadi.validation.schema.FixedSchemaChangeConstraint;
 import org.zalando.nakadi.validation.schema.EnrichmentStrategyConstraint;
 import org.zalando.nakadi.validation.schema.PartitionKeyFieldsConstraint;
 import org.zalando.nakadi.validation.schema.PartitionStrategyConstraint;
-import org.zalando.nakadi.validation.schema.SchemaDiff;
+import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 
 import java.io.IOException;
