@@ -41,11 +41,16 @@ public class SchemaRepository extends AbstractDbRepository {
         if (!versionMatcher.matches()) {
             throw new IllegalVersionNumberException(version);
         }
-        final String sql = "SELECT et_event_type_object -> 'schema' ->> 'schema' FROM zn_data.event_type " +
-                "WHERE et_name = ? AND et_event_type_object -> 'schema' ->> 'version' = ?";
+        final String sql = "SELECT ets_schema_object FROM zn_data.event_type_schema " +
+                "WHERE ets_event_type_name = ? AND ets_schema_object ->> 'version' = ?";
 
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{name, version}, new EventTypeSchemaMapper());
+            final List<EventTypeSchema> schemas =
+                    jdbcTemplate.query(sql, new Object[]{name, version}, new SchemaRowMapper());
+            if (schemas.size() != 1)
+                throw new InternalNakadiException(
+                        String.format("Unexpected number of schemas with version {}: {}", version, schemas.size()));
+            return schemas.get(0);
         } catch (EmptyResultDataAccessException e) {
             throw new NoSuchSchemaException("EventType \"" + name
                     + "\" has no schema with version \"" + version + "\"", e);
@@ -69,17 +74,4 @@ public class SchemaRepository extends AbstractDbRepository {
             }
         }
     }
-
-    private class EventTypeSchemaMapper implements RowMapper<EventTypeSchema> {
-        @Override
-        public EventTypeSchema mapRow(final ResultSet rs, final int rowNum) throws SQLException {
-            try {
-                final EventTypeSchema eventTypeSchema = jsonMapper.readValue(rs.getString(0), EventTypeSchema.class);
-                return eventTypeSchema;
-            } catch (IOException e) {
-                throw new SQLException(e);
-            }
-        }
-    }
-
 }

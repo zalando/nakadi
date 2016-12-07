@@ -1,6 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import org.apache.http.protocol.HTTP;
 import org.springframework.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Before;

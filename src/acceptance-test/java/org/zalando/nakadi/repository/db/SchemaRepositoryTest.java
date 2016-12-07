@@ -29,17 +29,7 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void whenListVersionsListedOrdered() throws Exception {
-        final EventTypeSchemaBase schemaBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.JSON_SCHEMA, "schema");
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .name("test_et_name_schemarepositorytest")
-                .schema(new EventTypeSchema(schemaBase, "1.0.2", DateTime.now()))
-                .build();
-        insertEventType(eventType);
-        insertSchema(eventType);
-        eventType.setSchema(new EventTypeSchema(schemaBase, "2.10.3", DateTime.now()));
-        insertSchema(eventType);
-        eventType.setSchema(new EventTypeSchema(schemaBase, "10.0.0", DateTime.now()));
-        insertSchema(eventType);
+        buildEventWithMultipleSchemas("test_et_name_schemarepositorytest");
 
         final List<EventTypeSchema> schemas = repository.getSchemas("test_et_name_schemarepositorytest", 0, 3);
         Assert.assertEquals(3, schemas.size());
@@ -49,6 +39,36 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
 
         final int count = repository.getSchemasCount("test_et_name_schemarepositorytest");
         Assert.assertEquals(3, count);
+    }
+
+    @Test
+    public void whenGetLatestSchemaReturnLatest() throws Exception {
+        buildEventWithMultipleSchemas("test_latest_schema_event");
+        final EventTypeSchema schema = repository.getSchemaVersion("test_latest_schema_event", "10.0.0");
+        Assert.assertEquals("10.0.0", schema.getVersion().toString());
+        Assert.assertEquals("schema", schema.getSchema());
+    }
+
+    @Test
+    public void whenGetOldSchemaReturnOld() throws Exception {
+        buildEventWithMultipleSchemas("test_old_schema_event");
+        final EventTypeSchema schema = repository.getSchemaVersion("test_old_schema_event", "1.0.2");
+        Assert.assertEquals("1.0.2", schema.getVersion().toString());
+        Assert.assertEquals("schema", schema.getSchema());
+    }
+
+    private void buildEventWithMultipleSchemas(final String name) throws Exception {
+        final EventTypeSchemaBase schemaBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.JSON_SCHEMA, "schema");
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .name(name)
+                .schema(new EventTypeSchema(schemaBase, "1.0.2", DateTime.now()))
+                .build();
+        insertEventType(eventType);
+        insertSchema(eventType);
+        eventType.setSchema(new EventTypeSchema(schemaBase, "2.10.3", DateTime.now()));
+        insertSchema(eventType);
+        eventType.setSchema(new EventTypeSchema(schemaBase, "10.0.0", DateTime.now()));
+        insertSchema(eventType);
     }
 
     private void insertSchema(final EventType eventType) throws JsonProcessingException {

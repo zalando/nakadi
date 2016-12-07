@@ -4,10 +4,16 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.exceptions.IllegalVersionNumberException;
+import org.zalando.nakadi.exceptions.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 
 import javax.ws.rs.core.Response;
+
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public class SchemaServiceTest {
 
@@ -50,6 +56,43 @@ public class SchemaServiceTest {
     public void testSuccess() {
         final Result<PaginationWrapper> result = (Result<PaginationWrapper>) schemaService.getSchemas("name", 0, 1000);
         Assert.assertTrue(result.isSuccessful());
+    }
+
+    @Test
+    public void testIllegalVersionNumber() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        Mockito.when(schemaRepository.getSchemaVersion(eventType.getName() + "wrong",
+                eventType.getSchema().getVersion().toString()))
+                .thenThrow(IllegalVersionNumberException.class);
+        final Result<EventTypeSchema> result = schemaService.getSchemaVersion(eventType.getName() + "wrong",
+                eventType.getSchema().getVersion().toString());
+        Assert.assertFalse(result.isSuccessful());
+        Assert.assertEquals(Response.Status.NOT_FOUND, result.getProblem().getStatus());
+    }
+
+    @Test
+    public void testNonExistingVersionNumber() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(),
+                eventType.getSchema().getVersion().bumpMinor().toString()))
+                .thenThrow(NoSuchSchemaException.class);
+        final Result<EventTypeSchema> result = schemaService.getSchemaVersion(eventType.getName(),
+                eventType.getSchema().getVersion().bumpMinor().toString());
+        Assert.assertFalse(result.isSuccessful());
+        Assert.assertEquals(Response.Status.NOT_FOUND, result.getProblem().getStatus());
+    }
+
+    @Test
+    public void testGetSchemaSuccess() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(),
+                eventType.getSchema().getVersion().toString()))
+                .thenReturn(eventType.getSchema());
+        final Result<EventTypeSchema> result =
+                schemaService.getSchemaVersion(eventType.getName(), eventType.getSchema().getVersion().toString());
+        Assert.assertTrue(result.isSuccessful());
+        Assert.assertEquals(eventType.getSchema().getVersion().toString(), result.getValue().getVersion().toString());
+        Assert.assertEquals(eventType.getSchema().getSchema(), result.getValue().getSchema());
     }
 
 }
