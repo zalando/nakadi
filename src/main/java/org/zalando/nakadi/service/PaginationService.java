@@ -58,9 +58,9 @@ public class PaginationService {
 
     public interface ItemsSupplier {
 
-        List query(final int offset, final int limit);
+        List query(int offset, int limit);
 
-        default List  queryOneMore(final int offset, final int limit) {
+        default List queryOneMore(final int offset, final int limit) {
             return query(offset, limit + 1);
         }
     }
