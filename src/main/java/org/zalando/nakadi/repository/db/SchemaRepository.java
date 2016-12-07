@@ -7,7 +7,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.exceptions.IllegalVersionNumberException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSchemaException;
 
@@ -15,12 +14,9 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Component
 public class SchemaRepository extends AbstractDbRepository {
-    static final Pattern VERSION_PATTERN = Pattern.compile("\\d+\\.\\d+\\.\\d+");
 
     @Autowired
     public SchemaRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper) {
@@ -36,11 +32,7 @@ public class SchemaRepository extends AbstractDbRepository {
     }
 
     public EventTypeSchema getSchemaVersion(final String name, final String version)
-            throws NoSuchSchemaException, IllegalVersionNumberException, InternalNakadiException {
-        final Matcher versionMatcher = VERSION_PATTERN.matcher(version);
-        if (!versionMatcher.matches()) {
-            throw new IllegalVersionNumberException(version);
-        }
+            throws NoSuchSchemaException, InternalNakadiException {
         final String sql = "SELECT ets_schema_object FROM zn_data.event_type_schema " +
                 "WHERE ets_event_type_name = ? AND ets_schema_object ->> 'version' = ?";
 
