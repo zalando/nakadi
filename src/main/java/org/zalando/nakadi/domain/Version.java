@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public class Version {
+    public enum Level { MAJOR, MINOR, PATCH, NO_CHANGES }
+
     private final int major;
     private final int minor;
     private final int patch;
@@ -48,7 +50,12 @@ public class Version {
         return result;
     }
 
-    public Version bumpMinor() {
-        return new Version(this.major, this.minor + 1, 0);
+    public Version bump(final Version.Level level) {
+        switch (level) {
+            case MAJOR: return new Version(this.major + 1, this.minor, 0);
+            case MINOR: return new Version(this.major, this.minor + 1, 0);
+            case PATCH: return new Version(this.major, this.minor, this.patch + 1);
+            default: return new Version(this.major, this.minor, this.patch);
+        }
     }
 }
