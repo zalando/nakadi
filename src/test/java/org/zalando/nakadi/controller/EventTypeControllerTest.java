@@ -807,12 +807,6 @@ public class EventTypeControllerTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    private ResultActions getLatestSchema(final String eventTypeName) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName
-                + "/schemas/latest");
-        return mockMvc.perform(requestBuilder);
-    }
-
     private SameJSONAs<? super String> matchesProblem(final Problem expectedProblem) throws JsonProcessingException {
         return sameJSONAs(asJsonString(expectedProblem));
     }
