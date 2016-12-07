@@ -40,7 +40,6 @@ public class Version {
         if (major != version.major) return false;
         if (minor != version.minor) return false;
         return patch == version.patch;
-
     }
 
     @Override
