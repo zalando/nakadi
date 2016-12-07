@@ -27,7 +27,8 @@ public class ArraySchemaDiff {
         compareAttributes(original, update, jsonPath, changes);
     }
 
-    private static void compareAttributes(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+    private static void compareAttributes(final ArraySchema original, final ArraySchema update,
+                                          final Stack<String> jsonPath, final List<SchemaChange> changes) {
         if (!Objects.equals(original.getMaxItems(), update.getMaxItems())) {
             SchemaDiff.addChange("maxItems", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
         }
@@ -41,7 +42,8 @@ public class ArraySchemaDiff {
         }
     }
 
-    private static void compareAdditionalItems(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+    private static void compareAdditionalItems(final ArraySchema original, final ArraySchema update,
+                                               final Stack<String> jsonPath, final List<SchemaChange> changes) {
         jsonPath.push("additionalItems");
         if (original.permitsAdditionalItems() != update.permitsAdditionalItems()) {
             SchemaDiff.addChange(ADDITIONAL_ITEMS_CHANGED, jsonPath, changes);
@@ -52,7 +54,8 @@ public class ArraySchemaDiff {
         jsonPath.pop();
     }
 
-    private static void compareItemSchemaArray(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+    private static void compareItemSchemaArray(final ArraySchema original, final ArraySchema update,
+                                               final Stack<String> jsonPath, final List<SchemaChange> changes) {
         final List<Schema> emptyList = ImmutableList.of();
         final List<Schema> originalSchemas = MoreObjects.firstNonNull(original.getItemSchemas(), emptyList);
         final List<Schema> updateSchemas = MoreObjects.firstNonNull(update.getItemSchemas(), emptyList);
@@ -72,7 +75,8 @@ public class ArraySchemaDiff {
         }
     }
 
-    private static void compareItemSchemaObject(final ArraySchema original, final ArraySchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+    private static void compareItemSchemaObject(final ArraySchema original, final ArraySchema update,
+                                                final Stack<String> jsonPath, final List<SchemaChange> changes) {
         jsonPath.push("items");
         SchemaDiff.recursiveCheck(original.getAllItemSchema(), update.getAllItemSchema(), jsonPath, changes);
         jsonPath.pop();

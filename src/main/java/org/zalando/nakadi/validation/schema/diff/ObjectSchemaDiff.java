@@ -33,7 +33,8 @@ public class ObjectSchemaDiff {
         compareAttributes(original, update, jsonPath, changes);
     }
 
-    private static void compareAttributes(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+    private static void compareAttributes(final ObjectSchema original, final ObjectSchema update,
+                                          final Stack<String> jsonPath, final List<SchemaChange> changes) {
         if (!(original.getRequiredProperties().containsAll(update.getRequiredProperties())
                 && update.getRequiredProperties().containsAll(original.getRequiredProperties()))) {
             SchemaDiff.addChange("required", REQUIRED_ARRAY_CHANGED, jsonPath, changes);
@@ -48,7 +49,8 @@ public class ObjectSchemaDiff {
         }
     }
 
-    private static void compareAdditionalProperties(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+    private static void compareAdditionalProperties(final ObjectSchema original, final ObjectSchema update,
+                                                    final Stack<String> jsonPath, final List<SchemaChange> changes) {
         jsonPath.push("additionalProperties");
         if (original.permitsAdditionalProperties() != update.permitsAdditionalProperties()) {
             SchemaDiff.addChange(ADDITIONAL_PROPERTIES_CHANGED, jsonPath, changes);
@@ -59,7 +61,8 @@ public class ObjectSchemaDiff {
         jsonPath.pop();
     }
 
-    private static void compareDependencies(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+    private static void compareDependencies(final ObjectSchema original, final ObjectSchema update,
+                                            final Stack<String> jsonPath, final List<SchemaChange> changes) {
         jsonPath.push("dependencies");
         for (final Map.Entry<String, Set<String>> dependency : original.getPropertyDependencies().entrySet()) {
             jsonPath.push(dependency.getKey());
@@ -94,7 +97,8 @@ public class ObjectSchemaDiff {
         jsonPath.pop();
     }
 
-    private static void compareProperties(final ObjectSchema original, final ObjectSchema update, final Stack<String> jsonPath, final List<SchemaChange> changes) {
+    private static void compareProperties(final ObjectSchema original, final ObjectSchema update,
+                                          final Stack<String> jsonPath, final List<SchemaChange> changes) {
         jsonPath.push("properties");
         for (final Map.Entry<String, Schema> property : original.getPropertySchemas().entrySet()) {
             jsonPath.push(property.getKey());
