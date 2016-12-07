@@ -40,8 +40,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
-
 @Component
 public class EventTypeService {
 
@@ -140,13 +138,10 @@ public class EventTypeService {
             }
 
             validateName(eventTypeName, eventTypeBase);
-            validatePartitionKeys(Optional.empty(), eventTypeBase);
             validateSchema(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
-            enrichment.validate(eventType);
-            partitionResolver.validate(eventType);
             eventTypeRepository.update(eventType);
             return Result.ok();
         } catch (final InvalidEventTypeException e) {
@@ -200,14 +195,16 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            if (eventType.getCompatibilityMode() == CompatibilityMode.DEPRECATED) {
+            if (eventType.getCompatibilityMode() == CompatibilityMode.FIXED) {
                 throw new InvalidEventTypeException(
                         "\"compatibility_mode\" should be either \"compatible\" or \"none\"");
             }
 
-            validatePartitionKeys(Optional.of(schema), eventType);
-            validateJsonSchemaConstraints(schemaAsJson);
+            validatePartitionKeys(schema, eventType);
 
+            if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
+                validateJsonSchemaConstraints(schemaAsJson);
+            }
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
@@ -216,7 +213,7 @@ public class EventTypeService {
     }
 
     private void validateJsonSchemaConstraints(final JSONObject schema) throws InvalidEventTypeException {
-        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.checkConstraints(schema);
+        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.collectIncompatibilities(schema);
 
         if (!incompatibilities.isEmpty()) {
             final String errorMessage = incompatibilities.stream().map(Object::toString)
@@ -225,17 +222,8 @@ public class EventTypeService {
         }
     }
 
-    private void validatePartitionKeys(final Optional<Schema> schemaO, final EventTypeBase eventType)
+    private void validatePartitionKeys(final Schema schema, final EventTypeBase eventType)
             throws InvalidEventTypeException, JSONException, SchemaException {
-        if (!featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
-            return;
-        }
-        final Schema schema = schemaO.orElseGet(() -> {
-            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
-            return SchemaLoader.load(schemaAsJson);
-        });
-
-
         final List<String> absentFields = eventType.getPartitionKeyFields().stream()
                 .filter(field -> !schema.definesProperty(convertToJSONPointer(field)))
                 .collect(Collectors.toList());
