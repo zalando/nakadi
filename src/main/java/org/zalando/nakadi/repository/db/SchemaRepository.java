@@ -23,7 +23,7 @@ public class SchemaRepository extends AbstractDbRepository {
     public List<EventTypeSchema> getSchemas(final String name, final int offset, final int limit) {
         return jdbcTemplate.query(
                 "SELECT ets_schema_object FROM zn_data.event_type_schema " +
-                        "WHERE ets_event_type_name = ? ORDER BY ets_schema_object->>'created_at' DESC LIMIT ? OFFSET ? ",
+                       "WHERE ets_event_type_name = ? ORDER BY ets_schema_object->>'created_at' DESC LIMIT ? OFFSET ? ",
                 new Object[]{name, limit, offset},
                 new SchemaRowMapper());
     }

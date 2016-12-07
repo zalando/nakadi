@@ -47,7 +47,7 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
         Assert.assertEquals(new Version("2.10.3"), schemas.get(1).getVersion());
         Assert.assertEquals(new Version("1.0.2"), schemas.get(2).getVersion());
 
-        int count = repository.getSchemasCount("test_et_name_schemarepositorytest");
+        final int count = repository.getSchemasCount("test_et_name_schemarepositorytest");
         Assert.assertEquals(3, count);
     }
 
