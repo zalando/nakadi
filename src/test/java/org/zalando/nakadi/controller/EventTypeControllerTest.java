@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import com.sun.security.auth.UserPrincipal;
 import org.hamcrest.core.StringContains;
@@ -24,6 +25,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
 import org.zalando.nakadi.domain.CompatibilityMode;
+import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
@@ -55,6 +57,7 @@ import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -80,7 +83,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
@@ -135,7 +137,6 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
         doReturn("nakadi").when(settings).getAdminClientId();
         doReturn(false).when(featureToggleService).isFeatureEnabled(any());
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_PARTITIONS_KEYS);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
@@ -222,14 +223,11 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTWithInvalidPartitionStrategyThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
+
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionKeyFields(Lists.newArrayList("invalid_key")).build();
 
         Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
-
-        Mockito
-                .doThrow(InvalidEventTypeException.class)
-                .when(partitionResolver)
-                .validate(any());
 
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
@@ -295,9 +293,9 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPOSTDeprecatedCompatibilityModeThen422() throws Exception {
+    public void whenPOSTFixedCompatibilityModeThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
-        eventType.setCompatibilityMode(CompatibilityMode.DEPRECATED);
+        eventType.setCompatibilityMode(CompatibilityMode.FIXED);
 
         final Problem expectedProblem =
                 new InvalidEventTypeException(
@@ -580,23 +578,6 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPUTDifferentEventTypeSchemaThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        final EventType persistedEventType = buildDefaultEventType();
-        persistedEventType.setName(eventType.getName());
-        persistedEventType.getSchema().setSchema("different");
-
-        final Problem expectedProblem = new InvalidEventTypeException("not yet implemented schema changes").asProblem();
-
-        Mockito.doReturn(persistedEventType).when(eventTypeRepository).findByName(persistedEventType.getName());
-
-        putEventType(eventType, persistedEventType.getName()).andExpect(status().isUnprocessableEntity())
-                                                             .andExpect(content().contentType(
-                                                                     "application/problem+json")).andExpect(content()
-                                                                     .string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenPUTInexistingEventTypeThen404() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
@@ -696,16 +677,17 @@ public class EventTypeControllerTest {
 
     @Test
     public void whenPUTWithInvalidEnrichmentStrategyThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
+        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
+        builder.enrichmentStrategies(Lists.newArrayList(EnrichmentStrategyDescriptor.METADATA_ENRICHMENT));
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
+        final EventType original = builder.build();
 
-        Mockito
-                .doThrow(InvalidEventTypeException.class)
-                .when(enrichment)
-                .validate(any());
+        builder.enrichmentStrategies(new ArrayList<>());
+        final EventType update = builder.build();
 
-        putEventType(eventType, eventType.getName())
+        Mockito.doReturn(original).when(eventTypeRepository).findByName(any());
+
+        putEventType(update, update.getName())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
     }

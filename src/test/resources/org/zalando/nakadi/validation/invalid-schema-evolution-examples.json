@@ -1,5 +1,35 @@
 [
   {
+    "description": "Do not allow changes to id",
+    "original_schema": {
+      "id": "something"
+    },
+    "update_schema": {
+      "id": "something_else"
+    },
+    "errors": ["ID_CHANGED #/"]
+  },
+  {
+    "description": "Capture changes to title",
+    "original_schema": {
+      "title": "something"
+    },
+    "update_schema": {
+      "title": "something_else"
+    },
+    "errors": ["TITLE_CHANGED #/"]
+  },
+  {
+    "description": "Do not allow changes to description",
+    "original_schema": {
+      "description": "something"
+    },
+    "update_schema": {
+      "description": "something_else"
+    },
+    "errors": ["DESCRIPTION_CHANGED #/"]
+  },
+  {
     "description": "Do not allow changes to simple schema type",
     "original_schema": {
       "type": "object"
@@ -7,7 +37,7 @@
     "update_schema": {
       "type": "array"
     },
-    "errors": ["Incompatibility found in \"#/\": schema types must be the same"]
+    "errors": ["TYPE_CHANGED #/"]
   },
   {
     "description": "Do not allow changes to minLength string schema",
@@ -19,7 +49,7 @@
       "type": "string",
       "minLength": 11
     },
-    "errors": ["Incompatibility found in \"#/minLength\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minLength"]
   },
   {
     "description": "Do not allow changes to maxLength string schema",
@@ -31,7 +61,7 @@
       "type": "string",
       "maxLength": 12
     },
-    "errors": ["Incompatibility found in \"#/maxLength\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/maxLength"]
   },
   {
     "description": "Do not allow changes to pattern string schema",
@@ -43,7 +73,7 @@
       "type": "string",
       "pattern": "uuid"
     },
-    "errors": ["Incompatibility found in \"#/pattern\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/pattern"]
   },
   {
     "description": "Do not allow changes to maximum number schema",
@@ -55,7 +85,7 @@
       "type": "number",
       "maximum": 11
     },
-    "errors": ["Incompatibility found in \"#/maximum\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/maximum"]
   },
   {
     "description": "Do not allow changes to minimum number schema",
@@ -67,7 +97,7 @@
       "type": "number",
       "minimum": 11
     },
-    "errors": ["Incompatibility found in \"#/minimum\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minimum"]
   },
   {
     "description": "Do not allow changes to multipleOf number schema",
@@ -79,7 +109,7 @@
       "type": "number",
       "multipleOf": 11
     },
-    "errors": ["Incompatibility found in \"#/multipleOf\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/multipleOf"]
   },
   {
     "description": "Do not allow changes to enum schema",
@@ -91,7 +121,7 @@
       "type": "string",
       "enum": ["blue"]
     },
-    "errors": ["Incompatibility found in \"#/enum\": change not allowed"]
+    "errors": ["ENUM_ARRAY_CHANGED #/enum"]
   },
   {
     "description": "Do not allow changes to type array",
@@ -101,7 +131,7 @@
     "update_schema": {
       "type": ["object", "array"]
     },
-    "errors": ["Incompatibility found in \"#/\": sub schemas must not be changed"]
+    "errors": ["SUB_SCHEMA_CHANGED #/"]
   },
   {
     "description": "Do not allow changes to sub schemas",
@@ -119,7 +149,7 @@
         }
       ]
     },
-    "errors": ["Incompatibility found in \"#/\": sub schemas must not be changed"]
+    "errors": ["SUB_SCHEMA_CHANGED #/"]
   },
   {
     "description": "Do not allow to remove properties",
@@ -137,7 +167,7 @@
         }
       }
     },
-    "errors": ["Incompatibility found in \"#/properties/foo\": schema properties cannot be removed"]
+    "errors": ["PROPERTY_REMOVED #/properties/foo"]
   },
   {
     "description": "Do not allow to change type of properties",
@@ -155,7 +185,28 @@
         }
       }
     },
-    "errors": ["Incompatibility found in \"#/properties/foo\": schema types must be the same"]
+    "errors": ["TYPE_CHANGED #/properties/foo"]
+  },
+  {
+    "description": "Do not allow to change type of properties",
+    "original_schema": {
+      "properties": {
+        "foo" : {
+          "type": "string"
+        }
+      }
+    },
+    "update_schema": {
+      "properties": {
+        "foo" : {
+          "type": "string"
+        },
+        "bar": {
+          "type": "number"
+        }
+      }
+    },
+    "errors": ["PROPERTIES_ADDED #/properties"]
   },
   {
     "description": "Do not allow changes to composed schema type",
@@ -181,7 +232,7 @@
         }
       ]
     },
-    "errors": ["Incompatibility found in \"#/anyOf/0/properties/foo\": schema types must be the same"]
+    "errors": ["TYPE_CHANGED #/anyOf/0/properties/foo"]
   },
   {
     "description": "Do not allow changes to validation criteria in composed schema type",
@@ -199,7 +250,7 @@
         }
       ]
     },
-    "errors": ["Incompatibility found in \"#/\": the validation criteria must not be changed from anyOf to allOf"]
+    "errors": ["COMPOSITION_METHOD_CHANGED #/"]
   },
   {
     "description": "Do not allow changes to dependencies as array",
@@ -229,7 +280,7 @@
         "bar": ["foo"]
       }
     },
-    "errors": ["Incompatibility found in \"#/dependencies/foo\": schema dependencies array cannot be changed"]
+    "errors": ["DEPENDENCY_ARRAY_CHANGED #/dependencies/foo"]
   },
   {
     "description": "Do not allow incompatible changes to dependencies schemas",
@@ -247,7 +298,7 @@
         }
       }
     },
-    "errors": ["Incompatibility found in \"#/dependencies/foo\": schema types must be the same"]
+    "errors": ["TYPE_CHANGED #/dependencies/foo"]
   },
   {
     "description": "Do not allow changes to dependencies properties",
@@ -265,7 +316,7 @@
         }
       }
     },
-    "errors": ["Incompatibility found in \"#/dependencies\": schema dependencies cannot be changed"]
+    "errors": ["DEPENDENCY_SCHEMA_CHANGED #/dependencies"]
   },
   {
     "description": "Do not allow required array to be removed",
@@ -284,7 +335,7 @@
         }
       }
     },
-    "errors": ["Incompatibility found in \"#/required\": change not allowed"]
+    "errors": ["REQUIRED_ARRAY_CHANGED #/required"]
   },
   {
     "description": "Do not allow required array to be added",
@@ -303,7 +354,7 @@
       },
       "required": ["foo"]
     },
-    "errors": ["Incompatibility found in \"#/required\": change not allowed"]
+    "errors": ["REQUIRED_ARRAY_CHANGED #/required"]
   },
   {
     "description": "Do not allow required array to be changed",
@@ -323,7 +374,7 @@
       },
       "required": ["bar"]
     },
-    "errors": ["Incompatibility found in \"#/required\": change not allowed"]
+    "errors": ["REQUIRED_ARRAY_CHANGED #/required"]
   },
   {
     "description": "Do not allow changes to maxProperties",
@@ -333,7 +384,7 @@
     "update_schema": {
       "maxProperties": 1
     },
-    "errors": ["Incompatibility found in \"#/maxProperties\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/maxProperties"]
   },
   {
     "description": "Do not allow changes to minProperties",
@@ -343,7 +394,7 @@
     "update_schema": {
       "minProperties": 1
     },
-    "errors": ["Incompatibility found in \"#/minProperties\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minProperties"]
   },
   {
     "description": "Do not allow changes to minProperties",
@@ -353,7 +404,7 @@
     "update_schema": {
       "minProperties": 1
     },
-    "errors": ["Incompatibility found in \"#/minProperties\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minProperties"]
   },
   {
     "description": "Do not allow changes to all items schema",
@@ -366,7 +417,7 @@
     "update_schema": {
       "type": "array"
     },
-    "errors": ["Incompatibility found in \"#/items\": change not allowed"]
+    "errors": ["SCHEMA_REMOVED #/items"]
   },
   {
     "description": "Do not allow changes to items schema list",
@@ -384,7 +435,7 @@
     "update_schema": {
       "type": "array"
     },
-    "errors": ["Incompatibility found in \"#/\": the number of schema items cannot be changed"]
+    "errors": ["NUMBER_OF_ITEMS_CHANGED #/"]
   },
   {
     "description": "Do not allow changes to items in the schema list",
@@ -404,7 +455,7 @@
         }
       ]
     },
-    "errors": ["Incompatibility found in \"#/items/0\": schema types must be the same"]
+    "errors": ["TYPE_CHANGED #/items/0"]
   },
   {
     "description": "Do not allow changes to maxItems",
@@ -416,7 +467,7 @@
       "type": "array",
       "maxItems": 1
     },
-    "errors": ["Incompatibility found in \"#/maxItems\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/maxItems"]
   },
   {
     "description": "Do not allow changes to minItems",
@@ -428,7 +479,7 @@
       "type": "array",
       "minItems": 1
     },
-    "errors": ["Incompatibility found in \"#/minItems\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/minItems"]
   },
   {
     "description": "Do not allow changes to minItems",
@@ -439,7 +490,7 @@
     "update_schema": {
       "type": "array"
     },
-    "errors": ["Incompatibility found in \"#/uniqueItems\": change not allowed"]
+    "errors": ["ATTRIBUTE_VALUE_CHANGED #/uniqueItems"]
   },
   {
     "description": "Do not allow incompatible changes to reference schemas",
@@ -465,6 +516,54 @@
         }
       }
     },
-    "errors": ["Incompatibility found in \"#/items/$ref\": schema types must be the same"]
+    "errors": ["TYPE_CHANGED #/items/$ref"]
+  },
+  {
+    "description": "Detect changes to boolean additional properties",
+    "original_schema": {
+      "additionalProperties": true
+    },
+    "update_schema": {
+      "additionalProperties": false
+    },
+    "errors": ["ADDITIONAL_PROPERTIES_CHANGED #/additionalProperties"]
+  },
+  {
+    "description": "Detect changes to additional properties schema",
+    "original_schema": {
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "update_schema": {
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "errors": ["TYPE_CHANGED #/additionalProperties"]
+  },
+  {
+    "description": "Detect changes to boolean additional items",
+    "original_schema": {
+      "additionalItems": true
+    },
+    "update_schema": {
+      "additionalItems": false
+    },
+    "errors": ["ADDITIONAL_ITEMS_CHANGED #/additionalItems"]
+  },
+  {
+    "description": "Detect changes to additional items schema",
+    "original_schema": {
+      "additionalItems": {
+        "type": "string"
+      }
+    },
+    "update_schema": {
+      "additionalItems": {
+        "type": "number"
+      }
+    },
+    "errors": ["TYPE_CHANGED #/additionalItems"]
   }
 ]
