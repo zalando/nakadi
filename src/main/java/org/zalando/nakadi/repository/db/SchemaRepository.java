@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 @Component
 public class SchemaRepository extends AbstractDbRepository {
+    static final Pattern VERSION_PATTERN = Pattern.compile("\\d+\\.\\d+\\.\\d+");
 
     @Autowired
     public SchemaRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper) {
@@ -36,8 +37,7 @@ public class SchemaRepository extends AbstractDbRepository {
 
     public EventTypeSchema getSchemaVersion(final String name, final String version)
             throws NoSuchSchemaException, IllegalVersionNumberException, InternalNakadiException {
-        final Pattern versionPattern = Pattern.compile("\\d+\\.\\d+\\.\\d+");
-        final Matcher versionMatcher = versionPattern.matcher(version);
+        final Matcher versionMatcher = VERSION_PATTERN.matcher(version);
         if (!versionMatcher.matches()) {
             throw new IllegalVersionNumberException(version);
         }
