@@ -16,6 +16,13 @@ import java.util.Set;
 public class JsonSchemaLoader {
     public static final String DATA_CHANGE_WRAP_FIELD = "data";
 
+    private static final String ADDITIONAL_PROPERTIES = "additionalProperties";
+    private static final String ADDITIONAL_ITEMS = "additionalItems";
+    private final List<String> keywordsWithNestedSchemas = Lists.newArrayList("definitions", "dependencies", "properties");
+    private final List<String> keywordsInferObjectSchema = Lists.newArrayList("required", "minProperties", "maxProperties");
+    private final List<String> keywordsInferArraySchema = Lists.newArrayList("minItems", "maxItems", "uniqueItems");
+    private final List<String> keywordsWithArrayOfSchemas = Lists.newArrayList("anyOf", "allOf", "oneOf");
+
     public JSONObject effectiveSchema(final EventType eventType) throws JSONException {
         final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
 
@@ -31,60 +38,58 @@ public class JsonSchemaLoader {
     }
 
     private void enforceStrictValidation(final JSONObject schema) {
-        final List<String> keywordsWithNestedSchemas = Lists.newArrayList("definitions", "dependencies", "properties");
-        final List<String> keywordsInferObjectSchema = Lists.newArrayList("required", "minProperties", "maxProperties");
-        final List<String> keywordsInferArraySchema = Lists.newArrayList("minItems", "maxItems", "uniqueItems");
-        final List<String> keywordsWithArrayOfSchemas = Lists.newArrayList("anyOf", "allOf", "oneOf");
-
-        if (schema.length() == 0) {
-            schema.put("additionalProperties", false);
-        }
-
-        if (Optional.ofNullable(schema.optString("type")).map(type -> type.equals("object")).orElse(false)) {
-            schema.put("additionalProperties", false);
-        }
-
-        Optional.ofNullable(schema.optJSONArray("type")).map(array -> array.toList().contains("object"))
-                .filter(b -> b).ifPresent(b -> schema.put("additionalProperties", false));
-
-        if (Optional.ofNullable(schema.optString("type")).map(type -> type.equals("array")).orElse(false)) {
-            schema.put("additionalItems", false);
-        }
-
-        if (schema.opt("items") != null) {
-            schema.put("additionalItems", false);
-
-            Optional.ofNullable(schema.optJSONArray("items"))
-                    .ifPresent(items -> items.forEach(item -> enforceStrictValidation((JSONObject) item)));
-
-            Optional.ofNullable(schema.optJSONObject("items")).ifPresent(this::enforceStrictValidation);
-        }
-
-        keywordsInferObjectSchema.forEach(keyword -> {
-                    if (schema.has(keyword)) {
-                        schema.put("additionalProperties", false);
-                    }
-                });
-
-        keywordsInferArraySchema.forEach(keyword -> {
-            if (schema.has(keyword)) {
-                schema.put("additionalItems", false);
-            }
-        });
-
-        keywordsWithNestedSchemas.forEach(keyword -> {
-            if (schema.has(keyword)) {
-                schema.put("additionalProperties", false);
-                schema.getJSONObject(keyword).keySet()
-                        .forEach(key -> enforceStrictValidation(schema.getJSONObject(keyword).getJSONObject(key)));
-
-            }
-        });
+        enforceNoAdditionalProperties(schema);
+        enforceNoAdditionalItems(schema);
 
         keywordsWithArrayOfSchemas.forEach(keyword -> {
             if (schema.has(keyword)) {
                 schema.getJSONArray(keyword)
                         .forEach(object -> enforceStrictValidation((JSONObject)object));
+            }
+        });
+    }
+
+    private void enforceNoAdditionalItems(final JSONObject schema) {
+        Optional.ofNullable(schema.optString("type")).map(type -> type.equals("array")).filter(b -> b)
+                .ifPresent(b -> schema.put(ADDITIONAL_ITEMS, false));
+
+        Optional.ofNullable(schema.opt("items")).ifPresent(items -> schema.put(ADDITIONAL_ITEMS, false));
+
+        Optional.ofNullable(schema.optJSONArray("items"))
+                .ifPresent(items -> items.forEach(item -> enforceStrictValidation((JSONObject) item)));
+
+        Optional.ofNullable(schema.optJSONObject("items")).ifPresent(this::enforceStrictValidation);
+
+        keywordsInferArraySchema.forEach(keyword -> {
+            if (schema.has(keyword)) {
+                schema.put(ADDITIONAL_ITEMS, false);
+            }
+        });
+    }
+
+    private void enforceNoAdditionalProperties(final JSONObject schema) {
+        if (schema.length() == 0) {
+            schema.put(ADDITIONAL_PROPERTIES, false);
+        }
+
+        Optional.ofNullable(schema.optString("type")).map(type -> type.equals("object")).filter(b -> b)
+                .ifPresent(b -> schema.put(ADDITIONAL_PROPERTIES, false));
+
+        Optional.ofNullable(schema.optJSONArray("type")).map(array -> array.toList().contains("object"))
+                .filter(b -> b).ifPresent(b -> schema.put(ADDITIONAL_PROPERTIES, false));
+
+        keywordsInferObjectSchema.forEach(keyword -> {
+            if (schema.has(keyword)) {
+                schema.put(ADDITIONAL_PROPERTIES, false);
+            }
+        });
+
+        keywordsWithNestedSchemas.forEach(keyword -> {
+            if (schema.has(keyword)) {
+                schema.put(ADDITIONAL_PROPERTIES, false);
+                schema.getJSONObject(keyword).keySet()
+                        .forEach(key -> enforceStrictValidation(schema.getJSONObject(keyword).getJSONObject(key)));
+
             }
         });
     }
