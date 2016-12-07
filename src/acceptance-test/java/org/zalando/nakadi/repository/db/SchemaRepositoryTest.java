@@ -32,13 +32,13 @@ public class SchemaRepositoryTest extends AbstractDbRepositoryTest {
         final EventTypeSchemaBase schemaBase = new EventTypeSchemaBase(EventTypeSchemaBase.Type.JSON_SCHEMA, "schema");
         final EventType eventType = EventTypeTestBuilder.builder()
                 .name("test_et_name_schemarepositorytest")
-                .schema(new EventTypeSchema(schemaBase, "1.0.2", DateTime.now()))
+                .schema(new EventTypeSchema(schemaBase, "1.0.2", DateTime.parse("2016-12-07T10:44:16.378+01:00")))
                 .build();
         insertEventType(eventType);
         insertSchema(eventType);
-        eventType.setSchema(new EventTypeSchema(schemaBase, "2.10.3", DateTime.now()));
+        eventType.setSchema(new EventTypeSchema(schemaBase, "2.10.3", DateTime.parse("2016-12-07T10:54:16.778+01:00")));
         insertSchema(eventType);
-        eventType.setSchema(new EventTypeSchema(schemaBase, "10.0.0", DateTime.now()));
+        eventType.setSchema(new EventTypeSchema(schemaBase, "10.0.0", DateTime.parse("2016-12-07T10:57:16.200+01:00")));
         insertSchema(eventType);
 
         final List<EventTypeSchema> schemas = repository.getSchemas("test_et_name_schemarepositorytest", 0, 3);
