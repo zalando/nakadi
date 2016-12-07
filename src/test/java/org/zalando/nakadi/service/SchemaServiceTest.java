@@ -7,6 +7,7 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.IllegalVersionNumberException;
 import org.zalando.nakadi.exceptions.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.SchemaRepository;
@@ -74,10 +75,10 @@ public class SchemaServiceTest {
     public void testNonExistingVersionNumber() throws Exception {
         final EventType eventType = buildDefaultEventType();
         Mockito.when(schemaRepository.getSchemaVersion(eventType.getName(),
-                eventType.getSchema().getVersion().bumpMinor().toString()))
+                eventType.getSchema().getVersion().bump(Version.Level.MINOR).toString()))
                 .thenThrow(NoSuchSchemaException.class);
         final Result<EventTypeSchema> result = schemaService.getSchemaVersion(eventType.getName(),
-                eventType.getSchema().getVersion().bumpMinor().toString());
+                eventType.getSchema().getVersion().bump(Version.Level.MINOR).toString());
         Assert.assertFalse(result.isSuccessful());
         Assert.assertEquals(Response.Status.NOT_FOUND, result.getProblem().getStatus());
     }
