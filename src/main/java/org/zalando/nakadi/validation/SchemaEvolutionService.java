@@ -1,6 +1,7 @@
 package org.zalando.nakadi.validation;
 
 
+import com.google.common.collect.Lists;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -24,6 +25,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_ITEMS_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.DESCRIPTION_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTIES_ADDED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
 import static org.zalando.nakadi.domain.Version.Level.MAJOR;
 import static org.zalando.nakadi.domain.Version.Level.NO_CHANGES;
 
@@ -34,6 +40,9 @@ public class SchemaEvolutionService {
     private final SchemaDiff schemaDiff;
     private final Map<SchemaChange.Type, Version.Level> changeToLevel;
     private final Map<SchemaChange.Type, String> errorMessages;
+    private static final List<SchemaChange.Type> FIXED_TO_COMPATIBLE_ALLOWED_CHANGES = Lists.newArrayList(
+            DESCRIPTION_CHANGED, TITLE_CHANGED, PROPERTIES_ADDED, ADDITIONAL_PROPERTIES_CHANGED,
+            ADDITIONAL_ITEMS_CHANGED);
 
     public SchemaEvolutionService(final Schema metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
@@ -77,19 +86,42 @@ public class SchemaEvolutionService {
 
         if (incompatibility.isPresent()) {
             throw new InvalidEventTypeException(incompatibility.get().getReason());
-        } else {
-            final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
+        }
 
-            final Version.Level changeLevel = semanticOfChange(changes);
+        final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
 
-            if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE && changeLevel == MAJOR) {
+        final Version.Level changeLevel = semanticOfChange(changes);
+
+        validateCompatibleModeChanges(original, changes, changeLevel);
+        validateCompatibilityModeMigration(original, eventType, changes);
+
+        return this.bumpVersion(original, eventType, changeLevel);
+    }
+
+    private void validateCompatibilityModeMigration(final EventType original, final EventTypeBase eventType,
+                                                    final List<SchemaChange> changes) throws InvalidEventTypeException {
+        if (original.getCompatibilityMode() == CompatibilityMode.FIXED
+            && eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
+            final List<SchemaChange.Type> changesTypes = changes.stream().map(SchemaChange::getType)
+                    .collect(Collectors.toList());
+            if (!FIXED_TO_COMPATIBLE_ALLOWED_CHANGES.containsAll(changesTypes)) {
                 final String errorMessage = changes.stream()
-                        .filter(change -> MAJOR.equals(changeToLevel.get(change.getType())))
+                        .filter(change -> !FIXED_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
                         .map(this::formatErrorMessage)
                         .collect(Collectors.joining(", "));
                 throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
             }
-            return this.bumpVersion(original, eventType, changeLevel);
+        }
+    }
+
+    private void validateCompatibleModeChanges(final EventType original, final List<SchemaChange> changes,
+                                               final Version.Level changeLevel) throws InvalidEventTypeException {
+        if (original.getCompatibilityMode() == CompatibilityMode.COMPATIBLE && changeLevel == MAJOR) {
+            final String errorMessage = changes.stream()
+                    .filter(change -> MAJOR.equals(changeToLevel.get(change.getType())))
+                    .map(this::formatErrorMessage)
+                    .collect(Collectors.joining(", "));
+            throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
         }
     }
 

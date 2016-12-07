@@ -30,10 +30,28 @@ import static java.util.stream.Collectors.toList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_ITEMS_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ATTRIBUTE_VALUE_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.COMPOSITION_METHOD_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.DEPENDENCY_ARRAY_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.DEPENDENCY_SCHEMA_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.DEPENDENCY_SCHEMA_REMOVED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.DESCRIPTION_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ENUM_ARRAY_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.ID_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.NUMBER_OF_ITEMS_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTIES_ADDED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTY_REMOVED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.SCHEMA_REMOVED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.SUB_SCHEMA_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_CHANGED;
 import static org.zalando.nakadi.domain.Version.Level.MAJOR;
 import static org.zalando.nakadi.domain.Version.Level.MINOR;
 import static org.zalando.nakadi.domain.Version.Level.PATCH;
@@ -152,6 +170,62 @@ public class SchemaEvolutionServiceTest {
         assertThat(eventType.getSchema().getVersion(), is(equalTo(new Version("2.0.0"))));
 
         verify(evolutionConstraint).validate(oldEventType, newEventType);
+    }
+
+    @Test
+    public void compatibilityModeMigrationAllowedChanges() throws Exception {
+        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder().compatibilityMode(CompatibilityMode.FIXED);
+        final EventType oldEventType = builder.build();
+        final EventType newEventType = builder.compatibilityMode(CompatibilityMode.COMPATIBLE).build();
+
+        Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
+        Mockito.doReturn(MAJOR).when(changeToLevel).get(any());
+
+        final List<SchemaChange.Type> allowedChanges = Lists.newArrayList(
+                DESCRIPTION_CHANGED,
+                TITLE_CHANGED,
+                PROPERTIES_ADDED,
+                ADDITIONAL_PROPERTIES_CHANGED,
+                ADDITIONAL_ITEMS_CHANGED);
+
+        final List<SchemaChange.Type> notAllowedChanges = Lists.newArrayList(
+                ID_CHANGED,
+                SCHEMA_REMOVED,
+                TYPE_CHANGED,
+                NUMBER_OF_ITEMS_CHANGED,
+                PROPERTY_REMOVED,
+                DEPENDENCY_ARRAY_CHANGED,
+                DEPENDENCY_SCHEMA_CHANGED,
+                COMPOSITION_METHOD_CHANGED,
+                ATTRIBUTE_VALUE_CHANGED,
+                ENUM_ARRAY_CHANGED,
+                SUB_SCHEMA_CHANGED,
+                DEPENDENCY_SCHEMA_REMOVED,
+                REQUIRED_ARRAY_CHANGED);
+
+        allowedChanges.forEach(changeType -> {
+            Mockito.doReturn(Lists.newArrayList(new SchemaChange(changeType, "#/"))).when(schemaDiff)
+                    .collectChanges(any(), any());
+
+            final EventType eventType;
+            try {
+                eventType = service.evolve(oldEventType, newEventType);
+                assertThat(eventType.getSchema().getVersion(), is(equalTo(new Version("2.0.0"))));
+            } catch (final InvalidEventTypeException e) {
+                fail();
+            }
+        });
+
+        notAllowedChanges.forEach(changeType -> {
+            Mockito.doReturn(Lists.newArrayList(new SchemaChange(changeType, "#/"))).when(schemaDiff)
+                    .collectChanges(any(), any());
+
+            try {
+                service.evolve(oldEventType, newEventType);
+                fail();
+            } catch (final InvalidEventTypeException e) {
+            }
+        });
     }
 
     @Test
