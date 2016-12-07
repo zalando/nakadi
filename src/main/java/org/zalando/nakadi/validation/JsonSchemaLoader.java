@@ -18,8 +18,10 @@ public class JsonSchemaLoader {
 
     private static final String ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String ADDITIONAL_ITEMS = "additionalItems";
-    private final List<String> keywordsWithNestedSchemas = Lists.newArrayList("definitions", "dependencies", "properties");
-    private final List<String> keywordsInferObjectSchema = Lists.newArrayList("required", "minProperties", "maxProperties");
+    private final List<String> keywordsWithNestedSchemas = Lists.newArrayList("definitions", "dependencies",
+            "properties");
+    private final List<String> keywordsInferObjectSchema = Lists.newArrayList("required", "minProperties",
+            "maxProperties");
     private final List<String> keywordsInferArraySchema = Lists.newArrayList("minItems", "maxItems", "uniqueItems");
     private final List<String> keywordsWithArrayOfSchemas = Lists.newArrayList("anyOf", "allOf", "oneOf");
 
