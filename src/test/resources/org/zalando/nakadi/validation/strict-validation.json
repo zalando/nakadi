@@ -189,13 +189,23 @@
     }
   },
   {
-    "description": "Strict if mixed type",
+    "description": "Strict if mixed object type",
     "original_schema": {
       "type": ["string", "object"]
     },
     "effective_schema": {
       "type": ["string", "object"],
       "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if mixed array type",
+    "original_schema": {
+      "type": ["string", "array"]
+    },
+    "effective_schema": {
+      "type": ["string", "array"],
+      "additionalItems": false
     }
   },
   {

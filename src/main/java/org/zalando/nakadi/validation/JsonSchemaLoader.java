@@ -1,5 +1,6 @@
 package org.zalando.nakadi.validation;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,12 +19,10 @@ public class JsonSchemaLoader {
 
     private static final String ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String ADDITIONAL_ITEMS = "additionalItems";
-    private final List<String> keywordsWithNestedSchemas = Lists.newArrayList("definitions", "dependencies",
-            "properties");
-    private final List<String> keywordsInferObjectSchema = Lists.newArrayList("required", "minProperties",
-            "maxProperties");
-    private final List<String> keywordsInferArraySchema = Lists.newArrayList("minItems", "maxItems", "uniqueItems");
-    private final List<String> keywordsWithArrayOfSchemas = Lists.newArrayList("anyOf", "allOf", "oneOf");
+    private static final List<String> OBJECT_SCHEMA_KEYWORDS = ImmutableList.of("definitions", "dependencies",
+            "properties", "required", "minProperties", "maxProperties");
+    private static final List<String> ARRAY_SCHEMA_KEYWORDS = ImmutableList.of("minItems", "maxItems", "uniqueItems");
+    private static final List<String> COMPOSED_SCHEMA_KEYWORDS = ImmutableList.of("anyOf", "allOf", "oneOf");
 
     public JSONObject effectiveSchema(final EventType eventType) throws JSONException {
         final JSONObject schema = new JSONObject(eventType.getSchema().getSchema());
@@ -43,7 +42,7 @@ public class JsonSchemaLoader {
         enforceNoAdditionalProperties(schema);
         enforceNoAdditionalItems(schema);
 
-        keywordsWithArrayOfSchemas.forEach(keyword -> {
+        COMPOSED_SCHEMA_KEYWORDS.forEach(keyword -> {
             if (schema.has(keyword)) {
                 schema.getJSONArray(keyword)
                         .forEach(object -> enforceStrictValidation((JSONObject)object));
@@ -55,6 +54,9 @@ public class JsonSchemaLoader {
         Optional.ofNullable(schema.optString("type")).map(type -> type.equals("array")).filter(b -> b)
                 .ifPresent(b -> schema.put(ADDITIONAL_ITEMS, false));
 
+        Optional.ofNullable(schema.optJSONArray("type")).map(array -> array.toList().contains("array"))
+                .filter(b -> b).ifPresent(b -> schema.put(ADDITIONAL_ITEMS, false));
+
         Optional.ofNullable(schema.opt("items")).ifPresent(items -> schema.put(ADDITIONAL_ITEMS, false));
 
         Optional.ofNullable(schema.optJSONArray("items"))
@@ -62,7 +64,7 @@ public class JsonSchemaLoader {
 
         Optional.ofNullable(schema.optJSONObject("items")).ifPresent(this::enforceStrictValidation);
 
-        keywordsInferArraySchema.forEach(keyword -> {
+        ARRAY_SCHEMA_KEYWORDS.forEach(keyword -> {
             if (schema.has(keyword)) {
                 schema.put(ADDITIONAL_ITEMS, false);
             }
@@ -80,18 +82,13 @@ public class JsonSchemaLoader {
         Optional.ofNullable(schema.optJSONArray("type")).map(array -> array.toList().contains("object"))
                 .filter(b -> b).ifPresent(b -> schema.put(ADDITIONAL_PROPERTIES, false));
 
-        keywordsInferObjectSchema.forEach(keyword -> {
+        OBJECT_SCHEMA_KEYWORDS.forEach(keyword -> {
             if (schema.has(keyword)) {
                 schema.put(ADDITIONAL_PROPERTIES, false);
-            }
-        });
-
-        keywordsWithNestedSchemas.forEach(keyword -> {
-            if (schema.has(keyword)) {
-                schema.put(ADDITIONAL_PROPERTIES, false);
-                schema.getJSONObject(keyword).keySet()
-                        .forEach(key -> enforceStrictValidation(schema.getJSONObject(keyword).getJSONObject(key)));
-
+                Optional.ofNullable(schema.optJSONObject(keyword))
+                        .ifPresent(object ->
+                                object.keySet().forEach(key -> enforceStrictValidation(object.getJSONObject(key)))
+                        );
             }
         });
     }
