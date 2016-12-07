@@ -8,8 +8,9 @@ import java.util.Objects;
 import java.util.Stack;
 
 import static org.zalando.nakadi.domain.SchemaChange.Type.ATTRIBUTE_VALUE_CHANGED;
+import static org.zalando.nakadi.validation.schema.diff.SchemaDiff.addChange;
 
-class StringSchemaDiff extends SchemaDiff {
+class StringSchemaDiff {
     static void recursiveCheck(final StringSchema stringSchemaOriginal, final StringSchema stringSchemaUpdate,
                                final Stack<String> jsonPath, final List<SchemaChange> changes) {
         if (!Objects.equals(stringSchemaOriginal.getMaxLength(), stringSchemaUpdate.getMaxLength())) {
