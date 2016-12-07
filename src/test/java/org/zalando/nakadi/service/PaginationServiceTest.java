@@ -13,7 +13,7 @@ public class PaginationServiceTest {
     public void testPaginationPrev() {
         final PaginationService paginationService = new PaginationService();
         final PaginationWrapper paginationWrapper =
-                paginationService.paginate(Collections.emptyList(), 2, 5, "/schemas", () -> 1);
+                paginationService.paginate(2, 5, "/schemas", (o, l) -> Collections.emptyList(), () -> 1);
         Assert.assertFalse(paginationWrapper.getLinks().getNext().isPresent());
         Assert.assertFalse(paginationWrapper.getLinks().getPrev().isPresent());
     }
@@ -22,7 +22,7 @@ public class PaginationServiceTest {
     public void testPaginationPrev2() {
         final PaginationService paginationService = new PaginationService();
         final PaginationWrapper paginationWrapper =
-                paginationService.paginate(Collections.emptyList(), 2, 5, "/schemas", () -> 20);
+                paginationService.paginate(2, 5, "/schemas", (o, l) -> Collections.emptyList(), () -> 20);
         Assert.assertFalse(paginationWrapper.getLinks().getNext().isPresent());
         Assert.assertEquals("/schemas?offset=0&limit=5", paginationWrapper.getLinks().getPrev().get().getHref());
     }
@@ -31,7 +31,7 @@ public class PaginationServiceTest {
     public void testPaginationPrev3() {
         final PaginationService paginationService = new PaginationService();
         final PaginationWrapper paginationWrapper =
-                paginationService.paginate(Collections.emptyList(), 2, 5, "/schemas", () -> 2);
+                paginationService.paginate(2, 5, "/schemas", (o, l) -> Collections.emptyList(), () -> 2);
         Assert.assertFalse(paginationWrapper.getLinks().getNext().isPresent());
         Assert.assertFalse(paginationWrapper.getLinks().getPrev().isPresent());
     }
@@ -40,7 +40,7 @@ public class PaginationServiceTest {
     public void testPaginationPrev4() {
         final PaginationService paginationService = new PaginationService();
         final PaginationWrapper paginationWrapper =
-                paginationService.paginate(Collections.emptyList(), 2, 5, "/schemas", () -> 5);
+                paginationService.paginate(2, 5, "/schemas", (o, l) -> Collections.emptyList(), () -> 5);
         Assert.assertFalse(paginationWrapper.getLinks().getNext().isPresent());
         Assert.assertFalse(paginationWrapper.getLinks().getPrev().isPresent());
     }
@@ -49,7 +49,7 @@ public class PaginationServiceTest {
     public void testPaginationEmpty() {
         final PaginationService paginationService = new PaginationService();
         final PaginationWrapper paginationWrapper =
-                paginationService.paginate(Collections.emptyList(), 0, 5, "/schemas", () -> 5);
+                paginationService.paginate(0, 5, "/schemas", (o, l) -> Collections.emptyList(), () -> 5);
         Assert.assertFalse(paginationWrapper.getLinks().getNext().isPresent());
         Assert.assertFalse(paginationWrapper.getLinks().getPrev().isPresent());
     }
@@ -58,7 +58,9 @@ public class PaginationServiceTest {
     public void testPaginationNext() {
         final PaginationService paginationService = new PaginationService();
         final PaginationWrapper paginationWrapper =
-                paginationService.paginate(Lists.newArrayList("One", "Two", "Three", "Four"), 0, 3, "/schemas",() -> 1);
+                paginationService.paginate(0, 3, "/schemas",
+                        (o, l) -> Lists.newArrayList("One", "Two", "Three", "Four"),
+                        () -> 1);
         Assert.assertEquals("/schemas?offset=3&limit=3", paginationWrapper.getLinks().getNext().get().getHref());
         Assert.assertFalse(paginationWrapper.getLinks().getPrev().isPresent());
     }
@@ -67,7 +69,9 @@ public class PaginationServiceTest {
     public void testPaginationPrevAndNext() {
         final PaginationService paginationService = new PaginationService();
         final PaginationWrapper paginationWrapper =
-                paginationService.paginate(Lists.newArrayList("One", "Two", "Three", "Four"), 2, 3, "/schemas",() -> 1);
+                paginationService.paginate(2, 3, "/schemas",
+                        (o, l) -> Lists.newArrayList("One", "Two", "Three", "Four"),
+                        () -> 1);
         Assert.assertEquals("/schemas?offset=5&limit=3", paginationWrapper.getLinks().getNext().get().getHref());
         Assert.assertEquals("/schemas?offset=0&limit=3", paginationWrapper.getLinks().getPrev().get().getHref());
     }
