@@ -1,16 +1,13 @@
 package org.zalando.nakadi.webservice;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import org.apache.http.HttpStatus;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.json.JSONObject;
 import org.junit.Test;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.service.FloodService;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.problem.MoreStatus;
 
@@ -23,8 +20,6 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 public class BlockEventPublishingAT extends BaseAT {
 
     private static final String FLOODERS_URL = "/settings/flooders";
-    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
-    private static final JsonTestHelper JSON_HELPER = new JsonTestHelper(MAPPER);
 
     @Test
     public void whenPublishingToBlockedEventTypeThen429() throws IOException {
