@@ -76,16 +76,12 @@ public class SchemaControllerAT extends BaseAT {
     }
 
     @Test
-    public void whenGetSchemasThenNoSchemas() throws Exception {
+    public void whenGetSchemasNoSchemasThen404() throws Exception {
         RestAssured.given()
                 .when()
                 .get("/event-types/XXX/schemas")
                 .then()
-                .statusCode(HttpStatus.SC_OK)
-                .and()
-                .body("items.size()", Matchers.is(0))
-                .body("_links.next", Matchers.nullValue())
-                .body("_links.prev", Matchers.nullValue());
+                .statusCode(HttpStatus.SC_NOT_FOUND);
     }
 
     private void createEventType() throws Exception {

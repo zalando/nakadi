@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.SchemaService;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -16,10 +18,12 @@ import org.zalando.problem.spring.web.advice.Responses;
 public class SchemaController {
 
     private final SchemaService schemaService;
+    private final EventTypeService eventTypeService;
 
     @Autowired
-    public SchemaController(final SchemaService schemaService) {
+    public SchemaController(final SchemaService schemaService, final EventTypeService eventTypeService) {
         this.schemaService = schemaService;
+        this.eventTypeService = eventTypeService;
     }
 
     @RequestMapping("/event-types/{name}/schemas")
@@ -28,6 +32,10 @@ public class SchemaController {
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             final NativeWebRequest request) {
+        final Result<EventType> eventTypeResult = eventTypeService.get(name);
+        if (!eventTypeResult.isSuccessful())
+            return Responses.create(eventTypeResult.getProblem(), request);
+
         final Result result = schemaService.getSchemas(name, offset, limit);
         if (result.isSuccessful())
             return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
