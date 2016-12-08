@@ -39,7 +39,7 @@ public class SchemaControllerTest {
     }
 
     @Test
-    public void testFailure_503() {
+    public void testFailure503() {
         Mockito.when(eventTypeService.get("et_test")).thenReturn(Result.ok(EventTypeTestBuilder.builder().build()));
         Mockito.when(schemaService.getSchemas("et_test", 0, 1))
                 .thenReturn(Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE)));
@@ -50,7 +50,7 @@ public class SchemaControllerTest {
     }
 
     @Test
-    public void testFailure_404() {
+    public void testFailure404() {
         Mockito.when(eventTypeService.get("et_test"))
                 .thenReturn(Result.problem(Problem.valueOf(Response.Status.NOT_FOUND)));
         final ResponseEntity<?> result =
