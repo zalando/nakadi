@@ -207,7 +207,7 @@ public class SubscriptionControllerTest {
     @Test
     public void whenWrongStartFromThenBadRequest() throws Exception {
         final String subscription =
-                "{\"owning_application\":\"app\",\"event_types\":[\"myEt\"],\"start_from\":\"middle\"}";
+                "{\"owning_application\":\"app\",\"event_types\":[\"myEt\"],\"read_from\":\"middle\"}";
         postSubscriptionAsJson(subscription).andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
     }
 
