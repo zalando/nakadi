@@ -7,7 +7,7 @@ import org.zalando.nakadi.exceptions.InvalidPartitionKeyFieldsException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.util.JsonPathAccess;
-import org.zalando.nakadi.validation.JsonSchemaLoader;
+import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ import static java.lang.Math.abs;
 
 public class HashPartitionStrategy implements PartitionStrategy {
 
-    private static final String DATA_PATH_PREFIX = JsonSchemaLoader.DATA_CHANGE_WRAP_FIELD + ".";
+    private static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
 
     @Override
     public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)

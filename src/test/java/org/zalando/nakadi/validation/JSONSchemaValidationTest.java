@@ -18,7 +18,7 @@ public class JSONSchemaValidationTest {
 
     static {
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema(
-                new JsonSchemaLoader()));
+                new JsonSchemaEnrichment()));
         ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
         ValidationStrategy.register(FieldNameMustBeSet.NAME, new FieldNameMustBeSet());
     }

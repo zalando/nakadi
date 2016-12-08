@@ -11,8 +11,8 @@ import static org.junit.Assert.assertThat;
 import static org.zalando.nakadi.utils.TestUtils.readFile;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONObjectAs;
 
-public class JsonSchemaLoaderTest {
-    private final JsonSchemaLoader loader = new JsonSchemaLoader();
+public class JsonSchemaEnrichmentTest {
+    private final JsonSchemaEnrichment loader = new JsonSchemaEnrichment();
     @Test
     public void enforceStrict() throws Exception {
         final JSONArray testCases = new JSONArray(

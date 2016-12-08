@@ -12,9 +12,9 @@ import java.util.Optional;
 
 public class EventBodyMustRespectSchema extends ValidationStrategy {
 
-    private final JsonSchemaLoader loader;
+    private final JsonSchemaEnrichment loader;
 
-    public EventBodyMustRespectSchema(final JsonSchemaLoader loader) {
+    public EventBodyMustRespectSchema(final JsonSchemaEnrichment loader) {
         this.loader = loader;
     }
 

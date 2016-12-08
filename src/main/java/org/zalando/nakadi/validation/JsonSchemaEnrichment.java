@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class JsonSchemaLoader {
+public class JsonSchemaEnrichment {
     public static final String DATA_CHANGE_WRAP_FIELD = "data";
 
     private static final String ADDITIONAL_PROPERTIES = "additionalProperties";

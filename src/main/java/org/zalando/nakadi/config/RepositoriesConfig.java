@@ -11,7 +11,7 @@ import org.zalando.nakadi.util.FeatureToggleServiceDefault;
 import org.zalando.nakadi.util.FeatureToggleServiceZk;
 import org.zalando.nakadi.validation.EventBodyMustRespectSchema;
 import org.zalando.nakadi.validation.EventMetadataValidationStrategy;
-import org.zalando.nakadi.validation.JsonSchemaLoader;
+import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.ValidationStrategy;
 import org.apache.curator.framework.CuratorFramework;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,7 +42,7 @@ public class RepositoriesConfig {
     {
         final CuratorFramework client = zooKeeperHolder.get();
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema(
-                new JsonSchemaLoader()
+                new JsonSchemaEnrichment()
         ));
         ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
 
