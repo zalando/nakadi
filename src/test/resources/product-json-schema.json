@@ -73,7 +73,6 @@
     },
 
     "Value": {
-      "type": "object",
       "oneOf": [
         { "$ref": "#/definitions/ReferenceValue" },
         { "$ref": "#/definitions/BooleanValue" },

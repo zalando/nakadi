@@ -19,9 +19,14 @@ public class MetadataEnrichmentStrategy implements EnrichmentStrategy {
             setEventTypeName(metadata, eventType);
             setFlowId(metadata);
             setPartition(metadata, batchItem);
+            setVersion(metadata, eventType);
         } catch (final JSONException e) {
             throw new EnrichmentException("enrichment error", e);
         }
+    }
+
+    private void setVersion(final JSONObject metadata, final EventType eventType) {
+        metadata.put("version", eventType.getSchema().getVersion().toString());
     }
 
     private void setFlowId(final JSONObject metadata) {

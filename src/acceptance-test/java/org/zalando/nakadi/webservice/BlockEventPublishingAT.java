@@ -40,7 +40,7 @@ public class BlockEventPublishingAT extends BaseAT {
 
     private Response publishEvent(final EventType eventType) {
         return given()
-                .body("[{\"blah\":\"bloh\"}]")
+                .body("[{\"foo\":\"bar\"}]")
                 .contentType(ContentType.JSON)
                 .post(MessageFormat.format("/event-types/{0}/events", eventType.getName()));
     }
