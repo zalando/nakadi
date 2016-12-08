@@ -239,5 +239,4 @@ public class EventTypeService {
     private String convertToJSONPointer(final String value) {
         return value.replaceAll("\\.", "/");
     }
-
 }

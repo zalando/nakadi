@@ -139,5 +139,4 @@ public class EventTypeController {
         }
         return status(HttpStatus.OK).body(result.getValue());
     }
-
 }

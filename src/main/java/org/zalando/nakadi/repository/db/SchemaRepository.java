@@ -2,10 +2,13 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.NoSuchSchemaException;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -28,6 +31,24 @@ public class SchemaRepository extends AbstractDbRepository {
                 new SchemaRowMapper());
     }
 
+    public EventTypeSchema getSchemaVersion(final String name, final String version)
+            throws NoSuchSchemaException, InternalNakadiException {
+        final String sql = "SELECT ets_schema_object FROM zn_data.event_type_schema " +
+                "WHERE ets_event_type_name = ? AND ets_schema_object ->> 'version' = ?";
+
+        try {
+            final List<EventTypeSchema> schemas =
+                    jdbcTemplate.query(sql, new Object[]{name, version}, new SchemaRowMapper());
+            if (schemas.size() != 1)
+                throw new InternalNakadiException(
+                        String.format("Unexpected number of schemas with version {}: {}", version, schemas.size()));
+            return schemas.get(0);
+        } catch (EmptyResultDataAccessException e) {
+            throw new NoSuchSchemaException("EventType \"" + name
+                    + "\" has no schema with version \"" + version + "\"", e);
+        }
+    }
+
     public int getSchemasCount(final String name) {
         return jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM zn_data.event_type_schema WHERE ets_event_type_name = ?",
@@ -45,5 +66,4 @@ public class SchemaRepository extends AbstractDbRepository {
             }
         }
     }
-
 }
