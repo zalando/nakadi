@@ -102,12 +102,12 @@ public class SchemaEvolutionService {
                                                     final List<SchemaChange> changes) throws InvalidEventTypeException {
         if (original.getCompatibilityMode() == CompatibilityMode.FIXED
             && eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
-            final List<SchemaChange.Type> changesTypes = changes.stream().map(SchemaChange::getType)
+
+            final List<SchemaChange> forbiddenChanges = changes.stream()
+                    .filter(change -> !FIXED_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
                     .collect(Collectors.toList());
-            if (!FIXED_TO_COMPATIBLE_ALLOWED_CHANGES.containsAll(changesTypes)) {
-                final String errorMessage = changes.stream()
-                        .filter(change -> !FIXED_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
-                        .map(this::formatErrorMessage)
+            if (!forbiddenChanges.isEmpty()) {
+                final String errorMessage = forbiddenChanges.stream().map(this::formatErrorMessage)
                         .collect(Collectors.joining(", "));
                 throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
             }
