@@ -479,21 +479,39 @@ paths:
         - schema-registry-api
       description: |
         List of schemas ordered from most recent to oldest.
-    responses:
-        '200':
-          schema:
-            type: object
-            properties:
-              _links:
-                $ref: '#/definitions/PaginationLinks'
-              items:
-                description: list of schemas.
-                type: array
+      parameters:
+        - name: limit
+          in: query
+          description: maximum number of schemas retuned in one page
+          type: integer
+          format: int64
+          required: false
+          default: 20
+          minimum: 1
+          maximum: 1000
+        - name: offset
+          in: query
+          description: page offset
+          type: integer
+          format: int64
+          required: false
+          default: 0
+          minimum: 0
+      responses:
+          '200':
+            schema:
+              type: object
+              properties:
+                _links:
+                  $ref: '#/definitions/PaginationLinks'
                 items:
-                  $ref: '#/definitions/EventTypeSchema'
-            required:
-              - items
-              - _links
+                  description: list of schemas.
+                  type: array
+                  items:
+                    $ref: '#/definitions/EventTypeSchema'
+              required:
+                - items
+                - _links
 
   '/event-types/{name}/schemas/{version}':
     get:
