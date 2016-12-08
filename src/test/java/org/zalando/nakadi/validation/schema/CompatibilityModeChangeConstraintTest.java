@@ -11,13 +11,23 @@ import static org.zalando.nakadi.utils.IsOptional.isPresent;
 
 public class CompatibilityModeChangeConstraintTest {
     @Test
-    public void failOnChange() throws Exception {
+    public void cannotDowngradeCompatibilityMode() throws Exception {
         final EventTypeTestBuilder builder = new EventTypeTestBuilder();
         final EventType oldET = builder.compatibilityMode(CompatibilityMode.COMPATIBLE).build();
         final EventType newET = builder.compatibilityMode(CompatibilityMode.NONE).build();
         final CompatibilityModeChangeConstraint constraint = new CompatibilityModeChangeConstraint();
 
         assertThat(constraint.validate(oldET, newET), isPresent());
+    }
+
+    @Test
+    public void canPromoteFromFixedToCompatible() throws Exception {
+        final EventTypeTestBuilder builder = new EventTypeTestBuilder();
+        final EventType oldET = builder.compatibilityMode(CompatibilityMode.FIXED).build();
+        final EventType newET = builder.compatibilityMode(CompatibilityMode.COMPATIBLE).build();
+        final CompatibilityModeChangeConstraint constraint = new CompatibilityModeChangeConstraint();
+
+        assertThat(constraint.validate(oldET, newET), isAbsent());
     }
 
     @Test
