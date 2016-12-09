@@ -48,7 +48,7 @@ public class SchemaService {
     public Result<EventTypeSchema> getSchemaVersion(final String name, final String version) {
         final Matcher versionMatcher = VERSION_PATTERN.matcher(version);
         if (!versionMatcher.matches()) {
-            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, "Invalid version number"));
+            return Result.problem(Problem.valueOf(Response.Status.BAD_REQUEST, "Invalid version number"));
         }
 
         try {
@@ -57,7 +57,7 @@ public class SchemaService {
         } catch (final NoSuchSchemaException e) {
             LOG.debug("Could not find EventTypeSchema version: {} for EventType: {}", version, name);
             return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, 
-				    "Could not find schema version " + version + " for event type " + name);
+				    "Could not find schema version " + version + " for event type " + name));
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type schema version " + version + " for EventType " + name, e);
             return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, "Schema type of version does not exist"));
