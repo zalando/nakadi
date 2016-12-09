@@ -59,7 +59,7 @@ public class SchemaService {
             return Result.problem(e.asProblem());
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type schema version " + version + " for EventType " + name, e);
-            return Result.problem(e.asProblem());
+            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, "Schema type of version does not exist"));
         }
     }
 }
