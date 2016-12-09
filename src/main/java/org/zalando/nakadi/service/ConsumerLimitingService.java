@@ -22,7 +22,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 
 import static java.text.MessageFormat.format;
 import static java.util.stream.Collectors.toList;
@@ -100,7 +99,7 @@ public class ConsumerLimitingService {
                     final List<String> slotsOccupied = getChildrenCached(zkPath);
                     return slotsOccupied.size() >= maxConnections;
                 })
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     private NoConnectionSlotsException generateNoConnectionSlotsException(final String eventType,
