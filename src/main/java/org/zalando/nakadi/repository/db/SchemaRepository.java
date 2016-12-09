@@ -41,7 +41,7 @@ public class SchemaRepository extends AbstractDbRepository {
                     jdbcTemplate.query(sql, new Object[]{name, version}, new SchemaRowMapper());
             if (schemas.size() != 1)
                 throw new InternalNakadiException(
-                        String.format("Unexpected number of schemas with version {}: {}", version, schemas.size()));
+                        String.format("Unexpected number of schemas with version %s: %s", version, schemas.size()));
             return schemas.get(0);
         } catch (EmptyResultDataAccessException e) {
             throw new NoSuchSchemaException("EventType \"" + name
