@@ -48,7 +48,7 @@ public class SchemaService {
     public Result<EventTypeSchema> getSchemaVersion(final String name, final String version) {
         final Matcher versionMatcher = VERSION_PATTERN.matcher(version);
         if (!versionMatcher.matches()) {
-            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND));
+            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, "Invalid version number"));
         }
 
         try {
