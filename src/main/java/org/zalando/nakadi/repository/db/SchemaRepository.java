@@ -37,7 +37,7 @@ public class SchemaRepository extends AbstractDbRepository {
                 "WHERE ets_event_type_name = ? AND ets_schema_object ->> 'version' = ?";
 
         try {
-            return jdbcTemplate.query(sql, new Object[]{name, version}, new SchemaRowMapper()).get(0);
+            return jdbcTemplate.queryForObject(sql, new Object[]{name, version}, new SchemaMapper());
         } catch (EmptyResultDataAccessException e) {
             throw new NoSuchSchemaException("EventType \"" + name
                     + "\" has no schema with version \"" + version + "\"", e);
@@ -56,6 +56,19 @@ public class SchemaRepository extends AbstractDbRepository {
         public EventTypeSchema mapRow(final ResultSet rs, final int rowNum) throws SQLException {
             try {
                 return jsonMapper.readValue(rs.getString("ets_schema_object"), EventTypeSchema.class);
+            } catch (IOException e) {
+                throw new SQLException(e);
+            }
+        }
+    }
+
+    private class SchemaMapper implements RowMapper<EventTypeSchema> {
+        @Override
+        public EventTypeSchema mapRow(final ResultSet rs, final int rowNum) throws SQLException {
+            try {
+                final EventTypeSchema eventType =
+                        jsonMapper.readValue(rs.getString("ets_schema_object"), EventTypeSchema.class);
+                return eventType;
             } catch (IOException e) {
                 throw new SQLException(e);
             }
