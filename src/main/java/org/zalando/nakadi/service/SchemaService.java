@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventTypeSchema;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSchemaException;
 import org.zalando.nakadi.repository.db.SchemaRepository;
 import org.zalando.problem.Problem;
@@ -48,7 +47,7 @@ public class SchemaService {
     public Result<EventTypeSchema> getSchemaVersion(final String name, final String version) {
         final Matcher versionMatcher = VERSION_PATTERN.matcher(version);
         if (!versionMatcher.matches()) {
-            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND));
+            return Result.problem(Problem.valueOf(Response.Status.BAD_REQUEST, "Invalid version number"));
         }
 
         try {
@@ -56,9 +55,6 @@ public class SchemaService {
             return Result.ok(schema);
         } catch (final NoSuchSchemaException e) {
             LOG.debug("Could not find EventTypeSchema version: {} for EventType: {}", version, name);
-            return Result.problem(e.asProblem());
-        } catch (final InternalNakadiException e) {
-            LOG.error("Problem loading event type schema version " + version + " for EventType " + name, e);
             return Result.problem(e.asProblem());
         }
     }
