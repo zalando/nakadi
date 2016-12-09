@@ -60,7 +60,7 @@ public class SchemaControllerTest {
                 new SchemaController(schemaService, eventTypeService)
                         .getSchemaVersion(eventType.getName(), "latest", nativeWebRequest);
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
-        Assert.assertEquals(eventType.getSchema().getSchema(), result.getBody().toString());
+        Assert.assertEquals(eventType.getSchema().toString(), result.getBody().toString());
     }
 
     @Test
@@ -83,7 +83,7 @@ public class SchemaControllerTest {
                 new SchemaController(schemaService, eventTypeService).getSchemaVersion(eventType.getName(),
                         eventType.getSchema().getVersion().toString(), nativeWebRequest);
         Assert.assertEquals(HttpStatus.OK, result.getStatusCode());
-        Assert.assertEquals(eventType.getSchema().getSchema(), result.getBody().toString());
+        Assert.assertEquals(eventType.getSchema().toString(), result.getBody().toString());
     }
 
     @Test

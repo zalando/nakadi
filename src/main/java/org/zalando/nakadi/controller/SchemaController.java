@@ -53,13 +53,13 @@ public class SchemaController {
                 return Responses.create(eventTypeResult.getProblem(), request);
             }
 
-            return ResponseEntity.status(HttpStatus.OK).body(eventTypeResult.getValue().getSchema().getSchema());
+            return ResponseEntity.status(HttpStatus.OK).body(eventTypeResult.getValue().getSchema());
         }
 
         final Result<EventTypeSchema> result = schemaService.getSchemaVersion(name, version);
         if (!result.isSuccessful())
             return Responses.create(result.getProblem(), request);
 
-        return ResponseEntity.status(HttpStatus.OK).body(result.getValue().getSchema());
+        return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
     }
 }
