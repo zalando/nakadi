@@ -37,12 +37,7 @@ public class SchemaRepository extends AbstractDbRepository {
                 "WHERE ets_event_type_name = ? AND ets_schema_object ->> 'version' = ?";
 
         try {
-            final List<EventTypeSchema> schemas =
-                    jdbcTemplate.query(sql, new Object[]{name, version}, new SchemaRowMapper());
-            if (schemas.size() != 1)
-                throw new InternalNakadiException(
-                        String.format("Unexpected number of schemas with version %s: %s", version, schemas.size()));
-            return schemas.get(0);
+            return jdbcTemplate.query(sql, new Object[]{name, version}, new SchemaRowMapper()).get(0);
         } catch (EmptyResultDataAccessException e) {
             throw new NoSuchSchemaException("EventType \"" + name
                     + "\" has no schema with version \"" + version + "\"", e);
