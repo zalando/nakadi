@@ -40,7 +40,7 @@ public class SchemaService {
                     "'offset' parameter can't be lower than 0"));
 
         return Result.ok(paginationService
-                .paginate(offset,  limit, "/schemas",
+                .paginate(offset,  limit, String.format("/event-types/%s/schemas", name),
                         (o, l) -> schemaRepository.getSchemas(name, o, l),
                         () -> schemaRepository.getSchemasCount(name)));
     }
