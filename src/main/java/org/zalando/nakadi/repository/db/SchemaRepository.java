@@ -32,7 +32,7 @@ public class SchemaRepository extends AbstractDbRepository {
     }
 
     public EventTypeSchema getSchemaVersion(final String name, final String version)
-            throws NoSuchSchemaException, InternalNakadiException {
+            throws NoSuchSchemaException {
         final String sql = "SELECT ets_schema_object FROM zn_data.event_type_schema " +
                 "WHERE ets_event_type_name = ? AND ets_schema_object ->> 'version' = ?";
 

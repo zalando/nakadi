@@ -56,11 +56,8 @@ public class SchemaService {
             return Result.ok(schema);
         } catch (final NoSuchSchemaException e) {
             LOG.debug("Could not find EventTypeSchema version: {} for EventType: {}", version, name);
-            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, 
-				    "Could not find schema version " + version + " for event type " + name));
-        } catch (final InternalNakadiException e) {
-            LOG.error("Problem loading event type schema version " + version + " for EventType " + name, e);
-            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, "Schema type of version does not exist"));
+            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND,
+                    "Could not find schema version " + version + " for event type " + name));
         }
     }
 }
