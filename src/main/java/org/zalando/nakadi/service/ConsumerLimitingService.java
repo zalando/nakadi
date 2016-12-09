@@ -80,7 +80,9 @@ public class ConsumerLimitingService {
                     }
                     return slots;
                 }, zkLockFactory.createLock(lockZkPath));
-            } catch (Exception e) {
+            } catch (final NoConnectionSlotsException e) {
+                throw e;
+            } catch (final Exception e) {
                 // in a case of failure release slots for partitions that already acquired slots
                 slots.forEach(this::releaseConnectionSlot);
                 throw new ServiceUnavailableException("Error communicating with zookeeper", e);
