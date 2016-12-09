@@ -37,7 +37,7 @@ public class SchemaControllerAT extends BaseAT {
                 .and()
                 .body("items.size()", Matchers.is(1))
                 .body("items[0].version", Matchers.equalTo("1.1.0"))
-                .body("_links.next.href", Matchers.equalTo("/schemas?offset=1&limit=1"))
+                .body("_links.next.href", Matchers.equalTo("/event-types/et_test_name/schemas?offset=1&limit=1"))
                 .body("_links.prev", Matchers.nullValue());
 
         RestAssured.given()
@@ -49,7 +49,7 @@ public class SchemaControllerAT extends BaseAT {
                 .body("items.size()", Matchers.is(1))
                 .body("items[0].version", Matchers.equalTo("1.0.0"))
                 .body("_links.next", Matchers.nullValue())
-                .body("_links.prev.href", Matchers.equalTo("/schemas?offset=0&limit=1"));
+                .body("_links.prev.href", Matchers.equalTo("/event-types/et_test_name/schemas?offset=0&limit=1"));
     }
 
     @Test
