@@ -11,6 +11,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import org.zalando.nakadi.service.ConsumerLimitingCleaningService;
 import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
@@ -32,7 +33,8 @@ public class ConsumerLimitingCleaningServiceAT extends BaseAT {
     public ConsumerLimitingCleaningServiceAT() {
         final ZooKeeperHolder zkHolder = Mockito.mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);
-        final ConsumerLimitingService limitingService = new ConsumerLimitingService(zkHolder, 5);
+        final ZooKeeperLockFactory zkLockFactory = new ZooKeeperLockFactory(zkHolder);
+        final ConsumerLimitingService limitingService = new ConsumerLimitingService(zkHolder, zkLockFactory, 5);
 
         objectMapper = new JsonConfig().jacksonObjectMapper();
         cleaningService = new ConsumerLimitingCleaningService(zkHolder, objectMapper, limitingService);
