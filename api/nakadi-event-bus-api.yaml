@@ -900,9 +900,9 @@ paths:
         '200':
           description: |
             Ok. Stream started.
-            Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
+            Stream format is a continuous series of `SubscriptionEventStreamBatch`s separated by `\n`
           schema:
-            $ref: '#/definitions/EventStreamBatch'
+            $ref: '#/definitions/SubscriptionEventStreamBatch'
           headers:
             X-Nakadi-StreamId:
               description: |
