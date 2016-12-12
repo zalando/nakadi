@@ -13,7 +13,7 @@ public class FixedSchemaChangeConstraint implements SchemaEvolutionConstraint {
     public Optional<SchemaEvolutionIncompatibility> validate(final EventType original, final EventTypeBase eventType) {
         if (original.getCompatibilityMode() == CompatibilityMode.FIXED
             && eventType.getCompatibilityMode() == CompatibilityMode.FIXED) {
-            if (!original.getSchema().equals(eventType.getSchema())) {
+            if (!original.getSchema().getSchema().equals(eventType.getSchema().getSchema())) {
                 return Optional.of(new SchemaEvolutionIncompatibility(errorMessage));
             }
         }
