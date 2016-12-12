@@ -72,18 +72,18 @@ public class ConsumerLimitingServiceAT extends BaseAT {
 
     @Test(expected = NoConnectionSlotsException.class)
     public void whenNoFreeSlotsThenException() throws Exception {
-        final String parition = "0";
+        final String partition = "0";
 
         range(0, 5).forEach(x -> {
             try {
-                final String path = zkPathForConsumer(parition) + "/" + randomUUID();
+                final String path = zkPathForConsumer(partition) + "/" + randomUUID();
                 CURATOR.create().creatingParentsIfNeeded().forPath(path);
             } catch (Exception e) {
                 throw new AssertionError("Error occurred when accessing Zookeeper");
             }
         });
 
-        limitingService.acquireConnectionSlots(client, eventType, ImmutableList.of(parition));
+        limitingService.acquireConnectionSlots(client, eventType, ImmutableList.of(partition));
     }
 
     @Test
