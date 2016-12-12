@@ -11,7 +11,8 @@ public class FixedSchemaChangeConstraint implements SchemaEvolutionConstraint {
             "changed. Please, upgrade this event type to compatible mode in order to be able to change the schema.";
     @Override
     public Optional<SchemaEvolutionIncompatibility> validate(final EventType original, final EventTypeBase eventType) {
-        if (original.getCompatibilityMode() == CompatibilityMode.FIXED) {
+        if (original.getCompatibilityMode() == CompatibilityMode.FIXED
+            && eventType.getCompatibilityMode() == CompatibilityMode.FIXED) {
             if (!original.getSchema().equals(eventType.getSchema())) {
                 return Optional.of(new SchemaEvolutionIncompatibility(errorMessage));
             }
