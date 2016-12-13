@@ -200,7 +200,8 @@ public class EventTypeControllerTest {
         final Problem expectedProblem = invalidProblem("schema.schema", "may not be null");
 
         final String eventType = "{\"category\": \"data\", \"owning_application\": \"blah-app\", "
-                + "\"name\": \"blah-event-type\", \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
+                + "\"compatibility_mode\": \"compatible\", \"name\": \"blah-event-type\","
+                + " \"schema\": { \"type\": \"JSON_SCHEMA\" }}";
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                                 .andExpect(content().contentType("application/problem+json")).andExpect(content()

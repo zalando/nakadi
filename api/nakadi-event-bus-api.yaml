@@ -1604,7 +1604,6 @@ definitions:
             Under this mode, the following json-schema attributes are not supported: `not`, `patternProperties`,
             `additionalProperties` and `additionalItems`. When validating events, additional properties is `false`.
         type: string
-        default: compatible
 
       schema:
         $ref: '#/definitions/EventTypeSchema'
@@ -1660,6 +1659,7 @@ definitions:
       - category
       - owning_application
       - schema
+      - compatibility_mode
 
   EventTypeSchema:
     type: object
