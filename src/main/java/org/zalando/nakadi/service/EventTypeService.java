@@ -197,7 +197,8 @@ public class EventTypeService {
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.FIXED) {
                 throw new InvalidEventTypeException(
-                        "\"compatibility_mode\" should be either \"compatible\" or \"none\"");
+                        "\"compatibility_mode\" should be either \"compatible\" or \"none\". The \"fixed\" mode is for "
+                                + "legacy event types only");
             }
 
             validatePartitionKeys(schema, eventType);
