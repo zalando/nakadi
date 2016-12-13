@@ -324,7 +324,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenStreamTimeout0ThenInfiniteStreaming() throws Exception {
-        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "stream_timeout=0")
                 .start();
