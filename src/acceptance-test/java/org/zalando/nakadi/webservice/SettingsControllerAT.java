@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.Collections;
 
 import static com.jayway.restassured.RestAssured.given;
+import static junit.framework.TestCase.fail;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 
 public class SettingsControllerAT extends BaseAT {
 
@@ -58,21 +60,27 @@ public class SettingsControllerAT extends BaseAT {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
-        given()
-                .contentType(ContentType.JSON)
-                .get(BLACKLIST_URL)
-                .then()
-                .statusCode(HttpStatus.SC_OK)
-                .content(JSON_HELPER.matchesObject(
-                        ImmutableMap.of(
-                                "consumers",  ImmutableMap.of(
-                                        "event_types", Collections.singleton(eventType.getName()),
-                                        "apps", Collections.emptySet()),
-                                "producers", ImmutableMap.of(
-                                        "event_types", Collections.emptySet(),
-                                        "apps", Collections.emptySet()))
-                        )
-                );
+        waitFor(() -> {
+            try {
+                given()
+                        .contentType(ContentType.JSON)
+                        .get(BLACKLIST_URL)
+                        .then()
+                        .statusCode(HttpStatus.SC_OK)
+                        .content(JSON_HELPER.matchesObject(
+                                ImmutableMap.of(
+                                        "consumers", ImmutableMap.of(
+                                                "event_types", Collections.singleton(eventType.getName()),
+                                                "apps", Collections.emptySet()),
+                                        "producers", ImmutableMap.of(
+                                                "event_types", Collections.emptySet(),
+                                                "apps", Collections.emptySet()))
+                                )
+                        );
+            } catch (final JsonProcessingException e) {
+                fail();
+            }
+        });
     }
 
     private void clearFloodersData() {
