@@ -112,8 +112,6 @@ paths:
     get:
       tags:
         - schema-registry-api
-      security:
-        - oauth2: ['nakadi.event_type.read']
       description: Returns a list of all registered `EventType`s
       parameters:
         - name: X-Flow-Id
@@ -200,8 +198,6 @@ paths:
     get:
       tags:
         - schema-registry-api
-      security:
-        - oauth2: ['nakadi.event_type.read']
       description: |
         Returns the `EventType` identified by its name.
       parameters:
@@ -468,6 +464,11 @@ paths:
           description: Unprocessable entity
           schema:
             $ref: '#/definitions/Problem'
+        '429':
+          description: |
+            Too Many Requests. The client reached the maximum amount of simultaneous connections to a single partition
+          schema:
+            $ref: '#/definitions/Problem'
         '403':
           description: Access is forbidden for the client or event type
           schema:
@@ -480,6 +481,11 @@ paths:
       description: |
         List of schemas ordered from most recent to oldest.
       parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
         - name: limit
           in: query
           description: maximum number of schemas retuned in one page
@@ -498,20 +504,21 @@ paths:
           default: 0
           minimum: 0
       responses:
-          '200':
-            schema:
-              type: object
-              properties:
-                _links:
-                  $ref: '#/definitions/PaginationLinks'
+        '200':
+          description: OK
+          schema:
+            type: object
+            properties:
+              _links:
+                $ref: '#/definitions/PaginationLinks'
+              items:
+                description: list of schemas.
+                type: array
                 items:
-                  description: list of schemas.
-                  type: array
-                  items:
-                    $ref: '#/definitions/EventTypeSchema'
-              required:
-                - items
-                - _links
+                  $ref: '#/definitions/EventTypeSchema'
+            required:
+              - items
+              - _links
 
   '/event-types/{name}/schemas/{version}':
     get:
@@ -520,7 +527,18 @@ paths:
       description: |
         Retrieves a given schema version. A special `{version}` key named 'latest' is provided for
         convenience.
-    responses:
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: version
+          in: path
+          description: EventType schema version
+          type: string
+          required: true
+      responses:
         '200':
           schema:
             $ref: '#/definitions/EventTypeSchema'
@@ -887,9 +905,9 @@ paths:
         '200':
           description: |
             Ok. Stream started.
-            Stream format is a continuous series of `EventStreamBatch`s separated by `\n`
+            Stream format is a continuous series of `SubscriptionEventStreamBatch`s separated by `\n`
           schema:
-            $ref: '#/definitions/EventStreamBatch'
+            $ref: '#/definitions/SubscriptionEventStreamBatch'
           headers:
             X-Nakadi-StreamId:
               description: |
@@ -1589,10 +1607,7 @@ definitions:
         default: compatible
 
       schema:
-        type: object
         $ref: '#/definitions/EventTypeSchema'
-        description: |
-          The most recent schema for this EventType. Submitted events will be validated against it.
 
       partition_key_fields:
         type: array
@@ -1605,17 +1620,10 @@ definitions:
           If set it MUST be a valid required field as defined in the schema.
 
       default_statistic:
-        type: object
         $ref: '#/definitions/EventTypeStatistics'
-        description: |
-          Defines expected load for this EventType. Nakadi uses this object in order to
-          provide an optimal number of partitions from a throughput perspective.
 
       options:
-        type: object
         $ref: '#/definitions/EventTypeOptions'
-        description: |
-          Provides ability to set internal Nakadi parameters.
 
       write_scopes:
         type: array
@@ -1654,6 +1662,9 @@ definitions:
       - schema
 
   EventTypeSchema:
+    type: object
+    description: |
+      The most recent schema for this EventType. Submitted events will be validated against it.
     properties:
       version:
         type: string
@@ -1691,7 +1702,7 @@ definitions:
     type: object
     description: |
       Operational statistics for an EventType. This data MUST be provided by users on Event Type
-      creation.
+      creation. Nakadi uses this object in order to provide an optimal number of partitions from a throughput perspective.
 
     properties:
       messages_per_minute:
@@ -1946,7 +1957,7 @@ parameters:
     default: 0
 
   BlacklistType:
-    name: type
+    name: blacklist_type
     in: path
     description: |
       Type of the blacklist to put client into.

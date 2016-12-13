@@ -34,6 +34,7 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
@@ -128,10 +129,15 @@ public class EventStreamControllerTest {
         blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isConsumptionBlocked(any(), any())).thenReturn(false);
 
-        controller = new EventStreamController(eventTypeRepository, topicRepositoryMock, objectMapper,
-        eventStreamFactoryMock, metricRegistry, crutch, blacklistService);
+        final ConsumerLimitingService consumerLimitingService = Mockito.mock(ConsumerLimitingService.class);
+        when(consumerLimitingService.acquireConnectionSlots(any(), any(), any())).thenReturn(ImmutableList.of());
 
         featureToggleService = mock(FeatureToggleService.class);
+
+        controller = new EventStreamController(
+                eventTypeRepository, topicRepositoryMock, objectMapper, eventStreamFactoryMock, metricRegistry, crutch,
+                blacklistService, consumerLimitingService, featureToggleService);
+
         settings = mock(SecuritySettings.class);
 
         mockMvc = standaloneSetup(controller)
