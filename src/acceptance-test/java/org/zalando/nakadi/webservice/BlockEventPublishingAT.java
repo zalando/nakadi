@@ -3,9 +3,7 @@ package org.zalando.nakadi.webservice;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import org.apache.http.HttpStatus;
-import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.hamcrest.Matchers;
-import org.json.JSONObject;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.service.BlacklistService;
@@ -15,7 +13,7 @@ import java.io.IOException;
 import java.text.MessageFormat;
 
 import static com.jayway.restassured.RestAssured.given;
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 
 public class BlockEventPublishingAT extends BaseAT {
 
@@ -31,42 +29,16 @@ public class BlockEventPublishingAT extends BaseAT {
 
         SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
 
-        waitForBlock(eventType);
-
-        publishEvent(eventType)
+        waitFor(() -> publishEvent(eventType)
                 .then()
                 .statusCode(403)
-                .body("detail", Matchers.equalTo("Application or event type is blocked"));
+                .body("detail", Matchers.equalTo("Application or event type is blocked")));
 
         SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
 
-        waitForUnblock(eventType);
-
-        publishEvent(eventType)
+        waitFor(() -> publishEvent(eventType)
                 .then()
-                .statusCode(HttpStatus.SC_OK);
-    }
-
-    private void waitForUnblock(final EventType eventType) {
-        executeWithRetry(() -> {
-            return !getFlooders().getJSONObject("producers").getJSONArray("event_types").toList()
-                    .contains(eventType.getName());
-        }, new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false).withWaitBetweenEachTry(
-                500));
-    }
-
-    private void waitForBlock(final EventType eventType) {
-        executeWithRetry(() -> {
-            return getFlooders().getJSONObject("producers").getJSONArray("event_types").toList()
-                            .contains(eventType.getName());
-        }, new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false).withWaitBetweenEachTry(
-                        500));
-    }
-
-    private JSONObject getFlooders() {
-        return new JSONObject(given()
-                                .header("accept", "application/json").get(FLOODERS_URL)
-                                .getBody().asString());
+                .statusCode(HttpStatus.SC_OK));
     }
 
     private Response publishEvent(final EventType eventType) {
