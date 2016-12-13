@@ -30,16 +30,16 @@ public class EventStream {
     private final OutputStream outputStream;
     private final EventConsumer eventConsumer;
     private final EventStreamConfig config;
-    private final FloodService floodService;
+    private final BlacklistService blacklistService;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
-                       final FloodService floodService) {
+                       final BlacklistService blacklistService) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
-        this.floodService = floodService;
+        this.blacklistService = blacklistService;
     }
 
     public void streamEvents(final AtomicBoolean connectionReady) {
@@ -55,7 +55,7 @@ public class EventStream {
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
 
             while (connectionReady.get() &&
-                    !floodService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
+                    !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
                 final Optional<ConsumedEvent> eventOrEmpty = eventConsumer.readEvent();
 
                 if (eventOrEmpty.isPresent()) {

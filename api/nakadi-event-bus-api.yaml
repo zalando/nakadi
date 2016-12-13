@@ -16,9 +16,6 @@ info:
     * The **schema** of the Event of this EventType. The schema defines the accepted format of
     Events of an EventType and will be, if so desired, enforced by Nakadi. Usually Nakadi will
     respect the schema for the EventTypes in accordance to how an owning Application defines them.
-    **Note:** *Currently the specification of the schema must be pushed into Nakadi on EventType
-    creation; in the future, assuming that Applications will expose the schema for its owned
-    resources, Nakadi might support fetching the schema directly from them.*
 
     * The expected **validation** and **enrichment** procedures upon reception of an Event.
     Validation define conditions for the acceptance of the incoming Event and are strictly enforced
@@ -71,7 +68,7 @@ info:
     Other aspects of the Event Bus are at this moment to be defined and otherwise specified, not included
     in this version of this specification.
 
-  version: '0.7.0'
+  version: '0.8.0'
   contact:
     name: Team Aruha @ Zalando
     email: team-aruha+nakadi-maintainers@zalando.de
@@ -240,8 +237,7 @@ paths:
 
         The name field cannot be changed. Attempting to do so will result in a 422 failure.
 
-        At this moment changes in the schema are not supported and will produce a 422
-        failure. (todo: define conditions for backwards compatible extensions in the schema)
+        Modifications to the schema are constrained by the specified `compatibility_mode`.
       parameters:
         - name: name
           in: path
@@ -383,13 +379,10 @@ paths:
             type: array
             items:
               $ref: '#/definitions/BatchItemResponse'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
 
     get:
       tags:
@@ -475,15 +468,66 @@ paths:
           description: Unprocessable entity
           schema:
             $ref: '#/definitions/Problem'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
 
-  /event-types/{name}/partitions:
+  '/event-types/{name}/schemas':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        List of schemas ordered from most recent to oldest.
+      parameters:
+        - name: limit
+          in: query
+          description: maximum number of schemas retuned in one page
+          type: integer
+          format: int64
+          required: false
+          default: 20
+          minimum: 1
+          maximum: 1000
+        - name: offset
+          in: query
+          description: page offset
+          type: integer
+          format: int64
+          required: false
+          default: 0
+          minimum: 0
+      responses:
+          '200':
+            schema:
+              type: object
+              properties:
+                _links:
+                  $ref: '#/definitions/PaginationLinks'
+                items:
+                  description: list of schemas.
+                  type: array
+                  items:
+                    $ref: '#/definitions/EventTypeSchema'
+              required:
+                - items
+                - _links
+
+  '/event-types/{name}/schemas/{version}':
+    get:
+      tags:
+        - schema-registry-api
+      description: |
+        Retrieves a given schema version. A special `{version}` key named 'latest' is provided for
+        convenience.
+    responses:
+        '200':
+          schema:
+            $ref: '#/definitions/EventTypeSchema'
+          description: |
+            Schema object.
+
+  '/event-types/{name}/partitions':
     get:
       tags:
         - unmanaged-api
@@ -866,13 +910,10 @@ paths:
             already equals the maximal value - the total amount of this subscription partitions.
           schema:
             $ref: '#/definitions/Problem'
-        '429':
-          description: Too many requests
-          headers:
-            Retry-After:
-              description: |
-                Number of seconds the client ought to wait before making a follow-up request.
-              type: number
+        '403':
+          description: Access is forbidden for the client or event type
+          schema:
+            $ref: '#/definitions/Problem'
 
   /subscriptions/{subscription_id}/stats:
     get:
@@ -959,17 +1000,17 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /settings/flooders:
+  /settings/blacklist:
     get:
       tags:
         - settings-api
       description: |
-        Lists all blocked abusive producers/consumers divided by app and event type.
+        Lists all blocked producers/consumers divided by app and event type.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       responses:
         '200':
-          description: Lists all blocked abusive producers/consumers.
+          description: Lists all blocked producers/consumers.
           schema:
             type: object
             properties:
@@ -1001,7 +1042,9 @@ paths:
                     type: array
                     items:
                       type: string
-    post:
+
+  /settings/blacklist/{blacklist_type}/{name}:
+    put:
       tags:
         - settings-api
       description: |
@@ -1009,29 +1052,32 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
-        - name: flooder
-          in: body
-          description: Abusive client to be blocked
-          schema:
-            $ref: '#/definitions/Flooder'
+        - $ref: '#/parameters/BlacklistType'
+        - name: name
+          in: path
+          description: Name of the client to block.
+          type: string
           required: true
       responses:
         '204':
-          description: Abusive client or event type was successfully blocked.
+          description: Client or event type was successfully blocked.
     delete:
       tags:
         - settings-api
-      description: Unblocks publication/consumption for particular app or event type.
+      description: |
+        Unblocks publication/consumption for particular app or event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
       parameters:
-        - name: flooder
-          in: body
-          description: Abusive client or event type to be unblocked
-          schema:
-            $ref: '#/definitions/Flooder'
+        - $ref: '#/parameters/BlacklistType'
+        - name: name
+          in: path
+          description: Name of the client to unblock.
+          type: string
           required: true
       responses:
         '204':
-          description: Abusive client was successfully unblocked.
+          description: Client was successfully unblocked.
 
   /settings/features:
     get:
@@ -1130,12 +1176,19 @@ definitions:
         example: '1996-12-19T16:39:57-08:00'
       received_at:
         type: string
+        readOnly: true
         description: |
           Timestamp of the reception of the Event by Nakadi. This is enriched upon reception of
           the Event.
           If set by the producer Event will be rejected.
         format: date-time
         example: '1996-12-19T16:39:57-08:00'
+      version:
+        type: string
+        readOnly: true
+        description: |
+          Version of the schema used for validating this event. This is enriched upon reception.
+          This string uses semantic versioning, which is better defined in the `EventTypeSchema` object.
       parent_eids:
         type: array
         items:
@@ -1507,11 +1560,39 @@ definitions:
         type: string
         default: 'random'
 
+      compatibility_mode:
+        description: |
+          Compatibility mode provides a mean for event owners to evolve their schema, given changes respect the
+          semantics defined by this field.
+
+          It's designed to be flexible enough so that producers can evolve their schemas while not
+          inadvertently breaking existent consumers.
+
+          Once defined, the compatibility mode is fixed, since otherwise it would break a predefined contract,
+          declared by the producer.
+
+          List of compatibility modes:
+
+          - 'fixed': Schema changes are not allowed. This is used only by legacy event types. This option is not
+            available for new event types. Schema validation is lenient and allow fields that are not defined. Also,
+            it's possible to use the full json schema specification for defining schemas.
+
+          - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
+            validating events, no additional properties are accepted unless explicitly stated in the schema.
+
+          - 'compatible': Consumers can reliably parse events produced under different versions. Every event published
+            since the first version is still valid based on the newest schema. When in compatible mode, it's allowed to
+            add new optional properties and definitions to an existing schema, but no other changes are allowed.
+            Under this mode, the following json-schema attributes are not supported: `not`, `patternProperties`,
+            `additionalProperties` and `additionalItems`. When validating events, additional properties is `false`.
+        type: string
+        default: compatible
+
       schema:
         type: object
         $ref: '#/definitions/EventTypeSchema'
         description: |
-          The schema for this EventType. Submitted events will be validated against it.
+          The most recent schema for this EventType. Submitted events will be validated against it.
 
       partition_key_fields:
         type: array
@@ -1523,7 +1604,7 @@ definitions:
 
           If set it MUST be a valid required field as defined in the schema.
 
-      default_statistics:
+      default_statistic:
         type: object
         $ref: '#/definitions/EventTypeStatistics'
         description: |
@@ -1554,6 +1635,18 @@ definitions:
           contains at least one of the scopes in this list.
           If no scopes provided then anyone can consume from this event type.
 
+      created_at:
+        type: string
+        pattern: date-time
+        description: |
+          Date and time when this event type was created.
+
+      updated_at:
+        type: string
+        pattern: date-time
+        description: |
+          Date and time when this event type was last updated.
+
     required:
       - name
       - category
@@ -1562,6 +1655,22 @@ definitions:
 
   EventTypeSchema:
     properties:
+      version:
+        type: string
+        readOnly: true
+        description: |
+          This field is automatically generated by Nakadi. Values are based on semantic versioning. Changes to `title`
+          or `description` are considered PATCH level changes. Adding new optional fields is considered a MINOR level
+          change. All other changes are considered MAJOR level.
+        default: '1.0.0'
+      created_at:
+        type: string
+        readOnly: true
+        description: |
+          Creation timestamp of the schema. This is generated by Nakadi. It should not be
+          specified when updating a schema and sending it may result in a client error.
+        format: date-time
+        example: '1996-12-19T16:39:57-08:00'
       type:
         type: string
         enum:
@@ -1571,13 +1680,9 @@ definitions:
           future there could be others.
       schema:
         type: string
-        $ref: '#/definitions/EventTypeSchema'
         description: |
           The schema as string in the syntax defined in the field type. Failure to respect the
           syntax will fail any operation on an EventType.
-
-          To have a generic, undefined schema it is possible to define the schema as `"schema":
-          "{\"additionalProperties\": true}"`.
     required:
       - type
       - schema
@@ -1741,23 +1846,6 @@ definitions:
         format: uri
         example: '/subscriptions?offset=20&limit=10'
 
-  Flooder:
-    description: Abusive consumer or producer
-    type: object
-    properties:
-      name:
-        type: string
-      type:
-        type: string
-        enum:
-          - CONSUMER_APP
-          - CONSUMER_ET
-          - PRODUCER_APP
-          - PRODUCER_ET
-    required:
-      - name
-      - type
-
   Feature:
     description: Feature of Nakadi to be enabled or disabled
     type: object
@@ -1856,3 +1944,17 @@ parameters:
     format: int32
     required: false
     default: 0
+
+  BlacklistType:
+    name: type
+    in: path
+    description: |
+      Type of the blacklist to put client into.
+
+      List of available types:
+      - 'CONSUMER_APP': consumer application.
+      - 'CONSUMER_ET': consumer event type.
+      - 'PRODUCER_APP': producer application.
+      - 'PRODUCER_ET': producer event type.
+    type: string
+    required: true

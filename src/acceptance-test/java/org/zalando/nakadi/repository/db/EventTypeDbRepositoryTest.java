@@ -22,6 +22,8 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
+import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 
 public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
@@ -191,6 +193,22 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final int schemaRows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
         assertThat("Number of rows should decrease", schemaRows, equalTo(0));
+    }
+
+    @Test
+    public void unknownAttributesAreIgnoredWhenDesserializing() throws Exception {
+        final String eventTypeName = randomValidEventTypeName();
+        final String topic = randomUUID();
+        final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) " +
+                "VALUES (?, ?, to_json(?::json))";
+        template.update(insertSQL,
+                eventTypeName,
+                topic,
+                "{\"unknow_attribute\": \"will just be ignored\"}");
+
+        final EventType persistedEventType = repository.findByName(eventTypeName);
+
+        assertThat(persistedEventType, notNullValue());
     }
 
     private void insertEventType(final EventType eventType) throws Exception {
