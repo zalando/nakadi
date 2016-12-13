@@ -464,6 +464,11 @@ paths:
           description: Unprocessable entity
           schema:
             $ref: '#/definitions/Problem'
+        '429':
+          description: |
+            Too Many Requests. The client reached the maximum amount of simultaneous connections to a single partition
+          schema:
+            $ref: '#/definitions/Problem'
         '403':
           description: Access is forbidden for the client or event type
           schema:

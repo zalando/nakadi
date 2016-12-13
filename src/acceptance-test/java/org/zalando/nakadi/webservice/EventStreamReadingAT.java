@@ -14,19 +14,26 @@ import org.springframework.http.HttpStatus;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.jayway.restassured.RestAssured.given;
 import static java.text.MessageFormat.format;
+import static java.util.stream.IntStream.range;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
@@ -327,6 +334,76 @@ public class EventStreamReadingAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
+    public void whenExceedMaxConsumersNumThen429() throws IOException, InterruptedException, ExecutionException,
+            TimeoutException {
+        final String etName = NakadiTestUtils.createEventType().getName();
+
+        // try to create 8 consuming connections
+        final List<CompletableFuture<HttpURLConnection>> connectionFutures = range(0, 8)
+                .mapToObj(x -> createConsumingConnection(etName))
+                .collect(Collectors.toList());
+
+        assertThat("first 5 connections should be accepted",
+                countStatusCode(connectionFutures, HttpStatus.OK.value()),
+                equalTo(5));
+
+        assertThat("last 3 connections should be rejected",
+                countStatusCode(connectionFutures, HttpStatus.TOO_MANY_REQUESTS.value()),
+                equalTo(3));
+
+        // close one of open connections
+        for (final CompletableFuture<HttpURLConnection> conn : connectionFutures) {
+            if (conn.get().getResponseCode() == HttpStatus.OK.value()) {
+                conn.get().disconnect();
+                break;
+            }
+        }
+
+        // wait for Nakadi to recognize thаt connection is closed
+        Thread.sleep(1000);
+
+        // try to create 3 more connections
+        final List<CompletableFuture<HttpURLConnection>> moreConnectionFutures = range(0, 3)
+                .mapToObj(x -> createConsumingConnection(etName))
+                .collect(Collectors.toList());
+
+        assertThat("one more connection should be accepted",
+                countStatusCode(moreConnectionFutures, HttpStatus.OK.value()),
+                equalTo(1));
+
+        assertThat("other 2 connections should be rejected as we had only one new free slot",
+                countStatusCode(moreConnectionFutures, HttpStatus.TOO_MANY_REQUESTS.value()),
+                equalTo(2));
+    }
+
+    private int countStatusCode(final List<CompletableFuture<HttpURLConnection>> futures, final int statusCode) {
+        return (int) futures.stream()
+                .filter(future -> {
+                    try {
+                        return future.get(5, TimeUnit.SECONDS).getResponseCode() == statusCode;
+                    } catch (Exception e) {
+                        throw new AssertionError("Failed to get future result");
+                    }
+                })
+                .count();
+    }
+
+    private CompletableFuture<HttpURLConnection> createConsumingConnection(final String etName) {
+        final CompletableFuture<HttpURLConnection> future = new CompletableFuture<>();
+        new Thread(() -> {
+            try {
+                final URL url = new URL(URL + createStreamEndpointUrl(etName));
+                final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.getResponseCode(); // wait till the response code comes
+                future.complete(conn);
+            } catch (IOException e) {
+                throw new AssertionError();
+            }
+        }).start();
+        return future;
+    }
+
+    @Test(timeout = 10000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
         // blocking streaming client after 3 seconds
         new Thread(() -> {
@@ -405,8 +482,7 @@ public class EventStreamReadingAT extends BaseAT {
         if (batch.containsKey("events")) {
             final List<String> events = (List<String>) batch.get("events");
             assertThat(events.size(), equalTo(expectedEventNum));
-        }
-        else {
+        } else {
             assertThat(0, equalTo(expectedEventNum));
         }
     }
