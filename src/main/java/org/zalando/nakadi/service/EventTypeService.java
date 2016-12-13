@@ -36,6 +36,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.domain.EventType.decideOnStatisticsDuringMigration;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
@@ -168,8 +169,9 @@ public class EventTypeService {
         validateName(name, eventType);
         validatePartitionKeys(Optional.empty(), eventType);
         validateSchemaChange(eventType, existingEventType);
-        eventType.setDefaultStatistic(
-                validateStatisticsUpdate(existingEventType.getDefaultStatistic(), eventType.getDefaultStatistic()));
+        eventType.setDefaultStatistics(validateStatisticsUpdate(
+                decideOnStatisticsDuringMigration(existingEventType),
+                decideOnStatisticsDuringMigration(eventType)));
     }
 
     private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing,

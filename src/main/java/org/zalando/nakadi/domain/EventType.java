@@ -19,6 +19,15 @@ public class EventType {
 
     public static final List<String> EMPTY_STRING_LIST = new ArrayList<>(0);
 
+    // remove again once migrated to "default_statistics"
+    public static EventTypeStatistics decideOnStatisticsDuringMigration(final EventType eventType) {
+        if (eventType.getDefaultStatistics() != null) {
+            return eventType.getDefaultStatistics();
+        } else {
+            return eventType.getDefaultStatistic();
+        }
+    }
+
     @NotNull
     @Pattern(regexp = "[a-zA-Z][-0-9a-zA-Z_]*(\\.[a-zA-Z][-0-9a-zA-Z_]*)*", message = "format not allowed" )
     @Size(min = 1, max = 255, message = "the length of the name must be >= 1 and <= 255")
@@ -50,6 +59,10 @@ public class EventType {
 
     @Valid
     @Nullable
+    private EventTypeStatistics defaultStatistics;
+
+    @Valid
+    @Nullable
     private EventTypeStatistics defaultStatistic;
 
     @Valid
@@ -74,6 +87,7 @@ public class EventType {
                      final List<EnrichmentStrategyDescriptor> enrichmentStrategies,
                      final String partitionStrategy,
                      final List<String> partitionKeyFields, final EventTypeSchema schema,
+                     final EventTypeStatistics defaultStatistics,
                      final EventTypeStatistics defaultStatistic,
                      final EventTypeOptions options, final Set<String> writeScopes,
                      final Set<String> readScopes) {
@@ -86,6 +100,7 @@ public class EventType {
         this.partitionStrategy = partitionStrategy;
         this.partitionKeyFields = partitionKeyFields;
         this.schema = schema;
+        this.defaultStatistics = defaultStatistics;
         this.defaultStatistic = defaultStatistic;
         this.options = options;
         this.writeScopes = writeScopes;
@@ -134,6 +149,14 @@ public class EventType {
 
     public void setSchema(final EventTypeSchema schema) {
         this.schema = schema;
+    }
+
+    public EventTypeStatistics getDefaultStatistics() {
+        return defaultStatistics;
+    }
+
+    public void setDefaultStatistics(final EventTypeStatistics defaultStatistics) {
+        this.defaultStatistics = defaultStatistics;
     }
 
     public EventTypeStatistics getDefaultStatistic() {

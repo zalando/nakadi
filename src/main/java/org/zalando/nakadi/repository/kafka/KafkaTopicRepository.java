@@ -59,6 +59,7 @@ import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
+import static org.zalando.nakadi.domain.EventType.decideOnStatisticsDuringMigration;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
@@ -116,7 +117,7 @@ public class KafkaTopicRepository implements TopicRepository {
             throw new IllegalArgumentException("Retention time can not be null");
         }
         createTopic(eventType.getTopic(),
-                calculateKafkaPartitionCount(eventType.getDefaultStatistic()),
+                calculateKafkaPartitionCount(decideOnStatisticsDuringMigration(eventType)),
                 nakadiSettings.getDefaultTopicReplicaFactor(),
                 eventType.getOptions().getRetentionTime(),
                 nakadiSettings.getDefaultTopicRotationMs());
