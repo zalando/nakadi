@@ -3,6 +3,8 @@ package org.zalando.nakadi.repository.db;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -23,6 +25,7 @@ public class EventTypeCache {
 
     public static final String ZKNODE_PATH = "/nakadi/event_types";
     public static final int CACHE_MAX_SIZE = 100000;
+    private static final Logger LOG = LoggerFactory.getLogger(EventTypeCache.class);
 
     private final LoadingCache<String, EventType> eventTypeCache;
     private final LoadingCache<String, EventTypeValidator> validatorCache;
@@ -37,6 +40,21 @@ public class EventTypeCache {
         this.eventTypeCache = setupInMemoryEventTypeCache(eventTypeRepository);
         this.validatorCache = setupInMemoryValidatorCache(eventTypeCache);
         this.cacheSync = setupCacheSync(zkClient);
+        preloadEventTypes(eventTypeRepository);
+    }
+
+    private void preloadEventTypes(final EventTypeRepository eventTypeRepository) {
+        final long start = System.currentTimeMillis();
+        eventTypeRepository.list().stream().map(EventType::getName).forEach((name) -> {
+            try {
+                this.getEventType(name);
+            } catch (NoSuchEventTypeException | InternalNakadiException e) {
+                LOG.warn("Failed to preload event type {}", name, e);
+            }
+        });
+        LOG.info("Cache preload complete, load {} event types within {} ms",
+                this.eventTypeCache.size(),
+                System.currentTimeMillis() - start);
     }
 
     public void updated(final String name) throws Exception {
@@ -140,7 +158,7 @@ public class EventTypeCache {
         return CacheBuilder.newBuilder().maximumSize(CACHE_MAX_SIZE).build(loader);
     }
 
-    private LoadingCache<String,EventType> setupInMemoryEventTypeCache(final EventTypeRepository eventTypeRepository) {
+    private LoadingCache<String, EventType> setupInMemoryEventTypeCache(final EventTypeRepository eventTypeRepository) {
         final CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
             public EventType load(final String key) throws Exception {
                 final EventType eventType = eventTypeRepository.findByName(key);
