@@ -241,7 +241,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 item.setBrokerId(partitionToBroker.get(item.getPartition()));
             });
 
-            int circuitBreakerCalls = 0;
+            int shortCircuited = 0;
             final Map<BatchItem, CompletableFuture<Exception>> sendFutures = new HashMap<>();
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.PUBLISHING);
@@ -250,13 +250,13 @@ public class KafkaTopicRepository implements TopicRepository {
                 if (circuitBreaker.allowRequest()) {
                     sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
                 } else {
-                    circuitBreakerCalls++;
+                    shortCircuited++;
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
                 }
             }
-            if (circuitBreakerCalls > 0) {
+            if (shortCircuited > 0) {
                 LOG.warn("Short circuiting request to Kafka {} time(s) due to timeout for topic {}",
-                        topicId, circuitBreakerCalls);
+                        topicId, shortCircuited);
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
