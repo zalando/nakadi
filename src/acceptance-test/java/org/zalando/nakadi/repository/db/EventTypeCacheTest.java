@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.db;
 
+import org.zalando.nakadi.config.RepositoriesConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.apache.curator.RetryPolicy;
@@ -111,7 +112,7 @@ public class EventTypeCacheTest {
     @SuppressWarnings("unchecked")
     @Test
     public void invalidateCacheOnUpdate() throws Exception {
-        final EventTypeCache etc = new EventTypeCache(dbRepo, client);
+        final EventTypeCache etc = RepositoriesConfig.eventTypeCacheInternal(client, dbRepo);
 
         final EventType et = buildDefaultEventType();
 

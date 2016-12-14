@@ -3,6 +3,12 @@ package org.zalando.nakadi.repository.db;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.PathChildrenCache;
+import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
+import org.apache.curator.utils.ZKPaths;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventType;
@@ -11,15 +17,14 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.recipes.cache.PathChildrenCache;
-import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
-import org.apache.curator.framework.recipes.cache.PathChildrenCacheListener;
-import org.apache.curator.utils.ZKPaths;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
 
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class EventTypeCache {
 
@@ -27,57 +32,74 @@ public class EventTypeCache {
     public static final int CACHE_MAX_SIZE = 100000;
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeCache.class);
 
-    private final LoadingCache<String, EventType> eventTypeCache;
-    private final LoadingCache<String, EventTypeValidator> validatorCache;
+    private static class CachedValue {
+        final EventType eventType;
+        final EventTypeValidator eventTypeValidator;
+
+        public CachedValue(final EventType eventType, final EventTypeValidator eventTypeValidator) {
+            this.eventType = eventType;
+            this.eventTypeValidator = eventTypeValidator;
+        }
+
+        public EventType getEventType() {
+            return eventType;
+        }
+
+        public EventTypeValidator getEventTypeValidator() {
+            return eventTypeValidator;
+        }
+    }
+
+    private final LoadingCache<String, CachedValue> eventTypeCache;
     private final PathChildrenCache cacheSync;
     private final CuratorFramework zkClient;
+    private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
 
     public EventTypeCache(final EventTypeRepository eventTypeRepository, final CuratorFramework zkClient)
             throws Exception {
-        initParentCacheZNode(zkClient);
-
         this.zkClient = zkClient;
         this.eventTypeCache = setupInMemoryEventTypeCache(eventTypeRepository);
-        this.validatorCache = setupInMemoryValidatorCache(eventTypeCache);
         this.cacheSync = setupCacheSync(zkClient);
         preloadEventTypes(eventTypeRepository);
     }
 
+    /**
+     * Preloads cache.
+     * The problem with preload is that notifications about modifications may be skipped while initializing cache.
+     * That is why we are using lock for updates. In normal case (without preload) this is covered by LoadingCache
+     * by itself
+     *
+     * @param eventTypeRepository
+     */
     private void preloadEventTypes(final EventTypeRepository eventTypeRepository) {
         final long start = System.currentTimeMillis();
-        eventTypeRepository.list().stream().map(EventType::getName).forEach((name) -> {
-            try {
-                this.getEventType(name);
-            } catch (NoSuchEventTypeException | InternalNakadiException e) {
-                LOG.warn("Failed to preload event type {}", name, e);
-            }
-        });
-        LOG.info("Cache preload complete, load {} event types within {} ms",
-                this.eventTypeCache.size(),
-                System.currentTimeMillis() - start);
-    }
-
-    public void updated(final String name) throws Exception {
-        final String path = getZNodePath(name);
-        created(name); // make sure every event type is tracked in the remote cache
-        zkClient.setData().forPath(path, new byte[0]);
-    }
-
-    public EventType getEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
+        rwLock.writeLock().lock();
         try {
-            return eventTypeCache.get(name);
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof NoSuchEventTypeException) {
-                final NoSuchEventTypeException noSuchEventTypeException = (NoSuchEventTypeException) e.getCause();
-                throw noSuchEventTypeException;
-            } else {
-                throw new InternalNakadiException("Problem loading event type", e);
-            }
+            final Map<String, CachedValue> preloaded = eventTypeRepository.list().stream().collect(Collectors.toMap(
+                    EventType::getName,
+                    et -> new CachedValue(et, EventValidation.forType(et))
+            ));
+            new ArrayList<>(preloaded.keySet()).forEach(eventType -> {
+                try {
+                    created(eventType);
+                } catch (Exception e) {
+                    LOG.error("Failed to create node for {}", eventType, e);
+                    preloaded.remove(eventType);
+                }
+            });
+            this.eventTypeCache.putAll(preloaded);
+            LOG.info("Cache preload complete, load {} event types within {} ms",
+                    preloaded.size(),
+                    System.currentTimeMillis() - start);
+        } finally {
+            rwLock.writeLock().unlock();
         }
     }
 
-    public EventTypeValidator getValidator(final String name) throws ExecutionException {
-        return validatorCache.get(name);
+    public void updated(final String name) throws Exception {
+        created(name); // make sure every event type is tracked in the remote cache
+        final String path = getZNodePath(name);
+        zkClient.setData().forPath(path, new byte[0]);
     }
 
     public void created(final String name) throws Exception {
@@ -99,71 +121,69 @@ public class EventTypeCache {
         zkClient.delete().forPath(path);
     }
 
-    private void initParentCacheZNode(final CuratorFramework zkClient) throws Exception {
+    private Optional<CachedValue> getCached(final String name)
+            throws NoSuchEventTypeException, InternalNakadiException {
         try {
-            zkClient
-                    .create()
+            return Optional.ofNullable(eventTypeCache.get(name));
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof NoSuchEventTypeException) {
+                throw (NoSuchEventTypeException) e.getCause();
+            } else {
+                throw new InternalNakadiException("Problem loading event type", e);
+            }
+        }
+    }
+
+    public EventType getEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
+        return getCached(name).map(CachedValue::getEventType).orElse(null);
+    }
+
+    public EventTypeValidator getValidator(final String name) throws InternalNakadiException, NoSuchEventTypeException {
+        return getCached(name).map(CachedValue::getEventTypeValidator).orElse(null);
+    }
+
+    private PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
+        try {
+            zkClient.create()
                     .creatingParentsIfNeeded()
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(ZKNODE_PATH);
         } catch (KeeperException.NodeExistsException expected) {
             // silently do nothing since it means that the node is already there
         }
-    }
 
-    private void addCacheChangeListener(final LoadingCache<String, EventType> eventTypeCache,
-                                        final LoadingCache<String, EventTypeValidator> validatorCache,
-                                        final PathChildrenCache cacheSync) {
-        final PathChildrenCacheListener listener = new PathChildrenCacheListener() {
-            @Override
-            public void childEvent(final CuratorFramework client, final PathChildrenCacheEvent event) throws Exception {
-                if (event.getType() == PathChildrenCacheEvent.Type.CHILD_UPDATED) {
-                    invalidateCacheKey(event);
-                } else if (event.getType() == PathChildrenCacheEvent.Type.CHILD_REMOVED) {
-                    invalidateCacheKey(event);
-                }
-            }
-
-            private void invalidateCacheKey(final PathChildrenCacheEvent event) {
-                final String path[] = event.getData().getPath().split("/");
-                final String key = path[path.length - 1];
-
-                validatorCache.invalidate(key);
-                eventTypeCache.invalidate(key);
-            }
-        };
-
-        cacheSync.getListenable().addListener(listener);
-    }
-
-    private PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
         final PathChildrenCache cacheSync = new PathChildrenCache(zkClient, ZKNODE_PATH, false);
 
         cacheSync.start();
 
-        addCacheChangeListener(eventTypeCache, validatorCache, cacheSync);
+        cacheSync.getListenable().addListener((curator, event) -> this.onZkEvent(event));
 
         return cacheSync;
     }
 
-    private LoadingCache<String, EventTypeValidator> setupInMemoryValidatorCache(
-            final LoadingCache<String, EventType> eventTypeCache) {
-        final CacheLoader<String, EventTypeValidator> loader = new CacheLoader<String, EventTypeValidator>() {
-            public EventTypeValidator load(final String key) throws Exception {
-                final EventType et = eventTypeCache.get(key);
-                return EventValidation.forType(et);
+    private void onZkEvent(final PathChildrenCacheEvent event) {
+        // Lock is needed only to support massive load on startup. In all other cases it will be called for
+        // event type creation/update, so it won't create any additional load.
+        rwLock.readLock().lock();
+        try {
+            final boolean needInvalidate = event.getType() == PathChildrenCacheEvent.Type.CHILD_UPDATED ||
+                    event.getType() == PathChildrenCacheEvent.Type.CHILD_REMOVED ||
+                    event.getType() == PathChildrenCacheEvent.Type.CHILD_ADDED;
+            if (needInvalidate) {
+                final String[] path = event.getData().getPath().split("/");
+                eventTypeCache.invalidate(path[path.length - 1]);
             }
-        };
-
-        return CacheBuilder.newBuilder().maximumSize(CACHE_MAX_SIZE).build(loader);
+        } finally {
+            rwLock.readLock().unlock();
+        }
     }
 
-    private LoadingCache<String, EventType> setupInMemoryEventTypeCache(final EventTypeRepository eventTypeRepository) {
-        final CacheLoader<String, EventType> loader = new CacheLoader<String, EventType>() {
-            public EventType load(final String key) throws Exception {
+    private LoadingCache<String, CachedValue> setupInMemoryEventTypeCache(
+            final EventTypeRepository eventTypeRepository) {
+        final CacheLoader<String, CachedValue> loader = new CacheLoader<String, CachedValue>() {
+            public CachedValue load(final String key) throws Exception {
                 final EventType eventType = eventTypeRepository.findByName(key);
-                created(key); // make sure that all event types are tracked in the remote cache
-                return eventType;
+                return new CachedValue(eventType, EventValidation.forType(eventType));
             }
         };
 
