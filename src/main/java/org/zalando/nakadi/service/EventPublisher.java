@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
+import org.zalando.nakadi.exceptions.EventSizeValidationException;
 import org.zalando.nakadi.exceptions.EventValidationException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -36,6 +37,8 @@ import java.util.stream.Collectors;
 public class EventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
+
+    private static final long MAX_EVENT_SIZE_BYTES = 1000000;
 
     private final TopicRepository topicRepository;
     private final EventTypeCache eventTypeCache;
@@ -64,6 +67,7 @@ public class EventPublisher {
             validate(batch, eventType);
             partition(batch, eventType);
             enrich(batch, eventType);
+            validateSize(batch);
             submit(batch, eventType);
 
             return ok(batch);
@@ -76,6 +80,9 @@ public class EventPublisher {
         } catch (final EnrichmentException e) {
             LOG.debug("Event enrichment error: {}", e.getMessage());
             return aborted(EventPublishingStep.ENRICHING, batch);
+        } catch (final EventSizeValidationException e) {
+            LOG.debug("Event size validation error: ){", e.getMessage());
+            return aborted(EventPublishingStep.VALIDATING_SIZE, batch);
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
@@ -143,6 +150,22 @@ public class EventPublisher {
         } catch (final ExecutionException e) {
             throw new InternalNakadiException("Error loading validator", e);
         }
+    }
+
+    private void validateSize(final List<BatchItem> batch) throws EventSizeValidationException {
+        for (final BatchItem item: batch) {
+            item.setStep(EventPublishingStep.VALIDATING_SIZE);
+            try {
+                validateEventSize(item);
+            } catch (final EventSizeValidationException e) {
+                item.updateStatusAndDetail(EventPublishingStatus.ABORTED, e.getMessage());
+            }
+        }
+    }
+
+    private void validateEventSize(final BatchItem item) throws EventSizeValidationException {
+        if (item.getEvent().toString().getBytes().length > MAX_EVENT_SIZE_BYTES)
+            throw new EventSizeValidationException("Event too large");
     }
 
     private EventPublishResult failed(final List<BatchItem> batch) {
