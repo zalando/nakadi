@@ -46,6 +46,8 @@ import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.createBatch;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
+import static org.zalando.nakadi.utils.TestUtils.randomStringOfLength;
+import static org.zalando.nakadi.utils.TestUtils.randomValidStringOfLength;
 
 public class EventPublisherTest {
 
@@ -55,7 +57,7 @@ public class EventPublisherTest {
 
     private static final int NAKADI_SEND_TIMEOUT = 10000;
     private static final int NAKADI_POLL_TIMEOUT = 10000;
-    private static final long NAKADI_EVENT_MAX_BYTES = 1000000;
+    private static final int NAKADI_EVENT_MAX_BYTES = 900;
     private static final long TOPIC_RETENTION_TIME_MS = 150;
 
     private final TopicRepository topicRepository = mock(TopicRepository.class);
@@ -64,7 +66,8 @@ public class EventPublisherTest {
     private final Enrichment enrichment = mock(Enrichment.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0,
             TOPIC_RETENTION_TIME_MS, 0, 60, NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_EVENT_MAX_BYTES);
-    private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver, enrichment, nakadiSettings);
+    private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver,
+            enrichment, nakadiSettings);
 
     @Test
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
@@ -133,6 +136,147 @@ public class EventPublisherTest {
         assertThat(second.getDetail(), is(isEmptyString()));
 
         verify(cache, times(1)).getValidator(any());
+    }
+
+    @Test
+    public void whenEventIsTooLargeThenResultIsAborted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildLargeBatch(1);
+
+        mockSuccessfulValidation(eventType);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+        verify(enrichment, times(1)).enrich(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+    }
+
+    @Test
+    public void whenEventIsTooLargeThenAllItemsAreAborted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject largeEvent = new JSONObject();
+        largeEvent.put("foo", randomStringOfLength(10000));
+        batch.put(largeEvent);
+        final JSONObject smallEvent = new JSONObject();
+        smallEvent.put("foo", randomString());
+        batch.put(smallEvent);
+
+        mockSuccessfulValidation(eventType);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+
+        final BatchItemResponse firstResponse = result.getResponses().get(0);
+        assertThat(firstResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(firstResponse.getStep(), equalTo(EventPublishingStep.VALIDATING_SIZE));
+        assertThat(firstResponse.getDetail(), is(isEmptyString()));
+
+        final BatchItemResponse secondResponse = result.getResponses().get(1);
+        assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING_SIZE));
+        assertThat(secondResponse.getDetail(), equalTo("Event too large"));
+
+        final BatchItemResponse thirdResponse = result.getResponses().get(2);
+        assertThat(thirdResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.ENRICHING));
+        assertThat(thirdResponse.getDetail(), is(isEmptyString()));
+    }
+
+    @Test
+    public void whenEnrichmentMakesEventTooLargeThenAllItemsAreAborted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject largeEvent = new JSONObject();
+        largeEvent.put("foo", randomStringOfLength(880));
+        batch.put(largeEvent);
+        final JSONObject smallEvent = new JSONObject();
+        smallEvent.put("foo", randomString());
+        batch.put(smallEvent);
+
+        mockSuccessfulValidation(eventType);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+
+        final BatchItemResponse firstResponse = result.getResponses().get(0);
+        assertThat(firstResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(firstResponse.getStep(), equalTo(EventPublishingStep.VALIDATING_SIZE));
+        assertThat(firstResponse.getDetail(), is(isEmptyString()));
+
+        final BatchItemResponse secondResponse = result.getResponses().get(1);
+        assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING_SIZE));
+        assertThat(secondResponse.getDetail(), equalTo("Event too large"));
+
+        final BatchItemResponse thirdResponse = result.getResponses().get(2);
+        assertThat(thirdResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.ENRICHING));
+        assertThat(thirdResponse.getDetail(), is(isEmptyString()));
+    }
+
+    @Test
+    public void whenEventIsExactlyMaxSizeThenResultIsSuccess() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildMaxSizeBatch(1);
+
+        mockSuccessfulValidation(eventType);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+        verify(enrichment, times(1)).enrich(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any());
+    }
+
+    @Test
+    public void whenEventIsOneByteOverMaxSizeThenResultIsAborted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildOneByteTooLargeBatch(1);
+
+        mockSuccessfulValidation(eventType);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+        verify(enrichment, times(1)).enrich(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+    }
+
+    @Test
+    public void whenEventIsOneByteOverMaxSizeWithMultiByteCharsThenResultIsAborted() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildOneByteTooLargeBatchMultiByte(1);
+
+        mockSuccessfulValidation(eventType);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
+        verify(enrichment, times(1)).enrich(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+    }
+
+    @Test
+    public void whenEventIsExactlyMaxSizeWithMultiByteCharsThenResultIsSuccess() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildMaxSizeBatchMultiByte(1);
+
+        mockSuccessfulValidation(eventType);
+
+        final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
+
+        assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
+        verify(enrichment, times(1)).enrich(any(), any());
+        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -332,11 +476,47 @@ public class EventPublisherTest {
     }
 
     private JSONArray buildDefaultBatch(final int numberOfEvents) {
-        final List<JSONObject> events = new ArrayList<>();
+        return buildBatch(numberOfEvents, 50);
+    }
 
+    private JSONArray buildLargeBatch(final int numberOfEvents) {
+        return buildBatch(numberOfEvents, NAKADI_EVENT_MAX_BYTES + 100);
+    }
+
+    private JSONArray buildMaxSizeBatch(final int numberOfEvents) {
+        return buildBatch(numberOfEvents, NAKADI_EVENT_MAX_BYTES);
+    }
+
+    private JSONArray buildOneByteTooLargeBatch(final int numberOfEvents) {
+        return buildBatch(numberOfEvents, NAKADI_EVENT_MAX_BYTES + 1);
+    }
+
+    private JSONArray buildMaxSizeBatchMultiByte(final int numberOfEvents) {
+        return buildBatchMultiByte(numberOfEvents, NAKADI_EVENT_MAX_BYTES);
+    }
+
+    private JSONArray buildOneByteTooLargeBatchMultiByte(final int numberOfEvents) {
+        return buildBatchMultiByte(numberOfEvents, NAKADI_EVENT_MAX_BYTES + 1);
+    }
+
+    private JSONArray buildBatchMultiByte(final int numberOfEvents, final int length) {
+        final List<JSONObject> events = new ArrayList<>();
+        final int valueLength = length - 16; // each character 2 lines below is 3 bytes
         for (int i = 0; i < numberOfEvents; i++) {
             final JSONObject event = new JSONObject();
-            event.put("foo", randomString());
+            event.put("foo", randomValidStringOfLength(valueLength) + "温泉");
+            events.add(event);
+        }
+
+        return new JSONArray(events);
+    }
+
+    private JSONArray buildBatch(final int numberOfEvents, final int length) {
+        final List<JSONObject> events = new ArrayList<>();
+        final int valueLength = length - 10; // the brackets, key, and quotation marks take 10 characters
+        for (int i = 0; i < numberOfEvents; i++) {
+            final JSONObject event = new JSONObject();
+            event.put("foo", randomValidStringOfLength(valueLength));
             events.add(event);
         }
 

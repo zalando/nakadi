@@ -162,6 +162,7 @@ public class EventPublisher {
                 validateEventSize(item);
             } catch (final EventSizeValidationException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.ABORTED, e.getMessage());
+                throw e;
             }
         }
     }
