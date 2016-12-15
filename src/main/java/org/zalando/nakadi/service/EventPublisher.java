@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -38,7 +39,7 @@ public class EventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
 
-    private static final long MAX_EVENT_SIZE_BYTES = 1000000;
+    private final NakadiSettings nakadiSettings;
 
     private final TopicRepository topicRepository;
     private final EventTypeCache eventTypeCache;
@@ -49,11 +50,13 @@ public class EventPublisher {
     public EventPublisher(final TopicRepository topicRepository,
                           final EventTypeCache eventTypeCache,
                           final PartitionResolver partitionResolver,
-                          final Enrichment enrichment) {
+                          final Enrichment enrichment,
+                          final NakadiSettings nakadiSettings) {
         this.topicRepository = topicRepository;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
+        this.nakadiSettings = nakadiSettings;
     }
 
     public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client)
@@ -164,7 +167,7 @@ public class EventPublisher {
     }
 
     private void validateEventSize(final BatchItem item) throws EventSizeValidationException {
-        if (item.getEvent().toString().getBytes().length > MAX_EVENT_SIZE_BYTES)
+        if (item.getEvent().toString().getBytes().length > nakadiSettings.getEventMaxBytes())
             throw new EventSizeValidationException("Event too large");
     }
 

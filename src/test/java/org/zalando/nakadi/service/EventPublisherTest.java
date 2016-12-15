@@ -5,6 +5,7 @@ import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
@@ -52,11 +53,18 @@ public class EventPublisherTest {
     public static final String CLIENT_ID = "clientId";
     private static final Client FULL_ACCESS_CLIENT = new FullAccessClient(CLIENT_ID);
 
+    private static final int NAKADI_SEND_TIMEOUT = 10000;
+    private static final int NAKADI_POLL_TIMEOUT = 10000;
+    private static final long NAKADI_EVENT_MAX_BYTES = 1000000;
+    private static final long TOPIC_RETENTION_TIME_MS = 150;
+
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
     private final Enrichment enrichment = mock(Enrichment.class);
-    private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver, enrichment);
+    private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0,
+            TOPIC_RETENTION_TIME_MS, 0, 60, NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_EVENT_MAX_BYTES);
+    private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver, enrichment, nakadiSettings);
 
     @Test
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
