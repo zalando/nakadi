@@ -256,7 +256,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
             if (shortCircuited > 0) {
                 LOG.warn("Short circuiting request to Kafka {} time(s) due to timeout for topic {}",
-                        topicId, shortCircuited);
+                        shortCircuited, topicId);
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
