@@ -77,7 +77,7 @@ public class EventPublisher {
             LOG.debug("Event validation error: {}", e.getMessage());
             return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final EventSizeValidationException e) {
-            LOG.debug("Event size validation error: ){", e.getMessage());
+            LOG.debug("Event size validation error: {}", e.getMessage());
             return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
