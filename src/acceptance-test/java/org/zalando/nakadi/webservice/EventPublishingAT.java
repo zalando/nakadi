@@ -2,6 +2,7 @@ package org.zalando.nakadi.webservice;
 
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpStatus;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
@@ -25,9 +26,7 @@ public class EventPublishingAT extends BaseAT {
     private Response publishLargeEvent(final EventType eventType) {
         final StringBuilder sb = new StringBuilder();
         sb.append("[{\"blah\":\"");
-        for (int i = 0; i < 1000010; i++) {
-            sb.append("a");
-        }
+        sb.append(StringUtils.repeat("a", 1000010));
         sb.append("\"}]");
         return given()
                 .body(sb.toString())
