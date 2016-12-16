@@ -182,7 +182,7 @@ public class EventPublisherTest {
 
         final BatchItemResponse thirdResponse = result.getResponses().get(2);
         assertThat(thirdResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
+        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.NONE));
         assertThat(thirdResponse.getDetail(), is(isEmptyString()));
     }
 
@@ -215,7 +215,7 @@ public class EventPublisherTest {
 
         final BatchItemResponse thirdResponse = result.getResponses().get(2);
         assertThat(thirdResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
+        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.NONE));
         assertThat(thirdResponse.getDetail(), is(isEmptyString()));
     }
 
