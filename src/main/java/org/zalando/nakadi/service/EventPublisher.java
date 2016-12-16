@@ -68,14 +68,17 @@ public class EventPublisher {
 
         try {
             validate(batch, eventType);
+            validateSize(batch);
             partition(batch, eventType);
             enrich(batch, eventType);
-            validateSize(batch);
             submit(batch, eventType);
 
             return ok(batch);
         } catch (final EventValidationException e) {
             LOG.debug("Event validation error: {}", e.getMessage());
+            return aborted(EventPublishingStep.VALIDATING, batch);
+        } catch (final EventSizeValidationException e) {
+            LOG.debug("Event size validation error: ){", e.getMessage());
             return aborted(EventPublishingStep.VALIDATING, batch);
         } catch (final PartitioningException e) {
             LOG.debug("Event partition error: {}", e.getMessage());
@@ -83,9 +86,6 @@ public class EventPublisher {
         } catch (final EnrichmentException e) {
             LOG.debug("Event enrichment error: {}", e.getMessage());
             return aborted(EventPublishingStep.ENRICHING, batch);
-        } catch (final EventSizeValidationException e) {
-            LOG.debug("Event size validation error: ){", e.getMessage());
-            return aborted(EventPublishingStep.VALIDATING_SIZE, batch);
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
@@ -157,7 +157,7 @@ public class EventPublisher {
 
     private void validateSize(final List<BatchItem> batch) throws EventSizeValidationException {
         for (final BatchItem item: batch) {
-            item.setStep(EventPublishingStep.VALIDATING_SIZE);
+            item.setStep(EventPublishingStep.VALIDATING);
             try {
                 validateEventSize(item);
             } catch (final EventSizeValidationException e) {

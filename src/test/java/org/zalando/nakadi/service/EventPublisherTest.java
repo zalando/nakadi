@@ -148,8 +148,8 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(enrichment, times(0)).enrich(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
@@ -172,17 +172,17 @@ public class EventPublisherTest {
 
         final BatchItemResponse firstResponse = result.getResponses().get(0);
         assertThat(firstResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(firstResponse.getStep(), equalTo(EventPublishingStep.VALIDATING_SIZE));
+        assertThat(firstResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(firstResponse.getDetail(), is(isEmptyString()));
 
         final BatchItemResponse secondResponse = result.getResponses().get(1);
         assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING_SIZE));
+        assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(secondResponse.getDetail(), equalTo("Event too large"));
 
         final BatchItemResponse thirdResponse = result.getResponses().get(2);
         assertThat(thirdResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.ENRICHING));
+        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(thirdResponse.getDetail(), is(isEmptyString()));
     }
 
@@ -205,17 +205,17 @@ public class EventPublisherTest {
 
         final BatchItemResponse firstResponse = result.getResponses().get(0);
         assertThat(firstResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(firstResponse.getStep(), equalTo(EventPublishingStep.VALIDATING_SIZE));
+        assertThat(firstResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(firstResponse.getDetail(), is(isEmptyString()));
 
         final BatchItemResponse secondResponse = result.getResponses().get(1);
         assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING_SIZE));
+        assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(secondResponse.getDetail(), equalTo("Event too large"));
 
         final BatchItemResponse thirdResponse = result.getResponses().get(2);
         assertThat(thirdResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
-        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.ENRICHING));
+        assertThat(thirdResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(thirdResponse.getDetail(), is(isEmptyString()));
     }
 
@@ -244,8 +244,8 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(enrichment, times(0)).enrich(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
@@ -259,8 +259,8 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
-        verify(enrichment, times(1)).enrich(any(), any());
-        verify(partitionResolver, times(1)).resolvePartition(any(), any());
+        verify(enrichment, times(0)).enrich(any(), any());
+        verify(partitionResolver, times(0)).resolvePartition(any(), any());
         verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 

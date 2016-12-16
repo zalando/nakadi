@@ -4,7 +4,6 @@ public enum EventPublishingStep {
     NONE,
     VALIDATING,
     ENRICHING,
-    VALIDATING_SIZE,
     PARTITIONING,
     PUBLISHING,
 }
