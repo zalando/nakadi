@@ -24,7 +24,7 @@ public class EventPublishingAT extends BaseAT {
     }
 
     private Response publishLargeEvent(final EventType eventType) {
-        final StringBuilder sb = new StringBuilder();
+        final StringBuilder sb = new StringBuilder(1000023);
         sb.append("[{\"blah\":\"");
         sb.append(StringUtils.repeat("a", 1000010));
         sb.append("\"}]");
