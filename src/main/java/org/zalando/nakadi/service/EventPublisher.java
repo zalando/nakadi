@@ -68,7 +68,6 @@ public class EventPublisher {
 
         try {
             validate(batch, eventType);
-            validateSize(batch);
             partition(batch, eventType);
             enrich(batch, eventType);
             submit(batch, eventType);
@@ -124,13 +123,17 @@ public class EventPublisher {
     }
 
     private void validate(final List<BatchItem> batch, final EventType eventType) throws EventValidationException,
-            InternalNakadiException {
+            EventSizeValidationException, InternalNakadiException {
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.VALIDATING);
             try {
                 validateSchema(item.getEvent(), eventType);
+                validateEventSize(item);
             } catch (final EventValidationException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
+                throw e;
+            } catch (final EventSizeValidationException e) {
+                item.updateStatusAndDetail(EventPublishingStatus.ABORTED, e.getMessage());
                 throw e;
             }
         }
@@ -152,18 +155,6 @@ public class EventPublisher {
             }
         } catch (final ExecutionException e) {
             throw new InternalNakadiException("Error loading validator", e);
-        }
-    }
-
-    private void validateSize(final List<BatchItem> batch) throws EventSizeValidationException {
-        for (final BatchItem item: batch) {
-            item.setStep(EventPublishingStep.VALIDATING);
-            try {
-                validateEventSize(item);
-            } catch (final EventSizeValidationException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.ABORTED, e.getMessage());
-                throw e;
-            }
         }
     }
 
