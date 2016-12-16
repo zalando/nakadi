@@ -176,7 +176,7 @@ public class EventPublisherTest {
         assertThat(firstResponse.getDetail(), is(isEmptyString()));
 
         final BatchItemResponse secondResponse = result.getResponses().get(1);
-        assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
         assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(secondResponse.getDetail(), equalTo("Event too large"));
 
@@ -209,7 +209,7 @@ public class EventPublisherTest {
         assertThat(firstResponse.getDetail(), is(isEmptyString()));
 
         final BatchItemResponse secondResponse = result.getResponses().get(1);
-        assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
+        assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
         assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
         assertThat(secondResponse.getDetail(), equalTo("Event too large"));
 

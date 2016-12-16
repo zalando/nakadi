@@ -129,11 +129,8 @@ public class EventPublisher {
             try {
                 validateSchema(item.getEvent(), eventType);
                 validateEventSize(item);
-            } catch (final EventValidationException e) {
+            } catch (final EventValidationException|EventSizeValidationException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
-                throw e;
-            } catch (final EventSizeValidationException e) {
-                item.updateStatusAndDetail(EventPublishingStatus.ABORTED, e.getMessage());
                 throw e;
             }
         }
