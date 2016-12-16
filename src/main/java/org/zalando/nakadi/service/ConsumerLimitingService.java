@@ -71,7 +71,7 @@ public class ConsumerLimitingService {
                     // we need to check it again when we are under lock
                     final List<String> occupiedPartitions = getPartitionsWithNoFreeSlots(client, eventType, partitions);
                     if (occupiedPartitions.size() > 0) {
-                        throw generateNoConnectionSlotsException(eventType, partitionsWithNoFreeSlots, client);
+                        throw generateNoConnectionSlotsException(eventType, occupiedPartitions, client);
                     }
 
                     for (final String partition : partitions) {
