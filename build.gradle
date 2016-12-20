@@ -8,6 +8,7 @@ apply plugin: 'spring-boot'
 apply plugin: "jacoco"
 apply plugin: 'findbugs'
 apply plugin: 'checkstyle'
+apply plugin: 'idea'
 
 group 'org.zalando'
 sourceCompatibility = 1.8
@@ -148,6 +149,7 @@ dependencies {
         exclude module: "json"
     }
     compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.0'
+    compileOnly "org.projectlombok:lombok:1.16.12"
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'

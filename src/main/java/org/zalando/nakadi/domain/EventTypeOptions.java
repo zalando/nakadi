@@ -2,16 +2,13 @@ package org.zalando.nakadi.domain;
 
 import javax.annotation.Nullable;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class EventTypeOptions {
 
-    private Long retentionTime;
-
     @Nullable
-    public Long getRetentionTime() {
-        return retentionTime;
-    }
-
-    public void setRetentionTime(@Nullable final Long retentionTime) {
-        this.retentionTime = retentionTime;
-    }
+    private Long retentionTime;
 }

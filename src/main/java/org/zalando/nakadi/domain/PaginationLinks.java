@@ -1,12 +1,18 @@
 package org.zalando.nakadi.domain;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.Optional;
 
 import javax.annotation.concurrent.Immutable;
-import java.util.Optional;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 @Immutable
 @JsonInclude(JsonInclude.Include.NON_ABSENT)
+@Getter
+@AllArgsConstructor
 public class PaginationLinks {
 
     private final Optional<Link> prev;
@@ -15,19 +21,6 @@ public class PaginationLinks {
 
     public PaginationLinks() {
         this(Optional.empty(), Optional.empty());
-    }
-
-    public PaginationLinks(final Optional<Link> prev, final Optional<Link> next) {
-        this.prev = prev;
-        this.next = next;
-    }
-
-    public Optional<Link> getPrev() {
-        return prev;
-    }
-
-    public Optional<Link> getNext() {
-        return next;
     }
 
     @Immutable
