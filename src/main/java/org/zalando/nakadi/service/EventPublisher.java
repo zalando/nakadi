@@ -28,6 +28,7 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -152,7 +153,7 @@ public class EventPublisher {
     }
 
     private void validateEventSize(final BatchItem item) throws EventValidationException {
-        if (item.getEvent().toString().getBytes().length > nakadiSettings.getEventMaxBytes())
+        if (item.getEvent().toString().getBytes(StandardCharsets.UTF_8).length > nakadiSettings.getEventMaxBytes())
             throw new EventValidationException("Event too large");
     }
 
