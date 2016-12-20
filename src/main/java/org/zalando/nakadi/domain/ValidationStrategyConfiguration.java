@@ -2,23 +2,12 @@ package org.zalando.nakadi.domain;
 
 import org.json.JSONObject;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class ValidationStrategyConfiguration {
     private String strategyName;
     private JSONObject additionalConfiguration;
-
-    public String getStrategyName() {
-        return strategyName;
-    }
-
-    public void setStrategyName(final String strategyName) {
-        this.strategyName = strategyName;
-    }
-
-    public JSONObject getAdditionalConfiguration() {
-        return additionalConfiguration;
-    }
-
-    public void setAdditionalConfiguration(final JSONObject additionalConfiguration) {
-        this.additionalConfiguration = additionalConfiguration;
-    }
 }

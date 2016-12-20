@@ -1,11 +1,15 @@
 package org.zalando.nakadi.domain;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-import javax.annotation.concurrent.Immutable;
 import java.util.List;
 
+import javax.annotation.concurrent.Immutable;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import lombok.Getter;
+
 @Immutable
+@Getter
 public class SubscriptionListWrapper extends ItemsWrapper<Subscription> {
 
     @JsonProperty("_links")
@@ -14,9 +18,5 @@ public class SubscriptionListWrapper extends ItemsWrapper<Subscription> {
     public SubscriptionListWrapper(final List<Subscription> items, final PaginationLinks links) {
         super(items);
         this.links = links;
-    }
-
-    public PaginationLinks getLinks() {
-        return links;
     }
 }

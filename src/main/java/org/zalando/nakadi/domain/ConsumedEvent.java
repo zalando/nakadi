@@ -2,36 +2,18 @@ package org.zalando.nakadi.domain;
 
 import javax.annotation.concurrent.Immutable;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 @Immutable
+@Getter
+@AllArgsConstructor
 public class ConsumedEvent {
 
     private final String event;
     private final String topic;
     private final String partition;
     private final String offset;
-
-    public ConsumedEvent(final String event, final String topic, final String partition, final String offset) {
-        this.event = event;
-        this.topic = topic;
-        this.partition = partition;
-        this.offset = offset;
-    }
-
-    public String getEvent() {
-        return event;
-    }
-
-    public String getTopic() {
-        return topic;
-    }
-
-    public String getPartition() {
-        return partition;
-    }
-
-    public String getOffset() {
-        return offset;
-    }
 
     @Override
     public boolean equals(final Object obj) {
