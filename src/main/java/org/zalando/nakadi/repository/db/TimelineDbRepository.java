@@ -17,6 +17,17 @@ import java.util.List;
 @DB
 @Repository
 public class TimelineDbRepository extends AbstractDbRepository {
+
+    public static final String BASE_TIMELINE_QUERY = "select " +
+            "   t_id, et_name, t_order, t.st_id, t_storage_configuration, " +
+            "   t_created_at, t_switched_at, t_freed_at, t_latest_position, " +
+            "   st_type, st_configuration " +
+            " from " +
+            "   zn_data.timeline t " +
+            "   join zn_data.storage st using (st_id) " +
+            " where " +
+            "   t.et_name = ? ";
+
     @Autowired
     public TimelineDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
         super(jdbcTemplate, jsonMapper);
@@ -27,18 +38,20 @@ public class TimelineDbRepository extends AbstractDbRepository {
                 storageRowMapper);
     }
 
+    @Nullable
+    public Timeline loadActiveTimeline(
+            final String eventType) {
+        final List<Timeline> result = jdbcTemplate.query(
+                BASE_TIMELINE_QUERY + " and t_freed_at is null order by t_oder desc limit 1",
+                new Object[]{eventType},
+                timelineRowMapper);
+        return result.isEmpty() ? null : result.get(0);
+    }
+
     public List<Timeline> getTimelines(
             final String eventType,
             @Nullable final Boolean active) {
-        String sqlQuery = "select " +
-                "   t_id, et_name, t_order, t.st_id, t_storage_configuration, " +
-                "   t_created_at, t_switched_at, t_freed_at, t_latest_position, " +
-                "   st_type, st_configuration " +
-                " from " +
-                "   zn_data.timeline t " +
-                "   join zn_data.storage st using (st_id) " +
-                " where " +
-                "   t.et_name = ? ";
+        String sqlQuery = BASE_TIMELINE_QUERY;
         if (null != active) {
             sqlQuery += active ? " and t_freed_at is null " : " and t_freed_at is not null";
         }
