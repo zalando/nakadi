@@ -45,9 +45,9 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
     private final UUIDGenerator uuidGenerator;
 
     @Autowired
-    public SubscriptionDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper,
+    public SubscriptionDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper,
                                     final UUIDGenerator uuidGenerator) {
-        super(jdbcTemplate, objectMapper);
+        super(jdbcTemplate, jsonMapper);
         this.uuidGenerator = uuidGenerator;
     }
 
