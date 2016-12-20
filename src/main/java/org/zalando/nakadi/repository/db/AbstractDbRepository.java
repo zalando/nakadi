@@ -8,9 +8,9 @@ public abstract class AbstractDbRepository {
     protected final JdbcTemplate jdbcTemplate;
     protected final ObjectMapper jsonMapper;
 
-    public AbstractDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper) {
+    public AbstractDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
         this.jdbcTemplate = jdbcTemplate;
-        this.jsonMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
     }
 
 }
