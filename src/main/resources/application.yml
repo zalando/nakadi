@@ -11,7 +11,7 @@ logging:
     org.springframework.web: INFO
     org.apache.kafka: WARN
     org.zalando.nakadi: DEBUG
-    org.zalando.nakadi.config: INFO
+    org.zalando.nakadi.kafkaConfig: INFO
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/local_nakadi_db
@@ -71,7 +71,7 @@ nakadi:
     clientId: stups_aruha-event-store-poc
     scopes:
       uid: uid
-      nakadiAdmin: nakadi.config.write
+      nakadiAdmin: nakadi.kafkaConfig.write
       eventTypeWrite: nakadi.event_type.write
       eventStreamRead: nakadi.event_stream.read
       eventStreamWrite: nakadi.event_stream.write

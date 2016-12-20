@@ -26,8 +26,8 @@ import java.util.List;
 public class EventTypeDbRepository extends AbstractDbRepository implements EventTypeRepository {
 
     @Autowired
-    public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper objectMapper) {
-        super(jdbcTemplate, objectMapper);
+    public EventTypeDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
+        super(jdbcTemplate, jsonMapper);
     }
 
     @Override

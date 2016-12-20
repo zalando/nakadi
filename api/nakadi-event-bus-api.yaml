@@ -84,7 +84,7 @@ securityDefinitions:
     flow: implicit
     authorizationUrl: 'https://auth.example.com/oauth2/tokeninfo'
     scopes:
-      nakadi.config.write: |
+      nakadi.kafkaConfig.write: |
         Grants access for changing Nakadi configuration.
       nakadi.event_type.write: |
         Grants access for applications to define and update EventTypes.
@@ -267,7 +267,7 @@ paths:
       tags:
         - schema-registry-api
       security:
-        - oauth2: ['nakadi.config.write']
+        - oauth2: ['nakadi.kafkaConfig.write']
       description: |
         Deletes an `EventType` identified by its name. All events in the `EventType`'s stream' will
         also be removed. **Note**: deletion happens asynchronously, which has the following
