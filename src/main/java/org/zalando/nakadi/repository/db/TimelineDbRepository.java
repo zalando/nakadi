@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.db;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -8,11 +9,15 @@ import org.springframework.stereotype.Repository;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @DB
 @Repository
@@ -24,9 +29,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
             "   st_type, st_configuration " +
             " from " +
             "   zn_data.timeline t " +
-            "   join zn_data.storage st using (st_id) " +
-            " where " +
-            "   t.et_name = ? ";
+            "   join zn_data.storage st using (st_id) ";
 
     @Autowired
     public TimelineDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
@@ -38,25 +41,81 @@ public class TimelineDbRepository extends AbstractDbRepository {
                 storageRowMapper);
     }
 
+    public Optional<Storage> getStorage(final String storageId) {
+        final List<Storage> result = jdbcTemplate.query(
+                "select st_id, st_type, st_configuration from zn_data.storage where st_id=?",
+                new Object[]{storageId},
+                storageRowMapper);
+        return Optional.ofNullable(result.isEmpty() ? null : result.get(0));
+    }
+
     @Nullable
     public Timeline loadActiveTimeline(
             final String eventType) {
         final List<Timeline> result = jdbcTemplate.query(
-                BASE_TIMELINE_QUERY + " and t_freed_at is null order by t_oder desc limit 1",
+                BASE_TIMELINE_QUERY + " where t.et_name=? and t_freed_at is null order by t_oder desc limit 1",
                 new Object[]{eventType},
                 timelineRowMapper);
         return result.isEmpty() ? null : result.get(0);
     }
 
-    public List<Timeline> getTimelines(
-            final String eventType,
-            @Nullable final Boolean active) {
-        String sqlQuery = BASE_TIMELINE_QUERY;
-        if (null != active) {
-            sqlQuery += active ? " and t_freed_at is null " : " and t_freed_at is not null";
+    public List<Timeline> listTimelines(
+            @Nullable final String eventType,
+            @Nullable final String storageId,
+            @Nullable final Boolean active,
+            @Nullable final String timelineId) {
+        final List<String> filters = new ArrayList<>();
+        final List<Object> arguments = new ArrayList<>();
+        if (null != eventType) {
+            arguments.add(eventType);
+            filters.add("t.et_name=?");
         }
-        sqlQuery += " order by t_order";
-        return jdbcTemplate.query(sqlQuery, new Object[]{eventType}, timelineRowMapper);
+        if (null != active) {
+            filters.add(active ? "t_freed_at is null " : "t_freed_at is not null");
+        }
+        if (null != timelineId) {
+            arguments.add(timelineId);
+            filters.add("t.st_id=?");
+        }
+        if (null != storageId) {
+            arguments.add(storageId);
+            filters.add("t.st_id=?");
+        }
+        final String filterQuery = filters.isEmpty() ? "" :
+                (" WHERE " + filters.stream().collect(Collectors.joining(" and ")));
+        return jdbcTemplate.query(
+                BASE_TIMELINE_QUERY + filterQuery + "order by t_order desc",
+                arguments.toArray(),
+                timelineRowMapper);
+    }
+
+    public void create(final Storage storage) throws InternalNakadiException {
+        try {
+            jdbcTemplate.update(
+                    "INSERT into zn_data.storage(st_id, st_type, st_configuration) values (?, ?, ?::jsonb)",
+                    storage.getId(),
+                    storage.getType(),
+                    jsonMapper.writer().writeValueAsString(storage.createSpecificConfiguration())
+            );
+        } catch (final JsonProcessingException ex) {
+            throw new InternalNakadiException("Serialization problem during persistence of storage", ex);
+        }
+    }
+
+    public void update(final Storage storage) throws InternalNakadiException {
+        try {
+            final int affectedRows = jdbcTemplate.update(
+                    "UPDATE zn_data.storage set st_type=?, st_configuration=? where st_id=?",
+                    storage.getType(),
+                    jsonMapper.writer().writeValueAsString(storage.createSpecificConfiguration()),
+                    storage.getId());
+            if (affectedRows != 1) {
+                throw new InternalNakadiException(
+                        "Updated rows: " + affectedRows + ", expected: 1 while updating storage " + storage.getId());
+            }
+        } catch (final JsonProcessingException ex) {
+            throw new InternalNakadiException("Serialization problem during persistence of storage", ex);
+        }
     }
 
     private final RowMapper<Storage> storageRowMapper = (rs, rowNum) -> {
@@ -101,4 +160,8 @@ public class TimelineDbRepository extends AbstractDbRepository {
             throw new SQLException("Failed to restore timeline with id " + timelineId, e);
         }
     };
+
+    public void delete(final Storage storage) {
+        jdbcTemplate.update("delete from storage where st_id=?", new Object[]{storage.getId()});
+    }
 }
