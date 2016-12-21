@@ -2,15 +2,18 @@ package org.zalando.nakadi.service.timeline;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.VersionedCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 
+import javax.annotation.Nullable;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -22,15 +25,18 @@ public class TimelineService {
     private final TimelineDbRepository timelineRepo;
     private final EventTypeRepository eventTypeRepo;
     private final TimelineSync timelineSync;
+    private final StorageWorkerFactory storageWorkerFactory;
 
     @Autowired
     public TimelineService(
             final TimelineDbRepository timelineRepo,
             final EventTypeRepository eventTypeRepo,
-            final TimelineSync timelineSync) {
+            final TimelineSync timelineSync,
+            final StorageWorkerFactory storageWorkerFactory) {
         this.timelineRepo = timelineRepo;
         this.eventTypeRepo = eventTypeRepo;
         this.timelineSync = timelineSync;
+        this.storageWorkerFactory = storageWorkerFactory;
     }
 
     public List<Storage> listStorages() {
@@ -39,6 +45,10 @@ public class TimelineService {
 
     public Optional<Storage> getStorage(final String id) {
         return timelineRepo.getStorage(id);
+    }
+
+    public Storage getDefaultStorage() {
+        return timelineRepo.getDefaultStorage();
     }
 
     public void createOrUpdateStorage(final Storage storage) throws NakadiException {
@@ -73,7 +83,8 @@ public class TimelineService {
         return timelineRepo.listTimelines(eventType, null, null, null);
     }
 
-    public Timeline createAndStartTimeline(final String eventTypeName, final String storageId) throws InternalNakadiException, NoSuchEventTypeException, InterruptedException {
+    @Transactional
+    public Timeline createAndStartTimeline(final String eventTypeName, final String storageId) throws NakadiException, InterruptedException {
         final Storage storage = timelineRepo.getStorage(storageId)
                 .orElseThrow(() -> new IllegalArgumentException("Storage with id " + storageId + " is not found"));
         final EventType eventType = eventTypeRepo.findByName(eventTypeName);
@@ -84,7 +95,9 @@ public class TimelineService {
         timeline.setEventType(eventTypeName);
         timeline.setStorage(storage);
 
-        final StorageWorker storageWorker = StorageWorker.build(storage);
+        final StorageWorker oldStorageWorker = storageWorkerFactory.getWorker(
+                null == activeTimeline ? timelineRepo.getDefaultStorage() : activeTimeline.getStorage());
+        final StorageWorker newStorageWorker = storageWorkerFactory.getWorker(storage);
 
         if (null == activeTimeline) {
             // Here everything is simple.
@@ -94,10 +107,18 @@ public class TimelineService {
             if (!storage.equals(timelineRepo.getDefaultStorage())) {
                 throw new IllegalArgumentException("The very first change should go to default storage");
             }
-            timeline.setStorageConfiguration(storageWorker.createEventTypeConfiguration(eventType, true));
+            timeline.setStorageConfiguration(newStorageWorker.createEventTypeConfiguration(
+                    eventType,
+                    oldStorageWorker.getTopicRepository().listPartitionNames(
+                            oldStorageWorker.createFakeTimeline(eventType).getStorageConfiguration()).size(),
+                    true));
             timeline.setOrder(0);
         } else {
-            timeline.setStorageConfiguration(storageWorker.createEventTypeConfiguration(eventType, false));
+
+            timeline.setStorageConfiguration(newStorageWorker.createEventTypeConfiguration(
+                    eventType,
+                    oldStorageWorker.getTopicRepository().listPartitionNames(activeTimeline.getStorageConfiguration()).size(),
+                    false));
             timeline.setOrder(activeTimeline.getOrder() + 1);
         }
 
@@ -108,8 +129,7 @@ public class TimelineService {
             timeline.setSwitchedAt(new Date());
             if (null != activeTimeline) {
                 // Wee need to write latest cursors configuration.
-                final StorageWorker oldStorage = StorageWorker.build(activeTimeline.getStorage());
-                activeTimeline.setLastPosition(oldStorage.getLatestPosition(activeTimeline));
+                activeTimeline.setLastPosition(oldStorageWorker.getLatestPosition(activeTimeline));
                 timelineRepo.update(activeTimeline);
             }
             return timelineRepo.create(timeline);
@@ -141,6 +161,42 @@ public class TimelineService {
             timelineRepo.delete(timeline);
         } finally {
             timelineSync.finishTimelineUpdate(timeline.getEventType());
+        }
+    }
+
+    public Timeline getTimeline(final EventType et) {
+        final Timeline existing = timelineRepo.loadActiveTimeline(et.getName());
+        if (null != existing) {
+            return existing;
+        }
+        return storageWorkerFactory.getWorker(timelineRepo.getDefaultStorage()).createFakeTimeline(et);
+    }
+
+    public Timeline createTimelineForNewEventType(final EventType eventType) throws NakadiException {
+        // TODO: One should be able to change default storage to active storage!
+        final StorageWorker storageWorker = storageWorkerFactory.getWorker(timelineRepo.getDefaultStorage());
+        final Timeline.EventTypeConfiguration etConfig = storageWorker.createEventTypeConfiguration(
+                eventType, null, false);
+        final Timeline timeline = new Timeline();
+        timeline.setStorage(storageWorker.getStorage());
+        timeline.setEventType(eventType.getName());
+        timeline.setStorageConfiguration(etConfig);
+        timeline.setCreatedAt(new Date());
+        timeline.setSwitchedAt(timeline.getCreatedAt());
+        timeline.setOrder(0);
+        timelineRepo.create(timeline);
+        return timeline;
+    }
+
+    @Nullable
+    public Timeline getTimeline(final EventType eventType, final VersionedCursor vCursor) throws InternalNakadiException, NoSuchEventTypeException {
+        if (vCursor instanceof VersionedCursor.VersionedCursorV0) {
+            return storageWorkerFactory.getWorker(getDefaultStorage()).createFakeTimeline(eventType);
+        } else if (vCursor instanceof VersionedCursor.VersionedCursorV1) {
+            final VersionedCursor.VersionedCursorV1 v1 = (VersionedCursor.VersionedCursorV1) vCursor;
+            return timelineRepo.getTimeline(v1.getTimelineId());
+        } else {
+            throw new IllegalArgumentException("Cursor class " + vCursor.getClass() + " is not supported");
         }
     }
 }

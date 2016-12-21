@@ -106,7 +106,7 @@ public class EventTypeControllerTest {
     public void init() throws Exception {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
-                partitionResolver, enrichment, uuid, featureToggleService, subscriptionRepository);
+                partitionResolver, enrichment, uuid, featureToggleService, subscriptionRepository, timelineService);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);

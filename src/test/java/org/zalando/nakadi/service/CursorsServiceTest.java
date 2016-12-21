@@ -110,7 +110,7 @@ public class CursorsServiceTest {
         when(tokenService.generateToken()).thenReturn(TOKEN);
 
         cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepository, eventTypeRepository,
-                zkLockFactory, zkSubscriptionClientFactory, tokenService);
+                zkLockFactory, zkSubscriptionClientFactory, tokenService, storageWorker, storageWorkerFactory);
     }
 
     @Test

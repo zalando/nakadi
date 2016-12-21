@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
 import javax.annotation.Nullable;
-import java.io.Closeable;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -200,7 +199,7 @@ public class TimelineSyncImpl implements TimelineSync {
     }
 
     @Override
-    public Closeable workWithEventType(final String eventType) throws InterruptedException {
+    public CloseableNoException workWithEventType(final String eventType) throws InterruptedException {
         synchronized (localLock) {
             while (lockedEventTypes.contains(eventType)) {
                 localLock.wait();

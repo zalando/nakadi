@@ -1,19 +1,7 @@
 package org.zalando.nakadi.repository;
 
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.Topic;
-import org.zalando.nakadi.domain.TopicPartition;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.domain.*;
+import org.zalando.nakadi.exceptions.*;
 
 import java.util.List;
 import java.util.Map;
@@ -28,31 +16,27 @@ public interface TopicRepository {
 
     List<Topic> listTopics() throws NakadiException;
 
-    void createTopic(EventType eventType) throws TopicCreationException, DuplicatedEventTypeNameException;
-
     void deleteTopic(String topic) throws TopicDeletionException;
 
-    boolean topicExists(String topic) throws NakadiException;
+    boolean topicExists(Timeline.EventTypeConfiguration topic) throws NakadiException;
 
-    boolean partitionExists(String topic, String partition) throws NakadiException;
+    boolean partitionExists(Timeline.EventTypeConfiguration topic, String partition) throws NakadiException;
 
-    void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
+    void syncPostBatch(Timeline timeline, List<BatchItem> batch) throws EventPublishingException;
 
-    List<TopicPartition> listPartitions(String topicId) throws NakadiException;
+    List<TopicPartition> listPartitions(Timeline.EventTypeConfiguration topic) throws NakadiException;
 
     List<TopicPartition> listPartitions(Set<String> topics) throws ServiceUnavailableException;
 
     Map<String, Long> materializePositions(String topicId, SubscriptionBase.InitialPosition position)
             throws ServiceUnavailableException;
 
-    List<String> listPartitionNames(final String topicId);
+    List<String> listPartitionNames(final Timeline.EventTypeConfiguration configuration);
 
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 
-    EventConsumer createEventConsumer(String topic, List<Cursor> cursors) throws NakadiException,
+    EventConsumer createEventConsumer(Timeline.EventTypeConfiguration cfg, List<Cursor> cursors) throws NakadiException,
             InvalidCursorException;
 
-    int compareOffsets(String firstOffset, String secondOffset) throws InternalNakadiException;
-
-    void validateCommitCursors(String topic, List<? extends Cursor> cursors) throws InvalidCursorException;
+    void validateCommitCursors(Timeline.EventTypeConfiguration cfg, List<? extends Cursor> cursors) throws InvalidCursorException;
 }

@@ -56,7 +56,7 @@ public class EventPublisherTest {
     private final EventTypeCache cache = mock(EventTypeCache.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
     private final Enrichment enrichment = mock(Enrichment.class);
-    private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver, enrichment);
+    private final EventPublisher publisher = new EventPublisher(topicRepository, timelineRepo, timelineSync, cache, partitionResolver, enrichment, storageWorkerFactory);
 
     @Test
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {

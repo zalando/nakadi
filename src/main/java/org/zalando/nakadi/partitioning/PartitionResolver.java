@@ -52,7 +52,7 @@ public class PartitionResolver {
         }
     }
 
-    public String resolvePartition(final EventType eventType, final JSONObject eventAsJson)
+    public String resolvePartition(final EventType eventType, final JSONObject eventAsJson, final List<String> partitions)
             throws PartitioningException {
 
         final String eventTypeStrategy = eventType.getPartitionStrategy();
@@ -62,7 +62,6 @@ public class PartitionResolver {
                     eventTypeStrategy);
         }
 
-        final List<String> partitions = topicRepository.listPartitionNames(eventType.getTopic());
         return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
     }
 

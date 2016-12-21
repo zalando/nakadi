@@ -429,7 +429,7 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    KafkaPartitionsCalculatorTest.buildTest());
+                    KafkaPartitionsCalculatorTest.buildTest(), uuidGenerator);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

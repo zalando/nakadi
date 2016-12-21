@@ -1,16 +1,13 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
+import jdk.nashorn.internal.runtime.Version;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.domain.CursorError;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
@@ -20,7 +17,6 @@ import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
@@ -28,6 +24,9 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
+import org.zalando.nakadi.service.timeline.StorageWorker;
+import org.zalando.nakadi.service.timeline.StorageWorkerFactory;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -50,28 +49,30 @@ public class CursorsService {
     private static final String ERROR_COMMUNICATING_WITH_ZOOKEEPER = "Error communicating with zookeeper";
 
     private final ZooKeeperHolder zkHolder;
-    private final TopicRepository topicRepository;
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
     private final ZooKeeperLockFactory zkLockFactory;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final CursorTokenService cursorTokenService;
-
+    private final TimelineService timelineService;
+    private final StorageWorkerFactory storageWorkerFactory;
     @Autowired
     public CursorsService(final ZooKeeperHolder zkHolder,
-                          final TopicRepository topicRepository,
                           final SubscriptionDbRepository subscriptionRepository,
                           final EventTypeRepository eventTypeRepository,
                           final ZooKeeperLockFactory zkLockFactory,
                           final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
-                          final CursorTokenService cursorTokenService) {
+                          final CursorTokenService cursorTokenService,
+                          final TimelineService timelineService,
+                          final StorageWorkerFactory storageWorkerFactory) {
         this.zkHolder = zkHolder;
-        this.topicRepository = topicRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.zkLockFactory = zkLockFactory;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
         this.cursorTokenService = cursorTokenService;
+        this.timelineService = timelineService;
+        this.storageWorkerFactory = storageWorkerFactory;
     }
 
     public Map<SubscriptionCursor, Boolean> commitCursors(final String streamId, final String subscriptionId,
@@ -128,26 +129,38 @@ public class CursorsService {
                     cursor.getCursorToken());
         }
         final EventType eventType = eventTypeRepository.findByName(cursorToProcess.getEventType());
-        topicRepository.validateCommitCursors(eventType.getTopic(), ImmutableList.of(cursorToProcess));
-        return commitCursor(subscriptionId, eventType.getTopic(), cursorToProcess);
+
+        final VersionedCursor vCursor = VersionedCursor.restore(cursor);
+        final Timeline timeline = timelineService.getTimeline(eventType, vCursor);
+        storageWorkerFactory.getWorker(timeline.getStorage()).getTopicRepository().validateCommitCursors(
+                timeline.getStorageConfiguration(),
+                ImmutableList.of(cursorToProcess));
+
+        return commitCursor(subscriptionId, eventType, vCursor, timeline);
     }
 
-    private boolean commitCursor(final String subscriptionId, final String eventType, final SubscriptionCursor cursor)
+    private boolean commitCursor(final String subscriptionId, final EventType eventType,
+                                 final VersionedCursor cursor, final Timeline timeline)
             throws ServiceUnavailableException, NoSuchSubscriptionException, InvalidCursorException {
 
         final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, eventType, cursor.getPartition());
         try {
             return runLocked(() -> {
                 final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
-                if (topicRepository.compareOffsets(cursor.getOffset(), currentOffset) > 0) {
-                    zkHolder.get().setData().forPath(offsetPath, cursor.getOffset().getBytes(CHARSET_UTF8));
-                    return true;
-                } else {
+                final VersionedCursor currentCursor = VersionedCursor.restore(new Cursor(cursor.getPartition(), currentOffset));
+                final Timeline currentTimeline = timelineService.getTimeline(eventType, currentCursor);
+                if (currentTimeline.getOrder() > timeline.getOrder()) {
                     return false;
                 }
+                if (currentTimeline.getOrder().equals(timeline.getOrder()) &&
+                        storageWorkerFactory.getWorker(timeline.getStorage()).compare(cursor, currentCursor) <= 0) {
+                    return false;
+                }
+                zkHolder.get().setData().forPath(offsetPath, cursor.toCursor().getOffset().getBytes(CHARSET_UTF8));
+                return true;
             }, zkLockFactory.createLock(offsetPath));
         } catch (final IllegalArgumentException e) {
-            throw new InvalidCursorException(CursorError.INVALID_FORMAT, cursor);
+            throw new InvalidCursorException(CursorError.INVALID_FORMAT, cursor.toCursor());
         } catch (final Exception e) {
             throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER, e);
         }

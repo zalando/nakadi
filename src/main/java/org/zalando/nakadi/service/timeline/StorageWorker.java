@@ -4,22 +4,26 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.VersionedCursor;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.repository.TopicRepository;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 public interface StorageWorker {
 
-    Timeline.EventTypeConfiguration createEventTypeConfiguration(final EventType et, final boolean initial);
+    Storage getStorage();
 
-    List<VersionedCursor> getLatestPosition(Timeline activeTimeline);
+    Timeline.EventTypeConfiguration createEventTypeConfiguration(
+            final EventType et,
+            @Nullable final Integer partitionCount,
+            boolean importFromOld) throws NakadiException;
 
-    static StorageWorker build(final Storage storage) {
-        switch (storage.getType()) {
-            case KAFKA:
-                return new KafkaStorageWorker((Storage.KafkaStorage) storage);
-            default:
-                throw new IllegalArgumentException("Storage type is not supported");
-        }
-    }
+    List<VersionedCursor> getLatestPosition(Timeline activeTimeline) throws NakadiException;
 
+    TopicRepository getTopicRepository();
+
+    Timeline createFakeTimeline(EventType eventType);
+
+    int compare(VersionedCursor cursor, VersionedCursor currentCursor);
 }

@@ -65,7 +65,7 @@ public class PartitionsControllerTest {
         eventTypeRepositoryMock = mock(EventTypeRepository.class);
         topicRepositoryMock = mock(TopicRepository.class);
 
-        final PartitionsController controller = new PartitionsController(eventTypeRepositoryMock, topicRepositoryMock);
+        final PartitionsController controller = new PartitionsController(eventTypeRepositoryMock, topicRepositoryMock, storageWorkerFactory, timelineService);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),

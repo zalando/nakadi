@@ -6,6 +6,7 @@ import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.domain.VersionedCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
@@ -155,7 +156,7 @@ public class TimelineController {
     public TimelineView createTimeline(
             @PathVariable("eventTypeName") final String eventType,
             @RequestBody final TimelineToCreate timeline)
-            throws InterruptedException, NoSuchEventTypeException, InternalNakadiException {
+            throws InterruptedException, NakadiException {
         return TimelineView.build(timelineService.createAndStartTimeline(eventType, timeline.storageId));
     }
 

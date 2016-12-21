@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.timeline;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.function.Consumer;
 
 /**
@@ -17,13 +18,17 @@ import java.util.function.Consumer;
  * </pre>
  */
 public interface TimelineSync {
+    public interface CloseableNoException extends Closeable {
+        @Override
+        void close();
+    }
     /**
      * Call while publishing to event type.
      *
      * @param eventType Event type to publish to
      * @return Closeable object, that should be closed when publishing complete
      */
-    public Closeable workWithEventType(String eventType) throws InterruptedException;
+    public CloseableNoException workWithEventType(String eventType) throws InterruptedException;
 
     /**
      * Lock event type publishing while switching to next timeline

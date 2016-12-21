@@ -10,26 +10,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.*;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.timeline.StorageWorkerFactory;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.util.List;
 import java.util.Objects;
@@ -47,50 +42,44 @@ public class EventTypeService {
     private final TopicRepository topicRepository;
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
-    private final UUIDGenerator uuidGenerator;
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
+    private final StorageWorkerFactory storageWorkerFactory;
+    private final TimelineService timelineService;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                             final PartitionResolver partitionResolver, final Enrichment enrichment,
-                            final UUIDGenerator uuidGenerator,
                             final FeatureToggleService featureToggleService,
-                            final SubscriptionDbRepository subscriptionRepository) {
+                            final SubscriptionDbRepository subscriptionRepository,
+                            final StorageWorkerFactory storageWorkerFactory,
+                            final TimelineService timelineService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
-        this.uuidGenerator = uuidGenerator;
         this.featureToggleService = featureToggleService;
         this.subscriptionRepository = subscriptionRepository;
+        this.storageWorkerFactory = storageWorkerFactory;
+        this.timelineService = timelineService;
     }
 
     public List<EventType> list() {
         return eventTypeRepository.list();
     }
 
+    @Transactional
     public Result<Void> create(final EventType eventType) {
         try {
-            assignTopic(eventType);
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
             eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(eventType);
+            timelineService.createTimelineForNewEventType(eventType);
             return Result.ok();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
             LOG.debug("Failed to create EventType.", e);
-            return Result.problem(e.asProblem());
-        } catch (final TopicCreationException e) {
-            LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
-
-            try {
-                eventTypeRepository.removeEventType(eventType.getTopic());
-            } catch (final NakadiException e1) {
-                return Result.problem(e.asProblem());
-            }
             return Result.problem(e.asProblem());
         } catch (final NakadiException e) {
             LOG.error("Error creating event type " + eventType, e);
@@ -173,7 +162,7 @@ public class EventTypeService {
     }
 
     private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing,
-            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
+                                                         final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
         if (existing != null && newStatistics == null) {
             return existing;
         }
@@ -232,10 +221,6 @@ public class EventTypeService {
         if (!absentFields.isEmpty()) {
             throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
         }
-    }
-
-    private void assignTopic(final EventType eventType) {
-        eventType.setTopic(uuidGenerator.randomUUID().toString());
     }
 
     private String convertToJSONPointer(final String value) {

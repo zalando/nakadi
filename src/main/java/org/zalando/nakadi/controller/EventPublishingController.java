@@ -66,7 +66,7 @@ public class EventPublishingController {
                     request, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
-        } catch (RuntimeException ex) {
+        } catch (final RuntimeException ex) {
             eventTypeMetrics.incrementResponseCount(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
             throw ex;
         }

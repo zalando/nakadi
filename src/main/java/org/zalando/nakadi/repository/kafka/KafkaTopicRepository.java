@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -10,69 +9,32 @@ import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.errors.InterruptException;
-import org.apache.kafka.common.errors.NetworkException;
-import org.apache.kafka.common.errors.NotLeaderForPartitionException;
-import org.apache.kafka.common.errors.UnknownServerException;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.apache.kafka.common.errors.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventPublishingStep;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeStatistics;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.Topic;
-import org.zalando.nakadi.domain.TopicPartition;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.domain.*;
+import org.zalando.nakadi.exceptions.*;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
-import static org.zalando.nakadi.domain.CursorError.EMPTY_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
-import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
-import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
-import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.fromNakadiCursor;
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
+import static org.zalando.nakadi.domain.CursorError.*;
+import static org.zalando.nakadi.repository.kafka.KafkaCursor.*;
 
 @Component
 @Profile("!test")
@@ -85,8 +47,8 @@ public class KafkaTopicRepository implements TopicRepository {
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
     private final ZookeeperSettings zookeeperSettings;
-    private final KafkaPartitionsCalculator partitionsCalculator;
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
+    private final UUIDGenerator uuidGenerator;
 
     @Autowired
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory,
@@ -94,13 +56,13 @@ public class KafkaTopicRepository implements TopicRepository {
                                 final NakadiSettings nakadiSettings,
                                 final KafkaSettings kafkaSettings,
                                 final ZookeeperSettings zookeeperSettings,
-                                final KafkaPartitionsCalculator partitionsCalculator) {
+                                final UUIDGenerator uuidGenerator) {
         this.zkFactory = zkFactory;
         this.kafkaFactory = kafkaFactory;
         this.nakadiSettings = nakadiSettings;
         this.kafkaSettings = kafkaSettings;
         this.zookeeperSettings = zookeeperSettings;
-        this.partitionsCalculator = partitionsCalculator;
+        this.uuidGenerator = uuidGenerator;
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
@@ -118,16 +80,19 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    @Override
-    public void createTopic(final EventType eventType) throws TopicCreationException, DuplicatedEventTypeNameException {
+    public String createTopic(
+            final int partitionCount,
+            final EventType eventType) throws TopicCreationException, DuplicatedEventTypeNameException {
         if (eventType.getOptions().getRetentionTime() == null) {
             throw new IllegalArgumentException("Retention time can not be null");
         }
-        createTopic(eventType.getTopic(),
-                calculateKafkaPartitionCount(eventType.getDefaultStatistic()),
+        final String topicName = uuidGenerator.randomUUID().toString();
+        createTopic(topicName,
+                partitionCount,
                 nakadiSettings.getDefaultTopicReplicaFactor(),
                 eventType.getOptions().getRetentionTime(),
                 nakadiSettings.getDefaultTopicRotationMs());
+        return topicName;
     }
 
     private void createTopic(final String topic, final int partitionsNum, final int replicaFactor,
@@ -159,7 +124,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public boolean topicExists(final String topic) throws ServiceUnavailableException {
+    public boolean topicExists(final Timeline.EventTypeConfiguration topic) throws ServiceUnavailableException {
+        final Timeline.KafkaEventTypeConfiguration kTopic = (Timeline.KafkaEventTypeConfiguration) topic;
         return listTopics()
                 .stream()
                 .map(Topic::getName)
@@ -167,9 +133,8 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public boolean partitionExists(final String topic, final String partition) throws NakadiException {
-        return listPartitionNames(topic).stream()
-                .anyMatch(partition::equals);
+    public boolean partitionExists(final Timeline.EventTypeConfiguration topic, final String partition) throws NakadiException {
+        return listPartitionNames(topic).stream().anyMatch(partition::equals);
     }
 
     private static CompletableFuture<Exception> publishItem(
@@ -230,15 +195,17 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
+    public void syncPostBatch(final Timeline timeline, final List<BatchItem> batch) throws EventPublishingException {
+        final Timeline.KafkaEventTypeConfiguration cfg =
+                (Timeline.KafkaEventTypeConfiguration) timeline.getStorageConfiguration();
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
-            final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
-                    .collect(Collectors.toMap(p -> String.valueOf(p.partition()),p -> String.valueOf(p.leader().id())));
+            final Map<String, String> partitionToBroker = producer.partitionsFor(cfg.getTopicName()).stream()
+                    .collect(Collectors.toMap(p -> String.valueOf(p.partition()), p -> String.valueOf(p.leader().id())));
             batch.forEach(item -> {
                 Preconditions.checkNotNull(
                         item.getPartition(), "BatchItem partition can't be null at the moment of publishing!");
-                item.setBrokerId(partitionToBroker.get(item.getPartition()));
+                item.setBrokerId(timeline.getStorage().getId() + "-" + partitionToBroker.get(item.getPartition()));
             });
 
             int shortCircuited = 0;
@@ -246,9 +213,9 @@ public class KafkaTopicRepository implements TopicRepository {
             for (final BatchItem item : batch) {
                 item.setStep(EventPublishingStep.PUBLISHING);
                 final HystrixKafkaCircuitBreaker circuitBreaker = circuitBreakers.computeIfAbsent(
-                        item.getBrokerId(), brokerId -> new HystrixKafkaCircuitBreaker(brokerId));
+                        item.getBrokerId(), HystrixKafkaCircuitBreaker::new);
                 if (circuitBreaker.allowRequest()) {
-                    sendFutures.put(item, publishItem(producer, topicId, item, circuitBreaker));
+                    sendFutures.put(item, publishItem(producer, cfg.getTopicName(), item, circuitBreaker));
                 } else {
                     shortCircuited++;
                     item.updateStatusAndDetail(EventPublishingStatus.FAILED, "short circuited");
@@ -256,7 +223,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
             if (shortCircuited > 0) {
                 LOG.warn("Short circuiting request to Kafka {} time(s) due to timeout for topic {}",
-                        shortCircuited, topicId);
+                        shortCircuited, cfg.getTopicName());
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
@@ -269,7 +236,7 @@ public class KafkaTopicRepository implements TopicRepository {
                     .findAny();
             if (needReset.isPresent()) {
                 LOG.info("Terminating producer while publishing to topic {} because of unrecoverable exception",
-                        topicId, needReset.get());
+                        cfg.getTopicName(), needReset.get());
                 kafkaFactory.terminateProducer(producer);
             }
         } catch (final TimeoutException ex) {
@@ -305,12 +272,13 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public List<TopicPartition> listPartitions(final String topicId) throws ServiceUnavailableException {
+    public List<TopicPartition> listPartitions(final Timeline.EventTypeConfiguration cfg) throws ServiceUnavailableException {
+        final Timeline.KafkaEventTypeConfiguration kCfg = (Timeline.KafkaEventTypeConfiguration) cfg;
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
             final List<org.apache.kafka.common.TopicPartition> kafkaTPs = consumer
-                    .partitionsFor(topicId)
+                    .partitionsFor(kCfg.getTopicName())
                     .stream()
-                    .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
+                    .map(p -> new org.apache.kafka.common.TopicPartition(kCfg.getTopicName(), p.partition()))
                     .collect(toList());
 
             return toNakadiTopicPartition(consumer, kafkaTPs);
@@ -393,10 +361,11 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public List<String> listPartitionNames(final String topicId) {
+    public List<String> listPartitionNames(final Timeline.EventTypeConfiguration config) {
+        final Timeline.KafkaEventTypeConfiguration kConfig = (Timeline.KafkaEventTypeConfiguration) config;
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
-            return unmodifiableList(producer.partitionsFor(topicId)
+            return unmodifiableList(producer.partitionsFor(kConfig.getTopicName())
                     .stream()
                     .map(partitionInfo -> toNakadiPartition(partitionInfo.partition()))
                     .collect(toList()));
@@ -449,9 +418,10 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer createEventConsumer(final String topic, final List<Cursor> cursors)
+    public EventConsumer createEventConsumer(final Timeline.EventTypeConfiguration cfg, final List<Cursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
-        this.validateCursors(topic, cursors);
+        final Timeline.KafkaEventTypeConfiguration kCfg = (Timeline.KafkaEventTypeConfiguration) cfg;
+        this.validateCursors(kCfg, cursors);
 
         final List<KafkaCursor> kafkaCursors = Lists.newArrayListWithCapacity(cursors.size());
 
@@ -461,7 +431,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
             final long kafkaOffset;
             if (Cursor.BEFORE_OLDEST_OFFSET.equals(offset)) {
-                final TopicPartition tp = getPartition(topic, partition);
+                final TopicPartition tp = getPartition(kCfg.getTopicName(), partition);
                 kafkaOffset = toKafkaOffset(tp.getOldestAvailableOffset());
             } else {
                 kafkaOffset = toKafkaOffset(offset) + 1L;
@@ -471,22 +441,12 @@ public class KafkaTopicRepository implements TopicRepository {
             kafkaCursors.add(kafkaCursor);
         }
 
-        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs());
+        return kafkaFactory.createNakadiConsumer(kCfg.getTopicName(), kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs());
     }
 
-    public int compareOffsets(final String firstOffset, final String secondOffset) {
-        try {
-            final long first = toKafkaOffset(firstOffset);
-            final long second = toKafkaOffset(secondOffset);
-            return Long.compare(first, second);
-        } catch (final NumberFormatException e) {
-            throw new IllegalArgumentException("Incorrect offset format, should be long", e);
-        }
-    }
-
-    private void validateCursors(final String topic, final List<Cursor> cursors) throws ServiceUnavailableException,
-            InvalidCursorException {
-        final List<TopicPartition> partitions = listPartitions(topic);
+    private void validateCursors(final Timeline.KafkaEventTypeConfiguration cfg, final List<Cursor> cursors)
+            throws ServiceUnavailableException, InvalidCursorException {
+        final List<TopicPartition> partitions = listPartitions(cfg);
 
         for (final Cursor cursor : cursors) {
             validateCursorForNulls(cursor);
@@ -517,9 +477,10 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void validateCommitCursors(final String topic, final List<? extends Cursor> cursors)
+    public void validateCommitCursors(final Timeline.EventTypeConfiguration cfg, final List<? extends Cursor> cursors)
             throws InvalidCursorException {
-        final List<String> partitions = this.listPartitionNames(topic);
+        final Timeline.KafkaEventTypeConfiguration kCfg = (Timeline.KafkaEventTypeConfiguration) cfg;
+        final List<String> partitions = this.listPartitionNames(kCfg);
         for (final Cursor cursor : cursors) {
             validateCursorForNulls(cursor);
             if (!partitions.contains(cursor.getPartition())) {
@@ -559,25 +520,5 @@ public class KafkaTopicRepository implements TopicRepository {
                 zkUtils.close();
             }
         }
-    }
-
-    @VisibleForTesting
-    Integer calculateKafkaPartitionCount(final EventTypeStatistics stat) {
-        if (null == stat) {
-            return nakadiSettings.getDefaultTopicPartitionCount();
-        }
-        final int maxPartitionsDueParallelism = Math.max(stat.getReadParallelism(), stat.getWriteParallelism());
-        if (maxPartitionsDueParallelism >= nakadiSettings.getMaxTopicPartitionCount()) {
-            return nakadiSettings.getMaxTopicPartitionCount();
-        }
-        return Math.min(nakadiSettings.getMaxTopicPartitionCount(), Math.max(
-                maxPartitionsDueParallelism,
-                calculatePartitionsAccordingLoad(stat.getMessagesPerMinute(), stat.getMessageSize())));
-    }
-
-    private int calculatePartitionsAccordingLoad(final int messagesPerMinute, final int avgEventSizeBytes) {
-        final float throughoutputMbPerSec = ((float) messagesPerMinute * (float) avgEventSizeBytes)
-                / (1024.f * 1024.f * 60.f);
-        return partitionsCalculator.getBestPartitionsCount(avgEventSizeBytes, throughoutputMbPerSec);
     }
 }

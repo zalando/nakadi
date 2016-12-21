@@ -6,24 +6,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.BatchFactory;
-import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.BatchItemResponse;
-import org.zalando.nakadi.domain.EventPublishResult;
-import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventPublishingStep;
-import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.EnrichmentException;
-import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventValidationException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.*;
 import org.zalando.nakadi.partitioning.PartitionResolver;
-import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.timeline.StorageWorker;
+import org.zalando.nakadi.service.timeline.StorageWorkerFactory;
+import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
@@ -37,34 +29,42 @@ public class EventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
 
-    private final TopicRepository topicRepository;
+    private final TimelineSync timelineSync;
     private final EventTypeCache eventTypeCache;
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
+    private final StorageWorkerFactory storageWorkerFactory;
+    private final TimelineService timelineService;
 
     @Autowired
-    public EventPublisher(final TopicRepository topicRepository,
+    public EventPublisher(final TimelineSync timelineSync,
                           final EventTypeCache eventTypeCache,
                           final PartitionResolver partitionResolver,
-                          final Enrichment enrichment) {
-        this.topicRepository = topicRepository;
+                          final Enrichment enrichment,
+                          final StorageWorkerFactory storageWorkerFactory,
+                          final TimelineService timelineService) {
+        this.storageWorkerFactory = storageWorkerFactory;
+        this.timelineSync = timelineSync;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
+        this.timelineService = timelineService;
     }
 
     public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client)
             throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-        final List<BatchItem> batch = BatchFactory.from(events);
-
         client.checkScopes(eventType.getWriteScopes());
 
-        try {
+        final List<BatchItem> batch = BatchFactory.from(events);
+        try (TimelineSync.CloseableNoException cr = timelineSync.workWithEventType(eventType.getName())) {
+            final Timeline timeline = timelineService.getTimeline(eventType);
+            final StorageWorker storageWorker = storageWorkerFactory.getWorker(timeline.getStorage());
+
             validate(batch, eventType);
-            partition(batch, eventType);
+            partition(batch, eventType, storageWorker.getTopicRepository().listPartitionNames(timeline.getStorageConfiguration()));
             enrich(batch, eventType);
-            submit(batch, eventType);
+            submit(storageWorker, timeline, batch);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -79,6 +79,9 @@ public class EventPublisher {
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
+        } catch (final InterruptedException e) {
+            LOG.error("Failed to lock data", e);
+            return failed(batch);
         }
     }
 
@@ -87,7 +90,7 @@ public class EventPublisher {
             try {
                 batchItem.setStep(EventPublishingStep.ENRICHING);
                 enrichment.enrich(batchItem, eventType);
-            } catch (EnrichmentException e) {
+            } catch (final EnrichmentException e) {
                 batchItem.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
             }
@@ -100,11 +103,12 @@ public class EventPublisher {
                 .collect(Collectors.toList());
     }
 
-    private void partition(final List<BatchItem> batch, final EventType eventType) throws PartitioningException {
+    private void partition(final List<BatchItem> batch, final EventType eventType, final List<String> partitions)
+            throws PartitioningException {
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.PARTITIONING);
             try {
-                final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent());
+                final String partitionId = partitionResolver.resolvePartition(eventType, item.getEvent(), partitions);
                 item.setPartition(partitionId);
             } catch (final PartitioningException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
@@ -126,9 +130,11 @@ public class EventPublisher {
         }
     }
 
-    private void submit(final List<BatchItem> batch, final EventType eventType) throws EventPublishingException {
+    private void submit(final StorageWorker storageWorker, final Timeline timeline,
+                        final List<BatchItem> batch)
+            throws EventPublishingException, InterruptedException {
         // there is no need to group by partition since its already done by kafka client
-        topicRepository.syncPostBatch(eventType.getTopic(), batch);
+        storageWorker.getTopicRepository().syncPostBatch(timeline, batch);
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,

@@ -9,30 +9,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.BlacklistService;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
-import org.zalando.nakadi.service.ConnectionSlot;
-import org.zalando.nakadi.service.ConsumerLimitingService;
-import org.zalando.nakadi.service.EventStream;
-import org.zalando.nakadi.service.EventStreamConfig;
-import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.*;
+import org.zalando.nakadi.service.timeline.StorageWorkerFactory;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
 
@@ -48,11 +39,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
+import static javax.ws.rs.core.Response.Status.*;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 
@@ -63,7 +50,6 @@ public class EventStreamController {
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
 
     private final EventTypeRepository eventTypeRepository;
-    private final TopicRepository topicRepository;
     private final ObjectMapper jsonMapper;
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
@@ -71,17 +57,20 @@ public class EventStreamController {
     private final BlacklistService blacklistService;
     private final ConsumerLimitingService consumerLimitingService;
     private final FeatureToggleService featureToggleService;
+    private final StorageWorkerFactory storageWorkerFactory;
+    private final TimelineService timelineService;
 
     @Autowired
-    public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
+    public EventStreamController(final EventTypeRepository eventTypeRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
                                  final ConsumerLimitingService consumerLimitingService,
-                                 final FeatureToggleService featureToggleService) {
+                                 final FeatureToggleService featureToggleService,
+                                 final StorageWorkerFactory storageWorkerFactory,
+                                 final TimelineService timelineService) {
         this.eventTypeRepository = eventTypeRepository;
-        this.topicRepository = topicRepository;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
@@ -89,6 +78,8 @@ public class EventStreamController {
         this.blacklistService = blacklistService;
         this.consumerLimitingService = consumerLimitingService;
         this.featureToggleService = featureToggleService;
+        this.storageWorkerFactory = storageWorkerFactory;
+        this.timelineService = timelineService;
     }
 
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
@@ -106,7 +97,7 @@ public class EventStreamController {
 
         return outputStream -> {
 
-            if  (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
+            if (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
                 writeProblemResponse(response, outputStream,
                         Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
                 return;
@@ -121,14 +112,34 @@ public class EventStreamController {
             try {
                 @SuppressWarnings("UnnecessaryLocalVariable")
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-                final String topic = eventType.getTopic();
-
                 client.checkScopes(eventType.getReadScopes());
 
-                // validate parameters
-                if (!topicRepository.topicExists(topic)) {
-                    writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, "topic is absent in kafka");
-                    return;
+                final String topic = eventType.getTopic();
+
+                final Timeline activeTimeline = timelineService.getTimeline(eventType);
+                // deserialize cursors
+                final List<Cursor> cursors;
+                if (cursorsStr != null) {
+                    try {
+                        cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {
+                        });
+                    } catch (final IOException e) {
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("Incorrect syntax of X-nakadi-cursors header: " + cursorsStr
+                                    + ". Respond with BAD_REQUEST.", e);
+                        }
+                        writeProblemResponse(response, outputStream, BAD_REQUEST,
+                                "incorrect syntax of X-nakadi-cursors header");
+                        return;
+                    }
+                } else {
+                    // if no cursors provided - read from the newest available events
+                    cursors = storageWorkerFactory.getWorker(activeTimeline.getStorage())
+                            .getTopicRepository()
+                            .listPartitions(activeTimeline.getStorageConfiguration())
+                            .stream()
+                            .map(pInfo -> new Cursor(pInfo.getPartitionId(), pInfo.getNewestAvailableOffset()))
+                            .collect(Collectors.toList());
                 }
                 final EventStreamConfig.Builder builder = EventStreamConfig.builder()
                         .withTopic(topic)
@@ -139,31 +150,6 @@ public class EventStreamController {
                         .withStreamKeepAliveLimit(streamKeepAliveLimit)
                         .withEtName(eventTypeName)
                         .withConsumingAppId(client.getClientId());
-
-                // deserialize cursors
-                List<Cursor> cursors = null;
-                if (cursorsStr != null) {
-                    try {
-                        cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {});
-                    } catch (final IOException e) {
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr
-                                    + ". Respond with BAD_REQUEST.", e);
-                        }
-                        writeProblemResponse(response, outputStream, BAD_REQUEST,
-                                "incorrect syntax of X-nakadi-cursors header");
-                        return;
-                    }
-                }
-
-                // if no cursors provided - read from the newest available events
-                if (cursors == null) {
-                    cursors = topicRepository
-                            .listPartitions(topic)
-                            .stream()
-                            .map(pInfo -> new Cursor(pInfo.getPartitionId(), pInfo.getNewestAvailableOffset()))
-                            .collect(Collectors.toList());
-                }
 
                 // acquire connection slots to limit the number of simultaneous connections from one client
                 if (featureToggleService.isFeatureEnabled(LIMIT_CONSUMERS_NUMBER)) {
@@ -177,7 +163,8 @@ public class EventStreamController {
                 consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
                 consumerCounter.inc();
 
-                eventConsumer = topicRepository.createEventConsumer(topic, cursors);
+                eventConsumer = storageWorkerFactory.getWorker(activeTimeline.getStorage()).getTopicRepository()
+                        .createEventConsumer(activeTimeline.getStorageConfiguration(), cursors);
 
                 final Map<String, String> streamCursors = cursors
                         .stream()
