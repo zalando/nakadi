@@ -5,7 +5,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import kafka.admin.AdminUtils;
-import kafka.common.TopicExistsException;
+import kafka.admin.RackAwareMode;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
@@ -13,6 +13,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
@@ -138,7 +139,8 @@ public class KafkaTopicRepository implements TopicRepository {
                 final Properties topicConfig = new Properties();
                 topicConfig.setProperty("retention.ms", Long.toString(retentionMs));
                 topicConfig.setProperty("segment.ms", Long.toString(rotationMs));
-                AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig);
+                AdminUtils.createTopic(zkUtils, topic, partitionsNum, replicaFactor, topicConfig,
+                        RackAwareMode.Enforced$.MODULE$);
             });
         } catch (final TopicExistsException e) {
             throw new DuplicatedEventTypeNameException("EventType with name " + topic +
@@ -339,14 +341,10 @@ public class KafkaTopicRepository implements TopicRepository {
     private List<TopicPartition> toNakadiTopicPartition(final Consumer<String, String> consumer,
                                                         final List<org.apache.kafka.common.TopicPartition> kafkaTPs) {
         consumer.assign(kafkaTPs);
-
-        final org.apache.kafka.common.TopicPartition[] tpArray =
-                kafkaTPs.toArray(new org.apache.kafka.common.TopicPartition[kafkaTPs.size()]);
-
-        consumer.seekToBeginning(tpArray);
+        consumer.seekToBeginning(kafkaTPs);
         final Map<Integer, Long> earliestOffsets = getPositions(consumer, kafkaTPs);
 
-        consumer.seekToEnd(tpArray);
+        consumer.seekToEnd(kafkaTPs);
         final Map<Integer, Long> latestOffsets = getPositions(consumer, kafkaTPs);
 
         return kafkaTPs
@@ -377,9 +375,9 @@ public class KafkaTopicRepository implements TopicRepository {
                     .toArray(org.apache.kafka.common.TopicPartition[]::new);
             consumer.assign(Arrays.asList(kafkaTPs));
             if (position == SubscriptionBase.InitialPosition.BEGIN) {
-                consumer.seekToBeginning(kafkaTPs);
+                consumer.seekToBeginning(Arrays.asList(kafkaTPs));
             } else if (position == SubscriptionBase.InitialPosition.END) {
-                consumer.seekToEnd(kafkaTPs);
+                consumer.seekToEnd(Arrays.asList(kafkaTPs));
             } else {
                 throw new IllegalArgumentException("Bad offset specification " + position + " for topic " + topicId);
             }
@@ -427,14 +425,15 @@ public class KafkaTopicRepository implements TopicRepository {
             final org.apache.kafka.common.TopicPartition tp =
                     new org.apache.kafka.common.TopicPartition(topicId, toKafkaPartition(partition));
 
-            consumer.assign(ImmutableList.of(tp));
+            ImmutableList<org.apache.kafka.common.TopicPartition> topics = ImmutableList.of(tp);
+            consumer.assign(topics);
 
             final TopicPartition topicPartition = new TopicPartition(topicId, partition);
 
-            consumer.seekToBeginning(tp);
+            consumer.seekToBeginning(topics);
             topicPartition.setOldestAvailableOffset(toNakadiOffset(consumer.position(tp)));
 
-            consumer.seekToEnd(tp);
+            consumer.seekToEnd(topics);
             final Long latestOffset = consumer.position(tp);
             topicPartition.setNewestAvailableOffset(transformNewestOffset(latestOffset));
 

@@ -81,7 +81,7 @@ public class HilaAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
-                ImmutableMap.of("blah", "foo0"), "Stream started")));
+                ImmutableMap.of("blah", "foo0"), "StreamFilter started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "1", eventType.getName(),
                 ImmutableMap.of("blah", "foo1"))));
 
@@ -96,7 +96,7 @@ public class HilaAT extends BaseAT {
 
         // check that we have read the next two events with correct offsets
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "2", eventType.getName(),
-                ImmutableMap.of("blah", "foo2"), "Stream started")));
+                ImmutableMap.of("blah", "foo2"), "StreamFilter started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "3", eventType.getName(),
                 ImmutableMap.of("blah", "foo3"))));
     }
@@ -332,7 +332,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
         Assert.assertFalse(client.getBatches().stream().anyMatch(streamBatch -> {
                     if (streamBatch.getMetadata() != null)
-                        return streamBatch.getMetadata().getDebug().equals("Stream timeout reached");
+                        return streamBatch.getMetadata().getDebug().equals("StreamFilter timeout reached");
                     return false;
                 }));
     }

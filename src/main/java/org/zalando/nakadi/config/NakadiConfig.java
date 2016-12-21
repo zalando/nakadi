@@ -26,6 +26,8 @@ import org.zalando.nakadi.plugin.api.SystemProperties;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
+import org.zalando.nakadi.stream.NakadiKafkaStream;
+import org.zalando.nakadi.stream.NakadiStream;
 
 import java.lang.management.ManagementFactory;
 

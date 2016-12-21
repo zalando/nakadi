@@ -1,0 +1,7 @@
+{
+  "filter": {
+    "what": "warehouse.price",
+    "op": "<",
+    ""
+  }
+}

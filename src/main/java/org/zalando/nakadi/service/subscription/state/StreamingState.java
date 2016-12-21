@@ -54,7 +54,7 @@ class StreamingState extends State {
 
         getParameters().streamTimeoutMillis.ifPresent(
                 timeout -> scheduleTask(() -> {
-                            final String debugMessage = "Stream timeout reached";
+                            final String debugMessage = "StreamFilter timeout reached";
                             this.sendMetadata(debugMessage);
                             this.shutdownGracefully(debugMessage);
                         }, timeout,
@@ -167,7 +167,7 @@ class StreamingState extends State {
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, freeSlots),
                     getParameters().batchTimeoutMillis))) {
-                flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
+                flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("StreamFilter started") : Optional.empty());
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
@@ -352,7 +352,7 @@ class StreamingState extends State {
             // Ignore order
             kafkaConsumer.assign(new ArrayList<>(kafkaKeys.values()));
             // Check if offsets are available in kafka
-            kafkaConsumer.seekToBeginning(kafkaKeys.values().toArray(new TopicPartition[kafkaKeys.size()]));
+//            kafkaConsumer.seekToBeginning(kafkaKeys.values().toArray(new TopicPartition[kafkaKeys.size()]));
             kafkaKeys.forEach((key, kafka) -> offsets.get(key).ensureDataAvailable(kafkaConsumer.position(kafka)));
             //
             kafkaKeys.forEach((k, v) -> kafkaConsumer.seek(v, offsets.get(k).getSentOffset() + 1));
@@ -398,7 +398,7 @@ class StreamingState extends State {
                 streamToOutput();
             }
             if (getParameters().isStreamLimitReached(committedEvents)) {
-                final String debugMessage = "Stream limit in events reached: " + committedEvents;
+                final String debugMessage = "StreamFilter limit in events reached: " + committedEvents;
                 sendMetadata(debugMessage);
                 shutdownGracefully(debugMessage);
             }

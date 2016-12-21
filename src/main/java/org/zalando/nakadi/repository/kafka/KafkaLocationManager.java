@@ -98,6 +98,12 @@ public class KafkaLocationManager {
         }
     }
 
+    public Properties getKafkaProperties() {
+        final Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", kafkaProperties.getProperty("bootstrap.servers"));
+        return properties;
+    }
+
     public Properties getKafkaConsumerProperties() {
         return (Properties) kafkaProperties.clone();
     }

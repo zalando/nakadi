@@ -20,7 +20,7 @@ public class StreamParameters {
      */
     public final long batchTimeoutMillis;
     /**
-     * Stream time to live
+     * StreamFilter time to live
      */
     public final Optional<Long> streamTimeoutMillis;
     /**
