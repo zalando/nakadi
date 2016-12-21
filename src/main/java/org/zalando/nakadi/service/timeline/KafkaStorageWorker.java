@@ -1,11 +1,14 @@
 package org.zalando.nakadi.service.timeline;
 
+import com.codahale.metrics.MetricRegistry;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.domain.VersionedCursor.VersionedCursorV1;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.repository.kafka.KafkaPartitionsCalculator;
-import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
+import org.zalando.nakadi.repository.kafka.*;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -15,14 +18,28 @@ public class KafkaStorageWorker implements StorageWorker {
     private final Storage.KafkaStorage storage;
     private final KafkaPartitionsCalculator partitionsCalculator;
     private final NakadiSettings nakadiSettings;
+    private final KafkaTopicRepository kafkaTopicRepository;
 
     KafkaStorageWorker(
             final Storage.KafkaStorage storage,
+            final MetricRegistry metricRegistry,
             final KafkaPartitionsCalculator partitionsCalculator,
-            final NakadiSettings nakadiSettings) {
+            final NakadiSettings nakadiSettings,
+            final ZookeeperSettings zookeeperSettings,
+            final KafkaSettings kafkaSettings,
+            final UUIDGenerator uuidGenerator) throws Exception {
         this.storage = storage;
         this.partitionsCalculator = partitionsCalculator;
         this.nakadiSettings = nakadiSettings;
+        final ZooKeeperHolder zkHolder = new ZooKeeperHolder(storage.getZkAddress(), storage.getZkPath(), storage.getExhibitorAddress(), storage.getExhibitorPort());
+        zkHolder.init();
+        this.kafkaTopicRepository = new KafkaTopicRepository(
+                zkHolder,
+                new KafkaFactory(new KafkaLocationManager(zkHolder, kafkaSettings), metricRegistry),
+                nakadiSettings,
+                kafkaSettings,
+                zookeeperSettings,
+                uuidGenerator);
     }
 
     @Override
@@ -58,7 +75,7 @@ public class KafkaStorageWorker implements StorageWorker {
 
     @Override
     public KafkaTopicRepository getTopicRepository() {
-        return null;
+        return kafkaTopicRepository;
     }
 
     @Override

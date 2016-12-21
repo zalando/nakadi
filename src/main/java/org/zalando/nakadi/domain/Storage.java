@@ -65,12 +65,17 @@ public abstract class Storage {
     public static class KafkaStorage extends Storage {
         private String zkAddress;
         private String zkPath;
+        private String exhibitorAddress;
+        private Integer exhibitorPort;
 
         public KafkaStorage() {
             setType(Type.KAFKA);
         }
 
-        public KafkaStorage(final String zkAddress, final String zkPath) {
+        public KafkaStorage(final String zkAddress, final String zkPath,
+                            final String exhibitorAddress, final Integer exhibitorPort) {
+            this.exhibitorAddress = exhibitorAddress;
+            this.exhibitorPort = exhibitorPort;
             setType(Type.KAFKA);
             this.zkAddress = zkAddress;
             this.zkPath = zkPath;
@@ -82,6 +87,14 @@ public abstract class Storage {
 
         public String getZkPath() {
             return zkPath;
+        }
+
+        public String getExhibitorAddress() {
+            return exhibitorAddress;
+        }
+
+        public Integer getExhibitorPort() {
+            return exhibitorPort;
         }
 
         @Override
@@ -126,6 +139,8 @@ public abstract class Storage {
             final Map<String, Object> result = new HashMap<>();
             result.put("zk_address", zkAddress);
             result.put("zk_path", zkPath);
+            result.put("exhibitor_address", exhibitorAddress);
+            result.put("exhibitor_port", exhibitorPort);
             return result;
         }
 

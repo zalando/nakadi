@@ -24,6 +24,10 @@ public class StorageController {
         private String kafkaZookeeper;
         @Nullable
         private String kafkaZookeeperPath;
+        @Nullable
+        private String kafkaExhibitor;
+        @Nullable
+        private Integer kafkaExhibitorPort;
 
         public String getId() {
             return id;
@@ -59,6 +63,24 @@ public class StorageController {
             this.kafkaZookeeperPath = kafkaZookeeperPath;
         }
 
+        @Nullable
+        public String getKafkaExhibitor() {
+            return kafkaExhibitor;
+        }
+
+        public void setKafkaExhibitor(@Nullable final String kafkaExhibitor) {
+            this.kafkaExhibitor = kafkaExhibitor;
+        }
+
+        @Nullable
+        public Integer getKafkaExhibitorPort() {
+            return kafkaExhibitorPort;
+        }
+
+        public void setKafkaExhibitorPort(@Nullable final Integer kafkaExhibitorPort) {
+            this.kafkaExhibitorPort = kafkaExhibitorPort;
+        }
+
         public static StorageView build(final Storage storage) {
             if (null == storage) {
                 return null;
@@ -87,7 +109,8 @@ public class StorageController {
         final Storage.Type type = Storage.Type.valueOf(storage.getType());
         switch (type) {
             case KAFKA:
-                return new Storage.KafkaStorage(storage.getKafkaZookeeper(), storage.getKafkaZookeeperPath());
+                return new Storage.KafkaStorage(storage.getKafkaZookeeper(), storage.getKafkaZookeeperPath(),
+                        storage.getKafkaExhibitor(), storage.getKafkaExhibitorPort());
             default:
                 throw new IllegalArgumentException("storage type " + type + " is not supported");
         }

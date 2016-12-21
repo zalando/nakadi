@@ -48,12 +48,14 @@ public class TimelineDbRepository extends AbstractDbRepository {
         defaultStorage = (Storage.KafkaStorage) getStorage("default").orElseGet(
                 () -> createDefaultStorage(
                         environment.getProperty("nakadi.zookeeper.brokers"),
-                        environment.getProperty("nakadi.zookeeper.kafkaNamespace")));
+                        environment.getProperty("nakadi.zookeeper.kafkaNamespace"),
+                        environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
+                        Integer.parseInt(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0"))));
     }
 
-    private Storage.KafkaStorage createDefaultStorage(final String zkAddress, final String zkPath) {
+    private Storage.KafkaStorage createDefaultStorage(final String zkAddress, final String zkPath, final String exhibitorAddress, final Integer exhibitorPort) {
         try {
-            final Storage.KafkaStorage result = new Storage.KafkaStorage(zkAddress, zkPath);
+            final Storage.KafkaStorage result = new Storage.KafkaStorage(zkAddress, zkPath, exhibitorAddress, exhibitorPort);
             create(result);
             return result;
         } catch (final InternalNakadiException ex) {
