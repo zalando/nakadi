@@ -15,5 +15,5 @@ CREATE TABLE zn_data.timeline (
   t_cleanup_at            TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL,
   t_switched_at           TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL,
   t_freed_at              TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL,
-  t_latest_position       JSONB                       DEFAULT NULL
+  t_latest_position       TEXT                        DEFAULT NULL
 );

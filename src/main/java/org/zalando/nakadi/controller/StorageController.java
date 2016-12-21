@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.service.TimelineService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 import javax.annotation.Nullable;
 import javax.validation.Valid;

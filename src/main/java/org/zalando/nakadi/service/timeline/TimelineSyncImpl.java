@@ -46,7 +46,7 @@ public class TimelineSyncImpl implements TimelineSync {
     private final String thisId;
     private final Set<String> lockedEventTypes = new HashSet<>();
     private final Map<String, Integer> eventsBeingPublished = new HashMap<>();
-    private final Object lockalLock = new Object();
+    private final Object localLock = new Object();
     private final HashMap<String, List<Consumer<String>>> consumerListeners = new HashMap<>();
     private final List<DelayedChange> queuedChanges = new ArrayList<>();
 
@@ -107,7 +107,7 @@ public class TimelineSyncImpl implements TimelineSync {
         while (it.hasNext()) {
             final DelayedChange change = it.next();
             final Set<String> unlockedEventTypes = new HashSet<>();
-            synchronized (lockalLock) {
+            synchronized (localLock) {
                 for (String item : this.lockedEventTypes) {
                     if (!change.lockedEventTypes.contains(item)) {
                         unlockedEventTypes.add(item);
@@ -124,10 +124,10 @@ public class TimelineSyncImpl implements TimelineSync {
                         }
                     }
                     if (haveUsage) {
-                        lockalLock.wait();
+                        localLock.wait();
                     }
                 }
-                lockalLock.notifyAll();
+                localLock.notifyAll();
             }
             // Notify consumers that they should refresh timeline information
             for (String unlocked : unlockedEventTypes) {
@@ -192,18 +192,18 @@ public class TimelineSyncImpl implements TimelineSync {
             if (null != releaseException) {
                 throw releaseException;
             }
-        } catch (RuntimeException ex) {
+        } catch (final RuntimeException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (final Exception ex) {
             throw new RuntimeException(ex);
         }
     }
 
     @Override
-    public Closeable workWithEventType(String eventType) throws InterruptedException {
-        synchronized (lockalLock) {
+    public Closeable workWithEventType(final String eventType) throws InterruptedException {
+        synchronized (localLock) {
             while (lockedEventTypes.contains(eventType)) {
-                lockalLock.wait();
+                localLock.wait();
             }
             if (!eventsBeingPublished.containsKey(eventType)) {
                 eventsBeingPublished.put(eventType, 1);
@@ -212,11 +212,11 @@ public class TimelineSyncImpl implements TimelineSync {
             }
         }
         return () -> {
-            synchronized (lockalLock) {
+            synchronized (localLock) {
                 final int currentCount = eventsBeingPublished.get(eventType);
                 if (1 == currentCount) {
                     eventsBeingPublished.remove(eventType);
-                    lockalLock.notifyAll();
+                    localLock.notifyAll();
                 } else {
                     eventsBeingPublished.put(eventType, currentCount - 1);
                 }
@@ -224,7 +224,7 @@ public class TimelineSyncImpl implements TimelineSync {
         };
     }
 
-    private void updateVersionAndWaitForAllNodes(@Nullable Long timoutMs) throws InterruptedException {
+    private void updateVersionAndWaitForAllNodes(@Nullable final Long timoutMs) throws InterruptedException {
         // Create next version, that will contain locked event type.
         final AtomicInteger versionToWait = new AtomicInteger();
         runLocked(() -> {

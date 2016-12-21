@@ -50,7 +50,7 @@ public class ZooKeeperHolder {
     @PostConstruct
     public void init() throws Exception {
         final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-        EnsembleProvider ensembleProvider;
+        final EnsembleProvider ensembleProvider;
         if (exhibitorAddresses != null) {
             final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddresses.split("\\s*,\\s*"));
             final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort, () -> zookeeperBrokers

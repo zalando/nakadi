@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public abstract class Storage {
     public static enum Type {
@@ -33,13 +37,30 @@ public abstract class Storage {
         this.type = type;
     }
 
-    public abstract Timeline.StoragePosition restorePosition(
-            ObjectMapper objectMapper, String data) throws IOException;
+    public abstract List<VersionedCursor> restorePosition(Integer timelineId, String data) throws IOException;
+
+    public abstract String storePosition(List<VersionedCursor> cursors);
 
     public abstract Timeline.EventTypeConfiguration restoreEventTypeConfiguration(
             ObjectMapper objectMapper, String data) throws IOException;
 
     public abstract Map<String, Object> createSpecificConfiguration();
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final Storage storage = (Storage) o;
+        return Objects.equals(id, storage.id) && type == storage.type;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = id != null ? id.hashCode() : 0;
+        result = 31 * result + (type != null ? type.hashCode() : 0);
+        return result;
+    }
 
     public static class KafkaStorage extends Storage {
         private String zkAddress;
@@ -50,6 +71,7 @@ public abstract class Storage {
         }
 
         public KafkaStorage(final String zkAddress, final String zkPath) {
+            setType(Type.KAFKA);
             this.zkAddress = zkAddress;
             this.zkPath = zkPath;
         }
@@ -63,9 +85,34 @@ public abstract class Storage {
         }
 
         @Override
-        public Timeline.KafkaStoragePosition restorePosition(
-                final ObjectMapper objectMapper, final String data) throws IOException {
-            return null == data ? null : objectMapper.readValue(data, Timeline.KafkaStoragePosition.class);
+        public List<VersionedCursor> restorePosition(
+                final Integer timelineId, final String data) throws IOException {
+            if (null == data) {
+                return null;
+            }
+            final String[] items = data.split(",");
+            return IntStream.range(0, items.length).mapToObj(
+                    idx -> new VersionedCursor.VersionedCursorV1(
+                            String.valueOf(idx),
+                            timelineId,
+                            items[idx]
+                    )).collect(Collectors.toList());
+        }
+
+        @Override
+        public String storePosition(final List<VersionedCursor> cursors) {
+            if (null == cursors) {
+                return null;
+            }
+            return cursors.stream().map(c -> {
+                if (c instanceof VersionedCursor.VersionedCursorV0) {
+                    return ((VersionedCursor.VersionedCursorV0) c).getOffset();
+                } else if (c instanceof VersionedCursor.VersionedCursorV1) {
+                    return ((VersionedCursor.VersionedCursorV1) c).getOffset();
+                } else {
+                    throw new IllegalArgumentException("Cursor version is not supported");
+                }
+            }).collect(Collectors.joining(","));
         }
 
         @Override
@@ -80,6 +127,15 @@ public abstract class Storage {
             result.put("zk_address", zkAddress);
             result.put("zk_path", zkPath);
             return result;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (!super.equals(o)) return false;
+
+            final KafkaStorage that = (KafkaStorage) o;
+
+            return Objects.equals(zkAddress, that.zkAddress) && Objects.equals(zkPath, that.zkPath);
         }
     }
 

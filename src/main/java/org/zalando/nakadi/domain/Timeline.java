@@ -23,28 +23,16 @@ public class Timeline {
 
     }
 
-    public static class KafkaStoragePosition implements StoragePosition {
-        private List<Long> offsets;
-
-        public List<Long> getOffsets() {
-            return offsets;
-        }
-
-        public void setOffsets(final List<Long> offsets) {
-            this.offsets = offsets;
-        }
-    }
-
     private Integer id;
     private String eventType;
     private Integer order;
     private Storage storage;
-    private EventTypeConfiguration eventTypeConfiguration;
+    private EventTypeConfiguration storageConfiguration;
     private Date createdAt;
     private Date cleanupAt;
     private Date switchedAt;
     private Date freedAt;
-    private StoragePosition storagePosition;
+    private List<VersionedCursor> lastPosition;
 
     public Integer getId() {
         return id;
@@ -78,12 +66,12 @@ public class Timeline {
         this.storage = storage;
     }
 
-    public EventTypeConfiguration getEventTypeConfiguration() {
-        return eventTypeConfiguration;
+    public EventTypeConfiguration getStorageConfiguration() {
+        return storageConfiguration;
     }
 
-    public void setEventTypeConfiguration(final EventTypeConfiguration eventTypeConfiguration) {
-        this.eventTypeConfiguration = eventTypeConfiguration;
+    public void setStorageConfiguration(final EventTypeConfiguration storageConfiguration) {
+        this.storageConfiguration = storageConfiguration;
     }
 
     public Date getCreatedAt() {
@@ -110,12 +98,12 @@ public class Timeline {
         this.freedAt = freedAt;
     }
 
-    public StoragePosition getStoragePosition() {
-        return storagePosition;
+    public List<VersionedCursor> getLastPosition() {
+        return lastPosition;
     }
 
-    public void setStoragePosition(final StoragePosition storagePosition) {
-        this.storagePosition = storagePosition;
+    public void setLastPosition(final List<VersionedCursor> lastPosition) {
+        this.lastPosition = lastPosition;
     }
 
     public Date getCleanupAt() {
