@@ -4,6 +4,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
+import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,6 @@ import java.io.OutputStream;
 public final class NakadiKafkaStream implements NakadiStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(NakadiKafkaStream.class);
-    private static final byte[] HEARTBEAT = "{\"heartbeat\": \"90\"}\n".getBytes();
     private static final int HEARTBEAT_TIME = 5 * 1000;
     private final Object lock = new Object();
 
@@ -44,7 +44,10 @@ public final class NakadiKafkaStream implements NakadiStream {
             if (sendTime <= System.currentTimeMillis()) {
                 sendTime = System.currentTimeMillis() + HEARTBEAT_TIME;
                 try {
-                    writeToOutput(streamConfig.getOutputStream(), HEARTBEAT);
+                    final String data = new JSONObject()
+                            .put("timestamp", DateTime.now())
+                            .put("heartbeat", "100").toString();
+                    writeToOutput(streamConfig.getOutputStream(), (data + "\n").getBytes());
                 } catch (IOException e) {
                     LOG.error(e.getMessage(), e);
                     streams.close();
@@ -75,7 +78,7 @@ public final class NakadiKafkaStream implements NakadiStream {
             LOG.debug("Writing to event type: {} with topic {}",
                     streamConfig.getOutputEventType(), streamConfig.getOutputTopic());
             tempStream
-                    .mapValues((v -> new JSONObject().put("value", v).toString() + "\n"))
+                    .mapValues((v -> new JSONObject().put("value", v).toString()))
                     .to(streamConfig.getOutputTopic());
         } else {
             tempStream.map((k, v) -> {

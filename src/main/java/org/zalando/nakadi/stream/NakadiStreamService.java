@@ -6,7 +6,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.stream.expression.Interpreter;
 
-import java.util.stream.Stream;
+import java.util.List;
 
 @Component
 public class NakadiStreamService {
@@ -26,8 +26,8 @@ public class NakadiStreamService {
         final Interpreter interpreter = new Interpreter();
         interpreter.expr(streamConfig.getExpressions());
 
-        final Stream<EventType> eventTypeStream = eventTypeRepository.list().stream();
-        streamConfig.setTopics(eventTypeStream
+        final List<EventType> eventTypes = eventTypeRepository.list();
+        streamConfig.setTopics(eventTypes.stream()
                 .filter(eventType -> streamConfig.getEventTypes().contains(eventType.getName()))
                 .map(EventType::getTopic)
                 .toArray(String[]::new));
@@ -36,7 +36,7 @@ public class NakadiStreamService {
             throw new RuntimeException("Event types were not found");
 
         if (streamConfig.isToEventType()) {
-            eventTypeStream
+            eventTypes.stream()
                     .filter(eventType -> streamConfig.getOutputEventType().equals(eventType.getName()))
                     .findFirst()
                     .map(eventType -> streamConfig.setOutputTopic(eventType.getTopic()))

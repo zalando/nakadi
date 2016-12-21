@@ -1,5 +1,6 @@
 package org.zalando.nakadi.stream;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsConfig;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,7 @@ public class KafkaStreamConfig {
         properties.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, exhibitorBrokers + kafkaNamespace);
         properties.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName()); // FIXME
         properties.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName()); // FIXME
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 //        properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10 * 1000);
         return properties;
     }
