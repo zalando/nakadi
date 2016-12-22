@@ -10,6 +10,13 @@ public class Timeline {
     public static class KafkaEventTypeConfiguration implements EventTypeConfiguration {
         private String topicName;
 
+        public KafkaEventTypeConfiguration() {
+        }
+
+        public KafkaEventTypeConfiguration(final String topicName) {
+            this.topicName = topicName;
+        }
+
         public String getTopicName() {
             return topicName;
         }
