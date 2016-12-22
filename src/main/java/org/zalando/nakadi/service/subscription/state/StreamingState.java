@@ -352,7 +352,7 @@ class StreamingState extends State {
             // Ignore order
             kafkaConsumer.assign(new ArrayList<>(kafkaKeys.values()));
             // Check if offsets are available in kafka
-            kafkaConsumer.seekToBeginning(kafkaKeys.values().toArray(new TopicPartition[kafkaKeys.size()]));
+            kafkaConsumer.seekToBeginning(kafkaKeys.values());
             kafkaKeys.forEach((key, kafka) -> offsets.get(key).ensureDataAvailable(kafkaConsumer.position(kafka)));
             //
             kafkaKeys.forEach((k, v) -> kafkaConsumer.seek(v, offsets.get(k).getSentOffset() + 1));

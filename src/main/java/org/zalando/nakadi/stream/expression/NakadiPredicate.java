@@ -25,12 +25,12 @@ public final class NakadiPredicate {
     private static final Logger LOG = LoggerFactory.getLogger(NakadiPredicate.class);
     private static final int WORDS_IN_PREDICATE = 4;
     private static final String FILTER = ExpressionType.FILTER.toString().toLowerCase();
-    private static Map<String, BiFunction<Integer, Integer, Boolean>> OPERATION_INT_TO_FUNC = ImmutableMap.of(
+    private static final Map<String, BiFunction<Integer, Integer, Boolean>> OPERATION_INT_TO_FUNC = ImmutableMap.of(
             ">", (v1, v2) -> v1 > v2,
             "<", (v1, v2) -> v1 < v2,
             "=", (v1, v2) -> v1 == v2
     );
-    private static Map<String, BiFunction<String, String, Boolean>> OPERATION_STR_TO_FUNC = ImmutableMap.of(
+    private static final Map<String, BiFunction<String, String, Boolean>> OPERATION_STR_TO_FUNC = ImmutableMap.of(
             "=", (v1, v2) -> v1.equals(v2)
     );
 
@@ -69,7 +69,8 @@ public final class NakadiPredicate {
                         return false;
 
                     if (NumberUtils.isDigits(v))
-                        return OPERATION_INT_TO_FUNC.get(operation).apply(Integer.valueOf(v), Integer.valueOf(secondParam));
+                        return OPERATION_INT_TO_FUNC.get(operation)
+                                .apply(Integer.valueOf(v), Integer.valueOf(secondParam));
                     return OPERATION_STR_TO_FUNC.get(operation).apply(v, secondParam);
                 }));
     }

@@ -1,12 +1,13 @@
 package org.zalando.nakadi.repository.kafka;
 
-import org.zalando.nakadi.domain.Cursor;
 import kafka.admin.AdminUtils;
+import kafka.admin.RackAwareMode;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.zalando.nakadi.domain.Cursor;
 
 import java.util.List;
 import java.util.Properties;
@@ -83,7 +84,7 @@ public class KafkaTestHelper {
                 .collect(Collectors.toList());
 
         consumer.assign(partitions);
-        consumer.seekToEnd(partitions.toArray(new TopicPartition[partitions.size()]));
+        consumer.seekToEnd(partitions);
 
         return partitions
                 .stream()
@@ -96,7 +97,7 @@ public class KafkaTestHelper {
         ZkUtils zkUtils = null;
         try {
             zkUtils = ZkUtils.apply(zkUrl, 30000, 10000, false);
-            AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties());
+            AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties(), RackAwareMode.Enforced$.MODULE$);
         }
         finally {
             if (zkUtils != null) {

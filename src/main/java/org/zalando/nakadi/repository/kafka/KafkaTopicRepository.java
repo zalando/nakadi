@@ -425,7 +425,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final org.apache.kafka.common.TopicPartition tp =
                     new org.apache.kafka.common.TopicPartition(topicId, toKafkaPartition(partition));
 
-            ImmutableList<org.apache.kafka.common.TopicPartition> topics = ImmutableList.of(tp);
+            final ImmutableList<org.apache.kafka.common.TopicPartition> topics = ImmutableList.of(tp);
             consumer.assign(topics);
 
             final TopicPartition topicPartition = new TopicPartition(topicId, partition);

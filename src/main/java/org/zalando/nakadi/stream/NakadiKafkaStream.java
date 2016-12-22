@@ -71,6 +71,8 @@ public final class NakadiKafkaStream implements NakadiStream {
                     final NakadiMapper mapper = interpreter.getNextMapper();
                     tempStream = tempStream.mapValues(v -> mapper.getValue().apply(v));
                     break;
+                default:
+                    throw new RuntimeException("Unsupported expression type");
             }
         }
 
