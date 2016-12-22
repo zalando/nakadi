@@ -23,7 +23,7 @@ public interface TimelineSync {
      * @param eventType Event type to publish to
      * @return Closeable object, that should be closed when publishing complete
      */
-    public Closeable workWithEventType(String eventType) throws InterruptedException;
+    Closeable workWithEventType(String eventType) throws InterruptedException;
 
     /**
      * Lock event type publishing while switching to next timeline
@@ -31,14 +31,14 @@ public interface TimelineSync {
      * @param eventType Event type to lock publishing to.
      * @param timeoutMs Timeout for sync operation.
      */
-    public void startTimelineUpdate(String eventType, long timeoutMs) throws InterruptedException;
+    void startTimelineUpdate(String eventType, long timeoutMs) throws InterruptedException;
 
     /**
      * Release publishing lock to event type
      *
      * @param eventType Event type to unlock publishing to.
      */
-    public void finishTimelineUpdate(String eventType) throws InterruptedException;
+    void finishTimelineUpdate(String eventType) throws InterruptedException;
 
     interface ListenerRegistration {
         void cancel();
@@ -52,5 +52,5 @@ public interface TimelineSync {
      * @param listener  Listener that will accept event type.
      * @return Registration for listener. one should call cancel once registration is not needed anymore.
      */
-    public ListenerRegistration registerTimelineChangeListener(String eventType, Consumer<String> listener);
+    ListenerRegistration registerTimelineChangeListener(String eventType, Consumer<String> listener);
 }
