@@ -203,7 +203,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
             final SubscriptionCursor cursor = new SubscriptionCursor("0", String.valueOf(i), eventTypeName, "");
             final StreamBatch expectedBatch = new StreamBatch(cursor,
                     ImmutableList.of(ImmutableMap.of("foo", "bar" + i)),
-                    i == 0 ? new StreamMetadata("StreamFilter started") : null);
+                    i == 0 ? new StreamMetadata("Stream started") : null);
 
             final StreamBatch batch = batches.get(i);
             assertThat(batch, equalToBatchIgnoringToken(expectedBatch));
