@@ -3,6 +3,7 @@ package org.zalando.nakadi.domain;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class BatchItem {
@@ -57,5 +58,9 @@ public class BatchItem {
     public void updateStatusAndDetail(final EventPublishingStatus publishingStatus, final String detail) {
         response.setPublishingStatus(publishingStatus);
         response.setDetail(detail);
+    }
+
+    public int getEventSize() {
+        return event.toString().getBytes(StandardCharsets.UTF_8).length;
     }
 }
