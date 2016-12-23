@@ -111,6 +111,9 @@ public class KafkaLocationManager {
         properties.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName()); // FIXME
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10 * 1000);
+        properties.put(StreamsConfig.TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
+                "org.apache.kafka.streams.processor.WallclockTimestampExtractor");
+
         return properties;
     }
 
