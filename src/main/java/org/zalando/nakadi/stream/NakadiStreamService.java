@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
 import org.zalando.nakadi.stream.expression.Interpreter;
 
 import java.util.List;
@@ -12,13 +13,13 @@ import java.util.List;
 public class NakadiStreamService {
 
     private final EventTypeRepository eventTypeRepository;
-    private final KafkaStreamConfig kafkaStreamConfig;
+    private final KafkaLocationManager kafkaLocationManager;
 
     @Autowired
     public NakadiStreamService(final EventTypeRepository eventTypeRepository,
-                               final KafkaStreamConfig kafkaStreamConfig) {
+                               final KafkaLocationManager kafkaLocationManager) {
         this.eventTypeRepository = eventTypeRepository;
-        this.kafkaStreamConfig = kafkaStreamConfig;
+        this.kafkaLocationManager = kafkaLocationManager;
     }
 
     public void stream(final StreamConfig streamConfig) {
@@ -43,7 +44,7 @@ public class NakadiStreamService {
                     .orElseThrow(() -> new RuntimeException("Output event type does nt exist"));
         }
 
-        streamConfig.setKafkaStreamProperties(kafkaStreamConfig.getProperties(streamConfig.hashCode()));
+        streamConfig.setKafkaStreamProperties(kafkaLocationManager.getStreamProperties(streamConfig.hashCode()));
 
         NakadiStreamFactory.create().stream(streamConfig, interpreter);
     }
