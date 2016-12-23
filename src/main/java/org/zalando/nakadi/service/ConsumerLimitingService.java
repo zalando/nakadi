@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -70,7 +71,7 @@ public class ConsumerLimitingService {
                     // we need to check it again when we are under lock
                     final List<String> occupiedPartitions = getPartitionsWithNoFreeSlots(client, eventType, partitions);
                     if (occupiedPartitions.size() > 0) {
-                        throw generateNoConnectionSlotsException(eventType, partitionsWithNoFreeSlots);
+                        throw generateNoConnectionSlotsException(eventType, partitionsWithNoFreeSlots, client);
                     }
 
                     for (final String partition : partitions) {
@@ -87,7 +88,7 @@ public class ConsumerLimitingService {
                 throw new ServiceUnavailableException("Error communicating with zookeeper", e);
             }
         } else {
-            throw generateNoConnectionSlotsException(eventType, partitionsWithNoFreeSlots);
+            throw generateNoConnectionSlotsException(eventType, partitionsWithNoFreeSlots, client);
         }
     }
 
@@ -103,8 +104,12 @@ public class ConsumerLimitingService {
     }
 
     private NoConnectionSlotsException generateNoConnectionSlotsException(final String eventType,
-                                                                          final List<String> overBookedPartitions) {
-        final String msg = format(ERROR_MSG, eventType, overBookedPartitions, maxConnections);
+                                                                          final List<String> overBookedPartitions,
+                                                                          final String client) {
+        final String partitionsStr = StringUtils.join(overBookedPartitions, ",");
+        final String msg = format(ERROR_MSG, eventType, partitionsStr, maxConnections);
+        LOG.debug("Limit exceeded for connection count for client: {}, event type: {}, partition(s): {}",
+                client, eventType, partitionsStr);
         return new NoConnectionSlotsException(msg);
     }
 
