@@ -69,7 +69,7 @@ public class SchemaController {
     }
 
     @RequestMapping(value = "/generate-schema", method = RequestMethod.POST)
-    public ResponseEntity<?> generateSchema(@RequestBody final JSONObject event) {
-        return ResponseEntity.status(HttpStatus.OK).body(new SchemaGeneration().schemaFor(event));
+    public ResponseEntity<?> generateSchema(@RequestBody final String event) {
+        return ResponseEntity.status(HttpStatus.OK).body(new SchemaGeneration().schemaFor(new JSONObject(event)).toString());
     }
 }
