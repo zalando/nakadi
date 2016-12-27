@@ -55,6 +55,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_LINGER_MS = 0;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
+    private static final int KAFKA_FETCH_MESSAGE_MAX_BYTES = 2000000;
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -76,7 +77,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 NAKADI_POLL_TIMEOUT,
                 NAKADI_SEND_TIMEOUT,
                 NAKADI_EVENT_MAX_BYTES);
-        kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_LINGER_MS);
+        kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_LINGER_MS,
+                KAFKA_FETCH_MESSAGE_MAX_BYTES);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         kafkaTopicRepository = createKafkaTopicRepository();

@@ -99,7 +99,9 @@ public class KafkaLocationManager {
     }
 
     public Properties getKafkaConsumerProperties() {
-        return (Properties) kafkaProperties.clone();
+        final Properties consumerProps = (Properties) kafkaProperties.clone();
+        consumerProps.put("fetch.message.max.bytes", kafkaSettings.getFetchMessageMaxBytes());
+        return consumerProps;
     }
 
     public Properties getKafkaProducerProperties() {

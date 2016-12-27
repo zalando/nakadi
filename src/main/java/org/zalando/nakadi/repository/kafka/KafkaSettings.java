@@ -16,14 +16,17 @@ public class KafkaSettings {
     // /kafka/clients/producer/ProducerConfig.java#L232
     private final int batchSize;
     private final long lingerMs;
+    private final int fetchMessageMaxBytes;
 
     @Autowired
     public KafkaSettings(@Value("${nakadi.kafka.request.timeout.ms}") final int requestTimeoutMs,
                          @Value("${nakadi.kafka.batch.size}") final int batchSize,
-                         @Value("${nakadi.kafka.linger.ms}") final long lingerMs) {
+                         @Value("${nakadi.kafka.linger.ms}") final long lingerMs,
+                         @Value("${nakadi.kafka.fetch.message.max.bytes}") final int fetchMessageMaxBytes) {
         this.requestTimeoutMs = requestTimeoutMs;
         this.batchSize = batchSize;
         this.lingerMs = lingerMs;
+        this.fetchMessageMaxBytes = fetchMessageMaxBytes;
     }
 
     public int getRequestTimeoutMs() {
@@ -36,5 +39,9 @@ public class KafkaSettings {
 
     public long getLingerMs() {
         return lingerMs;
+    }
+
+    public int getFetchMessageMaxBytes() {
+        return fetchMessageMaxBytes;
     }
 }
