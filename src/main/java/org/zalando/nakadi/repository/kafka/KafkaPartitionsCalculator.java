@@ -76,14 +76,15 @@ public class KafkaPartitionsCalculator {
 
         @Override
         public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
 
             final SpeedStatistics that = (SpeedStatistics) o;
-
-            if (messageSize != that.messageSize) return false;
-            return Arrays.equals(speed, that.speed);
-
+            return messageSize == that.messageSize && Arrays.equals(speed, that.speed);
         }
 
         @Override
@@ -114,14 +115,15 @@ public class KafkaPartitionsCalculator {
 
         @Override
         public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
 
             final InstanceInfo that = (InstanceInfo) o;
-
-            if (!name.equals(that.name)) return false;
-            return Arrays.equals(stats, that.stats);
-
+            return name.equals(that.name) && Arrays.equals(stats, that.stats);
         }
 
         @Override
