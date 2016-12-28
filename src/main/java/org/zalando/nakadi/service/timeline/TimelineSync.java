@@ -8,17 +8,18 @@ import java.util.function.Consumer;
  * Nodes looks like:
  * <pre>
  * - timelines
- *  + - lock
- *  + - et_update_in_progress - Flag to notify that event type update is already processing
- *  + - version: monotonically_incremented long value
- *  + - locked_et: [et_1, et_2] - locked event types
- *  + - nodes - nakadi nodes
- *    + - {node_name}: {version: version_used} - node-specific information
+ *  + - lock                    lock for timeline versions synchronization
+ *  + - version: {version}      monotonically_incremented long value
+ *  + - locked_et:
+ *     | - et_1                 Event types that are paused right now
+ *     | - et_2                 The same goes here
+ *  + - nodes                   nakadi nodes
+ *    + - {node1}: {version}    Each nakadi node exposes version being used to this node
  * </pre>
  */
 public interface TimelineSync {
     /**
-     * Call while publishing to event type.
+     * Call while publishing to event type. When publishing complete - call {@link Closeable#close()}
      *
      * @param eventType Event type to publish to
      * @return Closeable object, that should be closed when publishing complete

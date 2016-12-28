@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -30,9 +31,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 
-/**
- * TODO: Reinitialize on zk session recreation.
- */
 @Service
 @Profile("!test")
 public class TimelineSyncImpl implements TimelineSync {
@@ -127,12 +125,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 this.lockedEventTypes.addAll(change.lockedEventTypes);
                 boolean haveUsage = true;
                 while (haveUsage) {
-                    haveUsage = false;
-                    for (final String et : this.lockedEventTypes) {
-                        if (eventsBeingPublished.containsKey(et)) {
-                            haveUsage = true;
-                        }
-                    }
+                    haveUsage = this.lockedEventTypes.stream().anyMatch(eventsBeingPublished::containsKey);
                     if (haveUsage) {
                         lockalLock.wait();
                     }
@@ -235,8 +228,9 @@ public class TimelineSyncImpl implements TimelineSync {
         };
     }
 
-    private void updateVersionAndWaitForAllNodes(@Nullable final Long timoutMs) throws InterruptedException {
+    private void updateVersionAndWaitForAllNodes(@Nullable final Long timeoutMs) throws InterruptedException {
         // Create next version, that will contain locked event type.
+        final Optional<Long> expectedFinish = Optional.ofNullable(timeoutMs).map(t -> System.currentTimeMillis() + t);
         final AtomicInteger versionToWait = new AtomicInteger();
         runLocked(() -> {
             try {
@@ -253,6 +247,9 @@ public class TimelineSyncImpl implements TimelineSync {
         // Wait for all nodes to have latest version.
         final AtomicBoolean latestVersionIsThere = new AtomicBoolean(false);
         while (!latestVersionIsThere.get()) {
+            if (expectedFinish.isPresent() && System.currentTimeMillis() > expectedFinish.get()) {
+                throw new RuntimeException("Timed out while updating version to " + versionToWait.get());
+            }
             Thread.sleep(TimeUnit.SECONDS.toMillis(1));
             runLocked(() -> {
                 try {
@@ -271,6 +268,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 }
             });
         }
+
     }
 
     @Override
@@ -279,7 +277,7 @@ public class TimelineSyncImpl implements TimelineSync {
         boolean successfull = false;
         try {
             zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
-                    .forPath(etZkPath, eventType.getBytes(CHARSET));
+                    .forPath(etZkPath, thisId.getBytes(CHARSET));
             updateVersionAndWaitForAllNodes(timeoutMs);
             successfull = true;
         } catch (final InterruptedException ex) {
