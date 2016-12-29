@@ -1,5 +1,6 @@
 package org.zalando.nakadi.controller;
 
+import com.google.common.base.Charsets;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
@@ -82,7 +83,7 @@ public class EventPublishingController {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
 
             final int eventCount = eventsAsJsonObjects.length();
-            eventTypeMetrics.reportSizing(eventCount, eventsAsString.length());
+            eventTypeMetrics.reportSizing(eventCount, eventsAsString.getBytes(Charsets.UTF_8).length);
 
             return response(publisher.publish(eventsAsJsonObjects, eventTypeName, client));
         } catch (final JSONException e) {
