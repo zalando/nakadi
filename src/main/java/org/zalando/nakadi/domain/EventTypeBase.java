@@ -58,6 +58,7 @@ public class EventTypeBase {
 
     private Set<String> readScopes;
 
+    @NotNull
     private CompatibilityMode compatibilityMode;
 
     public EventTypeBase() {
@@ -67,7 +68,6 @@ public class EventTypeBase {
         this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
-        this.compatibilityMode = CompatibilityMode.COMPATIBLE;
     }
 
     public EventTypeBase(final String name, final String topic, final String owningApplication,
