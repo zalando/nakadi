@@ -42,15 +42,16 @@ public class StreamBatch {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         final StreamBatch that = (StreamBatch) o;
-
-        if (!cursor.equals(that.cursor)) return false;
-        if (!events.equals(that.events)) return false;
-        return metadata != null ? metadata.equals(that.metadata) : that.metadata == null;
-
+        return cursor.equals(that.cursor) && events.equals(that.events)
+                && (metadata != null ? metadata.equals(that.metadata) : that.metadata == null);
     }
 
     @Override
