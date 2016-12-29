@@ -32,4 +32,24 @@ public class EventTypeSchema extends EventTypeSchemaBase {
         this.createdAt = createdAt;
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+
+        final EventTypeSchema that = (EventTypeSchema) o;
+
+        if (!version.equals(that.version)) return false;
+        return createdAt.equals(that.createdAt);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + version.hashCode();
+        result = 31 * result + createdAt.hashCode();
+        return result;
+    }
 }

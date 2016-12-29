@@ -330,10 +330,8 @@ public class HilaAT extends BaseAT {
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(5)));
-        Assert.assertFalse(client.getBatches().stream().anyMatch(streamBatch -> {
-                    if (streamBatch.getMetadata() != null)
-                        return streamBatch.getMetadata().getDebug().equals("Stream timeout reached");
-                    return false;
-                }));
+        Assert.assertFalse(client.getBatches().stream()
+                .anyMatch(streamBatch -> streamBatch.getMetadata() != null
+                        && streamBatch.getMetadata().getDebug().equals("Stream timeout reached")));
     }
 }
