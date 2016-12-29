@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,6 +29,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 @Service
 @Profile("!test")
@@ -58,9 +58,9 @@ public class TimelineSyncImpl implements TimelineSync {
     private final List<DelayedChange> queuedChanges = new ArrayList<>();
 
     @Autowired
-    public TimelineSyncImpl(final ZooKeeperHolder zooKeeperHolder) {
+    public TimelineSyncImpl(final ZooKeeperHolder zooKeeperHolder, final UUIDGenerator uuidGenerator) {
         this.zooKeeperHolder = zooKeeperHolder;
-        this.thisId = UUID.randomUUID().toString();
+        this.thisId = uuidGenerator.randomUUID().toString();
         this.lock = new InterProcessSemaphoreMutex(zooKeeperHolder.get(), ROOT_PATH + "/lock");
         this.initializeZkStructure();
     }
@@ -85,6 +85,9 @@ public class TimelineSyncImpl implements TimelineSync {
                             .forPath(toZkPath("/nodes"), "[]".getBytes(CHARSET));
                 } catch (final KeeperException.NodeExistsException ignore) {
                 }
+
+                zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
+                        .forPath(toZkPath("/nodes/" + thisId), "0".getBytes(CHARSET));
 
                 // 4. Get current version and locked event types (and update node state)
                 refreshVersionLocked();
