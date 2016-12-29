@@ -39,7 +39,7 @@ public class ZkChildrenCache extends PathChildrenCache {
             // in specific moment by other thread/instance, then we need to retry
             return executeWithRetry(
                     () -> {
-                        final ZkChildrenCache newCache = new ZkChildrenCache(client, key);;
+                        final ZkChildrenCache newCache = new ZkChildrenCache(client, key);
                         try {
                             newCache.start();
                             return newCache;
