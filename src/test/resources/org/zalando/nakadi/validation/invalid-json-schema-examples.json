@@ -161,5 +161,16 @@
       ]
     },
     "errors": ["Invalid schema found in [#/anyOf/0]: extraneous key [not] is not permitted"]
+  },
+  {
+    "description": "Do not support allOf",
+    "schema": {
+      "allOf": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "errors": ["Invalid schema found in [#]: extraneous key [allOf] is not permitted"]
   }
 ]
