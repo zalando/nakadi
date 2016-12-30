@@ -1,6 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import com.google.common.base.Charsets;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
@@ -14,18 +13,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
+import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
+import java.nio.charset.StandardCharsets;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
@@ -83,9 +85,21 @@ public class EventPublishingController {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
 
             final int eventCount = eventsAsJsonObjects.length();
-            eventTypeMetrics.reportSizing(eventCount, eventsAsString.getBytes(Charsets.UTF_8).length);
+            final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName, client);
+            if (result.getStatus() == EventPublishingStatus.SUBMITTED) {
+                eventTypeMetrics.reportSizing(eventCount, eventsAsString.getBytes(StandardCharsets.UTF_8).length);
+            } else if (result.getStatus() == EventPublishingStatus.FAILED && eventCount != 0) {
+                final int successfulBatches = result.getResponses()
+                        .stream()
+                        .filter(r -> r.getPublishingStatus() == EventPublishingStatus.SUBMITTED)
+                        .collect(Collectors.toList())
+                        .size();
+                eventTypeMetrics.reportSizing(successfulBatches,
+                        (eventsAsString.getBytes(StandardCharsets.UTF_8).length / eventCount) * successfulBatches);
+            }
 
-            return response(publisher.publish(eventsAsJsonObjects, eventTypeName, client));
+            final ResponseEntity response = response(result);
+            return response;
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);
