@@ -86,17 +86,7 @@ public class EventPublishingController {
 
             final int eventCount = eventsAsJsonObjects.length();
             final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName, client);
-            if (result.getStatus() == EventPublishingStatus.SUBMITTED) {
-                eventTypeMetrics.reportSizing(eventCount, eventsAsString.getBytes(StandardCharsets.UTF_8).length);
-            } else if (result.getStatus() == EventPublishingStatus.FAILED && eventCount != 0) {
-                final int successfulBatches = result.getResponses()
-                        .stream()
-                        .filter(r -> r.getPublishingStatus() == EventPublishingStatus.SUBMITTED)
-                        .collect(Collectors.toList())
-                        .size();
-                eventTypeMetrics.reportSizing(successfulBatches,
-                        (eventsAsString.getBytes(StandardCharsets.UTF_8).length / eventCount) * successfulBatches);
-            }
+            reportMetrics(eventTypeMetrics, result, eventsAsString, eventCount);
 
             final ResponseEntity response = response(result);
             return response;
@@ -111,6 +101,21 @@ public class EventPublishingController {
             return create(e.asProblem(), nativeWebRequest);
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
+        }
+    }
+
+    private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final EventPublishResult result,
+                               final String eventsAsString, final int eventCount) {
+        if (result.getStatus() == EventPublishingStatus.SUBMITTED) {
+            eventTypeMetrics.reportSizing(eventCount, eventsAsString.getBytes(StandardCharsets.UTF_8).length - 2);
+        } else if (result.getStatus() == EventPublishingStatus.FAILED && eventCount != 0) {
+            final int successfulEvents= result.getResponses()
+                    .stream()
+                    .filter(r -> r.getPublishingStatus() == EventPublishingStatus.SUBMITTED)
+                    .collect(Collectors.toList())
+                    .size();
+            final double avgEventSize = eventsAsString.getBytes(StandardCharsets.UTF_8).length / eventCount;
+            eventTypeMetrics.reportSizing(successfulEvents,(int)Math.round(avgEventSize * successfulEvents));
         }
     }
 
