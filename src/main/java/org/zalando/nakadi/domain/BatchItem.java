@@ -11,6 +11,7 @@ public class BatchItem {
     private final JSONObject event;
     private String partition;
     private String brokerId;
+    private int eventSize;
 
     public BatchItem(final JSONObject event) {
         this.response = new BatchItemResponse();
@@ -19,6 +20,11 @@ public class BatchItem {
         Optional.ofNullable(event.optJSONObject("metadata"))
                 .map(e -> e.optString("eid", null))
                 .ifPresent(this.response::setEid);
+    }
+
+    public BatchItem(final String event) {
+        this(new JSONObject(event));
+        eventSize = event.getBytes(StandardCharsets.UTF_8).length;
     }
 
     public JSONObject getEvent() {
@@ -61,6 +67,6 @@ public class BatchItem {
     }
 
     public int getEventSize() {
-        return event.toString().getBytes(StandardCharsets.UTF_8).length;
+        return eventSize;
     }
 }
