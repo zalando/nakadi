@@ -33,8 +33,8 @@ public class EventTypeCache {
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeCache.class);
 
     private static class CachedValue {
-        final EventType eventType;
-        final EventTypeValidator eventTypeValidator;
+        private final EventType eventType;
+        private final EventTypeValidator eventTypeValidator;
 
         public CachedValue(final EventType eventType, final EventTypeValidator eventTypeValidator) {
             this.eventType = eventType;
@@ -63,14 +63,6 @@ public class EventTypeCache {
         preloadEventTypes(eventTypeRepository);
     }
 
-    /**
-     * Preloads cache.
-     * The problem with preload is that notifications about modifications may be skipped while initializing cache.
-     * That is why we are using lock for updates. In normal case (without preload) this is covered by LoadingCache
-     * by itself
-     *
-     * @param eventTypeRepository
-     */
     private void preloadEventTypes(final EventTypeRepository eventTypeRepository) {
         final long start = System.currentTimeMillis();
         rwLock.writeLock().lock();
@@ -82,7 +74,7 @@ public class EventTypeCache {
             new ArrayList<>(preloaded.keySet()).forEach(eventType -> {
                 try {
                     created(eventType);
-                } catch (Exception e) {
+                } catch (final Exception e) {
                     LOG.error("Failed to create node for {}", eventType, e);
                     preloaded.remove(eventType);
                 }
@@ -110,7 +102,7 @@ public class EventTypeCache {
                     .creatingParentsIfNeeded()
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(path, new byte[0]);
-        } catch (KeeperException.NodeExistsException expected) {
+        } catch (final KeeperException.NodeExistsException expected) {
             // silently do nothing since it's already been tracked
         }
     }
@@ -125,7 +117,7 @@ public class EventTypeCache {
             throws NoSuchEventTypeException, InternalNakadiException {
         try {
             return Optional.ofNullable(eventTypeCache.get(name));
-        } catch (ExecutionException e) {
+        } catch (final ExecutionException e) {
             if (e.getCause() instanceof NoSuchEventTypeException) {
                 throw (NoSuchEventTypeException) e.getCause();
             } else {
@@ -135,11 +127,13 @@ public class EventTypeCache {
     }
 
     public EventType getEventType(final String name) throws NoSuchEventTypeException, InternalNakadiException {
-        return getCached(name).map(CachedValue::getEventType).orElse(null);
+        return getCached(name).map(CachedValue::getEventType)
+                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
     }
 
     public EventTypeValidator getValidator(final String name) throws InternalNakadiException, NoSuchEventTypeException {
-        return getCached(name).map(CachedValue::getEventTypeValidator).orElse(null);
+        return getCached(name).map(CachedValue::getEventTypeValidator)
+                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
     }
 
     private PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
@@ -148,7 +142,7 @@ public class EventTypeCache {
                     .creatingParentsIfNeeded()
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(ZKNODE_PATH);
-        } catch (KeeperException.NodeExistsException expected) {
+        } catch (final KeeperException.NodeExistsException expected) {
             // silently do nothing since it means that the node is already there
         }
 
