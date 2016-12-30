@@ -114,8 +114,8 @@ public class EventPublishingController {
                     .filter(r -> r.getPublishingStatus() == EventPublishingStatus.SUBMITTED)
                     .collect(Collectors.toList())
                     .size();
-            final double avgEventSize = eventsAsString.getBytes(StandardCharsets.UTF_8).length / eventCount;
-            eventTypeMetrics.reportSizing(successfulEvents,(int)Math.round(avgEventSize * successfulEvents));
+            final double avgEventSize = eventsAsString.getBytes(StandardCharsets.UTF_8).length / (double)eventCount;
+            eventTypeMetrics.reportSizing(successfulEvents, (int)Math.round(avgEventSize * successfulEvents));
         }
     }
 
