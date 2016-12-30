@@ -293,20 +293,6 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPOSTFixedCompatibilityModeThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        eventType.setCompatibilityMode(CompatibilityMode.FIXED);
-
-        final Problem expectedProblem =
-                new InvalidEventTypeException(
-                        "\"compatibility_mode\" should be either \"compatible\" or \"none\"").asProblem();
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenPostDuplicatedEventTypeReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "some-name");
 

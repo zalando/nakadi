@@ -195,11 +195,6 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            if (eventType.getCompatibilityMode() == CompatibilityMode.FIXED) {
-                throw new InvalidEventTypeException(
-                        "\"compatibility_mode\" should be either \"compatible\" or \"none\"");
-            }
-
             validatePartitionKeys(schema, eventType);
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {

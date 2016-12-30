@@ -21,9 +21,9 @@ public class CompatibilityModeChangeConstraintTest {
     }
 
     @Test
-    public void canPromoteFromFixedToCompatible() throws Exception {
+    public void canPromoteFromForwardToCompatible() throws Exception {
         final EventTypeTestBuilder builder = new EventTypeTestBuilder();
-        final EventType oldET = builder.compatibilityMode(CompatibilityMode.FIXED).build();
+        final EventType oldET = builder.compatibilityMode(CompatibilityMode.FORWARD).build();
         final EventType newET = builder.compatibilityMode(CompatibilityMode.COMPATIBLE).build();
         final CompatibilityModeChangeConstraint constraint = new CompatibilityModeChangeConstraint();
 
