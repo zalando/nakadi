@@ -8,7 +8,7 @@ public class BatchItemTest {
 
     @Test
     public void testBatchItemSizeWithMultByteChar() {
-        BatchItem item = new BatchItem("{ \"name\": \"香港\"} ");
+        final BatchItem item = new BatchItem("{ \"name\": \"香港\"} ");
         assertEquals(20, item.getEventSize());
     }
 }
