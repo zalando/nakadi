@@ -174,7 +174,8 @@ public class SchemaEvolutionServiceTest {
 
     @Test
     public void compatibilityModeMigrationAllowedChanges() throws Exception {
-        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder().compatibilityMode(CompatibilityMode.FORWARD);
+        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder()
+                .compatibilityMode(CompatibilityMode.FORWARD);
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.compatibilityMode(CompatibilityMode.COMPATIBLE).build();
 
