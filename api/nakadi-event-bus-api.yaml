@@ -1604,7 +1604,7 @@ definitions:
           - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
             validating events, no additional properties are accepted unless explicitly stated in the schema.
         type: string
-        default: compatible
+        default: forward
 
       schema:
         $ref: '#/definitions/EventTypeSchema'
