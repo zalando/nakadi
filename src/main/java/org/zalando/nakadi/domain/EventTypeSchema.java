@@ -34,13 +34,21 @@ public class EventTypeSchema extends EventTypeSchemaBase {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
 
         final EventTypeSchema that = (EventTypeSchema) o;
 
-        if (!version.equals(that.version)) return false;
+        if (!version.equals(that.version)) {
+            return false;
+        }
         return createdAt.equals(that.createdAt);
 
     }
