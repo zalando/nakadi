@@ -174,12 +174,12 @@ public class SchemaEvolutionServiceTest {
 
     @Test
     public void compatibilityModeMigrationAllowedChanges() throws Exception {
-        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder().compatibilityMode(CompatibilityMode.FIXED);
+        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder()
+                .compatibilityMode(CompatibilityMode.FORWARD);
         final EventType oldEventType = builder.build();
         final EventType newEventType = builder.compatibilityMode(CompatibilityMode.COMPATIBLE).build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(MAJOR).when(changeToLevel).get(any());
 
         final List<SchemaChange.Type> allowedChanges = Lists.newArrayList(
                 DESCRIPTION_CHANGED,
@@ -204,13 +204,14 @@ public class SchemaEvolutionServiceTest {
                 REQUIRED_ARRAY_CHANGED);
 
         allowedChanges.forEach(changeType -> {
+            Mockito.doReturn(MINOR).when(changeToLevel).get(any());
             Mockito.doReturn(Lists.newArrayList(new SchemaChange(changeType, "#/"))).when(schemaDiff)
                     .collectChanges(any(), any());
 
             final EventType eventType;
             try {
                 eventType = service.evolve(oldEventType, newEventType);
-                assertThat(eventType.getSchema().getVersion(), is(equalTo(new Version("2.0.0"))));
+                assertThat(eventType.getSchema().getVersion(), is(equalTo(new Version("1.1.0"))));
             } catch (final InvalidEventTypeException e) {
                 fail();
             }

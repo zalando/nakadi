@@ -13,7 +13,7 @@ import java.util.Optional;
 public class CompatibilityModeChangeConstraint implements SchemaEvolutionConstraint {
     final Map<CompatibilityMode, List<CompatibilityMode>> allowedChanges = ImmutableMap.of(
             CompatibilityMode.COMPATIBLE, Lists.newArrayList(CompatibilityMode.COMPATIBLE),
-            CompatibilityMode.FIXED, Lists.newArrayList(CompatibilityMode.FIXED, CompatibilityMode.COMPATIBLE),
+            CompatibilityMode.FORWARD, Lists.newArrayList(CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE),
             CompatibilityMode.NONE, Lists.newArrayList(CompatibilityMode.NONE)
     );
 

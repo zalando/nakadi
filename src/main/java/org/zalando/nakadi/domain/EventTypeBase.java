@@ -67,7 +67,7 @@ public class EventTypeBase {
         this.options = new EventTypeOptions();
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
-        this.compatibilityMode = CompatibilityMode.COMPATIBLE;
+        this.compatibilityMode = CompatibilityMode.FORWARD;
     }
 
     public EventTypeBase(final String name, final String topic, final String owningApplication,
