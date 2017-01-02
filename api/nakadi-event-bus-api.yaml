@@ -1598,8 +1598,8 @@ definitions:
             `additionalProperties` and `additionalItems`. When validating events, additional properties is `false`.
 
           - 'forward': Compatible schema changes are allowed. It's possible to use the full json schema specification
-          for defining schemas. Consumers of forward compatible event types can safely read events tagged with the
-          latest schema version as long as they follow the robustness principle.
+            for defining schemas. Consumers of forward compatible event types can safely read events tagged with the
+            latest schema version as long as they follow the robustness principle.
 
           - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
             validating events, no additional properties are accepted unless explicitly stated in the schema.
