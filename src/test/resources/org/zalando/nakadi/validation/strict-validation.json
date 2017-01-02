@@ -201,6 +201,30 @@
     }
   },
   {
+    "description": "Do not strict reference schemas",
+    "original_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "properties": {
+        "foo": { "$ref": "#/definitions/foo" }
+      }
+    },
+    "effective_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "properties": {
+        "foo": { "$ref": "#/definitions/foo" }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "description": "Strict if mixed object type",
     "original_schema": {
       "type": ["string", "object"]
