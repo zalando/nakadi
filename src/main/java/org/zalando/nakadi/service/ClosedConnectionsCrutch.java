@@ -85,13 +85,15 @@ public class ClosedConnectionsCrutch {
 
         @Override
         public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
 
             final ConnectionInfo that = (ConnectionInfo) o;
-
             return port == that.port && address.equals(that.address);
-
         }
 
         @Override

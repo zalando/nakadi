@@ -31,12 +31,18 @@ public class Cursor {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         final Cursor cursor = (Cursor) o;
 
-        if (partition != null ? !partition.equals(cursor.partition) : cursor.partition != null) return false;
+        if (partition != null ? !partition.equals(cursor.partition) : cursor.partition != null) {
+            return false;
+        }
         return !(offset != null ? !offset.equals(cursor.offset) : cursor.offset != null);
     }
 
