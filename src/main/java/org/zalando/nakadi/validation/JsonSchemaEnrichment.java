@@ -104,6 +104,7 @@ public class JsonSchemaEnrichment {
             OBJECT_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
             ARRAY_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
             COMPOSED_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+            schema.has("$ref") ||
             schema.has("type")
         );
     }
