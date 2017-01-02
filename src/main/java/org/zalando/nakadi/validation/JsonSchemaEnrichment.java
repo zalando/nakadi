@@ -1,7 +1,6 @@
 package org.zalando.nakadi.validation;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
