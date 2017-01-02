@@ -108,7 +108,7 @@ public class EventPublishingController {
                                final String eventsAsString, final int eventCount) {
         if (result.getStatus() == EventPublishingStatus.SUBMITTED) {
             eventTypeMetrics.reportSizing(eventCount,
-                    eventsAsString.getBytes(StandardCharsets.UTF_8).length - eventCount + 1);
+                    eventsAsString.getBytes(StandardCharsets.UTF_8).length - eventCount - 1);
         } else if (result.getStatus() == EventPublishingStatus.FAILED && eventCount != 0) {
             final int successfulEvents= result.getResponses()
                     .stream()
