@@ -23,7 +23,7 @@ public final class FlowIdUtils {
     }
 
     public static void clear() {
-        while (!"".equals(NDC.pop()));
+        while (!"".equals(NDC.pop())) {}
     }
 
     public static String peek() {

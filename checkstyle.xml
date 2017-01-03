@@ -32,6 +32,10 @@
         <!-- See http://checkstyle.sf.net/config_blocks.html -->
         <module name="AvoidNestedBlocks"/>
 
+        <!-- Checks for braces                                          -->
+        <!-- See http://checkstyle.sf.net/config_blocks.html#NeedBraces -->
+        <module name="NeedBraces"/>
+
         <!-- Checks for common coding problems               -->
         <!-- See http://checkstyle.sf.net/config_coding.html -->
         <module name="EqualsHashCode"/>
