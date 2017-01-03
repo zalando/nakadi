@@ -13,18 +13,14 @@ public class BatchItem {
     private String brokerId;
     private int eventSize;
 
-    public BatchItem(final JSONObject event) {
+    public BatchItem(final String event) {
+        this.event = new JSONObject(event);
+        this.eventSize = event.getBytes(StandardCharsets.UTF_8).length;
         this.response = new BatchItemResponse();
-        this.event = event;
 
-        Optional.ofNullable(event.optJSONObject("metadata"))
+        Optional.ofNullable(this.event.optJSONObject("metadata"))
                 .map(e -> e.optString("eid", null))
                 .ifPresent(this.response::setEid);
-    }
-
-    public BatchItem(final String event) {
-        this(new JSONObject(event));
-        eventSize = event.getBytes(StandardCharsets.UTF_8).length;
     }
 
     public JSONObject getEvent() {

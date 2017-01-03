@@ -8,7 +8,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -137,7 +136,7 @@ public class KafkaRepositoryAT extends BaseAT {
     @Test(timeout = 10000)
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() throws Exception {
         final List<BatchItem> items = new ArrayList<>();
-        final JSONObject event = new JSONObject();
+        final String event = "{}";
         final String topicId = TestUtils.randomValidEventTypeName();
         kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
 

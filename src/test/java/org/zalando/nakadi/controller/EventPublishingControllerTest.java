@@ -2,7 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.json.JSONArray;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -91,7 +90,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isOk())
@@ -114,7 +113,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
@@ -128,7 +127,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())
@@ -140,7 +139,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))

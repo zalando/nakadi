@@ -50,4 +50,47 @@ public class BatchFactoryTest {
             fail();
         } catch (JSONException e) {}
     }
+
+    @Test
+    public void testEscapedQuotation() {
+        final String events = "[{\"hello\":\"wor\\\"ld\"}]";
+        final List<BatchItem> batch = BatchFactory.from(events);
+        assertEquals(1, batch.size());
+        assertEquals("{\"hello\":\"wor\\\"ld\"}", batch.get(0).getEvent().toString());
+    }
+
+    @Test
+    public void testEscapedBrackets() {
+        final String events = "[{\"hello\":\"wor\\\\}ld\"}]";
+        final List<BatchItem> batch = BatchFactory.from(events);
+        assertEquals(1, batch.size());
+        assertEquals("{\"hello\":\"wor\\\\}ld\"}", batch.get(0).getEvent().toString());
+    }
+
+    @Test
+    public void testEmptyEvent() {
+        final String events = "[{\"name\":\"MyEvent\"},,,,{\"name\":\"MyOtherEvent\"}]";
+        final List<BatchItem> batch = BatchFactory.from(events);
+        assertEquals(2, batch.size());
+        assertEquals("{\"name\":\"MyEvent\"}", batch.get(0).getEvent().toString());
+        assertEquals("{\"name\":\"MyOtherEvent\"}", batch.get(1).getEvent().toString());
+    }
+
+    @Test
+    public void testSpacesBetweenEvents() {
+        final String events = "[{\"name\":\"MyEvent\"},        {\"name\":\"MyOtherEvent\"}]";
+        final List<BatchItem> batch = BatchFactory.from(events);
+        assertEquals(2, batch.size());
+        assertEquals("{\"name\":\"MyEvent\"}", batch.get(0).getEvent().toString());
+        assertEquals("{\"name\":\"MyOtherEvent\"}", batch.get(1).getEvent().toString());
+    }
+
+    @Test
+    public void testGarbageBetweenEvents() {
+        final String events = "[{\"name\":\"MyEvent\"},atb#{\"name\":\"MyOtherEvent\"}]";
+        try {
+            BatchFactory.from(events);
+            fail();
+        } catch (JSONException e) {}
+    }
 }

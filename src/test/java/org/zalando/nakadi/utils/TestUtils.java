@@ -177,7 +177,11 @@ public class TestUtils {
                         .withWaitBetweenEachTry(intervalMs));
     }
 
-    public static BatchItem createBatch(final JSONObject event) {
+    public static BatchItem createBatchItem(final JSONObject event) {
+        return new BatchItem(event.toString());
+    }
+
+    public static BatchItem createBatchItem(final String event) {
         return new BatchItem(event);
     }
 

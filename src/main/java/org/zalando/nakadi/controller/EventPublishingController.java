@@ -84,7 +84,9 @@ public class EventPublishingController {
             final int eventCount = eventsAsJsonObjects.length();
             eventTypeMetrics.reportSizing(eventCount, eventsAsString.length());
 
-            return response(publisher.publish(eventsAsJsonObjects, eventTypeName, client));
+            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);
+
+            return response(result);
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);

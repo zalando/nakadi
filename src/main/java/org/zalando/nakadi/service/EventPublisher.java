@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +57,7 @@ public class EventPublisher {
         this.nakadiSettings = nakadiSettings;
     }
 
-    public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client)
+    public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
             throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         final List<BatchItem> batch = BatchFactory.from(events);
