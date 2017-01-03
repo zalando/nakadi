@@ -113,7 +113,7 @@ public class SubscriptionControllerTest {
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory,
-                topicRepository, eventTypeRepository);
+                topicRepository, eventTypeRepository, featureToggleService);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, applicationService,
                 subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =

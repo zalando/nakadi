@@ -32,6 +32,7 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -48,6 +49,8 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
+
 @Component
 public class SubscriptionService {
 
@@ -58,16 +61,19 @@ public class SubscriptionService {
     private final EventTypeRepository eventTypeRepository;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final TopicRepository topicRepository;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
                                final TopicRepository topicRepository,
-                               final EventTypeRepository eventTypeRepository) {
+                               final EventTypeRepository eventTypeRepository,
+                               final FeatureToggleService featureToggleService) {
         this.subscriptionRepository = subscriptionRepository;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
         this.topicRepository = topicRepository;
         this.eventTypeRepository = eventTypeRepository;
+        this.featureToggleService = featureToggleService;
     }
 
     public Result<Subscription> createSubscription(final SubscriptionBase subscriptionBase, final Client client)
@@ -104,6 +110,14 @@ public class SubscriptionService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+
+        if (featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)) {
+            try {
+                return Result.ok(getExistingSubscription(subscriptionBase));
+            } catch (final NoSuchSubscriptionException e) {
+                throw new ServiceUnavailableException("Subscription creation is temporarily unavailable", e);
+            }
+        }
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
@@ -166,7 +180,7 @@ public class SubscriptionService {
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                     owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
             return Result.ok(new SubscriptionListWrapper(subscriptions, paginationLinks));
-        } catch (ServiceUnavailableException e) {
+        } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
             return Result.problem(e.asProblem());
         }
