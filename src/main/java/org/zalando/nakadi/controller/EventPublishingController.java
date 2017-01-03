@@ -13,18 +13,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
+import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
+import java.nio.charset.StandardCharsets;
+import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
@@ -82,9 +85,11 @@ public class EventPublishingController {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
 
             final int eventCount = eventsAsJsonObjects.length();
-            eventTypeMetrics.reportSizing(eventCount, eventsAsString.length());
+            final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName, client);
+            reportMetrics(eventTypeMetrics, result, eventsAsString, eventCount);
 
-            return response(publisher.publish(eventsAsJsonObjects, eventTypeName, client));
+            final ResponseEntity response = response(result);
+            return response;
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);
@@ -96,6 +101,22 @@ public class EventPublishingController {
             return create(e.asProblem(), nativeWebRequest);
         } finally {
             eventTypeMetrics.updateTiming(startingNanos, System.nanoTime());
+        }
+    }
+
+    private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final EventPublishResult result,
+                               final String eventsAsString, final int eventCount) {
+        if (result.getStatus() == EventPublishingStatus.SUBMITTED) {
+            eventTypeMetrics.reportSizing(eventCount,
+                    eventsAsString.getBytes(StandardCharsets.UTF_8).length - eventCount - 1);
+        } else if (result.getStatus() == EventPublishingStatus.FAILED && eventCount != 0) {
+            final int successfulEvents= result.getResponses()
+                    .stream()
+                    .filter(r -> r.getPublishingStatus() == EventPublishingStatus.SUBMITTED)
+                    .collect(Collectors.toList())
+                    .size();
+            final double avgEventSize = eventsAsString.getBytes(StandardCharsets.UTF_8).length / (double)eventCount;
+            eventTypeMetrics.reportSizing(successfulEvents, (int)Math.round(avgEventSize * successfulEvents));
         }
     }
 
