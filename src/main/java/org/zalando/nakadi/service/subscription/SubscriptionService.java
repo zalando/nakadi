@@ -49,8 +49,6 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
-
 @Component
 public class SubscriptionService {
 
@@ -111,14 +109,6 @@ public class SubscriptionService {
                 .map(Optional::get)
                 .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
 
-        if (featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)) {
-            try {
-                return Result.ok(getExistingSubscription(subscriptionBase));
-            } catch (final NoSuchSubscriptionException e) {
-                throw new ServiceUnavailableException("Subscription creation is temporarily unavailable", e);
-            }
-        }
-
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         return Result.ok(subscription);
@@ -138,7 +128,7 @@ public class SubscriptionService {
         }
     }
 
-    private Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
+    public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
             throws NoSuchSubscriptionException, InternalNakadiException, ServiceUnavailableException {
         return subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),

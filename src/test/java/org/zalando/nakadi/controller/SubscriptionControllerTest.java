@@ -98,11 +98,11 @@ public class SubscriptionControllerTest {
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
+    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
     public SubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
 
-        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
                 .thenReturn(false);
@@ -126,6 +126,45 @@ public class SubscriptionControllerTest {
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setControllerAdvice(new ExceptionHandling())
                 .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
+    }
+
+    @Test
+    public void whenSubscriptionCreationIsDisabledThenCreationFails() throws Exception {
+        final SubscriptionBase subscriptionBase = builder()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+        final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
+        when(subscriptionRepository.getSubscription(any(), any(), any())).thenThrow(NoSuchSubscriptionException.class);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(true);
+
+        postSubscription(subscriptionBase)
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    public void whenSubscriptionCreationDisabledThenReturnExistentSubscription() throws Exception {
+        final SubscriptionBase subscriptionBase = builder()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+
+        final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC),
+                subscriptionBase);
+        existingSubscription.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
+        when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
+                .thenReturn(existingSubscription);
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(true);
+
+        postSubscription(subscriptionBase)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))))
+                .andExpect(header().string("Location", "/subscriptions/123"))
+                .andExpect(header().doesNotExist("Content-Location"));
     }
 
     @Test

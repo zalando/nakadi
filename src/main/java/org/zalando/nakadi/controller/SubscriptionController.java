@@ -15,6 +15,9 @@ import org.springframework.web.util.UriComponents;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
@@ -34,6 +37,7 @@ import java.util.Set;
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 
@@ -72,20 +76,34 @@ public class SubscriptionController {
         }
 
         try {
+            if (featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)) {
+                try {
+                    return ok(subscriptionService.getExistingSubscription(subscriptionBase));
+                } catch (final NoSuchSubscriptionException e) {
+                    return Responses.create(new ServiceUnavailableException(
+                            "Subscription creation is temporarily unavailable", e).asProblem(), request);
+                } catch (final NakadiException e) {
+                    Responses.create(e.asProblem(), request);
+                }
+            }
+
             final Result<Subscription> result = subscriptionService.createSubscription(subscriptionBase, client);
             if (!result.isSuccessful()) {
                 return Responses.create(result.getProblem(), request);
             }
             return prepareLocationResponse(result.getValue());
-        } catch (DuplicatedSubscriptionException e) {
+        } catch (final DuplicatedSubscriptionException e) {
             final Result<Subscription> result = subscriptionService.processDuplicatedSubscription(subscriptionBase);
             if (!result.isSuccessful()) {
                 return Responses.create(result.getProblem(), request);
             }
-            final Subscription existingSubscription = result.getValue();
-            final UriComponents location = subscriptionService.getSubscriptionUri(existingSubscription);
-            return ResponseEntity.status(OK).location(location.toUri()).body(existingSubscription);
+            return ok(result.getValue());
         }
+    }
+
+    private ResponseEntity<?> ok(final Subscription existingSubscription) {
+        final UriComponents location = subscriptionService.getSubscriptionUri(existingSubscription);
+        return ResponseEntity.status(OK).location(location.toUri()).body(existingSubscription);
     }
 
     private ResponseEntity<?> prepareLocationResponse(final Subscription subscription) {
