@@ -18,20 +18,19 @@ public class BatchFactory {
         }
         for (int i = 1; i < events.length() - 1; i++) {
             if (!escaped && events.charAt(i) == '"') {
-                if (insideQuote)
+                if (insideQuote) {
                     insideQuote = false;
-                else
+                } else {
                     insideQuote = true;
+                }
             }
             if (escaped) {
                 sb.append(events.charAt(i));
                 escaped = false;
-            }
-            else if (!escaped && events.charAt(i) == '\\') {
+            } else if (!escaped && events.charAt(i) == '\\') {
                 sb.append(events.charAt(i));
                 escaped = true;
-            }
-            else if (insideQuote) {
+            } else if (insideQuote) {
                 sb.append(events.charAt(i));
             } else {
                 if (events.charAt(i) == '{') {

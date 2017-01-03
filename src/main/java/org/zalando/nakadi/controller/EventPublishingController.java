@@ -85,7 +85,7 @@ public class EventPublishingController {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
 
             final int eventCount = eventsAsJsonObjects.length();
-            final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName, client);
+            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);
             reportMetrics(eventTypeMetrics, result, eventsAsString, eventCount);
 
             final ResponseEntity response = response(result);
