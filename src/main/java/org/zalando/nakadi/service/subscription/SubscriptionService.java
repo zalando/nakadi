@@ -32,7 +32,6 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -59,19 +58,16 @@ public class SubscriptionService {
     private final EventTypeRepository eventTypeRepository;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final TopicRepository topicRepository;
-    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
                                final TopicRepository topicRepository,
-                               final EventTypeRepository eventTypeRepository,
-                               final FeatureToggleService featureToggleService) {
+                               final EventTypeRepository eventTypeRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
         this.topicRepository = topicRepository;
         this.eventTypeRepository = eventTypeRepository;
-        this.featureToggleService = featureToggleService;
     }
 
     public Result<Subscription> createSubscription(final SubscriptionBase subscriptionBase, final Client client)

@@ -115,7 +115,7 @@ public class SubscriptionControllerTest {
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
                 zkSubscriptionClientFactory,
-                topicRepository, eventTypeRepository, featureToggleService);
+                topicRepository, eventTypeRepository);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, applicationService,
                 subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
@@ -134,7 +134,6 @@ public class SubscriptionControllerTest {
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of("myET"))
                 .buildSubscriptionBase();
-        final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
         when(subscriptionRepository.getSubscription(any(), any(), any())).thenThrow(NoSuchSubscriptionException.class);
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
                 .thenReturn(true);
