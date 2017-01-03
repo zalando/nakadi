@@ -104,6 +104,8 @@ public class SubscriptionControllerTest {
 
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(false);
 
         topicRepository = mock(TopicRepository.class);
         final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
