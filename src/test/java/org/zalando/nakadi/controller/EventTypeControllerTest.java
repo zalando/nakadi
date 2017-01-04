@@ -6,7 +6,6 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Resources;
-import com.sun.security.auth.UserPrincipal;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -50,6 +49,8 @@ import org.zalando.problem.ThrowableProblem;
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
+
+import java.security.Principal;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -102,6 +103,12 @@ public class EventTypeControllerTest {
 
     private MockMvc mockMvc;
 
+    private static Principal mockPrincipal(final String clientId) {
+		final Principal principal = mock(Principal.class);
+		when(principal.getName()).thenReturn(clientId);
+		return principal;
+	}
+    
     @Before
     public void init() throws Exception {
 
@@ -735,7 +742,7 @@ public class EventTypeControllerTest {
     }
 
     private ResultActions deleteEventType(final String eventTypeName, final String clientId) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(new UserPrincipal(clientId)));
+        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(mockPrincipal(clientId)));
     }
 
     private ResultActions postEventType(final EventType eventType) throws Exception {
@@ -773,7 +780,7 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(final String content, final String name, final String clientId)
             throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
-                .principal(new UserPrincipal(clientId))
+                .principal(mockPrincipal(clientId))
                 .contentType(APPLICATION_JSON)
                 .content(content);
         return mockMvc.perform(requestBuilder);
