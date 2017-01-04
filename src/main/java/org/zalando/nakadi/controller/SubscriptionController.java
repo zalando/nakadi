@@ -83,7 +83,7 @@ public class SubscriptionController {
                     return Responses.create(new ServiceUnavailableException(
                             "Subscription creation is temporarily unavailable", e).asProblem(), request);
                 } catch (final NakadiException e) {
-                    Responses.create(e.asProblem(), request);
+                    return Responses.create(e.asProblem(), request);
                 }
             }
 

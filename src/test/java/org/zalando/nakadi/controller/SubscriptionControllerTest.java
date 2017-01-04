@@ -26,6 +26,7 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.SubscriptionListWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -140,6 +141,20 @@ public class SubscriptionControllerTest {
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    public void whenSubscriptionCreationIsDisabledAndError() throws Exception {
+        final SubscriptionBase subscriptionBase = builder()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+        when(subscriptionRepository.getSubscription(any(), any(), any())).thenThrow(InternalNakadiException.class);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(true);
+
+        postSubscription(subscriptionBase)
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
