@@ -171,7 +171,7 @@ The `schema` value should only declare the custom part of the event - the generi
 schema is implicit and doesn't need to be defined. The combination of the two 
 (the "effective schema") will be checked when events are submitted for the event type.
 
-Each event type can have a `default_statistic` object attached. It controlls the
+Each event type can have a `default_statistic` object attached. It controls the
 number of partitions of the underlying topic. If you do not provide any value, 
 Nakadi will use a sensible default value which may be just a single partition.
 This will effectively disallow parallel reads of subscriptions of this event
