@@ -124,7 +124,7 @@ public class SubscriptionService {
         }
     }
 
-    private Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
+    public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
             throws NoSuchSubscriptionException, InternalNakadiException, ServiceUnavailableException {
         return subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
@@ -166,7 +166,7 @@ public class SubscriptionService {
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                     owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
             return Result.ok(new SubscriptionListWrapper(subscriptions, paginationLinks));
-        } catch (ServiceUnavailableException e) {
+        } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
             return Result.problem(e.asProblem());
         }
