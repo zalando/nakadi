@@ -9,12 +9,12 @@ import java.util.function.Consumer;
  * <pre>
  * - timelines
  *  + - lock                    lock for timeline versions synchronization
- *  + - version: {version}      monotonically_incremented long value
+ *  + - version: {version}      monotonically incremented long value (version of timelines configuration)
  *  + - locked_et:
- *     | - et_1                 Event types that are paused right now
- *     | - et_2                 The same goes here
+ *     | - et_1                 Event types that are paused right now (et_1)
+ *     | - et_2                 The same goes here (et_2)
  *  + - nodes                   nakadi nodes
- *    + - {node1}: {version}    Each nakadi node exposes version being used to this node
+ *    + - {node1}: {version}    Each nakadi node exposes version being used on this node
  * </pre>
  */
 public interface TimelineSync {
@@ -54,4 +54,10 @@ public interface TimelineSync {
      * @return Registration for listener. one should call cancel once registration is not needed anymore.
      */
     ListenerRegistration registerTimelineChangeListener(String eventType, Consumer<String> listener);
+
+    /**
+     * Returns current node identification string (used only in tests)
+     * @return Node id.
+     */
+    String getNodeId();
 }
