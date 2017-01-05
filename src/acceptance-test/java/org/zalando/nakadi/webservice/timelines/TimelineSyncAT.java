@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.apache.curator.framework.CuratorFramework;
@@ -29,7 +30,7 @@ public class TimelineSyncAT extends BaseAT {
     private UUIDGenerator uuidGenerator;
     private ZooKeeperHolder zookeeperHolder;
 
-    private TimelineSync createTimeline() {
+    private TimelineSync createTimeline() throws InterruptedException {
         if (null == uuidGenerator) {
             uuidGenerator = new UUIDGenerator();
         }
@@ -78,19 +79,19 @@ public class TimelineSyncAT extends BaseAT {
     @Test
     public void testNodeInformationWrittenOnStart() throws Exception {
         final TimelineSync sync = createTimeline();
-        final String currentVersion = new String(CURATOR.getData().forPath("/timelines/version"));
+        final String currentVersion = new String(CURATOR.getData().forPath("/nakadi/timelines/version"));
         Assert.assertEquals(currentVersion,
-                new String(CURATOR.getData().forPath("/timelines/nodes/" + sync.getNodeId())));
+                new String(CURATOR.getData().forPath("/nakadi/timelines/nodes/" + sync.getNodeId())));
     }
 
     @Test
-    public void testTimelineUpdateWaitsForActivePublish() throws InterruptedException, IOException {
+    public void testTimelineUpdateWaitsForActivePublish() throws InterruptedException, IOException, TimeoutException {
         final TimelineSync t1 = createTimeline();
         final TimelineSync t2 = createTimeline();
         final String eventType = UUID.randomUUID().toString();
         final AtomicBoolean updated = new AtomicBoolean(false);
 
-        final Closeable publishing = t1.workWithEventType(eventType);
+        final Closeable publishing = t1.workWithEventType(eventType, TimeUnit.SECONDS.toMillis(1));
         try {
             new Thread(() -> {
                 try {
@@ -126,7 +127,7 @@ public class TimelineSyncAT extends BaseAT {
         t1.startTimelineUpdate(eventType, TimeUnit.SECONDS.toMillis(30));
         final AtomicBoolean lockTaken = new AtomicBoolean(false);
         new Thread(() -> {
-            try (Closeable cl = t2.workWithEventType(eventType)) {
+            try (Closeable cl = t2.workWithEventType(eventType, TimeUnit.SECONDS.toMillis(5))) {
                 lockTaken.set(true);
             } catch (Exception e) {
                 throw new RuntimeException(e);

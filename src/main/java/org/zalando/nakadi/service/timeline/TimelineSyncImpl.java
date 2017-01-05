@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service.timeline;
 
+import com.google.common.base.Charsets;
 import java.io.Closeable;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -52,22 +53,22 @@ public class TimelineSyncImpl implements TimelineSync {
         }
     }
 
-    private static final String ROOT_PATH = "/timelines";
-    private static final Charset CHARSET = Charset.forName("UTF-8");
+    private static final String ROOT_PATH = "/nakadi/timelines";
+    private static final Logger LOG = LoggerFactory.getLogger(TimelineSyncImpl.class);
 
     private final ZooKeeperHolder zooKeeperHolder;
     private final String thisId;
     private final Set<String> lockedEventTypes = new HashSet<>();
     private final Map<String, Integer> eventsBeingPublished = new HashMap<>();
     private final Object localLock = new Object();
-    private final HashMap<String, List<Consumer<String>>> consumerListeners = new HashMap<>();
+    private final Map<String, List<Consumer<String>>> consumerListeners = new HashMap<>();
     private final BlockingQueue<DelayedChange> queuedChanges = new LinkedBlockingQueue<>();
-    private final Logger log;
+    private final AtomicBoolean newVersionPresent = new AtomicBoolean(true);
 
     @Autowired
-    public TimelineSyncImpl(final ZooKeeperHolder zooKeeperHolder, final UUIDGenerator uuidGenerator) {
+    public TimelineSyncImpl(final ZooKeeperHolder zooKeeperHolder, final UUIDGenerator uuidGenerator)
+            throws InterruptedException {
         this.thisId = uuidGenerator.randomUUID().toString();
-        this.log = LoggerFactory.getLogger("timelines.sync." + thisId);
         this.zooKeeperHolder = zooKeeperHolder;
         this.initializeZkStructure();
     }
@@ -81,37 +82,35 @@ public class TimelineSyncImpl implements TimelineSync {
         return ROOT_PATH + path;
     }
 
-    private void initializeZkStructure() {
-        log.info("Starting initialization");
+    private void initializeZkStructure() throws InterruptedException {
+        LOG.info("Starting initialization");
         runLocked(() -> {
             try {
                 try {
                     // 1. Create version node, if needed, keep in mind that lock built root path
                     zooKeeperHolder.get().create().withMode(CreateMode.PERSISTENT)
-                            .forPath(toZkPath("/version"), "0".getBytes(CHARSET));
+                            .forPath(toZkPath("/version"), "0".getBytes(Charsets.UTF_8));
 
                     // 2. Create locked event types structure
                     zooKeeperHolder.get().create().withMode(CreateMode.PERSISTENT)
-                            .forPath(toZkPath("/locked_et"), "[]".getBytes(CHARSET));
+                            .forPath(toZkPath("/locked_et"), "[]".getBytes(Charsets.UTF_8));
                     // 3. Create nodes root path
                     zooKeeperHolder.get().create().withMode(CreateMode.PERSISTENT)
-                            .forPath(toZkPath("/nodes"), "[]".getBytes(CHARSET));
+                            .forPath(toZkPath("/nodes"), "[]".getBytes(Charsets.UTF_8));
                 } catch (final KeeperException.NodeExistsException ignore) {
                 }
 
-                log.info("Registering node in zk");
+                LOG.info("Registering node in zk");
                 zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
-                        .forPath(toZkPath("/nodes/" + thisId), "0".getBytes(CHARSET));
+                        .forPath(toZkPath("/nodes/" + thisId), "0".getBytes(Charsets.UTF_8));
 
-                // 4. Get current version and locked event types (and update node state)
-                refreshVersion();
-                // 5. React on what was received and write node version to zk.
-                reactOnEventTypesChange();
             } catch (final Exception e) {
-                log.error("Failed to initialize timeline synchronization", e);
+                LOG.error("Failed to initialize timeline synchronization", e);
                 throw new RuntimeException(e);
             }
         });
+        // 4. React on what was received and write node version to zk.
+        reactOnEventTypesChange();
     }
 
     private <T> T readData(final String relativeName,
@@ -123,14 +122,15 @@ public class TimelineSyncImpl implements TimelineSync {
         } else {
             data = zooKeeperHolder.get().getData().usingWatcher(watcher).forPath(zkPath);
         }
-        return converter.apply(new String(data, CHARSET));
+        return converter.apply(new String(data, Charsets.UTF_8));
     }
 
     @Scheduled(fixedDelay = 500)
     public void reactOnEventTypesChange() throws InterruptedException {
+        checkForNewChange();
         while (null != queuedChanges.peek()) {
             final DelayedChange change = queuedChanges.peek();
-            log.info("Reacting on delayed change {}", change);
+            LOG.info("Reacting on delayed change {}", change);
             final Set<String> unlockedEventTypes = new HashSet<>();
             synchronized (localLock) {
                 for (final String item : this.lockedEventTypes) {
@@ -146,7 +146,7 @@ public class TimelineSyncImpl implements TimelineSync {
                             .filter(eventsBeingPublished::containsKey).collect(Collectors.toList());
                     haveUsage = !stillLocked.isEmpty();
                     if (haveUsage) {
-                        log.info("Event types are still locked: {}", stillLocked);
+                        LOG.info("Event types are still locked: {}", stillLocked);
                         localLock.wait();
                     }
                 }
@@ -154,7 +154,7 @@ public class TimelineSyncImpl implements TimelineSync {
             }
             // Notify consumers that they should refresh timeline information
             for (final String unlocked : unlockedEventTypes) {
-                log.info("Notifying about unlock of {}", unlocked);
+                LOG.info("Notifying about unlock of {}", unlocked);
                 final List<Consumer<String>> toNotify;
                 synchronized (consumerListeners) {
                     toNotify = consumerListeners.containsKey(unlocked) ?
@@ -165,41 +165,51 @@ public class TimelineSyncImpl implements TimelineSync {
                         try {
                             listener.accept(unlocked);
                         } catch (final RuntimeException ex) {
-                            log.error("Failed to notify about event type {} unlock", unlocked, ex);
+                            LOG.error("Failed to notify about event type {} unlock", unlocked, ex);
                         }
                     }
                 }
             }
             try {
-                zooKeeperHolder.get().setData()
-                        .forPath(toZkPath("/nodes/" + thisId), String.valueOf(change.version).getBytes(CHARSET));
+                zooKeeperHolder.get().setData().forPath(
+                        toZkPath("/nodes/" + thisId), String.valueOf(change.version).getBytes(Charsets.UTF_8));
             } catch (final Exception ex) {
-                log.error("Failed to update node version in zk. Will try to reprocess again", ex);
+                LOG.error("Failed to update node version in zk. Will try to reprocess again", ex);
                 return;
             }
             queuedChanges.poll();
-            log.info("Delayed change {} successfully processed", change);
+            LOG.info("Delayed change {} successfully processed", change);
         }
     }
 
-    /**
-     * MUST be executed under zk lock. Called when version is changed
-     */
-    private void refreshVersion() {
-        try {
-            log.info("Adding refresh call to delayed changes list");
-            queuedChanges.add(
-                    new DelayedChange(readData("/version", this::versionChanged, Integer::parseInt),
-                            this.zooKeeperHolder.get().getChildren().forPath(toZkPath("/locked_et"))));
-        } catch (final RuntimeException ex) {
-            throw ex;
-        } catch (final Exception ex) {
-            throw new RuntimeException(ex);
+    private void checkForNewChange() {
+        if (newVersionPresent.compareAndSet(true, false)) {
+            runLocked(() -> {
+                boolean success = false;
+                try {
+                    queuedChanges.add(
+                            new DelayedChange(readData("/version", this::versionChanged, Integer::parseInt),
+                                    this.zooKeeperHolder.get().getChildren().forPath(toZkPath("/locked_et"))));
+                    success = true;
+                } catch (final RuntimeException ex) {
+                    throw ex;
+                } catch (final InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(ex);
+                } catch (final Exception ex) {
+                    throw new RuntimeException(ex);
+                } finally {
+                    if (!success) {
+                        newVersionPresent.set(true);
+                    }
+                }
+            });
         }
     }
 
     private void versionChanged(final WatchedEvent ignore) {
-        refreshVersion();
+        LOG.info("Adding refresh call to delayed changes list");
+        newVersionPresent.set(true);
     }
 
     private void runLocked(final Runnable action) {
@@ -214,7 +224,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 try {
                     lock.release();
                 } catch (final Exception ex) {
-                    log.warn("Failed to release lock", ex);
+                    LOG.warn("Failed to release lock", ex);
                     releaseException = ex;
                 }
             }
@@ -229,16 +239,20 @@ public class TimelineSyncImpl implements TimelineSync {
     }
 
     @Override
-    public Closeable workWithEventType(final String eventType) throws InterruptedException {
+    public Closeable workWithEventType(final String eventType, final long timeoutMillis)
+            throws InterruptedException, TimeoutException {
+        final long finishAt = System.currentTimeMillis() + timeoutMillis;
         synchronized (localLock) {
-            while (lockedEventTypes.contains(eventType)) {
-                localLock.wait();
+            long now = System.currentTimeMillis();
+            while (now < finishAt && lockedEventTypes.contains(eventType)) {
+                localLock.wait(finishAt - now);
+                now = System.currentTimeMillis();
             }
-            if (!eventsBeingPublished.containsKey(eventType)) {
-                eventsBeingPublished.put(eventType, 1);
-            } else {
-                eventsBeingPublished.put(eventType, 1 + eventsBeingPublished.get(eventType));
+            if (lockedEventTypes.contains(eventType)) {
+                throw new TimeoutException("Timed out while waiting for event type " + eventType +
+                        " to unlock within " + timeoutMillis);
             }
+            eventsBeingPublished.put(eventType, eventsBeingPublished.getOrDefault(eventType, 0) + 1);
         }
         return () -> {
             synchronized (localLock) {
@@ -261,9 +275,9 @@ public class TimelineSyncImpl implements TimelineSync {
             try {
                 final int latestVersion = readData("/version", null, Integer::valueOf);
                 versionToWait.set(latestVersion + 1);
-                zooKeeperHolder.get().setData()
-                        .forPath(toZkPath("/version"), String.valueOf(versionToWait.get()).getBytes(CHARSET));
-                log.info("Wrote to ZK version to wait (was: {}), new one: {}", latestVersion, versionToWait.get());
+                zooKeeperHolder.get().setData().forPath(
+                        toZkPath("/version"), String.valueOf(versionToWait.get()).getBytes(Charsets.UTF_8));
+                LOG.info("Wrote to ZK version to wait (was: {}), new one: {}", latestVersion, versionToWait.get());
             } catch (final RuntimeException ex) {
                 throw ex;
             } catch (final Exception e) {
@@ -273,7 +287,7 @@ public class TimelineSyncImpl implements TimelineSync {
         // Wait for all nodes to have latest version.
         final AtomicBoolean latestVersionIsThere = new AtomicBoolean(false);
         while (!latestVersionIsThere.get()) {
-            log.info("Waiting for all nodes to have the same version {}", versionToWait.get());
+            LOG.info("Waiting for all nodes to have the same version {}", versionToWait.get());
             if (expectedFinish.isPresent() && System.currentTimeMillis() > expectedFinish.get()) {
                 throw new RuntimeException("Timed out while updating version to " + versionToWait.get());
             }
@@ -288,7 +302,7 @@ public class TimelineSyncImpl implements TimelineSync {
                         if (!nodeOk) {
                             allOk = false;
                         }
-                        log.info("Node {} OK (current: {}, expected: {})", node, nodeVersion, versionToWait.get());
+                        LOG.info("Node {} OK (current: {}, expected: {})", node, nodeVersion, versionToWait.get());
                     }
                     if (allOk) {
                         latestVersionIsThere.set(true);
@@ -300,17 +314,17 @@ public class TimelineSyncImpl implements TimelineSync {
                 }
             });
         }
-        log.info("Version update to {} complete", versionToWait.get());
+        LOG.info("Version update to {} complete", versionToWait.get());
     }
 
     @Override
     public void startTimelineUpdate(final String eventType, final long timeoutMs) throws InterruptedException {
-        log.info("Starting timeline update for event type {} with timeout {} ms", eventType, timeoutMs);
+        LOG.info("Starting timeline update for event type {} with timeout {} ms", eventType, timeoutMs);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
         boolean successfull = false;
         try {
             zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
-                    .forPath(etZkPath, thisId.getBytes(CHARSET));
+                    .forPath(etZkPath, thisId.getBytes(Charsets.UTF_8));
             updateVersionAndWaitForAllNodes(timeoutMs);
             successfull = true;
         } catch (final InterruptedException ex) {
@@ -322,7 +336,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 try {
                     zooKeeperHolder.get().delete().forPath(etZkPath);
                 } catch (final Exception e) {
-                    log.error("Failed to delete node {}", etZkPath, e);
+                    LOG.error("Failed to delete node {}", etZkPath, e);
                 }
             }
         }
@@ -330,7 +344,7 @@ public class TimelineSyncImpl implements TimelineSync {
 
     @Override
     public void finishTimelineUpdate(final String eventType) throws InterruptedException {
-        log.info("Finishing timeline update for event type {}", eventType);
+        LOG.info("Finishing timeline update for event type {}", eventType);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
         try {
             zooKeeperHolder.get().delete().forPath(etZkPath);

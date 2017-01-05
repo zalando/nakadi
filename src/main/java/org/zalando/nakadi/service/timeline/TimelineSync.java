@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.timeline;
 
 import java.io.Closeable;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 /**
@@ -22,9 +23,11 @@ public interface TimelineSync {
      * Call while publishing to event type. When publishing complete - call {@link Closeable#close()}
      *
      * @param eventType Event type to publish to
+     * @param timeoutMillis Timeout for operation
      * @return Closeable object, that should be closed when publishing complete
+     * @throws TimeoutException In case when timeout passed and event type still wasn't unlocked
      */
-    Closeable workWithEventType(String eventType) throws InterruptedException;
+    Closeable workWithEventType(String eventType, long timeoutMillis) throws InterruptedException, TimeoutException;
 
     /**
      * Lock event type publishing while switching to next timeline
