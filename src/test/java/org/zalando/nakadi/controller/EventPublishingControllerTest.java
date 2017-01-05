@@ -44,7 +44,6 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.domain.EventPublishingStatus.ABORTED;
 import static org.zalando.nakadi.domain.EventPublishingStatus.FAILED;
 import static org.zalando.nakadi.domain.EventPublishingStatus.SUBMITTED;
-import static org.zalando.nakadi.domain.EventPublishingStep.NONE;
 import static org.zalando.nakadi.domain.EventPublishingStep.PARTITIONING;
 import static org.zalando.nakadi.domain.EventPublishingStep.PUBLISHING;
 import static org.zalando.nakadi.domain.EventPublishingStep.VALIDATING;
@@ -184,10 +183,6 @@ public class EventPublishingControllerTest {
 
     private List<BatchItemResponse> submittedResponses(final int number) {
         return responses(number, SUBMITTED, PUBLISHING);
-    }
-
-    private List<BatchItemResponse> abortedResponses(final int number) {
-        return responses(number, ABORTED, NONE);
     }
 
     private List<BatchItemResponse> responses(final int number, final EventPublishingStatus status,
