@@ -1,16 +1,17 @@
 package org.zalando.nakadi.repository.db;
 
-import org.zalando.nakadi.annotations.DB;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.annotations.DB;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.repository.EventTypeRepository;
 
 import java.util.List;
 
@@ -31,16 +32,17 @@ public class CachingEventTypeRepository implements EventTypeRepository {
     }
 
     @Override
-    public void saveEventType(final EventType eventType) throws InternalNakadiException,
+    public EventType saveEventType(final EventTypeBase eventTypeBase) throws InternalNakadiException,
             DuplicatedEventTypeNameException {
-        this.repository.saveEventType(eventType);
+        final EventType eventType = this.repository.saveEventType(eventTypeBase);
 
         try {
-            this.cache.created(eventType.getName());
+            this.cache.created(eventTypeBase.getName());
+            return eventType;
         } catch (Exception e) {
-            LOG.error("Failed to create new cache entry for event type '" + eventType.getName() + "'", e);
+            LOG.error("Failed to create new cache entry for event type '" + eventTypeBase.getName() + "'", e);
             try {
-                this.repository.removeEventType(eventType.getName());
+                this.repository.removeEventType(eventTypeBase.getName());
             } catch (NoSuchEventTypeException e1) {
                 LOG.error("Failed to revert event type db persistence", e1);
             }

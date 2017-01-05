@@ -1,40 +1,35 @@
 package org.zalando.nakadi.domain;
 
-import javax.validation.constraints.NotNull;
+import org.joda.time.DateTime;
 
-public class EventTypeSchema {
+public class EventTypeSchema extends EventTypeSchemaBase {
+    private Version version;
+    private DateTime createdAt;
 
-    public enum Type {
-        JSON_SCHEMA
+    public EventTypeSchema() {
+        super();
     }
 
-    @NotNull
-    private Type type;
-
-    @NotNull
-    private String schema;
-
-    public EventTypeSchema() {}
-
-    public EventTypeSchema(final Type type, final String schema) {
-        this.type = type;
-        this.schema = schema;
+    public EventTypeSchema(final EventTypeSchemaBase schemaBase, final String version, final DateTime createdAt) {
+        super(schemaBase);
+        this.version = new Version(version);
+        this.createdAt = createdAt;
     }
 
-    public Type getType() {
-        return type;
+    public Version getVersion() {
+        return version;
     }
 
-    public void setType(final Type type) {
-        this.type = type;
+    public DateTime getCreatedAt() {
+        return createdAt;
     }
 
-    public String getSchema() {
-        return schema;
+    public void setVersion(final Version version) {
+        this.version = version;
     }
 
-    public void setSchema(final String schema) {
-        this.schema = schema;
+    public void setCreatedAt(final DateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     @Override
@@ -45,15 +40,24 @@ public class EventTypeSchema {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
+        if (!super.equals(o)) {
+            return false;
+        }
 
         final EventTypeSchema that = (EventTypeSchema) o;
-        return type == that.type && schema.equals(that.schema);
+
+        if (!version.equals(that.version)) {
+            return false;
+        }
+        return createdAt.equals(that.createdAt);
+
     }
 
     @Override
     public int hashCode() {
-        int result = type != null ? type.hashCode() : 0;
-        result = 31 * result + (schema != null ? schema.hashCode() : 0);
+        int result = super.hashCode();
+        result = 31 * result + version.hashCode();
+        result = 31 * result + createdAt.hashCode();
         return result;
     }
 }

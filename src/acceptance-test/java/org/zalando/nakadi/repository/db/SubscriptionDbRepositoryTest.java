@@ -37,7 +37,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     private SubscriptionDbRepository repository;
 
     public SubscriptionDbRepositoryTest() {
-        super("zn_data.subscription");
+        super(new String[]{"zn_data.subscription"});
     }
 
     @Before
