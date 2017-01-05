@@ -66,12 +66,13 @@ public class MetadataEnrichmentStrategyTest {
     public void setEventTypeSchemaVersion() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
+        final BatchItem batchItem = createBatchItem(event);
 
-        assertThat(event.getJSONObject("metadata").optString("version"), isEmptyString());
+        assertThat(batchItem.getEvent().getJSONObject("metadata").optString("version"), isEmptyString());
 
-        strategy.enrich(createBatch(event), eventType);
+        strategy.enrich(batchItem, eventType);
 
-        assertThat(event.getJSONObject("metadata").getString("version"), equalTo("1.0.0"));
+        assertThat(batchItem.getEvent().getJSONObject("metadata").getString("version"), equalTo("1.0.0"));
     }
 
     @Test
