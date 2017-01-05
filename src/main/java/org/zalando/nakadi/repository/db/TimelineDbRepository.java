@@ -46,7 +46,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
         return Optional.ofNullable(timelines.isEmpty() ? null : timelines.get(0));
     }
 
-    public void createTimeline(final Timeline timeline) {
+    public Timeline createTimeline(final Timeline timeline) {
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.timeline(" +
@@ -63,6 +63,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
                     timeline.getCleanupAt(),
                     timeline.getLatestPosition() == null ? null :
                             jsonMapper.writer().writeValueAsString(timeline.getLatestPosition()));
+            return timeline;
         } catch (final JsonProcessingException ex) {
             throw new IllegalArgumentException("Can not serialize latest position to json", ex);
         }

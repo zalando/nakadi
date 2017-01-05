@@ -2,6 +2,7 @@ package org.zalando.nakadi.domain;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class Timeline {
@@ -19,6 +20,25 @@ public class Timeline {
 
         public void setOffsets(final List<Long> offsets) {
             this.offsets = offsets;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof KafkaStoragePosition)) {
+                return false;
+            }
+
+            final KafkaStoragePosition that = (KafkaStoragePosition) o;
+
+            return offsets != null ? offsets.equals(that.offsets) : that.offsets == null;
+        }
+
+        @Override
+        public int hashCode() {
+            return offsets != null ? offsets.hashCode() : 0;
         }
     }
 
@@ -102,5 +122,32 @@ public class Timeline {
 
     public void setCleanupAt(final Date cleanupAt) {
         this.cleanupAt = cleanupAt;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Timeline)) {
+            return false;
+        }
+
+        final Timeline that = (Timeline) o;
+
+        return Objects.equals(id, that.id)
+                && Objects.equals(eventType, that.eventType)
+                && Objects.equals(order, that.order)
+                && Objects.equals(storage, that.storage)
+                && Objects.equals(topic, that.topic)
+                && Objects.equals(createdAt, that.createdAt)
+                && Objects.equals(switchedAt, that.switchedAt)
+                && Objects.equals(cleanupAt, that.cleanupAt)
+                && Objects.equals(latestPosition, that.latestPosition);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
     }
 }

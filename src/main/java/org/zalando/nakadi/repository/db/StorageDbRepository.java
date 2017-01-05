@@ -35,13 +35,14 @@ public class StorageDbRepository extends AbstractDbRepository {
         return Optional.ofNullable(storages.isEmpty() ? null : storages.get(0));
     }
 
-    public void createStorage(final Storage storage) throws DataAccessException {
+    public Storage createStorage(final Storage storage) throws DataAccessException {
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.storage (st_id, st_type, st_configuration) VALUES (?, ?, ?::jsonb)",
                     storage.getId(),
                     storage.getType().name(),
                     jsonMapper.writer().writeValueAsString(storage.getConfiguration(Object.class)));
+            return storage;
         } catch (final JsonProcessingException ex) {
             throw new IllegalArgumentException("Storage configuration " + storage.getConfiguration(Object.class) +
                     " can't be mapped to json", ex);
