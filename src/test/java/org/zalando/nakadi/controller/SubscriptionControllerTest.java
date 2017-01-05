@@ -23,7 +23,7 @@ import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.SubscriptionListWrapper;
+import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -329,8 +329,8 @@ public class SubscriptionControllerTest {
     public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
         when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
-        final SubscriptionListWrapper subscriptionList =
-                new SubscriptionListWrapper(subscriptions, new PaginationLinks());
+        final PaginationWrapper subscriptionList =
+                new PaginationWrapper(subscriptions, new PaginationLinks());
 
         getSubscriptions()
                 .andExpect(status().isOk())
@@ -343,8 +343,8 @@ public class SubscriptionControllerTest {
     public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
         when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
-        final SubscriptionListWrapper subscriptionList =
-                new SubscriptionListWrapper(subscriptions, new PaginationLinks());
+        final PaginationWrapper subscriptionList =
+                new PaginationWrapper(subscriptions, new PaginationLinks());
 
         getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 0, 30)
                 .andExpect(status().isOk())
@@ -385,7 +385,7 @@ public class SubscriptionControllerTest {
         final PaginationLinks.Link nextLink = new PaginationLinks.Link(
                 "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=15&limit=10");
         final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
-        final SubscriptionListWrapper expectedResult = new SubscriptionListWrapper(subscriptions, links);
+        final PaginationWrapper expectedResult = new PaginationWrapper(subscriptions, links);
 
         getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 5, 10)
                 .andExpect(status().isOk())

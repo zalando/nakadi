@@ -1,0 +1,165 @@
+[
+  {
+    "description": "Invalid property at the root level",
+    "schema": {
+      "not": {
+        "type": "string"
+      }
+    },
+    "errors": ["Invalid schema found in [#]: extraneous key [not] is not permitted"]
+  },
+  {
+    "description": "Invalid property in nested object",
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "not": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "errors": ["Invalid schema found in [#/properties/attempt_of_defining_a_crazy_schema]: extraneous key [not] is not permitted"]
+  },
+  {
+    "description": "Invalid property nested within an array",
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "type": "array",
+          "items": [
+            {
+              "not": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "errors": ["Invalid schema found in [#/properties/attempt_of_defining_a_crazy_schema/items]: expected type: JSONObject, found: JSONArray",
+      "Invalid schema found in [#/properties/attempt_of_defining_a_crazy_schema/items/0]: extraneous key [not] is not permitted"]
+  },
+  {
+    "description": "Invalid property nested within an array",
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "type": "array",
+          "items":  {
+            "not": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "errors": ["Invalid schema found in [#/properties/attempt_of_defining_a_crazy_schema/items]: extraneous key [not] is not permitted",
+      "Invalid schema found in [#/properties/attempt_of_defining_a_crazy_schema/items]: expected type: JSONArray, found: JSONObject"]
+  },
+  {
+    "description": "Invalid property nested within an additionalItems",
+    "schema": {
+      "properties": {
+        "attempt_of_defining_a_crazy_schema": {
+          "type": "array",
+          "additionalItems":  {
+            "not": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "errors": ["Invalid schema found in [#/properties/attempt_of_defining_a_crazy_schema]: extraneous key [additionalItems] is not permitted"]
+  },
+  {
+    "description": "Validates all occurrences of invalid properties",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "nested_attribute": {
+          "properties": {
+            "nested_nested_attribute": {
+              "not": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "attempt_of_defining_a_crazy_schema": {
+          "not": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "errors": [
+      "Invalid schema found in [#/properties/nested_attribute/properties/nested_nested_attribute]: extraneous key [not] is not permitted",
+      "Invalid schema found in [#/properties/attempt_of_defining_a_crazy_schema]: extraneous key [not] is not permitted"
+    ]
+  },
+  {
+    "description": "Does not confuse attribute name with forbidden schema feature",
+    "schema": {
+      "properties": {
+        "not": {
+          "type": "string"
+        }
+      }
+    },
+    "errors": []
+  },
+  {
+    "description": "Check presence of forbidden attributes in dependencies",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "credit_card": { "type": "number" }
+      },
+      "required": ["name"],
+      "dependencies": {
+        "credit_card": {
+          "not": {
+            "properties": {
+              "billing_address": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "errors": ["Invalid schema found in [#/dependencies/credit_card]: extraneous key [not] is not permitted",
+      "Invalid schema found in [#/dependencies/credit_card]: expected type: JSONArray, found: JSONObject"]
+  },
+  {
+    "description": "Successfully validates self referencing schemas",
+    "schema": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/paradox" },
+      "definitions": {
+        "paradox": {
+          "not": {
+            "$ref": "#/definitions/paradox"
+          }
+        }
+      }
+    },
+    "errors": ["Invalid schema found in [#/definitions/paradox]: extraneous key [not] is not permitted"]
+  },
+  {
+    "description": "Invalid attribute in combined schemas",
+    "schema": {
+      "anyOf": [
+        {
+          "not": {
+           "type": "string"
+          }
+        }
+      ]
+    },
+    "errors": ["Invalid schema found in [#/anyOf/0]: extraneous key [not] is not permitted"]
+  }
+]

@@ -60,14 +60,22 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenPUTValidEventTypeThenOK() throws JsonProcessingException {
+    public void whenPUTValidEventTypeThenOK() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
         final String body = MAPPER.writer().writeValueAsString(eventType);
 
-        given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
+        given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT).then()
+                .body(equalTo("")).statusCode(HttpStatus.SC_CREATED);
 
-        given().body(body).header("accept", "application/json").contentType(JSON).when()
+        final EventType retrievedEventType = MAPPER.readValue(given()
+                .header("accept", "application/json").get(ENDPOINT + "/" + eventType.getName())
+                .getBody().asString(),
+                EventType.class);
+
+        final String updateBody = MAPPER.writer().writeValueAsString(retrievedEventType);
+
+        given().body(updateBody).header("accept", "application/json").contentType(JSON).when()
                .put(ENDPOINT + "/" + eventType.getName()).then().body(equalTo("")).statusCode(HttpStatus.SC_OK);
     }
 
@@ -100,6 +108,7 @@ public class EventTypeAT extends BaseAT {
         );
         final JdbcTemplate template = new JdbcTemplate(datasource);
 
+        template.execute("DELETE FROM zn_data.event_type_schema");
         template.execute("DELETE FROM zn_data.event_type");
     }
 }

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeSchema;
+import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -28,7 +30,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     private EventTypeRepository repository;
 
     public EventTypeDbRepositoryTest() {
-        super("zn_data.event_type");
+        super(new String[]{ "zn_data.event_type_schema", "zn_data.event_type" });
     }
 
     @Before
@@ -60,6 +62,30 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat(persisted.getName(), equalTo(eventType.getName()));
         assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
         assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));
+    }
+
+    @Test
+    public void whenCreateNewEventTypeAlsoInsertIntoSchemaTable() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        repository.saveEventType(eventType);
+
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
+        assertThat("Number of rows should increase", rows, equalTo(1));
+
+        final SqlRowSet rs =
+                template.queryForRowSet("SELECT ets_event_type_name, ets_schema_object FROM zn_data.event_type_schema");
+        rs.next();
+
+        assertThat("Name is persisted", rs.getString(1), equalTo(eventType.getName()));
+
+        final ObjectMapper mapper = (new JsonConfig()).jacksonObjectMapper();
+        final EventTypeSchema persisted = mapper.readValue(rs.getString(2), EventTypeSchema.class);
+
+        assertThat(persisted.getVersion(), equalTo(eventType.getSchema().getVersion()));
+        assertThat(persisted.getCreatedAt(), notNullValue());
+        assertThat(persisted.getSchema(), equalTo(eventType.getSchema().getSchema()));
+        assertThat(persisted.getType(), equalTo(eventType.getSchema().getType()));
     }
 
     @Test(expected = DuplicatedEventTypeNameException.class)
@@ -109,6 +135,9 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         repository.update(eventType);
 
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
+        assertThat("Number of rows should increase", rows, equalTo(1));
+
         final SqlRowSet rs = template.queryForRowSet("SELECT et_name, et_event_type_object FROM zn_data.event_type");
         rs.next();
 
@@ -123,6 +152,20 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
         assertThat(persisted.getName(), equalTo(eventType.getName()));
         assertThat(persisted.getSchema().getType(), equalTo(eventType.getSchema().getType()));
         assertThat(persisted.getSchema().getSchema(), equalTo(eventType.getSchema().getSchema()));
+    }
+
+    @Test
+    public void whenUpdateDifferentSchemaVersionThenInsertIt() throws NakadiException, IOException {
+        final EventType eventType = buildDefaultEventType();
+
+        repository.saveEventType(eventType);
+
+        eventType.getSchema().setVersion(new Version("1.1.0"));
+
+        repository.update(eventType);
+
+        final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
+        assertThat("Number of rows should increase", rows, equalTo(2));
     }
 
     @Test
@@ -147,6 +190,9 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final int rows = template.queryForObject("SELECT count(*) FROM zn_data.event_type", Integer.class);
         assertThat("Number of rows should encrease", rows, equalTo(0));
+
+        final int schemaRows = template.queryForObject("SELECT count(*) FROM zn_data.event_type_schema", Integer.class);
+        assertThat("Number of rows should decrease", schemaRows, equalTo(0));
     }
 
     @Test
