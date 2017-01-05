@@ -37,6 +37,7 @@ import java.util.Set;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isEmptyString;
+import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -179,7 +180,7 @@ public class EventPublisherTest {
         final BatchItemResponse secondResponse = result.getResponses().get(1);
         assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
         assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
-        assertThat(secondResponse.getDetail(), equalTo("Event too large"));
+        assertThat(secondResponse.getDetail(), startsWith("Event too large"));
 
         final BatchItemResponse thirdResponse = result.getResponses().get(2);
         assertThat(thirdResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
@@ -212,7 +213,7 @@ public class EventPublisherTest {
         final BatchItemResponse secondResponse = result.getResponses().get(1);
         assertThat(secondResponse.getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
         assertThat(secondResponse.getStep(), equalTo(EventPublishingStep.VALIDATING));
-        assertThat(secondResponse.getDetail(), equalTo("Event too large"));
+        assertThat(secondResponse.getDetail(), startsWith("Event too large"));
 
         final BatchItemResponse thirdResponse = result.getResponses().get(2);
         assertThat(thirdResponse.getPublishingStatus(), equalTo(EventPublishingStatus.ABORTED));
