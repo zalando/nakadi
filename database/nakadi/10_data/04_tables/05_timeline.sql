@@ -1,10 +1,3 @@
-CREATE TABLE zn_data.storage (
-  st_id            VARCHAR(36) NOT NULL PRIMARY KEY,
-  st_type          VARCHAR(32) NOT NULL,
-  st_configuration JSONB       NOT NULL
-);
-
-
 CREATE TABLE zn_data.timeline (
   t_id              UUID                     NOT NULL PRIMARY KEY,
   et_name           VARCHAR(255)             NOT NULL REFERENCES zn_data.event_type (et_name),
@@ -17,3 +10,5 @@ CREATE TABLE zn_data.timeline (
   t_latest_position JSONB                    DEFAULT NULL,
   UNIQUE (et_name, t_order)
 );
+
+CREATE INDEX ON zn_data.timeline(et_name);

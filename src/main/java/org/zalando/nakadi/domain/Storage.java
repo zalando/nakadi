@@ -3,6 +3,7 @@ package org.zalando.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.Objects;
 
 public class Storage {
     public enum Type {
@@ -36,6 +37,26 @@ public class Storage {
 
         public void setZkPath(final String zkPath) {
             this.zkPath = zkPath;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof KafkaConfiguration)) {
+                return false;
+            }
+
+            final KafkaConfiguration that = (KafkaConfiguration) o;
+            return Objects.equals(zkAddress, that.zkAddress) && Objects.equals(zkPath, that.zkPath);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = zkAddress != null ? zkAddress.hashCode() : 0;
+            result = 31 * result + (zkPath != null ? zkPath.hashCode() : 0);
+            return result;
         }
     }
 
@@ -88,4 +109,24 @@ public class Storage {
         return null == data ? null : mapper.readValue(data, getType().positionClass);
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Storage)) {
+            return false;
+        }
+
+        final Storage that = (Storage) o;
+
+        return Objects.equals(id, that.id) &&
+                Objects.equals(type, that.type) &&
+                Objects.equals(configuration, that.configuration);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
 }
