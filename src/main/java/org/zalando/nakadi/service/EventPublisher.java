@@ -152,7 +152,8 @@ public class EventPublisher {
 
     private void validateEventSize(final BatchItem item) throws EventValidationException {
         if (item.getEventSize() > nakadiSettings.getEventMaxBytes()) {
-            throw new EventValidationException("Event too large");
+            throw new EventValidationException("Event too large: " + item.getEventSize()
+                    + " bytes, max size is " + nakadiSettings.getEventMaxBytes() + " bytes");
         }
     }
 
