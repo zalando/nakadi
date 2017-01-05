@@ -63,6 +63,18 @@ public class MetadataEnrichmentStrategyTest {
     }
 
     @Test
+    public void setEventTypeSchemaVersion() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+
+        assertThat(event.getJSONObject("metadata").optString("version"), isEmptyString());
+
+        strategy.enrich(createBatch(event), eventType);
+
+        assertThat(event.getJSONObject("metadata").getString("version"), equalTo("1.0.0"));
+    }
+
+    @Test
     public void setFlowId() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
