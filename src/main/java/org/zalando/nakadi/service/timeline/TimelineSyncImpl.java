@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.curator.framework.recipes.locks.InterProcessLock;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
@@ -58,9 +57,7 @@ public class TimelineSyncImpl implements TimelineSync {
 
     private final ZooKeeperHolder zooKeeperHolder;
     private final String thisId;
-    private final Set<String> lockedEventTypes = new HashSet<>();
-    private final Map<String, Integer> eventsBeingPublished = new HashMap<>();
-    private final Object localLock = new Object();
+    private final LocalLocking localLocking = new LocalLocking();
     private final Map<String, List<Consumer<String>>> consumerListeners = new HashMap<>();
     private final BlockingQueue<DelayedChange> queuedChanges = new LinkedBlockingQueue<>();
     private final AtomicBoolean newVersionPresent = new AtomicBoolean(true);
@@ -131,27 +128,7 @@ public class TimelineSyncImpl implements TimelineSync {
         while (null != queuedChanges.peek()) {
             final DelayedChange change = queuedChanges.peek();
             LOG.info("Reacting on delayed change {}", change);
-            final Set<String> unlockedEventTypes = new HashSet<>();
-            synchronized (localLock) {
-                for (final String item : this.lockedEventTypes) {
-                    if (!change.lockedEventTypes.contains(item)) {
-                        unlockedEventTypes.add(item);
-                    }
-                }
-                this.lockedEventTypes.clear();
-                this.lockedEventTypes.addAll(change.lockedEventTypes);
-                boolean haveUsage = true;
-                while (haveUsage) {
-                    final List<String> stillLocked = this.lockedEventTypes.stream()
-                            .filter(eventsBeingPublished::containsKey).collect(Collectors.toList());
-                    haveUsage = !stillLocked.isEmpty();
-                    if (haveUsage) {
-                        LOG.info("Event types are still locked: {}", stillLocked);
-                        localLock.wait();
-                    }
-                }
-                localLock.notifyAll();
-            }
+            final Set<String> unlockedEventTypes = localLocking.lockedEventTypesChanged(change.lockedEventTypes);
             // Notify consumers that they should refresh timeline information
             for (final String unlocked : unlockedEventTypes) {
                 LOG.info("Notifying about unlock of {}", unlocked);
@@ -241,30 +218,7 @@ public class TimelineSyncImpl implements TimelineSync {
     @Override
     public Closeable workWithEventType(final String eventType, final long timeoutMs)
             throws InterruptedException, TimeoutException {
-        final long finishAt = System.currentTimeMillis() + timeoutMs;
-        synchronized (localLock) {
-            long now = System.currentTimeMillis();
-            while (now < finishAt && lockedEventTypes.contains(eventType)) {
-                localLock.wait(finishAt - now);
-                now = System.currentTimeMillis();
-            }
-            if (lockedEventTypes.contains(eventType)) {
-                throw new TimeoutException("Timed out while waiting for event type " + eventType +
-                        " to unlock within " + timeoutMs + " ms");
-            }
-            eventsBeingPublished.put(eventType, eventsBeingPublished.getOrDefault(eventType, 0) + 1);
-        }
-        return () -> {
-            synchronized (localLock) {
-                final int currentCount = eventsBeingPublished.get(eventType);
-                if (1 == currentCount) {
-                    eventsBeingPublished.remove(eventType);
-                    localLock.notifyAll();
-                } else {
-                    eventsBeingPublished.put(eventType, currentCount - 1);
-                }
-            }
-        };
+        return localLocking.workWithEventType(eventType, timeoutMs);
     }
 
     private void updateVersionAndWaitForAllNodes(@Nullable final Long timeoutMs) throws InterruptedException {
