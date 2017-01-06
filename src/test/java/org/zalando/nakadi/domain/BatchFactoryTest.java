@@ -20,6 +20,20 @@ public class BatchFactoryTest {
     }
 
     @Test
+    public void testNoEvent() {
+        final String events = "[]";
+        final List<BatchItem> batch = BatchFactory.from(events);
+        assertEquals(0, batch.size());
+    }
+
+    @Test
+    public void testNoEventAndSpace() {
+        final String events = "[ ]";
+        final List<BatchItem> batch = BatchFactory.from(events);
+        assertEquals(0, batch.size());
+    }
+
+    @Test
     public void testMultipleEvents() {
         final String events = "[{\"name\":\"MyEvent\"},{\"name\":\"MyOtherEvent\"}]";
         final List<BatchItem> batch = BatchFactory.from(events);

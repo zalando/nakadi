@@ -39,7 +39,11 @@ public class BatchFactory {
                 if (events.charAt(i) == '}') {
                     brackets--;
                 }
-                if (!((brackets == 0) && (events.charAt(i) == ','))) {
+                if (!((brackets == 0) && ((events.charAt(i) == ',')
+                 || (events.charAt(i) == ' ')
+                || (events.charAt(i) == '\t')
+                || (events.charAt(i) == '\n')
+                || (events.charAt(i) == '\r')))) {
                     sb.append(events.charAt(i));
                 }
                 if (brackets == 0 && (events.charAt(i) != ' ')
@@ -60,5 +64,4 @@ public class BatchFactory {
 
         return batch;
     }
-
 }
