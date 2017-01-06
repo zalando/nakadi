@@ -224,7 +224,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 try {
                     lock.release();
                 } catch (final Exception ex) {
-                    LOG.warn("Failed to release lock", ex);
+                    LOG.error("Failed to release lock", ex);
                     releaseException = ex;
                 }
             }
@@ -239,9 +239,9 @@ public class TimelineSyncImpl implements TimelineSync {
     }
 
     @Override
-    public Closeable workWithEventType(final String eventType, final long timeoutMillis)
+    public Closeable workWithEventType(final String eventType, final long timeoutMs)
             throws InterruptedException, TimeoutException {
-        final long finishAt = System.currentTimeMillis() + timeoutMillis;
+        final long finishAt = System.currentTimeMillis() + timeoutMs;
         synchronized (localLock) {
             long now = System.currentTimeMillis();
             while (now < finishAt && lockedEventTypes.contains(eventType)) {
@@ -250,7 +250,7 @@ public class TimelineSyncImpl implements TimelineSync {
             }
             if (lockedEventTypes.contains(eventType)) {
                 throw new TimeoutException("Timed out while waiting for event type " + eventType +
-                        " to unlock within " + timeoutMillis);
+                        " to unlock within " + timeoutMs + " ms");
             }
             eventsBeingPublished.put(eventType, eventsBeingPublished.getOrDefault(eventType, 0) + 1);
         }
@@ -321,18 +321,18 @@ public class TimelineSyncImpl implements TimelineSync {
     public void startTimelineUpdate(final String eventType, final long timeoutMs) throws InterruptedException {
         LOG.info("Starting timeline update for event type {} with timeout {} ms", eventType, timeoutMs);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
-        boolean successfull = false;
+        boolean successful = false;
         try {
             zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
                     .forPath(etZkPath, thisId.getBytes(Charsets.UTF_8));
             updateVersionAndWaitForAllNodes(timeoutMs);
-            successfull = true;
+            successful = true;
         } catch (final InterruptedException ex) {
             throw ex;
         } catch (final Exception e) {
             throw new RuntimeException(e);
         } finally {
-            if (!successfull) {
+            if (!successful) {
                 try {
                     zooKeeperHolder.get().delete().forPath(etZkPath);
                 } catch (final Exception e) {

@@ -23,11 +23,11 @@ public interface TimelineSync {
      * Call while publishing to event type. When publishing complete - call {@link Closeable#close()}
      *
      * @param eventType Event type to publish to
-     * @param timeoutMillis Timeout for operation
+     * @param timeoutMs Timeout for operation
      * @return Closeable object, that should be closed when publishing complete
      * @throws TimeoutException In case when timeout passed and event type still wasn't unlocked
      */
-    Closeable workWithEventType(String eventType, long timeoutMillis) throws InterruptedException, TimeoutException;
+    Closeable workWithEventType(String eventType, long timeoutMs) throws InterruptedException, TimeoutException;
 
     /**
      * Lock event type publishing while switching to next timeline
