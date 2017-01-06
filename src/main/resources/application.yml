@@ -79,7 +79,7 @@ nakadi:
   auth:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
-  event.max.bytes: 1000000
+  event.max.bytes: 999000
 ---
 
 spring:
