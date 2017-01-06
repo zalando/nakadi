@@ -1,16 +1,22 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
+import java.nio.charset.Charset;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.domain.TopicPosition;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
@@ -28,15 +34,8 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
-
-import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import static java.text.MessageFormat.format;
 import static org.zalando.nakadi.repository.zookeeper.ZookeeperUtils.runLocked;
 
@@ -127,8 +126,15 @@ public class CursorsService {
             cursorToProcess = new SubscriptionCursor(cursor.getPartition(), "-1", cursor.getEventType(),
                     cursor.getCursorToken());
         }
+
         final EventType eventType = eventTypeRepository.findByName(cursorToProcess.getEventType());
-        topicRepository.validateCommitCursors(eventType.getTopic(), ImmutableList.of(cursorToProcess));
+
+        final TopicPosition toProcess = new TopicPosition(
+                eventType.getTopic(),
+                cursorToProcess.getPartition(),
+                cursorToProcess.getOffset());
+
+        topicRepository.validateCommitCursor(toProcess);
         return commitCursor(subscriptionId, eventType.getTopic(), cursorToProcess);
     }
 
@@ -139,7 +145,10 @@ public class CursorsService {
         try {
             return runLocked(() -> {
                 final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
-                if (topicRepository.compareOffsets(cursor.getOffset(), currentOffset) > 0) {
+                // Yep, here we are trying to hack a little. This code should be removed during timelines implementation
+                final TopicPosition first = new TopicPosition(eventType, cursor.getPartition(), cursor.getOffset());
+                final TopicPosition second = new TopicPosition(eventType, cursor.getPartition(), currentOffset);
+                if (topicRepository.compareOffsets(first, second) > 0) {
                     zkHolder.get().setData().forPath(offsetPath, cursor.getOffset().getBytes(CHARSET_UTF8));
                     return true;
                 } else {

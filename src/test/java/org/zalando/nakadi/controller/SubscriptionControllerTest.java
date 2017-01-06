@@ -2,6 +2,12 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import javax.ws.rs.core.Response;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
@@ -20,11 +26,11 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -34,6 +40,7 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -47,14 +54,6 @@ import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
-
-import javax.ws.rs.core.Response;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -425,8 +424,9 @@ public class SubscriptionControllerTest {
         when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn(3L);
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
-        when(topicRepository.listPartitions(Collections.singleton("topic")))
-                .thenReturn(Collections.singletonList(new TopicPartition("topic", "0", "3", "13")));
+        final List<PartitionStatistics> statistics = Collections.singletonList(
+                new KafkaPartitionStatistics("topic", 0,0, 13));
+        when(topicRepository.loadTopicStatistics(Collections.singleton("topic"))).thenReturn(statistics);
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
@@ -505,7 +505,7 @@ public class SubscriptionControllerTest {
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
         when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
 
-        postSubscriptionWithScope(subscriptionBase,  Collections.singleton("oauth.read.scope"))
+        postSubscriptionWithScope(subscriptionBase, Collections.singleton("oauth.read.scope"))
                 .andExpect(status().isCreated());
     }
 

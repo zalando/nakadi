@@ -13,7 +13,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -116,7 +117,7 @@ public class CursorsServiceTest {
     @Test
     public void whenCommitCursorsThenTrue() throws Exception {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
-        when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(1);
+        when(topicRepository.compareOffsets(any(), any())).thenReturn(1);
         when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode(new Partition[] {
                 new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED)
         }, new Session[] {
@@ -143,8 +144,12 @@ public class CursorsServiceTest {
         when(getDataBuilder.forPath(offsetPath("p1"))).thenReturn("p1currentOffset".getBytes(CHARSET));
         when(getDataBuilder.forPath(offsetPath("p2"))).thenReturn("p2currentOffset".getBytes(CHARSET));
 
-        when(topicRepository.compareOffsets("p1offset", "p1currentOffset")).thenReturn(-1);
-        when(topicRepository.compareOffsets("p2offset", "p2currentOffset")).thenReturn(1);
+        when(topicRepository.compareOffsets(
+                eq(new TopicPosition(MY_ET, "p1", "p1offset")),
+                eq(new TopicPosition(MY_ET, "p1", "p1currentOffset")))).thenReturn(-1);
+        when(topicRepository.compareOffsets(
+                eq(new TopicPosition(MY_ET, "p2", "p2offset")),
+                eq(new TopicPosition(MY_ET, "p2", "p2currentOffset")))).thenReturn(1);
 
         final SubscriptionCursor p1 = new SubscriptionCursor("p1", "p1offset", MY_ET, TOKEN);
         final SubscriptionCursor p2 = new SubscriptionCursor("p2", "p2offset", MY_ET, TOKEN);
@@ -167,7 +172,9 @@ public class CursorsServiceTest {
     @Test
     public void whenCommitOldCursorsThenFalse() throws Exception {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
-        when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(-1);
+        when(topicRepository.compareOffsets(
+                eq(new TopicPosition(MY_ET, "p1", NEW_OFFSET)),
+                eq(new TopicPosition(MY_ET, "p1", "oldOffset")))).thenReturn(-1);
         when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode(new Partition[] {
                 new Partition(new Partition.PartitionKey(MY_ET, "p1"), "stream-id", null, Partition.State.ASSIGNED)
         }, new Session[] {
@@ -193,7 +200,9 @@ public class CursorsServiceTest {
     @Test
     public void whenSubscriptionInZkNotCreatedThenCreate() throws Exception {
         when(getDataBuilder.forPath(any())).thenReturn("oldOffset".getBytes(CHARSET));
-        when(topicRepository.compareOffsets(NEW_OFFSET, "oldOffset")).thenReturn(1);
+        when(topicRepository.compareOffsets(
+                eq(new TopicPosition(MY_ET, "p1", NEW_OFFSET)),
+                eq(new TopicPosition(MY_ET, "p1", "oldOffset")))).thenReturn(1);
 
         when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(false);
         doAnswer(invocation -> {

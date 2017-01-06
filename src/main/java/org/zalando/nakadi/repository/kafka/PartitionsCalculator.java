@@ -10,15 +10,43 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Stream;
+import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventTypeStatistics;
 
-public class KafkaPartitionsCalculator {
+public class PartitionsCalculator {
     // Contains mapping from message size (in bytes) to list of throughput of kafka with (index + 1) as partition count.
     private final NavigableMap<Integer, float[]> stats = new TreeMap<>();
+    private final int maxPartitionCount;
+    private final int defaultPartitionCount;
 
-    private KafkaPartitionsCalculator(final InstanceInfo instanceInfo) {
+    private PartitionsCalculator(final InstanceInfo instanceInfo,
+                                 final int defaultPartitionCount,
+                                 final int maxPartitionCount) {
+        this.defaultPartitionCount = defaultPartitionCount;
+        this.maxPartitionCount = maxPartitionCount;
         for (final SpeedStatistics ss : instanceInfo.getStats()) {
             stats.put(ss.getMessageSize(), ss.getSpeed());
         }
+    }
+
+    public int getBestPartitionsCount(final EventTypeStatistics stat) {
+        if (null == stat) {
+            return defaultPartitionCount;
+        }
+        final int maxPartitionsDueParallelism = Math.max(stat.getReadParallelism(), stat.getWriteParallelism());
+        if (maxPartitionsDueParallelism >= maxPartitionCount) {
+            return maxPartitionCount;
+        }
+        return Math.min(maxPartitionCount, Math.max(
+                maxPartitionsDueParallelism,
+                calculatePartitionsAccordingLoad(stat.getMessagesPerMinute(), stat.getMessageSize())));
+
+    }
+
+    private int calculatePartitionsAccordingLoad(final int messagesPerMinute, final int avgEventSizeBytes) {
+        final float throughoutputMbPerSec = ((float) messagesPerMinute * (float) avgEventSizeBytes)
+                / (1024.f * 1024.f * 60.f);
+        return getBestPartitionsCount(avgEventSizeBytes, throughoutputMbPerSec);
     }
 
     public int getBestPartitionsCount(final int messageSize, final float mbsPerSecond) {
@@ -132,25 +160,28 @@ public class KafkaPartitionsCalculator {
         }
     }
 
-    static KafkaPartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType)
+    static PartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType,
+                                     final NakadiSettings nakadiSettings)
             throws IOException {
-        try (final InputStream in = KafkaPartitionsCalculator.class.getResourceAsStream(PARTITION_STATISTICS)) {
+        try (final InputStream in = PartitionsCalculator.class.getResourceAsStream(PARTITION_STATISTICS)) {
             if (null == in) {
                 throw new IOException("Resource with name " + PARTITION_STATISTICS + " is not found");
             }
-            return load(objectMapper, instanceType, in);
+            return load(objectMapper, instanceType, in, nakadiSettings.getDefaultTopicPartitionCount(),
+                    nakadiSettings.getMaxTopicPartitionCount());
         }
     }
 
     @VisibleForTesting
-    static KafkaPartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType,
-                                          final InputStream in) throws IOException {
+    static PartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType,
+                                     final InputStream in, final int defaultPartitionsCount,
+                                     final int maxPartitionCount) throws IOException {
         final InstanceInfo[] instanceInfos = objectMapper.readValue(in, InstanceInfo[].class);
         final InstanceInfo instanceInfo = Stream.of(instanceInfos)
                 .filter(ii -> instanceType.equals(ii.getName()))
                 .findAny().orElseThrow(() -> new IllegalArgumentException("Failed to find instance " + instanceType
                         + " configuration"));
-        return new KafkaPartitionsCalculator(instanceInfo);
+        return new PartitionsCalculator(instanceInfo, defaultPartitionsCount, maxPartitionCount);
     }
 
 }

@@ -4,7 +4,20 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,13 +29,17 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.TopicPosition;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.UnparseableCursorException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -35,20 +52,8 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
-
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -92,6 +97,55 @@ public class EventStreamController {
         this.featureToggleService = featureToggleService;
     }
 
+    @VisibleForTesting
+    List<TopicPosition> getStreamingStart(final String topic, final String cursorsStr)
+            throws UnparseableCursorException, ServiceUnavailableException, InvalidCursorException {
+        List<Cursor> cursors = null;
+        if (cursorsStr != null) {
+            try {
+                cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {
+                });
+            } catch (final IOException ex) {
+                throw new UnparseableCursorException("Incorrect syntax of X-nakadi-cursors header", ex, cursorsStr);
+            }
+        }
+        if (null != cursors) {
+            Map<String, TopicPosition> begin = null;
+            final List<TopicPosition> result = new ArrayList<>();
+            for (final Cursor c : cursors) {
+                final TopicPosition toUse;
+                if (Cursor.BEFORE_OLDEST_OFFSET.equalsIgnoreCase(c.getOffset())) {
+                    if (null == begin) {
+                        begin = topicRepository.loadTopicStatistics(Collections.singletonList(topic)).stream()
+                                .collect(Collectors.toMap(
+                                        PartitionStatistics::getPartition,
+                                        PartitionStatistics::getBeforeFirst));
+                    }
+                    toUse = begin.get(c.getPartition());
+                    if (null == toUse) {
+                        throw new InvalidCursorException(CursorError.PARTITION_NOT_FOUND, c);
+                    }
+                } else {
+                    if (null == c.getPartition()) {
+                        throw new InvalidCursorException(CursorError.NULL_PARTITION, c);
+                    } else if (null == c.getOffset()) {
+                        throw new InvalidCursorException(CursorError.NULL_OFFSET, c);
+                    }
+                    toUse = new TopicPosition(topic, c.getPartition(), c.getOffset());
+                }
+                result.add(toUse);
+            }
+            if (result.isEmpty()) {
+                throw new InvalidCursorException(CursorError.INVALID_FORMAT);
+            }
+            return result;
+        } else {
+            // if no cursors provided - read from the newest available events
+            return topicRepository.loadTopicStatistics(Collections.singletonList(topic)).stream()
+                    .map(PartitionStatistics::getLast).collect(Collectors.toList());
+        }
+    }
+
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("name") final String eventTypeName,
@@ -107,7 +161,7 @@ public class EventStreamController {
 
         return outputStream -> {
 
-            if  (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
+            if (blacklistService.isConsumptionBlocked(eventTypeName, client.getClientId())) {
                 writeProblemResponse(response, outputStream,
                         Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
                 return;
@@ -115,7 +169,7 @@ public class EventStreamController {
 
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
-            EventConsumer eventConsumer = null;
+            EventStream eventStream = null;
 
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
 
@@ -131,45 +185,21 @@ public class EventStreamController {
                     writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, "topic is absent in kafka");
                     return;
                 }
-                final EventStreamConfig.Builder builder = EventStreamConfig.builder()
-                        .withTopic(topic)
+                final EventStreamConfig streamConfig = EventStreamConfig.builder()
                         .withBatchLimit(batchLimit)
                         .withStreamLimit(streamLimit)
                         .withBatchTimeout(batchTimeout)
                         .withStreamTimeout(streamTimeout)
                         .withStreamKeepAliveLimit(streamKeepAliveLimit)
                         .withEtName(eventTypeName)
-                        .withConsumingAppId(client.getClientId());
-
-                // deserialize cursors
-                List<Cursor> cursors = null;
-                if (cursorsStr != null) {
-                    try {
-                        cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {});
-                    } catch (final IOException e) {
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Incorrect syntax of X-nakadi-cursors header: "  + cursorsStr
-                                    + ". Respond with BAD_REQUEST.", e);
-                        }
-                        writeProblemResponse(response, outputStream, BAD_REQUEST,
-                                "incorrect syntax of X-nakadi-cursors header");
-                        return;
-                    }
-                }
-
-                // if no cursors provided - read from the newest available events
-                if (cursors == null) {
-                    cursors = topicRepository
-                            .listPartitions(topic)
-                            .stream()
-                            .map(pInfo -> new Cursor(pInfo.getPartitionId(), pInfo.getNewestAvailableOffset()))
-                            .collect(Collectors.toList());
-                }
+                        .withConsumingAppId(client.getClientId())
+                        .withCursors(getStreamingStart(topic, cursorsStr))
+                        .build();
 
                 // acquire connection slots to limit the number of simultaneous connections from one client
                 if (featureToggleService.isFeatureEnabled(LIMIT_CONSUMERS_NUMBER)) {
-                    final List<String> partitions = cursors.stream()
-                            .map(Cursor::getPartition)
+                    final List<String> partitions = streamConfig.getCursors().stream()
+                            .map(TopicPosition::getPartition)
                             .collect(Collectors.toList());
                     connectionSlots = consumerLimitingService.acquireConnectionSlots(
                             client.getClientId(), eventTypeName, partitions);
@@ -180,26 +210,21 @@ public class EventStreamController {
 
                 final String kafkaQuotaClientId = getKafkaQuotaClientId(eventTypeName, client);
 
-                eventConsumer = topicRepository.createEventConsumer(kafkaQuotaClientId, topic, cursors);
-
-                final Map<String, String> streamCursors = cursors
-                        .stream()
-                        .collect(Collectors.toMap(
-                                Cursor::getPartition,
-                                Cursor::getOffset));
-
-                final EventStreamConfig streamConfig = builder
-                        .withCursors(streamCursors)
-                        .build();
-
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
-                final EventStream eventStream = eventStreamFactory.createEventStream(eventConsumer, outputStream,
-                        streamConfig, blacklistService);
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer(kafkaQuotaClientId, streamConfig.getCursors());
+                eventStream = eventStreamFactory.createEventStream(
+                        outputStream, eventConsumer, streamConfig, blacklistService);
 
                 outputStream.flush(); // Flush status code to client
 
                 eventStream.streamEvents(connectionReady);
+            } catch (final UnparseableCursorException e) {
+                LOG.debug("Incorrect syntax of X-nakadi-cursors header: {}. Respond with BAD_REQUEST.",
+                        e.getCursors(), e);
+                writeProblemResponse(response, outputStream, BAD_REQUEST,
+                        "incorrect syntax of X-nakadi-cursors header");
+
             } catch (final NoSuchEventTypeException e) {
                 writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
             } catch (final NoConnectionSlotsException e) {
@@ -221,8 +246,8 @@ public class EventStreamController {
                 if (consumerCounter != null) {
                     consumerCounter.dec();
                 }
-                if (eventConsumer != null) {
-                    eventConsumer.close();
+                if (eventStream != null) {
+                    eventStream.close();
                 }
                 try {
                     outputStream.flush();

@@ -1,11 +1,11 @@
 package org.zalando.nakadi.service;
 
-import com.google.common.collect.ImmutableMap;
+import java.util.List;
+import org.zalando.nakadi.domain.TopicPosition;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
-import java.util.Map;
 
 @Immutable
 public class EventStreamConfig {
@@ -16,8 +16,7 @@ public class EventStreamConfig {
     private static final int STREAM_TIMEOUT_DEFAULT = 0;
     private static final int STREAM_KEEP_ALIVE_LIMIT_DEFAULT = 0;
 
-    private final String topic;
-    private final Map<String, String> cursors;
+    private final List<TopicPosition> cursors;
     private final int batchLimit;
     private final int streamLimit;
     private final int batchTimeout;
@@ -26,10 +25,9 @@ public class EventStreamConfig {
     private final String etName;
     private final String consumingAppId;
 
-    private EventStreamConfig(final String topic, final Map<String, String> cursors, final int batchLimit,
+    private EventStreamConfig(final List<TopicPosition> cursors, final int batchLimit,
                              final int streamLimit, final int batchTimeout, final int streamTimeout,
                              final int streamKeepAliveLimit, final String etName, final String consumingAppId) {
-        this.topic = topic;
         this.cursors = cursors;
         this.batchLimit = batchLimit;
         this.streamLimit = streamLimit;
@@ -40,11 +38,7 @@ public class EventStreamConfig {
         this.consumingAppId = consumingAppId;
     }
 
-    public String getTopic() {
-        return topic;
-    }
-
-    public Map<String, String> getCursors() {
+    public List<TopicPosition> getCursors() {
         return cursors;
     }
 
@@ -78,7 +72,7 @@ public class EventStreamConfig {
 
     @Override
     public String toString() {
-        return "EventStreamConfig{" + "topic='" + topic + '\'' + ", cursors=" + cursors + ", batchLimit=" + batchLimit
+        return "EventStreamConfig{cursors=" + cursors + ", batchLimit=" + batchLimit
                 + ", streamLimit=" + streamLimit + ", batchTimeout=" + batchTimeout + ", streamTimeout=" + streamTimeout
                 + ", streamKeepAliveLimit=" + streamKeepAliveLimit + '}';
     }
@@ -96,13 +90,12 @@ public class EventStreamConfig {
 
         return batchLimit == that.batchLimit && streamLimit == that.streamLimit && batchTimeout == that.batchTimeout
                 && streamTimeout == that.streamTimeout && streamKeepAliveLimit == that.streamKeepAliveLimit
-                && topic.equals(that.topic) && cursors.equals(that.cursors);
+                && cursors.equals(that.cursors);
     }
 
     @Override
     public int hashCode() {
-        int result = topic.hashCode();
-        result = 31 * result + cursors.hashCode();
+        int result = cursors.hashCode();
         result = 31 * result + batchLimit;
         result = 31 * result + streamLimit;
         result = 31 * result + batchTimeout;
@@ -117,8 +110,7 @@ public class EventStreamConfig {
 
     public static class Builder {
 
-        private String topic = null;
-        private Map<String, String> cursors = ImmutableMap.of();
+        private List<TopicPosition> cursors = null;
         private int batchLimit = BATCH_LIMIT_DEFAULT;
         private int streamLimit = STREAM_LIMIT_DEFAULT;
         private int batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
@@ -127,12 +119,7 @@ public class EventStreamConfig {
         private String etName;
         private String consumingAppId;
 
-        public Builder withTopic(final String topic) {
-            this.topic = topic;
-            return this;
-        }
-
-        public Builder withCursors(final Map<String, String> cursors) {
+        public Builder withCursors(final List<TopicPosition> cursors) {
             this.cursors = cursors;
             return this;
         }
@@ -188,14 +175,12 @@ public class EventStreamConfig {
 
 
         public EventStreamConfig build() throws UnprocessableEntityException {
-            if (topic == null) {
-                throw new IllegalStateException("Topic should be specified");
-            } else if (streamLimit != 0 && streamLimit < batchLimit) {
+            if (streamLimit != 0 && streamLimit < batchLimit) {
                 throw new UnprocessableEntityException("stream_limit can't be lower than batch_limit");
             } else if (streamTimeout != 0 && streamTimeout < batchTimeout) {
                 throw new UnprocessableEntityException("stream_timeout can't be lower than batch_flush_timeout");
             }
-            return new EventStreamConfig(topic, cursors, batchLimit, streamLimit, batchTimeout, streamTimeout,
+            return new EventStreamConfig(cursors, batchLimit, streamLimit, batchTimeout, streamTimeout,
                     streamKeepAliveLimit, etName, consumingAppId);
         }
     }

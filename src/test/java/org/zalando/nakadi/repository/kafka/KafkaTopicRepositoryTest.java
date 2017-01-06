@@ -2,6 +2,12 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Future;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -15,31 +21,19 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.junit.Assert;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventTypeStatistics;
-import org.zalando.nakadi.domain.Topic;
-import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.domain.TopicPosition;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.function.Function;
-
-import static java.lang.String.valueOf;
+import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.view.Cursor;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -50,12 +44,9 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyVararg;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
 
 public class KafkaTopicRepositoryTest {
 
@@ -84,6 +75,7 @@ public class KafkaTopicRepositoryTest {
     }
 
     private ConsumerOffsetMode offsetMode = ConsumerOffsetMode.EARLIEST;
+
     private enum ConsumerOffsetMode {
         EARLIEST,
         LATEST
@@ -93,22 +85,10 @@ public class KafkaTopicRepositoryTest {
             cursor("0", "39"), // the first one possible
             cursor("0", "40"), // something in the middle
             cursor("0", "41"), // the last one possible
-            cursor("1", "150"), // something in the middle
-            cursor("1", Cursor.BEFORE_OLDEST_OFFSET)); // consume from the very beginning
+            cursor("1", "150")); // something in the middle
 
     public static final List<Cursor> ANOTHER_TOPIC_VALID_CURSORS = asList(cursor("1", "0"), cursor("1", "99"),
             cursor("5", "30"), cursor("9", "100"));
-
-    private static final List<String> MY_TOPIC_VALID_PARTITIONS = ImmutableList.of("0", "1", "2");
-    private static final List<String> MY_TOPIC_INVALID_PARTITIONS = ImmutableList.of("3", "-1", "abc");
-
-    private static final Function<PartitionState, TopicPartition> PARTITION_STATE_TO_TOPIC_PARTITION = p -> {
-        final TopicPartition topicPartition = new TopicPartition(p.topic, valueOf(p.partition));
-        topicPartition.setOldestAvailableOffset(valueOf(p.earliestOffset));
-        final String newestAvailable = p.latestOffset == 0 ? Cursor.BEFORE_OLDEST_OFFSET : valueOf(p.latestOffset - 1);
-        topicPartition.setNewestAvailableOffset(newestAvailable);
-        return topicPartition;
-    };
 
     private final KafkaTopicRepository kafkaTopicRepository;
     private final KafkaProducer<String, String> kafkaProducer;
@@ -128,7 +108,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void canListAllTopics() throws Exception {
-        final List<Topic> allTopics = allTopics().stream().map(Topic::new).collect(toList());
+        final List<String> allTopics = allTopics().stream().collect(toList());
         assertThat(kafkaTopicRepository.listTopics(), containsInAnyOrder(allTopics.toArray()));
     }
 
@@ -140,14 +120,10 @@ public class KafkaTopicRepositoryTest {
         assertThat(kafkaTopicRepository.topicExists("doesnt-exist"), is(false));
     }
 
-    @Test
-    public void canDetermineIfPartitionExists() throws NakadiException {
-        for (final String validPartition : MY_TOPIC_VALID_PARTITIONS) {
-            assertThat(kafkaTopicRepository.partitionExists(MY_TOPIC, validPartition), is(true));
-        }
-        for (final String validPartition : MY_TOPIC_INVALID_PARTITIONS) {
-            assertThat(kafkaTopicRepository.partitionExists(MY_TOPIC, validPartition), is(false));
-        }
+    private static List<TopicPosition> asTopicPosition(final String topic, final List<Cursor> cursors) {
+        return cursors.stream()
+                .map(c -> new TopicPosition(topic, c.getPartition(), c.getOffset()))
+                .collect(toList());
     }
 
     @Test
@@ -155,17 +131,17 @@ public class KafkaTopicRepositoryTest {
     public void validateValidCursors() throws NakadiException, InvalidCursorException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(cursor));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, MY_TOPIC_VALID_CURSORS);
+        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, MY_TOPIC_VALID_CURSORS));
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, ANOTHER_TOPIC, asList(cursor));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS);
+        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
     }
 
     @Test
@@ -173,45 +149,25 @@ public class KafkaTopicRepositoryTest {
     public void invalidateInvalidCursors() throws NakadiException {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(outOfBoundOffset));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
 
-        final Cursor emptyPartition = cursor("2", "0");
-        try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(emptyPartition));
-        } catch (final InvalidCursorException e) {
-            assertThat(e.getError(), equalTo(CursorError.EMPTY_PARTITION));
-        }
-
         final Cursor nonExistingPartition = cursor("99", "100");
         try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(nonExistingPartition));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
 
         final Cursor wrongOffset = cursor("0", "blah");
         try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(wrongOffset));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(wrongOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }
 
-        final Cursor nullOffset = cursor("0", null);
-        try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(nullOffset));
-        } catch (final InvalidCursorException e) {
-            assertThat(e.getError(), equalTo(CursorError.NULL_OFFSET));
-        }
-
-        final Cursor nullPartition = cursor(null, "x");
-        try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(nullPartition));
-        } catch (final InvalidCursorException e) {
-            assertThat(e.getError(), equalTo(CursorError.NULL_PARTITION));
-        }
     }
 
     @Test
@@ -353,21 +309,19 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
-        kafkaTopicRepository.validateCommitCursors(MY_TOPIC, ImmutableList.of(cursor("0", "23")));
+        kafkaTopicRepository.validateCommitCursor(new TopicPosition(MY_TOPIC, "0", "23"));
     }
 
     @Test
     public void whenValidateInvalidCommitCursorsThenException() throws NakadiException {
         ImmutableMap.of(
-                cursor(null, "1"), CursorError.NULL_PARTITION,
-                cursor("0", null), CursorError.NULL_OFFSET,
                 cursor("345", "1"), CursorError.PARTITION_NOT_FOUND,
                 cursor("0", "abc"), CursorError.INVALID_FORMAT)
                 .entrySet()
-                .stream()
                 .forEach(testCase -> {
                     try {
-                        kafkaTopicRepository.validateCommitCursors(MY_TOPIC, ImmutableList.of(testCase.getKey()));
+                        kafkaTopicRepository.validateCommitCursor(new TopicPosition(
+                                MY_TOPIC, testCase.getKey().getPartition(), testCase.getKey().getOffset()));
                     } catch (final InvalidCursorException e) {
                         assertThat(e.getError(), equalTo(testCase.getValue()));
                     }
@@ -406,18 +360,6 @@ public class KafkaTopicRepositoryTest {
                 .count() >= 1);
     }
 
-    private void canListAllPartitionsOfTopic(final String topic) throws NakadiException {
-        final List<TopicPartition> expected = PARTITIONS
-                .stream()
-                .filter(p -> p.topic.equals(topic))
-                .map(PARTITION_STATE_TO_TOPIC_PARTITION)
-                .collect(toList());
-
-        final List<TopicPartition> actual = kafkaTopicRepository.listPartitions(topic);
-
-        assertThat(actual, containsInAnyOrder(expected.toArray()));
-    }
-
     private static Cursor cursor(final String partition, final String offset) {
         return new Cursor(partition, offset);
     }
@@ -429,7 +371,7 @@ public class KafkaTopicRepositoryTest {
                     nakadiSettings,
                     kafkaSettings,
                     zookeeperSettings,
-                    KafkaPartitionsCalculatorTest.buildTest());
+                    new UUIDGenerator());
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
@@ -460,7 +402,7 @@ public class KafkaTopicRepositoryTest {
         // Consumer
         final Consumer consumer = mock(Consumer.class);
 
-        allTopics().stream().forEach(
+        allTopics().forEach(
                 topic -> when(consumer.partitionsFor(topic)).thenReturn(partitionsOfTopic(topic)));
 
         doAnswer(invocation -> {
