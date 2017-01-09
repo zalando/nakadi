@@ -140,10 +140,12 @@ public class SchemaEvolutionService {
         return change.getJsonPath() + ": " + errorMessages.get(change.getType());
     }
 
-    private Version.Level semanticOfChange(final List<SchemaChange> changes, final CompatibilityMode compatibilityMode) {
+    private Version.Level semanticOfChange(final List<SchemaChange> changes,
+                                           final CompatibilityMode compatibilityMode) {
         final Map<SchemaChange.Type, Version.Level> semanticOfChange = compatibilityMode
                 .equals(CompatibilityMode.COMPATIBLE) ? compatibleChanges : forwardChanges;
-        return changes.stream().map(SchemaChange::getType).map(semanticOfChange::get).reduce(NO_CHANGES, (acc, change) -> {
+        return changes.stream().map(SchemaChange::getType).map(semanticOfChange::get)
+                .reduce(NO_CHANGES, (acc, change) -> {
             if (Version.Level.valueOf(change.toString()).ordinal() < Version.Level.valueOf(acc.toString()).ordinal()) {
                 return change;
             } else {
