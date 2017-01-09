@@ -18,9 +18,12 @@ public class JsonSchemaEnrichment {
 
     private static final String ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String ADDITIONAL_ITEMS = "additionalItems";
-    private static final List<String> OBJECT_SCHEMA_KEYWORDS = ImmutableList.of("definitions", "dependencies",
-            "properties", "required", "minProperties", "maxProperties");
-    private static final List<String> ARRAY_SCHEMA_KEYWORDS = ImmutableList.of("minItems", "maxItems", "uniqueItems");
+    private static final List<String> NESTED_SCHEMA_KEYWORDS = ImmutableList.of("definitions", "dependencies",
+            "properties");
+    private static final List<String> OBJECT_SCHEMA_KEYWORDS = ImmutableList.of("properties", "required",
+            "minProperties", "maxProperties");
+    private static final List<String> ARRAY_SCHEMA_KEYWORDS = ImmutableList.of("minItems", "maxItems", "uniqueItems",
+            "items");
     private static final List<String> COMPOSED_SCHEMA_KEYWORDS = ImmutableList.of("anyOf", "allOf", "oneOf");
 
     public JSONObject effectiveSchema(final EventType eventType) throws JSONException {
@@ -71,7 +74,7 @@ public class JsonSchemaEnrichment {
     }
 
     private void enforceNoAdditionalProperties(final JSONObject schema) {
-        if (schema.length() == 0) {
+        if (isEmptySchema(schema)) {
             schema.put(ADDITIONAL_PROPERTIES, false);
         }
 
@@ -84,12 +87,25 @@ public class JsonSchemaEnrichment {
         OBJECT_SCHEMA_KEYWORDS.forEach(keyword -> {
             if (schema.has(keyword)) {
                 schema.put(ADDITIONAL_PROPERTIES, false);
-                Optional.ofNullable(schema.optJSONObject(keyword))
-                        .ifPresent(object ->
-                                object.keySet().forEach(key -> enforceStrictValidation(object.getJSONObject(key)))
-                        );
             }
         });
+
+        NESTED_SCHEMA_KEYWORDS.forEach(keyword -> {
+            Optional.ofNullable(schema.optJSONObject(keyword))
+                    .ifPresent(object ->
+                            object.keySet().forEach(key -> enforceStrictValidation(object.getJSONObject(key)))
+                    );
+            });
+    }
+
+    private boolean isEmptySchema(final JSONObject schema) {
+        return !(
+            OBJECT_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+            ARRAY_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+            COMPOSED_SCHEMA_KEYWORDS.stream().anyMatch(schema::has) ||
+            schema.has("$ref") ||
+            schema.has("type")
+        );
     }
 
     private static JSONObject wrapSchemaInData(final JSONObject schema, final EventType eventType) {
