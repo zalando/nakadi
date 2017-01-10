@@ -17,18 +17,10 @@ public class BatchFactory {
         final int length = events.length();
         int end = length - 1;
 
-        while ((events.charAt(start) == ' '
-                || events.charAt(start) == '\t'
-                || events.charAt(start) == '\n'
-                || events.charAt(start) == '\r')
-                && start < end) {
+        while (isEmptyCharacter(events.charAt(start)) && start < end) {
             start++;
         }
-        while ((events.charAt(end) == ' '
-                || events.charAt(end) == '\t'
-                || events.charAt(end) == '\n'
-                || events.charAt(end) == '\r')
-                && end > start) {
+        while (isEmptyCharacter(events.charAt(end)) && end > start) {
             end--;
         }
         if (!(events.charAt(start) == '[')) {
@@ -65,16 +57,10 @@ public class BatchFactory {
                     brackets--;
                 }
                 if (!((brackets == 0) && ((events.charAt(i) == ',')
-                 || (events.charAt(i) == ' ')
-                || (events.charAt(i) == '\t')
-                || (events.charAt(i) == '\n')
-                || (events.charAt(i) == '\r')))) {
+                 || isEmptyCharacter(events.charAt(i))))) {
                     sb.append(events.charAt(i));
                 }
-                if (brackets == 0 && (events.charAt(i) != ' ')
-                        && (events.charAt(i) != '\t'
-                        && (events.charAt(i) != '\n')
-                        && (events.charAt(i) != '\r'))) {
+                if (brackets == 0 && !isEmptyCharacter(events.charAt(i))) {
                     if (sb.length() > 0) {
                         batch.add(new BatchItem(sb.toString()));
                     }
@@ -88,5 +74,9 @@ public class BatchFactory {
         }
 
         return batch;
+    }
+
+    private static boolean isEmptyCharacter(final char c) {
+        return (c == ' ' || c == '\t' || c == '\n' || c == '\r');
     }
 }
