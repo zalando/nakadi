@@ -282,6 +282,8 @@ public class TimelineSyncImpl implements TimelineSync {
                     .forPath(etZkPath, nodeId.getBytes(Charsets.UTF_8));
             updateVersionAndWaitForAllNodes(timeoutMs);
             successful = true;
+        } catch (final KeeperException.NodeExistsException ex) {
+            throw new IllegalStateException(ex);
         } catch (final InterruptedException ex) {
             throw ex;
         } catch (final Exception e) {

@@ -34,8 +34,9 @@ public interface TimelineSync {
      *
      * @param eventType Event type to lock publishing to.
      * @param timeoutMs Timeout for sync operation.
+     * @throws IllegalStateException In case when timeline update already started for specified event type
      */
-    void startTimelineUpdate(String eventType, long timeoutMs) throws InterruptedException;
+    void startTimelineUpdate(String eventType, long timeoutMs) throws InterruptedException, IllegalStateException;
 
     /**
      * Release publishing lock to event type
