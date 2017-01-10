@@ -19,8 +19,8 @@ import org.zalando.nakadi.domain.Timeline;
 public class TimelineDbRepository extends AbstractDbRepository {
 
     public static final String BASE_TIMELINE_QUERY = "SELECT " +
-            "   t_id, et_name, t_order, t.st_id, t_topic, " +
-            "   t_created_at, t_switched_at, t_cleanup_at, t_latest_position, " +
+            "   tl_id, et_name, tl_order, t.st_id, tl_topic, " +
+            "   tl_created_at, tl_switched_at, tl_cleanup_at, tl_latest_position, " +
             "   st_type, st_configuration " +
             " FROM " +
             "   zn_data.timeline t " +
@@ -33,16 +33,14 @@ public class TimelineDbRepository extends AbstractDbRepository {
 
     public List<Timeline> listTimelines(final String eventType) {
         return jdbcTemplate.query(
-                BASE_TIMELINE_QUERY + " WHERE t.et_name=? order by t.t_order",
-                new Object[]{eventType},
-                timelineRowMapper);
+                BASE_TIMELINE_QUERY + " WHERE t.et_name=? order by t.tl_order",
+                timelineRowMapper,
+                eventType);
     }
 
     public Optional<Timeline> getTimeline(final UUID id) {
         final List<Timeline> timelines = jdbcTemplate.query(
-                BASE_TIMELINE_QUERY + " WHERE t.t_id=?",
-                new Object[]{id},
-                timelineRowMapper);
+                BASE_TIMELINE_QUERY + " WHERE t.tl_id=?", timelineRowMapper, id);
         return Optional.ofNullable(timelines.isEmpty() ? null : timelines.get(0));
     }
 
@@ -50,8 +48,8 @@ public class TimelineDbRepository extends AbstractDbRepository {
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.timeline(" +
-                            " t_id, et_name, t_order, st_id, t_topic, " +
-                            " t_created_at, t_switched_at, t_cleanup_at, t_latest_position) " +
+                            " tl_id, et_name, tl_order, st_id, tl_topic, " +
+                            " tl_created_at, tl_switched_at, tl_cleanup_at, tl_latest_position) " +
                             " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)",
                     timeline.getId(),
                     timeline.getEventType(),
@@ -74,14 +72,14 @@ public class TimelineDbRepository extends AbstractDbRepository {
             jdbcTemplate.update(
                     "UPDATE zn_data.timeline SET " +
                             " et_name=?, " +
-                            " t_order=?, " +
+                            " tl_order=?, " +
                             " st_id=?, " +
-                            " t_topic=?, " +
-                            " t_created_at=?, " +
-                            " t_switched_at=?, " +
-                            " t_cleanup_at=?, " +
-                            " t_latest_position=?::jsonb " +
-                            " WHERE t_id=?",
+                            " tl_topic=?, " +
+                            " tl_created_at=?, " +
+                            " tl_switched_at=?, " +
+                            " tl_cleanup_at=?, " +
+                            " tl_latest_position=?::jsonb " +
+                            " WHERE tl_id=?",
                     timeline.getEventType(),
                     timeline.getOrder(),
                     timeline.getStorage().getId(),
@@ -99,28 +97,29 @@ public class TimelineDbRepository extends AbstractDbRepository {
 
     public void deleteTimeline(final UUID id) {
         jdbcTemplate.update(
-                "DELETE FROM zn_data.timeline WHERE t_id=?",
+                "DELETE FROM zn_data.timeline WHERE tl_id=?",
                 new Object[]{id});
     }
 
     private final RowMapper<Timeline> timelineRowMapper = (rs, rowNum) -> {
-        final UUID timelineId = (UUID) rs.getObject("t_id");
+        final UUID timelineId = (UUID) rs.getObject("tl_id");
         try {
-            final Timeline result = new Timeline();
-            result.setStorage(StorageDbRepository.buildStorage(
-                    jsonMapper,
-                    rs.getString("st_id"),
-                    rs.getString("st_type"),
-                    rs.getString("st_configuration")));
-            result.setId((UUID) rs.getObject("t_id"));
-            result.setEventType(rs.getString("et_name"));
-            result.setOrder(rs.getInt("t_order"));
-            result.setTopic(rs.getString("t_topic"));
-            result.setCreatedAt(rs.getTimestamp("t_created_at"));
-            result.setCleanupAt(rs.getTimestamp("t_cleanup_at"));
-            result.setSwitchedAt(rs.getTimestamp("t_switched_at"));
+            final Timeline result = new Timeline(
+                    rs.getString("et_name"),
+                    rs.getInt("tl_order"),
+                    StorageDbRepository.buildStorage(
+                            jsonMapper,
+                            rs.getString("st_id"),
+                            rs.getString("st_type"),
+                            rs.getString("st_configuration")),
+                    rs.getString("tl_topic"),
+                    rs.getTimestamp("tl_created_at")
+            );
+            result.setId((UUID) rs.getObject("tl_id"));
+            result.setCleanupAt(rs.getTimestamp("tl_cleanup_at"));
+            result.setSwitchedAt(rs.getTimestamp("tl_switched_at"));
             result.setLatestPosition(
-                    result.getStorage().restorePosition(jsonMapper, rs.getString("t_latest_position")));
+                    result.getStorage().restorePosition(jsonMapper, rs.getString("tl_latest_position")));
             return result;
         } catch (IOException e) {
             throw new SQLException("Failed to restore timeline with id " + timelineId, e);
