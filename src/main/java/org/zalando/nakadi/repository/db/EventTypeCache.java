@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
 
@@ -52,14 +53,14 @@ public class EventTypeCache {
 
     private final LoadingCache<String, CachedValue> eventTypeCache;
     private final PathChildrenCache cacheSync;
-    private final CuratorFramework zkClient;
+    private final ZooKeeperHolder zkClient;
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
 
-    public EventTypeCache(final EventTypeRepository eventTypeRepository, final CuratorFramework zkClient)
+    public EventTypeCache(final EventTypeRepository eventTypeRepository, final ZooKeeperHolder zkClient)
             throws Exception {
         this.zkClient = zkClient;
         this.eventTypeCache = setupInMemoryEventTypeCache(eventTypeRepository);
-        this.cacheSync = setupCacheSync(zkClient);
+        this.cacheSync = setupCacheSync(zkClient.get());
         preloadEventTypes(eventTypeRepository);
     }
 
@@ -91,13 +92,13 @@ public class EventTypeCache {
     public void updated(final String name) throws Exception {
         created(name); // make sure every event type is tracked in the remote cache
         final String path = getZNodePath(name);
-        zkClient.setData().forPath(path, new byte[0]);
+        zkClient.get().setData().forPath(path, new byte[0]);
     }
 
     public void created(final String name) throws Exception {
         try {
             final String path = getZNodePath(name);
-            zkClient
+            zkClient.get()
                     .create()
                     .creatingParentsIfNeeded()
                     .withMode(CreateMode.PERSISTENT)
@@ -110,7 +111,7 @@ public class EventTypeCache {
     public void removed(final String name) throws Exception {
         final String path = getZNodePath(name);
         created(name); // make sure every nome is tracked in the remote cache
-        zkClient.delete().forPath(path);
+        zkClient.get().delete().forPath(path);
     }
 
     private Optional<CachedValue> getCached(final String name)

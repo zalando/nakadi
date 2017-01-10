@@ -1,8 +1,5 @@
 package org.zalando.nakadi.repository.db;
 
-import org.zalando.nakadi.config.RepositoriesConfig;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -13,7 +10,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-
+import org.zalando.nakadi.config.RepositoriesConfig;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.fail;
@@ -28,21 +28,22 @@ import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 public class EventTypeCacheTest {
 
     private final EventTypeRepository dbRepo = mock(EventTypeRepository.class);
-    private final CuratorFramework client;
+    private final ZooKeeperHolder client;
 
     public EventTypeCacheTest() throws Exception {
         final String connectString = "127.0.0.1:2181";
         final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
         final CuratorFramework cf = CuratorFrameworkFactory.newClient(connectString, retryPolicy);
         cf.start();
-        this.client = cf;
+        this.client = Mockito.mock(ZooKeeperHolder.class);
+        Mockito.when(this.client.get()).thenReturn(cf);
     }
 
     @Before
     @After
     public void setUp() throws Exception {
-        if (client.checkExists().forPath("/nakadi/event_types/event-name") != null) {
-            client.delete().forPath("/nakadi/event_types/event-name");
+        if (client.get().checkExists().forPath("/nakadi/event_types/event-name") != null) {
+            client.get().delete().forPath("/nakadi/event_types/event-name");
         }
     }
 
@@ -54,7 +55,7 @@ public class EventTypeCacheTest {
 
         etc.created(et.getName());
 
-        assertNotNull(client.checkExists().forPath("/nakadi/event_types/" + et.getName()));
+        assertNotNull(client.get().checkExists().forPath("/nakadi/event_types/" + et.getName()));
     }
 
     @Test
@@ -63,7 +64,7 @@ public class EventTypeCacheTest {
 
         final EventType et = buildDefaultEventType();
 
-        client
+        client.get()
                 .create()
                 .creatingParentsIfNeeded()
                 .withMode(CreateMode.PERSISTENT)
@@ -71,7 +72,7 @@ public class EventTypeCacheTest {
 
         etc.updated(et.getName());
 
-        final byte data[] = client.getData().forPath("/nakadi/event_types/" + et.getName());
+        final byte data[] = client.get().getData().forPath("/nakadi/event_types/" + et.getName());
         assertThat(data, equalTo(new byte[0]));
     }
 
@@ -81,7 +82,7 @@ public class EventTypeCacheTest {
 
         final EventType et = buildDefaultEventType();
 
-        client
+        client.get()
                 .create()
                 .creatingParentsIfNeeded()
                 .withMode(CreateMode.PERSISTENT)
@@ -89,7 +90,7 @@ public class EventTypeCacheTest {
 
         etc.removed(et.getName());
 
-        assertNull(client.checkExists().forPath("/nakadi/event_types/" + et.getName()));
+        assertNull(client.get().checkExists().forPath("/nakadi/event_types/" + et.getName()));
     }
 
     @Test
@@ -112,7 +113,7 @@ public class EventTypeCacheTest {
     @SuppressWarnings("unchecked")
     @Test
     public void invalidateCacheOnUpdate() throws Exception {
-        final EventTypeCache etc = RepositoriesConfig.eventTypeCacheInternal(client, dbRepo);
+        final EventTypeCache etc = new RepositoriesConfig().eventTypeCache(client, dbRepo);
 
         final EventType et = buildDefaultEventType();
 
@@ -129,7 +130,7 @@ public class EventTypeCacheTest {
                     try {
                         etc.getEventType(et.getName());
                         verify(dbRepo, times(2)).findByName(et.getName());
-                    } catch (Exception e) {
+                    } catch (final Exception e) {
                         fail();
                     }
                 },
