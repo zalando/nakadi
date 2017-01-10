@@ -133,13 +133,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
             final Date switchedAt,
             final Date cleanupAt,
             final Timeline.StoragePosition latestPosition) {
-        final Timeline timeline = new Timeline();
+        final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
         timeline.setId(id);
-        timeline.setStorage(storage);
-        timeline.setOrder(order);
-        timeline.setTopic(topic);
-        timeline.setEventType(eventType);
-        timeline.setCreatedAt(createdAt);
         timeline.setSwitchedAt(switchedAt);
         timeline.setCleanupAt(cleanupAt);
         timeline.setLatestPosition(latestPosition);

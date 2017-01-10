@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.Nullable;
 
 public class Timeline {
 
@@ -42,21 +43,39 @@ public class Timeline {
         }
     }
 
+    @Nullable
     private UUID id;
     private String eventType;
-    private Integer order;
+    private int order;
     private Storage storage;
     private String topic;
     private Date createdAt;
+    @Nullable
     private Date switchedAt;
+    @Nullable
     private Date cleanupAt;
+    @Nullable
     private StoragePosition latestPosition;
 
+    public Timeline(
+            final String eventType,
+            final int order,
+            final Storage storage,
+            final String topic,
+            final Date createdAt) {
+        this.eventType = eventType;
+        this.order = order;
+        this.storage = storage;
+        this.topic = topic;
+        this.createdAt = createdAt;
+    }
+
+    @Nullable
     public UUID getId() {
         return id;
     }
 
-    public void setId(final UUID id) {
+    public void setId(@Nullable final UUID id) {
         this.id = id;
     }
 
@@ -100,27 +119,30 @@ public class Timeline {
         this.createdAt = createdAt;
     }
 
+    @Nullable
     public Date getSwitchedAt() {
         return switchedAt;
     }
 
-    public void setSwitchedAt(final Date switchedAt) {
+    public void setSwitchedAt(@Nullable final Date switchedAt) {
         this.switchedAt = switchedAt;
     }
 
+    @Nullable
     public StoragePosition getLatestPosition() {
         return latestPosition;
     }
 
-    public void setLatestPosition(final StoragePosition latestPosition) {
+    public void setLatestPosition(@Nullable final StoragePosition latestPosition) {
         this.latestPosition = latestPosition;
     }
 
+    @Nullable
     public Date getCleanupAt() {
         return cleanupAt;
     }
 
-    public void setCleanupAt(final Date cleanupAt) {
+    public void setCleanupAt(@Nullable final Date cleanupAt) {
         this.cleanupAt = cleanupAt;
     }
 
