@@ -1,8 +1,16 @@
 package org.zalando.nakadi.repository.db;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -18,14 +26,6 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
-
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 public class EventTypeCache {
 
@@ -58,9 +58,18 @@ public class EventTypeCache {
 
     public EventTypeCache(final EventTypeRepository eventTypeRepository, final ZooKeeperHolder zkClient)
             throws Exception {
+        this(eventTypeRepository, zkClient, setupCacheSync(zkClient.get()));
+    }
+
+    @VisibleForTesting
+    EventTypeCache(final EventTypeRepository eventTypeRepository, final ZooKeeperHolder zkClient,
+                   final PathChildrenCache cache) {
         this.zkClient = zkClient;
         this.eventTypeCache = setupInMemoryEventTypeCache(eventTypeRepository);
-        this.cacheSync = setupCacheSync(zkClient.get());
+        this.cacheSync = cache;
+        if (null != cacheSync) {
+            this.cacheSync.getListenable().addListener((curator, event) -> this.onZkEvent(event));
+        }
         preloadEventTypes(eventTypeRepository);
     }
 
@@ -137,7 +146,7 @@ public class EventTypeCache {
                 .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
     }
 
-    private PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
+    private static PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
         try {
             zkClient.create()
                     .creatingParentsIfNeeded()
@@ -149,9 +158,9 @@ public class EventTypeCache {
 
         final PathChildrenCache cacheSync = new PathChildrenCache(zkClient, ZKNODE_PATH, false);
 
-        cacheSync.start();
-
-        cacheSync.getListenable().addListener((curator, event) -> this.onZkEvent(event));
+        // It is important to preload all data before specifying callback for updates, because otherwise preload won't
+        // give any effect - all changes will be removed.
+        cacheSync.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
 
         return cacheSync;
     }

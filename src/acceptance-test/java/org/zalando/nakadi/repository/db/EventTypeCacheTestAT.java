@@ -25,12 +25,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
-public class EventTypeCacheTest {
+public class EventTypeCacheTestAT {
 
     private final EventTypeRepository dbRepo = mock(EventTypeRepository.class);
     private final ZooKeeperHolder client;
 
-    public EventTypeCacheTest() throws Exception {
+    public EventTypeCacheTestAT() throws Exception {
         final String connectString = "127.0.0.1:2181";
         final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
         final CuratorFramework cf = CuratorFrameworkFactory.newClient(connectString, retryPolicy);
