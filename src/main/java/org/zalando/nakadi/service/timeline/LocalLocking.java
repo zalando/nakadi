@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 public class LocalLocking {
     private static final Logger LOG = LoggerFactory.getLogger(LocalLocking.class);
     private final Set<String> lockedEventTypes = new HashSet<>();
-    private final Map<String, Integer> eventsBeingPublished = new HashMap<>();
+    private final Map<String, Integer> eventTypesBeingPublished = new HashMap<>();
     private final Object lock = new Object();
 
     public Set<String> lockedEventTypesChanged(final Set<String> lockedEventTypes) throws InterruptedException {
@@ -30,7 +30,7 @@ public class LocalLocking {
             boolean haveUsage = true;
             while (haveUsage) {
                 final List<String> stillLocked = this.lockedEventTypes.stream()
-                        .filter(eventsBeingPublished::containsKey).collect(Collectors.toList());
+                        .filter(eventTypesBeingPublished::containsKey).collect(Collectors.toList());
                 haveUsage = !stillLocked.isEmpty();
                 if (haveUsage) {
                     LOG.info("Event types are still locked: {}", stillLocked);
@@ -55,16 +55,16 @@ public class LocalLocking {
                 throw new TimeoutException("Timed out while waiting for event type " + eventType +
                         " to unlock within " + timeoutMs + " ms");
             }
-            eventsBeingPublished.put(eventType, eventsBeingPublished.getOrDefault(eventType, 0) + 1);
+            eventTypesBeingPublished.put(eventType, eventTypesBeingPublished.getOrDefault(eventType, 0) + 1);
         }
         return () -> {
             synchronized (lock) {
-                final int currentCount = eventsBeingPublished.get(eventType);
+                final int currentCount = eventTypesBeingPublished.get(eventType);
                 if (1 == currentCount) {
-                    eventsBeingPublished.remove(eventType);
+                    eventTypesBeingPublished.remove(eventType);
                     lock.notifyAll();
                 } else {
-                    eventsBeingPublished.put(eventType, currentCount - 1);
+                    eventTypesBeingPublished.put(eventType, currentCount - 1);
                 }
             }
         };

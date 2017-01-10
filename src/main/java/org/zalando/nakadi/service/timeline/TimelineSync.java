@@ -57,10 +57,4 @@ public interface TimelineSync {
      * @return Registration for listener. one should call cancel once registration is not needed anymore.
      */
     ListenerRegistration registerTimelineChangeListener(String eventType, Consumer<String> listener);
-
-    /**
-     * Returns current node identification string (used only in tests)
-     * @return Node id.
-     */
-    String getNodeId();
 }

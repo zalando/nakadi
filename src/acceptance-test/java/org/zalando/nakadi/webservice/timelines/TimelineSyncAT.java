@@ -20,6 +20,7 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.service.timeline.TimelineSyncImpl;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
@@ -30,7 +31,7 @@ public class TimelineSyncAT extends BaseAT {
     private UUIDGenerator uuidGenerator;
     private ZooKeeperHolder zookeeperHolder;
 
-    private TimelineSync createTimeline() throws InterruptedException {
+    private TimelineSyncImpl createTimeline() throws InterruptedException {
         if (null == uuidGenerator) {
             uuidGenerator = new UUIDGenerator();
         }
@@ -78,7 +79,7 @@ public class TimelineSyncAT extends BaseAT {
 
     @Test
     public void testNodeInformationWrittenOnStart() throws Exception {
-        final TimelineSync sync = createTimeline();
+        final TimelineSyncImpl sync = createTimeline();
         final String currentVersion = new String(CURATOR.getData().forPath("/nakadi/timelines/version"));
         Assert.assertEquals(currentVersion,
                 new String(CURATOR.getData().forPath("/nakadi/timelines/nodes/" + sync.getNodeId())));
@@ -91,8 +92,7 @@ public class TimelineSyncAT extends BaseAT {
         final String eventType = UUID.randomUUID().toString();
         final AtomicBoolean updated = new AtomicBoolean(false);
 
-        final Closeable publishing = t1.workWithEventType(eventType, TimeUnit.SECONDS.toMillis(1));
-        try {
+        try (Closeable ignored = t1.workWithEventType(eventType, TimeUnit.SECONDS.toMillis(1))) {
             new Thread(() -> {
                 try {
                     t2.startTimelineUpdate(eventType, TimeUnit.SECONDS.toMillis(30));
@@ -104,18 +104,8 @@ public class TimelineSyncAT extends BaseAT {
             // Wait a little bit for thread to start timeline update
             Thread.sleep(TimeUnit.SECONDS.toMillis(3));
             Assert.assertEquals(false, updated.get());
-        } finally {
-            publishing.close();
         }
-        int attemptsLeft = 5;
-        while (attemptsLeft-- > 0) {
-            // Wait a little bit for lock release
-            Thread.sleep(300);
-            if (updated.get()) {
-                break;
-            }
-        }
-        Assert.assertEquals(true, updated.get());
+        TestUtils.waitFor(() -> Assert.assertTrue(updated.get()));
     }
 
     @Test
@@ -187,8 +177,7 @@ public class TimelineSyncAT extends BaseAT {
 
         t1.finishTimelineUpdate(eventType1);
         // Wait for listeners
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-        Assert.assertEquals(1, l1.getData().size());
+        TestUtils.waitFor(() -> Assert.assertEquals(1, l1.getData().size()), TimeUnit.SECONDS.toMillis(1));
         Assert.assertEquals(new Integer(1), l1.getData().get(eventType1));
         Assert.assertEquals(0, l2.getData().size());
 

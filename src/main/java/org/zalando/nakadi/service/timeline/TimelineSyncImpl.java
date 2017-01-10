@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.timeline;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import java.io.Closeable;
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ public class TimelineSyncImpl implements TimelineSync {
     private static final Logger LOG = LoggerFactory.getLogger(TimelineSyncImpl.class);
 
     private final ZooKeeperHolder zooKeeperHolder;
-    private final String thisId;
+    private final String nodeId;
     private final LocalLocking localLocking = new LocalLocking();
     private final Map<String, List<Consumer<String>>> consumerListeners = new HashMap<>();
     private final BlockingQueue<DelayedChange> queuedChanges = new LinkedBlockingQueue<>();
@@ -65,14 +66,14 @@ public class TimelineSyncImpl implements TimelineSync {
     @Autowired
     public TimelineSyncImpl(final ZooKeeperHolder zooKeeperHolder, final UUIDGenerator uuidGenerator)
             throws InterruptedException {
-        this.thisId = uuidGenerator.randomUUID().toString();
+        this.nodeId = uuidGenerator.randomUUID().toString();
         this.zooKeeperHolder = zooKeeperHolder;
         this.initializeZkStructure();
     }
 
-    @Override
+    @VisibleForTesting
     public String getNodeId() {
-        return thisId;
+        return nodeId;
     }
 
     private String toZkPath(final String path) {
@@ -99,7 +100,7 @@ public class TimelineSyncImpl implements TimelineSync {
 
                 LOG.info("Registering node in zk");
                 zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
-                        .forPath(toZkPath("/nodes/" + thisId), "0".getBytes(Charsets.UTF_8));
+                        .forPath(toZkPath("/nodes/" + nodeId), "0".getBytes(Charsets.UTF_8));
 
             } catch (final Exception e) {
                 LOG.error("Failed to initialize timeline synchronization", e);
@@ -125,7 +126,7 @@ public class TimelineSyncImpl implements TimelineSync {
     @Scheduled(fixedDelay = 500)
     public void reactOnEventTypesChange() throws InterruptedException {
         checkForNewChange();
-        while (null != queuedChanges.peek()) {
+        while (!queuedChanges.isEmpty()) {
             final DelayedChange change = queuedChanges.peek();
             LOG.info("Reacting on delayed change {}", change);
             final Set<String> unlockedEventTypes = localLocking.lockedEventTypesChanged(change.lockedEventTypes);
@@ -149,7 +150,7 @@ public class TimelineSyncImpl implements TimelineSync {
             }
             try {
                 zooKeeperHolder.get().setData().forPath(
-                        toZkPath("/nodes/" + thisId), String.valueOf(change.version).getBytes(Charsets.UTF_8));
+                        toZkPath("/nodes/" + nodeId), String.valueOf(change.version).getBytes(Charsets.UTF_8));
             } catch (final Exception ex) {
                 LOG.error("Failed to update node version in zk. Will try to reprocess again", ex);
                 return;
@@ -278,7 +279,7 @@ public class TimelineSyncImpl implements TimelineSync {
         boolean successful = false;
         try {
             zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
-                    .forPath(etZkPath, thisId.getBytes(Charsets.UTF_8));
+                    .forPath(etZkPath, nodeId.getBytes(Charsets.UTF_8));
             updateVersionAndWaitForAllNodes(timeoutMs);
             successful = true;
         } catch (final InterruptedException ex) {
