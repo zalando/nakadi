@@ -23,15 +23,15 @@ public class StorageDbRepository extends AbstractDbRepository {
     }
 
     public List<Storage> listStorages() {
-        return jdbcTemplate.query("select st_id, st_type, st_configuration from zn_data.storage order by st_id",
+        return jdbcTemplate.query("SELECT st_id, st_type, st_configuration FROM zn_data.storage ORDER BY st_id",
                 storageRowMapper);
     }
 
     public Optional<Storage> getStorage(final String id) {
         final List<Storage> storages = jdbcTemplate.query(
-                "select st_id, st_type, st_configuration from zn_data.storage where st_id=?",
-                new Object[]{id},
-                storageRowMapper);
+                "SELECT st_id, st_type, st_configuration FROM zn_data.storage WHERE st_id=?",
+                storageRowMapper,
+                id);
         return Optional.ofNullable(storages.isEmpty() ? null : storages.get(0));
     }
 
@@ -50,7 +50,7 @@ public class StorageDbRepository extends AbstractDbRepository {
     }
 
     public void deleteStorage(final String id) {
-        jdbcTemplate.update("DELETE FROM zn_data.storage where st_id=?", id);
+        jdbcTemplate.update("DELETE FROM zn_data.storage WHERE st_id=?", id);
     }
 
     static Storage buildStorage(final ObjectMapper mapper, final String id, final String type, final String config)

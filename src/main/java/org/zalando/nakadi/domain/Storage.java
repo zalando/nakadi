@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Objects;
+import javax.annotation.Nullable;
 
 public class Storage {
     public enum Type {
@@ -105,7 +106,9 @@ public class Storage {
         this.configuration = null == data ? null : mapper.readValue(data, getType().configClass);
     }
 
-    public Timeline.StoragePosition restorePosition(final ObjectMapper mapper, final String data) throws IOException {
+    @Nullable
+    public Timeline.StoragePosition restorePosition(
+            final ObjectMapper mapper, @Nullable final String data) throws IOException {
         return null == data ? null : mapper.readValue(data, getType().positionClass);
     }
 
