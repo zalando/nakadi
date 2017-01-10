@@ -100,6 +100,13 @@ public class BatchFactoryTest {
     }
 
     @Test
+    public void testEmptyCharactersAroundArray() {
+        final String events = "\t [{\"name\":\"MyEvent\"},{\"name\":\"MyOtherEvent\"}]\n\n";
+        final List<BatchItem> batch = BatchFactory.from(events);
+        assertEquals(2, batch.size());
+    }
+
+    @Test
     public void testGarbageBetweenEvents() {
         final String events = "[{\"name\":\"MyEvent\"},atb#{\"name\":\"MyOtherEvent\"}]";
         try {

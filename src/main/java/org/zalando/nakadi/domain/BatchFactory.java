@@ -13,10 +13,35 @@ public class BatchFactory {
         int brackets = 0;
         boolean insideQuote = false;
         boolean escaped = false;
-        if ((!events.startsWith("[")) || (!events.endsWith("]"))) {
-            throw new JSONException("Array must be surrounded with square brackets");
+        int start = 0;
+        final int length = events.length();
+        int end = length - 1;
+
+        while ((events.charAt(start) == ' '
+                || events.charAt(start) == '\t'
+                || events.charAt(start) == '\n'
+                || events.charAt(start) == '\r')
+                && start < end) {
+            start++;
         }
-        for (int i = 1; i < events.length() - 1; i++) {
+        while ((events.charAt(end) == ' '
+                || events.charAt(end) == '\t'
+                || events.charAt(end) == '\n'
+                || events.charAt(end) == '\r')
+                && end > start) {
+            end--;
+        }
+        if (!(events.charAt(start) == '[')) {
+            throw new JSONException(String.format("Unexpected character %s in position %d, expected '['",
+                    events.charAt(start), start));
+        }
+        start++;
+        if (!(events.charAt(end) == ']')) {
+            throw new JSONException(String.format("Unexpected character %s in position %d, expected ']'",
+                    events.charAt(end), end));
+        }
+
+        for (int i = start; i < end; i++) {
             if (!escaped && events.charAt(i) == '"') {
                 if (insideQuote) {
                     insideQuote = false;
