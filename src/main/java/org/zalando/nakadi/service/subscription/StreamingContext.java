@@ -98,7 +98,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     private void onShutdown() {
-        log.info("Switching state from " + currentState.getClass().getSimpleName());
+        log.info("Shutdown hook called. Trying to terminate subscription gracefully");
         try {
             unregisterSession();
         } finally {
