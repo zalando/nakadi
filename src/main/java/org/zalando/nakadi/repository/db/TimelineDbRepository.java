@@ -45,6 +45,9 @@ public class TimelineDbRepository extends AbstractDbRepository {
     }
 
     public Timeline createTimeline(final Timeline timeline) {
+        if (null == timeline.getId()) {
+            throw new IllegalArgumentException("Timeline id can not be null on create (" + timeline + ")");
+        }
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.timeline(" +
@@ -68,6 +71,10 @@ public class TimelineDbRepository extends AbstractDbRepository {
     }
 
     public void updateTimelime(final Timeline timeline) {
+        if (null == timeline.getId()) {
+            throw new IllegalArgumentException("Timeline id can not be null on update (" + timeline + ")");
+        }
+
         try {
             jdbcTemplate.update(
                     "UPDATE zn_data.timeline SET " +
@@ -96,9 +103,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
     }
 
     public void deleteTimeline(final UUID id) {
-        jdbcTemplate.update(
-                "DELETE FROM zn_data.timeline WHERE tl_id=?",
-                new Object[]{id});
+        jdbcTemplate.update("DELETE FROM zn_data.timeline WHERE tl_id=?", id);
     }
 
     private final RowMapper<Timeline> timelineRowMapper = (rs, rowNum) -> {
