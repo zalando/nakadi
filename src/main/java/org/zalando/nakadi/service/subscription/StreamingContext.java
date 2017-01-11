@@ -92,7 +92,18 @@ public class StreamingContext implements SubscriptionStreamer {
 
     @Override
     public void stream() throws InterruptedException {
+        // bugfix ARUHA-485
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> onShutdown()));
         streamInternal(new StartingState());
+    }
+
+    private void onShutdown() {
+        log.info("Switching state from " + currentState.getClass().getSimpleName());
+        try {
+            unregisterSession();
+        } finally {
+            switchState(StreamingContext.DEAD_STATE);
+        }
     }
 
     void streamInternal(final State firstState) throws InterruptedException {
