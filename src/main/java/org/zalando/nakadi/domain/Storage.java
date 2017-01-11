@@ -59,6 +59,14 @@ public class Storage {
             result = 31 * result + (zkPath != null ? zkPath.hashCode() : 0);
             return result;
         }
+
+        @Override
+        public String toString() {
+            return "KafkaConfiguration{" +
+                    "zkAddress='" + zkAddress + '\'' +
+                    ", zkPath='" + zkPath + '\'' +
+                    '}';
+        }
     }
 
     private String id;
@@ -86,9 +94,6 @@ public class Storage {
     }
 
     public <T> T getConfiguration(final Class<T> clazz) {
-        if (configuration == null) {
-            return null;
-        }
         if (!clazz.isAssignableFrom(configuration.getClass())) {
             throw new IllegalStateException("Can not cast configuration " + configuration + " to class " + clazz);
         }
@@ -96,14 +101,14 @@ public class Storage {
     }
 
     public <T> void setConfiguration(final T configuration) {
-        if (null != configuration && getType().configClass != configuration.getClass()) {
+        if (getType().configClass != configuration.getClass()) {
             throw new IllegalStateException("Only configuration of type " + getType().configClass + " accepted");
         }
         this.configuration = configuration;
     }
 
     public void parseConfiguration(final ObjectMapper mapper, final String data) throws IOException {
-        this.configuration = null == data ? null : mapper.readValue(data, getType().configClass);
+        this.configuration = mapper.readValue(data, getType().configClass);
     }
 
     @Nullable
@@ -131,5 +136,14 @@ public class Storage {
     @Override
     public int hashCode() {
         return id != null ? id.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "Storage{" +
+                "id='" + id + '\'' +
+                ", type=" + type +
+                ", configuration=" + configuration +
+                '}';
     }
 }

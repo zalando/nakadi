@@ -43,18 +43,14 @@ public class Timeline {
         }
     }
 
-    @Nullable
     private UUID id;
     private String eventType;
     private int order;
     private Storage storage;
     private String topic;
     private Date createdAt;
-    @Nullable
     private Date switchedAt;
-    @Nullable
     private Date cleanupAt;
-    @Nullable
     private StoragePosition latestPosition;
 
     public Timeline(
