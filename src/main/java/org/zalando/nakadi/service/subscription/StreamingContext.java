@@ -93,17 +93,11 @@ public class StreamingContext implements SubscriptionStreamer {
     @Override
     public void stream() throws InterruptedException {
         // bugfix ARUHA-485
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> onShutdown()));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                log.info("Shutdown hook called. Trying to terminate subscription gracefully");
+                switchState(new CleanupState(null));
+        }));
         streamInternal(new StartingState());
-    }
-
-    private void onShutdown() {
-        log.info("Shutdown hook called. Trying to terminate subscription gracefully");
-        try {
-            unregisterSession();
-        } finally {
-            switchState(StreamingContext.DEAD_STATE);
-        }
     }
 
     void streamInternal(final State firstState) throws InterruptedException {
