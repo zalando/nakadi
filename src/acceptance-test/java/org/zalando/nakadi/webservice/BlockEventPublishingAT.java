@@ -13,8 +13,11 @@ import java.io.IOException;
 import java.text.MessageFormat;
 
 import static com.jayway.restassured.RestAssured.given;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 
 public class BlockEventPublishingAT extends BaseAT {
+
+    private static final String FLOODERS_URL = "/settings/flooders";
 
     @Test
     public void whenPublishingToBlockedEventTypeThen403() throws IOException {
@@ -25,20 +28,22 @@ public class BlockEventPublishingAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
 
         SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
-        publishEvent(eventType)
+
+        waitFor(() -> publishEvent(eventType)
                 .then()
                 .statusCode(403)
-                .body("detail", Matchers.equalTo("Application or event type is blocked"));
+                .body("detail", Matchers.equalTo("Application or event type is blocked")));
 
         SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
-        publishEvent(eventType)
+
+        waitFor(() -> publishEvent(eventType)
                 .then()
-                .statusCode(HttpStatus.SC_OK);
+                .statusCode(HttpStatus.SC_OK));
     }
 
     private Response publishEvent(final EventType eventType) {
         return given()
-                .body("[{\"blah\":\"bloh\"}]")
+                .body("[{\"foo\":\"bar\"}]")
                 .contentType(ContentType.JSON)
                 .post(MessageFormat.format("/event-types/{0}/events", eventType.getName()));
     }

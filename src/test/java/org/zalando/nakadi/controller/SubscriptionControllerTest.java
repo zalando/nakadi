@@ -23,9 +23,10 @@ import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.SubscriptionListWrapper;
+import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -98,12 +99,14 @@ public class SubscriptionControllerTest {
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
+    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
     public SubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
 
-        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(false);
 
         topicRepository = mock(TopicRepository.class);
         final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
@@ -124,6 +127,58 @@ public class SubscriptionControllerTest {
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setControllerAdvice(new ExceptionHandling())
                 .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
+    }
+
+    @Test
+    public void whenSubscriptionCreationIsDisabledThenCreationFails() throws Exception {
+        final SubscriptionBase subscriptionBase = builder()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+        when(subscriptionRepository.getSubscription(any(), any(), any())).thenThrow(NoSuchSubscriptionException.class);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(true);
+
+        postSubscription(subscriptionBase)
+                .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    public void whenSubscriptionCreationIsDisabledAndError() throws Exception {
+        final SubscriptionBase subscriptionBase = builder()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+        when(subscriptionRepository.getSubscription(any(), any(), any())).thenThrow(InternalNakadiException.class);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(true);
+
+        postSubscription(subscriptionBase)
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    public void whenSubscriptionCreationDisabledThenReturnExistentSubscription() throws Exception {
+        final SubscriptionBase subscriptionBase = builder()
+                .withOwningApplication("app")
+                .withEventTypes(ImmutableSet.of("myET"))
+                .buildSubscriptionBase();
+
+        final Subscription existingSubscription = new Subscription("123", new DateTime(DateTimeZone.UTC),
+                subscriptionBase);
+        existingSubscription.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
+        when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
+                .thenReturn(existingSubscription);
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
+                .thenReturn(true);
+
+        postSubscription(subscriptionBase)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(APPLICATION_JSON))
+                .andExpect(content().string(sameJSONAs(jsonHelper.asJsonString(existingSubscription))))
+                .andExpect(header().string("Location", "/subscriptions/123"))
+                .andExpect(header().doesNotExist("Content-Location"));
     }
 
     @Test
@@ -274,8 +329,8 @@ public class SubscriptionControllerTest {
     public void whenListSubscriptionsWithoutQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
         when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
-        final SubscriptionListWrapper subscriptionList =
-                new SubscriptionListWrapper(subscriptions, new PaginationLinks());
+        final PaginationWrapper subscriptionList =
+                new PaginationWrapper(subscriptions, new PaginationLinks());
 
         getSubscriptions()
                 .andExpect(status().isOk())
@@ -288,8 +343,8 @@ public class SubscriptionControllerTest {
     public void whenListSubscriptionsWithQueryParamsThenOk() throws Exception {
         final List<Subscription> subscriptions = createRandomSubscriptions(10);
         when(subscriptionRepository.listSubscriptions(any(), any(), anyInt(), anyInt())).thenReturn(subscriptions);
-        final SubscriptionListWrapper subscriptionList =
-                new SubscriptionListWrapper(subscriptions, new PaginationLinks());
+        final PaginationWrapper subscriptionList =
+                new PaginationWrapper(subscriptions, new PaginationLinks());
 
         getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 0, 30)
                 .andExpect(status().isOk())
@@ -330,7 +385,7 @@ public class SubscriptionControllerTest {
         final PaginationLinks.Link nextLink = new PaginationLinks.Link(
                 "/subscriptions?event_type=et1&event_type=et2&owning_application=app&offset=15&limit=10");
         final PaginationLinks links = new PaginationLinks(Optional.of(prevLink), Optional.of(nextLink));
-        final SubscriptionListWrapper expectedResult = new SubscriptionListWrapper(subscriptions, links);
+        final PaginationWrapper expectedResult = new PaginationWrapper(subscriptions, links);
 
         getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 5, 10)
                 .andExpect(status().isOk())
