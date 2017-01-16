@@ -35,6 +35,10 @@
             "type": "string",
             "format": "uri"
         },
+        "$ref": {
+            "type": "string",
+            "format": "uri"
+        },
         "title": {
             "type": "string"
         },

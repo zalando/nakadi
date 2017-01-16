@@ -16,11 +16,14 @@ public class Partition {
 
         @Override
         public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
 
             final PartitionKey that = (PartitionKey) o;
-
             return topic.equals(that.topic) && partition.equals(that.partition);
         }
 

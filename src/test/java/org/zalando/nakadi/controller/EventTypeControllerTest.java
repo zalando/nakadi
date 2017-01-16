@@ -24,7 +24,6 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
-import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -286,20 +285,6 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem = new InvalidEventTypeException("Invalid schema: Invalid schema found in [#]: " +
                 "extraneous key [not] is not permitted").asProblem();
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
-    public void whenPOSTFixedCompatibilityModeThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-        eventType.setCompatibilityMode(CompatibilityMode.FIXED);
-
-        final Problem expectedProblem =
-                new InvalidEventTypeException(
-                        "\"compatibility_mode\" should be either \"compatible\" or \"none\"").asProblem();
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()

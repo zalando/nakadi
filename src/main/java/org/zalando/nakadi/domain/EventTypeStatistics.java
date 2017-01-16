@@ -52,8 +52,12 @@ public class EventTypeStatistics {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         final EventTypeStatistics that = (EventTypeStatistics) o;
         return Objects.equals(messagesPerMinute, that.messagesPerMinute)

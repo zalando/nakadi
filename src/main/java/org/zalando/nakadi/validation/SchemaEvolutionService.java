@@ -40,7 +40,7 @@ public class SchemaEvolutionService {
     private final SchemaDiff schemaDiff;
     private final Map<SchemaChange.Type, Version.Level> changeToLevel;
     private final Map<SchemaChange.Type, String> errorMessages;
-    private static final List<SchemaChange.Type> FIXED_TO_COMPATIBLE_ALLOWED_CHANGES = Lists.newArrayList(
+    private static final List<SchemaChange.Type> FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES = Lists.newArrayList(
             DESCRIPTION_CHANGED, TITLE_CHANGED, PROPERTIES_ADDED, ADDITIONAL_PROPERTIES_CHANGED,
             ADDITIONAL_ITEMS_CHANGED);
 
@@ -92,7 +92,7 @@ public class SchemaEvolutionService {
 
         final Version.Level changeLevel = semanticOfChange(changes);
 
-        validateCompatibleModeChanges(original, changes, changeLevel);
+        validateCompatibleChanges(original, changes, changeLevel);
         validateCompatibilityModeMigration(original, eventType, changes);
 
         return this.bumpVersion(original, eventType, changeLevel);
@@ -100,11 +100,11 @@ public class SchemaEvolutionService {
 
     private void validateCompatibilityModeMigration(final EventType original, final EventTypeBase eventType,
                                                     final List<SchemaChange> changes) throws InvalidEventTypeException {
-        if (original.getCompatibilityMode() == CompatibilityMode.FIXED
+        if (original.getCompatibilityMode() == CompatibilityMode.FORWARD
             && eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
 
             final List<SchemaChange> forbiddenChanges = changes.stream()
-                    .filter(change -> !FIXED_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
+                    .filter(change -> !FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
                     .collect(Collectors.toList());
             if (!forbiddenChanges.isEmpty()) {
                 final String errorMessage = forbiddenChanges.stream().map(this::formatErrorMessage)
@@ -114,9 +114,11 @@ public class SchemaEvolutionService {
         }
     }
 
-    private void validateCompatibleModeChanges(final EventType original, final List<SchemaChange> changes,
-                                               final Version.Level changeLevel) throws InvalidEventTypeException {
-        if (original.getCompatibilityMode() == CompatibilityMode.COMPATIBLE && changeLevel == MAJOR) {
+    private void validateCompatibleChanges(final EventType original, final List<SchemaChange> changes,
+                                           final Version.Level changeLevel) throws InvalidEventTypeException {
+        if ((original.getCompatibilityMode() == CompatibilityMode.COMPATIBLE
+                || original.getCompatibilityMode() == CompatibilityMode.FORWARD)
+                && changeLevel == MAJOR) {
             final String errorMessage = changes.stream()
                     .filter(change -> MAJOR.equals(changeToLevel.get(change.getType())))
                     .map(this::formatErrorMessage)

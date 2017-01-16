@@ -32,13 +32,21 @@ public class Version {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         final Version version = (Version) o;
 
-        if (major != version.major) return false;
-        if (minor != version.minor) return false;
+        if (major != version.major) {
+            return false;
+        }
+        if (minor != version.minor) {
+            return false;
+        }
         return patch == version.patch;
     }
 

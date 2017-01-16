@@ -113,6 +113,8 @@ dependencies {
     compile 'org.springframework.boot:spring-boot-starter-jdbc:1.3.1.RELEASE'
     compile 'org.postgresql:postgresql:9.4.1207'
 
+    compile 'org.springframework.cloud:spring-cloud-starter-hystrix:1.1.3.RELEASE'
+
     // misc
     compile 'org.apache.httpcomponents:httpclient:4.5.1'
     compile ('org.zalando.stups:stups-spring-oauth2-server:1.0.10') {

@@ -22,13 +22,15 @@ public class PaginationService {
         if (items.isEmpty() && offset != 0 && limit != 0) {
             final int count = countSupplier.get();
             int latestOffset = count / limit;
-            if (offset >= latestOffset)
+            if (offset >= latestOffset) {
                 latestOffset = 0;
+            }
             paginationLinks = createLinks(path, latestOffset, limit, items.size());
         } else {
             paginationLinks = createLinks(path, offset, limit, items.size());
-            if (items.size() > limit)
+            if (items.size() > limit) {
                 items.remove(items.size() - 1);
+            }
         }
 
         return new PaginationWrapper(items, paginationLinks);

@@ -24,6 +24,7 @@ public interface FeatureToggleService {
         CONNECTION_CLOSE_CRUTCH("close_crutch"),
         DISABLE_EVENT_TYPE_CREATION("disable_event_type_creation"),
         DISABLE_EVENT_TYPE_DELETION("disable_event_type_deletion"),
+        DISABLE_SUBSCRIPTION_CREATION("disable_subscription_creation"),
         HIGH_LEVEL_API("high_level_api"),
         CHECK_APPLICATION_LEVEL_PERMISSIONS("check_application_level_permissions"),
         CHECK_PARTITIONS_KEYS("check_partitions_keys"),

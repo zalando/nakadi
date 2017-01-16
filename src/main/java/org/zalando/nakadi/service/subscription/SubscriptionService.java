@@ -12,10 +12,10 @@ import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
+import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -124,7 +124,7 @@ public class SubscriptionService {
         }
     }
 
-    private Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
+    public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
             throws NoSuchSubscriptionException, InternalNakadiException, ServiceUnavailableException {
         return subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
@@ -166,7 +166,7 @@ public class SubscriptionService {
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                     owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
             return Result.ok(new PaginationWrapper(subscriptions, paginationLinks));
-        } catch (ServiceUnavailableException e) {
+        } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
             return Result.problem(e.asProblem());
         }

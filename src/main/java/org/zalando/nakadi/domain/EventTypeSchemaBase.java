@@ -44,12 +44,18 @@ public class EventTypeSchemaBase {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         final EventTypeSchemaBase that = (EventTypeSchemaBase) o;
 
-        if (type != that.type) return false;
+        if (type != that.type) {
+            return false;
+        }
         return schema.equals(that.schema);
     }
 

@@ -39,12 +39,14 @@ public class SchemaController {
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             final NativeWebRequest request) {
         final Result<EventType> eventTypeResult = eventTypeService.get(name);
-        if (!eventTypeResult.isSuccessful())
+        if (!eventTypeResult.isSuccessful()) {
             return Responses.create(eventTypeResult.getProblem(), request);
+        }
 
         final Result result = schemaService.getSchemas(name, offset, limit);
-        if (result.isSuccessful())
+        if (result.isSuccessful()) {
             return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
+        }
         return Responses.create(result.getProblem(), request);
     }
 
@@ -62,8 +64,9 @@ public class SchemaController {
         }
 
         final Result<EventTypeSchema> result = schemaService.getSchemaVersion(name, version);
-        if (!result.isSuccessful())
+        if (!result.isSuccessful()) {
             return Responses.create(result.getProblem(), request);
+        }
 
         return ResponseEntity.status(HttpStatus.OK).body(result.getValue());
     }

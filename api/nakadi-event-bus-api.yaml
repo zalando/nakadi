@@ -807,9 +807,13 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for committing offsets of the subscription. The client must commit at least once
-        every 60 seconds, otherwise Nakadi will consider the client to be gone and will close the
-        connection.
+        Endpoint for committing offsets of the subscription. If there is uncommited data, and no commits happen
+        for 60 seconds, then Nakadi will consider the client to be gone, and will close the connection. As long
+        as no events are sent, the client does not need to commit.
+
+        If the connection is closed, the client has 60 seconds to commit the events it received, from the moment
+        they were sent. After that, the connection will be considered closed, and it will not be possible to do
+        commit with that `X-Nakadi-StreamId` anymore.
 
         When a batch is committed that also automatically commits all previous batches that were
         sent in a stream for this partition.
@@ -1591,20 +1595,20 @@ definitions:
 
           List of compatibility modes:
 
-          - 'fixed': Schema changes are not allowed. This is used only by legacy event types. This option is not
-            available for new event types. Schema validation is lenient and allow fields that are not defined. Also,
-            it's possible to use the full json schema specification for defining schemas.
-
-          - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
-            validating events, no additional properties are accepted unless explicitly stated in the schema.
-
           - 'compatible': Consumers can reliably parse events produced under different versions. Every event published
             since the first version is still valid based on the newest schema. When in compatible mode, it's allowed to
             add new optional properties and definitions to an existing schema, but no other changes are allowed.
             Under this mode, the following json-schema attributes are not supported: `not`, `patternProperties`,
             `additionalProperties` and `additionalItems`. When validating events, additional properties is `false`.
+
+          - 'forward': Compatible schema changes are allowed. It's possible to use the full json schema specification
+            for defining schemas. Consumers of forward compatible event types can safely read events tagged with the
+            latest schema version as long as they follow the robustness principle.
+
+          - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
+            validating events, no additional properties are accepted unless explicitly stated in the schema.
         type: string
-        default: compatible
+        default: forward
 
       schema:
         $ref: '#/definitions/EventTypeSchema'
