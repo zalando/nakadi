@@ -21,6 +21,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -199,6 +200,9 @@ public class EventStreamController {
                 eventStream.streamEvents(connectionReady);
             } catch (final NoSuchEventTypeException e) {
                 writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
+            } catch (final NoConnectionSlotsException e) {
+                LOG.debug("Connection creation failed due to exceeding max connection count");
+                writeProblemResponse(response, outputStream, e.asProblem());
             } catch (final NakadiException e) {
                 LOG.error("Error while trying to stream events.", e);
                 writeProblemResponse(response, outputStream, e.asProblem());

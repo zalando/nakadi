@@ -1,0 +1,256 @@
+[
+  {
+    "description": "Empty event generate empty schema",
+    "event": {
+    },
+    "schema": {
+      "type": "object"
+    }
+  },
+  {
+    "description": "Generate string properties",
+    "event": {
+      "foo": "bar"
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate number properties",
+    "event": {
+      "foo": 1
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate double properties",
+    "event": {
+      "foo": 1.5
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate boolena properties",
+    "event": {
+      "foo": true
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate null properties",
+    "event": {
+      "foo": null
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "null"
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate nested properties",
+    "event": {
+      "foo": {
+        "bar": "baz"
+      }
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "object",
+          "properties": {
+            "bar": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate array schema",
+    "event": {
+      "foo": ["string"]
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate array of same type schema",
+    "event": {
+      "foo": ["string1", "string2"]
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  {
+    "description": "Merge: add excluding properties",
+    "event": {
+      "foo": [
+        {
+           "bar": "foobar"
+        },
+        {
+          "baz": "bar"
+        }
+      ]
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bar": {
+                "type": "string"
+              },
+              "baz": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "description": "Merge: do not duplicate equal properties",
+    "event": {
+      "foo": [
+        {
+          "bar": "foobar"
+        },
+        {
+          "bar": "baz"
+        }
+      ]
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bar": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate anyOf schema",
+    "event": {
+      "foo": ["string", 1]
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate conflicting object schema",
+    "event": {
+      "foo": [
+        {
+          "bar": "baz"
+        },
+        {
+          "bar": 1
+        }
+      ]
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bar": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+]

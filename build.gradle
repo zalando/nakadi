@@ -121,6 +121,7 @@ dependencies {
         exclude module: "httpclient"
     }
     compile 'org.zalando:jackson-datatype-problem:0.5.0'
+    compile 'org.skyscreamer:jsonassert:1.2.3'
     compile 'org.zalando:problem:0.5.0'
     compile 'org.zalando:problem-spring-web:0.5.0'
     compile 'com.google.guava:guava:19.0'
