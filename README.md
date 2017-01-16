@@ -171,6 +171,12 @@ The `schema` value should only declare the custom part of the event - the generi
 schema is implicit and doesn't need to be defined. The combination of the two 
 (the "effective schema") will be checked when events are submitted for the event type.
 
+Each event type can have a `default_statistic` object attached. It controls the
+number of partitions of the underlying topic. If you do not provide any value, 
+Nakadi will use a sensible default value which may be just a single partition.
+This will effectively disallow parallel reads of subscriptions of this event
+type. The values provided here can not be changed later, so choose them wisely. 
+
 This example shows a `business` category event type with a simple schema for an 
 order number -
 
@@ -181,6 +187,12 @@ curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/j
   "category": "business",
   "partition_strategy": "random",
   "enrichment_strategies": ["metadata_enrichment"],
+  "default_statistic": {
+    "messages_per_minute": 1000,	
+    "message_size":	5,
+    "read_parallelism":	10,
+    "write_parallelism": 5
+  },
   "schema": {
     "type": "json_schema",
     "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }"
