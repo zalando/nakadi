@@ -1,5 +1,6 @@
 package org.zalando.nakadi.controller;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeSchema;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.Result;
@@ -72,7 +72,16 @@ public class SchemaController {
     }
 
     @RequestMapping(value = "/generate-schema", method = RequestMethod.POST)
-    public ResponseEntity<?> generateSchema(@RequestBody final String event) {
-        return ResponseEntity.status(HttpStatus.OK).body(new SchemaGeneration().schemaFor(new JSONObject(event)).toString());
+    public ResponseEntity<?> generateSchema(@RequestBody final String eventsArrayAsString) {
+        final JSONArray events = new JSONArray(eventsArrayAsString);
+        JSONObject schema = new JSONObject();
+        final SchemaGeneration schemaGeneration = new SchemaGeneration();
+
+        for (final Object event : events) {
+            final JSONObject eventSchema = schemaGeneration.schemaFor(event);
+            schema = schemaGeneration.mergeSchema(schema, eventSchema);
+        }
+
+        return ResponseEntity.status(HttpStatus.OK).body(schema.toString());
     }
 }
