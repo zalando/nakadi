@@ -36,7 +36,21 @@
     }
   },
   {
-    "description": "Generate number properties",
+    "description": "Generate double properties",
+    "event": {
+      "foo": 1.5
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "description": "Generate boolena properties",
     "event": {
       "foo": true
     },
@@ -119,6 +133,67 @@
     }
   },
   {
+    "description": "Merge: add excluding properties",
+    "event": {
+      "foo": [
+        {
+           "bar": "foobar"
+        },
+        {
+          "baz": "bar"
+        }
+      ]
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bar": {
+                "type": "string"
+              },
+              "baz": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "description": "Merge: do not duplicate equal properties",
+    "event": {
+      "foo": [
+        {
+          "bar": "foobar"
+        },
+        {
+          "bar": "baz"
+        }
+      ]
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "foo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bar": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
     "description": "Generate anyOf schema",
     "event": {
       "foo": ["string", 1]
@@ -160,24 +235,19 @@
         "foo": {
           "type": "array",
           "items": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "bar": {
+            "type": "object",
+            "properties": {
+              "bar": {
+                "anyOf": [
+                  {
                     "type": "string"
-                  }
-                }
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "bar": {
+                  },
+                  {
                     "type": "number"
                   }
-                }
+                ]
               }
-            ]
+            }
           }
         }
       }
