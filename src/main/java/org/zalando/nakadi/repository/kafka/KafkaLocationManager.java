@@ -1,6 +1,9 @@
 package org.zalando.nakadi.repository.kafka;
 
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.StreamsConfig;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -96,6 +99,22 @@ public class KafkaLocationManager {
                 kafkaProperties.setProperty("bootstrap.servers", buildBootstrapServers(brokers));
             }
         }
+    }
+
+    public Properties getStreamProperties(final int applicationId) {
+        final Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", kafkaProperties.getProperty("bootstrap.servers"));
+        properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "nakadi-streams-" + applicationId);
+        properties.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG,
+                zkFactory.get().getZookeeperClient().getCurrentConnectionString());
+        properties.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName()); // FIXME
+        properties.put(StreamsConfig.VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName()); // FIXME
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 10 * 1000);
+        properties.put(StreamsConfig.TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
+                "org.apache.kafka.streams.processor.WallclockTimestampExtractor");
+
+        return properties;
     }
 
     public Properties getKafkaConsumerProperties() {

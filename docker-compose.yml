@@ -38,7 +38,7 @@ services:
       - "2181:2181"
 
   kafka:
-    image: wurstmeister/kafka:0.9.0.0
+    image: wurstmeister/kafka:0.10.1.0
     network_mode: "host"
     ports:
       - "9092:9092"
