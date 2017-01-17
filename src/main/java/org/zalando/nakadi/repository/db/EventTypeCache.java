@@ -4,13 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -20,6 +13,7 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -27,59 +21,75 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
+
 public class EventTypeCache {
 
     public static final String ZKNODE_PATH = "/nakadi/event_types";
     public static final int CACHE_MAX_SIZE = 100000;
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeCache.class);
-
-    private static class CachedValue {
-        private final EventType eventType;
-        private final EventTypeValidator eventTypeValidator;
-
-        public CachedValue(final EventType eventType, final EventTypeValidator eventTypeValidator) {
-            this.eventType = eventType;
-            this.eventTypeValidator = eventTypeValidator;
-        }
-
-        public EventType getEventType() {
-            return eventType;
-        }
-
-        public EventTypeValidator getEventTypeValidator() {
-            return eventTypeValidator;
-        }
-    }
-
     private final LoadingCache<String, CachedValue> eventTypeCache;
     private final PathChildrenCache cacheSync;
     private final ZooKeeperHolder zkClient;
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
-
-    public EventTypeCache(final EventTypeRepository eventTypeRepository, final ZooKeeperHolder zkClient)
+    public EventTypeCache(final EventTypeRepository eventTypeRepository,
+                          final TimelineDbRepository timelineRepository,
+                          final ZooKeeperHolder zkClient)
             throws Exception {
-        this(eventTypeRepository, zkClient, setupCacheSync(zkClient.get()));
+        this(eventTypeRepository, timelineRepository, zkClient, setupCacheSync(zkClient.get()));
     }
 
     @VisibleForTesting
-    EventTypeCache(final EventTypeRepository eventTypeRepository, final ZooKeeperHolder zkClient,
+    EventTypeCache(final EventTypeRepository eventTypeRepository,
+                   final TimelineDbRepository timelineRepository,
+                   final ZooKeeperHolder zkClient,
                    final PathChildrenCache cache) {
         this.zkClient = zkClient;
-        this.eventTypeCache = setupInMemoryEventTypeCache(eventTypeRepository);
+        this.eventTypeCache = setupInMemoryEventTypeCache(eventTypeRepository, timelineRepository);
         this.cacheSync = cache;
         if (null != cacheSync) {
             this.cacheSync.getListenable().addListener((curator, event) -> this.onZkEvent(event));
         }
-        preloadEventTypes(eventTypeRepository);
+        preloadEventTypes(eventTypeRepository, timelineRepository);
     }
 
-    private void preloadEventTypes(final EventTypeRepository eventTypeRepository) {
+    private static PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
+        try {
+            zkClient.create()
+                    .creatingParentsIfNeeded()
+                    .withMode(CreateMode.PERSISTENT)
+                    .forPath(ZKNODE_PATH);
+        } catch (final KeeperException.NodeExistsException expected) {
+            // silently do nothing since it means that the node is already there
+        }
+
+        final PathChildrenCache cacheSync = new PathChildrenCache(zkClient, ZKNODE_PATH, false);
+
+        // It is important to preload all data before specifying callback for updates, because otherwise preload won't
+        // give any effect - all changes will be removed.
+        cacheSync.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
+
+        return cacheSync;
+    }
+
+    private void preloadEventTypes(final EventTypeRepository eventTypeRepository,
+                                   final TimelineDbRepository timelineRepository) {
         final long start = System.currentTimeMillis();
         rwLock.writeLock().lock();
         try {
+            final Map<String, List<Timeline>> eventTypeTimelines = timelineRepository.list().stream()
+                    .collect(Collectors.groupingBy(Timeline::getEventType));
             final Map<String, CachedValue> preloaded = eventTypeRepository.list().stream().collect(Collectors.toMap(
                     EventType::getName,
-                    et -> new CachedValue(et, EventValidation.forType(et))
+                    et -> new CachedValue(et, EventValidation.forType(et), eventTypeTimelines.get(et))
             ));
             new ArrayList<>(preloaded.keySet()).forEach(eventType -> {
                 try {
@@ -146,25 +156,6 @@ public class EventTypeCache {
                 .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
     }
 
-    private static PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
-        try {
-            zkClient.create()
-                    .creatingParentsIfNeeded()
-                    .withMode(CreateMode.PERSISTENT)
-                    .forPath(ZKNODE_PATH);
-        } catch (final KeeperException.NodeExistsException expected) {
-            // silently do nothing since it means that the node is already there
-        }
-
-        final PathChildrenCache cacheSync = new PathChildrenCache(zkClient, ZKNODE_PATH, false);
-
-        // It is important to preload all data before specifying callback for updates, because otherwise preload won't
-        // give any effect - all changes will be removed.
-        cacheSync.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
-
-        return cacheSync;
-    }
-
     private void onZkEvent(final PathChildrenCacheEvent event) {
         // Lock is needed only to support massive load on startup. In all other cases it will be called for
         // event type creation/update, so it won't create any additional load.
@@ -183,11 +174,12 @@ public class EventTypeCache {
     }
 
     private LoadingCache<String, CachedValue> setupInMemoryEventTypeCache(
-            final EventTypeRepository eventTypeRepository) {
+            final EventTypeRepository eventTypeRepository, final TimelineDbRepository timelineRepository) {
         final CacheLoader<String, CachedValue> loader = new CacheLoader<String, CachedValue>() {
             public CachedValue load(final String key) throws Exception {
                 final EventType eventType = eventTypeRepository.findByName(key);
-                return new CachedValue(eventType, EventValidation.forType(eventType));
+                final List<Timeline> timelines = timelineRepository.listTimelines(key);
+                return new CachedValue(eventType, EventValidation.forType(eventType), timelines);
             }
         };
 
@@ -196,5 +188,37 @@ public class EventTypeCache {
 
     private String getZNodePath(final String eventTypeName) {
         return ZKPaths.makePath(ZKNODE_PATH, eventTypeName);
+    }
+
+    private static class CachedValue {
+        private final EventType eventType;
+        private final EventTypeValidator eventTypeValidator;
+        private final List<Timeline> timelines;
+
+        public CachedValue(final EventType eventType,
+                           final EventTypeValidator eventTypeValidator,
+                           final List<Timeline> timelines) {
+            this.eventType = eventType;
+            this.eventTypeValidator = eventTypeValidator;
+            this.timelines = timelines;
+        }
+
+        public EventType getEventType() {
+            return eventType;
+        }
+
+        public EventTypeValidator getEventTypeValidator() {
+            return eventTypeValidator;
+        }
+
+        public Optional<Timeline> getActiveTimeline() {
+            return timelines.stream()
+                    .filter(t -> t.getSwitchedAt() != null)
+                    .max(Comparator.comparing(Timeline::getOrder));
+        }
+
+        public List<Timeline> getTimelines() {
+            return timelines;
+        }
     }
 }
