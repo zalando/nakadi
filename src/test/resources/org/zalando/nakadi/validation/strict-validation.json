@@ -54,7 +54,7 @@
     }
   },
   {
-    "description": "Add additionalProperties when defining definitions",
+    "description": "Add additionalProperties when schema is empty",
     "original_schema": {
       "definitions": {
         "foo": {
@@ -173,6 +173,12 @@
   {
     "description": "Strict combined schemas",
     "original_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "description": "Some description",
       "anyOf": [
         {
           "type": "object"
@@ -180,12 +186,42 @@
       ]
     },
     "effective_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "description": "Some description",
       "anyOf": [
         {
           "type": "object",
           "additionalProperties": false
         }
       ]
+    }
+  },
+  {
+    "description": "Do not strict reference schemas",
+    "original_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "properties": {
+        "foo": { "$ref": "#/definitions/foo" }
+      }
+    },
+    "effective_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "properties": {
+        "foo": { "$ref": "#/definitions/foo" }
+      },
+      "additionalProperties": false
     }
   },
   {
