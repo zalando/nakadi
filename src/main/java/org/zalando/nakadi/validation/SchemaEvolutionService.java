@@ -29,6 +29,7 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_ITEMS_CHANG
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_PROPERTIES_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.DESCRIPTION_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTIES_ADDED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_EXTENDED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
 import static org.zalando.nakadi.domain.Version.Level.MAJOR;
 import static org.zalando.nakadi.domain.Version.Level.NO_CHANGES;
@@ -38,21 +39,25 @@ public class SchemaEvolutionService {
     private final List<SchemaEvolutionConstraint> schemaEvolutionConstraints;
     private final Schema metaSchema;
     private final SchemaDiff schemaDiff;
-    private final Map<SchemaChange.Type, Version.Level> changeToLevel;
+    private final Map<SchemaChange.Type, Version.Level> forwardChanges;
+    private final Map<SchemaChange.Type, Version.Level> compatibleChanges;
     private final Map<SchemaChange.Type, String> errorMessages;
     private static final List<SchemaChange.Type> FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES = Lists.newArrayList(
-            DESCRIPTION_CHANGED, TITLE_CHANGED, PROPERTIES_ADDED, ADDITIONAL_PROPERTIES_CHANGED,
-            ADDITIONAL_ITEMS_CHANGED);
+            DESCRIPTION_CHANGED, TITLE_CHANGED, PROPERTIES_ADDED, REQUIRED_ARRAY_EXTENDED,
+            ADDITIONAL_PROPERTIES_CHANGED, ADDITIONAL_ITEMS_CHANGED);
+
 
     public SchemaEvolutionService(final Schema metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
                                   final SchemaDiff schemaDiff,
-                                  final Map<SchemaChange.Type, Version.Level> changeToLevel,
+                                  final Map<SchemaChange.Type, Version.Level> compatibleChanges,
+                                  final Map<SchemaChange.Type, Version.Level> forwardChanges,
                                   final Map<SchemaChange.Type, String> errorMessages) {
         this.metaSchema = metaSchema;
         this.schemaEvolutionConstraints = schemaEvolutionConstraints;
         this.schemaDiff = schemaDiff;
-        this.changeToLevel = changeToLevel;
+        this.forwardChanges = forwardChanges;
+        this.compatibleChanges = compatibleChanges;
         this.errorMessages = errorMessages;
     }
 
@@ -90,27 +95,31 @@ public class SchemaEvolutionService {
 
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
 
-        final Version.Level changeLevel = semanticOfChange(changes);
+        final Version.Level changeLevel = semanticOfChange(changes, original.getCompatibilityMode());
 
-        validateCompatibleChanges(original, changes, changeLevel);
-        validateCompatibilityModeMigration(original, eventType, changes);
+        if (isForwardToCompatibleUpgrade(original, eventType)) {
+            validateCompatibilityModeMigration(original, eventType, changes);
+        } else if (original.getCompatibilityMode() != CompatibilityMode.NONE) {
+            validateCompatibleChanges(original, changes, changeLevel);
+        }
 
         return this.bumpVersion(original, eventType, changeLevel);
     }
 
+    private boolean isForwardToCompatibleUpgrade(final EventType original, final EventTypeBase eventType) {
+        return original.getCompatibilityMode() == CompatibilityMode.FORWARD
+                && eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE;
+    }
+
     private void validateCompatibilityModeMigration(final EventType original, final EventTypeBase eventType,
                                                     final List<SchemaChange> changes) throws InvalidEventTypeException {
-        if (original.getCompatibilityMode() == CompatibilityMode.FORWARD
-            && eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
-
-            final List<SchemaChange> forbiddenChanges = changes.stream()
-                    .filter(change -> !FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
-                    .collect(Collectors.toList());
-            if (!forbiddenChanges.isEmpty()) {
-                final String errorMessage = forbiddenChanges.stream().map(this::formatErrorMessage)
-                        .collect(Collectors.joining(", "));
-                throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
-            }
+        final List<SchemaChange> forbiddenChanges = changes.stream()
+                .filter(change -> !FORWARD_TO_COMPATIBLE_ALLOWED_CHANGES.contains(change.getType()))
+                .collect(Collectors.toList());
+        if (!forbiddenChanges.isEmpty()) {
+            final String errorMessage = forbiddenChanges.stream().map(this::formatErrorMessage)
+                    .collect(Collectors.joining(", "));
+            throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
         }
     }
 
@@ -120,7 +129,7 @@ public class SchemaEvolutionService {
                 || original.getCompatibilityMode() == CompatibilityMode.FORWARD)
                 && changeLevel == MAJOR) {
             final String errorMessage = changes.stream()
-                    .filter(change -> MAJOR.equals(changeToLevel.get(change.getType())))
+                    .filter(change -> MAJOR.equals(compatibleChanges.get(change.getType())))
                     .map(this::formatErrorMessage)
                     .collect(Collectors.joining(", "));
             throw new InvalidEventTypeException("Invalid schema: " + errorMessage);
@@ -131,8 +140,12 @@ public class SchemaEvolutionService {
         return change.getJsonPath() + ": " + errorMessages.get(change.getType());
     }
 
-    private Version.Level semanticOfChange(final List<SchemaChange> changes) {
-        return changes.stream().map(SchemaChange::getType).map(changeToLevel::get).reduce(NO_CHANGES, (acc, change) -> {
+    private Version.Level semanticOfChange(final List<SchemaChange> changes,
+                                           final CompatibilityMode compatibilityMode) {
+        final Map<SchemaChange.Type, Version.Level> semanticOfChange = compatibilityMode
+                .equals(CompatibilityMode.COMPATIBLE) ? compatibleChanges : forwardChanges;
+        return changes.stream().map(SchemaChange::getType).map(semanticOfChange::get)
+                .reduce(NO_CHANGES, (acc, change) -> {
             if (Version.Level.valueOf(change.toString()).ordinal() < Version.Level.valueOf(acc.toString()).ordinal()) {
                 return change;
             } else {

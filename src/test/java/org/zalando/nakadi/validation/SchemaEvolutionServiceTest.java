@@ -48,6 +48,7 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.NUMBER_OF_ITEMS_CHANGE
 import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTIES_ADDED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTY_REMOVED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_EXTENDED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.SCHEMA_REMOVED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.SUB_SCHEMA_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
@@ -60,7 +61,8 @@ import static org.zalando.nakadi.utils.TestUtils.readFile;
 public class SchemaEvolutionServiceTest {
     private SchemaEvolutionService service;
     private final SchemaEvolutionConstraint evolutionConstraint = mock(SchemaEvolutionConstraint.class);
-    private final Map<SchemaChange.Type, Version.Level> changeToLevel = mock(HashMap.class);
+    private final Map<SchemaChange.Type, Version.Level> compatibleChanges = mock(HashMap.class);
+    private final Map<SchemaChange.Type, Version.Level> forwardChanges = mock(HashMap.class);
     private final Map<SchemaChange.Type, String> errorMessages = mock(HashMap.class);
     private final SchemaDiff schemaDiff = mock(SchemaDiff.class);
 
@@ -70,8 +72,8 @@ public class SchemaEvolutionServiceTest {
         final JSONObject metaSchemaJson = new JSONObject(Resources.toString(Resources.getResource("schema.json"),
                 Charsets.UTF_8));
         final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
-        this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints, schemaDiff, changeToLevel,
-                errorMessages);
+        this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints, schemaDiff, compatibleChanges,
+                forwardChanges, errorMessages);
 
         Mockito.doReturn("error").when(errorMessages).get(any());
     }
@@ -111,7 +113,7 @@ public class SchemaEvolutionServiceTest {
         final EventType newEventType = builder.build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(PATCH).when(changeToLevel).get(any());
+        Mockito.doReturn(PATCH).when(compatibleChanges).get(any());
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
@@ -129,7 +131,7 @@ public class SchemaEvolutionServiceTest {
         final EventType newEventType = builder.build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(MINOR).when(changeToLevel).get(any());
+        Mockito.doReturn(MINOR).when(compatibleChanges).get(any());
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
@@ -147,7 +149,7 @@ public class SchemaEvolutionServiceTest {
         final EventType newEventType = builder.build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(MAJOR).when(changeToLevel).get(any());
+        Mockito.doReturn(MAJOR).when(compatibleChanges).get(any());
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
@@ -161,7 +163,7 @@ public class SchemaEvolutionServiceTest {
         final EventType newEventType = builder.build();
 
         Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
-        Mockito.doReturn(MAJOR).when(changeToLevel).get(any());
+        Mockito.doReturn(MAJOR).when(forwardChanges).get(any());
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
@@ -185,6 +187,7 @@ public class SchemaEvolutionServiceTest {
                 DESCRIPTION_CHANGED,
                 TITLE_CHANGED,
                 PROPERTIES_ADDED,
+                REQUIRED_ARRAY_EXTENDED,
                 ADDITIONAL_PROPERTIES_CHANGED,
                 ADDITIONAL_ITEMS_CHANGED);
 
@@ -204,7 +207,7 @@ public class SchemaEvolutionServiceTest {
                 REQUIRED_ARRAY_CHANGED);
 
         allowedChanges.forEach(changeType -> {
-            Mockito.doReturn(MINOR).when(changeToLevel).get(any());
+            Mockito.doReturn(MINOR).when(forwardChanges).get(any());
             Mockito.doReturn(Lists.newArrayList(new SchemaChange(changeType, "#/"))).when(schemaDiff)
                     .collectChanges(any(), any());
 
