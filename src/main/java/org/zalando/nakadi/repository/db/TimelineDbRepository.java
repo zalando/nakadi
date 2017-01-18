@@ -2,17 +2,18 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.Timeline;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @DB
 @Repository
@@ -29,6 +30,10 @@ public class TimelineDbRepository extends AbstractDbRepository {
     @Autowired
     public TimelineDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper) {
         super(jdbcTemplate, jsonMapper);
+    }
+
+    public List<Timeline> list() {
+        return jdbcTemplate.query(BASE_TIMELINE_QUERY, timelineRowMapper);
     }
 
     public List<Timeline> listTimelines(final String eventType) {
@@ -130,4 +135,5 @@ public class TimelineDbRepository extends AbstractDbRepository {
             throw new SQLException("Failed to restore timeline with id " + timelineId, e);
         }
     };
+
 }
