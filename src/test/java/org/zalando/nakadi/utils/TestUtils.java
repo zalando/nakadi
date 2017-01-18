@@ -164,12 +164,12 @@ public class TestUtils {
         waitFor(runnable, 10000, 500);
     }
 
-    public static void waitFor(final Runnable runnable, final int timeoutMs) {
+    public static void waitFor(final Runnable runnable, final long timeoutMs) {
         waitFor(runnable, timeoutMs, 500);
     }
 
     @SuppressWarnings("unchecked")
-    public static void waitFor(final Runnable runnable, final int timeoutMs, final int intervalMs) {
+    public static void waitFor(final Runnable runnable, final long timeoutMs, final int intervalMs) {
         executeWithRetry(
                 runnable,
                 new RetryForSpecifiedTimeStrategy<Void>(timeoutMs)

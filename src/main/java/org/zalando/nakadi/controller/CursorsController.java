@@ -102,7 +102,7 @@ public class CursorsController {
             return allCommited ? noContent().build() : ok(body);
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
-        } catch (InvalidCursorException e) {
+        } catch (final InvalidCursorException e) {
             return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
         }
     }

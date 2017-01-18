@@ -354,7 +354,7 @@
       },
       "required": ["foo"]
     },
-    "errors": ["REQUIRED_ARRAY_CHANGED #/required"]
+    "errors": ["REQUIRED_ARRAY_EXTENDED #/required"]
   },
   {
     "description": "Do not allow required array to be changed",

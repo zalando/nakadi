@@ -19,6 +19,7 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.DEPENDENCY_SCHEMA_REMO
 import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTIES_ADDED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTY_REMOVED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_EXTENDED;
 
 public class ObjectSchemaDiff {
     static void recursiveCheck(final ObjectSchema original, final ObjectSchema update,
@@ -35,8 +36,12 @@ public class ObjectSchemaDiff {
 
     private static void compareAttributes(final ObjectSchema original, final ObjectSchema update,
                                           final Stack<String> jsonPath, final List<SchemaChange> changes) {
-        if (!(original.getRequiredProperties().containsAll(update.getRequiredProperties())
-                && update.getRequiredProperties().containsAll(original.getRequiredProperties()))) {
+
+        if (update.getRequiredProperties().containsAll(original.getRequiredProperties())) {
+            if (original.getRequiredProperties().size() != update.getRequiredProperties().size()) {
+                SchemaDiff.addChange("required", REQUIRED_ARRAY_EXTENDED, jsonPath, changes);
+            }
+        } else {
             SchemaDiff.addChange("required", REQUIRED_ARRAY_CHANGED, jsonPath, changes);
         }
 

@@ -40,6 +40,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
+
 @Component
 public class EventTypeService {
 
@@ -195,7 +197,9 @@ public class EventTypeService {
                 throw new InvalidEventTypeException("\"metadata\" property is reserved");
             }
 
-            validatePartitionKeys(schema, eventType);
+            if (featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
+                validatePartitionKeys(schema, eventType);
+            }
 
             if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
                 validateJsonSchemaConstraints(schemaAsJson);

@@ -810,9 +810,13 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for committing offsets of the subscription. The client must commit at least once
-        every 60 seconds, otherwise Nakadi will consider the client to be gone and will close the
-        connection.
+        Endpoint for committing offsets of the subscription. If there is uncommited data, and no commits happen
+        for 60 seconds, then Nakadi will consider the client to be gone, and will close the connection. As long
+        as no events are sent, the client does not need to commit.
+
+        If the connection is closed, the client has 60 seconds to commit the events it received, from the moment
+        they were sent. After that, the connection will be considered closed, and it will not be possible to do
+        commit with that `X-Nakadi-StreamId` anymore.
 
         When a batch is committed that also automatically commits all previous batches that were
         sent in a stream for this partition.
