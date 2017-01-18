@@ -40,6 +40,7 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.NUMBER_OF_ITEMS_CHANGE
 import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTIES_ADDED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.PROPERTY_REMOVED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_CHANGED;
+import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_EXTENDED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.SCHEMA_REMOVED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.SUB_SCHEMA_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
@@ -72,25 +73,47 @@ public class ValidatorConfig {
                 new EnrichmentStrategyConstraint()
         );
 
-        final Map<SchemaChange.Type, Version.Level> changeToLevel = new HashMap<>();
-        changeToLevel.put(DESCRIPTION_CHANGED, PATCH);
-        changeToLevel.put(TITLE_CHANGED, PATCH);
-        changeToLevel.put(PROPERTIES_ADDED, MINOR);
-        changeToLevel.put(ID_CHANGED, MAJOR);
-        changeToLevel.put(SCHEMA_REMOVED, MAJOR);
-        changeToLevel.put(TYPE_CHANGED, MAJOR);
-        changeToLevel.put(NUMBER_OF_ITEMS_CHANGED, MAJOR);
-        changeToLevel.put(PROPERTY_REMOVED, MAJOR);
-        changeToLevel.put(DEPENDENCY_ARRAY_CHANGED, MAJOR);
-        changeToLevel.put(DEPENDENCY_SCHEMA_CHANGED, MAJOR);
-        changeToLevel.put(COMPOSITION_METHOD_CHANGED, MAJOR);
-        changeToLevel.put(ATTRIBUTE_VALUE_CHANGED, MAJOR);
-        changeToLevel.put(ENUM_ARRAY_CHANGED, MAJOR);
-        changeToLevel.put(SUB_SCHEMA_CHANGED, MAJOR);
-        changeToLevel.put(DEPENDENCY_SCHEMA_REMOVED, MAJOR);
-        changeToLevel.put(REQUIRED_ARRAY_CHANGED, MAJOR);
-        changeToLevel.put(ADDITIONAL_PROPERTIES_CHANGED, MAJOR);
-        changeToLevel.put(ADDITIONAL_ITEMS_CHANGED, MAJOR);
+        final Map<SchemaChange.Type, Version.Level> compatibleChanges = new HashMap<>();
+        compatibleChanges.put(DESCRIPTION_CHANGED, PATCH);
+        compatibleChanges.put(TITLE_CHANGED, PATCH);
+        compatibleChanges.put(PROPERTIES_ADDED, MINOR);
+        compatibleChanges.put(ID_CHANGED, MAJOR);
+        compatibleChanges.put(SCHEMA_REMOVED, MAJOR);
+        compatibleChanges.put(TYPE_CHANGED, MAJOR);
+        compatibleChanges.put(NUMBER_OF_ITEMS_CHANGED, MAJOR);
+        compatibleChanges.put(PROPERTY_REMOVED, MAJOR);
+        compatibleChanges.put(DEPENDENCY_ARRAY_CHANGED, MAJOR);
+        compatibleChanges.put(DEPENDENCY_SCHEMA_CHANGED, MAJOR);
+        compatibleChanges.put(COMPOSITION_METHOD_CHANGED, MAJOR);
+        compatibleChanges.put(ATTRIBUTE_VALUE_CHANGED, MAJOR);
+        compatibleChanges.put(ENUM_ARRAY_CHANGED, MAJOR);
+        compatibleChanges.put(SUB_SCHEMA_CHANGED, MAJOR);
+        compatibleChanges.put(DEPENDENCY_SCHEMA_REMOVED, MAJOR);
+        compatibleChanges.put(REQUIRED_ARRAY_CHANGED, MAJOR);
+        compatibleChanges.put(REQUIRED_ARRAY_EXTENDED, MAJOR);
+        compatibleChanges.put(ADDITIONAL_PROPERTIES_CHANGED, MAJOR);
+        compatibleChanges.put(ADDITIONAL_ITEMS_CHANGED, MAJOR);
+
+        final Map<SchemaChange.Type, Version.Level> forwardChanges = new HashMap<>();
+        forwardChanges.put(DESCRIPTION_CHANGED, PATCH);
+        forwardChanges.put(TITLE_CHANGED, PATCH);
+        forwardChanges.put(PROPERTIES_ADDED, MINOR);
+        forwardChanges.put(REQUIRED_ARRAY_EXTENDED, MINOR);
+        forwardChanges.put(ID_CHANGED, MAJOR);
+        forwardChanges.put(SCHEMA_REMOVED, MAJOR);
+        forwardChanges.put(TYPE_CHANGED, MAJOR);
+        forwardChanges.put(NUMBER_OF_ITEMS_CHANGED, MAJOR);
+        forwardChanges.put(PROPERTY_REMOVED, MAJOR);
+        forwardChanges.put(DEPENDENCY_ARRAY_CHANGED, MAJOR);
+        forwardChanges.put(DEPENDENCY_SCHEMA_CHANGED, MAJOR);
+        forwardChanges.put(COMPOSITION_METHOD_CHANGED, MAJOR);
+        forwardChanges.put(ATTRIBUTE_VALUE_CHANGED, MAJOR);
+        forwardChanges.put(ENUM_ARRAY_CHANGED, MAJOR);
+        forwardChanges.put(SUB_SCHEMA_CHANGED, MAJOR);
+        forwardChanges.put(DEPENDENCY_SCHEMA_REMOVED, MAJOR);
+        forwardChanges.put(REQUIRED_ARRAY_CHANGED, MAJOR);
+        forwardChanges.put(ADDITIONAL_PROPERTIES_CHANGED, MAJOR);
+        forwardChanges.put(ADDITIONAL_ITEMS_CHANGED, MAJOR);
 
         final Map<SchemaChange.Type, String> errorMessage = new HashMap<>();
         errorMessage.put(SCHEMA_REMOVED, "change not allowed");
@@ -105,11 +128,13 @@ public class ValidatorConfig {
         errorMessage.put(SUB_SCHEMA_CHANGED, "sub schema changed");
         errorMessage.put(DEPENDENCY_SCHEMA_REMOVED, "dependency schema removed");
         errorMessage.put(REQUIRED_ARRAY_CHANGED, "required array changed");
+        errorMessage.put(REQUIRED_ARRAY_EXTENDED, "required array changed");
         errorMessage.put(ADDITIONAL_PROPERTIES_CHANGED, "change not allowed");
         errorMessage.put(ADDITIONAL_ITEMS_CHANGED, "change not allowed");
 
         final SchemaDiff diff = new SchemaDiff();
 
-        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, changeToLevel, errorMessage);
+        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, compatibleChanges,
+                forwardChanges, errorMessage);
     }
 }
