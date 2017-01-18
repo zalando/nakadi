@@ -18,14 +18,17 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
 
-import java.util.ArrayList;
+import javax.annotation.PreDestroy;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -40,25 +43,38 @@ public class EventTypeCache {
     private final PathChildrenCache cacheSync;
     private final ZooKeeperHolder zkClient;
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private final TimelineSync timelineSync;
+    private Map<String, TimelineSync.ListenerRegistration> timelineRegistrations;
+
     public EventTypeCache(final EventTypeRepository eventTypeRepository,
                           final TimelineDbRepository timelineRepository,
-                          final ZooKeeperHolder zkClient)
+                          final ZooKeeperHolder zkClient,
+                          final TimelineSync timelineSync)
             throws Exception {
-        this(eventTypeRepository, timelineRepository, zkClient, setupCacheSync(zkClient.get()));
+        this(eventTypeRepository, timelineRepository, zkClient, setupCacheSync(zkClient.get()), timelineSync);
     }
 
     @VisibleForTesting
     EventTypeCache(final EventTypeRepository eventTypeRepository,
                    final TimelineDbRepository timelineRepository,
                    final ZooKeeperHolder zkClient,
-                   final PathChildrenCache cache) {
+                   final PathChildrenCache cache,
+                   final TimelineSync timelineSync) {
         this.zkClient = zkClient;
         this.eventTypeCache = setupInMemoryEventTypeCache(eventTypeRepository, timelineRepository);
         this.cacheSync = cache;
+        this.timelineSync = timelineSync;
+        this.timelineRegistrations = new ConcurrentHashMap<>();
         if (null != cacheSync) {
             this.cacheSync.getListenable().addListener((curator, event) -> this.onZkEvent(event));
         }
         preloadEventTypes(eventTypeRepository, timelineRepository);
+    }
+
+    @PreDestroy
+    public void cleanUp() {
+        timelineRegistrations.forEach((etName, listenerRegistration) -> listenerRegistration.cancel());
+        timelineRegistrations.clear();
     }
 
     private static PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
@@ -89,16 +105,19 @@ public class EventTypeCache {
                     .collect(Collectors.groupingBy(Timeline::getEventType));
             final Map<String, CachedValue> preloaded = eventTypeRepository.list().stream().collect(Collectors.toMap(
                     EventType::getName,
-                    et -> new CachedValue(et, EventValidation.forType(et), eventTypeTimelines.get(et))
+                    et -> new CachedValue(et, EventValidation.forType(et), eventTypeTimelines.get(et.getName()))
             ));
-            new ArrayList<>(preloaded.keySet()).forEach(eventType -> {
+            final Iterator<Map.Entry<String, CachedValue>> it = preloaded.entrySet().iterator();
+             while (it.hasNext()) {
+                String eventTypeName = null;
                 try {
-                    created(eventType);
+                    eventTypeName = it.next().getKey();
+                    created(eventTypeName);
                 } catch (final Exception e) {
-                    LOG.error("Failed to create node for {}", eventType, e);
-                    preloaded.remove(eventType);
+                    LOG.error("Failed to create node for {}", eventTypeName, e);
+                    it.remove();
                 }
-            });
+            }
             this.eventTypeCache.putAll(preloaded);
             LOG.info("Cache preload complete, load {} event types within {} ms",
                     preloaded.size(),
@@ -123,14 +142,18 @@ public class EventTypeCache {
                     .withMode(CreateMode.PERSISTENT)
                     .forPath(path, new byte[0]);
         } catch (final KeeperException.NodeExistsException expected) {
-            // silently do nothing since it's already been tracked
+            LOG.debug("Silently do nothing since event type has already been tracked");
         }
+
+        timelineRegistrations.computeIfAbsent(name,
+                n -> timelineSync.registerTimelineChangeListener(n, (etName) -> eventTypeCache.invalidate(etName)));
     }
 
     public void removed(final String name) throws Exception {
         final String path = getZNodePath(name);
         created(name); // make sure every nome is tracked in the remote cache
         zkClient.get().delete().forPath(path);
+        timelineRegistrations.remove(name).cancel();
     }
 
     private Optional<CachedValue> getCached(final String name)
@@ -153,6 +176,21 @@ public class EventTypeCache {
 
     public EventTypeValidator getValidator(final String name) throws InternalNakadiException, NoSuchEventTypeException {
         return getCached(name).map(CachedValue::getEventTypeValidator)
+                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
+    }
+
+    public Optional<Timeline> getActiveTimeline(final String name) throws InternalNakadiException,
+            NoSuchEventTypeException {
+        return getCached(name).map(CachedValue::getTimelines)
+                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"))
+                .stream()
+                .filter(t -> t.getSwitchedAt() != null)
+                .max(Comparator.comparing(Timeline::getOrder));
+    }
+
+    public List<Timeline> getTimelines(final String name) throws InternalNakadiException,
+            NoSuchEventTypeException {
+        return getCached(name).map(CachedValue::getTimelines)
                 .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
     }
 
@@ -209,12 +247,6 @@ public class EventTypeCache {
 
         public EventTypeValidator getEventTypeValidator() {
             return eventTypeValidator;
-        }
-
-        public Optional<Timeline> getActiveTimeline() {
-            return timelines.stream()
-                    .filter(t -> t.getSwitchedAt() != null)
-                    .max(Comparator.comparing(Timeline::getOrder));
         }
 
         public List<Timeline> getTimelines() {

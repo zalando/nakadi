@@ -18,7 +18,7 @@ public abstract class ValidationStrategy {
     }
 
     public static final ValidationStrategy lookup(final String strategyName) {
-        Preconditions.checkArgument(STRATEGIES.containsKey(strategyName), "No such strategy {}", strategyName);
+        Preconditions.checkArgument(STRATEGIES.containsKey(strategyName), "No such strategy %s", strategyName);
         return STRATEGIES.get(strategyName);
     }
 }
