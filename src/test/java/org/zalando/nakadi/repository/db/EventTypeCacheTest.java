@@ -39,7 +39,7 @@ public class EventTypeCacheTest {
         Mockito.when(etRepo.list()).thenReturn(Collections.singletonList(et));
         final Timeline timeline = TestUtils.buildTimeline(et.getName());
         final List<Timeline> timelines = Collections.singletonList(timeline);
-        Mockito.when(timelineRepository.list()).thenReturn(timelines);
+        Mockito.when(timelineRepository.listTimelines()).thenReturn(timelines);
         Mockito.when(timelineSync.registerTimelineChangeListener(Matchers.eq(et.getName()), Mockito.any()))
                 .thenReturn(() -> {});
         final EventTypeCache eventTypeCache = new EventTypeCache(etRepo, timelineRepository, zkHolder,
@@ -58,6 +58,6 @@ public class EventTypeCacheTest {
         Assert.assertEquals(timelines, eventTypeCache.getTimelines(et.getName()));
 
         Mockito.verify(timelineRepository, Mockito.times(0)).listTimelines(Mockito.any());
-        Mockito.verify(timelineRepository, Mockito.times(1)).list();
+        Mockito.verify(timelineRepository, Mockito.times(1)).listTimelines();
     }
 }

@@ -22,7 +22,6 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
 
-import javax.annotation.PreDestroy;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -71,12 +70,6 @@ public class EventTypeCache {
         preloadEventTypes(eventTypeRepository, timelineRepository);
     }
 
-    @PreDestroy
-    public void cleanUp() {
-        timelineRegistrations.forEach((etName, listenerRegistration) -> listenerRegistration.cancel());
-        timelineRegistrations.clear();
-    }
-
     private static PathChildrenCache setupCacheSync(final CuratorFramework zkClient) throws Exception {
         try {
             zkClient.create()
@@ -101,7 +94,7 @@ public class EventTypeCache {
         final long start = System.currentTimeMillis();
         rwLock.writeLock().lock();
         try {
-            final Map<String, List<Timeline>> eventTypeTimelines = timelineRepository.list().stream()
+            final Map<String, List<Timeline>> eventTypeTimelines = timelineRepository.listTimelines().stream()
                     .collect(Collectors.groupingBy(Timeline::getEventType));
             final Map<String, CachedValue> preloaded = eventTypeRepository.list().stream().collect(Collectors.toMap(
                     EventType::getName,
