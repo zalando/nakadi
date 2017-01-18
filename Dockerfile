@@ -1,4 +1,4 @@
-FROM registry.opensource.zalan.do/stups/openjdk:8-42
+FROM registry.opensource.zalan.do/stups/openjdk:8-54
 
 MAINTAINER Team Aruha, team-aruha@zalando.de
 

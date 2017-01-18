@@ -1,5 +1,10 @@
 package org.zalando.nakadi.config;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Profile;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -13,12 +18,6 @@ import org.zalando.nakadi.validation.EventBodyMustRespectSchema;
 import org.zalando.nakadi.validation.EventMetadataValidationStrategy;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.ValidationStrategy;
-import org.apache.curator.framework.CuratorFramework;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Profile;
 
 @Configuration
 @Profile("!test")
@@ -40,14 +39,13 @@ public class RepositoriesConfig {
     public EventTypeCache eventTypeCache(final ZooKeeperHolder zooKeeperHolder,
                                          @DB final EventTypeRepository eventTypeRepository)
     {
-        final CuratorFramework client = zooKeeperHolder.get();
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema(
                 new JsonSchemaEnrichment()
         ));
         ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
 
         try {
-            return new EventTypeCache(eventTypeRepository, client);
+            return new EventTypeCache(eventTypeRepository, zooKeeperHolder);
         } catch (final Exception e) {
             throw new IllegalStateException("failed to create event type cache");
         }

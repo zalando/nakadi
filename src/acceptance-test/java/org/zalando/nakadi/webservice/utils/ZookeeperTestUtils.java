@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice.utils;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.RetryNTimes;
@@ -13,6 +14,7 @@ public class ZookeeperTestUtils {
         final CuratorFramework curator = CuratorFrameworkFactory.builder()
                 .connectString(zkUrl)
                 .retryPolicy(new RetryNTimes(5, 500))
+                .sessionTimeoutMs((int)TimeUnit.SECONDS.toMillis(10))
                 .build();
         curator.start();
         return curator;

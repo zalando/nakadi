@@ -29,7 +29,6 @@ import org.zalando.nakadi.validation.ValidationError;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Component
@@ -114,7 +113,7 @@ public class EventPublisher {
     }
 
     private void validate(final List<BatchItem> batch, final EventType eventType) throws EventValidationException,
-            InternalNakadiException {
+            InternalNakadiException, NoSuchEventTypeException {
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.VALIDATING);
             try {
@@ -132,16 +131,12 @@ public class EventPublisher {
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,
-            InternalNakadiException {
-        try {
-            final EventTypeValidator validator = eventTypeCache.getValidator(eventType.getName());
-            final Optional<ValidationError> validationError = validator.validate(event);
+            InternalNakadiException, NoSuchEventTypeException {
+        final EventTypeValidator validator = eventTypeCache.getValidator(eventType.getName());
+        final Optional<ValidationError> validationError = validator.validate(event);
 
-            if (validationError.isPresent()) {
-                throw new EventValidationException(validationError.get());
-            }
-        } catch (final ExecutionException e) {
-            throw new InternalNakadiException("Error loading validator", e);
+        if (validationError.isPresent()) {
+            throw new EventValidationException(validationError.get());
         }
     }
 
