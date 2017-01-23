@@ -78,6 +78,12 @@ nakadi:
   auth:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
+
+twintip:
+  mapping: /api
+  ui: /api/ui/
+  yaml: "classpath:nakadi-event-bus-api.yaml"
+
 ---
 
 spring:
