@@ -92,3 +92,12 @@ nakadi:
   stream:
     default:
       commitTimeout: 5 # seconds
+
+---
+
+spring:
+  profiles: test
+twintip:
+  mapping: /api
+  ui: /api/ui/
+  yaml: "file:api/nakadi-event-bus-api.yaml"
