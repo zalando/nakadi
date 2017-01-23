@@ -19,6 +19,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
@@ -84,6 +85,8 @@ public class KafkaTopicRepositoryTest {
     }
 
     private ConsumerOffsetMode offsetMode = ConsumerOffsetMode.EARLIEST;
+    private final PublishTimeoutTimer timeoutTimer;
+
     private enum ConsumerOffsetMode {
         EARLIEST,
         LATEST
@@ -123,6 +126,9 @@ public class KafkaTopicRepositoryTest {
 
         kafkaFactory = createKafkaFactory();
         kafkaTopicRepository = createKafkaRepository(kafkaFactory);
+
+        timeoutTimer = mock(PublishTimeoutTimer.class);
+        when(timeoutTimer.leftTillTimeoutMs()).thenReturn(30000L);
     }
 
 
@@ -230,7 +236,7 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, timeoutTimer);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -254,7 +260,7 @@ public class KafkaTopicRepositoryTest {
                 .send(any(), any());
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, timeoutTimer);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
@@ -287,7 +293,7 @@ public class KafkaTopicRepositoryTest {
         });
 
         try {
-            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch);
+            kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), batch, timeoutTimer);
             fail();
         } catch (final EventPublishingException e) {
             assertThat(firstItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));
@@ -394,7 +400,8 @@ public class KafkaTopicRepositoryTest {
                 final BatchItem batchItem = new BatchItem(new JSONObject());
                 batchItem.setPartition("1");
                 batches.add(batchItem);
-                kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));
+                kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem),
+                        timeoutTimer);
                 fail();
             } catch (final EventPublishingException e) {
             }

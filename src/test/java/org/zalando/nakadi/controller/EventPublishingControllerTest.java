@@ -52,25 +52,21 @@ public class EventPublishingControllerTest {
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
 
     private ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private MetricRegistry metricRegistry;
     private JsonTestHelper jsonHelper;
     private EventPublisher publisher;
-    private FeatureToggleService featureToggleService;
-    private SecuritySettings settings;
 
     private MockMvc mockMvc;
     private EventTypeMetricRegistry eventTypeMetricRegistry;
-    private BlacklistService blacklistService;
 
     @Before
     public void setUp() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
-        metricRegistry = new MetricRegistry();
+        final MetricRegistry metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
-        featureToggleService = mock(FeatureToggleService.class);
-        settings = mock(SecuritySettings.class);
-        blacklistService = Mockito.mock(BlacklistService.class);
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+        final SecuritySettings settings = mock(SecuritySettings.class);
+        final BlacklistService blacklistService = Mockito.mock(BlacklistService.class);
         Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
 
         final EventPublishingController controller =
@@ -91,7 +87,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
+                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class), any());
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isOk())
@@ -114,7 +110,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
+                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class), any());
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
@@ -128,7 +124,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
+                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class), any());
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())
@@ -140,7 +136,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doThrow(NoSuchEventTypeException.class)
                 .when(publisher)
-                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class));
+                .publish(any(JSONArray.class), eq(TOPIC), any(Client.class), any());
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
@@ -155,7 +151,7 @@ public class EventPublishingControllerTest {
                 .doReturn(success)
                 .doThrow(InternalNakadiException.class)
                 .when(publisher)
-                .publish(any(), any(), any(Client.class));
+                .publish(any(), any(), any(Client.class), any());
 
         postBatch(TOPIC, EVENT_BATCH);
         postBatch(TOPIC, EVENT_BATCH);

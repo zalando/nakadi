@@ -10,7 +10,6 @@ import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.UnknownServerException;
@@ -21,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventPublishingStatus;
@@ -32,6 +32,7 @@ import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
+import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -203,10 +204,6 @@ public class KafkaTopicRepository implements TopicRepository {
                 }
             }));
             return result;
-        } catch (final InterruptException e) {
-            circuitBreaker.markSuccessfully();
-            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
-            throw new EventPublishingException("Error publishing message to kafka", e);
         } catch (final RuntimeException e) {
             circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
@@ -230,7 +227,13 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
+    public void syncPostBatch(final String topicId, final List<BatchItem> batch, final PublishTimeoutTimer timeoutTimer)
+            throws EventPublishingException, EventPublishingTimeoutException {
+
+        if (timeoutTimer.leftTillTimeoutMs() < createSendTimeout()) {
+            throw new EventPublishingTimeoutException("Request timed out. Not enough time to publish event(s).");
+        }
+
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
@@ -260,7 +263,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
+            multiFuture.get(timeoutTimer.leftTillTimeoutMs(), TimeUnit.MILLISECONDS);
 
             // Now lets check for errors
             final Optional<Exception> needReset = sendFutures.entrySet().stream()

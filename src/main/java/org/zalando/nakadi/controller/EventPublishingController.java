@@ -57,6 +57,8 @@ public class EventPublishingController {
                                     final NativeWebRequest request,
                                     final Client client) {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
+
+        final PublishTimeoutTimer timeoutTimer = new PublishTimeoutTimer(60000); // todo: introduce a property
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
@@ -66,7 +68,7 @@ public class EventPublishingController {
             }
 
             final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
-                    request, eventTypeMetrics, client);
+                    request, eventTypeMetrics, client, timeoutTimer);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {
@@ -79,17 +81,18 @@ public class EventPublishingController {
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
-                                             final Client client) {
+                                             final Client client,
+                                             final PublishTimeoutTimer timeoutTimer) {
         final long startingNanos = System.nanoTime();
         try {
             final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
 
             final int eventCount = eventsAsJsonObjects.length();
-            final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName, client);
+            final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName, client,
+                    timeoutTimer);
             reportMetrics(eventTypeMetrics, result, eventsAsString, eventCount);
 
-            final ResponseEntity response = response(result);
-            return response;
+            return response(result);
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);

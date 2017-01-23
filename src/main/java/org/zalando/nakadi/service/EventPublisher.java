@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -16,6 +17,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
+import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
 import org.zalando.nakadi.exceptions.EventValidationException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -24,11 +26,15 @@ import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Component
@@ -40,30 +46,37 @@ public class EventPublisher {
     private final EventTypeCache eventTypeCache;
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
+    private final TimelineSync timelineSync;
 
     @Autowired
     public EventPublisher(final TopicRepository topicRepository,
                           final EventTypeCache eventTypeCache,
                           final PartitionResolver partitionResolver,
-                          final Enrichment enrichment) {
+                          final Enrichment enrichment,
+                          final TimelineSync timelineSync) {
         this.topicRepository = topicRepository;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
+        this.timelineSync = timelineSync;
     }
 
-    public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client)
-            throws NoSuchEventTypeException, InternalNakadiException {
-        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+    public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client,
+                                      final PublishTimeoutTimer timeoutTimer)
+            throws NoSuchEventTypeException, InternalNakadiException, EventPublishingTimeoutException {
+
+        Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
-
-        client.checkScopes(eventType.getWriteScopes());
-
         try {
+            publishingCloser = timelineSync.workWithEventType(eventTypeName, timeoutTimer.leftTillTimeoutMs());
+
+            final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+            client.checkScopes(eventType.getWriteScopes());
+
             validate(batch, eventType);
             partition(batch, eventType);
             enrich(batch, eventType);
-            submit(batch, eventType);
+            submit(batch, eventType, timeoutTimer);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -78,6 +91,17 @@ public class EventPublisher {
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
+        } catch (InterruptedException | TimeoutException e) {
+            LOG.error("Failed to wait for timeline switch", e);
+            throw new EventPublishingTimeoutException("Event type is currently in maintenance, please repeat request");
+        } finally {
+            try {
+                if (publishingCloser != null) {
+                    publishingCloser.close();
+                }
+            } catch (final IOException e) {
+                LOG.error("Exception occurred when releasing usage of event-type", e);
+            }
         }
     }
 
@@ -125,9 +149,10 @@ public class EventPublisher {
         }
     }
 
-    private void submit(final List<BatchItem> batch, final EventType eventType) throws EventPublishingException {
+    private void submit(final List<BatchItem> batch, final EventType eventType, final PublishTimeoutTimer timeoutTimer)
+            throws EventPublishingException, EventPublishingTimeoutException {
         // there is no need to group by partition since its already done by kafka client
-        topicRepository.syncPostBatch(eventType.getTopic(), batch);
+        topicRepository.syncPostBatch(eventType.getTopic(), batch, timeoutTimer);
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,
