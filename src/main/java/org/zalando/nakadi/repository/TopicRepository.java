@@ -49,7 +49,7 @@ public interface TopicRepository {
 
     TopicPartition getPartition(String topicId, String partition) throws NakadiException;
 
-    EventConsumer createEventConsumer(String topic, List<Cursor> cursors) throws NakadiException,
+    EventConsumer createEventConsumer(final String clientId, String topic, List<Cursor> cursors) throws NakadiException,
             InvalidCursorException;
 
     int compareOffsets(String firstOffset, String secondOffset) throws InternalNakadiException;

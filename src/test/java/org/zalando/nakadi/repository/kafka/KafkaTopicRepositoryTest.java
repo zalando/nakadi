@@ -65,6 +65,7 @@ public class KafkaTopicRepositoryTest {
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
+    private final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
     @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");
@@ -155,17 +156,17 @@ public class KafkaTopicRepositoryTest {
     public void validateValidCursors() throws NakadiException, InvalidCursorException {
         // validate each individual valid cursor
         for (final Cursor cursor : MY_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(cursor));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(cursor));
         }
         // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(MY_TOPIC, MY_TOPIC_VALID_CURSORS);
+        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, MY_TOPIC_VALID_CURSORS);
 
         // validate each individual valid cursor
         for (final Cursor cursor : ANOTHER_TOPIC_VALID_CURSORS) {
-            kafkaTopicRepository.createEventConsumer(ANOTHER_TOPIC, asList(cursor));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, ANOTHER_TOPIC, asList(cursor));
         }
         // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS);
+        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS);
     }
 
     @Test
@@ -173,42 +174,42 @@ public class KafkaTopicRepositoryTest {
     public void invalidateInvalidCursors() throws NakadiException {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
-            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(outOfBoundOffset));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(outOfBoundOffset));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
 
         final Cursor emptyPartition = cursor("2", "0");
         try {
-            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(emptyPartition));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(emptyPartition));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.EMPTY_PARTITION));
         }
 
         final Cursor nonExistingPartition = cursor("99", "100");
         try {
-            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(nonExistingPartition));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(nonExistingPartition));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
 
         final Cursor wrongOffset = cursor("0", "blah");
         try {
-            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(wrongOffset));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(wrongOffset));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }
 
         final Cursor nullOffset = cursor("0", null);
         try {
-            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(nullOffset));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(nullOffset));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.NULL_OFFSET));
         }
 
         final Cursor nullPartition = cursor(null, "x");
         try {
-            kafkaTopicRepository.createEventConsumer(MY_TOPIC, asList(nullPartition));
+            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, asList(nullPartition));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.NULL_PARTITION));
         }
@@ -337,12 +338,12 @@ public class KafkaTopicRepositoryTest {
         final List<Cursor> cursors = ImmutableList.of(new Cursor("0", "40"), new Cursor("1",
                 Cursor.BEFORE_OLDEST_OFFSET));
 
-        kafkaTopicRepository.createEventConsumer(MY_TOPIC, cursors);
+        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, cursors);
 
         // ASSERT //
         final Class<List<KafkaCursor>> kafkaCursorListClass = (Class<List<KafkaCursor>>) (Class) List.class;
         final ArgumentCaptor<List<KafkaCursor>> captor = ArgumentCaptor.forClass(kafkaCursorListClass);
-        verify(kafkaFactory).createNakadiConsumer(eq(MY_TOPIC), captor.capture(), eq(0L));
+        verify(kafkaFactory).createNakadiConsumer(eq(KAFKA_CLIENT_ID), eq(MY_TOPIC), captor.capture(), eq(0L));
 
         final List<KafkaCursor> kafkaCursors = captor.getValue();
         assertThat(kafkaCursors, equalTo(ImmutableList.of(
@@ -490,6 +491,7 @@ public class KafkaTopicRepositoryTest {
         // KafkaFactory
         final KafkaFactory kafkaFactory = mock(KafkaFactory.class);
 
+        when(kafkaFactory.getConsumer(KAFKA_CLIENT_ID)).thenReturn(consumer);
         when(kafkaFactory.getConsumer()).thenReturn(consumer);
         when(kafkaFactory.takeProducer()).thenReturn(kafkaProducer);
 
