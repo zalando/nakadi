@@ -65,7 +65,7 @@ public class KafkaTopicRepositoryTest {
     private final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
     private final KafkaSettings kafkaSettings = mock(KafkaSettings.class);
     private final ZookeeperSettings zookeeperSettings = mock(ZookeeperSettings.class);
-    private final String KAFKA_CLIENT_ID = "application_name-topic_name";
+    private static final String KAFKA_CLIENT_ID = "application_name-topic_name";
 
     @SuppressWarnings("unchecked")
     public static final ProducerRecord EXPECTED_PRODUCER_RECORD = new ProducerRecord(MY_TOPIC, 0, "0", "payload");

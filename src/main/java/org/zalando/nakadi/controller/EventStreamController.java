@@ -238,7 +238,7 @@ public class EventStreamController {
      * application name and event type so that every application can consume up to the quota limit per partition.
      * Leader partitions from a single event type are guaranteed to be located on different brokers.
      **/
-    private String getKafkaQuotaClientId(final @PathVariable("name") String eventTypeName, final Client client) {
+    private String getKafkaQuotaClientId(final String eventTypeName, final Client client) {
         return client.getClientId() + "-" + eventTypeName;
     }
 

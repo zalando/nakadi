@@ -278,7 +278,8 @@ public class EventStreamControllerTest {
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
+        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(TEST_TOPIC),
+                eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
 
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
@@ -452,7 +453,8 @@ public class EventStreamControllerTest {
         EVENT_TYPE.setReadScopes(SCOPE_READ);
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
+        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(TEST_TOPIC),
+                eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
     }
 
