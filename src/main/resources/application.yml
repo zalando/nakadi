@@ -82,7 +82,7 @@ nakadi:
 twintip:
   mapping: /api
   ui: /api/ui/
-  yaml: "classpath:nakadi-event-bus-api.yaml"
+  yaml: "file:nakadi-event-bus-api.yaml"
 
 ---
 
