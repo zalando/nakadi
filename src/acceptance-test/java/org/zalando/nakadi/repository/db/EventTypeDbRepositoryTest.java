@@ -30,7 +30,7 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
     private EventTypeRepository repository;
 
     public EventTypeDbRepositoryTest() {
-        super(new String[]{ "zn_data.event_type_schema", "zn_data.event_type" });
+        super("zn_data.event_type_schema", "zn_data.event_type");
     }
 
     @Before
