@@ -95,6 +95,7 @@ public class EventTypeControllerTest {
     private static final long TOPIC_RETENTION_TIME_MS = 150;
     private static final int NAKADI_SEND_TIMEOUT = 10000;
     private static final int NAKADI_POLL_TIMEOUT = 10000;
+    private static final int NAKADI_PUBLISH_TIMEOUT = 60000;
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
@@ -124,7 +125,7 @@ public class EventTypeControllerTest {
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT);
+                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_PUBLISH_TIMEOUT);
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings);
 

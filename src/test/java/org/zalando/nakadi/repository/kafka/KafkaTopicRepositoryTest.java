@@ -28,6 +28,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.EventPublishingException;
+import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -128,7 +129,7 @@ public class KafkaTopicRepositoryTest {
         kafkaTopicRepository = createKafkaRepository(kafkaFactory);
 
         timeoutTimer = mock(PublishTimeoutTimer.class);
-        when(timeoutTimer.leftTillTimeoutMs()).thenReturn(30000L);
+        when(timeoutTimer.leftTillTimeoutMs()).thenReturn(60000L);
     }
 
 
@@ -230,6 +231,7 @@ public class KafkaTopicRepositoryTest {
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
                 new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
+        when(timeoutTimer.leftTillTimeoutMs()).thenReturn(200L);
         Mockito
                 .doReturn(mock(Future.class))
                 .when(kafkaProducer)
@@ -242,6 +244,14 @@ public class KafkaTopicRepositoryTest {
             assertThat(item.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(item.getResponse().getDetail(), equalTo("timed out"));
         }
+    }
+
+    @Test(expected = EventPublishingTimeoutException.class)
+    public void whenSyncPostBatchAndTimeIsNotEnoughThenException() throws Exception {
+        when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(100L);
+        when(kafkaSettings.getRequestTimeoutMs()).thenReturn(200);
+        when(timeoutTimer.leftTillTimeoutMs()).thenReturn(250L);
+        kafkaTopicRepository.syncPostBatch(null, null, timeoutTimer);
     }
 
     @Test

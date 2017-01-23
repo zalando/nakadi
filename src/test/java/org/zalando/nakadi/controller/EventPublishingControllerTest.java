@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
@@ -34,6 +35,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -61,16 +63,22 @@ public class EventPublishingControllerTest {
     @Before
     public void setUp() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
+
         final MetricRegistry metricRegistry = new MetricRegistry();
-        publisher = mock(EventPublisher.class);
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
+
+        publisher = mock(EventPublisher.class);
+
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         final SecuritySettings settings = mock(SecuritySettings.class);
         final BlacklistService blacklistService = Mockito.mock(BlacklistService.class);
-        Mockito.when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
+        when(blacklistService.isProductionBlocked(any(), any())).thenReturn(false);
+
+        final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
+        when(nakadiSettings.getPublishTimeoutMs()).thenReturn(60000L);
 
         final EventPublishingController controller =
-                new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService);
+                new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService, nakadiSettings);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
                 = new MappingJackson2HttpMessageConverter(objectMapper);

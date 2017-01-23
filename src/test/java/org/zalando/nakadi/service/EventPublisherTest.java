@@ -14,6 +14,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
+import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
@@ -27,18 +28,21 @@ import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -59,7 +63,7 @@ public class EventPublisherTest {
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
     private final Enrichment enrichment = mock(Enrichment.class);
     private final PublishTimeoutTimer timeoutTimer = mock(PublishTimeoutTimer.class);
-    private final TimelineSync timelineSync = mock(TimelineSync.class);
+    private  TimelineSync timelineSync = mock(TimelineSync.class);
     private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver, enrichment,
             timelineSync);
 
@@ -77,6 +81,31 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any(), any());
+    }
+
+    @Test
+    public void whenPublishEventTypeIsLockedAndReleased() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject event = batch.getJSONObject(0);
+        mockSuccessfulValidation(eventType, event);
+
+        long timeLeft = 30000L;
+        Mockito.when(timeoutTimer.leftTillTimeoutMs()).thenReturn(timeLeft);
+
+        final Closeable etCloser = mock(Closeable.class);
+        Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenReturn(etCloser);
+
+        publisher.publish(batch, eventType.getName(), FULL_ACCESS_CLIENT, timeoutTimer);
+
+        verify(timelineSync, times(1)).workWithEventType(eq(eventType.getName()), eq(timeLeft));
+        verify(etCloser, times(1)).close();
+    }
+
+    @Test(expected = EventPublishingTimeoutException.class)
+    public void whenPublishAndTimelineLockTimedOutThenException() throws Exception {
+        Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenThrow(new TimeoutException());
+        publisher.publish(buildDefaultBatch(0), "blahET", FULL_ACCESS_CLIENT, timeoutTimer);
     }
 
     @Test
