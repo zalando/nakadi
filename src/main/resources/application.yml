@@ -47,6 +47,8 @@ nakadi:
       replicaFactor: 1
       retentionMs: 172800000 # 2 days
       rotationMs: 86400000 # 1 day
+  publish:
+    timeoutMs: 60000
   stream:
     timeoutMs: 31536000000 # 1 year :-P
     default.commitTimeout: 60 # 1 minute

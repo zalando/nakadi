@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -41,14 +42,17 @@ public class EventPublishingController {
     private final EventPublisher publisher;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
     private final BlacklistService blacklistService;
+    private final NakadiSettings nakadiSettings;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
                                      final EventTypeMetricRegistry eventTypeMetricRegistry,
-                                     final BlacklistService blacklistService) {
+                                     final BlacklistService blacklistService,
+                                     final NakadiSettings nakadiSettings) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
         this.blacklistService = blacklistService;
+        this.nakadiSettings = nakadiSettings;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -58,7 +62,7 @@ public class EventPublishingController {
                                     final Client client) {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
 
-        final PublishTimeoutTimer timeoutTimer = new PublishTimeoutTimer(60000); // todo: introduce a property
+        final PublishTimeoutTimer timeoutTimer = new PublishTimeoutTimer(nakadiSettings.getPublishTimeoutMs());
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
