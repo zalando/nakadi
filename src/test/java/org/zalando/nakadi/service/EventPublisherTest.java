@@ -63,7 +63,7 @@ public class EventPublisherTest {
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
     private final Enrichment enrichment = mock(Enrichment.class);
     private final PublishTimeoutTimer timeoutTimer = mock(PublishTimeoutTimer.class);
-    private  TimelineSync timelineSync = mock(TimelineSync.class);
+    private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver, enrichment,
             timelineSync);
 
@@ -90,7 +90,7 @@ public class EventPublisherTest {
         final JSONObject event = batch.getJSONObject(0);
         mockSuccessfulValidation(eventType, event);
 
-        long timeLeft = 30000L;
+        final long timeLeft = 30000L;
         Mockito.when(timeoutTimer.leftTillTimeoutMs()).thenReturn(timeLeft);
 
         final Closeable etCloser = mock(Closeable.class);

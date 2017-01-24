@@ -75,7 +75,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_TOPIC_ROTATION,
                 DEFAULT_COMMIT_TIMEOUT,
                 NAKADI_POLL_TIMEOUT,
-                NAKADI_SEND_TIMEOUT);
+                NAKADI_SEND_TIMEOUT,
+                TOTAL_PUBLISH_TIMEOUT);
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_LINGER_MS);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
