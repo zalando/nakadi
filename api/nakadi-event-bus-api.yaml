@@ -1139,6 +1139,108 @@ paths:
         '204':
           description: Feature was successfully accepted.
 
+  /storages:
+    get:
+      tags:
+        - storages-api
+      description: |
+        Lists all available storage backends.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      responses:
+        '200':
+          description: A list of all available storage backends.
+          schema:
+            type: object
+            properties:
+              storages:
+                description: list of storage backends.
+                type: array
+                items:
+                  $ref: '#/definitions/Storage'
+            required:
+              - storages
+    post:
+      tags:
+        - storages-api
+      description: |
+        Creates a new storage backend.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: storage
+          in: body
+          description: Storage description
+          schema:
+            type: object
+            properties:
+              storage_type:
+                description: the type of storage (currently, only Kafka)
+                type: string
+              configuration:
+                description: configuration settings (currently, only Kafka)
+                type: object
+                properties:
+                  zk_address:
+                    description: the Zookeeper address
+                    type: string
+                  zk_path:
+                    description: the Zookeeper path
+                    type: string
+          required: true
+      responses:
+        '204':
+          description: Storage backend was successfully registered. Returns storage object that was created.
+          schema:
+            $ref: '#/definitions/Storage'
+
+  /storages/{id}:
+    get:
+      tags:
+        - storages-api
+      description: |
+        Retrieves a storage backend from its ID.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Storage'
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+    delete:
+      tags:
+        - storages-api
+      description: |
+        Deletes a storage backend from its ID, if it is not in use.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '200':
+          description: Storage backend was deleted
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '400':
+          description: Storage backend could not be deleted
+          schema:
+            $ref: '#/definitions/Problem'
 
 
 # ################################### #
@@ -1148,6 +1250,36 @@ paths:
 # ################################### #
 
 definitions:
+  Storage:
+      type: object
+      description: |
+        This is a storage backend
+        A real one.
+      properties:
+        id:
+          description: The ID of the storage backend
+          type: string
+        storage_type:
+          description: the type of storage (currently, only Kafka)
+          type: string
+        configuration:
+          description: configuration settings (currently, only Kafka)
+          type: object
+          properties:
+            zk_address:
+              description: the Zookeeper address
+              type: string
+            zk_path:
+              description: the Zookeeper path
+              type: string
+          required:
+            - zk_address
+            - zk_path
+      required:
+        - id
+        - storage_type
+        - configuration
+
   Event:
     type: object
     description: |
