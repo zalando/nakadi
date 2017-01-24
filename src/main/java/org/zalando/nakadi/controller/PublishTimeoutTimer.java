@@ -10,7 +10,7 @@ public class PublishTimeoutTimer {
         this.startTime = System.currentTimeMillis();
     }
 
-    public long leftTillTimeoutMs() {
+    public long getTimeLeftMs() {
         final long tillTimeout = startTime + publishTotalTimeout - System.currentTimeMillis();
         return tillTimeout < 0 ? 0 : tillTimeout;
     }

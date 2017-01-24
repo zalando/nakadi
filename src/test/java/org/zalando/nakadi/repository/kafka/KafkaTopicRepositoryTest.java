@@ -129,7 +129,7 @@ public class KafkaTopicRepositoryTest {
         kafkaTopicRepository = createKafkaRepository(kafkaFactory);
 
         timeoutTimer = mock(PublishTimeoutTimer.class);
-        when(timeoutTimer.leftTillTimeoutMs()).thenReturn(60000L);
+        when(timeoutTimer.getTimeLeftMs()).thenReturn(60000L);
     }
 
 
@@ -231,7 +231,7 @@ public class KafkaTopicRepositoryTest {
         when(kafkaProducer.partitionsFor(EXPECTED_PRODUCER_RECORD.topic())).thenReturn(ImmutableList.of(
                 new PartitionInfo(EXPECTED_PRODUCER_RECORD.topic(), 1, new Node(1, "host", 9091), null, null)));
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn((long) 100);
-        when(timeoutTimer.leftTillTimeoutMs()).thenReturn(200L);
+        when(timeoutTimer.getTimeLeftMs()).thenReturn(200L);
         Mockito
                 .doReturn(mock(Future.class))
                 .when(kafkaProducer)
@@ -250,7 +250,7 @@ public class KafkaTopicRepositoryTest {
     public void whenSyncPostBatchAndTimeIsNotEnoughThenException() throws Exception {
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(100L);
         when(kafkaSettings.getRequestTimeoutMs()).thenReturn(200);
-        when(timeoutTimer.leftTillTimeoutMs()).thenReturn(250L);
+        when(timeoutTimer.getTimeLeftMs()).thenReturn(250L);
         kafkaTopicRepository.syncPostBatch(null, null, timeoutTimer);
     }
 

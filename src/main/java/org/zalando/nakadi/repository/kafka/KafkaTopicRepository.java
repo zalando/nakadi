@@ -230,7 +230,7 @@ public class KafkaTopicRepository implements TopicRepository {
     public void syncPostBatch(final String topicId, final List<BatchItem> batch, final PublishTimeoutTimer timeoutTimer)
             throws EventPublishingException, EventPublishingTimeoutException {
 
-        if (timeoutTimer.leftTillTimeoutMs() < createSendTimeout()) {
+        if (timeoutTimer.getTimeLeftMs() < createSendTimeout()) {
             throw new EventPublishingTimeoutException("Request timed out. Not enough time to publish event(s).");
         }
 
@@ -263,7 +263,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-            multiFuture.get(timeoutTimer.leftTillTimeoutMs(), TimeUnit.MILLISECONDS);
+            multiFuture.get(timeoutTimer.getTimeLeftMs(), TimeUnit.MILLISECONDS);
 
             // Now lets check for errors
             final Optional<Exception> needReset = sendFutures.entrySet().stream()

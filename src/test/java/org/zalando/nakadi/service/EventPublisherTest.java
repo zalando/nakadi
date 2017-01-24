@@ -91,7 +91,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType, event);
 
         final long timeLeft = 30000L;
-        Mockito.when(timeoutTimer.leftTillTimeoutMs()).thenReturn(timeLeft);
+        Mockito.when(timeoutTimer.getTimeLeftMs()).thenReturn(timeLeft);
 
         final Closeable etCloser = mock(Closeable.class);
         Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenReturn(etCloser);

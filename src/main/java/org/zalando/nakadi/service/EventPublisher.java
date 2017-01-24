@@ -68,7 +68,7 @@ public class EventPublisher {
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
         try {
-            publishingCloser = timelineSync.workWithEventType(eventTypeName, timeoutTimer.leftTillTimeoutMs());
+            publishingCloser = timelineSync.workWithEventType(eventTypeName, timeoutTimer.getTimeLeftMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             client.checkScopes(eventType.getWriteScopes());
