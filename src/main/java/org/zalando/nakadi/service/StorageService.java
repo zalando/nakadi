@@ -44,7 +44,7 @@ public class StorageService {
     }
 
     public Result<Storage> createStorage(final JSONObject storageDetails) {
-        final String type = storageDetails.getString("type");
+        final String type = storageDetails.getString("storage_type");
         final String configuration = storageDetails.get("configuration").toString();
         final Storage storage = new Storage();
         storage.setId(UUID.randomUUID().toString());
