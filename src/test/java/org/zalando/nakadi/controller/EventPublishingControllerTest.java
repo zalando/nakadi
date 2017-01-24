@@ -16,6 +16,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
+import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
@@ -149,6 +150,16 @@ public class EventPublishingControllerTest {
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(content().contentType("application/problem+json"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void whenEventPublishTimeoutThen503() throws Exception {
+        when(publisher.publish(any(), any(), any(), any()))
+                .thenThrow(new EventPublishingTimeoutException(""));
+
+        postBatch(TOPIC, EVENT_BATCH)
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isServiceUnavailable());
     }
 
     @Test
