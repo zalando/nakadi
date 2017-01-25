@@ -8,4 +8,4 @@ ADD api/nakadi-event-bus-api.yaml nakadi-event-bus-api.yaml
 
 EXPOSE 8080
 
-ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -jar nakadi.jar
+ENTRYPOINT exec java -Djava.security.egd=file:/dev/./urandom -jar nakadi.jar

@@ -54,7 +54,7 @@ public class TestUtils {
     }
 
     public static String randomString() {
-        final int length = RANDOM.nextInt(500);
+        final int length = RANDOM.nextInt(100);
 
         String s = "";
 
@@ -77,6 +77,26 @@ public class TestUtils {
 
         return s;
 
+    }
+
+    public static String randomStringOfLength(final int length) {
+        final StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < length; i++) {
+            sb.append((char) RANDOM.nextInt(128));
+        }
+
+        return sb.toString();
+    }
+
+    public static String randomValidStringOfLength(final int length) {
+        final StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < length; i++) {
+            sb.append(VALID_EVENT_TYPE_NAME_CHARS.charAt(RANDOM.nextInt(VALID_EVENT_TYPE_NAME_CHARS.length())));
+        }
+
+        return sb.toString();
     }
 
     public static String randomValidEventTypeName() {
@@ -157,7 +177,11 @@ public class TestUtils {
                         .withWaitBetweenEachTry(intervalMs));
     }
 
-    public static BatchItem createBatch(final JSONObject event) {
+    public static BatchItem createBatchItem(final JSONObject event) {
+        return new BatchItem(event.toString());
+    }
+
+    public static BatchItem createBatchItem(final String event) {
         return new BatchItem(event);
     }
 

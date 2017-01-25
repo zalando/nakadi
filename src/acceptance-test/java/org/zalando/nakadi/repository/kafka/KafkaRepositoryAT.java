@@ -8,7 +8,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,6 +53,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int KAFKA_REQUEST_TIMEOUT = 30000;
     private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_LINGER_MS = 0;
+    private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -73,7 +73,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_TOPIC_ROTATION,
                 DEFAULT_COMMIT_TIMEOUT,
                 NAKADI_POLL_TIMEOUT,
-                NAKADI_SEND_TIMEOUT);
+                NAKADI_SEND_TIMEOUT,
+                NAKADI_EVENT_MAX_BYTES);
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_LINGER_MS);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
@@ -133,7 +134,7 @@ public class KafkaRepositoryAT extends BaseAT {
     @Test(timeout = 10000)
     public void whenBulkSendSuccessfullyThenUpdateBatchItemStatus() throws Exception {
         final List<BatchItem> items = new ArrayList<>();
-        final JSONObject event = new JSONObject();
+        final String event = "{}";
         final String topicId = TestUtils.randomValidEventTypeName();
         kafkaHelper.createTopic(topicId, ZOOKEEPER_URL);
 
