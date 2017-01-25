@@ -81,7 +81,6 @@ nakadi:
 
 twintip:
   mapping: /api
-  ui: /api/ui/
   yaml: "file:nakadi-event-bus-api.yaml"
 
 ---
@@ -99,5 +98,4 @@ spring:
   profiles: test
 twintip:
   mapping: /api
-  ui: /api/ui/
   yaml: "file:api/nakadi-event-bus-api.yaml"
