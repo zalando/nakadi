@@ -1,6 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,12 +88,8 @@ public class EventPublishingController {
                                              final PublishTimeoutTimer timeoutTimer) {
         final long startingNanos = System.nanoTime();
         try {
-            final JSONArray eventsAsJsonObjects = new JSONArray(eventsAsString);
-
-            final int eventCount = eventsAsJsonObjects.length();
-            final EventPublishResult result = publisher.publish(eventsAsJsonObjects, eventTypeName, client,
-                    timeoutTimer);
-            reportMetrics(eventTypeMetrics, result, eventsAsString, eventCount);
+            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client, timeoutTimer);
+            reportMetrics(eventTypeMetrics, result, eventsAsString, result.getResponses().size());
 
             return response(result);
         } catch (final JSONException e) {

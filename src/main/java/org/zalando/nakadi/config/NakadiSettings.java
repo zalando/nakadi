@@ -16,6 +16,7 @@ public class NakadiSettings {
     private final long kafkaPollTimeoutMs;
     private final long kafkaSendTimeoutMs;
     private final long publishTimeoutMs;
+    private final long eventMaxBytes;
 
     @Autowired
     public NakadiSettings(@Value("${nakadi.topic.max.partitionNum}") final int maxTopicPartitionCount,
@@ -26,7 +27,8 @@ public class NakadiSettings {
                           @Value("${nakadi.stream.default.commitTimeout}") final long defaultCommitTimeoutSeconds,
                           @Value("${nakadi.kafka.poll.timeoutMs}") final long kafkaPollTimeoutMs,
                           @Value("${nakadi.kafka.send.timeoutMs}") final long kafkaSendTimeoutMs,
-                          @Value("${nakadi.publish.timeoutMs}") final long publishTimeoutMs) {
+                          @Value("${nakadi.publish.timeoutMs}") final long publishTimeoutMs,
+                          @Value("${nakadi.event.max.bytes}") final long eventMaxBytes) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
         this.defaultTopicPartitionCount = defaultTopicPartitionCount;
         this.defaultTopicReplicaFactor = defaultTopicReplicaFactor;
@@ -35,6 +37,7 @@ public class NakadiSettings {
         this.defaultCommitTimeoutSeconds = defaultCommitTimeoutSeconds;
         this.kafkaPollTimeoutMs = kafkaPollTimeoutMs;
         this.kafkaSendTimeoutMs = kafkaSendTimeoutMs;
+        this.eventMaxBytes = eventMaxBytes;
         this.publishTimeoutMs = publishTimeoutMs;
     }
 
@@ -68,6 +71,10 @@ public class NakadiSettings {
 
     public long getKafkaSendTimeoutMs() {
         return kafkaSendTimeoutMs;
+    }
+
+    public long getEventMaxBytes() {
+        return eventMaxBytes;
     }
 
     public long getPublishTimeoutMs() {

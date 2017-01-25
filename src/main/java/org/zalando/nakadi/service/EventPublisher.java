@@ -1,11 +1,11 @@
 package org.zalando.nakadi.service;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
@@ -42,6 +42,8 @@ public class EventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
 
+    private final NakadiSettings nakadiSettings;
+
     private final TopicRepository topicRepository;
     private final EventTypeCache eventTypeCache;
     private final PartitionResolver partitionResolver;
@@ -53,15 +55,17 @@ public class EventPublisher {
                           final EventTypeCache eventTypeCache,
                           final PartitionResolver partitionResolver,
                           final Enrichment enrichment,
+                          final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync) {
         this.topicRepository = topicRepository;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
+        this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
     }
 
-    public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client,
+    public EventPublishResult publish(final String events, final String eventTypeName, final Client client,
                                       final PublishTimeoutTimer timeoutTimer)
             throws NoSuchEventTypeException, InternalNakadiException, EventPublishingTimeoutException {
 
@@ -142,6 +146,7 @@ public class EventPublisher {
             item.setStep(EventPublishingStep.VALIDATING);
             try {
                 validateSchema(item.getEvent(), eventType);
+                validateEventSize(item);
             } catch (final EventValidationException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
@@ -162,6 +167,13 @@ public class EventPublisher {
 
         if (validationError.isPresent()) {
             throw new EventValidationException(validationError.get());
+        }
+    }
+
+    private void validateEventSize(final BatchItem item) throws EventValidationException {
+        if (item.getEventSize() > nakadiSettings.getEventMaxBytes()) {
+            throw new EventValidationException("Event too large: " + item.getEventSize()
+                    + " bytes, max size is " + nakadiSettings.getEventMaxBytes() + " bytes");
         }
     }
 
