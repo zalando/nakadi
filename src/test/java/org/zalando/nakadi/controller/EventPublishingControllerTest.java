@@ -98,7 +98,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC), any(Client.class), any());
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isOk())
@@ -110,7 +110,7 @@ public class EventPublishingControllerTest {
 
         Mockito.doThrow(new JSONException("Error"))
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC), any(Client.class), any());
 
         postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest());
     }
@@ -122,7 +122,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC), any(Client.class), any());
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
@@ -136,7 +136,7 @@ public class EventPublishingControllerTest {
         Mockito
                 .doReturn(result)
                 .when(publisher)
-                .publish(any(String.class), eq(TOPIC), any(Client.class));
+                .publish(any(String.class), eq(TOPIC), any(Client.class), any());
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())

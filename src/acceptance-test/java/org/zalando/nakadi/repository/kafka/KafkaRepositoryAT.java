@@ -76,8 +76,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_COMMIT_TIMEOUT,
                 NAKADI_POLL_TIMEOUT,
                 NAKADI_SEND_TIMEOUT,
-                NAKADI_EVENT_MAX_BYTES,
-                TOTAL_PUBLISH_TIMEOUT);
+                TOTAL_PUBLISH_TIMEOUT,
+                NAKADI_EVENT_MAX_BYTES);
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_LINGER_MS);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
@@ -155,6 +155,7 @@ public class KafkaRepositoryAT extends BaseAT {
     }
 
     @Test(timeout = 10000)
+    @SuppressWarnings("unchecked")
     public void whenCreateTopicWithRetentionTime() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .name(eventName)
@@ -167,7 +168,8 @@ public class KafkaRepositoryAT extends BaseAT {
 
         // ASSERT //
         executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), RETENTION_TIME),
-                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                new RetryForSpecifiedTimeStrategy<Void>(5000)
+                        .withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
     }
 
