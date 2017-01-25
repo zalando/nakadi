@@ -189,7 +189,15 @@ public class EventTypeService {
 
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {
-            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+            final String eventTypeSchema = eventType.getSchema().getSchema();
+            final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
+            final String parsedSchemaAsString = schemaAsJson.toString();
+
+            // bugfix ARUHA-563
+            // https://github.com/FasterXML/jackson-databind/issues/726
+            if (!parsedSchemaAsString.equals(eventTypeSchema)) {
+                throw new InvalidEventTypeException("schema must be a valid json");
+            }
 
             final Schema schema = SchemaLoader.load(schemaAsJson);
 
