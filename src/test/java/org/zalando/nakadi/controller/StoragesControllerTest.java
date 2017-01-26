@@ -29,9 +29,9 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 public class StoragesControllerTest {
 
-    private StorageService storageService = mock(StorageService.class);
-    private SecuritySettings securitySettings = mock(SecuritySettings.class);
-    private FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+    private final StorageService storageService = mock(StorageService.class);
+    private final SecuritySettings securitySettings = mock(SecuritySettings.class);
+    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
     private MockMvc mockMvc;
 
