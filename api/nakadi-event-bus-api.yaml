@@ -1257,7 +1257,7 @@ definitions:
         "type":
           description: the type of storage (currently, only Kafka)
           type: string
-        configuration:
+        kafka_configuration:
           description: configuration settings (currently, only Kafka)
           type: object
           properties:
@@ -1273,7 +1273,7 @@ definitions:
       required:
         - id
         - type
-        - configuration
+        - kafka_configuration
 
   Event:
     type: object
