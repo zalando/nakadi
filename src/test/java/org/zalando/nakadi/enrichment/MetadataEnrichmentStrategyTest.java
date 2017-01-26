@@ -7,10 +7,11 @@ import org.zalando.nakadi.util.FlowIdUtils;
 import org.joda.time.DateTimeUtils;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.zalando.nakadi.utils.TestUtils;
 
 import static org.zalando.nakadi.utils.TestUtils.buildBusinessEvent;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.createBatch;
+import static org.zalando.nakadi.utils.TestUtils.createBatchItem;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyString;
@@ -23,17 +24,19 @@ public class MetadataEnrichmentStrategyTest {
     public void setReceivedAtWithSystemTimeInUTC() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
+        final BatchItem batch = TestUtils.createBatchItem(event);
 
         assertThat(event.getJSONObject("metadata").optString("received_at"), isEmptyString());
 
         try {
             DateTimeUtils.setCurrentMillisFixed(0);
-            strategy.enrich(createBatch(event), eventType);
+            strategy.enrich(batch, eventType);
         } finally {
             DateTimeUtils.setCurrentMillisSystem();
         }
 
-        assertThat(event.getJSONObject("metadata").getString("received_at"), equalTo("1970-01-01T00:00:00.000Z"));
+        assertThat(batch.getEvent().getJSONObject("metadata").getString("received_at"),
+                equalTo("1970-01-01T00:00:00.000Z"));
     }
 
     @Test(expected = EnrichmentException.class)
@@ -43,45 +46,48 @@ public class MetadataEnrichmentStrategyTest {
 
         event.remove("metadata");
 
-        strategy.enrich(createBatch(event), eventType);
+        strategy.enrich(TestUtils.createBatchItem(event), eventType);
     }
 
     @Test
     public void setEventTypeName() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
+        final BatchItem batch = TestUtils.createBatchItem(event);
 
         assertThat(event.getJSONObject("metadata").optString("event_type"), isEmptyString());
 
-        strategy.enrich(createBatch(event), eventType);
+        strategy.enrich(batch, eventType);
 
-        assertThat(event.getJSONObject("metadata").getString("event_type"), equalTo(eventType.getName()));
+        assertThat(batch.getEvent().getJSONObject("metadata").getString("event_type"), equalTo(eventType.getName()));
     }
 
     @Test
     public void setEventTypeSchemaVersion() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
+        final BatchItem batchItem = createBatchItem(event);
 
-        assertThat(event.getJSONObject("metadata").optString("version"), isEmptyString());
+        assertThat(batchItem.getEvent().getJSONObject("metadata").optString("version"), isEmptyString());
 
-        strategy.enrich(createBatch(event), eventType);
+        strategy.enrich(batchItem, eventType);
 
-        assertThat(event.getJSONObject("metadata").getString("version"), equalTo("1.0.0"));
+        assertThat(batchItem.getEvent().getJSONObject("metadata").getString("version"), equalTo("1.0.0"));
     }
 
     @Test
     public void setFlowId() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
+        final BatchItem batch = createBatchItem(event);
 
         assertThat(event.getJSONObject("metadata").optString("flow_id"), isEmptyString());
 
         final String flowId = randomString();
         FlowIdUtils.push(flowId);
-        strategy.enrich(createBatch(event), eventType);
+        strategy.enrich(batch, eventType);
 
-        assertThat(event.getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
+        assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
     }
 
     @Test
@@ -89,11 +95,11 @@ public class MetadataEnrichmentStrategyTest {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
         final String partition = randomString();
-        final BatchItem batch = createBatch(event);
+        final BatchItem batch = createBatchItem(event);
         batch.setPartition(partition);
 
         strategy.enrich(batch, eventType);
 
-        assertThat(event.getJSONObject("metadata").getString("partition"), equalTo(partition));
+        assertThat(batch.getEvent().getJSONObject("metadata").getString("partition"), equalTo(partition));
     }
 }

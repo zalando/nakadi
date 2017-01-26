@@ -13,7 +13,6 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.errors.TimeoutException;
-import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -216,7 +215,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenPostEventTimesOutThenUpdateItemStatus() throws Exception {
-        final BatchItem item = new BatchItem(new JSONObject());
+        final BatchItem item = new BatchItem("{}");
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
@@ -240,7 +239,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenPostEventOverflowsBufferThenUpdateItemStatus() throws Exception {
-        final BatchItem item = new BatchItem(new JSONObject());
+        final BatchItem item = new BatchItem("{}");
         item.setPartition("1");
         final List<BatchItem> batch = new ArrayList<>();
         batch.add(item);
@@ -265,9 +264,9 @@ public class KafkaTopicRepositoryTest {
     @Test
     public void whenKafkaPublishCallbackWithExceptionThenEventPublishingException() throws Exception {
 
-        final BatchItem firstItem = new BatchItem(new JSONObject());
+        final BatchItem firstItem = new BatchItem("{}");
         firstItem.setPartition("1");
-        final BatchItem secondItem = new BatchItem(new JSONObject());
+        final BatchItem secondItem = new BatchItem("{}");
         secondItem.setPartition("2");
         final List<BatchItem> batch = ImmutableList.of(firstItem, secondItem);
 
@@ -391,7 +390,7 @@ public class KafkaTopicRepositoryTest {
         final List<BatchItem> batches = new LinkedList<>();
         for (int i = 0; i < 1000; i++) {
             try {
-                final BatchItem batchItem = new BatchItem(new JSONObject());
+                final BatchItem batchItem = new BatchItem("{}");
                 batchItem.setPartition("1");
                 batches.add(batchItem);
                 kafkaTopicRepository.syncPostBatch(EXPECTED_PRODUCER_RECORD.topic(), ImmutableList.of(batchItem));
