@@ -60,7 +60,6 @@ public class StorageServiceTest {
         json.getJSONObject("configuration").remove("zk_path");
         final Result<Storage> result = storageService.createStorage(json);
         assertFalse(result.isSuccessful());
-        System.out.println(result.getProblem().toString());
     }
 
     @Test
