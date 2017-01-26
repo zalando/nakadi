@@ -189,8 +189,10 @@ public class EventTypeService {
 
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {
-            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+            final String eventTypeSchema = eventType.getSchema().getSchema();
+            checkSchemaValidity(eventTypeSchema);
 
+            final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
             final Schema schema = SchemaLoader.load(schemaAsJson);
 
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
@@ -208,6 +210,28 @@ public class EventTypeService {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
             throw new InvalidEventTypeException("schema must be a valid json-schema");
+        }
+    }
+
+    /**
+     * bugifx ARUHA-563
+     *
+     * @param eventTypeSchema
+     * @throws InvalidEventTypeException
+     */
+    private void checkSchemaValidity(final String eventTypeSchema) throws InvalidEventTypeException {
+        final char[] chars = eventTypeSchema.toCharArray();
+        int bracketsCounter = 0;
+        for (int i = 0; i < chars.length; i++) {
+            if (chars[i] == '{' || chars[i] == '[') {
+                bracketsCounter++;
+            } else if (chars[i] == '}' || chars[i] == ']') {
+                bracketsCounter--;
+            }
+            // if all brackets were closed but we still have symbols in schema then something wrong with the schema
+            if (bracketsCounter == 0 && i + 1 < chars.length) {
+                throw new InvalidEventTypeException("schema must be a valid json");
+            }
         }
     }
 
