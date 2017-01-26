@@ -45,7 +45,7 @@ public class StoragesController {
                                            final NativeWebRequest request,
                                            final Client client) {
         if (isNotAdmin(client)) {
-            return ResponseEntity.status(FORBIDDEN).build();
+            return status(FORBIDDEN).build();
         }
         final Result<Storage> result = storageService.createStorage(new JSONObject(body));
         if (result.isSuccessful()) {
@@ -58,7 +58,7 @@ public class StoragesController {
     public ResponseEntity<?> getStorage(@PathVariable("id") final String id, final NativeWebRequest request,
                                         final Client client) {
         if (isNotAdmin(client)) {
-            return ResponseEntity.status(FORBIDDEN).build();
+            return status(FORBIDDEN).build();
         }
         final Result<Storage> result = storageService.getStorage(id);
         if (result.isSuccessful()) {
@@ -71,7 +71,7 @@ public class StoragesController {
     public ResponseEntity<?> deleteStorage(@PathVariable("id") final String id, final NativeWebRequest request,
                                            final Client client) {
         if (isNotAdmin(client)) {
-            return ResponseEntity.status(FORBIDDEN).build();
+            return status(FORBIDDEN).build();
         }
         final Result<Void> result = storageService.deleteStorage(id);
         if (result.isSuccessful()) {
