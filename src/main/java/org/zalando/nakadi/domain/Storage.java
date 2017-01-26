@@ -2,9 +2,10 @@ package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Objects;
-import javax.annotation.Nullable;
 
 public class Storage {
     public enum Type {
@@ -19,10 +20,14 @@ public class Storage {
     }
 
     public static class KafkaConfiguration {
-        @JsonProperty("zk_address")
         private String zkAddress;
-        @JsonProperty("zk_path")
         private String zkPath;
+
+        public KafkaConfiguration(@JsonProperty(value="zk_address", required = true) final String zkAddress,
+                                  @JsonProperty(value="zk_path", required = true) final String zkPath) {
+            this.zkAddress = zkAddress;
+            this.zkPath = zkPath;
+        }
 
         public String getZkAddress() {
             return zkAddress;

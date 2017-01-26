@@ -22,10 +22,10 @@ import java.util.List;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 
 public class StoragesControllerTest {
@@ -87,9 +87,7 @@ public class StoragesControllerTest {
         final Storage s1 = new Storage();
         s1.setId("s1");
         s1.setType(Storage.Type.KAFKA);
-        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration();
-        config.setZkAddress("http://localhost");
-        config.setZkPath("/path/to/kafka");
+        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration("http://localhost", "/path/to/kafka");
         s1.setConfiguration(config);
         storages.add(s1);
 

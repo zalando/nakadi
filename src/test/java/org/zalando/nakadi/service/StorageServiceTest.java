@@ -114,9 +114,8 @@ public class StorageServiceTest {
         final Storage storage = new Storage();
         storage.setType(Storage.Type.KAFKA);
         storage.setId("123-abc");
-        final Storage.KafkaConfiguration configuration = new Storage.KafkaConfiguration();
-        configuration.setZkPath("/path/to/kafka");
-        configuration.setZkAddress("https://localhost");
+        final Storage.KafkaConfiguration configuration =
+                new Storage.KafkaConfiguration("https://localhost", "/path/to/kafka");
         storage.setConfiguration(configuration);
         return storage;
     }

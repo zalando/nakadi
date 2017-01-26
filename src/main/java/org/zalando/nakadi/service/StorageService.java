@@ -13,6 +13,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.problem.Problem;
 
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,28 +53,26 @@ public class StorageService {
     public Result<Storage> createStorage(final JSONObject storageDetails) {
         final String type;
         final JSONObject configuration;
-        final Storage.KafkaConfiguration kafkaConfig;
 
         try {
-            type= storageDetails.getString("storage_type");
+            type = storageDetails.getString("storage_type");
             configuration = storageDetails.getJSONObject("configuration");
-            kafkaConfig = parseKafkaConfiguration(configuration);
         } catch (JSONException e) {
             return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
         }
+
         final Storage storage = new Storage();
         storage.setId(UUID.randomUUID().toString());
         storage.setType(Storage.Type.valueOf(type.toUpperCase()));
-        storage.setConfiguration(kafkaConfig);
-        storageDbRepository.createStorage(storage);
-        return Result.ok(storage);
-    }
+        try {
+            storage.parseConfiguration(objectMapper, configuration.toString());
+        } catch (final IOException e) {
+            return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
+        }
 
-    private Storage.KafkaConfiguration parseKafkaConfiguration(final JSONObject configuration) {
-        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration();
-        config.setZkAddress(configuration.getString("zk_address"));
-        config.setZkPath(configuration.getString("zk_path"));
-        return config;
+        storageDbRepository.createStorage(storage);
+
+        return Result.ok(storage);
     }
 
     public Result<Void> deleteStorage(final String id) {

@@ -1,11 +1,12 @@
 package org.zalando.nakadi.repository.db;
 
-import java.util.List;
-import java.util.Optional;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.domain.Storage;
+
+import java.util.List;
+import java.util.Optional;
 
 public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     private StorageDbRepository repository;
@@ -21,9 +22,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     static Storage createStorage(final String name, final String zkAddress, final String zkPath) {
-        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration();
-        config.setZkAddress(zkAddress);
-        config.setZkPath(zkPath);
+        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration(zkAddress, zkPath);
         final Storage storage = new Storage();
         storage.setId(name);
         storage.setType(Storage.Type.KAFKA);
