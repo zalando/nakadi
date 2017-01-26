@@ -1145,7 +1145,7 @@ paths:
   /storages:
     get:
       tags:
-        - storages-api
+        - timelines-api
       description: |
         Lists all available storage backends.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
@@ -1164,7 +1164,7 @@ paths:
             $ref: '#/definitions/Problem'
     post:
       tags:
-        - storages-api
+        - timelines-api
       description: |
         Creates a new storage backend.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
@@ -1203,7 +1203,7 @@ paths:
   /storages/{id}:
     get:
       tags:
-        - storages-api
+        - timelines-api
       description: |
         Retrieves a storage backend from its ID.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
@@ -1229,7 +1229,7 @@ paths:
             $ref: '#/definitions/Problem'
     delete:
       tags:
-        - storages-api
+        - timelines-api
       description: |
         Deletes a storage backend from its ID, if it is not in use.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
