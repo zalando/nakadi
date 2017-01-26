@@ -31,6 +31,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.JsonUtil;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
@@ -190,7 +191,9 @@ public class EventTypeService {
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
-            checkSchemaValidity(eventTypeSchema);
+            if (!JsonUtil.isValidJson(eventTypeSchema)) {
+                throw new InvalidEventTypeException("schema must be a valid json");
+            }
 
             final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
             final Schema schema = SchemaLoader.load(schemaAsJson);
@@ -210,28 +213,6 @@ public class EventTypeService {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
             throw new InvalidEventTypeException("schema must be a valid json-schema");
-        }
-    }
-
-    /**
-     * bugifx ARUHA-563
-     *
-     * @param eventTypeSchema
-     * @throws InvalidEventTypeException
-     */
-    private void checkSchemaValidity(final String eventTypeSchema) throws InvalidEventTypeException {
-        final char[] chars = eventTypeSchema.toCharArray();
-        int bracketsCounter = 0;
-        for (int i = 0; i < chars.length; i++) {
-            if (chars[i] == '{' || chars[i] == '[') {
-                bracketsCounter++;
-            } else if (chars[i] == '}' || chars[i] == ']') {
-                bracketsCounter--;
-            }
-            // if all brackets were closed but we still have symbols in schema then something wrong with the schema
-            if (bracketsCounter == 0 && i + 1 < chars.length) {
-                throw new InvalidEventTypeException("schema must be a valid json");
-            }
         }
     }
 
