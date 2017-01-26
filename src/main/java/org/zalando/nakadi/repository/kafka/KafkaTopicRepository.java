@@ -301,8 +301,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
             return IntStream.range(0, kafkaTPs.length)
                     .mapToObj(i -> new KafkaPartitionStatistics(
-                            kafkaTPs[i].topic(), kafkaTPs[i].partition(), begins[i], ends[i] - 1))
-                    .collect(Collectors.toList());
+                            kafkaTPs[i].topic(), kafkaTPs[i].partition(), begins[i], ends[i] - 1)).collect(toList());
         } catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }

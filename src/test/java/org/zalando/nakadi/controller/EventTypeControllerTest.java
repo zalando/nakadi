@@ -131,7 +131,7 @@ public class EventTypeControllerTest {
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings);
-        Mockito.doReturn(randomUUID).when(uuid).randomUUID();
+        doReturn(randomUUID).when(uuid).randomUUID();
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
@@ -230,7 +230,7 @@ public class EventTypeControllerTest {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionKeyFields(Lists.newArrayList("invalid_key")).build();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
 
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
@@ -241,7 +241,7 @@ public class EventTypeControllerTest {
     public void whenPUTNotOwner403() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
 
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
@@ -257,7 +257,7 @@ public class EventTypeControllerTest {
     public void whenPUTAdmin200() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(any());
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
 
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
@@ -311,7 +311,7 @@ public class EventTypeControllerTest {
     public void whenPostAndTopicExistsReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "dummy message");
         final EventType et = buildDefaultEventType();
-        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
+        doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
 
         Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository)
                 .createTopic(anyInt(), any());
@@ -325,7 +325,7 @@ public class EventTypeControllerTest {
 
         final EventType eventType = buildDefaultEventType();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
         Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         Mockito.doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
 
@@ -341,8 +341,8 @@ public class EventTypeControllerTest {
     public void whenDeleteEventTypeThen403() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
 
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
@@ -359,8 +359,8 @@ public class EventTypeControllerTest {
 
         final EventType eventType = buildDefaultEventType();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
 
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
@@ -372,7 +372,7 @@ public class EventTypeControllerTest {
     public void whenDeleteNoneExistingEventTypeThen404() throws Exception {
 
         final String eventTypeName = randomValidEventTypeName();
-        Mockito.doReturn(Optional.empty()).when(eventTypeRepository).findByNameO(eventTypeName);
+        doReturn(Optional.empty()).when(eventTypeRepository).findByNameO(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"));
@@ -384,8 +384,8 @@ public class EventTypeControllerTest {
         final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, "dummy message");
         final EventType eventType = buildDefaultEventType();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         Mockito.doThrow(new TopicDeletionException("dummy message", null)).when(topicRepository).deleteTopic(
                 eventType.getTopic());
 
@@ -417,7 +417,7 @@ public class EventTypeControllerTest {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionKeyFields(Collections.singletonList("blabla")).build();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
@@ -431,7 +431,7 @@ public class EventTypeControllerTest {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionKeyFields(Collections.singletonList("blabla")).build();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
@@ -443,7 +443,7 @@ public class EventTypeControllerTest {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionKeyFields(Collections.singletonList("blabla")).build();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
 
         putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
@@ -457,7 +457,7 @@ public class EventTypeControllerTest {
                 .category(BUSINESS)
                 .build();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
 
         putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
@@ -471,7 +471,7 @@ public class EventTypeControllerTest {
 
         Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
                 eventTypeName);
-        Mockito.doReturn(Optional.of(buildDefaultEventType())).when(eventTypeRepository).findByNameO(eventTypeName);
+        doReturn(Optional.of(buildDefaultEventType())).when(eventTypeRepository).findByNameO(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
@@ -493,8 +493,8 @@ public class EventTypeControllerTest {
     public void whenCreateSuccessfullyThen201() throws Exception {
         final EventType et = buildDefaultEventType();
 
-        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
-        Mockito.when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());
+        doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
+        when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());
 
         postEventType(et).andExpect(status().isCreated()).andExpect(content().string(""));
 
@@ -506,7 +506,7 @@ public class EventTypeControllerTest {
     public void whenTopicCreationFailsRemoveEventTypeFromRepositoryAnd500() throws Exception {
 
         final EventType et = buildDefaultEventType();
-        Mockito.doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
+        doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
 
         Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(anyInt(), any());
 
@@ -547,7 +547,7 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem = new InvalidEventTypeException("path does not match resource name").asProblem();
 
-        Mockito.doReturn(eventType).when(eventTypeRepository).findByName(eventTypeName);
+        doReturn(eventType).when(eventTypeRepository).findByName(eventTypeName);
 
         putEventType(eventType, eventTypeName).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json")).andExpect(
@@ -662,7 +662,7 @@ public class EventTypeControllerTest {
         builder.enrichmentStrategies(new ArrayList<>());
         final EventType update = builder.build();
 
-        Mockito.doReturn(original).when(eventTypeRepository).findByName(any());
+        doReturn(original).when(eventTypeRepository).findByName(any());
 
         putEventType(update, update.getName())
                 .andExpect(status().isUnprocessableEntity())
@@ -677,7 +677,7 @@ public class EventTypeControllerTest {
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
 
         final ArgumentCaptor<EventTypeBase> eventTypeCaptor = ArgumentCaptor.forClass(EventTypeBase.class);
-        Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
+        verify(eventTypeRepository, times(1)).saveEventType(eventTypeCaptor.capture());
         Assert.assertEquals(TOPIC_RETENTION_TIME_MS,
                 eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
     }
@@ -689,7 +689,7 @@ public class EventTypeControllerTest {
         postEventType(defaultEventType).andExpect(status().is2xxSuccessful());
 
         final ArgumentCaptor<EventTypeBase> eventTypeCaptor = ArgumentCaptor.forClass(EventTypeBase.class);
-        Mockito.verify(eventTypeRepository, Mockito.times(1)).saveEventType(eventTypeCaptor.capture());
+        verify(eventTypeRepository, times(1)).saveEventType(eventTypeCaptor.capture());
         Assert.assertEquals(TOPIC_RETENTION_TIME_MS,
                 eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
     }
@@ -700,7 +700,7 @@ public class EventTypeControllerTest {
         defaultEventType.getOptions().setRetentionTime(TOPIC_RETENTION_TIME_MS);
         final String eventTypeName = defaultEventType.getName();
 
-        Mockito.doReturn(defaultEventType).when(eventTypeRepository).findByName(eventTypeName);
+        doReturn(defaultEventType).when(eventTypeRepository).findByName(eventTypeName);
 
         getEventType(eventTypeName)
                 .andExpect(status().is2xxSuccessful())

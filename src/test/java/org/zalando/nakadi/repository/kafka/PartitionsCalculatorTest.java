@@ -16,9 +16,9 @@ import static org.hamcrest.Matchers.notNullValue;
 public class PartitionsCalculatorTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
-    public static final int MAX_PARTITION_COUNT = 1000;
+    private static final int MAX_PARTITION_COUNT = 1000;
 
-    public static PartitionsCalculator buildTest() throws IOException {
+    private static PartitionsCalculator buildTest() throws IOException {
         return PartitionsCalculator.load(OBJECT_MAPPER, "t2.large", getTestStream(), 0, MAX_PARTITION_COUNT);
     }
 

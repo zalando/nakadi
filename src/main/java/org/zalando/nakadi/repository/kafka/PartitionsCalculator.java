@@ -173,7 +173,7 @@ public class PartitionsCalculator {
     }
 
     @VisibleForTesting
-    static PartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType,
+    protected static PartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType,
                                      final InputStream in, final int defaultPartitionsCount,
                                      final int maxPartitionCount) throws IOException {
         final InstanceInfo[] instanceInfos = objectMapper.readValue(in, InstanceInfo[].class);
