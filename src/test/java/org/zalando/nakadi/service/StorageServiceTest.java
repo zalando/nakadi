@@ -141,22 +141,4 @@ public class StorageServiceTest {
 
         return timelines;
     }
-
-    private List<Storage> createStorageList() {
-        final List<Storage> storages = new ArrayList<>();
-
-        final Storage s1 = new Storage();
-        s1.setId("s1");
-        storages.add(s1);
-
-        final Storage s2 = new Storage();
-        s2.setId("s2");
-        storages.add(s2);
-
-        final Storage s3 = new Storage();
-        s3.setId("s3");
-        storages.add(s3);
-
-        return storages;
-    }
 }
