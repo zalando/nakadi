@@ -1169,7 +1169,7 @@ paths:
           schema:
             type: object
             properties:
-              "type":
+              storage_type:
                 description: the type of storage (currently, only Kafka)
                 type: string
               configuration:
@@ -1254,7 +1254,7 @@ definitions:
         id:
           description: The ID of the storage backend
           type: string
-        "type":
+        storage_type:
           description: the type of storage (currently, only Kafka)
           type: string
         kafka_configuration:
@@ -1272,7 +1272,7 @@ definitions:
             - zk_path
       required:
         - id
-        - type
+        - storage_type
         - kafka_configuration
 
   Event:

@@ -70,6 +70,7 @@ public class Storage {
     }
 
     private String id;
+    @JsonProperty("storage_type")
     private Type type;
     private Object configuration;
 
