@@ -45,7 +45,10 @@ public class EventTypeServiceTest {
 
     @Test
     public void testValidateSchemaFormattedJson() throws InvalidEventTypeException {
-        eventTypeService.checkJsonIsValid("{\"properties\":{\"event_class\":{\"type\":\"string\"},\"app_domain_id\":{\"type\":\"integer\"},\"event_type\":{\"type\":\"string\"},\"time\":{\"type\":\"number\"},\"partitioning_key\":{\"type\":\"string\"},\"body\":{\"type\":\"object\"}},\"additionalProperties\":true}");
+        eventTypeService.checkJsonIsValid("{\"properties\":{\"event_class\":{\"type\":\"string\"},\"app_domain_id\":" +
+                "{\"type\":\"integer\"},\"event_type\":{\"type\":\"string\"},\"time\":{\"type\":\"number\"}," +
+                "\"partitioning_key\":{\"type\":\"string\"},\"body\":{\"type\":\"object\"}}," +
+                "\"additionalProperties\":true}");
     }
 
 }
