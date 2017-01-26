@@ -17,6 +17,7 @@ import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
 import org.zalando.problem.spring.web.advice.Responses;
 
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.ResponseEntity.status;
 
 @RestController
@@ -34,7 +35,7 @@ public class StoragesController {
     @RequestMapping(value = "/storages", method = RequestMethod.GET)
     public ResponseEntity<?> listStorages(final Client client) {
         if (isNotAdmin(client)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(FORBIDDEN).build();
         }
         return status(HttpStatus.OK).body(storageService.listStorages());
     }
@@ -44,7 +45,7 @@ public class StoragesController {
                                            final NativeWebRequest request,
                                            final Client client) {
         if (isNotAdmin(client)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(FORBIDDEN).build();
         }
         final Result<Storage> result = storageService.createStorage(new JSONObject(body));
         if (result.isSuccessful()) {
@@ -57,7 +58,7 @@ public class StoragesController {
     public ResponseEntity<?> getStorage(@PathVariable("id") final String id, final NativeWebRequest request,
                                         final Client client) {
         if (isNotAdmin(client)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(FORBIDDEN).build();
         }
         final Result<Storage> result = storageService.getStorage(id);
         if (result.isSuccessful()) {
@@ -70,7 +71,7 @@ public class StoragesController {
     public ResponseEntity<?> deleteStorage(@PathVariable("id") final String id, final NativeWebRequest request,
                                            final Client client) {
         if (isNotAdmin(client)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(FORBIDDEN).build();
         }
         final Result<Void> result = storageService.deleteStorage(id);
         if (result.isSuccessful()) {

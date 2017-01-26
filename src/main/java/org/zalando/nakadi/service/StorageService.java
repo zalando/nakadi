@@ -23,9 +23,9 @@ import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 @Service
 public class StorageService {
 
-    final ObjectMapper objectMapper;
-    final StorageDbRepository storageDbRepository;
-    final TimelineService timelineService;
+    private final ObjectMapper objectMapper;
+    private final StorageDbRepository storageDbRepository;
+    private final TimelineService timelineService;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,

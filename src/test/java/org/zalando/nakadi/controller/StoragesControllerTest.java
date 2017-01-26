@@ -32,7 +32,6 @@ public class StoragesControllerTest {
 
     private StorageService storageService = mock(StorageService.class);
     private SecuritySettings securitySettings = mock(SecuritySettings.class);
-    private JsonTestHelper jsonHelper;
     private FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
     private MockMvc mockMvc;
@@ -40,7 +39,6 @@ public class StoragesControllerTest {
     @Before
     public void before() {
         final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-        jsonHelper = new JsonTestHelper(objectMapper);
 
         final StoragesController controller = new StoragesController(securitySettings, storageService);
 
@@ -64,7 +62,6 @@ public class StoragesControllerTest {
 
     @Test
     public void testDeleteUnusedStorage() throws Exception {
-        final List<Storage> storages = createStorageList();
         when(storageService.deleteStorage("s1"))
                 .thenReturn(Result.ok());
         mockMvc.perform(delete("/storages/s1")
