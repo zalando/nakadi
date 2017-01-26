@@ -1151,15 +1151,10 @@ paths:
         '200':
           description: A list of all available storage backends.
           schema:
-            type: object
-            properties:
-              storages:
-                description: list of storage backends.
-                type: array
-                items:
-                  $ref: '#/definitions/Storage'
-            required:
-              - storages
+            type: array
+            description: list of storage backends.
+            items:
+              $ref: '#/definitions/Storage'
     post:
       tags:
         - storages-api
@@ -1174,7 +1169,7 @@ paths:
           schema:
             type: object
             properties:
-              storage_type:
+              "type":
                 description: the type of storage (currently, only Kafka)
                 type: string
               configuration:
@@ -1259,7 +1254,7 @@ definitions:
         id:
           description: The ID of the storage backend
           type: string
-        storage_type:
+        "type":
           description: the type of storage (currently, only Kafka)
           type: string
         configuration:
@@ -1277,7 +1272,7 @@ definitions:
             - zk_path
       required:
         - id
-        - storage_type
+        - type
         - configuration
 
   Event:
