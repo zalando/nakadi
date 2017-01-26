@@ -1,6 +1,9 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import com.grack.nanojson.JsonParser;
+import com.grack.nanojson.JsonParserException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -31,7 +34,6 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.util.JsonUtil;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
@@ -191,9 +193,7 @@ public class EventTypeService {
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
-            if (!JsonUtil.isValidJson(eventTypeSchema)) {
-                throw new InvalidEventTypeException("schema must be a valid json");
-            }
+            checkJsonIsValid(eventTypeSchema);
 
             final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
             final Schema schema = SchemaLoader.load(schemaAsJson);
@@ -213,6 +213,15 @@ public class EventTypeService {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
             throw new InvalidEventTypeException("schema must be a valid json-schema");
+        }
+    }
+
+    @VisibleForTesting
+    void checkJsonIsValid(final String jsonInString) throws InvalidEventTypeException {
+        try {
+            JsonParser.any().from(jsonInString);
+        } catch (final JsonParserException jpe) {
+            throw new InvalidEventTypeException("schema must be a valid json: " + jpe.getMessage());
         }
     }
 
