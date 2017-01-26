@@ -35,7 +35,7 @@ public class StoragesController {
     @RequestMapping(value = "/storages", method = RequestMethod.GET)
     public ResponseEntity<?> listStorages(final Client client) {
         if (isNotAdmin(client)) {
-            return ResponseEntity.status(FORBIDDEN).build();
+            return status(FORBIDDEN).build();
         }
         return status(HttpStatus.OK).body(storageService.listStorages());
     }
