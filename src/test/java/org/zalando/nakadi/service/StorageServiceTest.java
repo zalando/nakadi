@@ -8,7 +8,6 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
-import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -28,14 +27,12 @@ public class StorageServiceTest {
 
     private StorageService storageService;
     private StorageDbRepository storageDbRepository;
-    private TimelineService timelineService;
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
 
     @Before
     public void setUp() {
         storageDbRepository = mock(StorageDbRepository.class);
-        timelineService = mock(TimelineService.class);
-        storageService = new StorageService(objectMapper, storageDbRepository, timelineService);
+        storageService = new StorageService(objectMapper, storageDbRepository);
     }
 
     @Test
@@ -69,7 +66,7 @@ public class StorageServiceTest {
         storage.setId("s3");
 
         when(storageDbRepository.getStorage("s3")).thenReturn(Optional.of(storage));
-        when(timelineService.listTimelines()).thenReturn(timelines);
+        when(storageDbRepository.isStorageUsed("s3")).thenReturn(false);
         doNothing().when(storageDbRepository).deleteStorage("s3");
         assertTrue(storageService.deleteStorage("s3").isSuccessful());
     }
@@ -82,7 +79,7 @@ public class StorageServiceTest {
         storage.setId("s2");
 
         when(storageDbRepository.getStorage("s2")).thenReturn(Optional.of(storage));
-        when(timelineService.listTimelines()).thenReturn(timelines);
+        when(storageDbRepository.isStorageUsed("s2")).thenReturn(true);
         doNothing().when(storageDbRepository).deleteStorage("s2");
 
         assertFalse(storageService.deleteStorage("s2").isSuccessful());
@@ -93,7 +90,7 @@ public class StorageServiceTest {
         final List<Timeline> timelines = createTimelines();
 
         when(storageDbRepository.getStorage("s4")).thenReturn(Optional.empty());
-        when(timelineService.listTimelines()).thenReturn(timelines);
+        when(storageDbRepository.isStorageUsed("s4")).thenReturn(false);
         doNothing().when(storageDbRepository).deleteStorage("s4");
 
         assertFalse(storageService.deleteStorage("s4").isSuccessful());

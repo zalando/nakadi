@@ -7,9 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
-import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.problem.Problem;
 
 import javax.ws.rs.core.Response;
@@ -25,15 +23,12 @@ public class StorageService {
 
     private final ObjectMapper objectMapper;
     private final StorageDbRepository storageDbRepository;
-    private final TimelineService timelineService;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,
-                          final StorageDbRepository storageDbRepository,
-                          final TimelineService timelineService) {
+                          final StorageDbRepository storageDbRepository) {
         this.objectMapper = objectMapper;
         this.storageDbRepository = storageDbRepository;
-        this.timelineService = timelineService;
     }
 
     public List<Storage> listStorages() {
@@ -79,7 +74,7 @@ public class StorageService {
         if (!storageDbRepository.getStorage(id).isPresent()) {
             return Result.notFound("No storage with ID " + id);
         }
-        if (isInUse(id)) {
+        if (storageDbRepository.isStorageUsed(id)) {
             return Result.forbidden("Storage " + id + " is in use");
         }
         try {
@@ -88,10 +83,5 @@ public class StorageService {
             return Result.problem(Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage()));
         }
         return Result.ok();
-    }
-
-    private boolean isInUse(final String id) {
-        final List<Timeline> timelines = timelineService.listTimelines();
-        return timelines.stream().anyMatch(tl -> tl.getStorage().getId().equals(id));
     }
 }

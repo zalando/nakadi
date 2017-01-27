@@ -53,6 +53,10 @@ public class StorageDbRepository extends AbstractDbRepository {
         jdbcTemplate.update("DELETE FROM zn_data.storage WHERE st_id=?", id);
     }
 
+    public boolean isStorageUsed(final String id) {
+        return jdbcTemplate.queryForList("SELECT FROM zn_data.timelines WHERE st_id=?", id).isEmpty();
+    }
+
     static Storage buildStorage(final ObjectMapper mapper, final String id, final String type, final String config)
             throws SQLException {
         final Storage result = new Storage();
