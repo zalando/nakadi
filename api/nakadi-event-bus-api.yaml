@@ -1177,10 +1177,12 @@ paths:
             type: object
             properties:
               storage_type:
-                description: the type of storage (currently, only Kafka)
+                description: the type of storage
                 type: string
+                enum:
+                  - kafka
               configuration:
-                description: configuration settings (currently, only Kafka)
+                description: configuration settings
                 type: object
                 properties:
                   zk_address:
@@ -1272,10 +1274,12 @@ definitions:
           description: The ID of the storage backend
           type: string
         storage_type:
-          description: the type of storage (currently, only Kafka)
+          description: the type of storage
           type: string
+          enum:
+            - kafka
         kafka_configuration:
-          description: configuration settings (currently, only Kafka)
+          description: configuration settings
           type: object
           properties:
             zk_address:
