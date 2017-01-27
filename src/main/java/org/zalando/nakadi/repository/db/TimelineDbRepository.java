@@ -38,10 +38,6 @@ public class TimelineDbRepository extends AbstractDbRepository {
                 eventType);
     }
 
-    public List<Timeline> listTimelines() {
-        return jdbcTemplate.query(BASE_TIMELINE_QUERY + " order by t.tl_order", timelineRowMapper);
-    }
-
     public Optional<Timeline> getTimeline(final UUID id) {
         final List<Timeline> timelines = jdbcTemplate.query(
                 BASE_TIMELINE_QUERY + " WHERE t.tl_id=?", timelineRowMapper, id);
