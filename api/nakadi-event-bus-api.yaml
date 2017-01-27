@@ -1176,21 +1176,7 @@ paths:
           schema:
             type: object
             properties:
-              storage_type:
-                description: the type of storage
-                type: string
-                enum:
-                  - kafka
-              configuration:
-                description: configuration settings
-                type: object
-                properties:
-                  zk_address:
-                    description: the Zookeeper address
-                    type: string
-                  zk_path:
-                    description: the Zookeeper path
-                    type: string
+              $ref: '#/definitions/Storage'
           required: true
       responses:
         '204':
@@ -1271,8 +1257,9 @@ definitions:
         A storage backend.
       properties:
         id:
-          description: The ID of the storage backend
+          description: The ID of the storage backend.
           type: string
+          maxLength: 36
         storage_type:
           description: the type of storage
           type: string
