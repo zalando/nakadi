@@ -1174,10 +1174,7 @@ paths:
           in: body
           description: Storage description
           schema:
-            type: object
-            properties:
-              $ref: '#/definitions/Storage'
-          required: true
+            $ref: '#/definitions/Storage'
       responses:
         '204':
           description: Storage backend was successfully registered. Returns storage object that was created.
