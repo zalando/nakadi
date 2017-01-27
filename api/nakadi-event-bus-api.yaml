@@ -1266,8 +1266,7 @@ definitions:
   Storage:
       type: object
       description: |
-        This is a storage backend
-        A real one.
+        A storage backend.
       properties:
         id:
           description: The ID of the storage backend
