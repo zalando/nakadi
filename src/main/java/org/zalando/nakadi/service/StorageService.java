@@ -39,8 +39,7 @@ public class StorageService {
         final Optional<Storage> storage = storageDbRepository.getStorage(id);
         if (storage.isPresent()) {
             return Result.ok(storage.get());
-        }
-        else {
+        } else {
             return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, "No storage with id " + id));
         }
     }
