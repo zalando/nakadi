@@ -1194,7 +1194,7 @@ paths:
       tags:
         - timelines-api
       description: |
-        Retrieves a storage backend from its ID.
+        Retrieves a storage backend by its ID.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
