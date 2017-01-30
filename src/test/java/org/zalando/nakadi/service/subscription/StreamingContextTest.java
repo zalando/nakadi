@@ -130,7 +130,7 @@ public class StreamingContextTest {
         Assert.assertArrayEquals(new boolean[]{true, true}, onExitCalls);
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void testOnNodeShutdown() throws Exception {
         final StreamingContext ctxSpy = Mockito.spy(createTestContext(null));
 
@@ -145,7 +145,7 @@ public class StreamingContextTest {
             }
         });
         t.start();
-        t.join(1000);
+        t.join();
 
         ctxSpy.onNodeShutdown();
 
