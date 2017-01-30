@@ -6,17 +6,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 
 import static junit.framework.TestCase.assertFalse;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -40,28 +34,15 @@ public class StorageServiceTest {
         final Storage dbReply = createTestStorage();
 
         when(storageDbRepository.createStorage(any())).thenReturn(dbReply);
+        when(storageDbRepository.getStorage(any())).thenReturn(Optional.empty());
 
-        final JSONObject json = createTestStorageJson();
-        final Result<Storage> result = storageService.createStorage(json);
+        final JSONObject storage = createTestStorageJson("s1");
+        final Result<Void> result = storageService.createStorage(storage);
         assertTrue(result.isSuccessful());
-        final Storage storage = result.getValue();
-        assertEquals(Storage.Type.KAFKA, storage.getType());
-        assertEquals("https://localhost", storage.getKafkaConfiguration().getZkAddress());
-        assertEquals("/path/to/kafka", storage.getKafkaConfiguration().getZkPath());
-        assertNotNull(storage.getId());
-    }
-
-    @Test
-    public void testCreateStorageMissingConfigItem() {
-        final JSONObject json = createTestStorageJson();
-        json.getJSONObject("configuration").remove("zk_path");
-        final Result<Storage> result = storageService.createStorage(json);
-        assertFalse(result.isSuccessful());
     }
 
     @Test
     public void testDeleteUnusedStorage() {
-        final List<Timeline> timelines = createTimelines();
         final Storage storage = new Storage();
         storage.setId("s3");
 
@@ -73,8 +54,6 @@ public class StorageServiceTest {
 
     @Test
     public void testDeleteStorageInUse() {
-        final List<Timeline> timelines = createTimelines();
-
         final Storage storage = new Storage();
         storage.setId("s2");
 
@@ -87,8 +66,6 @@ public class StorageServiceTest {
 
     @Test
     public void testDeleteNonExistingStorage() {
-        final List<Timeline> timelines = createTimelines();
-
         when(storageDbRepository.getStorage("s4")).thenReturn(Optional.empty());
         when(storageDbRepository.isStorageUsed("s4")).thenReturn(false);
         doNothing().when(storageDbRepository).deleteStorage("s4");
@@ -96,8 +73,9 @@ public class StorageServiceTest {
         assertFalse(storageService.deleteStorage("s4").isSuccessful());
     }
 
-    private JSONObject createTestStorageJson() {
+    private JSONObject createTestStorageJson(final String id) {
         final JSONObject json = new JSONObject();
+        json.put("id", id);
         json.put("storage_type", "kafka");
         final JSONObject configuration = new JSONObject();
         configuration.put("zk_address", "https://localhost");
@@ -114,26 +92,5 @@ public class StorageServiceTest {
                 new Storage.KafkaConfiguration("https://localhost", "/path/to/kafka");
         storage.setConfiguration(configuration);
         return storage;
-    }
-
-    private List<Timeline> createTimelines() {
-        final Storage s1 = new Storage();
-        s1.setId("s1");
-
-        final Storage s2 = new Storage();
-        s2.setId("s2");
-
-        final List<Timeline> timelines = new ArrayList<>();
-
-        final Timeline t1 = new Timeline("order_received", 0, s1, "topic", new Date());
-        timelines.add(t1);
-
-        final Timeline t2 = new Timeline("order_completed", 0, s1, "topic", new Date());
-        timelines.add(t2);
-
-        final Timeline t3 = new Timeline("order_received", 1, s2, "topic", new Date());
-        timelines.add(t3);
-
-        return timelines;
     }
 }

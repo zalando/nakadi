@@ -10,12 +10,12 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.problem.Problem;
 
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 @Service
@@ -40,23 +40,29 @@ public class StorageService {
         if (storage.isPresent()) {
             return Result.ok(storage.get());
         } else {
-            return Result.problem(Problem.valueOf(Response.Status.NOT_FOUND, "No storage with id " + id));
+            return Result.problem(Problem.valueOf(NOT_FOUND, "No storage with id " + id));
         }
     }
 
-    public Result<Storage> createStorage(final JSONObject storageDetails) {
+    public Result<Void> createStorage(final JSONObject json) {
         final String type;
+        final String id;
         final JSONObject configuration;
 
         try {
-            type = storageDetails.getString("storage_type");
-            configuration = storageDetails.getJSONObject("configuration");
+            id = json.getString("id");
+            type = json.getString("storage_type");
+            configuration = json.getJSONObject("configuration");
         } catch (JSONException e) {
             return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
         }
 
+        if (storageDbRepository.getStorage(id).isPresent()) {
+            return Result.conflict("Storage with ID " + id + " already exists.");
+        }
+
         final Storage storage = new Storage();
-        storage.setId(UUID.randomUUID().toString());
+        storage.setId(id);
         storage.setType(Storage.Type.valueOf(type.toUpperCase()));
         try {
             storage.parseConfiguration(objectMapper, configuration.toString());
@@ -64,9 +70,13 @@ public class StorageService {
             return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
         }
 
-        storageDbRepository.createStorage(storage);
+        try {
+            storageDbRepository.createStorage(storage);
+        } catch (DataAccessException e) {
+            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
+        }
 
-        return Result.ok(storage);
+        return Result.ok();
     }
 
     public Result<Void> deleteStorage(final String id) {
@@ -79,7 +89,7 @@ public class StorageService {
         try {
             storageDbRepository.deleteStorage(id);
         } catch (DataAccessException e) {
-            return Result.problem(Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, e.getMessage()));
+            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
         return Result.ok();
     }

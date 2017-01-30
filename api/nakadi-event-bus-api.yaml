@@ -1180,10 +1180,14 @@ paths:
           description: Storage backend was successfully registered. Returns storage object that was created.
           schema:
             $ref: '#/definitions/Storage'
+        '409':
+          description: A storage with the same ID already exists
+          schema:
+            $ref: '#/definitions/Problem'
         '403':
-                  description: Access forbidden
-                  schema:
-                    $ref: '#/definitions/Problem'
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
 
   /storages/{id}:
     get:
@@ -1226,7 +1230,7 @@ paths:
           type: string
           required: true
       responses:
-        '200':
+        '204':
           description: Storage backend was deleted
         '404':
           description: Storage backend not found

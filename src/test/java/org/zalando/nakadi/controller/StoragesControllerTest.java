@@ -2,6 +2,7 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.security.auth.UserPrincipal;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -14,17 +15,23 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.problem.Problem;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
 public class StoragesControllerTest {
@@ -77,22 +84,67 @@ public class StoragesControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    public void testPostStorage() throws Exception {
+        final JSONObject json = createJsonKafkaStorage("test_storage");
+        when(storageService.createStorage(any())).thenReturn(Result.ok());
+        mockMvc.perform(post("/storages")
+                .contentType(APPLICATION_JSON)
+                .content(json.toString())
+                .principal(new UserPrincipal("nakadi")))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    public void testPostStorageWithExistingId() throws Exception {
+        final JSONObject json = createJsonKafkaStorage("test_storage");
+        when(storageService.createStorage(any())).thenReturn(Result.problem(Problem.valueOf(CONFLICT)));
+        mockMvc.perform(post("/storages")
+                .contentType(APPLICATION_JSON)
+                .content(json.toString())
+                .principal(new UserPrincipal("nakadi")))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    public void testPostStorageWrongFormat() throws Exception {
+        final JSONObject json = createJsonKafkaStorage("test_storage");
+        when(storageService.createStorage(any())).thenReturn(Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY)));
+        mockMvc.perform(post("/storages")
+                .contentType(APPLICATION_JSON)
+                .content(json.toString())
+                .principal(new UserPrincipal("nakadi")))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
     private List<Storage> createStorageList() {
         final List<Storage> storages = new ArrayList<>();
 
-        final Storage s1 = new Storage();
-        s1.setId("s1");
-        s1.setType(Storage.Type.KAFKA);
-        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration("http://localhost", "/path/to/kafka");
-        s1.setConfiguration(config);
-        storages.add(s1);
-
-        final Storage s2 = new Storage();
-        s2.setId("s2");
-        s2.setType(Storage.Type.KAFKA);
-        s2.setConfiguration(config);
-        storages.add(s2);
+        storages.add(createKafkaStorage("s1"));
+        storages.add(createKafkaStorage("s2"));
 
         return storages;
+    }
+
+    private Storage createKafkaStorage(final String id) {
+        final Storage storage = new Storage();
+        storage.setId(id);
+        storage.setType(Storage.Type.KAFKA);
+        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration("http://localhost", "/path/to/kafka");
+        storage.setConfiguration(config);
+
+        return storage;
+    }
+
+    private JSONObject createJsonKafkaStorage(final String id) {
+        final JSONObject json = new JSONObject();
+        json.put("id", id);
+        json.put("storage_type", "kafka");
+        final JSONObject config = new JSONObject();
+        config.put("zk_address", "http://localhost");
+        config.put("zk_path", "/path/to/kafka");
+        json.put("kafka_configuration", config);
+
+        return json;
     }
 }

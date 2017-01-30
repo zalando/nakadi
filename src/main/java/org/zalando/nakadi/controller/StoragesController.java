@@ -41,15 +41,15 @@ public class StoragesController {
     }
 
     @RequestMapping(value = "/storages", method = RequestMethod.POST)
-    public ResponseEntity<?> createStorage(@RequestBody final String body,
+    public ResponseEntity<?> createStorage(@RequestBody final String storage,
                                            final NativeWebRequest request,
                                            final Client client) {
         if (isNotAdmin(client)) {
             return status(FORBIDDEN).build();
         }
-        final Result<Storage> result = storageService.createStorage(new JSONObject(body));
+        final Result<Void> result = storageService.createStorage(new JSONObject(storage));
         if (result.isSuccessful()) {
-            return status(HttpStatus.OK).body(result.getValue());
+            return status(HttpStatus.NO_CONTENT).build();
         }
         return Responses.create(result.getProblem(), request);
     }
