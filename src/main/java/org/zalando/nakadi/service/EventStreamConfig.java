@@ -1,7 +1,7 @@
 package org.zalando.nakadi.service;
 
 import java.util.List;
-import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 
 import javax.annotation.Nullable;
@@ -16,7 +16,7 @@ public class EventStreamConfig {
     private static final int STREAM_TIMEOUT_DEFAULT = 0;
     private static final int STREAM_KEEP_ALIVE_LIMIT_DEFAULT = 0;
 
-    private final List<TopicPosition> cursors;
+    private final List<NakadiCursor> cursors;
     private final int batchLimit;
     private final int streamLimit;
     private final int batchTimeout;
@@ -25,9 +25,9 @@ public class EventStreamConfig {
     private final String etName;
     private final String consumingAppId;
 
-    private EventStreamConfig(final List<TopicPosition> cursors, final int batchLimit,
-                             final int streamLimit, final int batchTimeout, final int streamTimeout,
-                             final int streamKeepAliveLimit, final String etName, final String consumingAppId) {
+    private EventStreamConfig(final List<NakadiCursor> cursors, final int batchLimit,
+                              final int streamLimit, final int batchTimeout, final int streamTimeout,
+                              final int streamKeepAliveLimit, final String etName, final String consumingAppId) {
         this.cursors = cursors;
         this.batchLimit = batchLimit;
         this.streamLimit = streamLimit;
@@ -38,7 +38,7 @@ public class EventStreamConfig {
         this.consumingAppId = consumingAppId;
     }
 
-    public List<TopicPosition> getCursors() {
+    public List<NakadiCursor> getCursors() {
         return cursors;
     }
 
@@ -110,7 +110,7 @@ public class EventStreamConfig {
 
     public static class Builder {
 
-        private List<TopicPosition> cursors = null;
+        private List<NakadiCursor> cursors = null;
         private int batchLimit = BATCH_LIMIT_DEFAULT;
         private int streamLimit = STREAM_LIMIT_DEFAULT;
         private int batchTimeout = BATCH_FLUSH_TIMEOUT_DEFAULT;
@@ -119,7 +119,7 @@ public class EventStreamConfig {
         private String etName;
         private String consumingAppId;
 
-        public Builder withCursors(final List<TopicPosition> cursors) {
+        public Builder withCursors(final List<NakadiCursor> cursors) {
             this.cursors = cursors;
             return this;
         }

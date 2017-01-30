@@ -1,14 +1,14 @@
 package org.zalando.nakadi.exceptions;
 
 import org.zalando.nakadi.domain.CursorError;
-import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.view.Cursor;
 
 public class InvalidCursorException extends Exception {
 
     private final CursorError error;
     private final Cursor cursor;
-    private final TopicPosition position;
+    private final NakadiCursor position;
 
     public InvalidCursorException(final CursorError error, final Cursor cursor) {
         super();
@@ -17,7 +17,7 @@ public class InvalidCursorException extends Exception {
         this.position = null;
     }
 
-    public InvalidCursorException(final CursorError error, final TopicPosition position) {
+    public InvalidCursorException(final CursorError error, final NakadiCursor position) {
         super();
         this.error = error;
         this.cursor = null;

@@ -15,8 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.TopicPosition;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
@@ -129,7 +129,7 @@ public class CursorsService {
 
         final EventType eventType = eventTypeRepository.findByName(cursorToProcess.getEventType());
 
-        final TopicPosition toProcess = new TopicPosition(
+        final NakadiCursor toProcess = new NakadiCursor(
                 eventType.getTopic(),
                 cursorToProcess.getPartition(),
                 cursorToProcess.getOffset());
@@ -146,8 +146,8 @@ public class CursorsService {
             return runLocked(() -> {
                 final String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), CHARSET_UTF8);
                 // Yep, here we are trying to hack a little. This code should be removed during timelines implementation
-                final TopicPosition first = new TopicPosition(eventType, cursor.getPartition(), cursor.getOffset());
-                final TopicPosition second = new TopicPosition(eventType, cursor.getPartition(), currentOffset);
+                final NakadiCursor first = new NakadiCursor(eventType, cursor.getPartition(), cursor.getOffset());
+                final NakadiCursor second = new NakadiCursor(eventType, cursor.getPartition(), currentOffset);
                 if (topicRepository.compareOffsets(first, second) > 0) {
                     zkHolder.get().setData().forPath(offsetPath, cursor.getOffset().getBytes(CHARSET_UTF8));
                     return true;

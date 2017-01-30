@@ -1,6 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
-import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 
 public class KafkaPartitionStatistics extends PartitionStatistics {
@@ -16,17 +16,17 @@ public class KafkaPartitionStatistics extends PartitionStatistics {
     }
 
     @Override
-    public TopicPosition getFirst() {
-        return new TopicPosition(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(firstOffset));
+    public NakadiCursor getFirst() {
+        return new NakadiCursor(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(firstOffset));
     }
 
     @Override
-    public TopicPosition getLast() {
-        return new TopicPosition(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(lastOffset));
+    public NakadiCursor getLast() {
+        return new NakadiCursor(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(lastOffset));
     }
 
     @Override
-    public TopicPosition getBeforeFirst() {
-        return new TopicPosition(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(firstOffset - 1));
+    public NakadiCursor getBeforeFirst() {
+        return new NakadiCursor(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(firstOffset - 1));
     }
 }

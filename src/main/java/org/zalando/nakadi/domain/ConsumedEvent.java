@@ -7,9 +7,9 @@ import javax.annotation.concurrent.Immutable;
 public class ConsumedEvent {
 
     private final String event;
-    private final TopicPosition position;
+    private final NakadiCursor position;
 
-    public ConsumedEvent(final String event, final TopicPosition position) {
+    public ConsumedEvent(final String event, final NakadiCursor position) {
         this.event = event;
         this.position = position;
     }
@@ -18,7 +18,7 @@ public class ConsumedEvent {
         return event;
     }
 
-    public TopicPosition getPosition() {
+    public NakadiCursor getPosition() {
         return position;
     }
 

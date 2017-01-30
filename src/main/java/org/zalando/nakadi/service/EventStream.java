@@ -5,7 +5,7 @@ import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.repository.EventConsumer;
 
 import java.io.IOException;
@@ -50,9 +50,9 @@ public class EventStream {
 
             final Map<String, List<String>> currentBatches =
                     createMapWithPartitionKeys(partition -> Lists.newArrayList());
-            // Partition to TopicPosition.
-            final Map<String, TopicPosition> latestOffsets = config.getCursors().stream().collect(
-                    Collectors.toMap(TopicPosition::getPartition, c -> c));
+            // Partition to NakadiCursor.
+            final Map<String, NakadiCursor> latestOffsets = config.getCursors().stream().collect(
+                    Collectors.toMap(NakadiCursor::getPartition, c -> c));
 
             final long start = currentTimeMillis();
             final Map<String, Long> batchStartTimes = createMapWithPartitionKeys(partition -> start);
@@ -131,7 +131,7 @@ public class EventStream {
 
     private <T> Map<String, T> createMapWithPartitionKeys(final Function<String, T> valueFunction) {
         return config
-                .getCursors().stream().map(TopicPosition::getPartition)
+                .getCursors().stream().map(NakadiCursor::getPartition)
                 .collect(Collectors.toMap(identity(), valueFunction));
     }
 
@@ -150,7 +150,7 @@ public class EventStream {
         return builder.toString();
     }
 
-    private void sendBatch(final TopicPosition topicPosition, final List<String> currentBatch)
+    private void sendBatch(final NakadiCursor topicPosition, final List<String> currentBatch)
             throws IOException {
         // create stream event batch for current partition and send it; if there were
         // no events, it will be just a keep-alive

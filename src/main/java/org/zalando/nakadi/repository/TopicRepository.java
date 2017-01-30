@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
@@ -34,10 +34,10 @@ public interface TopicRepository {
 
     List<String> listPartitionNames(final String topicId);
 
-    EventConsumer createEventConsumer(String clientId, List<TopicPosition> positions) throws NakadiException,
+    EventConsumer createEventConsumer(String clientId, List<NakadiCursor> positions) throws NakadiException,
             InvalidCursorException;
 
-    int compareOffsets(final TopicPosition first, final TopicPosition second) throws InternalNakadiException;
+    int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InternalNakadiException;
 
-    void validateCommitCursor(TopicPosition cursor) throws InvalidCursorException;
+    void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
 }

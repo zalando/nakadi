@@ -1,7 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import java.util.Objects;
-import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import static org.zalando.nakadi.domain.CursorError.INVALID_FORMAT;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
@@ -33,8 +33,8 @@ public class KafkaCursor implements Comparable<KafkaCursor> {
         return new KafkaCursor(topic, partition, offset + toAdd);
     }
 
-    public TopicPosition toNakadiPosition() {
-        return new TopicPosition(topic, toNakadiPartition(partition), toNakadiOffset(offset));
+    public NakadiCursor toNakadiPosition() {
+        return new NakadiCursor(topic, toNakadiPartition(partition), toNakadiOffset(offset));
     }
 
     public static String toNakadiOffset(final long offset) {
@@ -49,7 +49,7 @@ public class KafkaCursor implements Comparable<KafkaCursor> {
         return Integer.parseInt(partition);
     }
 
-    public static KafkaCursor fromNakadiPosition(final TopicPosition tp) throws InvalidCursorException {
+    public static KafkaCursor fromNakadiPosition(final NakadiCursor tp) throws InvalidCursorException {
         final Integer partition;
         try {
             partition = toKafkaPartition(tp.getPartition());

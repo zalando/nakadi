@@ -26,7 +26,7 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -120,9 +120,9 @@ public class KafkaTopicRepositoryTest {
         assertThat(kafkaTopicRepository.topicExists("doesnt-exist"), is(false));
     }
 
-    private static List<TopicPosition> asTopicPosition(final String topic, final List<Cursor> cursors) {
+    private static List<NakadiCursor> asTopicPosition(final String topic, final List<Cursor> cursors) {
         return cursors.stream()
-                .map(c -> new TopicPosition(topic, c.getPartition(), c.getOffset()))
+                .map(c -> new NakadiCursor(topic, c.getPartition(), c.getOffset()))
                 .collect(toList());
     }
 
@@ -309,7 +309,7 @@ public class KafkaTopicRepositoryTest {
 
     @Test
     public void whenValidateCommitCursorsThenOk() throws InvalidCursorException {
-        kafkaTopicRepository.validateCommitCursor(new TopicPosition(MY_TOPIC, "0", "23"));
+        kafkaTopicRepository.validateCommitCursor(new NakadiCursor(MY_TOPIC, "0", "23"));
     }
 
     @Test
@@ -320,7 +320,7 @@ public class KafkaTopicRepositoryTest {
                 .entrySet()
                 .forEach(testCase -> {
                     try {
-                        kafkaTopicRepository.validateCommitCursor(new TopicPosition(
+                        kafkaTopicRepository.validateCommitCursor(new NakadiCursor(
                                 MY_TOPIC, testCase.getKey().getPartition(), testCase.getKey().getOffset()));
                     } catch (final InvalidCursorException e) {
                         assertThat(e.getError(), equalTo(testCase.getValue()));

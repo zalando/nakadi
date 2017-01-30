@@ -17,9 +17,9 @@ public abstract class PartitionStatistics {
         return partition;
     }
 
-    public abstract TopicPosition getFirst();
+    public abstract NakadiCursor getFirst();
 
-    public abstract TopicPosition getLast();
+    public abstract NakadiCursor getLast();
 
-    public abstract TopicPosition getBeforeFirst();
+    public abstract NakadiCursor getBeforeFirst();
 }

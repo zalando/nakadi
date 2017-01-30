@@ -27,7 +27,7 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.TopicPosition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -272,7 +272,7 @@ public class SubscriptionService {
 
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,
                                                                  @Nullable final Partition partition,
-                                                                 final TopicPosition topicPartition,
+                                                                 final NakadiCursor topicPartition,
                                                                  final boolean hasSessions) throws NakadiException {
         final String partitionId = topicPartition.getPartition();
         String partitionState = Partition.State.UNASSIGNED.getDescription();

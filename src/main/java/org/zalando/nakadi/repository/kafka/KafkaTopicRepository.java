@@ -41,9 +41,9 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.TopicPosition;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -352,7 +352,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer createEventConsumer(final String clientId, final List<TopicPosition> cursors)
+    public EventConsumer createEventConsumer(final String clientId, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
         return kafkaFactory.createNakadiConsumer(
 		clientId,
@@ -360,7 +360,7 @@ public class KafkaTopicRepository implements TopicRepository {
                 nakadiSettings.getKafkaPollTimeoutMs());
     }
 
-    public int compareOffsets(final TopicPosition first, final TopicPosition second) {
+    public int compareOffsets(final NakadiCursor first, final NakadiCursor second) {
         try {
             return KafkaCursor.fromNakadiPosition(first).compareTo(KafkaCursor.fromNakadiPosition(second));
         } catch (final InvalidCursorException e) {
@@ -368,13 +368,13 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private List<KafkaCursor> validateConsumerCursors(final List<TopicPosition> cursors)
+    private List<KafkaCursor> validateConsumerCursors(final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
-        final List<String> topics = cursors.stream().map(TopicPosition::getTopic).distinct().collect(toList());
+        final List<String> topics = cursors.stream().map(NakadiCursor::getTopic).distinct().collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(topics);
 
         final List<KafkaCursor> result = new ArrayList<>(cursors.size());
-        for (final TopicPosition position : cursors) {
+        for (final NakadiCursor position : cursors) {
             validateCursorForNulls(position);
             final Optional<PartitionStatistics> partition =
                     statistics.stream().filter(t -> Objects.equals(t.getPartition(), position.getPartition()))
@@ -403,7 +403,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void validateCommitCursor(final TopicPosition position) throws InvalidCursorException {
+    public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
         final List<String> partitions = this.listPartitionNames(position.getTopic());
         validateCursorForNulls(position);
         if (!partitions.contains(position.getPartition())) {
@@ -412,7 +412,7 @@ public class KafkaTopicRepository implements TopicRepository {
         KafkaCursor.fromNakadiPosition(position);
     }
 
-    private void validateCursorForNulls(final TopicPosition cursor) throws InvalidCursorException {
+    private void validateCursorForNulls(final NakadiCursor cursor) throws InvalidCursorException {
         if (cursor.getPartition() == null) {
             throw new InvalidCursorException(NULL_PARTITION, cursor);
         }

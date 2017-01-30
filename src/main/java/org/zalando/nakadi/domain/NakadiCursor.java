@@ -2,13 +2,13 @@ package org.zalando.nakadi.domain;
 
 import java.util.Objects;
 
-public class TopicPosition {
+public class NakadiCursor {
     private final String topic;
     private final String partition;
     // NO BEGIN OR END HERE!
     private final String offset;
 
-    public TopicPosition(final String topic, final String partition, final String offset) {
+    public NakadiCursor(final String topic, final String partition, final String offset) {
         assert null != topic && null != partition && null != offset;
         this.topic = topic;
         this.partition = partition;
@@ -32,11 +32,11 @@ public class TopicPosition {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof TopicPosition)) {
+        if (!(o instanceof NakadiCursor)) {
             return false;
         }
 
-        final TopicPosition that = (TopicPosition) o;
+        final NakadiCursor that = (NakadiCursor) o;
         return Objects.equals(this.topic, that.topic)
                 && Objects.equals(this.partition, that.partition)
                 && Objects.equals(this.offset, that.offset);
@@ -52,7 +52,7 @@ public class TopicPosition {
 
     @Override
     public String toString() {
-        return "TopicPosition{" +
+        return "NakadiCursor{" +
                 "topic='" + topic + '\'' +
                 ", partition='" + partition + '\'' +
                 ", offset='" + offset + '\'' +

@@ -31,8 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
-import org.zalando.nakadi.domain.TopicPosition;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -98,7 +98,7 @@ public class EventStreamController {
     }
 
     @VisibleForTesting
-    List<TopicPosition> getStreamingStart(final String topic, final String cursorsStr)
+    List<NakadiCursor> getStreamingStart(final String topic, final String cursorsStr)
             throws UnparseableCursorException, ServiceUnavailableException, InvalidCursorException {
         List<Cursor> cursors = null;
         if (cursorsStr != null) {
@@ -106,14 +106,14 @@ public class EventStreamController {
                 cursors = jsonMapper.readValue(cursorsStr, new TypeReference<ArrayList<Cursor>>() {
                 });
             } catch (final IOException ex) {
-                throw new UnparseableCursorException("Incorrect syntax of X-nakadi-cursors header", ex, cursorsStr);
+                throw new UnparseableCursorException("incorrect syntax of X-nakadi-cursors header", ex, cursorsStr);
             }
         }
         if (null != cursors) {
-            Map<String, TopicPosition> begin = null;
-            final List<TopicPosition> result = new ArrayList<>();
+            Map<String, NakadiCursor> begin = null;
+            final List<NakadiCursor> result = new ArrayList<>();
             for (final Cursor c : cursors) {
-                final TopicPosition toUse;
+                final NakadiCursor toUse;
                 if (Cursor.BEFORE_OLDEST_OFFSET.equalsIgnoreCase(c.getOffset())) {
                     if (null == begin) {
                         begin = topicRepository.loadTopicStatistics(Collections.singletonList(topic)).stream()
@@ -131,7 +131,7 @@ public class EventStreamController {
                     } else if (null == c.getOffset()) {
                         throw new InvalidCursorException(CursorError.NULL_OFFSET, c);
                     }
-                    toUse = new TopicPosition(topic, c.getPartition(), c.getOffset());
+                    toUse = new NakadiCursor(topic, c.getPartition(), c.getOffset());
                 }
                 result.add(toUse);
             }
@@ -199,7 +199,7 @@ public class EventStreamController {
                 // acquire connection slots to limit the number of simultaneous connections from one client
                 if (featureToggleService.isFeatureEnabled(LIMIT_CONSUMERS_NUMBER)) {
                     final List<String> partitions = streamConfig.getCursors().stream()
-                            .map(TopicPosition::getPartition)
+                            .map(NakadiCursor::getPartition)
                             .collect(Collectors.toList());
                     connectionSlots = consumerLimitingService.acquireConnectionSlots(
                             client.getClientId(), eventTypeName, partitions);
@@ -222,8 +222,7 @@ public class EventStreamController {
             } catch (final UnparseableCursorException e) {
                 LOG.debug("Incorrect syntax of X-nakadi-cursors header: {}. Respond with BAD_REQUEST.",
                         e.getCursors(), e);
-                writeProblemResponse(response, outputStream, BAD_REQUEST,
-                        "incorrect syntax of X-nakadi-cursors header");
+                writeProblemResponse(response, outputStream, BAD_REQUEST, e.getMessage());
 
             } catch (final NoSuchEventTypeException e) {
                 writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
