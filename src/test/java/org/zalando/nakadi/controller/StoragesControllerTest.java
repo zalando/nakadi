@@ -92,7 +92,7 @@ public class StoragesControllerTest {
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
                 .principal(new UserPrincipal("nakadi")))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isCreated());
     }
 
     @Test

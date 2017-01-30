@@ -49,7 +49,7 @@ public class StoragesController {
         }
         final Result<Void> result = storageService.createStorage(new JSONObject(storage));
         if (result.isSuccessful()) {
-            return status(HttpStatus.NO_CONTENT).build();
+            return status(HttpStatus.CREATED).build();
         }
         return Responses.create(result.getProblem(), request);
     }
