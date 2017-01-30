@@ -95,7 +95,11 @@ public class EventPublisher {
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
-        } catch (InterruptedException | TimeoutException e) {
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Failed to wait for timeline switch", e);
+            throw new EventPublishingTimeoutException("Event type is currently in maintenance, please repeat request");
+        } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventPublishingTimeoutException("Event type is currently in maintenance, please repeat request");
         } finally {

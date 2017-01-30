@@ -10,6 +10,7 @@ import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.UnknownServerException;
@@ -204,6 +205,10 @@ public class KafkaTopicRepository implements TopicRepository {
                 }
             }));
             return result;
+        } catch (final InterruptException e) {
+            circuitBreaker.markSuccessfully();
+            item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
+            throw new EventPublishingException("Error publishing message to kafka", e);
         } catch (final RuntimeException e) {
             circuitBreaker.markSuccessfully();
             item.updateStatusAndDetail(EventPublishingStatus.FAILED, "internal error");
