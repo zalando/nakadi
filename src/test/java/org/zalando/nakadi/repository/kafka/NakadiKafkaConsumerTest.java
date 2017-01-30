@@ -123,12 +123,12 @@ public class NakadiKafkaConsumerTest {
         assertThat("The event we read first should not be empty", consumedEvent1.isPresent(), equalTo(true));
         assertThat("The event we read first should have the same data as first mocked ConsumerRecord",
             consumedEvent1.get(),
-            equalTo(new ConsumedEvent(event1, new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiPosition())));
+            equalTo(new ConsumedEvent(event1, new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiCursor())));
 
         assertThat("The event we read second should not be empty", consumedEvent2.isPresent(), equalTo(true));
         assertThat("The event we read second should have the same data as second mocked ConsumerRecord",
             consumedEvent2.get(),
-            equalTo(new ConsumedEvent(event2, new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiPosition())));
+            equalTo(new ConsumedEvent(event2, new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiCursor())));
 
         assertThat("The event we read third should be empty", consumedEvent3.isPresent(), equalTo(false));
 

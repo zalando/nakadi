@@ -11,21 +11,18 @@ public class InvalidCursorException extends Exception {
     private final NakadiCursor position;
 
     public InvalidCursorException(final CursorError error, final Cursor cursor) {
-        super();
         this.error = error;
         this.cursor = cursor;
         this.position = null;
     }
 
     public InvalidCursorException(final CursorError error, final NakadiCursor position) {
-        super();
         this.error = error;
         this.cursor = null;
         this.position = position;
     }
 
     public InvalidCursorException(final CursorError error) {
-        super();
         this.error = error;
         this.cursor = null;
         this.position = null;

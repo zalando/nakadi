@@ -65,7 +65,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
                 .stream(records.spliterator(), false)
                 .map(record -> {
                     final KafkaCursor cursor = new KafkaCursor(record.topic(), record.partition(), record.offset());
-                    return new ConsumedEvent(record.value(), cursor.toNakadiPosition());
+                    return new ConsumedEvent(record.value(), cursor.toNakadiCursor());
                 })
                 .collect(Collectors.toCollection(Lists::newLinkedList));
     }

@@ -9,7 +9,6 @@ public class NakadiCursor {
     private final String offset;
 
     public NakadiCursor(final String topic, final String partition, final String offset) {
-        assert null != topic && null != partition && null != offset;
         this.topic = topic;
         this.partition = partition;
         this.offset = offset;

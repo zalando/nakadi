@@ -33,7 +33,7 @@ public class KafkaCursor implements Comparable<KafkaCursor> {
         return new KafkaCursor(topic, partition, offset + toAdd);
     }
 
-    public NakadiCursor toNakadiPosition() {
+    public NakadiCursor toNakadiCursor() {
         return new NakadiCursor(topic, toNakadiPartition(partition), toNakadiOffset(offset));
     }
 
@@ -49,7 +49,7 @@ public class KafkaCursor implements Comparable<KafkaCursor> {
         return Integer.parseInt(partition);
     }
 
-    public static KafkaCursor fromNakadiPosition(final NakadiCursor tp) throws InvalidCursorException {
+    public static KafkaCursor fromNakadiCursor(final NakadiCursor tp) throws InvalidCursorException {
         final Integer partition;
         try {
             partition = toKafkaPartition(tp.getPartition());

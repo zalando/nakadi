@@ -362,7 +362,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     public int compareOffsets(final NakadiCursor first, final NakadiCursor second) {
         try {
-            return KafkaCursor.fromNakadiPosition(first).compareTo(KafkaCursor.fromNakadiPosition(second));
+            return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
         } catch (final InvalidCursorException e) {
             throw new IllegalArgumentException("Incorrect offset format, should be long", e);
         }
@@ -383,15 +383,15 @@ public class KafkaTopicRepository implements TopicRepository {
             if (!partition.isPresent()) {
                 throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
             }
-            final KafkaCursor toCheck = KafkaCursor.fromNakadiPosition(position);
+            final KafkaCursor toCheck = KafkaCursor.fromNakadiCursor(position);
 
             // Checking oldest position
-            final KafkaCursor oldestCursor = KafkaCursor.fromNakadiPosition(partition.get().getBeforeFirst());
+            final KafkaCursor oldestCursor = KafkaCursor.fromNakadiCursor(partition.get().getBeforeFirst());
             if (toCheck.compareTo(oldestCursor) < 0) {
                 throw new InvalidCursorException(UNAVAILABLE, position);
             }
             // checking newest position
-            final KafkaCursor newestPosition = KafkaCursor.fromNakadiPosition(partition.get().getLast());
+            final KafkaCursor newestPosition = KafkaCursor.fromNakadiCursor(partition.get().getLast());
             if (toCheck.compareTo(newestPosition) > 0) {
                 throw new InvalidCursorException(UNAVAILABLE, position);
             } else {
@@ -409,7 +409,7 @@ public class KafkaTopicRepository implements TopicRepository {
         if (!partitions.contains(position.getPartition())) {
             throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
         }
-        KafkaCursor.fromNakadiPosition(position);
+        KafkaCursor.fromNakadiCursor(position);
     }
 
     private void validateCursorForNulls(final NakadiCursor cursor) throws InvalidCursorException {
