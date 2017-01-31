@@ -27,7 +27,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
+import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -245,7 +245,7 @@ public class KafkaTopicRepositoryTest {
         }
     }
 
-    @Test(expected = EventPublishingTimeoutException.class)
+    @Test(expected = EventTypeTimeoutException.class)
     public void whenSyncPostBatchAndTimeIsNotEnoughThenException() throws Exception {
         when(nakadiSettings.getKafkaSendTimeoutMs()).thenReturn(100L);
         when(kafkaSettings.getRequestTimeoutMs()).thenReturn(200);

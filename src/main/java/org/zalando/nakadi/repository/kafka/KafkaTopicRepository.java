@@ -33,7 +33,7 @@ import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
+import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -233,10 +233,10 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void syncPostBatch(final String topicId, final List<BatchItem> batch, final PublishTimeoutTimer timeoutTimer)
-            throws EventPublishingException, EventPublishingTimeoutException {
+            throws EventPublishingException, EventTypeTimeoutException {
 
         if (timeoutTimer.getTimeLeftMs() < createSendTimeout()) {
-            throw new EventPublishingTimeoutException("Request timed out. Not enough time to publish event(s).");
+            throw new EventTypeTimeoutException("Request timed out. Not enough time to publish event(s).");
         }
 
         final Producer<String, String> producer = kafkaFactory.takeProducer();

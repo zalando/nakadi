@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
@@ -30,14 +31,20 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
+import org.zalando.problem.Problem;
 
+import javax.ws.rs.core.Response;
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
@@ -55,6 +62,8 @@ public class EventTypeService {
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final SchemaEvolutionService schemaEvolutionService;
+    private final TimelineSync timelineSync;
+    private final NakadiSettings nakadiSettings;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
@@ -62,7 +71,9 @@ public class EventTypeService {
                             final UUIDGenerator uuidGenerator,
                             final FeatureToggleService featureToggleService,
                             final SubscriptionDbRepository subscriptionRepository,
-                            final SchemaEvolutionService schemaEvolutionService) {
+                            final SchemaEvolutionService schemaEvolutionService,
+                            final TimelineSync timelineSync,
+                            final NakadiSettings nakadiSettings) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
@@ -71,6 +82,8 @@ public class EventTypeService {
         this.featureToggleService = featureToggleService;
         this.subscriptionRepository = subscriptionRepository;
         this.schemaEvolutionService = schemaEvolutionService;
+        this.timelineSync = timelineSync;
+        this.nakadiSettings = nakadiSettings;
     }
 
     public List<EventType> list() {
@@ -106,7 +119,10 @@ public class EventTypeService {
     }
 
     public Result<Void> delete(final String eventTypeName, final Client client) {
+        Closeable deletionCloser = null;
         try {
+            deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
+
             final Optional<EventType> eventType = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventType.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
@@ -123,17 +139,37 @@ public class EventTypeService {
             eventTypeRepository.removeEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.get().getTopic());
             return Result.ok();
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Failed to wait for timeline switch", e);
+            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
+                    "Event type is currently in maintenance, please repeat request"));
+        } catch (final TimeoutException e) {
+            LOG.error("Failed to wait for timeline switch", e);
+            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
+                    "Event type is currently in maintenance, please repeat request"));
         } catch (final TopicDeletionException e) {
             LOG.error("Problem deleting kafka topic " + eventTypeName, e);
             return Result.problem(e.asProblem());
         } catch (final NakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             return Result.problem(e.asProblem());
+        } finally {
+            try {
+                if (deletionCloser != null) {
+                    deletionCloser.close();
+                }
+            } catch (final IOException e) {
+                LOG.error("Exception occurred when releasing usage of event-type", e);
+            }
         }
     }
 
     public Result<Void> update(final String eventTypeName, final EventTypeBase eventTypeBase, final Client client) {
+        Closeable updatingCloser = null;
         try {
+            updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
+
             final EventType original = eventTypeRepository.findByName(eventTypeName);
             if (!client.idMatches(original.getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
@@ -146,6 +182,15 @@ public class EventTypeService {
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
             eventTypeRepository.update(eventType);
             return Result.ok();
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Failed to wait for timeline switch", e);
+            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
+                    "Event type is currently in maintenance, please repeat request"));
+        } catch (final TimeoutException e) {
+            LOG.error("Failed to wait for timeline switch", e);
+            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
+                    "Event type is currently in maintenance, please repeat request"));
         } catch (final InvalidEventTypeException e) {
             return Result.problem(e.asProblem());
         } catch (final NoSuchEventTypeException e) {
@@ -154,6 +199,14 @@ public class EventTypeService {
         } catch (final NakadiException e) {
             LOG.error("Unable to update event type", e);
             return Result.problem(e.asProblem());
+        } finally {
+            try {
+                if (updatingCloser != null) {
+                    updatingCloser.close();
+                }
+            } catch (final IOException e) {
+                LOG.error("Exception occurred when releasing usage of event-type", e);
+            }
         }
     }
 

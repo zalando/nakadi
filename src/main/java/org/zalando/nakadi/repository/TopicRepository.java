@@ -9,7 +9,7 @@ import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
+import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -39,7 +39,7 @@ public interface TopicRepository {
     boolean partitionExists(String topic, String partition) throws NakadiException;
 
     void syncPostBatch(String topicId, List<BatchItem> batch, final PublishTimeoutTimer timeoutTimer)
-            throws EventPublishingException, EventPublishingTimeoutException;
+            throws EventPublishingException, EventTypeTimeoutException;
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 

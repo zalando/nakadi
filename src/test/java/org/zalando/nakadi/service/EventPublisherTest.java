@@ -16,7 +16,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
+import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
@@ -76,7 +76,7 @@ public class EventPublisherTest {
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final PublishTimeoutTimer timeoutTimer = mock(PublishTimeoutTimer.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_PUBLISH_TIMEOUT, NAKADI_EVENT_MAX_BYTES);
+            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_PUBLISH_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES);
     private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver,
             enrichment, nakadiSettings, timelineSync);
 
@@ -127,7 +127,7 @@ public class EventPublisherTest {
         verify(etCloser, times(1)).close();
     }
 
-    @Test(expected = EventPublishingTimeoutException.class)
+    @Test(expected = EventTypeTimeoutException.class)
     public void whenPublishAndTimelineLockTimedOutThenException() throws Exception {
         Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenThrow(new TimeoutException());
         publisher.publish(buildDefaultBatch(0).toString(), "blahET", FULL_ACCESS_CLIENT, timeoutTimer);

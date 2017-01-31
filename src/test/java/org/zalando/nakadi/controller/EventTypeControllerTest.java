@@ -44,6 +44,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventTypeService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -60,11 +61,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -108,6 +112,7 @@ public class EventTypeControllerTest {
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+    private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaEvolutionService();
 
@@ -121,12 +126,12 @@ public class EventTypeControllerTest {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, uuid, featureToggleService, subscriptionRepository,
-                schemaEvolutionService);
+                schemaEvolutionService, timelineSync, mock(NakadiSettings.class));
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_PUBLISH_TIMEOUT, NAKADI_EVENT_MAX_BYTES);
+                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_PUBLISH_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES);
         final EventTypeController controller = new EventTypeController(eventTypeService,
                 featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings);
 
@@ -738,6 +743,32 @@ public class EventTypeControllerTest {
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().string(new StringContains(
                         "Field \\\"options.retention_time\\\" can not be less than 100")));
+    }
+
+    @Test
+    public void whenUpdateEventTypeAndTimelineWaitTimeoutThen503() throws Exception {
+        when(timelineSync.workWithEventType(any(), anyLong())).thenThrow(new TimeoutException());
+        final EventType eventType = buildDefaultEventType();
+
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
+                "Event type is currently in maintenance, please repeat request");
+
+        putEventType(eventType, eventType.getName(), "nakadi")
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenDeleteEventTypeAndTimelineWaitTimeoutThen503() throws Exception {
+        when(timelineSync.workWithEventType(any(), anyLong())).thenThrow(new TimeoutException());
+        final EventType eventType = buildDefaultEventType();
+
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
+                "Event type is currently in maintenance, please repeat request");
+
+        deleteEventType(eventType.getName())
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {

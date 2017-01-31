@@ -17,7 +17,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventPublishingTimeoutException;
+import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.EventValidationException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -67,7 +67,7 @@ public class EventPublisher {
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client,
                                       final PublishTimeoutTimer timeoutTimer)
-            throws NoSuchEventTypeException, InternalNakadiException, EventPublishingTimeoutException {
+            throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
@@ -98,10 +98,10 @@ public class EventPublisher {
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
-            throw new EventPublishingTimeoutException("Event type is currently in maintenance, please repeat request");
+            throw new EventTypeTimeoutException("Event type is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
-            throw new EventPublishingTimeoutException("Event type is currently in maintenance, please repeat request");
+            throw new EventTypeTimeoutException("Event type is currently in maintenance, please repeat request");
         } finally {
             try {
                 if (publishingCloser != null) {
@@ -159,7 +159,7 @@ public class EventPublisher {
     }
 
     private void submit(final List<BatchItem> batch, final EventType eventType, final PublishTimeoutTimer timeoutTimer)
-            throws EventPublishingException, EventPublishingTimeoutException {
+            throws EventPublishingException, EventTypeTimeoutException {
         // there is no need to group by partition since its already done by kafka client
         topicRepository.syncPostBatch(eventType.getTopic(), batch, timeoutTimer);
     }
