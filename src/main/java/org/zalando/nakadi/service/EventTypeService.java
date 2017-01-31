@@ -10,9 +10,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.*;
+import org.zalando.nakadi.domain.CompatibilityMode;
+import org.zalando.nakadi.domain.EventCategory;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeStatistics;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.*;
+import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.TopicCreationException;
+import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -160,7 +172,8 @@ public class EventTypeService {
     }
 
     private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing,
-            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
+                                                         final EventTypeStatistics newStatistics)
+            throws InvalidEventTypeException {
         if (existing != null && newStatistics == null) {
             return existing;
         }
