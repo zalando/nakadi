@@ -68,7 +68,8 @@ public class StorageService {
                     configuration = json.getJSONObject("kafka_configuration");
                     break;
                 default:
-                    configuration = new JSONObject();
+                    return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY,
+                            "Type '" + type + "' is not a valid storage type"));
             }
         } catch (JSONException e) {
             return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
