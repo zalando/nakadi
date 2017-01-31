@@ -31,7 +31,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageCreated() {
+    public void testStorageCreated() throws Exception {
         final Storage storage = createStorage("default", "address", "path");
 
         repository.createStorage(storage);
@@ -44,7 +44,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageOrdered() {
+    public void testStorageOrdered() throws Exception {
         final Storage storage2 = repository.createStorage(createStorage("2", "address1", "path3"));
         final Storage storage1 = repository.createStorage(createStorage("1", "address2", "path2"));
         final Storage storage3 = repository.createStorage(createStorage("3", "address3", "path1"));
@@ -57,7 +57,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testStorageDeleted() {
+    public void testStorageDeleted() throws Exception {
         final Storage storage = repository.createStorage(createStorage("1", "address2", "path2"));
         Assert.assertEquals(storage, repository.getStorage(storage.getId()).get());
         repository.deleteStorage(storage.getId());

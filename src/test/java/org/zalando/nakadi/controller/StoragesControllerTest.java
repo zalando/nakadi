@@ -60,7 +60,7 @@ public class StoragesControllerTest {
     public void testListStorages() throws Exception {
         final List<Storage> storages = createStorageList();
         when(storageService.listStorages())
-                .thenReturn(storages);
+                .thenReturn(Result.ok(storages));
         mockMvc.perform(get("/storages")
                 .principal(new UserPrincipal("nakadi")))
                 .andExpect(status().isOk());

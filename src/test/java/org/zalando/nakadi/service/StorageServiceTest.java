@@ -30,7 +30,7 @@ public class StorageServiceTest {
     }
 
     @Test
-    public void testCreateStorage() {
+    public void testCreateStorage() throws Exception {
         final Storage dbReply = createTestStorage();
 
         when(storageDbRepository.createStorage(any())).thenReturn(dbReply);
@@ -42,7 +42,7 @@ public class StorageServiceTest {
     }
 
     @Test
-    public void testDeleteUnusedStorage() {
+    public void testDeleteUnusedStorage() throws Exception {
         final Storage storage = new Storage();
         storage.setId("s3");
 
@@ -53,7 +53,7 @@ public class StorageServiceTest {
     }
 
     @Test
-    public void testDeleteStorageInUse() {
+    public void testDeleteStorageInUse() throws Exception {
         final Storage storage = new Storage();
         storage.setId("s2");
 
@@ -65,7 +65,7 @@ public class StorageServiceTest {
     }
 
     @Test
-    public void testDeleteNonExistingStorage() {
+    public void testDeleteNonExistingStorage() throws Exception {
         when(storageDbRepository.getStorage("s4")).thenReturn(Optional.empty());
         when(storageDbRepository.isStorageUsed("s4")).thenReturn(false);
         doNothing().when(storageDbRepository).deleteStorage("s4");

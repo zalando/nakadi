@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.problem.Problem;
 
@@ -31,12 +31,23 @@ public class StorageService {
         this.storageDbRepository = storageDbRepository;
     }
 
-    public List<Storage> listStorages() {
-        return storageDbRepository.listStorages();
+    public Result<List<Storage>> listStorages() {
+        final List<Storage> storages;
+        try {
+            storages = storageDbRepository.listStorages();
+        } catch (InternalNakadiException e) {
+            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
+        }
+        return Result.ok(storages);
     }
 
     public Result<Storage> getStorage(final String id) {
-        final Optional<Storage> storage = storageDbRepository.getStorage(id);
+        final Optional<Storage> storage;
+        try {
+            storage = storageDbRepository.getStorage(id);
+        } catch (InternalNakadiException e) {
+            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
+        }
         if (storage.isPresent()) {
             return Result.ok(storage.get());
         } else {
@@ -57,8 +68,12 @@ public class StorageService {
             return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
         }
 
-        if (storageDbRepository.getStorage(id).isPresent()) {
-            return Result.conflict("Storage with ID " + id + " already exists.");
+        try {
+            if (storageDbRepository.getStorage(id).isPresent()) {
+                return Result.conflict("Storage with ID " + id + " already exists.");
+            }
+        } catch (InternalNakadiException e) {
+            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
 
         final Storage storage = new Storage();
@@ -72,7 +87,7 @@ public class StorageService {
 
         try {
             storageDbRepository.createStorage(storage);
-        } catch (DataAccessException e) {
+        } catch (InternalNakadiException e) {
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
 
@@ -80,15 +95,15 @@ public class StorageService {
     }
 
     public Result<Void> deleteStorage(final String id) {
-        if (!storageDbRepository.getStorage(id).isPresent()) {
-            return Result.notFound("No storage with ID " + id);
-        }
-        if (storageDbRepository.isStorageUsed(id)) {
-            return Result.forbidden("Storage " + id + " is in use");
-        }
         try {
+            if (!storageDbRepository.getStorage(id).isPresent()) {
+                return Result.notFound("No storage with ID " + id);
+            }
+            if (storageDbRepository.isStorageUsed(id)) {
+                return Result.forbidden("Storage " + id + " is in use");
+            }
             storageDbRepository.deleteStorage(id);
-        } catch (DataAccessException e) {
+        } catch (InternalNakadiException e) {
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
         return Result.ok();

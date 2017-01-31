@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 
 @DB
 @Repository
@@ -22,20 +23,32 @@ public class StorageDbRepository extends AbstractDbRepository {
         super(template, mapper);
     }
 
-    public List<Storage> listStorages() {
-        return jdbcTemplate.query("SELECT st_id, st_type, st_configuration FROM zn_data.storage ORDER BY st_id",
-                storageRowMapper);
+    public List<Storage> listStorages() throws InternalNakadiException {
+        List<Storage> storages;
+        try {
+            storages = jdbcTemplate.query("SELECT st_id, st_type, st_configuration FROM zn_data.storage ORDER BY st_id",
+                    storageRowMapper);
+        } catch (DataAccessException e) {
+            throw new InternalNakadiException("Error occurred when fetching list of Storages", e);
+        }
+
+        return storages;
     }
 
-    public Optional<Storage> getStorage(final String id) {
-        final List<Storage> storages = jdbcTemplate.query(
-                "SELECT st_id, st_type, st_configuration FROM zn_data.storage WHERE st_id=?",
-                storageRowMapper,
-                id);
+    public Optional<Storage> getStorage(final String id) throws InternalNakadiException {
+        final List<Storage> storages;
+        try {
+            storages = jdbcTemplate.query(
+                    "SELECT st_id, st_type, st_configuration FROM zn_data.storage WHERE st_id=?",
+                    storageRowMapper,
+                    id);
+        } catch (DataAccessException e) {
+            throw new InternalNakadiException("Error occurred when fetching Storage " + id, e);
+        }
         return Optional.ofNullable(storages.isEmpty() ? null : storages.get(0));
     }
 
-    public Storage createStorage(final Storage storage) throws DataAccessException {
+    public Storage createStorage(final Storage storage) throws DataAccessException, InternalNakadiException {
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.storage (st_id, st_type, st_configuration) VALUES (?, ?, ?::jsonb)",
@@ -46,15 +59,27 @@ public class StorageDbRepository extends AbstractDbRepository {
         } catch (final JsonProcessingException ex) {
             throw new IllegalArgumentException("Storage configuration " + storage.getConfiguration(Object.class) +
                     " can't be mapped to json", ex);
+        } catch (DataAccessException e) {
+            throw new InternalNakadiException("Error occurred when creating Storage " + storage.getId(), e);
         }
     }
 
-    public void deleteStorage(final String id) {
-        jdbcTemplate.update("DELETE FROM zn_data.storage WHERE st_id=?", id);
+    public void deleteStorage(final String id) throws InternalNakadiException {
+        try {
+            jdbcTemplate.update("DELETE FROM zn_data.storage WHERE st_id=?", id);
+        } catch (DataAccessException e) {
+            throw new InternalNakadiException("Error occurred when deleting Storage " + id, e);
+        }
     }
 
-    public boolean isStorageUsed(final String id) {
-        return jdbcTemplate.queryForList("SELECT FROM zn_data.timelines WHERE st_id=?", id).isEmpty();
+    public boolean isStorageUsed(final String id) throws InternalNakadiException {
+        boolean used;
+        try {
+            used = jdbcTemplate.queryForList("SELECT FROM zn_data.timelines WHERE st_id=?", id).isEmpty();
+        } catch (DataAccessException e) {
+            throw new InternalNakadiException("Error occurred when querying for Storage " + id, e);
+        }
+        return used;
     }
 
     static Storage buildStorage(final ObjectMapper mapper, final String id, final String type, final String config)
