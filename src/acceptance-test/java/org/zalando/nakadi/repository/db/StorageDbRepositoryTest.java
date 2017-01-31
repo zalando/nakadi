@@ -14,6 +14,7 @@ import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
@@ -50,7 +51,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final Optional<Storage> createdCopy = repository.getStorage(storage.getId());
         assertTrue(createdCopy.isPresent());
-        assertFalse(createdCopy.get() == storage);
+        assertNotSame(createdCopy.get(), storage);
 
         assertEquals(storage, createdCopy.get());
     }
@@ -79,7 +80,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testIsStorageUsedNo() throws Exception {
-        final Storage storage1 = repository.createStorage(createStorage("s1", "address1", "path1"));
+        repository.createStorage(createStorage("s1", "address1", "path1"));
         assertFalse(repository.isStorageUsed("s1"));
     }
 
