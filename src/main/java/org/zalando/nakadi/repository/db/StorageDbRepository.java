@@ -75,7 +75,7 @@ public class StorageDbRepository extends AbstractDbRepository {
     public boolean isStorageUsed(final String id) throws InternalNakadiException {
         boolean used;
         try {
-            used = jdbcTemplate.queryForList("SELECT FROM zn_data.timelines WHERE st_id=?", id).isEmpty();
+            used = !jdbcTemplate.queryForList("SELECT FROM zn_data.timeline WHERE st_id=?", id).isEmpty();
         } catch (DataAccessException e) {
             throw new InternalNakadiException("Error occurred when querying for Storage " + id, e);
         }
