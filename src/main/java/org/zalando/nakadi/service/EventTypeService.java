@@ -1,9 +1,6 @@
 package org.zalando.nakadi.service;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
-import com.grack.nanojson.JsonParser;
-import com.grack.nanojson.JsonParserException;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -13,27 +10,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.CompatibilityMode;
-import org.zalando.nakadi.domain.EventCategory;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypeStatistics;
-import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.*;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.*;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
@@ -193,7 +179,8 @@ public class EventTypeService {
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {
             final String eventTypeSchema = eventType.getSchema().getSchema();
-            checkJsonIsValid(eventTypeSchema);
+
+            JsonUtils.checkEventTypeSchemaValid(eventTypeSchema);
 
             final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
             final Schema schema = SchemaLoader.load(schemaAsJson);
@@ -213,15 +200,6 @@ public class EventTypeService {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
             throw new InvalidEventTypeException("schema must be a valid json-schema");
-        }
-    }
-
-    @VisibleForTesting
-    void checkJsonIsValid(final String jsonInString) throws InvalidEventTypeException {
-        try {
-            JsonParser.any().from(jsonInString);
-        } catch (final JsonParserException jpe) {
-            throw new InvalidEventTypeException("schema must be a valid json: " + jpe.getMessage());
         }
     }
 
