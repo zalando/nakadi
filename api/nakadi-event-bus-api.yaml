@@ -1262,10 +1262,8 @@ definitions:
         type: string
         maxLength: 36
       storage_type:
-        description: the type of storage
+        description: the type of storage. Possible values: ['kafka']
         type: string
-        enum:
-          - kafka
       kafka_configuration:
         description: configuration settings
         type: object
