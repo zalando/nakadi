@@ -24,7 +24,7 @@ public class StorageDbRepository extends AbstractDbRepository {
     }
 
     public List<Storage> listStorages() throws InternalNakadiException {
-        List<Storage> storages;
+        final List<Storage> storages;
         try {
             storages = jdbcTemplate.query("SELECT st_id, st_type, st_configuration FROM zn_data.storage ORDER BY st_id",
                     storageRowMapper);
@@ -73,7 +73,7 @@ public class StorageDbRepository extends AbstractDbRepository {
     }
 
     public boolean isStorageUsed(final String id) throws InternalNakadiException {
-        boolean used;
+        final boolean used;
         try {
             used = !jdbcTemplate.queryForList("SELECT FROM zn_data.timeline WHERE st_id=?", id).isEmpty();
         } catch (DataAccessException e) {

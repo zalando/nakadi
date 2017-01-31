@@ -80,7 +80,7 @@ public class StorageServiceTest {
         final JSONObject configuration = new JSONObject();
         configuration.put("zk_address", "https://localhost");
         configuration.put("zk_path", "/path/to/kafka");
-        json.put("configuration", configuration);
+        json.put("kafka_configuration", configuration);
         return json;
     }
 

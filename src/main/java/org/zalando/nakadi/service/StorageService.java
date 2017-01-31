@@ -63,7 +63,13 @@ public class StorageService {
         try {
             id = json.getString("id");
             type = json.getString("storage_type");
-            configuration = json.getJSONObject("configuration");
+            switch(type) {
+                case "kafka":
+                    configuration = json.getJSONObject("kafka_configuration");
+                    break;
+                default:
+                    configuration = new JSONObject();
+            }
         } catch (JSONException e) {
             return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
         }
