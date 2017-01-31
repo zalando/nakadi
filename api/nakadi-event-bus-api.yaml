@@ -1265,7 +1265,7 @@ definitions:
         description: the type of storage. Possible values: ['kafka']
         type: string
       kafka_configuration:
-        description: configuration settings
+        description: configuration settings for kafka storage. Only necessary if the storage type is 'kafka'
         type: object
         properties:
           zk_address:
