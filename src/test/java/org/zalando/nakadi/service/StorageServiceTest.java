@@ -34,7 +34,6 @@ public class StorageServiceTest {
         final Storage dbReply = createTestStorage();
 
         when(storageDbRepository.createStorage(any())).thenReturn(dbReply);
-        when(storageDbRepository.getStorage(any())).thenReturn(Optional.empty());
 
         final JSONObject storage = createTestStorageJson("s1");
         final Result<Void> result = storageService.createStorage(storage);

@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.DuplicatedStorageIdException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.problem.Problem;
@@ -75,14 +76,6 @@ public class StorageService {
             return Result.problem(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()));
         }
 
-        try {
-            if (storageDbRepository.getStorage(id).isPresent()) {
-                return Result.conflict("Storage with ID " + id + " already exists.");
-            }
-        } catch (InternalNakadiException e) {
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
-        }
-
         final Storage storage = new Storage();
         storage.setId(id);
         storage.setType(Storage.Type.valueOf(type.toUpperCase()));
@@ -94,6 +87,8 @@ public class StorageService {
 
         try {
             storageDbRepository.createStorage(storage);
+        } catch (DuplicatedStorageIdException e) {
+            return Result.problem(e.asProblem());
         } catch (InternalNakadiException e) {
             return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }

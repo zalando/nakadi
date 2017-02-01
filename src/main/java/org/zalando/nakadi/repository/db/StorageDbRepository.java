@@ -8,11 +8,13 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.DuplicatedStorageIdException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 
 @DB
@@ -48,7 +50,8 @@ public class StorageDbRepository extends AbstractDbRepository {
         return Optional.ofNullable(storages.isEmpty() ? null : storages.get(0));
     }
 
-    public Storage createStorage(final Storage storage) throws DataAccessException, InternalNakadiException {
+    public Storage createStorage(final Storage storage)
+            throws DataAccessException, DuplicatedStorageIdException, InternalNakadiException {
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.storage (st_id, st_type, st_configuration) VALUES (?, ?, ?::jsonb)",
@@ -59,6 +62,8 @@ public class StorageDbRepository extends AbstractDbRepository {
         } catch (final JsonProcessingException ex) {
             throw new IllegalArgumentException("Storage configuration " + storage.getConfiguration(Object.class) +
                     " can't be mapped to json", ex);
+        } catch (DuplicateKeyException e) {
+            throw new DuplicatedStorageIdException("A storage with id '" + storage.getId() + "' already exists.", e);
         } catch (DataAccessException e) {
             throw new InternalNakadiException("Error occurred when creating Storage " + storage.getId(), e);
         }
