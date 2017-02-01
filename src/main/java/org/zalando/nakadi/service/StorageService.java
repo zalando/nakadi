@@ -87,10 +87,8 @@ public class StorageService {
 
         try {
             storageDbRepository.createStorage(storage);
-        } catch (DuplicatedStorageIdException e) {
+        } catch (DuplicatedStorageIdException | InternalNakadiException e) {
             return Result.problem(e.asProblem());
-        } catch (InternalNakadiException e) {
-            return Result.problem(Problem.valueOf(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
 
         return Result.ok();
