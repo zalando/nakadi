@@ -20,6 +20,7 @@ import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.status;
 
@@ -82,7 +83,7 @@ public class StoragesController {
         }
         final Result<Void> result = storageService.deleteStorage(id);
         if (result.isSuccessful()) {
-            return status(OK).build();
+            return status(NO_CONTENT).build();
         }
         return Responses.create(result.getProblem(), request);
     }

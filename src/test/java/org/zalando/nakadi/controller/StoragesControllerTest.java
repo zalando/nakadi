@@ -72,7 +72,7 @@ public class StoragesControllerTest {
                 .thenReturn(Result.ok());
         mockMvc.perform(delete("/storages/s1")
                 .principal(new UserPrincipal("nakadi")))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @Test
