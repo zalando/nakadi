@@ -99,7 +99,9 @@ public class KafkaLocationManager {
     }
 
     public Properties getKafkaConsumerProperties() {
-        return (Properties) kafkaProperties.clone();
+        Properties properties = (Properties) kafkaProperties.clone();
+        properties.put("enable.auto.commit", kafkaSettings.getEnableAutoCommit());
+        return properties;
     }
 
     public Properties getKafkaProducerProperties() {
@@ -110,7 +112,6 @@ public class KafkaLocationManager {
         producerProps.put("request.timeout.ms", kafkaSettings.getRequestTimeoutMs());
         producerProps.put("batch.size", kafkaSettings.getBatchSize());
         producerProps.put("linger.ms", kafkaSettings.getLingerMs());
-        producerProps.put("enable.auto.commit", kafkaSettings.getEnableAutoCommit());
         return producerProps;
     }
 }
