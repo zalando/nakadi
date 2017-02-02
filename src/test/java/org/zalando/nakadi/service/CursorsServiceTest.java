@@ -63,7 +63,6 @@ public class CursorsServiceTest {
     private CursorsService cursorsService;
     private GetDataBuilder getDataBuilder;
     private SetDataBuilder setDataBuilder;
-    private ZkSubscriptionClient zkSubscriptionClient;
     private KafkaClient kafkaClient;
     private GetChildrenBuilder getChildrenBuilder;
 
@@ -82,10 +81,6 @@ public class CursorsServiceTest {
 
         topicRepository = mock(TopicRepository.class);
 
-        final ZooKeeperLockFactory zkLockFactory = mock(ZooKeeperLockFactory.class);
-        final InterProcessLock lock = mock(InterProcessLock.class);
-        when(zkLockFactory.createLock(any())).thenReturn(lock);
-
         final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
         final Subscription subscription = new Subscription();
         subscription.setEventTypes(ImmutableSet.of(MY_ET));
@@ -96,11 +91,6 @@ public class CursorsServiceTest {
         eventType.setTopic(MY_ET);
         when(eventTypeRepository.findByName(MY_ET)).thenReturn(eventType);
 
-        final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
-        zkSubscriptionClient = mock(ZkSubscriptionClient.class);
-        when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
-        when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
-
         final SubscriptionKafkaClientFactory subscriptionKafkaClientFactory =
                 mock(SubscriptionKafkaClientFactory.class);
         kafkaClient = mock(KafkaClient.class);
@@ -110,7 +100,7 @@ public class CursorsServiceTest {
         when(tokenService.generateToken()).thenReturn(TOKEN);
 
         cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepository, eventTypeRepository,
-                zkLockFactory, zkSubscriptionClientFactory, tokenService);
+                tokenService);
     }
 
     @Test

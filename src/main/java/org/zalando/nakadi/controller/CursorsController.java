@@ -1,5 +1,7 @@
 package org.zalando.nakadi.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -43,6 +46,8 @@ import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
 public class CursorsController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CursorsController.class);
 
     private final CursorsService cursorsService;
     private final FeatureToggleService featureToggleService;
@@ -83,15 +88,18 @@ public class CursorsController {
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
+
+        LOG.debug("[CURSORS_COMMIT] sid: {} Started cursors commit", subscriptionId);
+
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
         try {
             validateSubscriptionReadScopes(client, subscriptionId);
+
+            LOG.debug("[CURSORS_COMMIT] sid: {} Validated scopes", subscriptionId);
+
             final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(streamId, subscriptionId,
                     cursors.getItems());
             final List<CursorCommitResult> items = result.entrySet().stream()
@@ -104,6 +112,8 @@ public class CursorsController {
             return create(e.asProblem(), request);
         } catch (final InvalidCursorException e) {
             return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
+        } finally {
+            LOG.debug("[CURSORS_COMMIT] sid: {} Commit finished", subscriptionId);
         }
     }
 
