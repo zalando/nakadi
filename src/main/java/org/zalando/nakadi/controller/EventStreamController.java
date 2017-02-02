@@ -212,7 +212,9 @@ public class EventStreamController {
 
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer(kafkaQuotaClientId, streamConfig.getCursors());
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer(
+                        kafkaQuotaClientId,
+                        streamConfig.getCursors());
                 eventStream = eventStreamFactory.createEventStream(
                         outputStream, eventConsumer, streamConfig, blacklistService);
 

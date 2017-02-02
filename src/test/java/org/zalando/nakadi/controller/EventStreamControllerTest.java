@@ -301,7 +301,8 @@ public class EventStreamControllerTest {
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0")))))
+        when(topicRepositoryMock.createEventConsumer(
+                eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0")))))
                 .thenReturn(eventConsumerMock);
 
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
@@ -336,7 +337,7 @@ public class EventStreamControllerTest {
 
         verify(topicRepositoryMock, times(1)).createEventConsumer(eq(KAFKA_CLIENT_ID),
                 eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0"))));
-        verify(eventStreamFactoryMock, times(1)).createEventStream(eq(KAFKA_CLIENT_ID), eq(outputStream),
+        verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
                 eq(eventConsumerMock), eq(streamConfig), any());
         verify(eventStreamMock, times(1)).streamEvents(any());
         verify(outputStream, times(2)).flush();
@@ -474,7 +475,8 @@ public class EventStreamControllerTest {
         EVENT_TYPE.setReadScopes(SCOPE_READ);
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0")))))
+        when(topicRepositoryMock.createEventConsumer(
+                eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0")))))
                 .thenReturn(eventConsumerMock);
     }
 

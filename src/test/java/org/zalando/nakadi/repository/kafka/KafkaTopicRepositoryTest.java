@@ -141,7 +141,8 @@ public class KafkaTopicRepositoryTest {
             kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, asList(cursor)));
         }
         // validate all valid cursors
-        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
+        kafkaTopicRepository.createEventConsumer(
+                KAFKA_CLIENT_ID, asTopicPosition(ANOTHER_TOPIC, ANOTHER_TOPIC_VALID_CURSORS));
     }
 
     @Test
@@ -149,14 +150,16 @@ public class KafkaTopicRepositoryTest {
     public void invalidateInvalidCursors() throws NakadiException {
         final Cursor outOfBoundOffset = cursor("0", "38");
         try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
+            kafkaTopicRepository.createEventConsumer(
+                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(outOfBoundOffset)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.UNAVAILABLE));
         }
 
         final Cursor nonExistingPartition = cursor("99", "100");
         try {
-            kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
+            kafkaTopicRepository.createEventConsumer(
+                    KAFKA_CLIENT_ID, asTopicPosition(MY_TOPIC, asList(nonExistingPartition)));
         } catch (final InvalidCursorException e) {
             assertThat(e.getError(), equalTo(CursorError.PARTITION_NOT_FOUND));
         }
@@ -251,60 +254,6 @@ public class KafkaTopicRepositoryTest {
             assertThat(secondItem.getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.FAILED));
             assertThat(secondItem.getResponse().getDetail(), equalTo("internal error"));
         }
-    }
-
-    @Test
-    public void canListAllPartitions() throws NakadiException {
-        canListAllPartitionsOfTopic(MY_TOPIC);
-        canListAllPartitionsOfTopic(ANOTHER_TOPIC);
-    }
-
-    @Test
-    public void canGetPartition() throws NakadiException {
-        PARTITIONS
-                .stream()
-                .map(PARTITION_STATE_TO_TOPIC_PARTITION)
-                .forEach(tp -> {
-                    try {
-                        final TopicPartition actual = kafkaTopicRepository.getPartition(tp.getTopicId(),
-                                tp.getPartitionId());
-                        assertThat(actual, equalTo(tp));
-                    } catch (final NakadiException e) {
-                        fail("Should not get NakadiException for this call");
-                    }
-                });
-    }
-
-    @Test
-    public void testIntegerOverflowOnStatisticsCalculation() throws NakadiException {
-        when(nakadiSettings.getMaxTopicPartitionCount()).thenReturn(1000);
-        final EventTypeStatistics statistics = new EventTypeStatistics();
-        statistics.setReadParallelism(1);
-        statistics.setWriteParallelism(1);
-        statistics.setMessagesPerMinute(1000000000);
-        statistics.setMessageSize(1000000000);
-        assertThat(kafkaTopicRepository.calculateKafkaPartitionCount(statistics), equalTo(6));
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    public void canCreateEventConsumerWithOffsetsTransformed() throws Exception {
-        // ACT /
-        final List<Cursor> cursors = ImmutableList.of(new Cursor("0", "40"), new Cursor("1",
-                Cursor.BEFORE_OLDEST_OFFSET));
-
-        kafkaTopicRepository.createEventConsumer(KAFKA_CLIENT_ID, MY_TOPIC, cursors);
-
-        // ASSERT //
-        final Class<List<KafkaCursor>> kafkaCursorListClass = (Class<List<KafkaCursor>>) (Class) List.class;
-        final ArgumentCaptor<List<KafkaCursor>> captor = ArgumentCaptor.forClass(kafkaCursorListClass);
-        verify(kafkaFactory).createNakadiConsumer(eq(KAFKA_CLIENT_ID), eq(MY_TOPIC), captor.capture(), eq(0L));
-
-        final List<KafkaCursor> kafkaCursors = captor.getValue();
-        assertThat(kafkaCursors, equalTo(ImmutableList.of(
-                kafkaCursor(0, 41),
-                kafkaCursor(1, 100)
-        )));
     }
 
     @Test
