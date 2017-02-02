@@ -354,9 +354,13 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public EventConsumer createEventConsumer(final String clientId, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
-        return kafkaFactory.createNakadiConsumer(
-		clientId,
-                this.validateConsumerCursors(cursors),
+
+        final List<KafkaCursor> kafkaCursors = this.convertToKafkaCursors(cursors)
+                .stream()
+                .map(cursor -> cursor.addOffset(1)) // Position on data to consume, not the existing one
+                .collect(toList());
+
+        return kafkaFactory.createNakadiConsumer(clientId, kafkaCursors,
                 nakadiSettings.getKafkaPollTimeoutMs());
     }
 
@@ -368,7 +372,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private List<KafkaCursor> validateConsumerCursors(final List<NakadiCursor> cursors)
+    private List<KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
         final List<String> topics = cursors.stream().map(NakadiCursor::getTopic).distinct().collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(topics);
@@ -395,8 +399,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (toCheck.compareTo(newestPosition) > 0) {
                 throw new InvalidCursorException(UNAVAILABLE, position);
             } else {
-                // Position on real kafka data
-                result.add(toCheck.addOffset(1));
+                result.add(toCheck);
             }
         }
         return result;
