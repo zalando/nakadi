@@ -99,7 +99,7 @@ public class KafkaLocationManager {
     }
 
     public Properties getKafkaConsumerProperties() {
-        Properties properties = (Properties) kafkaProperties.clone();
+        final Properties properties = (Properties) kafkaProperties.clone();
         properties.put("enable.auto.commit", kafkaSettings.getEnableAutoCommit());
         return properties;
     }
