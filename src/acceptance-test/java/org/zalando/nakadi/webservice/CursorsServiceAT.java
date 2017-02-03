@@ -86,7 +86,8 @@ public class CursorsServiceAT extends BaseAT {
         final SubscriptionDbRepository subscriptionRepo = mock(SubscriptionDbRepository.class);
         when(subscriptionRepo.getSubscription(sid)).thenReturn(subscription);
 
-        cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepo, eventTypeRepository, tokenService);
+        cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepo, eventTypeRepository,
+                tokenService);
 
         // bootstrap data in ZK
         CURATOR.create().creatingParentsIfNeeded().forPath(offsetPath(P1), OLD_OFFSET.getBytes(UTF_8));
