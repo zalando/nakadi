@@ -21,7 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventPublishingStatus;
@@ -33,7 +32,6 @@ import org.zalando.nakadi.domain.Topic;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -232,13 +230,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public void syncPostBatch(final String topicId, final List<BatchItem> batch, final PublishTimeoutTimer timeoutTimer)
-            throws EventPublishingException, EventTypeTimeoutException {
-
-        if (timeoutTimer.getTimeLeftMs() < createSendTimeout()) {
-            throw new EventTypeTimeoutException("Request timed out. Not enough time to publish event(s).");
-        }
-
+    public void syncPostBatch(final String topicId, final List<BatchItem> batch) throws EventPublishingException {
         final Producer<String, String> producer = kafkaFactory.takeProducer();
         try {
             final Map<String, String> partitionToBroker = producer.partitionsFor(topicId).stream()
@@ -268,7 +260,7 @@ public class KafkaTopicRepository implements TopicRepository {
             }
             final CompletableFuture<Void> multiFuture = CompletableFuture.allOf(
                     sendFutures.values().toArray(new CompletableFuture<?>[sendFutures.size()]));
-            multiFuture.get(timeoutTimer.getTimeLeftMs(), TimeUnit.MILLISECONDS);
+            multiFuture.get(createSendTimeout(), TimeUnit.MILLISECONDS);
 
             // Now lets check for errors
             final Optional<Exception> needReset = sendFutures.entrySet().stream()

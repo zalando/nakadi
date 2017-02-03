@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -65,14 +64,13 @@ public class EventPublisher {
         this.timelineSync = timelineSync;
     }
 
-    public EventPublishResult publish(final String events, final String eventTypeName, final Client client,
-                                      final PublishTimeoutTimer timeoutTimer)
+    public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
         try {
-            publishingCloser = timelineSync.workWithEventType(eventTypeName, timeoutTimer.getTimeLeftMs());
+            publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             client.checkScopes(eventType.getWriteScopes());
@@ -80,7 +78,7 @@ public class EventPublisher {
             validate(batch, eventType);
             partition(batch, eventType);
             enrich(batch, eventType);
-            submit(batch, eventType, timeoutTimer);
+            submit(batch, eventType);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -158,10 +156,10 @@ public class EventPublisher {
         }
     }
 
-    private void submit(final List<BatchItem> batch, final EventType eventType, final PublishTimeoutTimer timeoutTimer)
+    private void submit(final List<BatchItem> batch, final EventType eventType)
             throws EventPublishingException, EventTypeTimeoutException {
         // there is no need to group by partition since its already done by kafka client
-        topicRepository.syncPostBatch(eventType.getTopic(), batch, timeoutTimer);
+        topicRepository.syncPostBatch(eventType.getTopic(), batch);
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,

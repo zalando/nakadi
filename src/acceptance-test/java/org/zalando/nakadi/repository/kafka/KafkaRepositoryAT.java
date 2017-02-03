@@ -13,7 +13,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventType;
@@ -55,7 +54,6 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_LINGER_MS = 0;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
-    private static final long TOTAL_PUBLISH_TIMEOUT = 60000;
     private static final long TIMELINE_WAIT_TIMEOUT = 40000;
 
     private NakadiSettings nakadiSettings;
@@ -77,7 +75,6 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_COMMIT_TIMEOUT,
                 NAKADI_POLL_TIMEOUT,
                 NAKADI_SEND_TIMEOUT,
-                TOTAL_PUBLISH_TIMEOUT,
                 TIMELINE_WAIT_TIMEOUT,
                 NAKADI_EVENT_MAX_BYTES);
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_LINGER_MS);
@@ -149,7 +146,7 @@ public class KafkaRepositoryAT extends BaseAT {
             items.add(item);
         }
 
-        kafkaTopicRepository.syncPostBatch(topicId, items, new PublishTimeoutTimer(TOTAL_PUBLISH_TIMEOUT));
+        kafkaTopicRepository.syncPostBatch(topicId, items);
 
         for (int i = 0; i < 10; i++) {
             assertThat(items.get(i).getResponse().getPublishingStatus(), equalTo(EventPublishingStatus.SUBMITTED));

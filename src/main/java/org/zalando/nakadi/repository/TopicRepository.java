@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository;
 
-import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
@@ -38,8 +37,8 @@ public interface TopicRepository {
 
     boolean partitionExists(String topic, String partition) throws NakadiException;
 
-    void syncPostBatch(String topicId, List<BatchItem> batch, final PublishTimeoutTimer timeoutTimer)
-            throws EventPublishingException, EventTypeTimeoutException;
+    void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException,
+            EventTypeTimeoutException;
 
     List<TopicPartition> listPartitions(String topicId) throws NakadiException;
 

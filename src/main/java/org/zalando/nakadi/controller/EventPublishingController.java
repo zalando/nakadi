@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -41,17 +40,14 @@ public class EventPublishingController {
     private final EventPublisher publisher;
     private final EventTypeMetricRegistry eventTypeMetricRegistry;
     private final BlacklistService blacklistService;
-    private final NakadiSettings nakadiSettings;
 
     @Autowired
     public EventPublishingController(final EventPublisher publisher,
                                      final EventTypeMetricRegistry eventTypeMetricRegistry,
-                                     final BlacklistService blacklistService,
-                                     final NakadiSettings nakadiSettings) {
+                                     final BlacklistService blacklistService) {
         this.publisher = publisher;
         this.eventTypeMetricRegistry = eventTypeMetricRegistry;
         this.blacklistService = blacklistService;
-        this.nakadiSettings = nakadiSettings;
     }
 
     @RequestMapping(value = "/event-types/{eventTypeName}/events", method = POST)
@@ -60,8 +56,6 @@ public class EventPublishingController {
                                     final NativeWebRequest request,
                                     final Client client) {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
-
-        final PublishTimeoutTimer timeoutTimer = new PublishTimeoutTimer(nakadiSettings.getPublishTimeoutMs());
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
         try {
@@ -71,7 +65,7 @@ public class EventPublishingController {
             }
 
             final ResponseEntity response = postEventInternal(eventTypeName, eventsAsString,
-                    request, eventTypeMetrics, client, timeoutTimer);
+                    request, eventTypeMetrics, client);
             eventTypeMetrics.incrementResponseCount(response.getStatusCode().value());
             return response;
         } catch (RuntimeException ex) {
@@ -84,14 +78,14 @@ public class EventPublishingController {
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
-                                             final Client client,
-                                             final PublishTimeoutTimer timeoutTimer) {
+                                             final Client client) {
         final long startingNanos = System.nanoTime();
         try {
-            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client, timeoutTimer);
+            final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);
             reportMetrics(eventTypeMetrics, result, eventsAsString, result.getResponses().size());
 
-            return response(result);
+            final ResponseEntity response = response(result);
+            return response;
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);

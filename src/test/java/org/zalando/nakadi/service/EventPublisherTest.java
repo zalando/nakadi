@@ -6,7 +6,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.controller.PublishTimeoutTimer;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
@@ -66,17 +65,16 @@ public class EventPublisherTest {
     private static final int NAKADI_SEND_TIMEOUT = 10000;
     private static final int NAKADI_POLL_TIMEOUT = 10000;
     private static final int NAKADI_EVENT_MAX_BYTES = 900;
-    private static final long NAKADI_PUBLISH_TIMEOUT = 70000;
     private static final long TOPIC_RETENTION_TIME_MS = 150;
+    private static final long TIMELINE_WAIT_TIMEOUT_MS = 1000;
 
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
-    private final Enrichment enrichment = mock(Enrichment.class);
     private final TimelineSync timelineSync = mock(TimelineSync.class);
-    private final PublishTimeoutTimer timeoutTimer = mock(PublishTimeoutTimer.class);
+    private final Enrichment enrichment = mock(Enrichment.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_PUBLISH_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES);
+            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES);
     private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver,
             enrichment, nakadiSettings, timelineSync);
 
@@ -84,14 +82,14 @@ public class EventPublisherTest {
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(1);
+        final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
     }
 
     @Test
@@ -102,11 +100,10 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
     }
 
     @Test
@@ -115,22 +112,19 @@ public class EventPublisherTest {
         final JSONArray batch = buildDefaultBatch(1);
         mockSuccessfulValidation(eventType);
 
-        final long timeLeft = 30000L;
-        Mockito.when(timeoutTimer.getTimeLeftMs()).thenReturn(timeLeft);
-
         final Closeable etCloser = mock(Closeable.class);
         Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenReturn(etCloser);
 
-        publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT, timeoutTimer);
+        publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
-        verify(timelineSync, times(1)).workWithEventType(eq(eventType.getName()), eq(timeLeft));
+        verify(timelineSync, times(1)).workWithEventType(eq(eventType.getName()), eq(TIMELINE_WAIT_TIMEOUT_MS));
         verify(etCloser, times(1)).close();
     }
 
     @Test(expected = EventTypeTimeoutException.class)
     public void whenPublishAndTimelineLockTimedOutThenException() throws Exception {
         Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenThrow(new TimeoutException());
-        publisher.publish(buildDefaultBatch(0).toString(), "blahET", FULL_ACCESS_CLIENT, timeoutTimer);
+        publisher.publish(buildDefaultBatch(0).toString(), "blahET", FULL_ACCESS_CLIENT);
     }
 
     @Test
@@ -141,13 +135,12 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, "error");
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(createBatchItem(event), eventType);
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -158,8 +151,7 @@ public class EventPublisherTest {
 
         mockFaultValidation(eventType, "error");
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -183,13 +175,12 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -205,8 +196,7 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -239,8 +229,7 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -267,13 +256,12 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
         verify(partitionResolver, times(1)).resolvePartition(any(), any());
-        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -283,13 +271,12 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -299,13 +286,12 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -315,13 +301,12 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(eventType);
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
         verify(partitionResolver, times(1)).resolvePartition(any(), any());
-        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -335,7 +320,7 @@ public class EventPublisherTest {
         mockFaultPartition();
 
         final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch),
-                eventType.getName(), FULL_ACCESS_CLIENT, timeoutTimer);
+                eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
     }
@@ -352,7 +337,7 @@ public class EventPublisherTest {
         mockFaultPartition();
 
         final EventPublishResult result = publisher.publish(createStringFromBatchItems(batch),
-                eventType.getName(), FULL_ACCESS_CLIENT, timeoutTimer);
+                eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -378,11 +363,10 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFailedPublishing();
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.FAILED));
-        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -394,14 +378,13 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultEnrichment();
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(cache, times(1)).getValidator(eventType.getName());
         verify(partitionResolver, times(1)).resolvePartition(any(), any());
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -412,8 +395,7 @@ public class EventPublisherTest {
         mockSuccessfulValidation(eventType);
         mockFaultEnrichment();
 
-        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT,
-                timeoutTimer);
+        final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
 
@@ -436,7 +418,7 @@ public class EventPublisherTest {
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         mockSuccessfulValidation(eventType);
         final EventPublishResult result = publisher.publish(buildDefaultBatch(0).toString(), eventType.getName(),
-                new NakadiClient(CLIENT_ID, SCOPE_WRITE), timeoutTimer);
+                new NakadiClient(CLIENT_ID, SCOPE_WRITE));
 
         Assert.assertEquals(result.getStatus(), EventPublishingStatus.SUBMITTED);
     }
@@ -446,14 +428,21 @@ public class EventPublisherTest {
         final EventType eventType = EventTypeTestBuilder.builder().writeScopes(SCOPE_WRITE).build();
         Mockito.when(cache.getEventType(eventType.getName())).thenReturn(eventType);
         publisher.publish(buildDefaultBatch(0).toString(), eventType.getName(),
-                new NakadiClient(CLIENT_ID, Collections.emptySet()), timeoutTimer);
+                new NakadiClient(CLIENT_ID, Collections.emptySet()));
     }
 
     private void mockFailedPublishing() throws Exception {
         Mockito
                 .doThrow(EventPublishingException.class)
                 .when(topicRepository)
-                .syncPostBatch(any(), any(), any());
+                .syncPostBatch(any(), any());
+    }
+
+    private void mockFaultPartition(final EventType eventType, final BatchItem item) throws PartitioningException {
+        Mockito
+                .doThrow(new PartitioningException("partition error"))
+                .when(partitionResolver)
+                .resolvePartition(eventType, item.getEvent());
     }
 
     private void mockFaultPartition() throws PartitioningException {
@@ -468,6 +457,26 @@ public class EventPublisherTest {
                 .doThrow(new EnrichmentException("enrichment error"))
                 .when(enrichment)
                 .enrich(any(), any());
+    }
+
+    private void mockFaultValidation(final EventType eventType, final JSONObject event, final String error)
+            throws Exception {
+        final EventTypeValidator faultyValidator = mock(EventTypeValidator.class);
+
+        Mockito
+                .doReturn(eventType)
+                .when(cache)
+                .getEventType(eventType.getName());
+
+        Mockito
+                .doReturn(faultyValidator)
+                .when(cache)
+                .getValidator(eventType.getName());
+
+        Mockito
+                .doReturn(Optional.of(new ValidationError(error)))
+                .when(faultyValidator)
+                .validate(event);
     }
 
     private void mockFaultValidation(final EventType eventType, final String error) throws Exception {
