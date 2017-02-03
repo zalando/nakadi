@@ -83,13 +83,15 @@ public class CursorsController {
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
+        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
+            return new ResponseEntity<>(NOT_IMPLEMENTED);
+        }
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
         try {
             validateSubscriptionReadScopes(client, subscriptionId);
-
             final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(streamId, subscriptionId,
                     cursors.getItems());
             final List<CursorCommitResult> items = result.entrySet().stream()
