@@ -1,7 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
@@ -46,8 +44,6 @@ import static org.zalando.problem.spring.web.advice.Responses.create;
 @RestController
 public class CursorsController {
 
-    private static final Logger LOG = LoggerFactory.getLogger(CursorsController.class);
-
     private final CursorsService cursorsService;
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
@@ -87,17 +83,12 @@ public class CursorsController {
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
-
-        LOG.debug("[CURSORS_COMMIT] sid: {} Started cursors commit", subscriptionId);
-
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
         try {
             validateSubscriptionReadScopes(client, subscriptionId);
-
-            LOG.debug("[CURSORS_COMMIT] sid: {} Validated scopes", subscriptionId);
 
             final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(streamId, subscriptionId,
                     cursors.getItems());
@@ -111,8 +102,6 @@ public class CursorsController {
             return create(e.asProblem(), request);
         } catch (final InvalidCursorException e) {
             return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
-        } finally {
-            LOG.debug("[CURSORS_COMMIT] sid: {} Commit finished", subscriptionId);
         }
     }
 

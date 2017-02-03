@@ -78,7 +78,6 @@ public class CursorsService {
             throws NakadiException, InvalidCursorException {
 
         validateStreamId(cursors, streamId, subscriptionId);
-        LOG.debug("[CURSORS_COMMIT] sid: {} Finished validation stream ids of cursors", subscriptionId);
 
         return cursors.stream()
                 .collect(Collectors.toMap(
