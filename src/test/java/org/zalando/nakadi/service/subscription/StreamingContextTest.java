@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -131,6 +132,7 @@ public class StreamingContextTest {
     }
 
     @Test
+    @Ignore
     public void testOnNodeShutdown() throws Exception {
         final StreamingContext ctxSpy = Mockito.spy(createTestContext(null));
 
