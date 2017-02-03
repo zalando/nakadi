@@ -16,7 +16,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.view.TopicPartition;
@@ -50,7 +49,14 @@ public class PartitionsController {
             if (!topicRepository.topicExists(eventType.getTopic())) {
                 return create(Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka"), request);
             } else {
-                final List<TopicPartition> result = loadTopicViews(eventType);
+                final List<TopicPartition> result =
+                        topicRepository.loadTopicStatistics(Collections.singletonList(eventType.getTopic())).stream()
+                        .map(stat -> new TopicPartition(
+                                eventType.getName(),
+                                stat.getPartition(),
+                                stat.getFirst().getOffset(),
+                                stat.getLast().getOffset()))
+                        .collect(Collectors.toList());
                 return ok().body(result);
             }
         } catch (final NoSuchEventTypeException e) {
@@ -59,16 +65,6 @@ public class PartitionsController {
             LOG.error("Could not list partitions. Respond with SERVICE_UNAVAILABLE.", e);
             return create(e.asProblem(), request);
         }
-    }
-
-    private List<TopicPartition> loadTopicViews(final EventType eventType) throws ServiceUnavailableException {
-        return topicRepository.loadTopicStatistics(Collections.singletonList(eventType.getTopic())).stream()
-                .map(stat -> new TopicPartition(
-                        eventType.getName(),
-                        stat.getPartition(),
-                        stat.getFirst().getOffset(),
-                        stat.getLast().getOffset()))
-                .collect(Collectors.toList());
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions/{partition}", method = RequestMethod.GET)
@@ -83,13 +79,17 @@ public class PartitionsController {
             if (!topicRepository.topicExists(topic)) {
                 return create(Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka"), request);
             } else {
-                final Optional<TopicPartition> partitionInformation = loadTopicViews(eventType).stream()
-                        .filter(v -> v.getPartitionId().equalsIgnoreCase(partition))
-                        .findAny();
-                if (!partitionInformation.isPresent()) {
+                final Optional<TopicPartition> result = topicRepository.loadPartitionStatistics(topic, partition)
+                        .map(tp -> new TopicPartition(
+                                eventType.getName(),
+                                tp.getPartition(),
+                                tp.getFirst().getOffset(),
+                                tp.getLast().getOffset()));
+
+                if (!result.isPresent()) {
                     return create(Problem.valueOf(NOT_FOUND, "partition not found"), request);
                 }
-                return ok().body(partitionInformation.get());
+                return ok().body(result.get());
             }
         } catch (final NoSuchEventTypeException e) {
             return create(Problem.valueOf(NOT_FOUND, "topic not found"), request);

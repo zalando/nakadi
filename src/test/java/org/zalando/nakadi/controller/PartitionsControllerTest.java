@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -130,8 +131,8 @@ public class PartitionsControllerTest {
     public void whenGetPartitionThenOk() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
-        when(topicRepositoryMock.loadTopicStatistics(eq(Collections.singletonList(EVENT_TYPE.getTopic()))))
-                .thenReturn(TEST_POSITION_STATS);
+        when(topicRepositoryMock.loadPartitionStatistics(eq(EVENT_TYPE.getTopic()), eq(TEST_PARTITION)))
+                .thenReturn(Optional.of(TEST_POSITION_STATS.get(0)));
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
@@ -154,8 +155,8 @@ public class PartitionsControllerTest {
     public void whenGetPartitionForWrongPartitionThenNotFound() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.topicExists(eq(EVENT_TYPE.getTopic()))).thenReturn(true);
-        when(topicRepositoryMock.loadTopicStatistics(eq(Collections.singletonList(EVENT_TYPE.getTopic()))))
-                .thenReturn(TEST_POSITION_STATS);
+        when(topicRepositoryMock.loadPartitionStatistics(eq(EVENT_TYPE.getTopic()), eq(UNKNOWN_PARTITION)))
+                .thenReturn(Optional.empty());
         final ThrowableProblem expectedProblem = Problem.valueOf(NOT_FOUND, "partition not found");
 
         mockMvc.perform(

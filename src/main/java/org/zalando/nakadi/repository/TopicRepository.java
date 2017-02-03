@@ -3,10 +3,11 @@ package org.zalando.nakadi.repository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.zalando.nakadi.domain.BatchItem;
-import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -26,6 +27,9 @@ public interface TopicRepository {
     boolean topicExists(String topic) throws NakadiException;
 
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
+
+    Optional<PartitionStatistics> loadPartitionStatistics(String topic, String partition)
+            throws ServiceUnavailableException;
 
     List<PartitionStatistics> loadTopicStatistics(Collection<String> topics) throws ServiceUnavailableException;
 

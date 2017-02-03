@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.errors.NetworkException;
@@ -284,6 +286,30 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
+    public Optional<PartitionStatistics> loadPartitionStatistics(final String topic, final String partition)
+            throws ServiceUnavailableException {
+        try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+            final Optional<PartitionInfo> tp = consumer.partitionsFor(topic).stream()
+                    .filter(p -> KafkaCursor.toNakadiPartition(p.partition()).equals(partition))
+                    .findAny();
+            if (!tp.isPresent()) {
+                return Optional.empty();
+            }
+            final TopicPartition kafkaTP = tp.map(v -> new TopicPartition(v.topic(), v.partition())).get();
+            consumer.assign(Collections.singletonList(kafkaTP));
+            consumer.seekToBeginning(kafkaTP);
+
+            final long begin = consumer.position(kafkaTP);
+            consumer.seekToEnd(kafkaTP);
+            final long end = consumer.position(kafkaTP);
+
+            return Optional.of(new KafkaPartitionStatistics(kafkaTP.topic(), kafkaTP.partition(), begin, end - 1));
+        } catch (final Exception e) {
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+        }
+    }
+
+    @Override
     public List<PartitionStatistics> loadTopicStatistics(final Collection<String> topicIds)
             throws ServiceUnavailableException {
         try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
@@ -382,8 +408,8 @@ public class KafkaTopicRepository implements TopicRepository {
             validateCursorForNulls(position);
             final Optional<PartitionStatistics> partition =
                     statistics.stream().filter(t -> Objects.equals(t.getPartition(), position.getPartition()))
-                    .filter(t -> Objects.equals(t.getTopic(), position.getTopic()))
-                    .findAny();
+                            .filter(t -> Objects.equals(t.getTopic(), position.getTopic()))
+                            .findAny();
             if (!partition.isPresent()) {
                 throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
             }

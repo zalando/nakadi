@@ -425,7 +425,7 @@ public class SubscriptionControllerTest {
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
         final List<PartitionStatistics> statistics = Collections.singletonList(
-                new KafkaPartitionStatistics("topic", 0,0, 13));
+                new KafkaPartitionStatistics("topic", 0, 0, 13));
         when(topicRepository.loadTopicStatistics(Collections.singleton("topic"))).thenReturn(statistics);
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
