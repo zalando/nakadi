@@ -17,6 +17,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/local_nakadi_db
       - SPRING_DATASOURCE_USERNAME=nakadi
       - SPRING_DATASOURCE_PASSWORD=nakadi
+      - NAKADI_SUBSCRIPTION_MAX_PARTITIONS=30
     network_mode: "host"
 
   postgres:

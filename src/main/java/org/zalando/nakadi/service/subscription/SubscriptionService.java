@@ -19,15 +19,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -58,16 +59,19 @@ public class SubscriptionService {
     private final EventTypeRepository eventTypeRepository;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final TopicRepository topicRepository;
+    private final int maxSubscriptionPartitions;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
                                final TopicRepository topicRepository,
-                               final EventTypeRepository eventTypeRepository) {
+                               final EventTypeRepository eventTypeRepository,
+                               final NakadiSettings nakadiSettings) {
         this.subscriptionRepository = subscriptionRepository;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
         this.topicRepository = topicRepository;
         this.eventTypeRepository = eventTypeRepository;
+        this.maxSubscriptionPartitions = nakadiSettings.getMaxSubscriptionPartitions();
     }
 
     public Result<Subscription> createSubscription(final SubscriptionBase subscriptionBase, final Client client)
@@ -104,7 +108,18 @@ public class SubscriptionService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
-
+        final int totalPartitions = eventTypeMapping.values().stream()
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(et -> topicRepository.listPartitionNames(et.getTopic()))
+                .mapToInt(List::size)
+                .sum();
+        if (totalPartitions > maxSubscriptionPartitions) {
+            final String message = String.format(
+                    "total partition count for subscription is %d while only %d allowed",
+                    totalPartitions, maxSubscriptionPartitions);
+            return Result.problem(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, message));
+        }
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         return Result.ok(subscription);
@@ -144,7 +159,7 @@ public class SubscriptionService {
         return path;
     }
 
-    public Result listSubscriptions(@Nullable final String owningApplication, @Nullable  final Set<String> eventTypes,
+    public Result listSubscriptions(@Nullable final String owningApplication, @Nullable final Set<String> eventTypes,
                                     final int limit, final int offset) {
         if (limit < 1 || limit > 1000) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
@@ -244,13 +259,13 @@ public class SubscriptionService {
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions =
                             topicPartitions.stream()
-                            .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
-                            .map(Try.wrap(partition ->
-                                    mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
-                            .map(Try::getOrThrow)
-                            .collect(Collectors.toCollection(() ->
-                                    new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
-                            );
+                                    .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
+                                    .map(Try.wrap(partition ->
+                                            mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
+                                    .map(Try::getOrThrow)
+                                    .collect(Collectors.toCollection(() -> new TreeSet<>(
+                                            Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
+                                    );
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
                 .collect(Collectors.toList());

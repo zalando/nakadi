@@ -74,7 +74,7 @@ public class EventPublisherTest {
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final Enrichment enrichment = mock(Enrichment.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES);
+            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES, 0);
     private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver,
             enrichment, nakadiSettings, timelineSync);
 

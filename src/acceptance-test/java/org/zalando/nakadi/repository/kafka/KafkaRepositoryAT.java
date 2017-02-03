@@ -73,7 +73,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 NAKADI_POLL_TIMEOUT,
                 NAKADI_SEND_TIMEOUT,
                 TIMELINE_WAIT_TIMEOUT,
-                NAKADI_EVENT_MAX_BYTES);
+                NAKADI_EVENT_MAX_BYTES,
+                0);
         kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
                 KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);

@@ -125,7 +125,7 @@ public class EventTypeControllerTest {
     public void init() throws Exception {
 
         final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES);
+                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES, 0);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", objectMapper, nakadiSettings);
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,

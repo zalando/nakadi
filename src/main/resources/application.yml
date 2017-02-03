@@ -81,6 +81,8 @@ nakadi:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
   event.max.bytes: 999000
   timeline.wait.timeoutMs: 40000
+  subscription:
+    max_partitions: 100
 
 twintip:
   mapping: /api

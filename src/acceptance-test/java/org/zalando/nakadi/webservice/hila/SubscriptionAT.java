@@ -1,12 +1,15 @@
-package org.zalando.nakadi.webservice;
+package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
 import org.apache.zookeeper.data.Stat;
@@ -14,21 +17,18 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
-
-import java.io.IOException;
-import java.util.List;
-
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
@@ -51,7 +51,7 @@ import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID
 
 public class SubscriptionAT extends BaseAT {
 
-    private static final String SUBSCRIPTIONS_URL = "/subscriptions";
+    static final String SUBSCRIPTIONS_URL = "/subscriptions";
     private static final String SUBSCRIPTION_URL = "/subscriptions/{0}";
     private static final String CURSORS_URL = "/subscriptions/{0}/cursors";
 
@@ -109,6 +109,44 @@ public class SubscriptionAT extends BaseAT {
         response.then().statusCode(HttpStatus.SC_OK).contentType(JSON);
         final Subscription gotSubscription = MAPPER.readValue(response.print(), Subscription.class);
         assertThat(gotSubscription, equalTo(subFirst));
+    }
+
+    @Test
+    public void testSubscriptionWithManyEventTypesIsCreated() throws IOException {
+        final List<String> eventTypes = IntStream.range(0, 30).mapToObj(i -> createEventType())
+                .map(et -> et.getName())
+                .collect(Collectors.toList());
+        final String subscription = "{\"owning_application\":\"app\",\"event_types\":" +
+                "[" + eventTypes.stream().map(et -> "\"" + et + "\"").collect(Collectors.joining(",")) + "]}";
+        final Response response = given()
+                .body(subscription)
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL);
+        // assert response
+        response.then().statusCode(HttpStatus.SC_CREATED).contentType(JSON);
+        final Subscription gotSubscription = MAPPER.readValue(response.print(), Subscription.class);
+        Assert.assertNotNull(gotSubscription.getId());
+    }
+
+    @Test
+    public void testSubscriptionWithManyEventTypesIsNotCreated() {
+        final List<String> eventTypes = IntStream.range(0, 31).mapToObj(i -> createEventType())
+                .map(et -> et.getName())
+                .collect(Collectors.toList());
+        final String subscription = "{\"owning_application\":\"app\",\"event_types\":" +
+                "[" + eventTypes.stream().map(et -> "\"" + et + "\"").collect(Collectors.joining(",")) + "]}";
+        final Response response = given()
+                .body(subscription)
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL);
+        // assert response
+        response
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+                .contentType(JSON)
+                .body("title", equalTo("Unprocessable Entity"))
+                .body("detail", equalTo("total partition count for subscription is 31 while only 30 allowed"));
+
     }
 
     @Test
@@ -184,7 +222,7 @@ public class SubscriptionAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
-        final List<SubscriptionCursor> actualCursors = getSubscriptionCursors(subscription).getItems();
+        final List<SubscriptionCursor> actualCursors = NakadiTestUtils.getSubscriptionCursors(subscription).getItems();
         assertThat(actualCursors, hasSize(1));
 
         final SubscriptionCursor actualCursor = actualCursors.get(0);
@@ -197,7 +235,7 @@ public class SubscriptionAT extends BaseAT {
     public void testGetSubscriptionCursorsEmpty() throws IOException {
         final String etName = createEventType().getName();
         final Subscription subscription = createSubscriptionForEventType(etName);
-        Assert.assertTrue(getSubscriptionCursors(subscription).getItems().isEmpty());
+        Assert.assertTrue(NakadiTestUtils.getSubscriptionCursors(subscription).getItems().isEmpty());
     }
 
     @Test
@@ -248,12 +286,6 @@ public class SubscriptionAT extends BaseAT {
                 .post(format(CURSORS_URL, subscription.getId()));
     }
 
-    private ItemsWrapper<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription)
-            throws IOException {
-        final Response response = given().get(format(CURSORS_URL, subscription.getId()));
-        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
-    }
-
     private String getCommittedOffsetFromZk(final String topic, final Subscription subscription, final String partition)
             throws Exception {
         final String path = format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset", subscription.getId(),
@@ -262,13 +294,17 @@ public class SubscriptionAT extends BaseAT {
         return new String(data, Charsets.UTF_8);
     }
 
-    private EventType createEventType() throws JsonProcessingException {
+    static EventType createEventType() {
         final EventType eventType = buildDefaultEventType();
-        given()
-                .body(MAPPER.writeValueAsString(eventType))
-                .contentType(JSON)
-                .post("/event-types");
-        return eventType;
+        try {
+            given()
+                    .body(MAPPER.writeValueAsString(eventType))
+                    .contentType(JSON)
+                    .post("/event-types");
+            return eventType;
+        } catch (final JsonProcessingException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
 }
