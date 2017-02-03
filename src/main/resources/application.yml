@@ -47,15 +47,13 @@ nakadi:
       replicaFactor: 1
       retentionMs: 172800000 # 2 days
       rotationMs: 86400000 # 1 day
-  publish:
-    timeoutMs: 70000
   stream:
     timeoutMs: 31536000000 # 1 year :-P
     default.commitTimeout: 60 # 1 minute
     maxConnections: 5
   featureToggle.default: false
   kafka:
-    request.timeout.ms: 25000
+    request.timeout.ms: 30000
     instanceType: t2.large
     poll.timeoutMs: 100
     send.timeoutMs: 5000
