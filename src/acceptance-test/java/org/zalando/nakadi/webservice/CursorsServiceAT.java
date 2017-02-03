@@ -39,6 +39,7 @@ import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 public class CursorsServiceAT extends BaseAT {
 
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
+    private static final String SUBSCRIPTIONS_PATH = "/nakadi/subscriptions";
 
     private static final String NEW_OFFSET = "newOffset";
     private static final String OLD_OFFSET = "oldOffset";
@@ -180,19 +181,19 @@ public class CursorsServiceAT extends BaseAT {
     }
 
     private String offsetPath(final String partition) {
-        return format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset", sid, topic, partition);
+        return format("{0}/{1}/topics/{2}/{3}/offset", SUBSCRIPTIONS_PATH, sid, topic, partition);
     }
 
     private String partitionPath(final String partition) {
-        return format("/nakadi/subscriptions/{0}/topics/{1}/{2}", sid, topic, partition);
+        return format("{0}/{1}/topics/{2}/{3}", SUBSCRIPTIONS_PATH, sid, topic, partition);
     }
 
     private String sessionPath(final String sessionId) {
-        return format("/nakadi/subscriptions/{0}/sessions/{1}", sid, sessionId);
+        return format("{0}/{1}/sessions/{2}", SUBSCRIPTIONS_PATH, sid, sessionId);
     }
 
     private String subscriptionPath() {
-        return format("/nakadi/subscriptions/{0}", sid);
+        return format("{0}/{1}", SUBSCRIPTIONS_PATH, sid);
     }
 
 }
