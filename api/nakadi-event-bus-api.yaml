@@ -1262,7 +1262,8 @@ definitions:
         type: string
         maxLength: 36
       storage_type:
-        description: the type of storage. Possible values: ['kafka']
+        description: |
+          the type of storage. Possible values: ['kafka']
         type: string
       kafka_configuration:
         description: configuration settings for kafka storage. Only necessary if the storage type is 'kafka'
