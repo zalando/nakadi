@@ -197,7 +197,7 @@ public class EventTypeCacheTestAT {
         executeWithRetry(() -> {
                     try {
                         etc.getTimelines(et.getName());
-                        verify(timelineRepository, times(2)).listTimelines(et.getName());
+                        verify(timelineRepository, times(1)).listTimelines(et.getName());
                     } catch (final Exception e) {
                         fail();
                     }
