@@ -1142,7 +1142,108 @@ paths:
         '204':
           description: Feature was successfully accepted.
 
+  /storages:
+    get:
+      tags:
+        - timelines-api
+      description: |
+        Lists all available storage backends.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      responses:
+        '200':
+          description: A list of all available storage backends.
+          schema:
+            type: array
+            description: list of storage backends.
+            items:
+              $ref: '#/definitions/Storage'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+    post:
+      tags:
+        - timelines-api
+      description: |
+        Creates a new storage backend.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: storage
+          in: body
+          description: Storage description
+          schema:
+            $ref: '#/definitions/Storage'
+      responses:
+        '201':
+          description: Storage backend was successfully registered. Returns storage object that was created.
+          schema:
+            $ref: '#/definitions/Storage'
+        '409':
+          description: A storage with the same ID already exists
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
 
+  /storages/{id}:
+    get:
+      tags:
+        - timelines-api
+      description: |
+        Retrieves a storage backend by its ID.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Storage'
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+    delete:
+      tags:
+        - timelines-api
+      description: |
+        Deletes a storage backend from its ID, if it is not in use.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '204':
+          description: Storage backend was deleted
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '400':
+          description: Storage backend could not be deleted
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
 
 # ################################### #
 #                                     #
@@ -1151,6 +1252,36 @@ paths:
 # ################################### #
 
 definitions:
+  Storage:
+    type: object
+    description: |
+      A storage backend.
+    properties:
+      id:
+        description: The ID of the storage backend.
+        type: string
+        maxLength: 36
+      storage_type:
+        description: the type of storage. Possible values: ['kafka']
+        type: string
+      kafka_configuration:
+        description: configuration settings for kafka storage. Only necessary if the storage type is 'kafka'
+        type: object
+        properties:
+          zk_address:
+            description: the Zookeeper address
+            type: string
+          zk_path:
+            description: the Zookeeper path
+            type: string
+        required:
+          - zk_address
+          - zk_path
+    required:
+      - id
+      - storage_type
+      - kafka_configuration
+
   Event:
     type: object
     description: |
