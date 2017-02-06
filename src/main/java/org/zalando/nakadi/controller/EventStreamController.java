@@ -178,7 +178,9 @@ public class EventStreamController {
                 consumerCounter = metricRegistry.counter(metricNameFor(eventTypeName, CONSUMERS_COUNT_METRIC_NAME));
                 consumerCounter.inc();
 
-                eventConsumer = topicRepository.createEventConsumer(topic, cursors);
+                final String kafkaQuotaClientId = getKafkaQuotaClientId(eventTypeName, client);
+
+                eventConsumer = topicRepository.createEventConsumer(kafkaQuotaClientId, topic, cursors);
 
                 final Map<String, String> streamCursors = cursors
                         .stream()
@@ -229,6 +231,17 @@ public class EventStreamController {
                 }
             }
         };
+    }
+
+    /**
+     * Every consumer identifies itself using a client-id to use its quota. The client id is a combination of
+     * application name and event type so that every application can consume up to the quota limit per partition, given
+     * partitions from the same event type are located in different brokers. In case of broker failure, multiple
+     * partitions from the same event type could be served by the same broker due to Kafka fallback. In this case, the
+     * quota would be shared between partitions, reducing the overall throughput for that event type.
+     **/
+    private String getKafkaQuotaClientId(final String eventTypeName, final Client client) {
+        return client.getClientId() + "-" + eventTypeName;
     }
 
     private void writeProblemResponse(final HttpServletResponse response, final OutputStream outputStream,

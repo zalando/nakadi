@@ -145,7 +145,7 @@ public class StreamingContextTest {
             }
         });
         t.start();
-        t.join(1000);
+        t.join(2000);
 
         ctxSpy.onNodeShutdown();
 

@@ -33,12 +33,12 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
@@ -85,8 +85,9 @@ public class EventStreamControllerTest {
     private static final String TEST_TOPIC = "test-topic";
     private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
     private static final Set<String> SCOPE_READ = Collections.singleton("oauth2.scope.read");
-    private static final Client FULL_ACCESS_CLIENT = new FullAccessClient("clientId");
     private static final String CLIENT_ID = "clientId";
+    private static final Client FULL_ACCESS_CLIENT = new FullAccessClient(CLIENT_ID);
+    private static final String KAFKA_CLIENT_ID = CLIENT_ID + "-" + TEST_EVENT_TYPE_NAME;
 
     private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
@@ -238,7 +239,7 @@ public class EventStreamControllerTest {
     public void whenInvalidCursorsThenPreconditionFailed() throws Exception {
         final Cursor cursor = new Cursor("0", "0");
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(cursor))))
+        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(TEST_TOPIC), eq(ImmutableList.of(cursor))))
                 .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0,
@@ -277,7 +278,8 @@ public class EventStreamControllerTest {
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
+        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(TEST_TOPIC),
+                eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
 
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
@@ -311,7 +313,7 @@ public class EventStreamControllerTest {
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
         assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
         
-        verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_TOPIC),
+        verify(topicRepositoryMock, times(1)).createEventConsumer(eq(KAFKA_CLIENT_ID), eq(TEST_TOPIC),
                 eq(ImmutableList.of(new Cursor("0", "0"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
                 eq(streamConfig), any());
@@ -451,7 +453,8 @@ public class EventStreamControllerTest {
         EVENT_TYPE.setReadScopes(SCOPE_READ);
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
+        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(TEST_TOPIC),
+                eq(ImmutableList.of(new Cursor("0", "0")))))
                 .thenReturn(eventConsumerMock);
     }
 

@@ -16,12 +16,15 @@ import org.springframework.validation.FieldError;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -195,6 +198,10 @@ public class TestUtils {
         return range(0, count)
                 .mapToObj(i -> builder().build())
                 .collect(toList());
+    }
+
+    public static Timeline buildTimeline(final String etName) {
+        return new Timeline(etName, 0, new Storage(), randomUUID(), new Date());
     }
 
 }

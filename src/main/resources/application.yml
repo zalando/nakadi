@@ -59,6 +59,7 @@ nakadi:
     send.timeoutMs: 5000
     batch.size: 5242880
     linger.ms: 0
+    enable.auto.commit: false
   zookeeper:
     kafkaNamespace:
     brokers: 127.0.0.1:2181
@@ -79,6 +80,11 @@ nakadi:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
   event.max.bytes: 999000
+
+twintip:
+  mapping: /api
+  yaml: "file:nakadi-event-bus-api.yaml"
+
 ---
 
 spring:
@@ -87,3 +93,11 @@ nakadi:
   stream:
     default:
       commitTimeout: 5 # seconds
+
+---
+
+spring:
+  profiles: test
+twintip:
+  mapping: /api
+  yaml: "file:api/nakadi-event-bus-api.yaml"

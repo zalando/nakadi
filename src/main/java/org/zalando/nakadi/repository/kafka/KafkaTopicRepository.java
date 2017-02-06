@@ -449,7 +449,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer createEventConsumer(final String topic, final List<Cursor> cursors)
+    public EventConsumer createEventConsumer(final String clientId, final String topic, final List<Cursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
         this.validateCursors(topic, cursors);
 
@@ -471,7 +471,7 @@ public class KafkaTopicRepository implements TopicRepository {
             kafkaCursors.add(kafkaCursor);
         }
 
-        return kafkaFactory.createNakadiConsumer(topic, kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs());
+        return kafkaFactory.createNakadiConsumer(clientId, topic, kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs());
     }
 
     public int compareOffsets(final String firstOffset, final String secondOffset) {

@@ -8,9 +8,11 @@ import org.springframework.context.annotation.Profile;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
+import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperConfig;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.FeatureToggleServiceDefault;
 import org.zalando.nakadi.util.FeatureToggleServiceZk;
@@ -37,17 +39,18 @@ public class RepositoriesConfig {
 
     @Bean
     public EventTypeCache eventTypeCache(final ZooKeeperHolder zooKeeperHolder,
-                                         @DB final EventTypeRepository eventTypeRepository)
-    {
+                                         @DB final EventTypeRepository eventTypeRepository,
+                                         @DB final TimelineDbRepository timelineRepository,
+                                         final TimelineSync timelineSync) {
         ValidationStrategy.register(EventBodyMustRespectSchema.NAME, new EventBodyMustRespectSchema(
                 new JsonSchemaEnrichment()
         ));
         ValidationStrategy.register(EventMetadataValidationStrategy.NAME, new EventMetadataValidationStrategy());
 
         try {
-            return new EventTypeCache(eventTypeRepository, zooKeeperHolder);
+            return new EventTypeCache(eventTypeRepository, timelineRepository, zooKeeperHolder, timelineSync);
         } catch (final Exception e) {
-            throw new IllegalStateException("failed to create event type cache");
+            throw new IllegalStateException("failed to create event type cache", e);
         }
     }
 
