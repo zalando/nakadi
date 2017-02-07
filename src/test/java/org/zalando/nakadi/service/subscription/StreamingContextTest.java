@@ -133,8 +133,7 @@ public class StreamingContextTest {
     @Test
     public void testOnNodeShutdown() throws Exception {
         final StreamingContext ctxSpy = Mockito.spy(createTestContext(null));
-
-        Thread t = new Thread(() -> {
+        final Thread t = new Thread(() -> {
             try {
                 ctxSpy.streamInternal(new State() {
                     @Override
