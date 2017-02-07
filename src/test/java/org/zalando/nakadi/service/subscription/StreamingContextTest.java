@@ -134,7 +134,7 @@ public class StreamingContextTest {
     public void testOnNodeShutdown() throws Exception {
         final StreamingContext ctxSpy = Mockito.spy(createTestContext(null));
 
-        final Thread t = new Thread(() -> {
+        Thread t = new Thread(() -> {
             try {
                 ctxSpy.streamInternal(new State() {
                     @Override
@@ -145,9 +145,13 @@ public class StreamingContextTest {
             }
         });
         t.start();
-        t.join(2000);
+        t.join(1000);
 
-        ctxSpy.onNodeShutdown();
+        t = new Thread(() -> ctxSpy.onNodeShutdown());
+        t.start();
+        t.join(1000);
+
+        Thread.sleep(1000);
 
         Mockito.verify(ctxSpy).switchState(Mockito.isA(CleanupState.class));
         Mockito.verify(ctxSpy).unregisterSession();
