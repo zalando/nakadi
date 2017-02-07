@@ -122,7 +122,8 @@ public class EventStream {
         } catch (final IllegalStateException e) {
             LOG.info("Error occurred when streaming events (possibly server closed connection)", e);
         } catch (final KafkaException e) {
-            LOG.error("Error occurred when polling events from kafka", e);
+            LOG.error("Error occurred when polling events from kafka; consumer: " + config.getConsumingAppId() +
+                    ", event-type: " + config.getEtName(), e);
         }
     }
 
