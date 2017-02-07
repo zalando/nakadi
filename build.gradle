@@ -148,6 +148,7 @@ dependencies {
         exclude module: "json"
     }
     compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.0'
+    compile 'org.zalando:twintip-spring-web:1.1.0'
 
     // tests
     testCompile 'org.hamcrest:hamcrest-all:1.3'

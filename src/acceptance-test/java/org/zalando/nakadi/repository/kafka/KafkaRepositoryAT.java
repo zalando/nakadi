@@ -55,6 +55,7 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final long KAFKA_LINGER_MS = 0;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
     private static final long TIMELINE_WAIT_TIMEOUT = 40000;
+    private static final boolean KAFKA_ENABLE_AUTO_COMMIT = false;
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
@@ -77,7 +78,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 NAKADI_SEND_TIMEOUT,
                 TIMELINE_WAIT_TIMEOUT,
                 NAKADI_EVENT_MAX_BYTES);
-        kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_LINGER_MS);
+        kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
+                KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         kafkaTopicRepository = createKafkaTopicRepository();

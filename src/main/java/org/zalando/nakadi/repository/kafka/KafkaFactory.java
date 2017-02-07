@@ -2,14 +2,6 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import javax.annotation.Nullable;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -19,6 +11,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+
+import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Component
 @Profile("!test")
@@ -137,13 +139,23 @@ public class KafkaFactory {
         }
     }
 
-    public Consumer<String, String> getConsumer() {
-        return new KafkaConsumer<>(kafkaLocationManager.getKafkaConsumerProperties());
+    public Consumer<String, String> getConsumer(final Properties properties) {
+        return new KafkaConsumer<>(properties);
     }
 
-    public NakadiKafkaConsumer createNakadiConsumer(final String topic, final List<KafkaCursor> kafkaCursors,
-                                                    final long pollTimeout) {
-        return new NakadiKafkaConsumer(getConsumer(), topic, kafkaCursors, pollTimeout);
+    public Consumer<String, String> getConsumer() {
+        return getConsumer(kafkaLocationManager.getKafkaConsumerProperties());
+    }
+
+    public Consumer<String, String> getConsumer(final String clientId) {
+        final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
+        // properties.put("client.id", clientId);
+        return this.getConsumer(properties);
+    }
+
+    public NakadiKafkaConsumer createNakadiConsumer(final String clientId, final String topic,
+                                                    final List<KafkaCursor> kafkaCursors, final long pollTimeout) {
+        return new NakadiKafkaConsumer(getConsumer(clientId), topic, kafkaCursors, pollTimeout);
     }
 
 }

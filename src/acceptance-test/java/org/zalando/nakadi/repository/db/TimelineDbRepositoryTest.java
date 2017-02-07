@@ -14,6 +14,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.DuplicatedStorageIdException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.utils.TestUtils;
 
@@ -36,7 +37,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testTimelineCreated() throws InternalNakadiException, DuplicatedEventTypeNameException {
+    public void testTimelineCreated()
+            throws InternalNakadiException, DuplicatedEventTypeNameException, DuplicatedStorageIdException {
         final Storage storage = sRepository.createStorage(
                 StorageDbRepositoryTest.createStorage("default", "test", "path"));
         final EventType testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
@@ -54,7 +56,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testTimelineUpdate() throws InternalNakadiException, DuplicatedEventTypeNameException {
+    public void testTimelineUpdate()
+            throws InternalNakadiException, DuplicatedEventTypeNameException, DuplicatedStorageIdException {
         final Storage storage = sRepository.createStorage(
                 StorageDbRepositoryTest.createStorage("default", "test", "path"));
         final EventType testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
@@ -79,7 +82,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test(expected = DuplicateKeyException.class)
-    public void testDuplicateOrderNotAllowed() throws InternalNakadiException, DuplicatedEventTypeNameException {
+    public void testDuplicateOrderNotAllowed()
+            throws InternalNakadiException, DuplicatedEventTypeNameException, DuplicatedStorageIdException {
         final Storage storage = sRepository.createStorage(
                 StorageDbRepositoryTest.createStorage("default", "test", "path"));
         final EventType testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
@@ -93,7 +97,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testListTimelinesOrdered() throws InternalNakadiException, DuplicatedEventTypeNameException {
+    public void testListTimelinesOrdered()
+            throws InternalNakadiException, DuplicatedEventTypeNameException, DuplicatedStorageIdException {
         final Storage storage = sRepository.createStorage(
                 StorageDbRepositoryTest.createStorage("default", "test", "path"));
         final EventType testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
@@ -111,7 +116,8 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Test
-    public void testTimelineDeleted() throws InternalNakadiException, DuplicatedEventTypeNameException {
+    public void testTimelineDeleted()
+            throws InternalNakadiException, DuplicatedEventTypeNameException, DuplicatedStorageIdException {
         final Storage storage = sRepository.createStorage(
                 StorageDbRepositoryTest.createStorage("default", "test", "path"));
         final EventType testEt = eRepository.saveEventType(TestUtils.buildDefaultEventType());
