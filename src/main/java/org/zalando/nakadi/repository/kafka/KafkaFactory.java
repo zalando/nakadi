@@ -149,7 +149,7 @@ public class KafkaFactory {
 
     public Consumer<String, String> getConsumer(final String clientId) {
         final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
-        properties.put("client.id", clientId);
+        // properties.put("client.id", clientId);
         return this.getConsumer(properties);
     }
 
