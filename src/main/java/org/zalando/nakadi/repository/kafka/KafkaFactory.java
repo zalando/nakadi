@@ -149,13 +149,13 @@ public class KafkaFactory {
 
     public Consumer<String, String> getConsumer(final String clientId) {
         final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
-        properties.put("client.id", clientId);
+        // properties.put("client.id", clientId);
         return this.getConsumer(properties);
     }
 
-    public NakadiKafkaConsumer createNakadiConsumer(final String clientId, final String topic,
-                                                    final List<KafkaCursor> kafkaCursors, final long pollTimeout) {
-        return new NakadiKafkaConsumer(getConsumer(clientId), topic, kafkaCursors, pollTimeout);
+    public NakadiKafkaConsumer createNakadiConsumer(final String clientId, final List<KafkaCursor> kafkaCursors,
+                                                    final long pollTimeout) {
+        return new NakadiKafkaConsumer(getConsumer(clientId), kafkaCursors, pollTimeout);
     }
 
 }

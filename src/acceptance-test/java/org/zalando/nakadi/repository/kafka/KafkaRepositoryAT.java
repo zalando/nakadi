@@ -1,5 +1,10 @@
 package org.zalando.nakadi.repository.kafka;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 import kafka.admin.AdminUtils;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
@@ -15,18 +20,11 @@ import org.mockito.Mockito;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
-import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
@@ -54,14 +52,13 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int KAFKA_BATCH_SIZE = 1048576;
     private static final long KAFKA_LINGER_MS = 0;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000L;
+    private static final boolean KAFKA_ENABLE_AUTO_COMMIT = false;
 
     private NakadiSettings nakadiSettings;
     private KafkaSettings kafkaSettings;
     private ZookeeperSettings zookeeperSettings;
     private KafkaTestHelper kafkaHelper;
     private KafkaTopicRepository kafkaTopicRepository;
-    private String topicName;
-    private String eventName;
 
     @Before
     public void setup() {
@@ -75,38 +72,32 @@ public class KafkaRepositoryAT extends BaseAT {
                 NAKADI_POLL_TIMEOUT,
                 NAKADI_SEND_TIMEOUT,
                 NAKADI_EVENT_MAX_BYTES);
-        kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE, KAFKA_LINGER_MS);
+        kafkaSettings = new KafkaSettings(KAFKA_REQUEST_TIMEOUT, KAFKA_BATCH_SIZE,
+                KAFKA_LINGER_MS, KAFKA_ENABLE_AUTO_COMMIT);
         zookeeperSettings = new ZookeeperSettings(ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT);
         kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         kafkaTopicRepository = createKafkaTopicRepository();
-        topicName = TestUtils.randomUUID();
-        eventName = TestUtils.randomValidEventTypeName();
     }
 
     @Test(timeout = 10000)
     @SuppressWarnings("unchecked")
     public void whenCreateTopicThenTopicIsCreated() throws Exception {
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .name(eventName)
-                .topic(topicName)
-                .build();
-        eventType.getOptions().setRetentionTime(RETENTION_TIME);
         // ACT //
-        kafkaTopicRepository.createTopic(eventType);
+        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME);
 
         // ASSERT //
         executeWithRetry(() -> {
-                final Map<String, List<PartitionInfo>> topics = getAllTopics();
-                assertThat(topics.keySet(), hasItem(topicName));
+                    final Map<String, List<PartitionInfo>> topics = getAllTopics();
+                    assertThat(topics.keySet(), hasItem(topicName));
 
-                final List<PartitionInfo> partitionInfos = topics.get(topicName);
-                assertThat(partitionInfos, hasSize(DEFAULT_PARTITION_COUNT));
+                    final List<PartitionInfo> partitionInfos = topics.get(topicName);
+                    assertThat(partitionInfos, hasSize(DEFAULT_PARTITION_COUNT));
 
-                partitionInfos.stream().forEach(pInfo ->
-                        assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
-            },
-            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                .withWaitBetweenEachTry(500));
+                    partitionInfos.forEach(pInfo ->
+                            assertThat(pInfo.replicas(), arrayWithSize(DEFAULT_REPLICA_FACTOR)));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 20000)
@@ -114,21 +105,26 @@ public class KafkaRepositoryAT extends BaseAT {
     public void whenDeleteTopicThenTopicIsDeleted() throws Exception {
 
         // ARRANGE //
+        final String topicName = UUID.randomUUID().toString();
         kafkaHelper.createTopic(topicName, ZOOKEEPER_URL);
 
         // wait for topic to be created
-        executeWithRetry(() -> { return getAllTopics().containsKey(topicName); },
-            new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false).withWaitBetweenEachTry(
-                500));
+        executeWithRetry(() -> {
+                    return getAllTopics().containsKey(topicName);
+                },
+                new RetryForSpecifiedTimeStrategy<Boolean>(5000).withResultsThatForceRetry(false)
+                        .withWaitBetweenEachTry(500));
 
         // ACT //
         kafkaTopicRepository.deleteTopic(topicName);
 
         // ASSERT //
         // check that topic was deleted
-        executeWithRetry(() -> { assertThat(getAllTopics().keySet(), not(hasItem(topicName))); },
-            new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
-                    .withWaitBetweenEachTry(500));
+        executeWithRetry(() -> {
+                    assertThat(getAllTopics().keySet(), not(hasItem(topicName)));
+                },
+                new RetryForSpecifiedTimeStrategy<Void>(5000).withExceptionsThatForceRetry(AssertionError.class)
+                        .withWaitBetweenEachTry(500));
     }
 
     @Test(timeout = 10000)
@@ -153,14 +149,8 @@ public class KafkaRepositoryAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenCreateTopicWithRetentionTime() throws Exception {
-        final EventType eventType = EventTypeTestBuilder.builder()
-                .name(eventName)
-                .topic(topicName)
-                .build();
-        eventType.getOptions().setRetentionTime(RETENTION_TIME);
-
         // ACT //
-        kafkaTopicRepository.createTopic(eventType);
+        final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME);
 
         // ASSERT //
         executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), RETENTION_TIME),
@@ -202,7 +192,7 @@ public class KafkaRepositoryAT extends BaseAT {
                 nakadiSettings,
                 kafkaSettings,
                 zookeeperSettings,
-                null);
+                new UUIDGenerator());
     }
 
 }

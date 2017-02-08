@@ -33,9 +33,12 @@ public class LoggingFilter extends OncePerRequestFilter {
             final String user = Optional.ofNullable(request.getUserPrincipal()).map(Principal::getName).orElse("-");
             final String method = request.getMethod();
             final String path = request.getRequestURI();
-            LOG.info("[ACCESS_LOG] {} \"{}\" \"{}\" \"{}\" {} {} ms",
+            final String query = Optional.ofNullable(request.getQueryString()).map(q -> "?" + q).orElse("");
+
+            LOG.info("[ACCESS_LOG] {} \"{}{}\" \"{}\" \"{}\" statusCode: {} {} ms",
                     method,
                     path,
+                    query,
                     userAgent,
                     user,
                     response.getStatus(),

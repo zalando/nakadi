@@ -18,7 +18,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -175,9 +174,11 @@ public class UserJourneyAT extends RealEnvironmentAT {
     }
 
     private String getUpdateEventType() throws IOException {
-        final EventType retrievedEventType = MAPPER.readValue(given()
-                        .header("accept", "application/json").get(ENDPOINT + "/" + eventTypeName)
-                        .getBody().asString(),
+        final EventType retrievedEventType = MAPPER.readValue(jsonRequestSpec()
+                        .header("accept", "application/json")
+                        .get(ENDPOINT + "/" + eventTypeName)
+                        .getBody()
+                        .asString(),
                 EventType.class);
 
         final EventType updateEventType = MAPPER.readValue(eventTypeBodyUpdate, EventType.class);
