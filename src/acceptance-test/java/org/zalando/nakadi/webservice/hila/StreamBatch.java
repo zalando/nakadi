@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableList;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.zalando.nakadi.domain.StreamMetadata;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
