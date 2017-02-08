@@ -8,7 +8,7 @@ import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
-import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 
 import java.io.IOException;

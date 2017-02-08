@@ -1,6 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
-import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.view.Cursor;
 import kafka.admin.AdminUtils;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.KafkaConsumer;

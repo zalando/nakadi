@@ -48,9 +48,9 @@ public class EventTypeDbRepository extends AbstractDbRepository implements Event
                     jsonMapper.writer().writeValueAsString(eventType));
             insertEventTypeSchema(eventType);
             return eventType;
-        } catch (JsonProcessingException e) {
+        } catch (final JsonProcessingException e) {
             throw new InternalNakadiException("Serialization problem during persistence of event type", e);
-        } catch (DuplicateKeyException e) {
+        } catch (final DuplicateKeyException e) {
             throw new DuplicatedEventTypeNameException("EventType " + eventTypeBase.getName() + " already exists.", e);
         }
     }
