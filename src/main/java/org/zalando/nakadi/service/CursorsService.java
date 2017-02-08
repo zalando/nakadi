@@ -9,11 +9,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
@@ -153,7 +154,12 @@ public class CursorsService {
                     cursor.getCursorToken());
         }
         final EventType eventType = eventTypeRepository.findByName(cursorToProcess.getEventType());
-        topicRepository.validateCommitCursors(eventType.getTopic(), ImmutableList.of(cursorToProcess));
+        final NakadiCursor toProcess = new NakadiCursor(
+                eventType.getTopic(),
+                cursorToProcess.getPartition(),
+                cursorToProcess.getOffset());
+
+        topicRepository.validateCommitCursor(toProcess);
         return commitCursor(subscriptionId, eventType.getTopic(), cursorToProcess);
     }
 
@@ -171,7 +177,13 @@ public class CursorsService {
                                 .forPath(offsetPath);
                         final String currentOffset = new String(currentOffsetData, Charsets.UTF_8);
 
-                        if (topicRepository.compareOffsets(cursor.getOffset(), currentOffset) > 0) {
+                        // Yep, here we are trying to hack a little. This code
+                        // should be removed during timelines implementation
+                        final NakadiCursor cursorToCommit = new NakadiCursor(eventType, cursor.getPartition(),
+                                cursor.getOffset());
+                        final NakadiCursor currentCursor = new NakadiCursor(eventType, cursor.getPartition(),
+                                currentOffset);
+                        if (topicRepository.compareOffsets(cursorToCommit, currentCursor) > 0) {
                             zkHolder.get()
                                     .setData()
                                     .withVersion(stat.getVersion())
