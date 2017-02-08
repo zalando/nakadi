@@ -7,9 +7,11 @@ import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.stubbing.Answer;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -44,6 +46,19 @@ public class CursorsServiceAT extends BaseAT {
     private static final String NEW_OFFSET = "newOffset";
     private static final String OLD_OFFSET = "oldOffset";
     private static final String OLDEST_OFFSET = "oldestOffset";
+
+    private static final Answer<Integer> FAKE_OFFSET_COMPARATOR = invocation -> {
+        final NakadiCursor c1 = (NakadiCursor) invocation.getArguments()[0];
+        final NakadiCursor c2 = (NakadiCursor) invocation.getArguments()[1];
+        if (NEW_OFFSET.equals(c1.getOffset()) && OLD_OFFSET.equals(c2.getOffset())) {
+            return 1;
+        } else if (OLDEST_OFFSET.equals(c1.getOffset()) && OLD_OFFSET.equals(c2.getOffset())) {
+            return -1;
+        } else {
+            return 0;
+        }
+    };
+
     private static final String P1 = "p1";
     private static final String P2 = "p2";
 
@@ -79,8 +94,7 @@ public class CursorsServiceAT extends BaseAT {
         when(zkHolder.get()).thenReturn(CURATOR);
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
-        when(topicRepository.compareOffsets(NEW_OFFSET, OLD_OFFSET)).thenReturn(1);
-        when(topicRepository.compareOffsets(OLDEST_OFFSET, OLD_OFFSET)).thenReturn(-1);
+        when(topicRepository.compareOffsets(any(), any())).thenAnswer(FAKE_OFFSET_COMPARATOR);
 
         final Subscription subscription = mock(Subscription.class);
         when(subscription.getEventTypes()).thenReturn(ImmutableSet.of(etName));
