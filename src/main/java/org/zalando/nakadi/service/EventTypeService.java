@@ -1,10 +1,6 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
