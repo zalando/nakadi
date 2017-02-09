@@ -64,21 +64,16 @@ public class PartitionsControllerAT extends BaseAT {
     }
 
     @Test
-    public void testBeginWrittenForNoEvents() throws IOException {
+    public void testBeginShownForNoEvents() throws IOException {
         final EventType eventType = NakadiTestUtils.createEventType();
-
-        Response response = when().get(String.format("/event-types/%s/partitions", eventType.getName()));
-        response.then()
+        when().get(String.format("/event-types/%s/partitions", eventType.getName())).then()
                 .statusCode(HttpStatus.OK.value())
                 .body("oldest_available_offset[0]", equalTo("0"))
                 .body("newest_available_offset[0]", equalTo("BEGIN"));
-
-        response = when().get(String.format("/event-types/%s/partitions/%d", eventType.getName(), 0));
-        response.then()
+        when().get(String.format("/event-types/%s/partitions/%d", eventType.getName(), 0)).then()
                 .statusCode(HttpStatus.OK.value())
                 .body("oldest_available_offset", equalTo("0"))
                 .body("newest_available_offset", equalTo("BEGIN"));
-
     }
 
     @Test
