@@ -1,7 +1,6 @@
 package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.security.auth.UserPrincipal;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,6 +14,7 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.PrincipalMockFactory;
 import org.zalando.problem.Problem;
 
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public class StoragesControllerTest {
         when(storageService.listStorages())
                 .thenReturn(Result.ok(storages));
         mockMvc.perform(get("/storages")
-                .principal(new UserPrincipal("nakadi")))
+                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(status().isOk());
     }
 
@@ -71,7 +71,7 @@ public class StoragesControllerTest {
         when(storageService.deleteStorage("s1"))
                 .thenReturn(Result.ok());
         mockMvc.perform(delete("/storages/s1")
-                .principal(new UserPrincipal("nakadi")))
+                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(status().isNoContent());
     }
 
@@ -80,7 +80,7 @@ public class StoragesControllerTest {
         when(storageService.deleteStorage("s1"))
                 .thenReturn(Result.forbidden("Storage in use"));
         mockMvc.perform(delete("/storages/s1")
-                .principal(new UserPrincipal("nakadi")))
+                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(status().isForbidden());
     }
 
@@ -91,7 +91,7 @@ public class StoragesControllerTest {
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
-                .principal(new UserPrincipal("nakadi")))
+                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(status().isCreated());
     }
 
@@ -102,7 +102,7 @@ public class StoragesControllerTest {
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
-                .principal(new UserPrincipal("nakadi")))
+                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(status().isConflict());
     }
 
@@ -113,7 +113,7 @@ public class StoragesControllerTest {
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
-                .principal(new UserPrincipal("nakadi")))
+                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(status().isUnprocessableEntity());
     }
 

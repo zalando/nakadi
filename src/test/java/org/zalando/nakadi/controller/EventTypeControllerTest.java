@@ -45,6 +45,7 @@ import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.PrincipalMockFactory;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
@@ -113,12 +114,6 @@ public class EventTypeControllerTest {
 
     private MockMvc mockMvc;
 
-    private static Principal mockPrincipal(final String clientId) {
-		final Principal principal = mock(Principal.class);
-		when(principal.getName()).thenReturn(clientId);
-		return principal;
-	}
-    
     public EventTypeControllerTest() throws IOException {
     }
 
@@ -740,7 +735,7 @@ public class EventTypeControllerTest {
     }
 
     private ResultActions deleteEventType(final String eventTypeName, final String clientId) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(mockPrincipal(clientId)));
+        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(PrincipalMockFactory.mockPrincipal(clientId)));
     }
 
     private ResultActions postEventType(final EventType eventType) throws Exception {
@@ -778,7 +773,7 @@ public class EventTypeControllerTest {
     private ResultActions putEventType(final String content, final String name, final String clientId)
             throws Exception {
         final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
-                .principal(mockPrincipal(clientId))
+                .principal(PrincipalMockFactory.mockPrincipal(clientId))
                 .contentType(APPLICATION_JSON)
                 .content(content);
         return mockMvc.perform(requestBuilder);
