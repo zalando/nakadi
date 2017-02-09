@@ -2,6 +2,7 @@ package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableMap;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.PartitioningException;
@@ -38,7 +39,8 @@ public class PartitionResolver {
         this.topicRepository = topicRepository;
     }
 
-    public void validate(final EventType eventType) throws NoSuchPartitionStrategyException, InvalidEventTypeException {
+    public void validate(final EventTypeBase eventType) throws NoSuchPartitionStrategyException,
+            InvalidEventTypeException {
         final String partitionStrategy = eventType.getPartitionStrategy();
 
         if (!ALL_PARTITION_STRATEGIES.contains(partitionStrategy)) {

@@ -17,8 +17,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionCursor;
-import org.zalando.nakadi.domain.SubscriptionListWrapper;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -122,7 +122,7 @@ public class SubscriptionAT extends BaseAT {
                 .withEventType(etName).withOwningApplication(filterApp).buildSubscriptionBase());
         createSubscription(RandomSubscriptionBuilder.builder().withEventType(etName).buildSubscriptionBase());
 
-        final SubscriptionListWrapper expectedList = new SubscriptionListWrapper(ImmutableList.of(sub2, sub1),
+        final PaginationWrapper expectedList = new PaginationWrapper(ImmutableList.of(sub2, sub1),
                 new PaginationLinks());
 
         given()

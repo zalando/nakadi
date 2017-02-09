@@ -1,5 +1,6 @@
 package org.zalando.nakadi.webservice;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -12,10 +13,12 @@ import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
@@ -47,6 +50,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private static final String EVENT1 = "{\"foo\":\"" + randomTextString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomTextString() + "\"}";
+
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    private static final String ENDPOINT = "/event-types";
 
     private String eventTypeName;
 
@@ -92,12 +98,15 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("schema.type[0]", notNullValue())
                 .body("schema.schema[0]", notNullValue());
 
+        final String updateEventTypeBody = getUpdateEventType();
+
         // update event-type
         jsonRequestSpec()
-                .body(eventTypeBodyUpdate)
+                .body(updateEventTypeBody)
                 .when()
                 .put("/event-types/" + eventTypeName)
                 .then()
+                .body(equalTo(""))
                 .statusCode(OK.value());
 
         // Updates should eventually cause a cache invalidation, so we must retry
@@ -162,6 +171,19 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .get("/event-types/" + eventTypeName)
                 .then()
                 .statusCode(NOT_FOUND.value());
+    }
+
+    private String getUpdateEventType() throws IOException {
+        final EventType retrievedEventType = MAPPER.readValue(jsonRequestSpec()
+                        .header("accept", "application/json")
+                        .get(ENDPOINT + "/" + eventTypeName)
+                        .getBody()
+                        .asString(),
+                EventType.class);
+
+        final EventType updateEventType = MAPPER.readValue(eventTypeBodyUpdate, EventType.class);
+        updateEventType.getSchema().setCreatedAt(retrievedEventType.getSchema().getCreatedAt());
+        return MAPPER.writer().writeValueAsString(updateEventType);
     }
 
     @Test(timeout = 15000)

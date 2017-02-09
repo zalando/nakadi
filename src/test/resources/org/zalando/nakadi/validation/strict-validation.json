@@ -1,0 +1,307 @@
+[
+  {
+    "description": "Empty schemas accept no additionalProperties",
+    "original_schema": {},
+    "effective_schema": {
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Add additionalProperties to simple object",
+    "original_schema": {
+      "type": "object"
+    },
+    "effective_schema": {
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Add additionalProperties when defining properties",
+    "original_schema": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    },
+    "effective_schema": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Add additionalProperties when to children properties",
+    "original_schema": {
+      "properties": {
+        "foo": {
+          "type": "object"
+        }
+      }
+    },
+    "effective_schema": {
+      "properties": {
+        "foo": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Add additionalProperties when schema is empty",
+    "original_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    },
+    "effective_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Add additionalProperties when to children definitions",
+    "original_schema": {
+      "definitions": {
+        "foo": {
+          "type": "object"
+        }
+      }
+    },
+    "effective_schema": {
+      "definitions": {
+        "foo": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Add additionalProperties when defining dependencies",
+    "original_schema": {
+      "dependencies": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    },
+    "effective_schema": {
+      "dependencies": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Add additionalProperties when to children dependencies",
+    "original_schema": {
+      "dependencies": {
+        "foo": {
+          "type": "object"
+        }
+      }
+    },
+    "effective_schema": {
+      "dependencies": {
+        "foo": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Add additionalItems to array schemas",
+    "original_schema": {
+      "type": "array"
+    },
+    "effective_schema": {
+      "type": "array",
+      "additionalItems": false
+    }
+  },
+  {
+    "description": "Add additionalItems when defining items",
+    "original_schema": {
+      "items": {
+        "type": "string"
+      }
+    },
+    "effective_schema": {
+      "items": {
+        "type": "string"
+      },
+      "additionalItems": false
+    }
+  },
+  {
+    "description": "Add additionalItems when defining items as array",
+    "original_schema": {
+      "items": [
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "effective_schema": {
+      "items": [
+        {
+          "type": "object",
+          "additionalProperties": false
+        }
+      ],
+      "additionalItems": false
+    }
+  },
+  {
+    "description": "Strict combined schemas",
+    "original_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "description": "Some description",
+      "anyOf": [
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "effective_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "description": "Some description",
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  {
+    "description": "Do not strict reference schemas",
+    "original_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "properties": {
+        "foo": { "$ref": "#/definitions/foo" }
+      }
+    },
+    "effective_schema": {
+      "definitions": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "properties": {
+        "foo": { "$ref": "#/definitions/foo" }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if mixed object type",
+    "original_schema": {
+      "type": ["string", "object"]
+    },
+    "effective_schema": {
+      "type": ["string", "object"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if mixed array type",
+    "original_schema": {
+      "type": ["string", "array"]
+    },
+    "effective_schema": {
+      "type": ["string", "array"],
+      "additionalItems": false
+    }
+  },
+  {
+    "description": "Strict if has required keyword",
+    "original_schema": {
+      "required": ["foo"]
+    },
+    "effective_schema": {
+      "required": ["foo"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if has minProperties keyword",
+    "original_schema": {
+      "minProperties": 1
+    },
+    "effective_schema": {
+      "minProperties": 1,
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if has maxProperties keyword",
+    "original_schema": {
+      "maxProperties": 1
+    },
+    "effective_schema": {
+      "maxProperties": 1,
+      "additionalProperties": false
+    }
+  },
+  {
+    "description": "Strict if has minItems keyword",
+    "original_schema": {
+      "minItems": 1
+    },
+    "effective_schema": {
+      "minItems": 1,
+      "additionalItems": false
+    }
+  },
+  {
+    "description": "Strict if has maxItems keyword",
+    "original_schema": {
+      "maxItems": 1
+    },
+    "effective_schema": {
+      "maxItems": 1,
+      "additionalItems": false
+    }
+  },
+  {
+    "description": "Strict if has uniqueItems keyword",
+    "original_schema": {
+      "uniqueItems": 1
+    },
+    "effective_schema": {
+      "uniqueItems": 1,
+      "additionalItems": false
+    }
+  }
+]

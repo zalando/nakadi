@@ -316,7 +316,10 @@ paths:
         incoming Events. Validation rules are evaluated in the order they are defined and the Event
         is **rejected** in the first case of failure. If the offending validation rule provides
         information about the violation it will be included in the `BatchItemResponse`.  If the
-        `EventType` defines schema validation it will be performed at this moment.
+        `EventType` defines schema validation it will be performed at this moment. The size of each
+        Event will also be validated. The maximum size per Event is 999,000 bytes. We use the batch
+        input to measure the size of events, so unnecessary spaces, tabs, and carriage returns will
+        count towards the event size.
 
         1. Once the validation succeeded, the content of the Event is updated according to the
         enrichment rules in the order the rules are defined in the `EventType`.  No preexisting
@@ -807,9 +810,13 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for committing offsets of the subscription. The client must commit at least once
-        every 60 seconds, otherwise Nakadi will consider the client to be gone and will close the
-        connection.
+        Endpoint for committing offsets of the subscription. If there is uncommited data, and no commits happen
+        for 60 seconds, then Nakadi will consider the client to be gone, and will close the connection. As long
+        as no events are sent, the client does not need to commit.
+
+        If the connection is closed, the client has 60 seconds to commit the events it received, from the moment
+        they were sent. After that, the connection will be considered closed, and it will not be possible to do
+        commit with that `X-Nakadi-StreamId` anymore.
 
         When a batch is committed that also automatically commits all previous batches that were
         sent in a stream for this partition.
@@ -1135,7 +1142,108 @@ paths:
         '204':
           description: Feature was successfully accepted.
 
+  /storages:
+    get:
+      tags:
+        - timelines-api
+      description: |
+        Lists all available storage backends.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      responses:
+        '200':
+          description: A list of all available storage backends.
+          schema:
+            type: array
+            description: list of storage backends.
+            items:
+              $ref: '#/definitions/Storage'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+    post:
+      tags:
+        - timelines-api
+      description: |
+        Creates a new storage backend.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: storage
+          in: body
+          description: Storage description
+          schema:
+            $ref: '#/definitions/Storage'
+      responses:
+        '201':
+          description: Storage backend was successfully registered. Returns storage object that was created.
+          schema:
+            $ref: '#/definitions/Storage'
+        '409':
+          description: A storage with the same ID already exists
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
 
+  /storages/{id}:
+    get:
+      tags:
+        - timelines-api
+      description: |
+        Retrieves a storage backend by its ID.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/Storage'
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+    delete:
+      tags:
+        - timelines-api
+      description: |
+        Deletes a storage backend from its ID, if it is not in use.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: storage backend ID
+          type: string
+          required: true
+      responses:
+        '204':
+          description: Storage backend was deleted
+        '404':
+          description: Storage backend not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '400':
+          description: Storage backend could not be deleted
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
 
 # ################################### #
 #                                     #
@@ -1144,6 +1252,37 @@ paths:
 # ################################### #
 
 definitions:
+  Storage:
+    type: object
+    description: |
+      A storage backend.
+    properties:
+      id:
+        description: The ID of the storage backend.
+        type: string
+        maxLength: 36
+      storage_type:
+        description: |
+          the type of storage. Possible values: ['kafka']
+        type: string
+      kafka_configuration:
+        description: configuration settings for kafka storage. Only necessary if the storage type is 'kafka'
+        type: object
+        properties:
+          zk_address:
+            description: the Zookeeper address
+            type: string
+          zk_path:
+            description: the Zookeeper path
+            type: string
+        required:
+          - zk_address
+          - zk_path
+    required:
+      - id
+      - storage_type
+      - kafka_configuration
+
   Event:
     type: object
     description: |
@@ -1591,20 +1730,20 @@ definitions:
 
           List of compatibility modes:
 
-          - 'fixed': Schema changes are not allowed. This is used only by legacy event types. This option is not
-            available for new event types. Schema validation is lenient and allow fields that are not defined. Also,
-            it's possible to use the full json schema specification for defining schemas.
-
-          - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
-            validating events, no additional properties are accepted unless explicitly stated in the schema.
-
           - 'compatible': Consumers can reliably parse events produced under different versions. Every event published
             since the first version is still valid based on the newest schema. When in compatible mode, it's allowed to
             add new optional properties and definitions to an existing schema, but no other changes are allowed.
             Under this mode, the following json-schema attributes are not supported: `not`, `patternProperties`,
             `additionalProperties` and `additionalItems`. When validating events, additional properties is `false`.
+
+          - 'forward': Compatible schema changes are allowed. It's possible to use the full json schema specification
+            for defining schemas. Consumers of forward compatible event types can safely read events tagged with the
+            latest schema version as long as they follow the robustness principle.
+
+          - 'none': Any schema modification is accepted, even if it might break existing producers or consumers. When
+            validating events, no additional properties are accepted unless explicitly stated in the schema.
         type: string
-        default: compatible
+        default: forward
 
       schema:
         $ref: '#/definitions/EventTypeSchema'

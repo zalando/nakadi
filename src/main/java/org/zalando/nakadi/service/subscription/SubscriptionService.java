@@ -1,6 +1,17 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableSet;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,15 +19,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.SubscriptionListWrapper;
-import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -33,20 +44,9 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-
-import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Component
 public class SubscriptionService {
@@ -124,7 +124,7 @@ public class SubscriptionService {
         }
     }
 
-    private Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
+    public Subscription getExistingSubscription(final SubscriptionBase subscriptionBase)
             throws NoSuchSubscriptionException, InternalNakadiException, ServiceUnavailableException {
         return subscriptionRepository.getSubscription(
                 subscriptionBase.getOwningApplication(),
@@ -165,8 +165,8 @@ public class SubscriptionService {
                     subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                     owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
-            return Result.ok(new SubscriptionListWrapper(subscriptions, paginationLinks));
-        } catch (ServiceUnavailableException e) {
+            return Result.ok(new PaginationWrapper(subscriptions, paginationLinks));
+        } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
             return Result.problem(e.asProblem());
         }
@@ -238,13 +238,13 @@ public class SubscriptionService {
                 .map(EventType::getTopic)
                 .collect(Collectors.toSet());
 
-        final List<TopicPartition> topicPartitions = topicRepository.listPartitions(topics);
+        final List<PartitionStatistics> topicPartitions = topicRepository.loadTopicStatistics(topics);
 
         return eventTypes.stream()
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions =
                             topicPartitions.stream()
-                            .filter(partition -> eventType.getTopic().equals(partition.getTopicId()))
+                            .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
                             .map(Try.wrap(partition ->
                                     mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
                             .map(Try::getOrThrow)
@@ -259,22 +259,22 @@ public class SubscriptionService {
     private SubscriptionEventTypeStats.Partition mergePartitions(
             final ZkSubscriptionClient zkSubscriptionClient,
             final ZkSubscriptionNode zkSubscriptionNode,
-            final TopicPartition topicPartition) throws NakadiException {
+            final PartitionStatistics topicPartition) throws NakadiException {
         final boolean hasSessions = zkSubscriptionNode.getSessions().length > 0;
 
         final Partition partition = Arrays.stream(zkSubscriptionNode.getPartitions())
-                .filter(p -> p.getKey().getPartition().equals(topicPartition.getPartitionId()))
+                .filter(p -> p.getKey().getPartition().equals(topicPartition.getPartition()))
                 .findFirst()
                 .orElse(null);
 
-        return createPartition(zkSubscriptionClient, partition, topicPartition, hasSessions);
+        return createPartition(zkSubscriptionClient, partition, topicPartition.getLast(), hasSessions);
     }
 
     private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,
                                                                  @Nullable final Partition partition,
-                                                                 final TopicPartition topicPartition,
+                                                                 final NakadiCursor topicPartition,
                                                                  final boolean hasSessions) throws NakadiException {
-        final String partitionId = topicPartition.getPartitionId();
+        final String partitionId = topicPartition.getPartition();
         String partitionState = Partition.State.UNASSIGNED.getDescription();
         String partitionSession = "";
         Long unconsumedEvents = null;
@@ -283,7 +283,7 @@ public class SubscriptionService {
                 partitionState = partition.getState().getDescription();
                 partitionSession = partition.getSession();
             }
-            final String total = topicPartition.getNewestAvailableOffset();
+            final String total = topicPartition.getOffset();
             if (!Cursor.BEFORE_OLDEST_OFFSET.equals(total)) {
                 final long clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
                 unconsumedEvents = Long.valueOf(total) - clientOffset;

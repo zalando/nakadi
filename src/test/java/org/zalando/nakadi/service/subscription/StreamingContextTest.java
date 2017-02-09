@@ -2,7 +2,10 @@ package org.zalando.nakadi.service.subscription;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.zalando.nakadi.service.subscription.model.Session;
+import org.zalando.nakadi.service.subscription.state.CleanupState;
+import org.zalando.nakadi.service.subscription.state.DummyState;
 import org.zalando.nakadi.service.subscription.state.State;
 
 import java.io.IOException;
@@ -125,5 +128,29 @@ public class StreamingContextTest {
         Assert.assertArrayEquals(new boolean[]{true, true}, onEnterCalls);
         // Check that onExit called even if onEnter throws exception.
         Assert.assertArrayEquals(new boolean[]{true, true}, onExitCalls);
+    }
+
+    @Test
+    public void testOnNodeShutdown() throws Exception {
+        final StreamingContext ctxSpy = Mockito.spy(createTestContext(null));
+        final Thread t = new Thread(() -> {
+            try {
+                ctxSpy.streamInternal(new State() {
+                    @Override
+                    public void onEnter() {
+                    }
+                });
+            } catch (final InterruptedException ignore) {
+            }
+        });
+        t.start();
+        t.join(1000);
+
+        new Thread(() -> ctxSpy.onNodeShutdown()).start();
+        Thread.sleep(2000);
+
+        Mockito.verify(ctxSpy).switchState(Mockito.isA(CleanupState.class));
+        Mockito.verify(ctxSpy).unregisterSession();
+        Mockito.verify(ctxSpy).switchState(Mockito.isA(DummyState.class));
     }
 }

@@ -4,8 +4,21 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -18,44 +31,33 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.domain.Cursor;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.UnparseableCursorException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -85,8 +87,9 @@ public class EventStreamControllerTest {
     private static final String TEST_TOPIC = "test-topic";
     private static final EventType EVENT_TYPE = TestUtils.buildDefaultEventType();
     private static final Set<String> SCOPE_READ = Collections.singleton("oauth2.scope.read");
-    private static final Client FULL_ACCESS_CLIENT = new FullAccessClient("clientId");
     private static final String CLIENT_ID = "clientId";
+    private static final Client FULL_ACCESS_CLIENT = new FullAccessClient(CLIENT_ID);
+    private static final String KAFKA_CLIENT_ID = CLIENT_ID + "-" + TEST_EVENT_TYPE_NAME;
 
     private HttpServletRequest requestMock;
     private HttpServletResponse responseMock;
@@ -148,6 +151,30 @@ public class EventStreamControllerTest {
     }
 
     @Test
+    public void testCursorsForNulls() throws Exception {
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        assertThat(
+                responseToString(createStreamingResponseBody("[{\"partition\":null,\"offset\":\"0\"}]")),
+                jsonHelper.matchesObject(Problem.valueOf(PRECONDITION_FAILED, "partition must not be null")));
+        assertThat(
+                responseToString(createStreamingResponseBody("[{\"partition\":\"0\",\"offset\":null}]")),
+                jsonHelper.matchesObject(Problem.valueOf(PRECONDITION_FAILED, "offset must not be null")));
+    }
+
+    @Test
+    public void testBeginReplaced()
+            throws InvalidCursorException, UnparseableCursorException, ServiceUnavailableException {
+        final NakadiCursor expectedPosition = new NakadiCursor(TEST_TOPIC, "0", "-1");
+        final PartitionStatistics expectedStats = new KafkaPartitionStatistics(TEST_TOPIC, 0, 0L, 0L);
+        when(topicRepositoryMock.loadTopicStatistics(eq(Collections.singletonList(TEST_TOPIC))))
+                .thenReturn(Collections.singletonList(expectedStats));
+        final List<NakadiCursor> topicPositions = controller.getStreamingStart(
+                TEST_TOPIC, "[{\"partition\":\"0\",\"offset\":\"BEGIN\"}]");
+        Assert.assertEquals(1, topicPositions.size());
+        Assert.assertEquals(expectedPosition, topicPositions.get(0));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void whenNoParamsThenDefaultsAreUsed() throws Exception {
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
@@ -164,10 +191,9 @@ public class EventStreamControllerTest {
 
         final EventStreamConfig expectedConfig = EventStreamConfig
                 .builder()
-                .withTopic(TEST_TOPIC)
                 .withBatchLimit(1)
                 .withBatchTimeout(30)
-                .withCursors(ImmutableMap.of("0", "0"))
+                .withCursors(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0")))
                 .withStreamKeepAliveLimit(0)
                 .withStreamLimit(0)
                 .withStreamTimeout(0)
@@ -236,9 +262,9 @@ public class EventStreamControllerTest {
 
     @Test
     public void whenInvalidCursorsThenPreconditionFailed() throws Exception {
-        final Cursor cursor = new Cursor("0", "0");
+        final NakadiCursor cursor = new NakadiCursor(TEST_TOPIC, "0", "0");
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(cursor))))
+        when(topicRepositoryMock.createEventConsumer(eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(cursor))))
                 .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0,
@@ -249,12 +275,13 @@ public class EventStreamControllerTest {
     }
 
     @Test
-    public void whenNoCursorsThenLatestOffsetsAreUsed() throws NakadiException, IOException {
+    public void whenNoCursorsThenLatestOffsetsAreUsed() throws NakadiException, IOException, InvalidCursorException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        final ImmutableList<TopicPartition> tps = ImmutableList.of(
-                new TopicPartition(TEST_TOPIC, "0", "12", "87"),
-                new TopicPartition(TEST_TOPIC, "1", "5", "34"));
-        when(topicRepositoryMock.listPartitions(eq(TEST_TOPIC))).thenReturn(tps);
+        final List<PartitionStatistics> tps2 = ImmutableList.of(
+                new KafkaPartitionStatistics(TEST_TOPIC, 0, 0, 87),
+                new KafkaPartitionStatistics(TEST_TOPIC, 1, 0, 34));
+
+        when(topicRepositoryMock.loadTopicStatistics(eq(Collections.singletonList(TEST_TOPIC)))).thenReturn(tps2);
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
@@ -267,17 +294,15 @@ public class EventStreamControllerTest {
         final EventStreamConfig streamConfig = configCaptor.getValue();
         assertThat(
                 streamConfig.getCursors(),
-                equalTo(ImmutableMap.of(
-                        "0", "87",
-                        "1", "34"
-                )));
+                equalTo(tps2.stream().map(PartitionStatistics::getLast).collect(Collectors.toList())));
     }
 
     @Test
     public void whenNormalCaseThenParametersArePassedToConfigAndStreamStarted() throws Exception {
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
+        when(topicRepositoryMock.createEventConsumer(
+                eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0")))))
                 .thenReturn(eventConsumerMock);
 
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
@@ -298,8 +323,7 @@ public class EventStreamControllerTest {
                 streamConfig,
                 equalTo(EventStreamConfig
                         .builder()
-                        .withTopic(TEST_TOPIC)
-                        .withCursors(ImmutableMap.of("0", "0"))
+                        .withCursors(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0")))
                         .withBatchLimit(1)
                         .withStreamLimit(2)
                         .withBatchTimeout(3)
@@ -310,11 +334,11 @@ public class EventStreamControllerTest {
 
         assertThat(statusCaptor.getValue(), equalTo(HttpStatus.OK.value()));
         assertThat(contentTypeCaptor.getValue(), equalTo("application/x-json-stream"));
-        
-        verify(topicRepositoryMock, times(1)).createEventConsumer(eq(TEST_TOPIC),
-                eq(ImmutableList.of(new Cursor("0", "0"))));
-        verify(eventStreamFactoryMock, times(1)).createEventStream(eq(eventConsumerMock), eq(outputStream),
-                eq(streamConfig), any());
+
+        verify(topicRepositoryMock, times(1)).createEventConsumer(eq(KAFKA_CLIENT_ID),
+                eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0"))));
+        verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
+                eq(eventConsumerMock), eq(streamConfig), any());
         verify(eventStreamMock, times(1)).streamEvents(any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
@@ -451,7 +475,8 @@ public class EventStreamControllerTest {
         EVENT_TYPE.setReadScopes(SCOPE_READ);
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        when(topicRepositoryMock.createEventConsumer(eq(TEST_TOPIC), eq(ImmutableList.of(new Cursor("0", "0")))))
+        when(topicRepositoryMock.createEventConsumer(
+                eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0")))))
                 .thenReturn(eventConsumerMock);
     }
 
@@ -469,6 +494,11 @@ public class EventStreamControllerTest {
     private StreamingResponseBody createStreamingResponseBody(final Client client) throws Exception {
         return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, "[{\"partition\":\"0\",\"offset\":\"0\"}]",
                 requestMock, responseMock, client);
+    }
+
+    private StreamingResponseBody createStreamingResponseBody(final String cursorsStr) throws Exception {
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 2, 3, 4, 5, cursorsStr,
+                requestMock, responseMock, FULL_ACCESS_CLIENT);
     }
 
     private StreamingResponseBody createStreamingResponseBody(final Integer batchLimit,

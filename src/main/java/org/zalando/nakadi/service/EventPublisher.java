@@ -1,11 +1,11 @@
 package org.zalando.nakadi.service;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.BatchItemResponse;
@@ -29,13 +29,14 @@ import org.zalando.nakadi.validation.ValidationError;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Component
 public class EventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventPublisher.class);
+
+    private final NakadiSettings nakadiSettings;
 
     private final TopicRepository topicRepository;
     private final EventTypeCache eventTypeCache;
@@ -46,14 +47,16 @@ public class EventPublisher {
     public EventPublisher(final TopicRepository topicRepository,
                           final EventTypeCache eventTypeCache,
                           final PartitionResolver partitionResolver,
-                          final Enrichment enrichment) {
+                          final Enrichment enrichment,
+                          final NakadiSettings nakadiSettings) {
         this.topicRepository = topicRepository;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
+        this.nakadiSettings = nakadiSettings;
     }
 
-    public EventPublishResult publish(final JSONArray events, final String eventTypeName, final Client client)
+    public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
             throws NoSuchEventTypeException, InternalNakadiException {
         final EventType eventType = eventTypeCache.getEventType(eventTypeName);
         final List<BatchItem> batch = BatchFactory.from(events);
@@ -114,11 +117,12 @@ public class EventPublisher {
     }
 
     private void validate(final List<BatchItem> batch, final EventType eventType) throws EventValidationException,
-            InternalNakadiException {
+            InternalNakadiException, NoSuchEventTypeException {
         for (final BatchItem item : batch) {
             item.setStep(EventPublishingStep.VALIDATING);
             try {
                 validateSchema(item.getEvent(), eventType);
+                validateEventSize(item);
             } catch (final EventValidationException e) {
                 item.updateStatusAndDetail(EventPublishingStatus.FAILED, e.getMessage());
                 throw e;
@@ -132,16 +136,19 @@ public class EventPublisher {
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,
-            InternalNakadiException {
-        try {
-            final EventTypeValidator validator = eventTypeCache.getValidator(eventType.getName());
-            final Optional<ValidationError> validationError = validator.validate(event);
+            InternalNakadiException, NoSuchEventTypeException {
+        final EventTypeValidator validator = eventTypeCache.getValidator(eventType.getName());
+        final Optional<ValidationError> validationError = validator.validate(event);
 
-            if (validationError.isPresent()) {
-                throw new EventValidationException(validationError.get());
-            }
-        } catch (final ExecutionException e) {
-            throw new InternalNakadiException("Error loading validator", e);
+        if (validationError.isPresent()) {
+            throw new EventValidationException(validationError.get());
+        }
+    }
+
+    private void validateEventSize(final BatchItem item) throws EventValidationException {
+        if (item.getEventSize() > nakadiSettings.getEventMaxBytes()) {
+            throw new EventValidationException("Event too large: " + item.getEventSize()
+                    + " bytes, max size is " + nakadiSettings.getEventMaxBytes() + " bytes");
         }
     }
 

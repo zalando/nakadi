@@ -8,12 +8,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -73,7 +73,7 @@ public class HilaAT extends BaseAT {
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
         rangeClosed(0, 3)
-                .forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo" + x + "\"}"));
+                .forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar" + x + "\"}"));
 
         // create session, read from subscription and wait for events to be sent
         final TestStreamingClient client = TestStreamingClient
@@ -81,9 +81,9 @@ public class HilaAT extends BaseAT {
                 .start();
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)));
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
-                ImmutableMap.of("blah", "foo0"), "Stream started")));
+                ImmutableMap.of("foo", "bar0"), "Stream started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "1", eventType.getName(),
-                ImmutableMap.of("blah", "foo1"))));
+                ImmutableMap.of("foo", "bar1"))));
 
         // commit offset that will also trigger session closing as we reached stream_limit and committed
         commitCursors(subscription.getId(), ImmutableList.of(client.getBatches().get(1).getCursor()),
@@ -96,9 +96,9 @@ public class HilaAT extends BaseAT {
 
         // check that we have read the next two events with correct offsets
         assertThat(client.getBatches().get(0), equalToBatchIgnoringToken(singleEventBatch("0", "2", eventType.getName(),
-                ImmutableMap.of("blah", "foo2"), "Stream started")));
+                ImmutableMap.of("foo", "bar2"), "Stream started")));
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "3", eventType.getName(),
-                ImmutableMap.of("blah", "foo3"))));
+                ImmutableMap.of("foo", "bar3"))));
     }
 
 
@@ -130,7 +130,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 5000)
     public void whenCommitVeryFirstEventThenOk() throws Exception {
-        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
+        publishEvent(eventType.getName(), "{\"foo\":\"bar\"}");
 
         // create session, read from subscription and wait for events to be sent
         final TestStreamingClient client = TestStreamingClient
@@ -148,7 +148,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 15000)
     public void whenWindowSizeIsSetItIsConsidered() throws Exception {
 
-        range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "max_uncommitted_events=5")
@@ -170,7 +170,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 15000)
     public void whenCommitTimeoutReachedSessionIsClosed() throws Exception {
 
-        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
+        publishEvent(eventType.getName(), "{\"foo\":\"bar\"}");
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "") // commit_timeout is 5 seconds for test
@@ -185,7 +185,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 15000)
     public void whenStreamTimeoutReachedSessionIsClosed() throws Exception {
 
-        publishEvent(eventType.getName(), "{\"blah\":\"foo\"}");
+        publishEvent(eventType.getName(), "{\"foo\":\"bar\"}");
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "stream_timeout=3")
@@ -204,7 +204,7 @@ public class HilaAT extends BaseAT {
     @Test(timeout = 10000)
     public void whenBatchLimitAndTimeoutAreSetTheyAreConsidered() throws Exception {
 
-        range(0, 12).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        range(0, 12).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_limit=5&batch_flush_timeout=1&max_uncommitted_events=20")
@@ -257,7 +257,7 @@ public class HilaAT extends BaseAT {
 
     @Test
     public void testGetSubscriptionStat() throws Exception {
-        IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
 
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "max_uncommitted_events=20")
@@ -308,7 +308,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenConsumerIsBlockedDuringConsumption() throws Exception {
-        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "")
                 .start();
@@ -324,7 +324,7 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 15000)
     public void whenStreamTimeout0ThenInfiniteStreaming() throws Exception {
-        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"blah\":\"foo\"}"));
+        IntStream.range(0, 5).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "stream_timeout=0")
                 .start();

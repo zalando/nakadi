@@ -16,12 +16,15 @@ import org.springframework.validation.FieldError;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -54,7 +57,7 @@ public class TestUtils {
     }
 
     public static String randomString() {
-        final int length = RANDOM.nextInt(500);
+        final int length = RANDOM.nextInt(100);
 
         String s = "";
 
@@ -77,6 +80,26 @@ public class TestUtils {
 
         return s;
 
+    }
+
+    public static String randomStringOfLength(final int length) {
+        final StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < length; i++) {
+            sb.append((char) RANDOM.nextInt(128));
+        }
+
+        return sb.toString();
+    }
+
+    public static String randomValidStringOfLength(final int length) {
+        final StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < length; i++) {
+            sb.append(VALID_EVENT_TYPE_NAME_CHARS.charAt(RANDOM.nextInt(VALID_EVENT_TYPE_NAME_CHARS.length())));
+        }
+
+        return sb.toString();
     }
 
     public static String randomValidEventTypeName() {
@@ -144,12 +167,12 @@ public class TestUtils {
         waitFor(runnable, 10000, 500);
     }
 
-    public static void waitFor(final Runnable runnable, final int timeoutMs) {
+    public static void waitFor(final Runnable runnable, final long timeoutMs) {
         waitFor(runnable, timeoutMs, 500);
     }
 
     @SuppressWarnings("unchecked")
-    public static void waitFor(final Runnable runnable, final int timeoutMs, final int intervalMs) {
+    public static void waitFor(final Runnable runnable, final long timeoutMs, final int intervalMs) {
         executeWithRetry(
                 runnable,
                 new RetryForSpecifiedTimeStrategy<Void>(timeoutMs)
@@ -157,7 +180,11 @@ public class TestUtils {
                         .withWaitBetweenEachTry(intervalMs));
     }
 
-    public static BatchItem createBatch(final JSONObject event) {
+    public static BatchItem createBatchItem(final JSONObject event) {
+        return new BatchItem(event.toString());
+    }
+
+    public static BatchItem createBatchItem(final String event) {
         return new BatchItem(event);
     }
 
@@ -171,6 +198,10 @@ public class TestUtils {
         return range(0, count)
                 .mapToObj(i -> builder().build())
                 .collect(toList());
+    }
+
+    public static Timeline buildTimeline(final String etName) {
+        return new Timeline(etName, 0, new Storage(), randomUUID(), new Date());
     }
 
 }

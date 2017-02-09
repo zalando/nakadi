@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -102,7 +102,7 @@ public class CursorsController {
             return allCommited ? noContent().build() : ok(body);
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
-        } catch (InvalidCursorException e) {
+        } catch (final InvalidCursorException e) {
             return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
         }
     }

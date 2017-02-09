@@ -16,7 +16,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.domain.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
@@ -46,6 +46,13 @@ public class NakadiTestUtils {
                 .post("/event-types");
     }
 
+    public static void updateEventTypeInNakadi(final EventType eventType) throws JsonProcessingException {
+        given()
+                .body(MAPPER.writeValueAsString(eventType))
+                .contentType(JSON)
+                .put("/event-types/" + eventType.getName());
+    }
+
     public static EventType createBusinessEventTypeWithPartitions(final int partitionNum)
             throws JsonProcessingException {
         final EventTypeStatistics statistics = new EventTypeStatistics();
@@ -65,7 +72,7 @@ public class NakadiTestUtils {
     }
 
     public static EventType buildSimpleEventType() {
-        return EventTypeTestBuilder.builder().schema(new JSONObject("{\"additional_properties\":true}")).build();
+        return EventTypeTestBuilder.builder().build();
     }
 
     public static void publishEvent(final String eventType, final String event) {
