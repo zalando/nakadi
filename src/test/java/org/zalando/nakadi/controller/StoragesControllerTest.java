@@ -1,6 +1,22 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,24 +30,9 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.util.PrincipalMockFactory;
 import org.zalando.problem.Problem;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 public class StoragesControllerTest {
@@ -62,7 +63,7 @@ public class StoragesControllerTest {
         when(storageService.listStorages())
                 .thenReturn(Result.ok(storages));
         mockMvc.perform(get("/storages")
-                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
+                .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isOk());
     }
 
@@ -71,7 +72,7 @@ public class StoragesControllerTest {
         when(storageService.deleteStorage("s1"))
                 .thenReturn(Result.ok());
         mockMvc.perform(delete("/storages/s1")
-                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
+                .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isNoContent());
     }
 
@@ -80,7 +81,7 @@ public class StoragesControllerTest {
         when(storageService.deleteStorage("s1"))
                 .thenReturn(Result.forbidden("Storage in use"));
         mockMvc.perform(delete("/storages/s1")
-                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
+                .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isForbidden());
     }
 
@@ -91,7 +92,7 @@ public class StoragesControllerTest {
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
-                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
+                .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isCreated());
     }
 
@@ -102,7 +103,7 @@ public class StoragesControllerTest {
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
-                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
+                .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isConflict());
     }
 
@@ -113,7 +114,7 @@ public class StoragesControllerTest {
         mockMvc.perform(post("/storages")
                 .contentType(APPLICATION_JSON)
                 .content(json.toString())
-                .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
+                .principal(mockPrincipal("nakadi")))
                 .andExpect(status().isUnprocessableEntity());
     }
 
