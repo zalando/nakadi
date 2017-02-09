@@ -18,6 +18,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.TopicPartition;
 import org.zalando.problem.Problem;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -54,8 +55,8 @@ public class PartitionsController {
                         .map(stat -> new TopicPartition(
                                 eventType.getName(),
                                 stat.getPartition(),
-                                stat.getFirst().getOffset(),
-                                stat.getLast().getOffset()))
+                                Cursor.fromTopicPosition(stat.getFirst()).getOffset(),
+                                Cursor.fromTopicPosition(stat.getLast()).getOffset()))
                         .collect(Collectors.toList());
                 return ok().body(result);
             }
@@ -83,8 +84,8 @@ public class PartitionsController {
                         .map(tp -> new TopicPartition(
                                 eventType.getName(),
                                 tp.getPartition(),
-                                tp.getFirst().getOffset(),
-                                tp.getLast().getOffset()));
+                                Cursor.fromTopicPosition(tp.getFirst()).getOffset(),
+                                Cursor.fromTopicPosition(tp.getLast()).getOffset()));
 
                 if (!result.isPresent()) {
                     return create(Problem.valueOf(NOT_FOUND, "partition not found"), request);
