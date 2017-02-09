@@ -1,9 +1,10 @@
-package org.zalando.nakadi.domain;
+package org.zalando.nakadi.view;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
+import org.zalando.nakadi.domain.NakadiCursor;
 
 @Immutable
 public class Cursor {
@@ -19,6 +20,13 @@ public class Cursor {
     public Cursor(@JsonProperty("partition") final String partition, @JsonProperty("offset") final String offset) {
         this.partition = partition;
         this.offset = offset;
+    }
+
+    public static Cursor fromTopicPosition(final NakadiCursor position) {
+        return new Cursor(
+                position.getPartition(),
+                position.getOffset().equals("-1") ? BEFORE_OLDEST_OFFSET : position.getOffset()
+        );
     }
 
     public String getPartition() {

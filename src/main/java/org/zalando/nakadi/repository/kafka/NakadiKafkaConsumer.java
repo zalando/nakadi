@@ -1,20 +1,16 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.Lists;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.Cursor;
-import org.zalando.nakadi.repository.EventConsumer;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import static org.zalando.nakadi.repository.kafka.KafkaCursor.kafkaCursor;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.repository.EventConsumer;
 
 public class NakadiKafkaConsumer implements EventConsumer {
 
@@ -24,8 +20,8 @@ public class NakadiKafkaConsumer implements EventConsumer {
 
     private final long pollTimeout;
 
-    public NakadiKafkaConsumer(final Consumer<String, String> kafkaConsumer, final String topic,
-                               final List<KafkaCursor> kafkaCursors, final long pollTimeout) {
+    public NakadiKafkaConsumer(final Consumer<String, String> kafkaConsumer, final List<KafkaCursor> kafkaCursors,
+                               final long pollTimeout) {
         eventQueue = Lists.newLinkedList();
         this.kafkaConsumer = kafkaConsumer;
         this.pollTimeout = pollTimeout;
@@ -33,7 +29,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
         // define topic/partitions to consume from
         final List<TopicPartition> topicPartitions = kafkaCursors
                 .stream()
-                .map(cursor -> new TopicPartition(topic, cursor.getPartition()))
+                .map(cursor -> new TopicPartition(cursor.getTopic(), cursor.getPartition()))
                 .collect(Collectors.toList());
         kafkaConsumer.assign(topicPartitions);
 
@@ -68,9 +64,8 @@ public class NakadiKafkaConsumer implements EventConsumer {
         eventQueue = StreamSupport
                 .stream(records.spliterator(), false)
                 .map(record -> {
-                    final Cursor cursor = kafkaCursor(record.partition(), record.offset()).asNakadiCursor();
-                    return new ConsumedEvent(record.value(), record.topic(), cursor.getPartition(),
-                            cursor.getOffset());
+                    final KafkaCursor cursor = new KafkaCursor(record.topic(), record.partition(), record.offset());
+                    return new ConsumedEvent(record.value(), cursor.toNakadiCursor());
                 })
                 .collect(Collectors.toCollection(Lists::newLinkedList));
     }

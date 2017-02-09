@@ -153,9 +153,9 @@ public class KafkaFactory {
         return this.getConsumer(properties);
     }
 
-    public NakadiKafkaConsumer createNakadiConsumer(final String clientId, final String topic,
-                                                    final List<KafkaCursor> kafkaCursors, final long pollTimeout) {
-        return new NakadiKafkaConsumer(getConsumer(clientId), topic, kafkaCursors, pollTimeout);
+    public NakadiKafkaConsumer createNakadiConsumer(final String clientId, final List<KafkaCursor> kafkaCursors,
+                                                    final long pollTimeout) {
+        return new NakadiKafkaConsumer(getConsumer(clientId), kafkaCursors, pollTimeout);
     }
 
 }
