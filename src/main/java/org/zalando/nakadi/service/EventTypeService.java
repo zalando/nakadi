@@ -1,6 +1,10 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -23,24 +27,18 @@ import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
-import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
@@ -52,26 +50,28 @@ public class EventTypeService {
     private final TopicRepository topicRepository;
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
-    private final UUIDGenerator uuidGenerator;
-    private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final SchemaEvolutionService schemaEvolutionService;
+    private final PartitionsCalculator partitionsCalculator;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
-    public EventTypeService(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
-                            final PartitionResolver partitionResolver, final Enrichment enrichment,
-                            final UUIDGenerator uuidGenerator,
-                            final FeatureToggleService featureToggleService,
+    public EventTypeService(final EventTypeRepository eventTypeRepository,
+                            final TopicRepository topicRepository,
+                            final PartitionResolver partitionResolver,
+                            final Enrichment enrichment,
                             final SubscriptionDbRepository subscriptionRepository,
-                            final SchemaEvolutionService schemaEvolutionService) {
+                            final SchemaEvolutionService schemaEvolutionService,
+                            final PartitionsCalculator partitionsCalculator,
+                            final FeatureToggleService featureToggleService) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
-        this.uuidGenerator = uuidGenerator;
-        this.featureToggleService = featureToggleService;
         this.subscriptionRepository = subscriptionRepository;
         this.schemaEvolutionService = schemaEvolutionService;
+        this.partitionsCalculator = partitionsCalculator;
+        this.featureToggleService = featureToggleService;
     }
 
     public List<EventType> list() {
@@ -80,24 +80,24 @@ public class EventTypeService {
 
     public Result<Void> create(final EventTypeBase eventType) {
         try {
-            assignTopic(eventType);
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
-            final EventType savedEventType =  eventTypeRepository.saveEventType(eventType);
-            topicRepository.createTopic(savedEventType);
+            final String topicName = topicRepository.createTopic(
+                    partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
+                    eventType.getOptions().getRetentionTime());
+            eventType.setTopic(topicName);
+            eventTypeRepository.saveEventType(eventType);
             return Result.ok();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
             LOG.debug("Failed to create EventType.", e);
-            return Result.problem(e.asProblem());
-        } catch (final TopicCreationException e) {
-            LOG.error("Problem creating kafka topic. Rolling back event type database registration.", e);
-
-            try {
-                eventTypeRepository.removeEventType(eventType.getTopic());
-            } catch (final NakadiException e1) {
-                return Result.problem(e.asProblem());
+            if (null != eventType.getTopic()) {
+                try {
+                    topicRepository.deleteTopic(eventType.getTopic());
+                } catch (final TopicDeletionException ex) {
+                    LOG.warn("failed to delete topic for event type that failed to be created", ex);
+                }
             }
             return Result.problem(e.asProblem());
         } catch (final NakadiException e) {
@@ -171,9 +171,9 @@ public class EventTypeService {
         }
     }
 
-    private EventTypeStatistics validateStatisticsUpdate(final EventTypeStatistics existing,
-                                                         final EventTypeStatistics newStatistics)
-            throws InvalidEventTypeException {
+    private EventTypeStatistics validateStatisticsUpdate(
+            final EventTypeStatistics existing,
+            final EventTypeStatistics newStatistics) throws InvalidEventTypeException {
         if (existing != null && newStatistics == null) {
             return existing;
         }
@@ -234,10 +234,6 @@ public class EventTypeService {
         if (!absentFields.isEmpty()) {
             throw new InvalidEventTypeException("partition_key_fields " + absentFields + " absent in schema");
         }
-    }
-
-    private void assignTopic(final EventTypeBase eventType) {
-        eventType.setTopic(uuidGenerator.randomUUID().toString());
     }
 
     private String convertToJSONPointer(final String value) {

@@ -8,7 +8,8 @@ import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
-import org.zalando.nakadi.domain.Cursor;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 
 import java.io.IOException;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.when;
@@ -59,6 +61,19 @@ public class PartitionsControllerAT extends BaseAT {
                 .map(pInfo -> Integer.toString(pInfo.partition()))
                 .collect(Collectors.toSet());
         assertThat(partitions, equalTo(actualPartitions));
+    }
+
+    @Test
+    public void testBeginShownForNoEvents() throws IOException {
+        final EventType eventType = NakadiTestUtils.createEventType();
+        when().get(String.format("/event-types/%s/partitions", eventType.getName())).then()
+                .statusCode(HttpStatus.OK.value())
+                .body("oldest_available_offset[0]", equalTo("0"))
+                .body("newest_available_offset[0]", equalTo("BEGIN"));
+        when().get(String.format("/event-types/%s/partitions/%d", eventType.getName(), 0)).then()
+                .statusCode(HttpStatus.OK.value())
+                .body("oldest_available_offset", equalTo("0"))
+                .body("newest_available_offset", equalTo("BEGIN"));
     }
 
     @Test

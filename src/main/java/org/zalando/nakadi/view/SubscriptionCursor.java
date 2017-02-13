@@ -1,4 +1,4 @@
-package org.zalando.nakadi.domain;
+package org.zalando.nakadi.view;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
