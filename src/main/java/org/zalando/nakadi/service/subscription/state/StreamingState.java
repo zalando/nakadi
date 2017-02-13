@@ -200,7 +200,7 @@ class StreamingState extends State {
 
         final String eventType = getContext().getEventTypesForTopics().get(partitionKey.getTopic());
         final String token = getContext().getCursorTokenService().generateToken();
-        final SubscriptionCursor cursor = SubscriptionCursor.fromNakadiCursor(
+        final SubscriptionCursor cursor = getContext().getCursorConverter().convert(
                 partitionKey.createKafkaCursor(offset).toNakadiCursor(),
                 eventType,
                 token);

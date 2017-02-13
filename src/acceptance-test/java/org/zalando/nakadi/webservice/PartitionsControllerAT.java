@@ -68,11 +68,11 @@ public class PartitionsControllerAT extends BaseAT {
         final EventType eventType = NakadiTestUtils.createEventType();
         when().get(String.format("/event-types/%s/partitions", eventType.getName())).then()
                 .statusCode(HttpStatus.OK.value())
-                .body("oldest_available_offset[0]", equalTo("0"))
+                .body("oldest_available_offset[0]", equalTo("000000000000000000"))
                 .body("newest_available_offset[0]", equalTo("BEGIN"));
         when().get(String.format("/event-types/%s/partitions/%d", eventType.getName(), 0)).then()
                 .statusCode(HttpStatus.OK.value())
-                .body("oldest_available_offset", equalTo("0"))
+                .body("oldest_available_offset", equalTo("000000000000000000"))
                 .body("newest_available_offset", equalTo("BEGIN"));
     }
 

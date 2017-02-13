@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
+import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.view.Cursor;
 import kafka.admin.AdminUtils;
 import kafka.utils.ZkUtils;
@@ -67,7 +68,8 @@ public class KafkaTestHelper {
                     }
                     else {
                         final long lastEventOffset = toKafkaOffset(cursor.getOffset()) - 1;
-                        return new Cursor(cursor.getPartition(), toNakadiOffset(lastEventOffset));
+                        return new Cursor(cursor.getPartition(),
+                                StringUtils.leftPad(toNakadiOffset(lastEventOffset), 18, '0'));
                     }
                 })
                 .collect(Collectors.toList());

@@ -15,7 +15,7 @@ public class Partition {
             this.partition = partition;
         }
 
-        public KafkaCursor createKafkaCursor(long offset) {
+        public KafkaCursor createKafkaCursor(final long offset) {
             return new KafkaCursor(
                     topic,
                     KafkaCursor.toKafkaPartition(partition),
