@@ -48,17 +48,6 @@ public class SubscriptionLoadAT extends BaseAT {
         }
     }
 
-    /**
-     * Test does:
-     * - creates 2 event types with 8 partitions each
-     * - posts 10 events to each partition
-     * - creates subscription for all event types
-     * - consumes all events with 7 consumers at the same time
-     * - checks that everything was consumed
-     * - measures time of consumption
-     * - checks if every consumer was used at least once
-     * - checks that data was delivered only once
-     */
     @Test(timeout = 30000)
     public void testSubscriptionLoad() throws IOException, InterruptedException {
         // create event types
@@ -81,7 +70,7 @@ public class SubscriptionLoadAT extends BaseAT {
 
         // stream all the data.
         final Map<String, String> receivedEvents = streamAllData(
-                clients, MESSAGES_PER_EVENT_TYPE * eventTypeList.size());
+                clients, MESSAGES_PER_EVENT_TYPE * EVENT_TYPE_COUNT);
         timeLogger.mark("Receive and commit " + receivedEvents.size() + " events");
 
         // Close all connections
@@ -197,7 +186,7 @@ public class SubscriptionLoadAT extends BaseAT {
                                     .map(StreamBatch::getCursor).collect(
                                             Collectors.groupingBy(c -> c.getEventType() + "_" + c.getPartition()));
                             cursors.values().forEach(joinedCursors -> joinedCursors.sort(
-                                    Comparator.comparing(f -> -Integer.valueOf(f.getOffset()))));
+                                    Comparator.comparing(f -> Integer.valueOf(f.getOffset()))));
                             NakadiTestUtils.commitCursors(
                                     client.getSubscriptionId(),
                                     cursors.values().stream().map(c -> c.get(0)).collect(Collectors.toList()),

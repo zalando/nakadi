@@ -96,6 +96,8 @@ nakadi:
   stream:
     default:
       commitTimeout: 5 # seconds
+  subscription:
+    max_partitions: 30
 
 ---
 

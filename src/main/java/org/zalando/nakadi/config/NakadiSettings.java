@@ -29,6 +29,7 @@ public class NakadiSettings {
                           @Value("${nakadi.kafka.poll.timeoutMs}") final long kafkaPollTimeoutMs,
                           @Value("${nakadi.kafka.send.timeoutMs}") final long kafkaSendTimeoutMs,
                           @Value("${nakadi.timeline.wait.timeoutMs}") final long timelineWaitTimeoutMs,
+                          @Value("${nakadi.event.max.bytes}") final long eventMaxBytes,
                           @Value("${nakadi.subscription.max_partitions}") final int maxSubscriptionPartitions) {
         this.maxTopicPartitionCount = maxTopicPartitionCount;
         this.defaultTopicPartitionCount = defaultTopicPartitionCount;
