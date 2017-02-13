@@ -25,7 +25,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
 
         cache = CacheBuilder.newBuilder()
                 .maximumSize(100)
-                .expireAfterWrite(5, TimeUnit.SECONDS)
+                .expireAfterWrite(30, TimeUnit.SECONDS)
                 .build(new CacheLoader<Feature, Boolean>() {
                     @Override
                     public Boolean load(final Feature key) throws Exception {
