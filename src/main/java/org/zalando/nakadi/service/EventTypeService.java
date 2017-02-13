@@ -35,6 +35,7 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
@@ -189,8 +190,11 @@ public class EventTypeService {
 
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {
-            final JSONObject schemaAsJson = new JSONObject(eventType.getSchema().getSchema());
+            final String eventTypeSchema = eventType.getSchema().getSchema();
 
+            JsonUtils.checkEventTypeSchemaValid(eventTypeSchema);
+
+            final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
             final Schema schema = SchemaLoader.load(schemaAsJson);
 
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {

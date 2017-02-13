@@ -621,7 +621,9 @@ public class EventTypeControllerTest {
         final EventType eventType = buildDefaultEventType();
         eventType.getSchema().setSchema("invalid-json");
 
-        final Problem expectedProblem = new InvalidEventTypeException("schema must be a valid json").asProblem();
+        final Problem expectedProblem =
+                new InvalidEventTypeException(
+                        "schema must be a valid json: Unexpected token 'invalid' on line 1, char 1").asProblem();
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
                 matchesProblem(expectedProblem))));
