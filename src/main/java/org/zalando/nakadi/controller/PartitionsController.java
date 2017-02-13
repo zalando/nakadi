@@ -55,8 +55,8 @@ public class PartitionsController {
                         .map(stat -> new TopicPartition(
                                 eventType.getName(),
                                 stat.getPartition(),
-                                Cursor.fromTopicPosition(stat.getFirst()).getOffset(),
-                                Cursor.fromTopicPosition(stat.getLast()).getOffset()))
+                                Cursor.fromNakadiCursor(stat.getFirst()).getOffset(),
+                                Cursor.fromNakadiCursor(stat.getLast()).getOffset()))
                         .collect(Collectors.toList());
                 return ok().body(result);
             }
@@ -84,8 +84,8 @@ public class PartitionsController {
                         .map(tp -> new TopicPartition(
                                 eventType.getName(),
                                 tp.getPartition(),
-                                Cursor.fromTopicPosition(tp.getFirst()).getOffset(),
-                                Cursor.fromTopicPosition(tp.getLast()).getOffset()));
+                                Cursor.fromNakadiCursor(tp.getFirst()).getOffset(),
+                                Cursor.fromNakadiCursor(tp.getLast()).getOffset()));
 
                 if (!result.isPresent()) {
                     return create(Problem.valueOf(NOT_FOUND, "partition not found"), request);

@@ -22,10 +22,10 @@ public class Cursor {
         this.offset = offset;
     }
 
-    public static Cursor fromTopicPosition(final NakadiCursor position) {
+    public static Cursor fromNakadiCursor(final NakadiCursor cursor) {
         return new Cursor(
-                position.getPartition(),
-                position.getOffset().equals("-1") ? BEFORE_OLDEST_OFFSET : position.getOffset()
+                cursor.getPartition(),
+                cursor.getOffset().equals("-1") ? BEFORE_OLDEST_OFFSET : cursor.getOffset()
         );
     }
 

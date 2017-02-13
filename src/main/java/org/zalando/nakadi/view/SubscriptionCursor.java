@@ -1,9 +1,9 @@
 package org.zalando.nakadi.view;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
+import org.zalando.nakadi.domain.NakadiCursor;
 
 @Immutable
 public class SubscriptionCursor extends Cursor {
@@ -54,6 +54,16 @@ public class SubscriptionCursor extends Cursor {
         result = 31 * result + (eventType != null ? eventType.hashCode() : 0);
         result = 31 * result + (cursorToken != null ? cursorToken.hashCode() : 0);
         return result;
+    }
+
+    public static SubscriptionCursor fromNakadiCursor(
+            final NakadiCursor position, final String eventType, final String token) {
+        final Cursor oldCursor = Cursor.fromNakadiCursor(position);
+        return new SubscriptionCursor(
+                oldCursor.getPartition(),
+                oldCursor.getOffset(),
+                eventType,
+                token);
     }
 
     @Override

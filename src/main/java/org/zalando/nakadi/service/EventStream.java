@@ -155,7 +155,7 @@ public class EventStream {
             throws IOException {
         // create stream event batch for current partition and send it; if there were
         // no events, it will be just a keep-alive
-        final String streamEvent = createStreamEvent(Cursor.fromTopicPosition(topicPosition), currentBatch);
+        final String streamEvent = createStreamEvent(Cursor.fromNakadiCursor(topicPosition), currentBatch);
         outputStream.write(streamEvent.getBytes(UTF8));
         outputStream.flush();
     }

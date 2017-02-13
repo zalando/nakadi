@@ -1,16 +1,6 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.view.Cursor;
-import org.zalando.nakadi.view.SubscriptionCursor;
-import org.zalando.nakadi.service.EventStream;
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +15,14 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.service.EventStream;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.view.SubscriptionCursor;
 
 
 class StreamingState extends State {
@@ -66,7 +64,7 @@ class StreamingState extends State {
 
     private void checkCommitTimeout() {
         final long currentMillis = System.currentTimeMillis();
-        final boolean hasUncommitted = offsets.values().stream().filter(d -> !d.isCommitted()).findAny().isPresent();
+        final boolean hasUncommitted = offsets.values().stream().anyMatch(d -> !d.isCommitted());
         if (hasUncommitted) {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
@@ -110,7 +108,7 @@ class StreamingState extends State {
             return;
         }
 
-        if(isSubscriptionConsumptionBlocked()) {
+        if (isSubscriptionConsumptionBlocked()) {
             final String message = "Consumption is blocked";
             sendMetadata(message);
             shutdownGracefully(message);
@@ -128,7 +126,7 @@ class StreamingState extends State {
                 final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(),
                         String.valueOf(tp.partition()));
                 Optional.ofNullable(offsets.get(pk))
-                        .ifPresent(pd -> records.records(tp).stream()
+                        .ifPresent(pd -> records.records(tp)
                                 .forEach(record -> pd.addEventFromKafka(record.offset(), record.value())));
             }
             addTask(this::streamToOutput);
@@ -184,11 +182,10 @@ class StreamingState extends State {
     }
 
     private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
-        final Optional<String> metadata) {
+                           final Optional<String> metadata) {
         try {
             final long numberOffset = offsets.get(pk).getSentOffset();
-            final String offset = numberOffset < 0 ? Cursor.BEFORE_OLDEST_OFFSET : String.valueOf(numberOffset);
-            final String batch = serializeBatch(pk, offset, new ArrayList<>(data.values()), metadata);
+            final String batch = serializeBatch(pk, numberOffset, new ArrayList<>(data.values()), metadata);
             getOut().streamData(batch.getBytes(EventStream.UTF8));
             batchesSent++;
         } catch (final IOException e) {
@@ -197,13 +194,16 @@ class StreamingState extends State {
         }
     }
 
-    private String serializeBatch(final Partition.PartitionKey partitionKey, final String offset,
+    private String serializeBatch(final Partition.PartitionKey partitionKey, final long offset,
                                   final List<String> events, final Optional<String> metadata)
             throws JsonProcessingException {
 
         final String eventType = getContext().getEventTypesForTopics().get(partitionKey.getTopic());
         final String token = getContext().getCursorTokenService().generateToken();
-        final SubscriptionCursor cursor = new SubscriptionCursor(partitionKey.getPartition(), offset, eventType, token);
+        final SubscriptionCursor cursor = SubscriptionCursor.fromNakadiCursor(
+                partitionKey.createKafkaCursor(offset).toNakadiCursor(),
+                eventType,
+                token);
         final String cursorSerialized = getContext().getObjectMapper().writeValueAsString(cursor);
 
         final StringBuilder builder = new StringBuilder()
@@ -211,12 +211,11 @@ class StreamingState extends State {
                 .append(cursorSerialized);
         if (!events.isEmpty()) {
             builder.append(",\"events\":[");
-            events.stream().forEach(event -> builder.append(event).append(","));
+            events.forEach(event -> builder.append(event).append(","));
             builder.deleteCharAt(builder.length() - 1).append("]");
         }
-        if (metadata.isPresent()) {
-            builder.append(",\"info\":{\"debug\":\"").append(metadata.get()).append("\"}");
-        }
+        metadata.ifPresent(s -> builder.append(",\"info\":{\"debug\":\"").append(s).append("\"}"));
+
         builder.append("}").append(EventStream.BATCH_SEPARATOR);
         return builder.toString();
     }
