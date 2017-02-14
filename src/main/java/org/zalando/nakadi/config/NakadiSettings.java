@@ -74,4 +74,8 @@ public class NakadiSettings {
         return eventMaxBytes;
     }
 
+    public long getTimelineWaitTimeoutMs() {
+        return 1000;
+    }
+
 }

@@ -3,6 +3,8 @@ package org.zalando.nakadi.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.Storage;
@@ -22,6 +24,8 @@ import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 @Service
 public class StorageService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(StorageService.class);
+    private static final String DEFAULT_STORAGE = "default";
     private final ObjectMapper objectMapper;
     private final StorageDbRepository storageDbRepository;
 
@@ -108,4 +112,5 @@ public class StorageService {
         }
         return Result.ok();
     }
+
 }

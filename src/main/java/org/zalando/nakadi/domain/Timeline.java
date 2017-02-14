@@ -1,10 +1,10 @@
 package org.zalando.nakadi.domain;
 
+import javax.annotation.Nullable;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import javax.annotation.Nullable;
 
 public class Timeline {
 
@@ -52,6 +52,7 @@ public class Timeline {
     private Date switchedAt;
     private Date cleanupAt;
     private StoragePosition latestPosition;
+    private boolean fake;
 
     public Timeline(
             final String eventType,
@@ -142,6 +143,10 @@ public class Timeline {
         this.cleanupAt = cleanupAt;
     }
 
+    public boolean isFake() {
+        return fake;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -168,4 +173,11 @@ public class Timeline {
     public int hashCode() {
         return id != null ? id.hashCode() : 0;
     }
+
+    public static Timeline createFakeTimeline(final EventType eventType, final Storage storage) {
+        final Timeline timeline = new Timeline(eventType.getName(), 0, storage, eventType.getTopic(), new Date());
+        timeline.fake = true;
+        return timeline;
+    }
+
 }
