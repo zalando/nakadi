@@ -82,7 +82,7 @@ nakadi:
   event.max.bytes: 999000
   timeline.wait.timeoutMs: 40000
   subscription:
-    max_partitions: 100
+    maxPartitions: 100
 
 twintip:
   mapping: /api
@@ -97,7 +97,7 @@ nakadi:
     default:
       commitTimeout: 5 # seconds
   subscription:
-    max_partitions: 30
+    maxPartitions: 30
 
 ---
 

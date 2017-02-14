@@ -116,7 +116,7 @@ public class SubscriptionService {
                 .sum();
         if (totalPartitions > maxSubscriptionPartitions) {
             final String message = String.format(
-                    "total partition count for subscription is %d while only %d allowed",
+                    "total partition count for subscription is %d, but the maximum partition count is %d",
                     totalPartitions, maxSubscriptionPartitions);
             return Result.problem(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, message));
         }

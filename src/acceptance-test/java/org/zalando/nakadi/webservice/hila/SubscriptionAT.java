@@ -17,6 +17,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Subscription;
@@ -114,7 +115,7 @@ public class SubscriptionAT extends BaseAT {
     @Test
     public void testSubscriptionWithManyEventTypesIsCreated() throws IOException {
         final List<String> eventTypes = IntStream.range(0, 30).mapToObj(i -> createEventType())
-                .map(et -> et.getName())
+                .map(EventTypeBase::getName)
                 .collect(Collectors.toList());
         final String subscription = "{\"owning_application\":\"app\",\"event_types\":" +
                 "[" + eventTypes.stream().map(et -> "\"" + et + "\"").collect(Collectors.joining(",")) + "]}";
@@ -145,7 +146,8 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
                 .contentType(JSON)
                 .body("title", equalTo("Unprocessable Entity"))
-                .body("detail", equalTo("total partition count for subscription is 31 while only 30 allowed"));
+                .body("detail", equalTo(
+                        "total partition count for subscription is 31, but the maximum partition count is 30"));
 
     }
 

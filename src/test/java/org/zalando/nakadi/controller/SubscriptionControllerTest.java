@@ -264,8 +264,8 @@ public class SubscriptionControllerTest {
                 .withOwningApplication("app")
                 .withEventTypes(eventTypes)
                 .buildSubscriptionBase();
-        final Problem expectedProblem = Problem.valueOf(
-                UNPROCESSABLE_ENTITY, "total partition count for subscription is 6 while only 5 allowed");
+        final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
+                "total partition count for subscription is 6, but the maximum partition count is 5");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
