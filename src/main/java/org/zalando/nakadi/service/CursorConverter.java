@@ -12,6 +12,8 @@ import org.zalando.nakadi.view.SubscriptionCursor;
 public class CursorConverter {
     private final FeatureToggleService featureToggleService;
 
+    public static final int CURSOR_OFFSET_LENGTH = 18;
+
     @Autowired
     public CursorConverter(final FeatureToggleService featureToggleService) {
         this.featureToggleService = featureToggleService;
@@ -25,7 +27,7 @@ public class CursorConverter {
             offset = Cursor.BEFORE_OLDEST_OFFSET;
         } else {
             if (zeroPaddedOffsets) {
-                offset = StringUtils.leftPad(nakadiCursor.getOffset(), 18, '0');
+                offset = StringUtils.leftPad(nakadiCursor.getOffset(), CURSOR_OFFSET_LENGTH, '0');
             } else {
                 offset = nakadiCursor.getOffset();
             }
