@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
+import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
@@ -23,16 +24,19 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -40,6 +44,7 @@ import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -61,15 +66,17 @@ public class EventPublisherTest {
     private static final int NAKADI_POLL_TIMEOUT = 10000;
     private static final int NAKADI_EVENT_MAX_BYTES = 900;
     private static final long TOPIC_RETENTION_TIME_MS = 150;
+    private static final long TIMELINE_WAIT_TIMEOUT_MS = 1000;
 
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
+    private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final Enrichment enrichment = mock(Enrichment.class);
-    private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0,
-            TOPIC_RETENTION_TIME_MS, 0, 60, NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_EVENT_MAX_BYTES);
+    private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
+            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES);
     private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver,
-            enrichment, nakadiSettings);
+            enrichment, nakadiSettings, timelineSync);
 
     @Test
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
@@ -97,6 +104,27 @@ public class EventPublisherTest {
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
         verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
+    }
+
+    @Test
+    public void whenPublishEventTypeIsLockedAndReleased() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONArray batch = buildDefaultBatch(1);
+        mockSuccessfulValidation(eventType);
+
+        final Closeable etCloser = mock(Closeable.class);
+        Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenReturn(etCloser);
+
+        publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
+
+        verify(timelineSync, times(1)).workWithEventType(eq(eventType.getName()), eq(TIMELINE_WAIT_TIMEOUT_MS));
+        verify(etCloser, times(1)).close();
+    }
+
+    @Test(expected = EventTypeTimeoutException.class)
+    public void whenPublishAndTimelineLockTimedOutThenException() throws Exception {
+        Mockito.when(timelineSync.workWithEventType(any(String.class), anyLong())).thenThrow(new TimeoutException());
+        publisher.publish(buildDefaultBatch(0).toString(), "blahET", FULL_ACCESS_CLIENT);
     }
 
     @Test

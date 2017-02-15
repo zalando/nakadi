@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
+import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.EventValidationException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -24,11 +25,15 @@ import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 @Component
@@ -42,28 +47,34 @@ public class EventPublisher {
     private final EventTypeCache eventTypeCache;
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
+    private final TimelineSync timelineSync;
 
     @Autowired
     public EventPublisher(final TopicRepository topicRepository,
                           final EventTypeCache eventTypeCache,
                           final PartitionResolver partitionResolver,
                           final Enrichment enrichment,
-                          final NakadiSettings nakadiSettings) {
+                          final NakadiSettings nakadiSettings,
+                          final TimelineSync timelineSync) {
         this.topicRepository = topicRepository;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.nakadiSettings = nakadiSettings;
+        this.timelineSync = timelineSync;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
-            throws NoSuchEventTypeException, InternalNakadiException {
-        final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+            throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException {
+
+        Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
-
-        client.checkScopes(eventType.getWriteScopes());
-
         try {
+            publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
+
+            final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+            client.checkScopes(eventType.getWriteScopes());
+
             validate(batch, eventType);
             partition(batch, eventType);
             enrich(batch, eventType);
@@ -82,6 +93,21 @@ public class EventPublisher {
         } catch (final EventPublishingException e) {
             LOG.error("error publishing event", e);
             return failed(batch);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Failed to wait for timeline switch", e);
+            throw new EventTypeTimeoutException("Event type is currently in maintenance, please repeat request");
+        } catch (final TimeoutException e) {
+            LOG.error("Failed to wait for timeline switch", e);
+            throw new EventTypeTimeoutException("Event type is currently in maintenance, please repeat request");
+        } finally {
+            try {
+                if (publishingCloser != null) {
+                    publishingCloser.close();
+                }
+            } catch (final IOException e) {
+                LOG.error("Exception occurred when releasing usage of event-type", e);
+            }
         }
     }
 

@@ -1661,7 +1661,7 @@ definitions:
           Name of this EventType. The name is constrained by a regular expression.
 
           Note: the name can encode the owner/responsible for this EventType and ideally should
-          follow a common pattern that makes it easy to read an understand, but this level of
+          follow a common pattern that makes it easy to read and understand, but this level of
           structure is not enforced. For example a team name and data type can be used such as
           'acme-team.price-change'.
         pattern: '[a-zA-Z][-0-9a-zA-Z_]*(\.[a-zA-Z][-0-9a-zA-Z_]*)*'

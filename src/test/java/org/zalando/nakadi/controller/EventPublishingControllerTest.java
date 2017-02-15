@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
+import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
@@ -108,6 +109,15 @@ public class EventPublishingControllerTest {
                 .publish(any(String.class), eq(TOPIC), any(Client.class));
 
         postBatch(TOPIC, "invalid json array").andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void whenEventPublishTimeoutThen503() throws Exception {
+        Mockito.when(publisher.publish(any(), any(), any())).thenThrow(new EventTypeTimeoutException(""));
+
+        postBatch(TOPIC, EVENT_BATCH)
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(status().isServiceUnavailable());
     }
 
     @Test

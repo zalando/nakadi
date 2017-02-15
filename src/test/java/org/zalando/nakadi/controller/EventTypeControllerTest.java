@@ -1,41 +1,12 @@
 package org.zalando.nakadi.controller;
 
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
-import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
-import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
-import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.UUID;
-
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.io.Resources;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -73,6 +44,7 @@ import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventTypeService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
@@ -81,16 +53,45 @@ import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Charsets;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.io.Resources;
-
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
+
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
+
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
+import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
+import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
+import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
+import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventTypeControllerTest {
 
@@ -111,6 +112,7 @@ public class EventTypeControllerTest {
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+    private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaEvolutionService();
 
@@ -123,12 +125,12 @@ public class EventTypeControllerTest {
     public void init() throws Exception {
 
         final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, NAKADI_EVENT_MAX_BYTES);
+                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", objectMapper, nakadiSettings);
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
-                featureToggleService);
+                featureToggleService, timelineSync, nakadiSettings);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
@@ -384,7 +386,7 @@ public class EventTypeControllerTest {
     @Test
     public void whenDeleteEventTypeAndTopicDeletionExceptionThen503() throws Exception {
 
-        final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE, "dummy message");
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         final EventType eventType = buildDefaultEventType();
 
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
@@ -515,7 +517,7 @@ public class EventTypeControllerTest {
 
         Mockito.doNothing().when(eventTypeRepository).removeEventType(et.getName());
 
-        final Problem expectedProblem = Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE);
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE);
 
         postEventType(et).andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content().string(
@@ -621,7 +623,9 @@ public class EventTypeControllerTest {
         final EventType eventType = buildDefaultEventType();
         eventType.getSchema().setSchema("invalid-json");
 
-        final Problem expectedProblem = new InvalidEventTypeException("schema must be a valid json").asProblem();
+        final Problem expectedProblem =
+                new InvalidEventTypeException(
+                        "schema must be a valid json: Unexpected token 'invalid' on line 1, char 1").asProblem();
 
         postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
                 matchesProblem(expectedProblem))));
@@ -730,6 +734,32 @@ public class EventTypeControllerTest {
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().string(new StringContains(
                         "Field \\\"options.retention_time\\\" can not be less than 100")));
+    }
+
+    @Test
+    public void whenUpdateEventTypeAndTimelineWaitTimeoutThen503() throws Exception {
+        when(timelineSync.workWithEventType(any(), anyLong())).thenThrow(new TimeoutException());
+        final EventType eventType = buildDefaultEventType();
+
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
+                "Event type is currently in maintenance, please repeat request");
+
+        putEventType(eventType, eventType.getName(), "nakadi")
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenDeleteEventTypeAndTimelineWaitTimeoutThen503() throws Exception {
+        when(timelineSync.workWithEventType(any(), anyLong())).thenThrow(new TimeoutException());
+        final EventType eventType = buildDefaultEventType();
+
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
+                "Event type is currently in maintenance, please repeat request");
+
+        deleteEventType(eventType.getName())
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {

@@ -162,7 +162,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 state.name()).collect(Collectors.joining(":")).getBytes(CHARSET);
     }
 
-    private static Partition deserializeNode(final Partition.PartitionKey key, final byte[] data) {
+    public static Partition deserializeNode(final Partition.PartitionKey key, final byte[] data) {
         final String[] parts = new String(data, CHARSET).split(":");
         return new Partition(
                 key,
