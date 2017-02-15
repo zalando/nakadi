@@ -18,6 +18,7 @@ import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.EventTypeService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.junit.Before;
@@ -194,6 +195,11 @@ public abstract class AuthenticationTest {
             final SecuritySettings securitySettings = mock(SecuritySettings.class);
             doReturn(authMode).when(securitySettings).getAuthMode();
             return securitySettings;
+        }
+
+        @Bean
+        public TimelineSync timelineSync() {
+            return mock(TimelineSync.class);
         }
 
     }

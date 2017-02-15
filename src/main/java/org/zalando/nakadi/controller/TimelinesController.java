@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -25,13 +24,10 @@ public class TimelinesController {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimelinesController.class);
 
-    private final SecuritySettings securitySettings;
     private final TimelineService timelineService;
 
     @Autowired
-    public TimelinesController(final SecuritySettings securitySettings,
-                               final TimelineService timelineService) {
-        this.securitySettings = securitySettings;
+    public TimelinesController(final TimelineService timelineService) {
         this.timelineService = timelineService;
     }
 
