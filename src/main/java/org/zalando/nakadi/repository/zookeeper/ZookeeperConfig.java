@@ -14,7 +14,7 @@ public class ZookeeperConfig {
         return new ZooKeeperHolder(
                 environment.getProperty("nakadi.zookeeper.brokers"),
                 environment.getProperty("nakadi.zookeeper.kafkaNamespace", ""),
-                environment.getProperty("nakadi.zookeeper.exhibitor.brokers", ""),
+                environment.getProperty("nakadi.zookeeper.exhibitor.brokers"),
                 Integer.parseInt(environment.getProperty("nakadi.zookeeper.exhibitor.port", "0"))
         );
     }

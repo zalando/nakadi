@@ -136,16 +136,12 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
-    private long getTimelineUpdateTimeout() {
-        return (long) (nakadiSettings.getTimelineWaitTimeoutMs() * 0.9);
-    }
-
     private void switchTimeline(final EventType eventType,
                                 final Timeline nextTimeline,
                                 final Runnable switcher) throws InterruptedException {
         try {
             timelineDbRepository.createTimeline(nextTimeline);
-            timelineSync.startTimelineUpdate(eventType.getName(), getTimelineUpdateTimeout());
+            timelineSync.startTimelineUpdate(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
             switcher.run();
             timelineDbRepository.updateTimelime(nextTimeline);
         } finally {
