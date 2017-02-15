@@ -67,12 +67,11 @@ public class Timeline {
         this.createdAt = createdAt;
     }
 
-    @Nullable
     public UUID getId() {
         return id;
     }
 
-    public void setId(@Nullable final UUID id) {
+    public void setId(final UUID id) {
         this.id = id;
     }
 
@@ -172,6 +171,17 @@ public class Timeline {
     @Override
     public int hashCode() {
         return id != null ? id.hashCode() : 0;
+    }
+
+    public static Timeline createTimeline(
+            final String eventType,
+            final int order,
+            final Storage storage,
+            final String topic,
+            final Date createdAt) {
+        final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
+        timeline.setId(UUID.randomUUID());
+        return timeline;
     }
 
     public static Timeline createFakeTimeline(final EventType eventType, final Storage storage) {

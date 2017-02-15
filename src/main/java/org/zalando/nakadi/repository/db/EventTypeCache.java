@@ -174,17 +174,21 @@ public class EventTypeCache {
 
     public Optional<Timeline> getActiveTimeline(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
-        return getCached(name).map(CachedValue::getTimelines)
-                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"))
-                .stream()
+        final List<Timeline> timelines = getTimelines(name);
+        if (timelines == null) {
+            return Optional.empty();
+        }
+
+        return timelines.stream()
                 .filter(t -> t.getSwitchedAt() != null)
                 .max(Comparator.comparing(Timeline::getOrder));
     }
 
     public List<Timeline> getTimelines(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
-        return getCached(name).map(CachedValue::getTimelines)
-                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
+        return getCached(name)
+                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"))
+                .getTimelines();
     }
 
     private void onZkEvent(final PathChildrenCacheEvent event) {

@@ -90,6 +90,7 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler(TimelineException.class)
     public ResponseEntity<Problem> handleTimelineException(final TimelineException exception,
                                                            final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
         final Throwable cause = exception.getCause();
         if (cause instanceof NakadiException) {
             final NakadiException ne = (NakadiException) cause;
