@@ -41,7 +41,7 @@ public interface TopicRepository {
     EventConsumer createEventConsumer(String clientId, List<NakadiCursor> positions) throws NakadiException,
             InvalidCursorException;
 
-    int compareOffsets(NakadiCursor first, NakadiCursor second) throws InternalNakadiException;
+    int compareOffsets(NakadiCursor first, NakadiCursor second) throws InvalidCursorException;
 
     void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
 }
