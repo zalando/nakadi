@@ -92,8 +92,9 @@ public class TopicRepositoryHolder {
                     LOG.error("Could not create topic repository", storage.getType(), e);
                     throw new TopicRepositoryException("Could not create topic repository", e);
                 }
+            default:
+                LOG.error("Could not create topic repository. Storage type {} not found", storage.getType());
+                throw new TopicRepositoryException("Could not create topic repository");
         }
-        LOG.error("Could not create topic repository. Storage type {} not found", storage.getType());
-        throw new TopicRepositoryException("Could not create topic repository");
     }
 }

@@ -56,7 +56,7 @@ public class Storage {
             return exhibitorAddress;
         }
 
-        public void setExhibitorAddress(String exhibitorAddress) {
+        public void setExhibitorAddress(final String exhibitorAddress) {
             this.exhibitorAddress = exhibitorAddress;
         }
 
@@ -64,12 +64,12 @@ public class Storage {
             return exhibitorPort;
         }
 
-        public void setExhibitorPort(Integer exhibitorPort) {
+        public void setExhibitorPort(final Integer exhibitorPort) {
             this.exhibitorPort = exhibitorPort;
         }
 
         @Override
-        public boolean equals(Object o) {
+        public boolean equals(final Object o) {
             if (this == o) {
                 return true;
             }

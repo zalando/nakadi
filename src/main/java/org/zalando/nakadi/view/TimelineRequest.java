@@ -9,7 +9,7 @@ public class TimelineRequest {
         return eventType;
     }
 
-    public void setEventType(String eventType) {
+    public void setEventType(final String eventType) {
         this.eventType = eventType;
     }
 
@@ -17,7 +17,7 @@ public class TimelineRequest {
         return storageId;
     }
 
-    public void setStorageId(String storageId) {
+    public void setStorageId(final String storageId) {
         this.storageId = storageId;
     }
 }
