@@ -38,7 +38,7 @@ public class ZooKeeperHolder {
 
     private void initExhibitor() throws Exception {
         final RetryPolicy retryPolicy = new ExponentialBackoffRetry(EXHIBITOR_RETRY_TIME, EXHIBITOR_RETRY_MAX);
-        EnsembleProvider ensembleProvider;
+        final EnsembleProvider ensembleProvider;
         if (exhibitorAddresses != null) {
             final Collection<String> exhibitorHosts = Arrays.asList(exhibitorAddresses.split("\\s*,\\s*"));
             final Exhibitors exhibitors = new Exhibitors(exhibitorHosts, exhibitorPort,
@@ -50,7 +50,10 @@ public class ZooKeeperHolder {
         } else {
             ensembleProvider = new FixedEnsembleProvider(zookeeperBrokers + zookeeperKafkaNamespace);
         }
-        zooKeeper = CuratorFrameworkFactory.builder().ensembleProvider(ensembleProvider).retryPolicy(retryPolicy).build();
+        zooKeeper = CuratorFrameworkFactory.builder()
+                .ensembleProvider(ensembleProvider)
+                .retryPolicy(retryPolicy)
+                .build();
         zooKeeper.start();
     }
 
