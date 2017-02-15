@@ -87,6 +87,8 @@ public class TopicRepositoryHolder {
                             new KafkaFactory(new KafkaLocationManager(zooKeeperHolder, kafkaSettings), metricRegistry);
                     final KafkaTopicRepository kafkaTopicRepository = new KafkaTopicRepository(zooKeeperHolder,
                             kafkaFactory, nakadiSettings, kafkaSettings, zookeeperSettings, uuidGenerator);
+                    // check that it does work
+                    kafkaTopicRepository.listTopics();
                     return kafkaTopicRepository;
                 } catch (final Exception e) {
                     LOG.error("Could not create topic repository", storage.getType(), e);
