@@ -1281,8 +1281,6 @@ definitions:
           zk_path:
             description: the Zookeeper path
             type: string
-        required:
-          - exhibitor_address
     required:
       - id
       - storage_type
