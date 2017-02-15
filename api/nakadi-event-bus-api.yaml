@@ -1269,6 +1269,12 @@ definitions:
         description: configuration settings for kafka storage. Only necessary if the storage type is 'kafka'
         type: object
         properties:
+          exhibitor_address:
+            description: the Zookeeper address
+            type: string
+          exhibitor_port:
+            description: the Zookeeper path
+            type: string
           zk_address:
             description: the Zookeeper address
             type: string
@@ -1276,8 +1282,7 @@ definitions:
             description: the Zookeeper path
             type: string
         required:
-          - zk_address
-          - zk_path
+          - exhibitor_address
     required:
       - id
       - storage_type

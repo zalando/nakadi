@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
-import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.TimelineRequest;
@@ -47,6 +46,5 @@ public class TimelinesController {
     public void forbidden(final Exception ex) {
         LOG.debug("Request is forbidden", ex);
     }
-
 
 }

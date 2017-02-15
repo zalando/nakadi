@@ -1,22 +1,6 @@
 package org.zalando.nakadi.controller;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
-
-import java.util.ArrayList;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +16,22 @@ import org.zalando.nakadi.service.StorageService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
+
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
 public class StoragesControllerTest {
@@ -131,7 +130,8 @@ public class StoragesControllerTest {
         final Storage storage = new Storage();
         storage.setId(id);
         storage.setType(Storage.Type.KAFKA);
-        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration("http://localhost", "/path/to/kafka");
+        final Storage.KafkaConfiguration config =
+                new Storage.KafkaConfiguration("https://localhost", 8181, "https://localhost", "/path/to/kafka");
         storage.setConfiguration(config);
 
         return storage;
