@@ -23,7 +23,6 @@ import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -194,18 +193,18 @@ public class CursorsServiceAT extends BaseAT {
 
         final Map<SubscriptionCursor, Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
         assertThat(commitResult, equalTo(
-                new HashMap<SubscriptionCursor, Boolean>() {{
-                    put(new SubscriptionCursor(P1, "000105", etName, token), true);
-                    put(new SubscriptionCursor(P1, "000106", etName, token), true);
-                    put(new SubscriptionCursor(P1, "000102", etName, token), false);
-                    put(new SubscriptionCursor(P1, "000096", etName, token), false);
-                    put(new SubscriptionCursor(P1, "000130", etName, token), true);
-                    put(new SubscriptionCursor(P2, "000800", etName, token), false);
-                    put(new SubscriptionCursor(P2, "000820", etName, token), true);
-                    put(new SubscriptionCursor(P1, "000120", etName, token), false);
-                    put(new SubscriptionCursor(P1, "000121", etName, token), false);
-                    put(new SubscriptionCursor(P2, "000825", etName, token), true);
-                }}
+                ImmutableMap.builder()
+                        .put(new SubscriptionCursor(P1, "000105", etName, token), true)
+                        .put(new SubscriptionCursor(P1, "000106", etName, token), true)
+                        .put(new SubscriptionCursor(P1, "000102", etName, token), false)
+                        .put(new SubscriptionCursor(P1, "000096", etName, token), false)
+                        .put(new SubscriptionCursor(P1, "000130", etName, token), true)
+                        .put(new SubscriptionCursor(P2, "000800", etName, token), false)
+                        .put(new SubscriptionCursor(P2, "000820", etName, token), true)
+                        .put(new SubscriptionCursor(P1, "000120", etName, token), false)
+                        .put(new SubscriptionCursor(P1, "000121", etName, token), false)
+                        .put(new SubscriptionCursor(P2, "000825", etName, token), true)
+                        .build()
         ));
 
         checkCurrentOffsetInZk(P1, "000130");
