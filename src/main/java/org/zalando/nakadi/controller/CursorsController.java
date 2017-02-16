@@ -1,5 +1,7 @@
 package org.zalando.nakadi.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
@@ -44,6 +46,8 @@ import static org.zalando.problem.spring.web.advice.Responses.create;
 @RestController
 public class CursorsController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(CursorsController.class);
+
     private final CursorsService cursorsService;
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
@@ -83,6 +87,10 @@ public class CursorsController {
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
+
+        LOG.debug("[COMMIT_CURSORS]: committing {} cursor(s) for subscription {}", cursors.getItems().size(),
+                subscriptionId);
+
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
@@ -92,12 +100,21 @@ public class CursorsController {
 
         try {
             validateSubscriptionReadScopes(client, subscriptionId);
+
+            LOG.debug("[COMMIT_CURSORS]: scopes validation finished");
+
             final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(streamId, subscriptionId,
                     cursors.getItems());
+
+            LOG.debug("[COMMIT_CURSORS]: commit finished");
+
             final List<CursorCommitResult> items = result.entrySet().stream()
                     .map(entry -> new CursorCommitResult(entry.getKey(), entry.getValue()))
                     .collect(Collectors.toList());
-            final boolean allCommited = result.values().stream().reduce(Boolean::logicalAnd).orElseGet(() -> true);
+            final boolean allCommited = result.values()
+                    .stream()
+                    .reduce(Boolean::logicalAnd)
+                    .orElseGet(() -> true);
             final ItemsWrapper<CursorCommitResult> body = new ItemsWrapper<>(items);
             return allCommited ? noContent().build() : ok(body);
         } catch (final NakadiException e) {
