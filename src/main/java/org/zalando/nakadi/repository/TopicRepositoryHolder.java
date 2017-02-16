@@ -31,7 +31,7 @@ public class TopicRepositoryHolder {
     private final Map<Storage, TopicRepository> storageTopicRepository;
 
     @Autowired
-    public TopicRepositoryHolder(@Qualifier("kafka") TopicRepositoryCreator kafkaRepository) {
+    public TopicRepositoryHolder(@Qualifier("kafka") final TopicRepositoryCreator kafkaRepository) {
         this.readWriteLock = new ReentrantReadWriteLock();
         this.storageTopicRepository = new HashMap<>();
         this.repositoryCreators = new HashMap<>();

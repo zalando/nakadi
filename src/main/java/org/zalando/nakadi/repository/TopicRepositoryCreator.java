@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface TopicRepositoryCreator {
 
-    public TopicRepository createTopicRepository(Storage storage) throws TopicRepositoryException;
+    TopicRepository createTopicRepository(Storage storage) throws TopicRepositoryException;
 
-    public Timeline.StoragePosition createStoragePosition(List<NakadiCursor> offsets) throws NakadiRuntimeException;
+    Timeline.StoragePosition createStoragePosition(List<NakadiCursor> offsets) throws NakadiRuntimeException;
 }
