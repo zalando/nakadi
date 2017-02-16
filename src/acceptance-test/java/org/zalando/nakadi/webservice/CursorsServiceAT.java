@@ -11,7 +11,6 @@ import org.mockito.stubbing.Answer;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -21,8 +20,10 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,20 +44,14 @@ public class CursorsServiceAT extends BaseAT {
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
     private static final String SUBSCRIPTIONS_PATH = "/nakadi/subscriptions";
 
-    private static final String NEW_OFFSET = "newOffset";
-    private static final String OLD_OFFSET = "oldOffset";
-    private static final String OLDEST_OFFSET = "oldestOffset";
+    private static final String NEW_OFFSET = "002_newOffset";
+    private static final String OLD_OFFSET = "001_oldOffset";
+    private static final String OLDEST_OFFSET = "000_oldestOffset";
 
     private static final Answer<Integer> FAKE_OFFSET_COMPARATOR = invocation -> {
         final NakadiCursor c1 = (NakadiCursor) invocation.getArguments()[0];
         final NakadiCursor c2 = (NakadiCursor) invocation.getArguments()[1];
-        if (NEW_OFFSET.equals(c1.getOffset()) && OLD_OFFSET.equals(c2.getOffset())) {
-            return 1;
-        } else if (OLDEST_OFFSET.equals(c1.getOffset()) && OLD_OFFSET.equals(c2.getOffset())) {
-            return -1;
-        } else {
-            return 0;
-        }
+        return c1.getOffset().compareTo(c2.getOffset());
     };
 
     private static final String P1 = "p1";
@@ -177,6 +172,44 @@ public class CursorsServiceAT extends BaseAT {
 
         checkCurrentOffsetInZk(P1, OLD_OFFSET);
         checkCurrentOffsetInZk(P2, NEW_OFFSET);
+    }
+
+    @Test
+    public void whenMultipleCursorsForSamePartitionThenResultsAreCorrect() throws Exception {
+        CURATOR.setData().forPath(offsetPath(P1), "000100".getBytes(UTF_8));
+        CURATOR.setData().forPath(offsetPath(P2), "000800".getBytes(UTF_8));
+
+        testCursors = ImmutableList.of(
+                new SubscriptionCursor(P1, "000105", etName, token),
+                new SubscriptionCursor(P1, "000106", etName, token),
+                new SubscriptionCursor(P1, "000102", etName, token),
+                new SubscriptionCursor(P1, "000096", etName, token),
+                new SubscriptionCursor(P1, "000130", etName, token),
+                new SubscriptionCursor(P2, "000800", etName, token),
+                new SubscriptionCursor(P2, "000820", etName, token),
+                new SubscriptionCursor(P1, "000120", etName, token),
+                new SubscriptionCursor(P1, "000121", etName, token),
+                new SubscriptionCursor(P2, "000825", etName, token)
+        );
+
+        final Map<SubscriptionCursor, Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        assertThat(commitResult, equalTo(
+                new HashMap<SubscriptionCursor, Boolean>() {{
+                    put(new SubscriptionCursor(P1, "000105", etName, token), true);
+                    put(new SubscriptionCursor(P1, "000106", etName, token), true);
+                    put(new SubscriptionCursor(P1, "000102", etName, token), false);
+                    put(new SubscriptionCursor(P1, "000096", etName, token), false);
+                    put(new SubscriptionCursor(P1, "000130", etName, token), true);
+                    put(new SubscriptionCursor(P2, "000800", etName, token), false);
+                    put(new SubscriptionCursor(P2, "000820", etName, token), true);
+                    put(new SubscriptionCursor(P1, "000120", etName, token), false);
+                    put(new SubscriptionCursor(P1, "000121", etName, token), false);
+                    put(new SubscriptionCursor(P2, "000825", etName, token), true);
+                }}
+        ));
+
+        checkCurrentOffsetInZk(P1, "000130");
+        checkCurrentOffsetInZk(P2, "000825");
     }
 
     @Test
