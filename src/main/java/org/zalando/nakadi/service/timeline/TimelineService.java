@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 @Service
 public class TimelineService {
@@ -40,7 +41,7 @@ public class TimelineService {
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
     private final TimelineDbRepository timelineDbRepository;
-    private final TopicRepositoryHolder topicRepositoryHolder;
+    private final TopicRepositoryHolder repositoryHolder;
 
     @Autowired
     public TimelineService(final SecuritySettings securitySettings,
@@ -49,14 +50,14 @@ public class TimelineService {
                            final TimelineSync timelineSync,
                            final NakadiSettings nakadiSettings,
                            final TimelineDbRepository timelineDbRepository,
-                           final TopicRepositoryHolder topicRepositoryHolder) {
+                           final TopicRepositoryHolder repositoryHolder) {
         this.securitySettings = securitySettings;
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
         this.timelineDbRepository = timelineDbRepository;
-        this.topicRepositoryHolder = topicRepositoryHolder;
+        this.repositoryHolder = repositoryHolder;
     }
 
     public void createTimeline(final TimelineRequest timelineRequest, final Client client)
@@ -72,27 +73,23 @@ public class TimelineService {
             final Storage storage = storageDbRepository.getStorage(timelineRequest.getStorageId())
                     .orElseThrow(() -> new NotFoundException("No storage with id: " + timelineRequest.getStorageId()));
             final Timeline activeTimeline = getTimeline(eventType);
-            final TopicRepository currentTopicRepo =
-                    topicRepositoryHolder.getTopicRepository(activeTimeline.getStorage());
-            final TopicRepository nextTopicRepo = topicRepositoryHolder.getTopicRepository(storage);
+            final TopicRepository currentTopicRepo = repositoryHolder.getTopicRepository(activeTimeline.getStorage());
             final List<PartitionStatistics> partitionStatistics =
                     currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline.getTopic()));
 
             if (activeTimeline.isFake()) {
                 LOG.info("Switching from fake timeline to real one. Current topic {}", activeTimeline.getTopic());
-                final Timeline nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
-                        activeTimeline.getOrder() + 1, storage, activeTimeline.getTopic(), new Date());
-                switchTimeline(eventType, nextTimeline, () -> nextTimeline.setSwitchedAt(new Date()));
+                switchTimeline(eventType, Timeline.createTimeline(activeTimeline.getEventType(),
+                        activeTimeline.getOrder() + 1, storage, activeTimeline.getTopic(), new Date()),
+                        (nextTimeline) -> nextTimeline.setSwitchedAt(new Date()));
             } else {
+                final TopicRepository nextTopicRepo = repositoryHolder.getTopicRepository(storage);
                 final String newTopic = nextTopicRepo.createTopic(partitionStatistics.size(),
                         eventType.getOptions().getRetentionTime());
-                final Timeline nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
-                        activeTimeline.getOrder() + 1, storage, newTopic, new Date());
-                LOG.info("Switching timelines. Topics: {} -> {}", activeTimeline.getTopic(), nextTimeline.getTopic());
-                switchTimeline(eventType, nextTimeline, () -> {
-                    final Timeline.StoragePosition storagePosition =
-                            StoragePositionFactory.createStoragePosition(activeTimeline, currentTopicRepo);
-                    activeTimeline.setLatestPosition(storagePosition);
+                LOG.info("Switching timelines. Topics: {} -> {}", activeTimeline.getTopic(), newTopic);
+                switchTimeline(eventType, Timeline.createTimeline(activeTimeline.getEventType(),
+                        activeTimeline.getOrder() + 1, storage, newTopic, new Date()), (nextTimeline) -> {
+                    activeTimeline.setLatestPosition(repositoryHolder.createStoragePosition(activeTimeline));
                     nextTimeline.setSwitchedAt(new Date());
                 });
             }
@@ -127,16 +124,16 @@ public class TimelineService {
     public TopicRepository getTopicRepository(final EventType eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getTimeline(eventType);
-        return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
+        return repositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
     private void switchTimeline(final EventType eventType,
                                 final Timeline nextTimeline,
-                                final Runnable switcher) throws InterruptedException {
+                                final Consumer<Timeline> switcher) throws InterruptedException {
         try {
             timelineDbRepository.createTimeline(nextTimeline);
             timelineSync.startTimelineUpdate(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
-            switcher.run();
+            switcher.accept(nextTimeline);
             timelineDbRepository.updateTimelime(nextTimeline);
         } catch (final Throwable th) {
             LOG.error("Failed to switch timeline for event type {}", eventType.getName(), th);
