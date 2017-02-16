@@ -88,7 +88,7 @@ public class CursorsController {
                                            final NativeWebRequest request,
                                            final Client client) {
 
-        LOG.debug("[COMMIT_CURSORS]: committing {} cursor(s) for subscription {}", cursors.getItems().size(),
+        LOG.debug("[COMMIT_CURSORS] committing {} cursor(s) for subscription {}", cursors.getItems().size(),
                 subscriptionId);
 
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
@@ -101,12 +101,12 @@ public class CursorsController {
         try {
             validateSubscriptionReadScopes(client, subscriptionId);
 
-            LOG.debug("[COMMIT_CURSORS]: scopes validation finished");
+            LOG.debug("[COMMIT_CURSORS] scopes validation finished");
 
             final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(streamId, subscriptionId,
                     cursors.getItems());
 
-            LOG.debug("[COMMIT_CURSORS]: commit finished");
+            LOG.debug("[COMMIT_CURSORS] commit finished");
 
             final List<CursorCommitResult> items = result.entrySet().stream()
                     .map(entry -> new CursorCommitResult(entry.getKey(), entry.getValue()))

@@ -81,7 +81,7 @@ public class CursorsService {
 
         validateStreamId(cursors, streamId, subscriptionId);
 
-        LOG.debug("[COMMIT_CURSORS]: stream IDs validation finished");
+        LOG.debug("[COMMIT_CURSORS] stream IDs validation finished");
 
         final Iterator<EventTypePartition> distinctPartitions = cursors.stream()
                 .map(c -> new EventTypePartition(c.getEventType(), c.getPartition()))
@@ -100,7 +100,7 @@ public class CursorsService {
                     etPartition).iterator();
             partitionCommits.put(etPartition, commitResultIterator);
 
-            LOG.debug("[COMMIT_CURSORS]: finished cursors commit for partition {}", etPartition);
+            LOG.debug("[COMMIT_CURSORS] committed {} cursor(s) for partition {}", partitionCursors.size(), etPartition);
         }
 
         return cursors.stream()
@@ -198,6 +198,9 @@ public class CursorsService {
                         }
                     })
                     .collect(Collectors.toList());
+
+            LOG.debug("[COMMIT_CURSORS] finished validation of {} cursor(s) for partition {}", cursors.size(),
+                    eventTypePartition);
 
             return commitPartitionCursors(subscriptionId, eventType.getTopic(), nakadiCursors, eventTypePartition);
 
