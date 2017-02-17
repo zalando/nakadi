@@ -48,7 +48,7 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
     }
 
     @Override
-    public TopicRepository createTopicRepository(final Storage storage) {
+    public TopicRepository createTopicRepository(final Storage storage) throws TopicRepositoryException {
         try {
             final Storage.KafkaConfiguration kafkaConfiguration = storage.getKafkaConfiguration();
             final ZooKeeperHolder zooKeeperHolder = new ZooKeeperHolder(

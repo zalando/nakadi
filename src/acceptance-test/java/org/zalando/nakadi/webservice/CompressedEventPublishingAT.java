@@ -56,6 +56,8 @@ public class CompressedEventPublishingAT extends BaseAT {
 
     private EventType createEventTypeWithSchema() throws JsonProcessingException {
         final EventType eventType = EventTypeTestBuilder.builder()
+                .name(EVENT_TYPE_NAME)
+                .topic(TEST_TOPIC)
                 .schema(new JSONObject("{\"type\": \"object\", \"properties\": {\"blah\": {\"type\": \"string\"}}, " +
                         "\"required\": [\"blah\"]}")).build();
         given()

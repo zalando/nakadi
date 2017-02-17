@@ -7,10 +7,12 @@ import org.springframework.stereotype.Service;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.TimelineException;
@@ -103,7 +105,7 @@ public class TimelineService {
         }
     }
 
-    public Timeline getTimeline(final EventType eventType) throws TimelineException {
+    public Timeline getTimeline(final EventTypeBase eventType) throws TimelineException {
         try {
             final String eventTypeName = eventType.getName();
             final Optional<Timeline> activeTimeline = eventTypeCache.getActiveTimeline(eventTypeName);
@@ -121,10 +123,21 @@ public class TimelineService {
         }
     }
 
-    public TopicRepository getTopicRepository(final EventType eventType)
+    public TopicRepository getTopicRepository(final EventTypeBase eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getTimeline(eventType);
         return repositoryHolder.getTopicRepository(timeline.getStorage());
+    }
+
+    public TopicRepository getDefaultTopicRepository() throws TopicRepositoryException {
+        try {
+            final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
+                    .orElseThrow(() -> new NotFoundException("No default storage defined"));
+            return repositoryHolder.getTopicRepository(storage);
+        } catch (final InternalNakadiException e) {
+            LOG.error("Failed to get default topic repository", e);
+            throw new TopicRepositoryException("Failed to get timeline", e);
+        }
     }
 
     private void switchTimeline(final EventType eventType,

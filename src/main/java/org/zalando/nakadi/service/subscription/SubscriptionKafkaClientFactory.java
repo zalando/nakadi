@@ -1,25 +1,25 @@
 package org.zalando.nakadi.service.subscription;
 
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.TopicRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 @Component
 public class SubscriptionKafkaClientFactory {
 
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final EventTypeRepository eventTypeRepository;
 
     @Autowired
-    public SubscriptionKafkaClientFactory(final TopicRepository topicRepository,
+    public SubscriptionKafkaClientFactory(final TimelineService timelineService,
                                           final EventTypeRepository eventTypeRepository) {
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
     }
 
     public KafkaClient createKafkaClient(final Subscription subscription) {
-        return new KafkaClient(subscription, topicRepository, eventTypeRepository);
+        return new KafkaClient(subscription, timelineService, eventTypeRepository);
     }
 }

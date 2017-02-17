@@ -9,12 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
@@ -25,11 +23,13 @@ import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
+import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 
 import java.util.Collections;
 import java.util.List;
@@ -56,19 +56,19 @@ public class CursorsService {
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
 
     private final ZooKeeperHolder zkHolder;
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
     private final CursorTokenService cursorTokenService;
 
     @Autowired
     public CursorsService(final ZooKeeperHolder zkHolder,
-                          final TopicRepository topicRepository,
+                          final TimelineService timelineService,
                           final SubscriptionDbRepository subscriptionRepository,
                           final EventTypeRepository eventTypeRepository,
                           final CursorTokenService cursorTokenService) {
         this.zkHolder = zkHolder;
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.cursorTokenService = cursorTokenService;
@@ -159,14 +159,17 @@ public class CursorsService {
                 cursorToProcess.getPartition(),
                 cursorToProcess.getOffset());
 
-        topicRepository.validateCommitCursor(toProcess);
-        return commitCursor(subscriptionId, eventType.getTopic(), cursorToProcess);
+        timelineService.getTopicRepository(eventType).validateCommitCursor(toProcess);
+        return commitCursor(subscriptionId, eventType, cursorToProcess);
     }
 
-    private boolean commitCursor(final String subscriptionId, final String eventType, final SubscriptionCursor cursor)
+    private boolean commitCursor(final String subscriptionId,
+                                 final EventType eventType,
+                                 final SubscriptionCursor cursor)
             throws ServiceUnavailableException, NoSuchSubscriptionException, InvalidCursorException {
 
-        final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, eventType, cursor.getPartition());
+        final String topic = eventType.getTopic();
+        final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, topic, cursor.getPartition());
         try {
             @SuppressWarnings("unchecked")
             final Boolean committed = executeWithRetry(() -> {
@@ -179,11 +182,12 @@ public class CursorsService {
 
                         // Yep, here we are trying to hack a little. This code
                         // should be removed during timelines implementation
-                        final NakadiCursor cursorToCommit = new NakadiCursor(eventType, cursor.getPartition(),
-                                cursor.getOffset());
-                        final NakadiCursor currentCursor = new NakadiCursor(eventType, cursor.getPartition(),
+                        final NakadiCursor cursorToCommit =
+                                new NakadiCursor(topic, cursor.getPartition(), cursor.getOffset());
+                        final NakadiCursor currentCursor = new NakadiCursor(topic, cursor.getPartition(),
                                 currentOffset);
-                        if (topicRepository.compareOffsets(cursorToCommit, currentCursor) > 0) {
+                        if (timelineService.getTopicRepository(eventType)
+                                .compareOffsets(cursorToCommit, currentCursor) > 0) {
                             zkHolder.get()
                                     .setData()
                                     .withVersion(stat.getVersion())

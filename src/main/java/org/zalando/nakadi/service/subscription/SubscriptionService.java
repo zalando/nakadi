@@ -1,17 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableSet;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,13 +10,13 @@ import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -43,10 +32,25 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 public class SubscriptionService {
@@ -57,16 +61,16 @@ public class SubscriptionService {
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
-                               final TopicRepository topicRepository,
+                               final TimelineService timelineService,
                                final EventTypeRepository eventTypeRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
     }
 
@@ -144,7 +148,7 @@ public class SubscriptionService {
         return path;
     }
 
-    public Result listSubscriptions(@Nullable final String owningApplication, @Nullable  final Set<String> eventTypes,
+    public Result listSubscriptions(@Nullable final String owningApplication, @Nullable final Set<String> eventTypes,
                                     final int limit, final int offset) {
         if (limit < 1 || limit > 1000) {
             final Problem problem = Problem.valueOf(Response.Status.BAD_REQUEST,
@@ -234,23 +238,23 @@ public class SubscriptionService {
                 .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
-        final Set<String> topics = eventTypes.stream()
-                .map(EventType::getTopic)
-                .collect(Collectors.toSet());
-
-        final List<PartitionStatistics> topicPartitions = topicRepository.loadTopicStatistics(topics);
+        final List<PartitionStatistics> topicPartitions = new ArrayList<>();
+        for (final EventType eventType : eventTypes) {
+            final TopicRepository tp = timelineService.getTopicRepository(eventType);
+            topicPartitions.addAll(tp.loadTopicStatistics(Collections.singletonList(eventType.getTopic())));
+        }
 
         return eventTypes.stream()
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions =
                             topicPartitions.stream()
-                            .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
-                            .map(Try.wrap(partition ->
-                                    mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
-                            .map(Try::getOrThrow)
-                            .collect(Collectors.toCollection(() ->
-                                    new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
-                            );
+                                    .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
+                                    .map(Try.wrap(partition ->
+                                            mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
+                                    .map(Try::getOrThrow)
+                                    .collect(Collectors.toCollection(() ->
+                                            new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
+                                    );
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
                 .collect(Collectors.toList());

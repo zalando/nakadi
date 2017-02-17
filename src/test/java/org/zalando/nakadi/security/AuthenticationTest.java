@@ -29,12 +29,12 @@ import org.zalando.nakadi.Application;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
-import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.EventPublisher;
@@ -157,8 +157,8 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public KafkaTopicRepository mockkafkaRepository() {
-            return mock(KafkaTopicRepository.class);
+        public TopicRepository mockTopicaRepository() {
+            return mock(TopicRepository.class);
         }
 
         @Bean

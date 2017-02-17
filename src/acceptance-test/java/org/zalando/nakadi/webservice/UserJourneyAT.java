@@ -18,8 +18,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
@@ -50,7 +50,9 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private static final String EVENT1 = "{\"foo\":\"" + randomTextString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomTextString() + "\"}";
-
+    private static final String DEFAULT_STORAGE = "{\"id\": \"default\", \"storage_type\": \"kafka\", " +
+            "\"kafka_configuration\": { \"exhibitor_address\": null, \"exhibitor_port\": null, " +
+            "\"zk_address\": \"127.0.0.1:2181\",\"zk_path\": \"\"}}";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final String ENDPOINT = "/event-types";
 
@@ -71,6 +73,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
     public void userJourneyM1() throws InterruptedException, IOException {
         // create event-type
         createEventType();
+        createDefaultStorage();
 
         // get event type
         jsonRequestSpec()
@@ -171,6 +174,20 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .get("/event-types/" + eventTypeName)
                 .then()
                 .statusCode(NOT_FOUND.value());
+    }
+
+    private void createDefaultStorage() {
+        jsonRequestSpec()
+                .get("/storage/default")
+                .then()
+                .statusCode(OK.value());
+
+        jsonRequestSpec()
+                .body(DEFAULT_STORAGE)
+                .when()
+                .post("/storage")
+                .then()
+                .statusCode(CREATED.value());
     }
 
     private String getUpdateEventType() throws IOException {
