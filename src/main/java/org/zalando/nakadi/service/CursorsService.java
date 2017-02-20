@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -82,23 +83,19 @@ public class CursorsService {
 
         LOG.debug("[COMMIT_CURSORS] stream IDs validation finished");
 
-        final List<EventTypePartition> distinctPartitions = cursors.stream()
-                .map(c -> new EventTypePartition(c.getEventType(), c.getPartition()))
-                .distinct()
-                .collect(Collectors.toList());
+        final Map<EventTypePartition, List<SubscriptionCursor>> cursorsByPartition = cursors.stream()
+                .collect(Collectors.groupingBy(
+                        cursor -> new EventTypePartition(cursor.getEventType(), cursor.getPartition())));
 
         final HashMap<EventTypePartition, Iterator<Boolean>> partitionCommits = new HashMap<>();
-        for (final EventTypePartition etPartition : distinctPartitions) {
+        for (final EventTypePartition etPartition : cursorsByPartition.keySet()) {
 
-            final List<SubscriptionCursor> partitionCursors = cursors.stream()
-                    .filter(etPartition::ownsCursor)
-                    .collect(Collectors.toList());
-
-            final Iterator<Boolean> commitResultIterator = processPartitionCursors(subscriptionId, partitionCursors,
-                    etPartition).iterator();
+            final Iterator<Boolean> commitResultIterator = processPartitionCursors(subscriptionId,
+                    cursorsByPartition.get(etPartition), etPartition).iterator();
             partitionCommits.put(etPartition, commitResultIterator);
 
-            LOG.debug("[COMMIT_CURSORS] committed {} cursor(s) for partition {}", partitionCursors.size(), etPartition);
+            LOG.debug("[COMMIT_CURSORS] committed {} cursor(s) for partition {}",
+                    cursorsByPartition.get(etPartition).size(), etPartition);
         }
 
         return cursors.stream()
