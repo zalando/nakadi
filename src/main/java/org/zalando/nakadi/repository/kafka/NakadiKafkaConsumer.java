@@ -51,6 +51,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
         if (eventQueue.isEmpty()) {
             pollFromKafka();
         }
+        kafkaConsumer.commitAsync();
         return Optional.ofNullable(eventQueue.poll());
     }
 
