@@ -70,8 +70,4 @@ public class NakadiKafkaConsumer implements EventConsumer {
                 })
                 .collect(Collectors.toCollection(Lists::newLinkedList));
     }
-
-    public Consumer<String, String> getKafkaConsumer() {
-        return kafkaConsumer;
-    }
 }

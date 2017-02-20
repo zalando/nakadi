@@ -17,10 +17,6 @@ public class Storage {
             this.configClass = configClass;
             this.positionClass = positionClass;
         }
-
-        public static String getName(){
-            return "";
-        }
     }
 
     public static class KafkaConfiguration {
