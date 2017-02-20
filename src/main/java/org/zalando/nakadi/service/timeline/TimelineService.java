@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
@@ -95,15 +96,11 @@ public class TimelineService {
                             StoragePositionFactory.createStoragePosition(activeTimeline, currentTopicRepo);
                     activeTimeline.setLatestPosition(storagePosition);
                     nextTimeline.setSwitchedAt(new Date());
+                    timelineDbRepository.updateTimelime(activeTimeline);
                 });
             }
         } catch (final NakadiException ne) {
             throw new TimelineException(ne.getMessage(), ne);
-        } catch (final InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new TimelineException(
-                    String.format("Timeline update was interrupted for event type %s and storage id `%s`",
-                            timelineRequest.getEventType(), storageId));
         }
     }
 
@@ -131,20 +128,24 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
+    @Transactional
     private void switchTimeline(final EventType eventType,
                                 final Timeline nextTimeline,
-                                final Runnable switcher) throws InterruptedException {
+                                final Runnable switcher) {
         try {
             timelineDbRepository.createTimeline(nextTimeline);
             timelineSync.startTimelineUpdate(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
             switcher.run();
             timelineDbRepository.updateTimelime(nextTimeline);
         } catch (final Throwable th) {
-            LOG.error("Failed to switch timeline for event type {}", eventType.getName(), th);
-            timelineDbRepository.deleteTimeline(nextTimeline.getId());
-            throw th;
+            throw new TimelineException("Failed to switch timeline for event type: " + eventType.getName(), th);
         } finally {
-            timelineSync.finishTimelineUpdate(eventType.getName());
+            try {
+                timelineSync.finishTimelineUpdate(eventType.getName());
+            } catch (final InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new TimelineException("Timeline update was interrupted for event type %s" + eventType.getName());
+            }
         }
     }
 }
