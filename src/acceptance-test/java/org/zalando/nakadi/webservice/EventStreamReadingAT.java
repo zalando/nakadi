@@ -365,9 +365,10 @@ public class EventStreamReadingAT extends BaseAT {
                 break;
             }
         }
+        range(0, 15).forEach(value -> NakadiTestUtils.publishEvent(etName, "{\"foo\": \"please, close connection\"}"));
 
         // wait for Nakadi to recognize thаt connection is closed
-        Thread.sleep(3000);
+        Thread.sleep(1000);
 
         // try to create 3 more connections
         final List<CompletableFuture<HttpURLConnection>> moreConnectionFutures = range(0, 3)

@@ -24,7 +24,6 @@ import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -51,9 +50,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private static final String EVENT1 = "{\"foo\":\"" + randomTextString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomTextString() + "\"}";
-    private static final String DEFAULT_STORAGE = "{\"id\": \"default\", \"storage_type\": \"kafka\", " +
-            "\"kafka_configuration\": { \"exhibitor_address\": null, \"exhibitor_port\": null, " +
-            "\"zk_address\": \"127.0.0.1:2181\",\"zk_path\": \"\"}}";
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final String ENDPOINT = "/event-types";
 
@@ -67,7 +63,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeName = randomValidEventTypeName();
         eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
-        new LinkedList<>().stream().distinct()
     }
 
     @SuppressWarnings("unchecked")
@@ -75,7 +70,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
     public void userJourneyM1() throws InterruptedException, IOException {
         // create event-type
         createEventType();
-        createDefaultStorage();
 
         // get event type
         jsonRequestSpec()
@@ -176,20 +170,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .get("/event-types/" + eventTypeName)
                 .then()
                 .statusCode(NOT_FOUND.value());
-    }
-
-    private void createDefaultStorage() {
-        jsonRequestSpec()
-                .get("/storage/default")
-                .then()
-                .statusCode(OK.value());
-
-        jsonRequestSpec()
-                .body(DEFAULT_STORAGE)
-                .when()
-                .post("/storage")
-                .then()
-                .statusCode(CREATED.value());
     }
 
     private String getUpdateEventType() throws IOException {

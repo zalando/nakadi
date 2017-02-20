@@ -233,7 +233,6 @@ public class EventStreamController {
                 LOG.debug("Incorrect syntax of X-nakadi-cursors header: {}. Respond with BAD_REQUEST.",
                         e.getCursors(), e);
                 writeProblemResponse(response, outputStream, BAD_REQUEST, e.getMessage());
-
             } catch (final NoSuchEventTypeException e) {
                 writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
             } catch (final NoConnectionSlotsException e) {
