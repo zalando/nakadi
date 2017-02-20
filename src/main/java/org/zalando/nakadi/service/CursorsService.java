@@ -82,15 +82,14 @@ public class CursorsService {
 
         LOG.debug("[COMMIT_CURSORS] stream IDs validation finished");
 
-        final Iterator<EventTypePartition> distinctPartitions = cursors.stream()
+        final List<EventTypePartition> distinctPartitions = cursors.stream()
                 .map(c -> new EventTypePartition(c.getEventType(), c.getPartition()))
                 .distinct()
-                .iterator();
+                .collect(Collectors.toList());
 
         final HashMap<EventTypePartition, Iterator<Boolean>> partitionCommits = new HashMap<>();
-        while (distinctPartitions.hasNext()) {
+        for (final EventTypePartition etPartition : distinctPartitions) {
 
-            final EventTypePartition etPartition = distinctPartitions.next();
             final List<SubscriptionCursor> partitionCursors = cursors.stream()
                     .filter(etPartition::ownsCursor)
                     .collect(Collectors.toList());
