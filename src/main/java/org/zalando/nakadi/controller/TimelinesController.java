@@ -36,7 +36,7 @@ public class TimelinesController {
     }
 
     @RequestMapping(method = RequestMethod.POST)
-    public ResponseEntity<?> createStorage(@RequestBody final TimelineRequest timelineRequest, final Client client) {
+    public ResponseEntity<?> createTimeline(@RequestBody final TimelineRequest timelineRequest, final Client client) {
         timelineService.createTimeline(timelineRequest, client);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
