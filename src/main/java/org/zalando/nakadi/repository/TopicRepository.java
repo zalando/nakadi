@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.zalando.nakadi.domain.BatchItem;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
@@ -33,7 +35,7 @@ public interface TopicRepository {
 
     List<PartitionStatistics> loadTopicStatistics(Collection<String> topics) throws ServiceUnavailableException;
 
-    Map<String, Long> materializePositions(String topicId, SubscriptionBase.InitialPosition position)
+    Map<String, Long> materializePositions(EventType eventType, Subscription subscription)
             throws ServiceUnavailableException;
 
     List<String> listPartitionNames(final String topicId);
