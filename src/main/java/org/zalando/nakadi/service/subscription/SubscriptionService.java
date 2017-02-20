@@ -248,13 +248,13 @@ public class SubscriptionService {
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions =
                             topicPartitions.stream()
-                                    .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
-                                    .map(Try.wrap(partition ->
-                                            mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
-                                    .map(Try::getOrThrow)
-                                    .collect(Collectors.toCollection(() ->
-                                            new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
-                                    );
+                            .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
+                            .map(Try.wrap(partition ->
+                                    mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
+                            .map(Try::getOrThrow)
+                            .collect(Collectors.toCollection(() ->
+                                    new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
+                            );
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
                 .collect(Collectors.toList());
