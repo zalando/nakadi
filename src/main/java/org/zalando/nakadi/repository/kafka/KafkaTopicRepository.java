@@ -63,8 +63,6 @@ import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 
-@Component
-@Profile("!test")
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
@@ -77,7 +75,6 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final UUIDGenerator uuidGenerator;
 
-    @Autowired
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory,
                                 final KafkaFactory kafkaFactory,
                                 final NakadiSettings nakadiSettings,

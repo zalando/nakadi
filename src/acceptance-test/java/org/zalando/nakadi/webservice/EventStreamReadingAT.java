@@ -7,6 +7,7 @@ import com.google.common.collect.Sets;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
 import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
@@ -59,6 +60,11 @@ public class EventStreamReadingAT extends BaseAT {
         initialCursors = kafkaHelper.getOffsetsToReadFromLatest(TEST_TOPIC);
         kafkaInitialNextOffsets = kafkaHelper.getNextOffsets(TEST_TOPIC);
         xNakadiCursors = jsonMapper.writeValueAsString(initialCursors);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        SettingsControllerAT.whitelist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
     }
 
     @Test(timeout = 10000)
@@ -312,6 +318,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .statusCode(HttpStatus.OK.value());
 
         SettingsControllerAT.blacklist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
+        Thread.sleep(100);
         readEvents()
                 .then()
                 .statusCode(403)
@@ -360,7 +367,7 @@ public class EventStreamReadingAT extends BaseAT {
         }
 
         // wait for Nakadi to recognize thаt connection is closed
-        Thread.sleep(1000);
+        Thread.sleep(3000);
 
         // try to create 3 more connections
         final List<CompletableFuture<HttpURLConnection>> moreConnectionFutures = range(0, 3)

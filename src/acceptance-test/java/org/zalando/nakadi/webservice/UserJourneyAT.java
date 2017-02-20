@@ -24,6 +24,7 @@ import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -66,6 +67,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         eventTypeName = randomValidEventTypeName();
         eventTypeBody = getEventTypeJsonFromFile("sample-event-type.json", eventTypeName, owningApp);
         eventTypeBodyUpdate = getEventTypeJsonFromFile("sample-event-type-update.json", eventTypeName, owningApp);
+        new LinkedList<>().stream().distinct()
     }
 
     @SuppressWarnings("unchecked")
