@@ -11,9 +11,9 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.ItemsWrapper;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -24,10 +24,10 @@ import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.problem.Problem;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -93,7 +93,7 @@ public class CursorsControllerTest {
     @Test
     public void whenCommitValidCursorsThenNoContent() throws Exception {
         when(cursorsService.commitCursors(any(), any(), any()))
-                .thenReturn(new HashMap<>());
+                .thenReturn(ImmutableList.of());
         postCursors(DUMMY_CURSORS)
                 .andExpect(status().isNoContent());
     }
@@ -101,12 +101,12 @@ public class CursorsControllerTest {
     @Test
     public void whenCommitInvalidCursorsThenOk() throws Exception {
         when(cursorsService.commitCursors(any(), any(), any()))
-                .thenReturn(Collections.singletonMap(DUMMY_CURSORS.get(0), false));
+                .thenReturn(Collections.singletonList(new CursorCommitResult(DUMMY_CURSORS.get(0), false)));
         postCursors(DUMMY_CURSORS)
                 .andExpect(status().isOk())
                 .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(
                         Collections.singletonList(
-                                new CursorsController.CursorCommitResult(DUMMY_CURSORS.get(0), false))))));
+                                new CursorCommitResult(DUMMY_CURSORS.get(0), false))))));
     }
 
     @Test

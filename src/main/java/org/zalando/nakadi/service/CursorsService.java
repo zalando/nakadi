@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -34,9 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.text.MessageFormat.format;
@@ -75,8 +74,8 @@ public class CursorsService {
         this.cursorTokenService = cursorTokenService;
     }
 
-    public Map<SubscriptionCursor, Boolean> commitCursors(final String streamId, final String subscriptionId,
-                                                          final List<SubscriptionCursor> cursors)
+    public List<CursorCommitResult> commitCursors(final String streamId, final String subscriptionId,
+                                                  final List<SubscriptionCursor> cursors)
             throws NakadiException, InvalidCursorException {
 
         validateStreamId(cursors, streamId, subscriptionId);
@@ -104,14 +103,13 @@ public class CursorsService {
         }
 
         return cursors.stream()
-                .collect(Collectors.toMap(
-                        Function.identity(),
-                        cursor -> {
-                            final EventTypePartition etPartition = new EventTypePartition(cursor.getEventType(),
-                                    cursor.getPartition());
-                            return partitionCommits.get(etPartition).next();
-                        }
-                ));
+                .map(cursor -> {
+                    final EventTypePartition etPartition = new EventTypePartition(cursor.getEventType(),
+                            cursor.getPartition());
+                    final Boolean committed = partitionCommits.get(etPartition).next();
+                    return new CursorCommitResult(cursor, committed);
+                })
+                .collect(Collectors.toList());
     }
 
     private void validateStreamId(final List<SubscriptionCursor> cursors, final String streamId,

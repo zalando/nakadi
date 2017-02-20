@@ -1,13 +1,13 @@
 package org.zalando.nakadi.webservice;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.stubbing.Answer;
+import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
@@ -24,11 +24,9 @@ import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
 import java.util.List;
-import java.util.Map;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static java.text.MessageFormat.format;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.fail;
@@ -113,8 +111,8 @@ public class CursorsServiceAT extends BaseAT {
 
     @Test
     public void whenCommitCursorsThenTrue() throws Exception {
-        final Map<SubscriptionCursor, Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
-        assertThat(commitResult, equalTo(ImmutableMap.of(testCursors.get(0), true)));
+        final List<CursorCommitResult> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        assertThat(commitResult, equalTo(ImmutableList.of(new CursorCommitResult(testCursors.get(0), true))));
         checkCurrentOffsetInZk(P1, NEW_OFFSET);
     }
 
@@ -142,8 +140,8 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenCommitOldCursorsThenFalse() throws Exception {
         testCursors = ImmutableList.of(new SubscriptionCursor(P1, OLDEST_OFFSET, etName, token));
-        final Map<SubscriptionCursor, Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
-        assertThat(commitResult, equalTo(ImmutableMap.of(testCursors.get(0), false)));
+        final List<CursorCommitResult> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        assertThat(commitResult, equalTo(ImmutableList.of(new CursorCommitResult(testCursors.get(0), false))));
         checkCurrentOffsetInZk(P1, OLD_OFFSET);
     }
 
@@ -164,10 +162,10 @@ public class CursorsServiceAT extends BaseAT {
         final SubscriptionCursor c2 = new SubscriptionCursor(P2, NEW_OFFSET, etName, token);
         testCursors = ImmutableList.of(c1, c2);
 
-        final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<CursorCommitResult> result = cursorsService.commitCursors(streamId, sid, testCursors);
 
-        assertThat(result.get(c1), is(false));
-        assertThat(result.get(c2), is(true));
+        assertThat(result.get(0).getResult(), equalTo(CursorCommitResult.OUTDATED));
+        assertThat(result.get(1).getResult(), equalTo(CursorCommitResult.COMMITTED));
 
         checkCurrentOffsetInZk(P1, OLD_OFFSET);
         checkCurrentOffsetInZk(P2, NEW_OFFSET);
@@ -175,40 +173,39 @@ public class CursorsServiceAT extends BaseAT {
 
     @Test
     public void whenMultipleCursorsForSamePartitionThenResultsAreCorrect() throws Exception {
-        CURATOR.setData().forPath(offsetPath(P1), "000100".getBytes(UTF_8));
-        CURATOR.setData().forPath(offsetPath(P2), "000800".getBytes(UTF_8));
+        CURATOR.setData().forPath(offsetPath(P1), "000000000000000100".getBytes(UTF_8));
+        CURATOR.setData().forPath(offsetPath(P2), "000000000000000800".getBytes(UTF_8));
 
         testCursors = ImmutableList.of(
-                new SubscriptionCursor(P1, "000105", etName, token),
-                new SubscriptionCursor(P1, "000106", etName, token),
-                new SubscriptionCursor(P1, "000102", etName, token),
-                new SubscriptionCursor(P1, "000096", etName, token),
-                new SubscriptionCursor(P1, "000130", etName, token),
-                new SubscriptionCursor(P2, "000800", etName, token),
-                new SubscriptionCursor(P2, "000820", etName, token),
-                new SubscriptionCursor(P1, "000120", etName, token),
-                new SubscriptionCursor(P1, "000121", etName, token),
-                new SubscriptionCursor(P2, "000825", etName, token)
+                new SubscriptionCursor(P1, "000000000000000105", etName, token),
+                new SubscriptionCursor(P1, "000000000000000106", etName, token),
+                new SubscriptionCursor(P1, "000000000000000102", etName, token),
+                new SubscriptionCursor(P1, "000000000000000096", etName, token),
+                new SubscriptionCursor(P1, "000000000000000130", etName, token),
+                new SubscriptionCursor(P2, "000000000000000800", etName, token),
+                new SubscriptionCursor(P2, "000000000000000820", etName, token),
+                new SubscriptionCursor(P1, "000000000000000120", etName, token),
+                new SubscriptionCursor(P1, "000000000000000121", etName, token),
+                new SubscriptionCursor(P2, "000000000000000825", etName, token)
         );
 
-        final Map<SubscriptionCursor, Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<CursorCommitResult> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
         assertThat(commitResult, equalTo(
-                ImmutableMap.builder()
-                        .put(new SubscriptionCursor(P1, "000105", etName, token), true)
-                        .put(new SubscriptionCursor(P1, "000106", etName, token), true)
-                        .put(new SubscriptionCursor(P1, "000102", etName, token), false)
-                        .put(new SubscriptionCursor(P1, "000096", etName, token), false)
-                        .put(new SubscriptionCursor(P1, "000130", etName, token), true)
-                        .put(new SubscriptionCursor(P2, "000800", etName, token), false)
-                        .put(new SubscriptionCursor(P2, "000820", etName, token), true)
-                        .put(new SubscriptionCursor(P1, "000120", etName, token), false)
-                        .put(new SubscriptionCursor(P1, "000121", etName, token), false)
-                        .put(new SubscriptionCursor(P2, "000825", etName, token), true)
-                        .build()
-        ));
+                ImmutableList.of(
+                        new CursorCommitResult(new SubscriptionCursor(P1, "000000000000000105", etName, token), true),
+                        new CursorCommitResult(new SubscriptionCursor(P1, "000000000000000106", etName, token), true),
+                        new CursorCommitResult(new SubscriptionCursor(P1, "000000000000000102", etName, token), false),
+                        new CursorCommitResult(new SubscriptionCursor(P1, "000000000000000096", etName, token), false),
+                        new CursorCommitResult(new SubscriptionCursor(P1, "000000000000000130", etName, token), true),
+                        new CursorCommitResult(new SubscriptionCursor(P2, "000000000000000800", etName, token), false),
+                        new CursorCommitResult(new SubscriptionCursor(P2, "000000000000000820", etName, token), true),
+                        new CursorCommitResult(new SubscriptionCursor(P1, "000000000000000120", etName, token), false),
+                        new CursorCommitResult(new SubscriptionCursor(P1, "000000000000000121", etName, token), false),
+                        new CursorCommitResult(new SubscriptionCursor(P2, "000000000000000825", etName, token), true)
+                )));
 
-        checkCurrentOffsetInZk(P1, "000130");
-        checkCurrentOffsetInZk(P2, "000825");
+        checkCurrentOffsetInZk(P1, "000000000000000130");
+        checkCurrentOffsetInZk(P2, "000000000000000825");
     }
 
     @Test

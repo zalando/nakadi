@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.ItemsWrapper;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -25,14 +25,13 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
@@ -103,18 +102,13 @@ public class CursorsController {
 
             LOG.debug("[COMMIT_CURSORS] scopes validation finished");
 
-            final Map<SubscriptionCursor, Boolean> result = cursorsService.commitCursors(streamId, subscriptionId,
+            final List<CursorCommitResult> items = cursorsService.commitCursors(streamId, subscriptionId,
                     cursors.getItems());
 
             LOG.debug("[COMMIT_CURSORS] commit finished");
 
-            final List<CursorCommitResult> items = result.entrySet().stream()
-                    .map(entry -> new CursorCommitResult(entry.getKey(), entry.getValue()))
-                    .collect(Collectors.toList());
-            final boolean allCommited = result.values()
-                    .stream()
-                    .reduce(Boolean::logicalAnd)
-                    .orElseGet(() -> true);
+            final boolean allCommited = items.stream()
+                    .allMatch(cursor -> CursorCommitResult.COMMITTED.equals(cursor.getResult()));
             final ItemsWrapper<CursorCommitResult> body = new ItemsWrapper<>(items);
             return allCommited ? noContent().build() : ok(body);
         } catch (final NakadiException e) {
@@ -132,22 +126,4 @@ public class CursorsController {
                 .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
     }
 
-    public static class CursorCommitResult {
-
-        private final SubscriptionCursor cursor;
-        private final String result;
-
-        public CursorCommitResult(final SubscriptionCursor cursor, final boolean result) {
-            this.cursor = cursor;
-            this.result = result ? "committed" : "outdated";
-        }
-
-        public SubscriptionCursor getCursor() {
-            return cursor;
-        }
-
-        public String getResult() {
-            return result;
-        }
-    }
 }
