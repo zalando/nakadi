@@ -12,7 +12,7 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NotFoundException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicRepositoryException;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -65,12 +65,13 @@ public class TimelineService {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
+        final String storageId = timelineRequest.getStorageId();
         try {
             final String eventTypeName = timelineRequest.getEventType();
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
 
-            final Storage storage = storageDbRepository.getStorage(timelineRequest.getStorageId())
-                    .orElseThrow(() -> new NotFoundException("No storage with id: " + timelineRequest.getStorageId()));
+            final Storage storage = storageDbRepository.getStorage(storageId)
+                    .orElseThrow(() -> new UnableProcessException("No storage with id: " + storageId));
             final Timeline activeTimeline = getTimeline(eventType);
             final TopicRepository currentTopicRepo =
                     topicRepositoryHolder.getTopicRepository(activeTimeline.getStorage());
@@ -102,7 +103,7 @@ public class TimelineService {
             Thread.currentThread().interrupt();
             throw new TimelineException(
                     String.format("Timeline update was interrupted for event type %s and storage id `%s`",
-                            timelineRequest.getEventType(), timelineRequest.getStorageId()));
+                            timelineRequest.getEventType(), storageId));
         }
     }
 
@@ -115,7 +116,7 @@ public class TimelineService {
             }
 
             final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
-                    .orElseThrow(() -> new NotFoundException("Fake timeline creation failed for event type " +
+                    .orElseThrow(() -> new UnableProcessException("Fake timeline creation failed for event type " +
                             eventType.getName() + ".No default storage defined"));
             return Timeline.createFakeTimeline(eventType, storage);
         } catch (final NakadiException e) {
