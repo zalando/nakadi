@@ -58,6 +58,8 @@ public class PartitionsController {
                         .map(stat -> new TopicPartition(
                                 eventType.getName(),
                                 stat.getPartition(),
+                                // FIXME TIMELINE: IT HAS TO BE FIXED DURING CONSUMPTION TASK
+                                // Cursors here might be in different timeline
                                 Cursor.fromTopicPosition(stat.getFirst()).getOffset(),
                                 Cursor.fromTopicPosition(stat.getLast()).getOffset()))
                         .collect(Collectors.toList());

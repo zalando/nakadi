@@ -105,6 +105,8 @@ public class EventStreamController {
     @VisibleForTesting
     List<NakadiCursor> getStreamingStart(final TopicRepository topicRepository,
                                          final String topic,
+                                         // FIXME TIMELINE: IT HAS TO BE FIXED DURING CONSUMPTION TASK
+                                         // Cursors here might be in different timeline
                                          final String cursorsStr)
             throws UnparseableCursorException, ServiceUnavailableException, InvalidCursorException {
         List<Cursor> cursors = null;
