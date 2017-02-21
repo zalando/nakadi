@@ -365,7 +365,7 @@ public class EventStreamReadingAT extends BaseAT {
                 break;
             }
         }
-        range(0, 15).forEach(value -> NakadiTestUtils.publishEvent(etName, "{\"foo\": \"please, close connection\"}"));
+        range(0, 15).forEach(value -> NakadiTestUtils.publishEvent(etName, "{\"foo\": \"bar\"}"));
 
         // wait for Nakadi to recognize thаt connection is closed
         Thread.sleep(1000);
