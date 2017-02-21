@@ -60,18 +60,21 @@ public class CursorsService {
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
     private final CursorTokenService cursorTokenService;
+    private final CursorConverter cursorConverter;
 
     @Autowired
     public CursorsService(final ZooKeeperHolder zkHolder,
                           final TopicRepository topicRepository,
                           final SubscriptionDbRepository subscriptionRepository,
                           final EventTypeRepository eventTypeRepository,
-                          final CursorTokenService cursorTokenService) {
+                          final CursorTokenService cursorTokenService,
+                          final CursorConverter cursorConverter) {
         this.zkHolder = zkHolder;
         this.topicRepository = topicRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.cursorTokenService = cursorTokenService;
+        this.cursorConverter = cursorConverter;
     }
 
     public Map<SubscriptionCursor, Boolean> commitCursors(final String streamId, final String subscriptionId,
@@ -237,11 +240,11 @@ public class CursorsService {
             throws RuntimeException {
         try {
             final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, topic, partition);
-            String currentOffset = new String(zkHolder.get().getData().forPath(offsetPath), Charsets.UTF_8);
-            if ("-1".equals(currentOffset)) {
-                currentOffset = Cursor.BEFORE_OLDEST_OFFSET;
-            }
-            return new SubscriptionCursor(partition, currentOffset, eventType, cursorTokenService.generateToken());
+            final NakadiCursor nakadiCursor = new NakadiCursor(
+                    topic,
+                    partition,
+                    new String(zkHolder.get().getData().forPath(offsetPath), Charsets.UTF_8));
+            return cursorConverter.convert(nakadiCursor, eventType, cursorTokenService.generateToken());
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

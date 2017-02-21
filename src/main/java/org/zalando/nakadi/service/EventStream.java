@@ -32,15 +32,18 @@ public class EventStream {
     private final EventConsumer eventConsumer;
     private final EventStreamConfig config;
     private final BlacklistService blacklistService;
+    private final CursorConverter cursorConverter;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
-                       final BlacklistService blacklistService) {
+                       final BlacklistService blacklistService,
+                       final CursorConverter cursorConverter) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
         this.blacklistService = blacklistService;
+        this.cursorConverter = cursorConverter;
     }
 
     public void streamEvents(final AtomicBoolean connectionReady) {
@@ -76,7 +79,7 @@ public class EventStream {
                 }
 
                 // for each partition check if it's time to send the batch
-                for (final String partition: latestOffsets.keySet()) {
+                for (final String partition : latestOffsets.keySet()) {
                     final long timeSinceBatchStart = currentTimeMillis() - batchStartTimes.get(partition);
                     if (config.getBatchTimeout() * 1000 <= timeSinceBatchStart
                             || currentBatches.get(partition).size() >= config.getBatchLimit()) {
@@ -90,7 +93,7 @@ public class EventStream {
 
                         // init new batch for partition
                         currentBatches.get(partition).clear();
-                        batchStartTimes.put(partition,currentTimeMillis());
+                        batchStartTimes.put(partition, currentTimeMillis());
                     }
                 }
 
@@ -111,7 +114,7 @@ public class EventStream {
                 if (config.getStreamTimeout() != 0 && timeSinceStart >= config.getStreamTimeout() * 1000
                         || config.getStreamLimit() != 0 && messagesRead >= config.getStreamLimit()) {
 
-                    for (final String partition: latestOffsets.keySet()) {
+                    for (final String partition : latestOffsets.keySet()) {
                         if (currentBatches.get(partition).size() > 0) {
                             sendBatch(latestOffsets.get(partition), currentBatches.get(partition));
                         }
@@ -155,7 +158,7 @@ public class EventStream {
             throws IOException {
         // create stream event batch for current partition and send it; if there were
         // no events, it will be just a keep-alive
-        final String streamEvent = createStreamEvent(Cursor.fromTopicPosition(topicPosition), currentBatch);
+        final String streamEvent = createStreamEvent(cursorConverter.convert(topicPosition), currentBatch);
         outputStream.write(streamEvent.getBytes(UTF8));
         outputStream.flush();
     }

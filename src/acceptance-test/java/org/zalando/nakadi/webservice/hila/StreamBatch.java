@@ -2,6 +2,7 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import org.apache.commons.lang3.StringUtils;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.zalando.nakadi.domain.StreamMetadata;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Collections.unmodifiableList;
+import static org.zalando.nakadi.service.CursorConverter.CURSOR_OFFSET_LENGTH;
 
 @Immutable
 public class StreamBatch {
@@ -69,18 +71,20 @@ public class StreamBatch {
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
                                                final Map event, final String metadata) {
+        final String paddedOffset = StringUtils.leftPad(offset, CURSOR_OFFSET_LENGTH, '0');
         if (event.isEmpty()) {
-            return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
+            return new StreamBatch(new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
                     ImmutableList.of(), new StreamMetadata(metadata));
         } else {
-            return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
+            return new StreamBatch(new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
                     ImmutableList.of(event), new StreamMetadata(metadata));
         }
     }
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
                                                final Map event) {
-        return new StreamBatch(new SubscriptionCursor(partition, offset, eventType, DUMMY_TOKEN),
+        final String paddedOffset = StringUtils.leftPad(offset, CURSOR_OFFSET_LENGTH, '0');
+        return new StreamBatch(new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
                 ImmutableList.of(event), null);
     }
 

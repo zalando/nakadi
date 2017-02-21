@@ -189,7 +189,7 @@ public class SubscriptionAT extends BaseAT {
 
         final SubscriptionCursor actualCursor = actualCursors.get(0);
         assertThat(actualCursor.getPartition(), equalTo("0"));
-        assertThat(actualCursor.getOffset(), equalTo("25"));
+        assertThat(actualCursor.getOffset(), equalTo(String.format("%018d", 25)));
         assertThat(actualCursor.getEventType(), equalTo(etName));
     }
 
