@@ -16,6 +16,7 @@ import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
@@ -111,6 +112,8 @@ public class CursorsController {
                     .allMatch(cursor -> CursorCommitResult.COMMITTED.equals(cursor.getResult()));
             final ItemsWrapper<CursorCommitResult> body = new ItemsWrapper<>(items);
             return allCommited ? noContent().build() : ok(body);
+        } catch (final NoSuchEventTypeException e) {
+            return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
         } catch (final NakadiException e) {
             return create(e.asProblem(), request);
         } catch (final InvalidCursorException e) {

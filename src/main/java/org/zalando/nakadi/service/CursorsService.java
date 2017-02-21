@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.CursorCommitResult;
+import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -77,7 +78,8 @@ public class CursorsService {
 
     public List<CursorCommitResult> commitCursors(final String streamId, final String subscriptionId,
                                                   final List<SubscriptionCursor> cursors)
-            throws NakadiException, InvalidCursorException {
+            throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
+            NoSuchEventTypeException, InternalNakadiException {
 
         validateStreamId(cursors, streamId, subscriptionId);
 
@@ -109,45 +111,41 @@ public class CursorsService {
     }
 
     private void validateStreamId(final List<SubscriptionCursor> cursors, final String streamId,
-                                  final String subscriptionId) throws NakadiException {
+                                  final String subscriptionId)
+            throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
+            NoSuchEventTypeException, InternalNakadiException {
 
         if (!isActiveSession(subscriptionId, streamId)) {
             throw new InvalidStreamIdException("Session with stream id " + streamId + " not found");
         }
 
-        try {
-            final List<SubscriptionCursor> invalidCursors = cursors.stream()
-                    .filter(cursor -> {
-                        try {
-                            final EventType eventType = eventTypeRepository.findByName(cursor.getEventType());
-                            final String partitionSession = getPartitionSession(subscriptionId, eventType.getTopic(),
-                                    cursor.getPartition());
-                            return !streamId.equals(partitionSession);
-                        } catch (final InternalNakadiException | NoSuchEventTypeException |
-                                ServiceUnavailableException e) {
-                            throw new NakadiRuntimeException(e);
-                        }
-                    })
-                    .collect(Collectors.toList());
+        final HashMap<EventTypePartition, String> partitionSessions = new HashMap<>();
+        for (final SubscriptionCursor cursor : cursors) {
+            final EventType eventType = eventTypeRepository.findByName(cursor.getEventType());
 
-            if (!invalidCursors.isEmpty()) {
-                throw new InvalidStreamIdException("Cursors " + invalidCursors + " cannot be committed with stream id "
+            final EventTypePartition etPartition = new EventTypePartition(eventType.getName(), cursor.getPartition());
+            String partitionSession = partitionSessions.get(etPartition);
+            if (partitionSession == null) {
+                partitionSession = getPartitionSession(subscriptionId, eventType.getTopic(), cursor);
+                partitionSessions.put(etPartition, partitionSession);
+            }
+
+            if (!streamId.equals(partitionSession)) {
+                throw new InvalidStreamIdException("Cursor " + cursor + " cannot be committed with stream id "
                         + streamId);
             }
-        } catch (final NakadiRuntimeException e) {
-            LOG.error("Error occurred when validating cursors stream ids", e);
-            throw new ServiceUnavailableException("Unexpected error occurred when commiting cursors");
         }
-
     }
 
-    private String getPartitionSession(final String subscriptionId, final String topic, final String partition)
-            throws ServiceUnavailableException {
+    private String getPartitionSession(final String subscriptionId, final String topic, final Cursor cursor)
+            throws ServiceUnavailableException, InvalidCursorException {
         try {
-            final String partitionPath = format(PATH_ZK_PARTITION, subscriptionId, topic, partition);
+            final String partitionPath = format(PATH_ZK_PARTITION, subscriptionId, topic, cursor.getPartition());
             final byte[] partitionData = zkHolder.get().getData().forPath(partitionPath);
-            final Partition.PartitionKey partitionKey = new Partition.PartitionKey(topic, partition);
+            final Partition.PartitionKey partitionKey = new Partition.PartitionKey(topic, cursor.getPartition());
             return CuratorZkSubscriptionClient.deserializeNode(partitionKey, partitionData).getSession();
+        } catch (final KeeperException.NoNodeException e) {
+            throw new InvalidCursorException(CursorError.PARTITION_NOT_FOUND, cursor);
         } catch (final Exception e) {
             LOG.error(ERROR_COMMUNICATING_WITH_ZOOKEEPER, e);
             throw new ServiceUnavailableException(ERROR_COMMUNICATING_WITH_ZOOKEEPER);

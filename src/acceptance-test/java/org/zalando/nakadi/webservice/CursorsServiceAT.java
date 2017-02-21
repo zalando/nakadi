@@ -75,6 +75,7 @@ public class CursorsServiceAT extends BaseAT {
 
         final EventType eventType = mock(EventType.class);
         when(eventType.getTopic()).thenReturn(topic);
+        when(eventType.getName()).thenReturn(etName);
 
         eventTypeRepository = mock(EventTypeRepository.class);
         when(eventTypeRepository.findByName(etName)).thenReturn(eventType);

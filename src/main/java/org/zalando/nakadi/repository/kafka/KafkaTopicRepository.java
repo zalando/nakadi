@@ -429,11 +429,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
-        final List<String> partitions = this.listPartitionNames(position.getTopic());
         validateCursorForNulls(position);
-        if (!partitions.contains(position.getPartition())) {
-            throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
-        }
         KafkaCursor.fromNakadiCursor(position);
     }
 

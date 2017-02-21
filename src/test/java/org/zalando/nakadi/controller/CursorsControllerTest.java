@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -64,6 +65,7 @@ public class CursorsControllerTest {
     private final MockMvc mockMvc;
     private final JsonTestHelper jsonHelper;
     private final FeatureToggleService featureToggleService;
+    private final SubscriptionDbRepository subscriptionRepository;
 
     public CursorsControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -71,7 +73,7 @@ public class CursorsControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
-        final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+        subscriptionRepository = mock(SubscriptionDbRepository.class);
         final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
         doReturn(buildDefaultEventType()).when(eventTypeRepository).findByName(any());
         doReturn(RandomSubscriptionBuilder.builder().build()).when(subscriptionRepository).getSubscription(any());
@@ -111,9 +113,18 @@ public class CursorsControllerTest {
 
     @Test
     public void whenNoSubscriptionThenNotFound() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(subscriptionRepository.getSubscription(SUBSCRIPTION_ID))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
+
+        checkForProblem(postCursors(DUMMY_CURSORS), expectedProblem);
+    }
+
+    @Test
+    public void whenNoEventTypeThenUnprocessableEntity() throws Exception {
+        when(cursorsService.commitCursors(any(), any(), any()))
+                .thenThrow(new NoSuchEventTypeException("dummy-message"));
+        final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "dummy-message");
 
         checkForProblem(postCursors(DUMMY_CURSORS), expectedProblem);
     }
