@@ -278,7 +278,8 @@ public class SubscriptionService {
         final boolean hasSessions = zkSubscriptionNode.getSessions().length > 0;
 
         final Partition partition = Arrays.stream(zkSubscriptionNode.getPartitions())
-                .filter(p -> p.getKey().getPartition().equals(topicPartition.getPartition()))
+                .filter(p -> p.getKey().getPartition().equals(topicPartition.getPartition())
+                        && p.getKey().getTopic().equals(topicPartition.getTopic()))
                 .findFirst()
                 .orElse(null);
 

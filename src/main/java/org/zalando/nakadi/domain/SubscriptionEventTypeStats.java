@@ -1,11 +1,11 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Set;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
-import java.util.Collections;
-import java.util.Set;
 
 @Immutable
 public class SubscriptionEventTypeStats {
@@ -24,6 +24,25 @@ public class SubscriptionEventTypeStats {
 
     public Set<Partition> getPartitions() {
         return Collections.unmodifiableSet(partitions);
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof SubscriptionEventTypeStats)) {
+            return false;
+        }
+
+        final SubscriptionEventTypeStats that = (SubscriptionEventTypeStats) o;
+
+        return Objects.equals(eventType, that.eventType) && Objects.equals(partitions, that.partitions);
+    }
+
+    @Override
+    public int hashCode() {
+        return eventType != null ? eventType.hashCode() : 0;
     }
 
     @Immutable
@@ -59,6 +78,28 @@ public class SubscriptionEventTypeStats {
 
         public String getStreamId() {
             return streamId;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof Partition)) {
+                return false;
+            }
+
+            final Partition that = (Partition) o;
+
+            return Objects.equals(partition, that.partition)
+                    && Objects.equals(state, that.state)
+                    && Objects.equals(unconsumedEvents, that.unconsumedEvents)
+                    && Objects.equals(streamId, that.streamId);
+        }
+
+        @Override
+        public int hashCode() {
+            return partition != null ? partition.hashCode() : 0;
         }
     }
 }
