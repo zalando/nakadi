@@ -58,7 +58,7 @@ public class PartitionsController {
                         .map(stat -> new TopicPartition(
                                 eventType.getName(),
                                 stat.getPartition(),
-                                // FIXME TIMELINE: IT HAS TO BE FIXED DURING CONSUMPTION TASK
+                                // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
                                 // Cursors here might be in different timeline
                                 Cursor.fromTopicPosition(stat.getFirst()).getOffset(),
                                 Cursor.fromTopicPosition(stat.getLast()).getOffset()))

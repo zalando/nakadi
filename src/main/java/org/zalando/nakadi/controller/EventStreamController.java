@@ -105,7 +105,7 @@ public class EventStreamController {
     @VisibleForTesting
     List<NakadiCursor> getStreamingStart(final TopicRepository topicRepository,
                                          final String topic,
-                                         // FIXME TIMELINE: IT HAS TO BE FIXED DURING CONSUMPTION TASK
+                                         // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
                                          // Cursors here might be in different timeline
                                          final String cursorsStr)
             throws UnparseableCursorException, ServiceUnavailableException, InvalidCursorException {
@@ -203,7 +203,7 @@ public class EventStreamController {
                         .withStreamKeepAliveLimit(streamKeepAliveLimit)
                         .withEtName(eventTypeName)
                         .withConsumingAppId(client.getClientId())
-                        // FIXME TIMELINE: IT HAS TO BE FIXED DURING CONSUMPTION TASK
+                        // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
                         // Cursors here might be in different timeline
                         .withCursors(getStreamingStart(topicRepository, topic, cursorsStr))
                         .build();
