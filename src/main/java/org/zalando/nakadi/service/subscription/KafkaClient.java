@@ -23,7 +23,7 @@ public class KafkaClient {
                        final EventTypeRepository eventTypeRepository) {
         this.subscription = subscription;
         this.eventTypeRepository = eventTypeRepository;
-        // FIXME for refactoring purposes, has to be removed during timeline event consumption task
+        // FIXME TIMELINE: for refactoring purposes, has to be removed during timeline event consumption task
         // for now we always will have the same topic repo, KafkaTopicRepository
         try {
             final EventType eventType = eventTypeRepository.findByName(subscription.getEventTypes().iterator().next());
@@ -31,7 +31,7 @@ public class KafkaClient {
         } catch (final NakadiException e) {
             throw new NakadiRuntimeException(e);
         }
-        // FIXME for refactoring purposes, has to be removed during timeline event consumption task
+        // FIXME TIMELINE: for refactoring purposes, has to be removed during timeline event consumption task
     }
 
     public Map<Partition.PartitionKey, Long> getSubscriptionOffsets() {

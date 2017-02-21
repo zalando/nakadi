@@ -80,4 +80,9 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
         return kafkaStoragePosition;
     }
 
+    @Override
+    public Storage.Type getSupportedStorageType() {
+        return Storage.Type.KAFKA;
+    }
+
 }

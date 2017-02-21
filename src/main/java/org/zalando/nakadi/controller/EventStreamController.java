@@ -201,6 +201,8 @@ public class EventStreamController {
                         .withStreamKeepAliveLimit(streamKeepAliveLimit)
                         .withEtName(eventTypeName)
                         .withConsumingAppId(client.getClientId())
+                        // FIXME TIMELINE: IT HAS TO BE FIXED DURING CONSUMPTION TASK
+                        // Cursors here might be in different timeline
                         .withCursors(getStreamingStart(topicRepository, topic, cursorsStr))
                         .build();
 

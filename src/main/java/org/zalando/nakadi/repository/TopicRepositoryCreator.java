@@ -13,4 +13,6 @@ public interface TopicRepositoryCreator {
     TopicRepository createTopicRepository(Storage storage) throws TopicRepositoryException;
 
     Timeline.StoragePosition createStoragePosition(List<NakadiCursor> offsets) throws NakadiRuntimeException;
+
+    Storage.Type getSupportedStorageType();
 }

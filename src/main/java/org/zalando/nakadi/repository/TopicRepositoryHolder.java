@@ -35,7 +35,7 @@ public class TopicRepositoryHolder {
         this.readWriteLock = new ReentrantReadWriteLock();
         this.storageTopicRepository = new HashMap<>();
         this.repositoryCreators = new HashMap<>();
-        this.repositoryCreators.put(Storage.Type.KAFKA, kafkaRepository);
+        this.repositoryCreators.put(kafkaRepository.getSupportedStorageType(), kafkaRepository);
     }
 
     public TopicRepository getTopicRepository(final Storage storage) throws TopicRepositoryException {
