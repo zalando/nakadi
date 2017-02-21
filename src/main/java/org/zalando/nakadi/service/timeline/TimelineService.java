@@ -13,9 +13,9 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -23,11 +23,14 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.view.TimelineRequest;
+import org.zalando.nakadi.view.TimelineView;
 
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TimelineService {
@@ -148,4 +151,33 @@ public class TimelineService {
             }
         }
     }
+
+    public void delete(final String id, final Client client) {
+        if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
+            throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
+        }
+
+        final UUID uuid = UUID.fromString(id);
+        final Optional<Timeline> timelineOpt = timelineDbRepository.getTimeline(uuid);
+        if (!timelineOpt.isPresent()) {
+            throw new UnableProcessException("Timeline with id:  " + uuid + " not found");
+        }
+
+        if (timelineOpt.get().getOrder() != 0) {
+            throw new UnableProcessException("Timeline with id:  " + uuid + " can not be removed");
+        }
+
+        timelineDbRepository.deleteTimeline(uuid);
+    }
+
+    public List<TimelineView> getTimelines(final String eventTypeName, final Client client) {
+        if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
+            throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
+        }
+
+        return timelineDbRepository.listTimelines(eventTypeName).stream()
+                .map(TimelineView::new)
+                .collect(Collectors.toList());
+    }
+
 }

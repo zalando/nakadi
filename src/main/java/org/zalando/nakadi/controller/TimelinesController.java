@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -40,6 +41,17 @@ public class TimelinesController {
     public ResponseEntity<?> createTimeline(@RequestBody final TimelineRequest timelineRequest, final Client client) {
         timelineService.createTimeline(timelineRequest, client);
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @RequestMapping(value = "{id}", method = RequestMethod.DELETE)
+    public ResponseEntity<?> deleteTimeline(@PathVariable("id") final String id, final Client client) {
+        timelineService.delete(id, client);
+        return ResponseEntity.ok().build();
+    }
+
+    @RequestMapping(value = "{event_type}", method = RequestMethod.GET)
+    public ResponseEntity<?> getTimelines(@PathVariable("event_type") final String eventTypeName, final Client client) {
+        return ResponseEntity.ok(timelineService.getTimelines(eventTypeName, client));
     }
 
     @ExceptionHandler(ForbiddenAccessException.class)
