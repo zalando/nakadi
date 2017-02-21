@@ -344,11 +344,31 @@ public class KafkaTopicRepository implements TopicRepository {
 
         final SubscriptionBase.InitialPosition position = subscription.getReadFrom();
         if (position == SubscriptionBase.InitialPosition.CURSORS) {
+
+            final List<SubscriptionCursorWithoutToken> cursorsWithBegin = subscription.getInitialCursors().stream()
+                    .filter(c -> Cursor.BEFORE_OLDEST_OFFSET.equals(c.getOffset()))
+                    .collect(Collectors.toList());
+            if (!cursorsWithBegin.isEmpty()) {
+                try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+
+                    consumer.assign(Arrays.asList(kafkaTPs));
+                }
+            }
             return subscription.getInitialCursors().stream()
-                    .filter(cursor -> cursor.getEventType().equals(eventType.getName()))
+                    .filter(c -> c.getEventType().equals(eventType.getName()))
+                    .map(c -> {
+                        try {
+                            final NakadiCursor nakadiCursor =
+                                    new NakadiCursor(eventType.getTopic(), c.getPartition(), c.getOffset());
+                            return KafkaCursor.fromNakadiCursor(nakadiCursor)
+                                    .addOffset(1);
+                        } catch (final InvalidCursorException e) {
+                            throw new IllegalStateException("Subscription contains invalid initial cursor");
+                        }
+                    })
                     .collect(Collectors.toMap(
-                            Cursor::getPartition,
-                            cursor -> KafkaCursor.toKafkaOffset(cursor.getOffset())
+                            c -> c.toNakadiCursor().getPartition(),
+                            KafkaCursor::getOffset
                     ));
         }
         else try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
