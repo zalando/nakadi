@@ -40,8 +40,8 @@ public class CursorCommitResult {
 
     @Override
     public int hashCode() {
-        int result1 = cursor.hashCode();
-        result1 = 31 * result1 + result.hashCode();
-        return result1;
+        int hashCode = cursor.hashCode();
+        hashCode = 31 * hashCode + result.hashCode();
+        return hashCode;
     }
 }
