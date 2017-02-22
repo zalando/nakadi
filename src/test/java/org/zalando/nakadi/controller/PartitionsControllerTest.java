@@ -18,6 +18,8 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
+import org.zalando.nakadi.service.CursorConverter;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.TopicPartition;
@@ -42,8 +44,10 @@ public class PartitionsControllerTest {
     private static final String TEST_PARTITION = "0";
     private static final String UNKNOWN_PARTITION = "unknown-partition";
 
-    private static final TopicPartition TEST_TOPIC_PARTITION_0 = new TopicPartition(TEST_EVENT_TYPE, "0", "12", "67");
-    private static final TopicPartition TEST_TOPIC_PARTITION_1 = new TopicPartition(TEST_EVENT_TYPE, "1", "43", "98");
+    private static final TopicPartition TEST_TOPIC_PARTITION_0 = new TopicPartition(TEST_EVENT_TYPE, "0",
+            "000000000000000012", "000000000000000067");
+    private static final TopicPartition TEST_TOPIC_PARTITION_1 = new TopicPartition(TEST_EVENT_TYPE, "1",
+            "000000000000000043", "000000000000000098");
 
     private static final List<TopicPartition> TEST_TOPIC_PARTITIONS = ImmutableList.of(
             TEST_TOPIC_PARTITION_0,
@@ -72,7 +76,12 @@ public class PartitionsControllerTest {
         eventTypeRepositoryMock = mock(EventTypeRepository.class);
         topicRepositoryMock = mock(TopicRepository.class);
 
-        final PartitionsController controller = new PartitionsController(eventTypeRepositoryMock, topicRepositoryMock);
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+        when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.ZERO_PADDED_OFFSETS)).thenReturn(true);
+
+        final CursorConverter cursorConverter = new CursorConverter(featureToggleService);
+        final PartitionsController controller = new PartitionsController(
+                eventTypeRepositoryMock, topicRepositoryMock, cursorConverter);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),

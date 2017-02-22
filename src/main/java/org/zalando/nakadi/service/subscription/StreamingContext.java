@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -43,6 +44,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
     private final String loggingPath;
+    private final CursorConverter cursorConverter;
     private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
 
@@ -64,6 +66,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.cursorTokenService = builder.cursorTokenService;
         this.objectMapper = builder.objectMapper;
         this.blacklistService = builder.blacklistService;
+        this.cursorConverter = builder.cursorConverter;
     }
 
     public StreamParameters getParameters() {
@@ -88,6 +91,10 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public long getKafkaPollTimeout() {
         return kafkaPollTimeout;
+    }
+
+    public CursorConverter getCursorConverter() {
+        return cursorConverter;
     }
 
     @Override
@@ -216,6 +223,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
         private BlacklistService blacklistService;
+        private CursorConverter cursorConverter;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -284,6 +292,11 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setBlacklistService(final BlacklistService blacklistService) {
             this.blacklistService = blacklistService;
+            return this;
+        }
+
+        public Builder setCursorConverter(final CursorConverter cursorConverter) {
+            this.cursorConverter = cursorConverter;
             return this;
         }
 

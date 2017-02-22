@@ -213,13 +213,13 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(3)));
 
         assertThat(client.getBatches().get(0).getEvents(), hasSize(5));
-        assertThat(client.getBatches().get(0).getCursor().getOffset(), is("4"));
+        assertThat(client.getBatches().get(0).getCursor().getOffset(), is("000000000000000004"));
 
         assertThat(client.getBatches().get(1).getEvents(), hasSize(5));
-        assertThat(client.getBatches().get(1).getCursor().getOffset(), is("9"));
+        assertThat(client.getBatches().get(1).getCursor().getOffset(), is("000000000000000009"));
 
         assertThat(client.getBatches().get(2).getEvents(), hasSize(2));
-        assertThat(client.getBatches().get(2).getCursor().getOffset(), is("11"));
+        assertThat(client.getBatches().get(2).getCursor().getOffset(), is("000000000000000011"));
     }
 
     @Test(timeout = 10000)

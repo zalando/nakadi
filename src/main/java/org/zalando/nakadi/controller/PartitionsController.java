@@ -18,7 +18,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.view.TopicPartition;
 import org.zalando.problem.Problem;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -33,11 +33,14 @@ public class PartitionsController {
 
     private final EventTypeRepository eventTypeRepository;
     private final TopicRepository topicRepository;
+    private final CursorConverter cursorConverter;
 
     @Autowired
-    public PartitionsController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository) {
+    public PartitionsController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
+                                final CursorConverter cursorConverter) {
         this.eventTypeRepository = eventTypeRepository;
         this.topicRepository = topicRepository;
+        this.cursorConverter = cursorConverter;
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
@@ -55,8 +58,8 @@ public class PartitionsController {
                         .map(stat -> new TopicPartition(
                                 eventType.getName(),
                                 stat.getPartition(),
-                                Cursor.fromTopicPosition(stat.getFirst()).getOffset(),
-                                Cursor.fromTopicPosition(stat.getLast()).getOffset()))
+                                cursorConverter.convert(stat.getFirst()).getOffset(),
+                                cursorConverter.convert(stat.getLast()).getOffset()))
                         .collect(Collectors.toList());
                 return ok().body(result);
             }
@@ -84,8 +87,8 @@ public class PartitionsController {
                         .map(tp -> new TopicPartition(
                                 eventType.getName(),
                                 tp.getPartition(),
-                                Cursor.fromTopicPosition(tp.getFirst()).getOffset(),
-                                Cursor.fromTopicPosition(tp.getLast()).getOffset()));
+                                cursorConverter.convert(tp.getFirst()).getOffset(),
+                                cursorConverter.convert(tp.getLast()).getOffset()));
 
                 if (!result.isPresent()) {
                     return create(Problem.valueOf(NOT_FOUND, "partition not found"), request);
