@@ -168,7 +168,7 @@ public class CursorsService {
                                  final SubscriptionCursor cursor)
             throws ServiceUnavailableException, NoSuchSubscriptionException, InvalidCursorException {
 
-        final String topic = eventType.getTopic();
+        final String topic = timelineService.getTimeline(eventType).getTopic();
         final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, topic, cursor.getPartition());
         try {
             @SuppressWarnings("unchecked")
