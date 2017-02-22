@@ -1,6 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
+
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
@@ -343,35 +345,14 @@ public class KafkaTopicRepository implements TopicRepository {
             throws ServiceUnavailableException {
 
         final SubscriptionBase.InitialPosition position = subscription.getReadFrom();
+
         if (position == SubscriptionBase.InitialPosition.CURSORS) {
-
-            final List<SubscriptionCursorWithoutToken> cursorsWithBegin = subscription.getInitialCursors().stream()
-                    .filter(c -> Cursor.BEFORE_OLDEST_OFFSET.equals(c.getOffset()))
-                    .collect(Collectors.toList());
-            if (!cursorsWithBegin.isEmpty()) {
-                try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
-
-                    consumer.assign(Arrays.asList(kafkaTPs));
-                }
-            }
-            return subscription.getInitialCursors().stream()
+            final List<SubscriptionCursorWithoutToken> etInitialCursors = subscription.getInitialCursors().stream()
                     .filter(c -> c.getEventType().equals(eventType.getName()))
-                    .map(c -> {
-                        try {
-                            final NakadiCursor nakadiCursor =
-                                    new NakadiCursor(eventType.getTopic(), c.getPartition(), c.getOffset());
-                            return KafkaCursor.fromNakadiCursor(nakadiCursor)
-                                    .addOffset(1);
-                        } catch (final InvalidCursorException e) {
-                            throw new IllegalStateException("Subscription contains invalid initial cursor");
-                        }
-                    })
-                    .collect(Collectors.toMap(
-                            c -> c.toNakadiCursor().getPartition(),
-                            KafkaCursor::getOffset
-                    ));
-        }
-        else try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+                    .collect(Collectors.toList());
+            return getSubscriptionTopicInitPositions(eventType.getTopic(), subscription, etInitialCursors);
+
+        } else try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
             final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
                     .partitionsFor(eventType.getTopic())
                     .stream()
@@ -393,6 +374,43 @@ public class KafkaTopicRepository implements TopicRepository {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
 
+    }
+
+    private Map<String, Long> getSubscriptionTopicInitPositions(final String topic, final Subscription subscription,
+                                                                final List<SubscriptionCursorWithoutToken> etCursors) {
+        final Map<String, Long> positions = new HashMap<>();
+        final List<SubscriptionCursorWithoutToken> cursorsWithBegin = etCursors.stream()
+                .filter(c -> Cursor.BEFORE_OLDEST_OFFSET.equals(c.getOffset()))
+                .collect(Collectors.toList());
+
+        if (!cursorsWithBegin.isEmpty()) {
+            try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+                final List<TopicPartition> kafkaTPs = cursorsWithBegin.stream()
+                        .map(c -> new TopicPartition(topic, KafkaCursor.toKafkaPartition(c.getPartition())))
+                        .collect(Collectors.toList());
+                consumer.assign(kafkaTPs);
+                consumer.seekToBeginning(kafkaTPs.toArray(new TopicPartition[kafkaTPs.size()]));
+                positions.putAll(kafkaTPs.stream()
+                        .collect(Collectors.toMap(
+                                tp -> KafkaCursor.toNakadiPartition(tp.partition()),
+                                consumer::position)));
+            }
+        }
+        positions.putAll(etCursors.stream()
+                .filter(c -> !cursorsWithBegin.contains(c))
+                .map(c -> {
+                    try {
+                        final NakadiCursor nakadiCursor = new NakadiCursor(topic, c.getPartition(), c.getOffset());
+                        return KafkaCursor.fromNakadiCursor(nakadiCursor).addOffset(1);
+                    } catch (final InvalidCursorException e) {
+                        throw new IllegalStateException("Subscription contains invalid initial cursor");
+                    }
+                })
+                .collect(Collectors.toMap(
+                        c -> c.toNakadiCursor().getPartition(),
+                        KafkaCursor::getOffset
+                )));
+        return positions;
     }
 
     @Override
