@@ -1,8 +1,6 @@
 package org.zalando.nakadi.repository;
 
 import com.codahale.metrics.MetricRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -25,8 +23,6 @@ import java.util.stream.Collectors;
 
 @Component(value = "kafka")
 public class KafkaRepositoryCreator implements TopicRepositoryCreator {
-
-    private static final Logger LOG = LoggerFactory.getLogger(TopicRepositoryHolder.class);
 
     private final NakadiSettings nakadiSettings;
     private final KafkaSettings kafkaSettings;
@@ -64,7 +60,6 @@ public class KafkaRepositoryCreator implements TopicRepositoryCreator {
             kafkaTopicRepository.listTopics();
             return kafkaTopicRepository;
         } catch (final Exception e) {
-            LOG.error("Could not create topic repository for {}", storage, e);
             throw new TopicRepositoryException("Could not create topic repository", e);
         }
     }

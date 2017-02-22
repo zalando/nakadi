@@ -80,8 +80,7 @@ public class TopicRepositoryHolder {
     private TopicRepositoryCreator getTopicRepositoryCreator(final Storage.Type type) {
         final TopicRepositoryCreator topicRepositoryCreator = repositoryCreators.get(type);
         if (topicRepositoryCreator == null) {
-            LOG.error("Could not create topic repository. Storage type {} not found", type);
-            throw new TopicRepositoryException("Could not create topic repository");
+            throw new TopicRepositoryException("Could not create topic repository. Storage type not found: " + type);
         }
         return topicRepositoryCreator;
     }

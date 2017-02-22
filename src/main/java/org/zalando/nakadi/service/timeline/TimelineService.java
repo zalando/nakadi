@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
@@ -14,22 +15,20 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.view.TimelineRequest;
 
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 @Service
 public class TimelineService {
@@ -43,7 +42,8 @@ public class TimelineService {
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
     private final TimelineDbRepository timelineDbRepository;
-    private final TopicRepositoryHolder repositoryHolder;
+    private final TopicRepositoryHolder topicRepositoryHolder;
+    private final TransactionTemplate transactionTemplate;
 
     @Autowired
     public TimelineService(final SecuritySettings securitySettings,
@@ -52,56 +52,50 @@ public class TimelineService {
                            final TimelineSync timelineSync,
                            final NakadiSettings nakadiSettings,
                            final TimelineDbRepository timelineDbRepository,
-                           final TopicRepositoryHolder repositoryHolder) {
+                           final TopicRepositoryHolder topicRepositoryHolder,
+                           final TransactionTemplate transactionTemplate) {
         this.securitySettings = securitySettings;
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
         this.timelineSync = timelineSync;
         this.nakadiSettings = nakadiSettings;
         this.timelineDbRepository = timelineDbRepository;
-        this.repositoryHolder = repositoryHolder;
+        this.topicRepositoryHolder = topicRepositoryHolder;
+        this.transactionTemplate = transactionTemplate;
     }
 
-    public void createTimeline(final TimelineRequest timelineRequest, final Client client)
+    public void createTimeline(final String eventTypeName, final String storageId, final Client client)
             throws ForbiddenAccessException, TimelineException, TopicRepositoryException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
         try {
-            final String eventTypeName = timelineRequest.getEventType();
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-
-            final Storage storage = storageDbRepository.getStorage(timelineRequest.getStorageId())
-                    .orElseThrow(() -> new NotFoundException("No storage with id: " + timelineRequest.getStorageId()));
+            final Storage storage = storageDbRepository.getStorage(storageId)
+                    .orElseThrow(() -> new UnableProcessException("No storage with id: " + storageId));
             final Timeline activeTimeline = getTimeline(eventType);
-            final TopicRepository currentTopicRepo = repositoryHolder.getTopicRepository(activeTimeline.getStorage());
+            final TopicRepository currentTopicRepo =
+                    topicRepositoryHolder.getTopicRepository(activeTimeline.getStorage());
+            final TopicRepository nextTopicRepo = topicRepositoryHolder.getTopicRepository(storage);
             final List<PartitionStatistics> partitionStatistics =
                     currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline.getTopic()));
 
+
+            final Timeline nextTimeline;
             if (activeTimeline.isFake()) {
-                LOG.info("Switching from fake timeline to real one. Current topic {}", activeTimeline.getTopic());
-                switchTimeline(eventType, Timeline.createTimeline(activeTimeline.getEventType(),
-                        activeTimeline.getOrder() + 1, storage, activeTimeline.getTopic(), new Date()),
-                        (nextTimeline) -> nextTimeline.setSwitchedAt(new Date()));
+                nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
+                        activeTimeline.getOrder() + 1, storage, activeTimeline.getTopic(), new Date());
             } else {
-                final TopicRepository nextTopicRepo = repositoryHolder.getTopicRepository(storage);
                 final String newTopic = nextTopicRepo.createTopic(partitionStatistics.size(),
                         eventType.getOptions().getRetentionTime());
-                LOG.info("Switching timelines. Topics: {} -> {}", activeTimeline.getTopic(), newTopic);
-                switchTimeline(eventType, Timeline.createTimeline(activeTimeline.getEventType(),
-                        activeTimeline.getOrder() + 1, storage, newTopic, new Date()), (nextTimeline) -> {
-                    activeTimeline.setLatestPosition(repositoryHolder.createStoragePosition(activeTimeline));
-                    nextTimeline.setSwitchedAt(new Date());
-                });
+                nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
+                        activeTimeline.getOrder() + 1, storage, newTopic, new Date());
             }
+
+            switchTimelines(eventType, activeTimeline, currentTopicRepo, nextTimeline);
         } catch (final NakadiException ne) {
             throw new TimelineException(ne.getMessage(), ne);
-        } catch (final InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new TimelineException(
-                    String.format("Timeline update was interrupted for event type %s and storage id `%s`",
-                            timelineRequest.getEventType(), timelineRequest.getStorageId()));
         }
     }
 
@@ -114,7 +108,7 @@ public class TimelineService {
             }
 
             final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
-                    .orElseThrow(() -> new NotFoundException("Fake timeline creation failed for event type " +
+                    .orElseThrow(() -> new UnableProcessException("Fake timeline creation failed for event type " +
                             eventType.getName() + ".No default storage defined"));
             return Timeline.createFakeTimeline(eventType, storage);
         } catch (final NakadiException e) {
@@ -126,34 +120,49 @@ public class TimelineService {
     public TopicRepository getTopicRepository(final EventTypeBase eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getTimeline(eventType);
-        return repositoryHolder.getTopicRepository(timeline.getStorage());
+        return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
     public TopicRepository getDefaultTopicRepository() throws TopicRepositoryException {
         try {
             final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
-                    .orElseThrow(() -> new NotFoundException("No default storage defined"));
-            return repositoryHolder.getTopicRepository(storage);
+                    .orElseThrow(() -> new UnableProcessException("No default storage defined"));
+            return topicRepositoryHolder.getTopicRepository(storage);
         } catch (final InternalNakadiException e) {
             LOG.error("Failed to get default topic repository", e);
             throw new TopicRepositoryException("Failed to get timeline", e);
         }
     }
 
-    private void switchTimeline(final EventType eventType,
-                                final Timeline nextTimeline,
-                                final Consumer<Timeline> switcher) throws InterruptedException {
-        try {
-            timelineDbRepository.createTimeline(nextTimeline);
-            timelineSync.startTimelineUpdate(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
-            switcher.accept(nextTimeline);
-            timelineDbRepository.updateTimelime(nextTimeline);
-        } catch (final Throwable th) {
-            LOG.error("Failed to switch timeline for event type {}", eventType.getName(), th);
-            timelineDbRepository.deleteTimeline(nextTimeline.getId());
-            throw th;
-        } finally {
-            timelineSync.finishTimelineUpdate(eventType.getName());
-        }
+    private void switchTimelines(final EventType eventType,
+                                 final Timeline activeTimeline,
+                                 final TopicRepository currentTopicRepo,
+                                 final Timeline nextTimeline) {
+        LOG.info("Switching timelines from {} to {}", activeTimeline, nextTimeline);
+        transactionTemplate.execute(status -> {
+            try {
+                timelineDbRepository.createTimeline(nextTimeline);
+                timelineSync.startTimelineUpdate(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
+                nextTimeline.setSwitchedAt(new Date());
+                if (!activeTimeline.isFake()) {
+                    final Timeline.StoragePosition storagePosition =
+                            topicRepositoryHolder.createStoragePosition(activeTimeline);
+                    activeTimeline.setLatestPosition(storagePosition);
+                    timelineDbRepository.updateTimelime(activeTimeline);
+                }
+                timelineDbRepository.updateTimelime(nextTimeline);
+                return null;
+            } catch (final Exception ex) {
+                throw new TimelineException("Failed to switch timeline for event type: " + eventType.getName(), ex);
+            } finally {
+                try {
+                    timelineSync.finishTimelineUpdate(eventType.getName());
+                } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new TimelineException("Timeline update was interrupted for %s" + eventType.getName());
+                }
+            }
+        });
     }
+
 }

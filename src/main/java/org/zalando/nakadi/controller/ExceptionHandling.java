@@ -15,6 +15,7 @@ import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.TimelineException;
+import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -96,6 +97,13 @@ public final class ExceptionHandling implements ProblemHandling {
             final NakadiException ne = (NakadiException) cause;
             return Responses.create(ne.asProblem(), request);
         }
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(TopicCreationException.class)
+    public ResponseEntity<Problem> handleTopicCreationException(final TopicCreationException exception,
+                                                                final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
