@@ -1,8 +1,15 @@
 package org.zalando.nakadi.domain;
 
+import com.google.common.collect.ImmutableList;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.collect.Sets.newTreeSet;
@@ -11,7 +18,8 @@ public class SubscriptionBase {
 
     public enum InitialPosition {
         BEGIN,
-        END
+        END,
+        CURSORS
     }
 
     @NotNull
@@ -26,6 +34,8 @@ public class SubscriptionBase {
 
     @NotNull
     private InitialPosition readFrom = InitialPosition.END;
+
+    private List<SubscriptionCursorWithoutToken> initialCursors = ImmutableList.of();
 
     public SubscriptionBase() {
     }
@@ -67,6 +77,14 @@ public class SubscriptionBase {
 
     public void setReadFrom(final InitialPosition readFrom) {
         this.readFrom = readFrom;
+    }
+
+    public List<SubscriptionCursorWithoutToken> getInitialCursors() {
+        return Collections.unmodifiableList(initialCursors);
+    }
+
+    public void setInitialCursors(@Nullable final List<SubscriptionCursorWithoutToken> initialCursors) {
+        this.initialCursors = Optional.ofNullable(initialCursors).orElse(ImmutableList.of());
     }
 
     @Override

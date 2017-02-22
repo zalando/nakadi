@@ -96,7 +96,7 @@ public class SubscriptionService {
 
         if (!missingEventTypes.isEmpty()) {
             final Problem problem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
-                    createMissingEventsErrorMessage(missingEventTypes));
+                    createMissingEventTypesErrorMessage(missingEventTypes));
             return Result.problem(problem);
         }
 
@@ -132,7 +132,7 @@ public class SubscriptionService {
                 subscriptionBase.getConsumerGroup());
     }
 
-    private String createMissingEventsErrorMessage(final List<String> missingEventTypes) {
+    private String createMissingEventTypesErrorMessage(final List<String> missingEventTypes) {
         return new StringBuilder()
                 .append("Failed to create subscription, event type(s) not found: '")
                 .append(StringUtils.join(missingEventTypes, "','"))
