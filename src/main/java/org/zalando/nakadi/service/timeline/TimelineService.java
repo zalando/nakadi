@@ -79,25 +79,19 @@ public class TimelineService {
             final List<PartitionStatistics> partitionStatistics =
                     currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline.getTopic()));
 
+
+            final Timeline nextTimeline;
             if (activeTimeline.isFake()) {
-                LOG.info("Switching from fake timeline to real one. Current topic {}", activeTimeline.getTopic());
-                final Timeline nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
+                nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
                         activeTimeline.getOrder() + 1, storage, activeTimeline.getTopic(), new Date());
-                switchTimeline(eventType, nextTimeline, () -> nextTimeline.setSwitchedAt(new Date()));
             } else {
                 final String newTopic = nextTopicRepo.createTopic(partitionStatistics.size(),
                         eventType.getOptions().getRetentionTime());
-                final Timeline nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
+                nextTimeline = Timeline.createTimeline(activeTimeline.getEventType(),
                         activeTimeline.getOrder() + 1, storage, newTopic, new Date());
-                LOG.info("Switching timelines. Topics: {} -> {}", activeTimeline.getTopic(), nextTimeline.getTopic());
-                switchTimeline(eventType, nextTimeline, () -> {
-                    final Timeline.StoragePosition storagePosition =
-                            StoragePositionFactory.createStoragePosition(activeTimeline, currentTopicRepo);
-                    activeTimeline.setLatestPosition(storagePosition);
-                    nextTimeline.setSwitchedAt(new Date());
-                    timelineDbRepository.updateTimelime(activeTimeline);
-                });
             }
+
+            switchTimelines(eventType, activeTimeline, currentTopicRepo, nextTimeline);
         } catch (final NakadiException ne) {
             throw new TimelineException(ne.getMessage(), ne);
         }
@@ -127,14 +121,22 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
-    private void switchTimeline(final EventType eventType,
-                                final Timeline nextTimeline,
-                                final Runnable switcher) {
+    private void switchTimelines(final EventType eventType,
+                                 final Timeline activeTimeline,
+                                 final TopicRepository currentTopicRepo,
+                                 final Timeline nextTimeline) {
+        LOG.info("Switching timelines from {} to {}", activeTimeline, nextTimeline);
         transactionTemplate.execute(status -> {
             try {
                 timelineDbRepository.createTimeline(nextTimeline);
                 timelineSync.startTimelineUpdate(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
-                switcher.run();
+                nextTimeline.setSwitchedAt(new Date());
+                if (!activeTimeline.isFake()) {
+                    final Timeline.StoragePosition storagePosition =
+                            StoragePositionFactory.createStoragePosition(activeTimeline, currentTopicRepo);
+                    activeTimeline.setLatestPosition(storagePosition);
+                    timelineDbRepository.updateTimelime(activeTimeline);
+                }
                 timelineDbRepository.updateTimelime(nextTimeline);
                 return null;
             } catch (final Exception ex) {
@@ -149,4 +151,5 @@ public class TimelineService {
             }
         });
     }
+
 }

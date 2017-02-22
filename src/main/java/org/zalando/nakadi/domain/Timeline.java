@@ -69,10 +69,12 @@ public class Timeline {
         this.createdAt = createdAt;
     }
 
+    @Nullable
     public UUID getId() {
         return id;
     }
 
+    @Nullable
     public void setId(final UUID id) {
         this.id = id;
     }
@@ -173,6 +175,23 @@ public class Timeline {
     @Override
     public int hashCode() {
         return id != null ? id.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Timeline{");
+        sb.append("id=").append(id);
+        sb.append(", eventType='").append(eventType).append('\'');
+        sb.append(", order=").append(order);
+        sb.append(", storage=").append(storage);
+        sb.append(", topic='").append(topic).append('\'');
+        sb.append(", createdAt=").append(createdAt);
+        sb.append(", switchedAt=").append(switchedAt);
+        sb.append(", cleanupAt=").append(cleanupAt);
+        sb.append(", latestPosition=").append(latestPosition);
+        sb.append(", fake=").append(fake);
+        sb.append('}');
+        return sb.toString();
     }
 
     public static Timeline createTimeline(
