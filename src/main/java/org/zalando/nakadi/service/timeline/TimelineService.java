@@ -148,7 +148,7 @@ public class TimelineService {
                     timelineSync.finishTimelineUpdate(eventType.getName());
                 } catch (final InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    throw new TimelineException("Timeline update was interrupted for event type %s" + eventType.getName());
+                    throw new TimelineException("Timeline update was interrupted for %s" + eventType.getName());
                 }
             }
         });
