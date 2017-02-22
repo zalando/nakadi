@@ -429,7 +429,6 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
-        validateCursorForNulls(position);
         KafkaCursor.fromNakadiCursor(position);
     }
 
