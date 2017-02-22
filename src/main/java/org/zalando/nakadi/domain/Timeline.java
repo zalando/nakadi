@@ -1,5 +1,7 @@
 package org.zalando.nakadi.domain;
 
+import org.zalando.nakadi.util.UUIDGenerator;
+
 import javax.annotation.Nullable;
 import java.util.Date;
 import java.util.List;
@@ -180,7 +182,7 @@ public class Timeline {
             final String topic,
             final Date createdAt) {
         final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
-        timeline.setId(UUID.randomUUID());
+        timeline.setId(new UUIDGenerator().randomUUID());
         return timeline;
     }
 

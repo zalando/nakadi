@@ -13,16 +13,15 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.view.TimelineRequest;
 
 import java.util.Collections;
 import java.util.Date;
@@ -63,17 +62,14 @@ public class TimelineService {
         this.transactionTemplate = transactionTemplate;
     }
 
-    public void createTimeline(final TimelineRequest timelineRequest, final Client client)
+    public void createTimeline(final String eventTypeName, final String storageId, final Client client)
             throws ForbiddenAccessException, TimelineException, TopicRepositoryException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
-        final String storageId = timelineRequest.getStorageId();
         try {
-            final String eventTypeName = timelineRequest.getEventType();
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-
             final Storage storage = storageDbRepository.getStorage(storageId)
                     .orElseThrow(() -> new UnableProcessException("No storage with id: " + storageId));
             final Timeline activeTimeline = getTimeline(eventType);

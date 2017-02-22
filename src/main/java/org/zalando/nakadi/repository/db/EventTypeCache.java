@@ -22,6 +22,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
 
+import javax.annotation.Nullable;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -184,6 +185,7 @@ public class EventTypeCache {
                 .max(Comparator.comparing(Timeline::getOrder));
     }
 
+    @Nullable
     public List<Timeline> getTimelines(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
         return getCached(name)
@@ -232,7 +234,7 @@ public class EventTypeCache {
 
         public CachedValue(final EventType eventType,
                            final EventTypeValidator eventTypeValidator,
-                           final List<Timeline> timelines) {
+                           @Nullable final List<Timeline> timelines) {
             this.eventType = eventType;
             this.eventTypeValidator = eventTypeValidator;
             this.timelines = timelines;
@@ -246,6 +248,7 @@ public class EventTypeCache {
             return eventTypeValidator;
         }
 
+        @Nullable
         public List<Timeline> getTimelines() {
             return timelines;
         }
