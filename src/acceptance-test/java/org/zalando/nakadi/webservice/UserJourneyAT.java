@@ -133,8 +133,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("partition", equalTo("0"))
-                .body("oldest_available_offset", equalTo("0"))
-                .body("newest_available_offset", equalTo("1"));
+                .body("oldest_available_offset", equalTo("000000000000000000"))
+                .body("newest_available_offset", equalTo("000000000000000001"));
 
         // get offsets for all partitions
         jsonRequestSpec()
@@ -155,8 +155,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .get("/event-types/" + eventTypeName + "/events")
                 .then()
                 .statusCode(OK.value())
-                .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"1\"},\"events\":" + "[" + EVENT1 + ","
-                        + EVENT2 + "]}\n"));
+                .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"000000000000000001\"},\"events\":"
+                        + "[" + EVENT1 + "," + EVENT2 + "]}\n"));
 
         // delete event type
         jsonRequestSpec()
@@ -222,7 +222,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // validate the content of events
         for (int i = 0; i < batches.size(); i++) {
 
-            final SubscriptionCursor cursor = new SubscriptionCursor("0", String.valueOf(i), eventTypeName, "");
+            final SubscriptionCursor cursor = new SubscriptionCursor("0", String.format("%018d", i), eventTypeName, "");
             final StreamBatch expectedBatch = new StreamBatch(cursor,
                     ImmutableList.of(ImmutableMap.of("foo", "bar" + i)),
                     i == 0 ? new StreamMetadata("Stream started") : null);
@@ -257,7 +257,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("items[0].partition", equalTo("0"))
-                .body("items[0].offset", equalTo("3"));
+                .body("items[0].offset", equalTo(String.format("%018d", 3)));
 
         // delete subscription
         jsonRequestSpec()

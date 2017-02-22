@@ -1,7 +1,8 @@
 package org.zalando.nakadi.service.subscription.model;
 
-import javax.annotation.Nullable;
 import java.util.Collection;
+import javax.annotation.Nullable;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 public class Partition {
     public static class PartitionKey {
@@ -12,6 +13,13 @@ public class Partition {
         public PartitionKey(final String topic, final String partition) {
             this.topic = topic;
             this.partition = partition;
+        }
+
+        public KafkaCursor createKafkaCursor(final long offset) {
+            return new KafkaCursor(
+                    topic,
+                    KafkaCursor.toKafkaPartition(partition),
+                    offset);
         }
 
         @Override

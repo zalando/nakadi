@@ -2,6 +2,7 @@ package org.zalando.nakadi.webservice;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
@@ -11,6 +12,9 @@ import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.service.CursorConverter;
+import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -31,8 +35,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.service.CursorConverter.CURSOR_OFFSET_LENGTH;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 
@@ -93,9 +99,11 @@ public class CursorsServiceAT extends BaseAT {
         when(subscription.getEventTypes()).thenReturn(ImmutableSet.of(etName));
         final SubscriptionDbRepository subscriptionRepo = mock(SubscriptionDbRepository.class);
         when(subscriptionRepo.getSubscription(sid)).thenReturn(subscription);
-
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+        when(featureToggleService.isFeatureEnabled(eq(FeatureToggleService.Feature.ZERO_PADDED_OFFSETS)))
+                .thenReturn(Boolean.TRUE);
         cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepo, eventTypeRepository,
-                tokenService);
+                tokenService, new CursorConverter(featureToggleService));
 
         // bootstrap data in ZK
         CURATOR.create().creatingParentsIfNeeded().forPath(offsetPath(P1), OLD_OFFSET.getBytes(UTF_8));
@@ -214,8 +222,10 @@ public class CursorsServiceAT extends BaseAT {
         final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(sid);
         assertThat(ImmutableSet.copyOf(cursors),
                 equalTo(ImmutableSet.of(
-                        new SubscriptionCursor(P1, OLD_OFFSET, etName, token),
-                        new SubscriptionCursor(P2, OLD_OFFSET, etName, token)
+                        new SubscriptionCursor(P1,
+                                StringUtils.leftPad(OLD_OFFSET, CURSOR_OFFSET_LENGTH, '0'), etName, token),
+                        new SubscriptionCursor(P2,
+                                StringUtils.leftPad(OLD_OFFSET, CURSOR_OFFSET_LENGTH, '0'), etName, token)
                 )));
     }
 

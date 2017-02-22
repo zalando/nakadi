@@ -15,6 +15,7 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -37,6 +38,7 @@ public class SubscriptionStreamerFactory {
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private final CursorTokenService cursorTokenService;
     private final ObjectMapper objectMapper;
+    private final CursorConverter cursorConverter;
 
     @Autowired
     public SubscriptionStreamerFactory(
@@ -45,13 +47,15 @@ public class SubscriptionStreamerFactory {
             final KafkaTopicRepository topicRepository,
             final EventTypeRepository eventTypeRepository,
             final CursorTokenService cursorTokenService,
-            final ObjectMapper objectMapper) {
+            final ObjectMapper objectMapper,
+            final CursorConverter cursorConverter) {
         this.zkHolder = zkHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.topicRepository = topicRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
+        this.cursorConverter = cursorConverter;
     }
 
     public SubscriptionStreamer build(
@@ -82,6 +86,7 @@ public class SubscriptionStreamerFactory {
                 .setCursorTokenService(cursorTokenService)
                 .setObjectMapper(objectMapper)
                 .setBlacklistService(blacklistService)
+                .setCursorConverter(cursorConverter)
                 .build();
     }
 
