@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
@@ -42,6 +42,7 @@ public class TimelineService {
     private final NakadiSettings nakadiSettings;
     private final TimelineDbRepository timelineDbRepository;
     private final TopicRepositoryHolder topicRepositoryHolder;
+    private final TransactionTemplate transactionTemplate;
 
     @Autowired
     public TimelineService(final SecuritySettings securitySettings,
@@ -50,7 +51,8 @@ public class TimelineService {
                            final TimelineSync timelineSync,
                            final NakadiSettings nakadiSettings,
                            final TimelineDbRepository timelineDbRepository,
-                           final TopicRepositoryHolder topicRepositoryHolder) {
+                           final TopicRepositoryHolder topicRepositoryHolder,
+                           final TransactionTemplate transactionTemplate) {
         this.securitySettings = securitySettings;
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
@@ -58,6 +60,7 @@ public class TimelineService {
         this.nakadiSettings = nakadiSettings;
         this.timelineDbRepository = timelineDbRepository;
         this.topicRepositoryHolder = topicRepositoryHolder;
+        this.transactionTemplate = transactionTemplate;
     }
 
     public void createTimeline(final TimelineRequest timelineRequest, final Client client)
@@ -128,24 +131,26 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
-    @Transactional
     private void switchTimeline(final EventType eventType,
                                 final Timeline nextTimeline,
                                 final Runnable switcher) {
-        try {
-            timelineDbRepository.createTimeline(nextTimeline);
-            timelineSync.startTimelineUpdate(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
-            switcher.run();
-            timelineDbRepository.updateTimelime(nextTimeline);
-        } catch (final Throwable th) {
-            throw new TimelineException("Failed to switch timeline for event type: " + eventType.getName(), th);
-        } finally {
+        transactionTemplate.execute(status -> {
             try {
-                timelineSync.finishTimelineUpdate(eventType.getName());
-            } catch (final InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                throw new TimelineException("Timeline update was interrupted for event type %s" + eventType.getName());
+                timelineDbRepository.createTimeline(nextTimeline);
+                timelineSync.startTimelineUpdate(eventType.getName(), nakadiSettings.getTimelineWaitTimeoutMs());
+                switcher.run();
+                timelineDbRepository.updateTimelime(nextTimeline);
+                return null;
+            } catch (final Exception ex) {
+                throw new TimelineException("Failed to switch timeline for event type: " + eventType.getName(), ex);
+            } finally {
+                try {
+                    timelineSync.finishTimelineUpdate(eventType.getName());
+                } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new TimelineException("Timeline update was interrupted for event type %s" + eventType.getName());
+                }
             }
-        }
+        });
     }
 }
