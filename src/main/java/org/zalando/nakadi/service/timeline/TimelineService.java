@@ -24,6 +24,7 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.TimelineView;
 
 import java.util.Collections;
@@ -47,6 +48,7 @@ public class TimelineService {
     private final TimelineDbRepository timelineDbRepository;
     private final TopicRepositoryHolder topicRepositoryHolder;
     private final TransactionTemplate transactionTemplate;
+    private final UUIDGenerator uuidGenerator;
 
     @Autowired
     public TimelineService(final SecuritySettings securitySettings,
@@ -56,7 +58,8 @@ public class TimelineService {
                            final NakadiSettings nakadiSettings,
                            final TimelineDbRepository timelineDbRepository,
                            final TopicRepositoryHolder topicRepositoryHolder,
-                           final TransactionTemplate transactionTemplate) {
+                           final TransactionTemplate transactionTemplate,
+                           final UUIDGenerator uuidGenerator) {
         this.securitySettings = securitySettings;
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
@@ -65,6 +68,7 @@ public class TimelineService {
         this.timelineDbRepository = timelineDbRepository;
         this.topicRepositoryHolder = topicRepositoryHolder;
         this.transactionTemplate = transactionTemplate;
+        this.uuidGenerator = uuidGenerator;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId, final Client client)
@@ -173,7 +177,7 @@ public class TimelineService {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
-        final UUID uuid = UUID.fromString(id);
+        final UUID uuid = uuidGenerator.fromString(id);
         final Optional<Timeline> timelineOpt = timelineDbRepository.getTimeline(uuid);
         if (!timelineOpt.isPresent()) {
             throw new UnableProcessException("Timeline with id:  " + uuid + " not found");

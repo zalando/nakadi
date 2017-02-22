@@ -1245,6 +1245,111 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /timelines:
+    post:
+      tags:
+        - timelines-api
+      description: |
+        Creates timeline and switches to it.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: timeline_request
+          in: body
+          schema:
+            description: Event type and storage id to be used for timeline creation.
+            type: object
+            properties:
+              event_type:
+                type: string
+              strorage_id:
+                type: string
+          required: true
+      responses:
+        '201':
+          description: New timeline is created and in use.
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /timelines/{id}#1:
+    delete:
+      tags:
+        - timelines-api
+      description: |
+        Deletes a timeline in case it is the first one.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: id
+          in: path
+          description: timeline id
+          type: string
+          format: uuid
+          required: true
+      responses:
+        '200':
+          description: Timeline was deleted
+        '422':
+          description: Timeline could not be deleted
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /timelines/{event_type}#2:
+    get:
+      tags:
+        - timelines-api
+      description: |
+        List timelines for a given event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: event_type
+          in: path
+          description: event type name to list timelines for
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: list of timelines.
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                event_type:
+                  type: string
+                order:
+                  type: integer
+                strorage_id:
+                  type: string
+                topic:
+                  type: string
+                created_at:
+                  type: string
+                  format: date-time
+                switched_at:
+                  type: string
+                  format: date-time
+                cleanup_at:
+                  type: string
+                  format: date-time
+                latest_position:
+                  type: string
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
 # ################################### #
 #                                     #
 #             Definitions             #
