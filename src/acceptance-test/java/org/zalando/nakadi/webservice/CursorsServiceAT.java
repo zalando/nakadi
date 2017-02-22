@@ -11,7 +11,6 @@ import org.mockito.stubbing.Answer;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -21,6 +20,8 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
+import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
 import java.util.List;
@@ -95,13 +96,15 @@ public class CursorsServiceAT extends BaseAT {
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(topicRepository.compareOffsets(any(), any())).thenAnswer(FAKE_OFFSET_COMPARATOR);
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
 
         final Subscription subscription = mock(Subscription.class);
         when(subscription.getEventTypes()).thenReturn(ImmutableSet.of(etName));
         final SubscriptionDbRepository subscriptionRepo = mock(SubscriptionDbRepository.class);
         when(subscriptionRepo.getSubscription(sid)).thenReturn(subscription);
 
-        cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepo, eventTypeRepository,
+        cursorsService = new CursorsService(zkHolder, timelineService, subscriptionRepo, eventTypeRepository,
                 tokenService);
 
         // bootstrap data in ZK

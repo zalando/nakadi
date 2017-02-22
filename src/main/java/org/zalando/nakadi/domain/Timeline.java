@@ -1,5 +1,7 @@
 package org.zalando.nakadi.domain;
 
+import org.zalando.nakadi.util.UUIDGenerator;
+
 import javax.annotation.Nullable;
 import java.util.Date;
 import java.util.List;
@@ -67,10 +69,12 @@ public class Timeline {
         this.createdAt = createdAt;
     }
 
+    @Nullable
     public UUID getId() {
         return id;
     }
 
+    @Nullable
     public void setId(final UUID id) {
         this.id = id;
     }
@@ -173,6 +177,23 @@ public class Timeline {
         return id != null ? id.hashCode() : 0;
     }
 
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Timeline{");
+        sb.append("id=").append(id);
+        sb.append(", eventType='").append(eventType).append('\'');
+        sb.append(", order=").append(order);
+        sb.append(", storage=").append(storage);
+        sb.append(", topic='").append(topic).append('\'');
+        sb.append(", createdAt=").append(createdAt);
+        sb.append(", switchedAt=").append(switchedAt);
+        sb.append(", cleanupAt=").append(cleanupAt);
+        sb.append(", latestPosition=").append(latestPosition);
+        sb.append(", fake=").append(fake);
+        sb.append('}');
+        return sb.toString();
+    }
+
     public static Timeline createTimeline(
             final String eventType,
             final int order,
@@ -180,11 +201,11 @@ public class Timeline {
             final String topic,
             final Date createdAt) {
         final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
-        timeline.setId(UUID.randomUUID());
+        timeline.setId(new UUIDGenerator().randomUUID());
         return timeline;
     }
 
-    public static Timeline createFakeTimeline(final EventType eventType, final Storage storage) {
+    public static Timeline createFakeTimeline(final EventTypeBase eventType, final Storage storage) {
         final Timeline timeline = new Timeline(eventType.getName(), 0, storage, eventType.getTopic(), new Date());
         timeline.fake = true;
         return timeline;
