@@ -177,7 +177,7 @@ public class TimelineService {
         });
     }
 
-    public void delete(final String id, final Client client) {
+    public void delete(final String id, final Client client) throws ForbiddenAccessException, UnableProcessException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
@@ -191,7 +191,8 @@ public class TimelineService {
         timelineDbRepository.deleteTimeline(uuid);
     }
 
-    public List<TimelineView> getTimelines(final String eventTypeName, final Client client) {
+    public List<TimelineView> getTimelines(final String eventTypeName, final Client client)
+            throws ForbiddenAccessException, UnableProcessException, TimelineException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }

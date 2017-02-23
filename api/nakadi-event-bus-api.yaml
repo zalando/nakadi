@@ -1250,7 +1250,7 @@ paths:
       tags:
         - timelines-api
       description: |
-        Creates timeline and switches to it.
+        Creates a new timeline for an event type and makes it active.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
@@ -1262,7 +1262,7 @@ paths:
             properties:
               event_type:
                 type: string
-              strorage_id:
+              storage_id:
                 type: string
           required: true
       responses:
@@ -1278,8 +1278,7 @@ paths:
       tags:
         - timelines-api
       description: |
-        Deletes a timeline in case it is the first one.
-        Method call is quite dangerous, because it will remove any timeline.
+        Deletes a timeline by its id. Method call is quite dangerous, because it will remove any timeline.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
@@ -1293,7 +1292,7 @@ paths:
         '200':
           description: Timeline was deleted
         '422':
-          description: Timeline could not be deleted
+          description: Unprocessable entity due to non existing timeline
           schema:
             $ref: '#/definitions/Problem'
         '403':
@@ -1346,6 +1345,10 @@ paths:
                   format: date-time
                 latest_position:
                   type: string
+        '422':
+          description: Unprocessable entity due to non existing event type
+          schema:
+            $ref: '#/definitions/Problem'
         '403':
           description: Access forbidden
           schema:
