@@ -4,23 +4,6 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
-import org.zalando.nakadi.Application;
-import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
-import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.db.EventTypeCache;
-import org.zalando.nakadi.repository.db.EventTypeDbRepository;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
-import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.service.CursorsService;
-import org.zalando.nakadi.service.EventPublisher;
-import org.zalando.nakadi.service.EventStreamFactory;
-import org.zalando.nakadi.service.EventTypeService;
-import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.util.UUIDGenerator;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,6 +13,7 @@ import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.boot.test.WebIntegrationTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
@@ -42,13 +26,34 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import org.zalando.nakadi.Application;
+import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.EventTypeCache;
+import org.zalando.nakadi.repository.db.EventTypeDbRepository;
+import org.zalando.nakadi.repository.db.StorageDbRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
+import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
+import org.zalando.nakadi.repository.tool.DefaultStorage;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.service.CursorsService;
+import org.zalando.nakadi.service.EventPublisher;
+import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.EventTypeService;
+import org.zalando.nakadi.service.timeline.TimelineSync;
+import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
-import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.hamcrest.Matchers.isOneOf;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.Matchers.any;
@@ -63,6 +68,7 @@ import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(Application.class)
@@ -200,6 +206,14 @@ public abstract class AuthenticationTest {
         @Bean
         public TimelineSync timelineSync() {
             return mock(TimelineSync.class);
+        }
+
+        @Bean
+        public DefaultStorage defaultStorage() throws InternalNakadiException {
+            final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
+            when(storageDbRepository.getStorage("default")).thenReturn(Optional.of(new Storage()));
+            final DefaultStorage defaultStorage = new DefaultStorage(storageDbRepository, mock(Environment.class));
+            return defaultStorage;
         }
 
     }
