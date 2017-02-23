@@ -34,6 +34,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.exceptions.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -104,6 +105,16 @@ public class SubscriptionService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+
+        if (subscriptionBase.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {
+            eventTypeMapping.values().stream()
+                    .map(Optional::get)
+                    .forEach(et -> topicRepository.listPartitionNames(et.getName()));
+
+            if (subscriptionBase.getInitialCursors().isEmpty()) {
+                throw new WrongInitialCursorsException("");
+            }
+        }
 
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
