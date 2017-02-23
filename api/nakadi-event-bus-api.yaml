@@ -1279,6 +1279,7 @@ paths:
         - timelines-api
       description: |
         Deletes a timeline in case it is the first one.
+        Method call is quite dangerous, because it will remove any timeline.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:

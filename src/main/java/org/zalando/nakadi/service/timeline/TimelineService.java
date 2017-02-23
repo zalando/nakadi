@@ -15,7 +15,10 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TimelineException;
+import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -101,8 +104,10 @@ public class TimelineService {
             }
 
             switchTimelines(eventType, activeTimeline, currentTopicRepo, nextTimeline);
-        } catch (final NakadiException ne) {
-            throw new TimelineException(ne.getMessage(), ne);
+        } catch (final TopicCreationException | ServiceUnavailableException | InternalNakadiException e) {
+            throw new TimelineException("Internal service error", e);
+        } catch (final NoSuchEventTypeException e) {
+            throw new UnableProcessException("EventType \"" + eventTypeName + "\" does not exist", e);
         }
     }
 
@@ -180,11 +185,7 @@ public class TimelineService {
         final UUID uuid = uuidGenerator.fromString(id);
         final Optional<Timeline> timelineOpt = timelineDbRepository.getTimeline(uuid);
         if (!timelineOpt.isPresent()) {
-            throw new UnableProcessException("Timeline with id:  " + uuid + " not found");
-        }
-
-        if (timelineOpt.get().getOrder() != 0) {
-            throw new UnableProcessException("Timeline with id:  " + uuid + " can not be removed");
+            throw new UnableProcessException("Timeline with id: " + uuid + " not found");
         }
 
         timelineDbRepository.deleteTimeline(uuid);
@@ -195,9 +196,16 @@ public class TimelineService {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
-        return timelineDbRepository.listTimelines(eventTypeName).stream()
-                .map(TimelineView::new)
-                .collect(Collectors.toList());
+        try {
+            final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+            return timelineDbRepository.listTimelines(eventType.getName()).stream()
+                    .map(TimelineView::new)
+                    .collect(Collectors.toList());
+        } catch (final NoSuchEventTypeException e) {
+            throw new UnableProcessException("EventType \"" + eventTypeName + "\" does not exist", e);
+        } catch (final InternalNakadiException e) {
+            throw new TimelineException("Could not get event type: " + eventTypeName, e);
+        }
     }
 
 }
