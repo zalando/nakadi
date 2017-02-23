@@ -317,19 +317,6 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostAndTopicExistsReturn409() throws Exception {
-        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "dummy message");
-        final EventType et = buildDefaultEventType();
-        doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
-
-        Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository)
-                .createTopic(anyInt(), any());
-
-        postEventType(et).andExpect(status().isConflict()).andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenDeleteEventTypeThenOk() throws Exception {
 
         final EventType eventType = buildDefaultEventType();
