@@ -1,7 +1,6 @@
 package org.zalando.nakadi.domain;
 
 import com.google.common.collect.ImmutableList;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
@@ -11,8 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
+
 import static com.google.common.collect.Sets.newTreeSet;
 
 public class SubscriptionBase {
