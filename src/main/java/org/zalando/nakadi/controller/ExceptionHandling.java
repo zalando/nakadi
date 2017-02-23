@@ -14,6 +14,8 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -84,5 +86,19 @@ public final class ExceptionHandling implements ProblemHandling {
             return Responses.create(ne.asProblem(), request);
         }
         throw exception.getException();
+    }
+
+    @ExceptionHandler(RepositoryProblemException.class)
+    public ResponseEntity<Problem> handleRepositoryProblem(final RepositoryProblemException exception,
+                                                           final NativeWebRequest request) {
+        LOG.error("Repository problem occurred", exception);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(InconsistentStateException.class)
+    public ResponseEntity<Problem> handleInconsistentState(final InconsistentStateException exception,
+                                                           final NativeWebRequest request) {
+        LOG.error("Unexpected problem occurred", exception);
+        return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
     }
 }

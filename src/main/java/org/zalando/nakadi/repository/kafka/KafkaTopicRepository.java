@@ -447,6 +447,11 @@ public class KafkaTopicRepository implements TopicRepository {
         return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
     }
 
+    public void validateCursors(final List<NakadiCursor> cursors)
+            throws InvalidCursorException, ServiceUnavailableException {
+        convertToKafkaCursors(cursors);
+    }
+
     private List<KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
         final List<String> topics = cursors.stream().map(NakadiCursor::getTopic).distinct().collect(toList());

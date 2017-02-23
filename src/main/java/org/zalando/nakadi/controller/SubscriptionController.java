@@ -1,9 +1,12 @@
 package org.zalando.nakadi.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,14 +17,16 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.util.UriComponents;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
+import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -45,6 +50,8 @@ import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_AP
 @RequestMapping(value = "/subscriptions")
 public class SubscriptionController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SubscriptionController.class);
+
     private final FeatureToggleService featureToggleService;
     private final ApplicationService applicationService;
     private final SubscriptionService subscriptionService;
@@ -66,38 +73,28 @@ public class SubscriptionController {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
+        if (errors.hasErrors()) {
+            return Responses.create(new ValidationProblem(errors), request);
+        }
         if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
                 && !applicationService.exists(subscriptionBase.getOwningApplication())) {
             return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
                     "owning_application doesn't exist"), request);
         }
-        if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
-        }
 
         try {
+            return ok(subscriptionService.getExistingSubscription(subscriptionBase));
+        } catch (final NoSubscriptionException e) {
             if (featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)) {
-                try {
-                    return ok(subscriptionService.getExistingSubscription(subscriptionBase));
-                } catch (final NoSuchSubscriptionException e) {
-                    return Responses.create(new ServiceUnavailableException(
-                            "Subscription creation is temporarily unavailable", e).asProblem(), request);
-                } catch (final NakadiException e) {
-                    return Responses.create(e.asProblem(), request);
-                }
+                return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY,
+                        "Subscription creation is temporarily unavailable", request);
             }
-
-            final Result<Subscription> result = subscriptionService.createSubscription(subscriptionBase, client);
-            if (!result.isSuccessful()) {
-                return Responses.create(result.getProblem(), request);
+            try {
+                final Subscription subscription = subscriptionService.createSubscription(subscriptionBase, client);
+                return prepareLocationResponse(subscription);
+            } catch (final DuplicatedSubscriptionException ex) {
+                throw new InconsistentStateException("Unexpected problem occurred when creating subscription", ex);
             }
-            return prepareLocationResponse(result.getValue());
-        } catch (final DuplicatedSubscriptionException e) {
-            final Result<Subscription> result = subscriptionService.processDuplicatedSubscription(subscriptionBase);
-            if (!result.isSuccessful()) {
-                return Responses.create(result.getProblem(), request);
-            }
-            return ok(result.getValue());
         }
     }
 
@@ -152,12 +149,22 @@ public class SubscriptionController {
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
     public ResponseEntity<?> getSubscriptionStats(@PathVariable("id") final String subscriptionId,
-                                             final NativeWebRequest request) {
+                                                  final NativeWebRequest request) {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
 
         return WebResult.wrap(() -> subscriptionService.getSubscriptionStat(subscriptionId), request);
+    }
+
+    @ExceptionHandler({
+            NoEventTypeException.class,
+            WrongInitialCursorsException.class,
+            TooManyPartitionsException.class})
+    public ResponseEntity<Problem> handleUnprocessableSubscription(final MyNakadiRuntimeException1 exception,
+                                                                   final NativeWebRequest request) {
+        LOG.debug("Error occurred when working with subscriptions", exception);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
 }

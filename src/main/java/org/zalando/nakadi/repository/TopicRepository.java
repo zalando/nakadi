@@ -17,6 +17,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 public interface TopicRepository {
 
@@ -43,6 +44,8 @@ public interface TopicRepository {
             InvalidCursorException;
 
     int compareOffsets(NakadiCursor first, NakadiCursor second) throws InvalidCursorException;
+
+    void validateCursors(final List<NakadiCursor> cursors) throws InvalidCursorException, ServiceUnavailableException;
 
     void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
 }

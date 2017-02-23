@@ -1,6 +1,6 @@
 package org.zalando.nakadi.domain;
 
-import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.concurrent.Immutable;
 
@@ -24,7 +24,7 @@ public class EventTypePartition {
         return partition;
     }
 
-    public boolean ownsCursor(final SubscriptionCursor cursor) {
+    public boolean ownsCursor(final SubscriptionCursorWithoutToken cursor) {
         return eventType.equals(cursor.getEventType()) && partition.equals(cursor.getPartition());
     }
 
