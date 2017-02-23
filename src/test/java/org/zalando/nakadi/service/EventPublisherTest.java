@@ -67,6 +67,7 @@ public class EventPublisherTest {
     private static final int NAKADI_EVENT_MAX_BYTES = 900;
     private static final long TOPIC_RETENTION_TIME_MS = 150;
     private static final long TIMELINE_WAIT_TIMEOUT_MS = 1000;
+    private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
 
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final EventTypeCache cache = mock(EventTypeCache.class);
@@ -74,7 +75,8 @@ public class EventPublisherTest {
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final Enrichment enrichment = mock(Enrichment.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES);
+            NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
+            NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
     private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver,
             enrichment, nakadiSettings, timelineSync);
 
