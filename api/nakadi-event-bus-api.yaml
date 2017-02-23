@@ -1330,7 +1330,7 @@ paths:
                   type: string
                 order:
                   type: integer
-                strorage_id:
+                storage_id:
                   type: string
                 topic:
                   type: string
