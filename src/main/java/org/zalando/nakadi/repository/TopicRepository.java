@@ -10,7 +10,6 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -41,7 +40,7 @@ public interface TopicRepository {
     EventConsumer createEventConsumer(String clientId, List<NakadiCursor> positions) throws NakadiException,
             InvalidCursorException;
 
-    int compareOffsets(NakadiCursor first, NakadiCursor second) throws InternalNakadiException;
+    int compareOffsets(NakadiCursor first, NakadiCursor second) throws InvalidCursorException;
 
     void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
 }
