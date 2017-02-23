@@ -14,7 +14,7 @@ public class TimelineView {
     private final String topic;
     private final Date createdAt;
     private final Date switchedAt;
-    private final Date cleanupAt;
+    private final Date cleanedUpAt;
     private final Timeline.StoragePosition latestPosition;
 
     public TimelineView(final Timeline timeline) {
@@ -25,7 +25,7 @@ public class TimelineView {
         this.topic = timeline.getTopic();
         this.createdAt = timeline.getCreatedAt();
         this.switchedAt = timeline.getSwitchedAt();
-        this.cleanupAt = timeline.getCleanupAt();
+        this.cleanedUpAt = timeline.getCleanedUpAt();
         this.latestPosition = timeline.getLatestPosition();
     }
 
@@ -57,8 +57,8 @@ public class TimelineView {
         return switchedAt;
     }
 
-    public Date getCleanupAt() {
-        return cleanupAt;
+    public Date getCleanedUpAt() {
+        return cleanedUpAt;
     }
 
     public Timeline.StoragePosition getLatestPosition() {

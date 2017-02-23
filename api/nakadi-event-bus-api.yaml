@@ -1340,7 +1340,7 @@ paths:
                 switched_at:
                   type: string
                   format: date-time
-                cleanup_at:
+                cleanedup_at:
                   type: string
                   format: date-time
                 latest_position:
