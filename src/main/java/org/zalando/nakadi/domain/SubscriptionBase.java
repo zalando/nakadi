@@ -1,10 +1,9 @@
 package org.zalando.nakadi.domain;
 
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.Set;
-
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import static com.google.common.collect.Sets.newTreeSet;
 
 public class SubscriptionBase {
@@ -18,7 +17,7 @@ public class SubscriptionBase {
     private String owningApplication;
 
     @NotNull
-    @Size(min = 1, max = 1)
+    @Size(min = 1, message = "must contain at least one element")
     private Set<String> eventTypes;
 
     @NotNull

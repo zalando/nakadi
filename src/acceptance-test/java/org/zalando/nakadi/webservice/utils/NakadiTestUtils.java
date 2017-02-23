@@ -1,12 +1,19 @@
 package org.zalando.nakadi.webservice.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
@@ -16,15 +23,10 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
-
+import org.zalando.nakadi.view.SubscriptionCursor;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
@@ -97,6 +99,28 @@ public class NakadiTestUtils {
         publishEvent(eventType, event.toString());
     }
 
+    public static void publishBusinessEventsWithUserDefinedPartition(
+            final String eventType,
+            final Map<String, String> fooToPartition) {
+        final JSONArray jsonArray = new JSONArray(
+                fooToPartition.entrySet().stream().map(entry -> {
+                    final JSONObject metadata = new JSONObject();
+                    metadata.put("eid", UUID.randomUUID().toString());
+                    metadata.put("occurred_at", (new DateTime(DateTimeZone.UTC)).toString());
+                    metadata.put("partition", entry.getValue());
+
+                    final JSONObject event = new JSONObject();
+                    event.put("metadata", metadata);
+                    event.put("foo", entry.getKey());
+                    return event;
+                }).collect(Collectors.toList()));
+        given()
+                .body(jsonArray.toString())
+                .contentType(JSON)
+                .post(format("/event-types/{0}/events", eventType));
+
+    }
+
     public static Subscription createSubscriptionForEventType(final String eventType) throws IOException {
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
                 .withEventType(eventType)
@@ -138,6 +162,12 @@ public class NakadiTestUtils {
         return given()
                 .contentType(JSON)
                 .get("/subscriptions/{subscription_id}/stats", subscription.getId());
+    }
+
+    public static ItemsWrapper<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription)
+            throws IOException {
+        final Response response = given().get(format("/subscriptions/{0}/cursors", subscription.getId()));
+        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
     }
 
 }

@@ -2,22 +2,20 @@ package org.zalando.nakadi.webservice.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.webservice.hila.StreamBatch;
-
-import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-
+import javax.annotation.Nullable;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.webservice.hila.StreamBatch;
 import static java.text.MessageFormat.format;
 
 public class TestStreamingClient implements Runnable {
@@ -81,7 +79,9 @@ public class TestStreamingClient implements Runnable {
                     final String line = reader.readLine();
                     if (line != null) {
                         final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
-                        batches.add(streamBatch);
+                        synchronized (batches) {
+                            batches.add(streamBatch);
+                        }
                     } else {
                         break;
                     }
@@ -95,7 +95,7 @@ public class TestStreamingClient implements Runnable {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
         } finally {
             running = false;
         }
@@ -103,7 +103,9 @@ public class TestStreamingClient implements Runnable {
 
     public TestStreamingClient start() {
         if (!running) {
-            batches.clear();
+            synchronized (batches) {
+                batches.clear();
+            }
             headers.clear();
             final Thread thread = new Thread(this);
             thread.start();
@@ -129,7 +131,9 @@ public class TestStreamingClient implements Runnable {
     }
 
     public List<StreamBatch> getBatches() {
-        return Collections.unmodifiableList(batches);
+        synchronized (batches) {
+            return new ArrayList<>(batches);
+        }
     }
 
     public boolean isRunning() {
@@ -142,6 +146,10 @@ public class TestStreamingClient implements Runnable {
 
     public int getResponseCode() {
         return responseCode;
+    }
+
+    public String getSubscriptionId() {
+        return subscriptionId;
     }
 
     @Nullable

@@ -1614,10 +1614,8 @@ definitions:
         description: |
           EventTypes to subscribe to.
           The order is not important. Subscriptions that differ only be the order of EventTypes will be
-          considered the same and will have the same id.
-
-          * Currently only subscription to a single EventType is supported. Subscriptions with more than one
-            EventType in event_types property will be rejected.
+          considered the same and will have the same id. The size of event_types list is limited by total number
+          of partitions within these event types. Default limit for partition count is 100.
       consumer_group:
         type: string
         example: 'read-product-updates'
