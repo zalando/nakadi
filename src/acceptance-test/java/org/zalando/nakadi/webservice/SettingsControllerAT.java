@@ -13,8 +13,10 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
+import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -58,21 +60,29 @@ public class SettingsControllerAT extends BaseAT {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
 
-        given()
+        TestUtils.waitFor(() -> given()
                 .contentType(ContentType.JSON)
                 .get(BLACKLIST_URL)
                 .then()
                 .statusCode(HttpStatus.SC_OK)
-                .content(JSON_HELPER.matchesObject(
-                        ImmutableMap.of(
-                                "consumers",  ImmutableMap.of(
-                                        "event_types", Collections.singleton(eventType.getName()),
-                                        "apps", Collections.emptySet()),
-                                "producers", ImmutableMap.of(
-                                        "event_types", Collections.emptySet(),
-                                        "apps", Collections.emptySet()))
-                        )
-                );
+                .content(getFloodersMatcher(eventType)), 1000, 200);
+
+    }
+
+    private SameJSONAs<? super String> getFloodersMatcher(final EventType eventType) {
+        try {
+            return JSON_HELPER.matchesObject(
+                    ImmutableMap.of(
+                            "consumers",  ImmutableMap.of(
+                                    "event_types", Collections.singleton(eventType.getName()),
+                                    "apps", Collections.emptySet()),
+                            "producers", ImmutableMap.of(
+                                    "event_types", Collections.emptySet(),
+                                    "apps", Collections.emptySet()))
+                    );
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException();
+        }
     }
 
     private void clearFloodersData() {

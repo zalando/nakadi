@@ -13,6 +13,7 @@ import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.boot.test.WebIntegrationTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
@@ -27,14 +28,18 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.zalando.nakadi.Application;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.EventTypeDbRepository;
+import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
+import org.zalando.nakadi.repository.tool.DefaultStorage;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.EventPublisher;
@@ -47,6 +52,7 @@ import org.zalando.nakadi.util.UUIDGenerator;
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.isOneOf;
@@ -89,6 +95,9 @@ public abstract class AuthenticationTest {
 
         @Value("${nakadi.oauth2.scopes.eventStreamWrite}")
         protected String eventStreamWriteScope;
+
+        @Autowired
+        private Environment environment;
 
         private final Multimap<String, String> scopesForTokens = ArrayListMultimap.create();
 
@@ -206,6 +215,14 @@ public abstract class AuthenticationTest {
         @Bean
         public TopicRepositoryHolder topicRepositoryHolder() {
             return mock(TopicRepositoryHolder.class);
+        }
+
+        @Bean
+        public DefaultStorage defaultStorage() throws InternalNakadiException {
+            final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
+            when(storageDbRepository.getStorage("default")).thenReturn(Optional.of(new Storage()));
+            final DefaultStorage defaultStorage = new DefaultStorage(storageDbRepository, environment);
+            return defaultStorage;
         }
 
     }
