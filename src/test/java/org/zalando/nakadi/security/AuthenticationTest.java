@@ -32,12 +32,13 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
-import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.tool.DefaultStorage;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorsService;
@@ -94,6 +95,9 @@ public abstract class AuthenticationTest {
 
         @Value("${nakadi.oauth2.scopes.eventStreamWrite}")
         protected String eventStreamWriteScope;
+
+        @Autowired
+        private Environment environment;
 
         private final Multimap<String, String> scopesForTokens = ArrayListMultimap.create();
 
@@ -162,8 +166,8 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public KafkaTopicRepository mockkafkaRepository() {
-            return mock(KafkaTopicRepository.class);
+        public TopicRepository mockTopicaRepository() {
+            return mock(TopicRepository.class);
         }
 
         @Bean
@@ -209,10 +213,15 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
+        public TopicRepositoryHolder topicRepositoryHolder() {
+            return mock(TopicRepositoryHolder.class);
+        }
+
+        @Bean
         public DefaultStorage defaultStorage() throws InternalNakadiException {
             final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
             when(storageDbRepository.getStorage("default")).thenReturn(Optional.of(new Storage()));
-            final DefaultStorage defaultStorage = new DefaultStorage(storageDbRepository, mock(Environment.class));
+            final DefaultStorage defaultStorage = new DefaultStorage(storageDbRepository, environment);
             return defaultStorage;
         }
 

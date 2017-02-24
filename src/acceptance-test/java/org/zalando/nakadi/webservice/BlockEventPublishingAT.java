@@ -7,7 +7,6 @@ import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.service.BlacklistService;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -17,26 +16,22 @@ import static org.zalando.nakadi.utils.TestUtils.waitFor;
 
 public class BlockEventPublishingAT extends BaseAT {
 
-    private static final String FLOODERS_URL = "/settings/flooders";
-
     @Test
     public void whenPublishingToBlockedEventTypeThen403() throws IOException {
-        final EventType eventType = NakadiTestUtils.createEventType();
-
-        publishEvent(eventType)
+        publishEvent(EVENT_TYPE)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
 
-        SettingsControllerAT.blacklist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
+        SettingsControllerAT.blacklist(EVENT_TYPE.getName(), BlacklistService.Type.PRODUCER_ET);
 
-        waitFor(() -> publishEvent(eventType)
+        waitFor(() -> publishEvent(EVENT_TYPE)
                 .then()
                 .statusCode(403)
                 .body("detail", Matchers.equalTo("Application or event type is blocked")));
 
-        SettingsControllerAT.whitelist(eventType.getName(), BlacklistService.Type.PRODUCER_ET);
+        SettingsControllerAT.whitelist(EVENT_TYPE.getName(), BlacklistService.Type.PRODUCER_ET);
 
-        waitFor(() -> publishEvent(eventType)
+        waitFor(() -> publishEvent(EVENT_TYPE)
                 .then()
                 .statusCode(HttpStatus.SC_OK));
     }

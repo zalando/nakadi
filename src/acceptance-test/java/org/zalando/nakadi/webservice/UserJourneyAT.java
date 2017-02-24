@@ -18,8 +18,8 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 
@@ -50,7 +50,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
 
     private static final String EVENT1 = "{\"foo\":\"" + randomTextString() + "\"}";
     private static final String EVENT2 = "{\"foo\":\"" + randomTextString() + "\"}";
-
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private static final String ENDPOINT = "/event-types";
 

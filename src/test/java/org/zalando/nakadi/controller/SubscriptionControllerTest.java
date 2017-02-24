@@ -2,12 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import javax.ws.rs.core.Response;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
@@ -48,12 +42,21 @@ import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
+
+import javax.ws.rs.core.Response;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -111,11 +114,11 @@ public class SubscriptionControllerTest {
         final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
-
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
-                zkSubscriptionClientFactory,
-                topicRepository, eventTypeRepository);
+                zkSubscriptionClientFactory, timelineService, eventTypeRepository);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, applicationService,
                 subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
@@ -426,7 +429,7 @@ public class SubscriptionControllerTest {
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
         final List<PartitionStatistics> statistics = Collections.singletonList(
                 new KafkaPartitionStatistics("topic", 0, 0, 13));
-        when(topicRepository.loadTopicStatistics(Collections.singleton("topic"))).thenReturn(statistics);
+        when(topicRepository.loadTopicStatistics(Collections.singletonList("topic"))).thenReturn(statistics);
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(

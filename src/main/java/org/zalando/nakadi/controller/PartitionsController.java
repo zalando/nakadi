@@ -1,9 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,9 +14,16 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.TopicPartition;
 import org.zalando.problem.Problem;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.ok;
@@ -32,12 +35,12 @@ public class PartitionsController {
     private static final Logger LOG = LoggerFactory.getLogger(PartitionsController.class);
 
     private final EventTypeRepository eventTypeRepository;
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
 
     @Autowired
-    public PartitionsController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository) {
+    public PartitionsController(final EventTypeRepository eventTypeRepository, final TimelineService timelineService) {
         this.eventTypeRepository = eventTypeRepository;
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
@@ -46,15 +49,17 @@ public class PartitionsController {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         try {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-
+            final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
             if (!topicRepository.topicExists(eventType.getTopic())) {
                 return create(Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka"), request);
             } else {
-                final List<TopicPartition> result =
-                        topicRepository.loadTopicStatistics(Collections.singletonList(eventType.getTopic())).stream()
+                final List<TopicPartition> result = topicRepository
+                        .loadTopicStatistics(Collections.singletonList(eventType.getTopic())).stream()
                         .map(stat -> new TopicPartition(
                                 eventType.getName(),
                                 stat.getPartition(),
+                                // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
+                                // Cursors here might be in different timeline
                                 Cursor.fromTopicPosition(stat.getFirst()).getOffset(),
                                 Cursor.fromTopicPosition(stat.getLast()).getOffset()))
                         .collect(Collectors.toList());
@@ -77,6 +82,7 @@ public class PartitionsController {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
             final String topic = eventType.getTopic();
 
+            final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
             if (!topicRepository.topicExists(topic)) {
                 return create(Problem.valueOf(INTERNAL_SERVER_ERROR, "topic is absent in kafka"), request);
             } else {

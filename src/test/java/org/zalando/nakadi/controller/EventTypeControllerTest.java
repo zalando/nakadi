@@ -44,6 +44,7 @@ import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventTypeService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
@@ -128,7 +129,10 @@ public class EventTypeControllerTest {
                 NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", objectMapper, nakadiSettings);
-        final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, timelineSync, nakadiSettings);
 
@@ -474,9 +478,10 @@ public class EventTypeControllerTest {
         final String eventTypeName = randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
 
-        Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
-                eventTypeName);
-        doReturn(Optional.of(buildDefaultEventType())).when(eventTypeRepository).findByNameO(eventTypeName);
+        Mockito.doThrow(new InternalNakadiException("dummy message"))
+                .when(eventTypeRepository).removeEventType(eventTypeName);
+        doReturn(Optional.of(EventTypeTestBuilder.builder().name(eventTypeName).build()))
+                .when(eventTypeRepository).findByNameO(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()

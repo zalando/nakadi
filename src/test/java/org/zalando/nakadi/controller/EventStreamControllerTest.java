@@ -4,19 +4,6 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Assert;
 import org.junit.Before;
@@ -33,8 +20,8 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -54,10 +41,26 @@ import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -136,9 +139,11 @@ public class EventStreamControllerTest {
         when(consumerLimitingService.acquireConnectionSlots(any(), any(), any())).thenReturn(ImmutableList.of());
 
         featureToggleService = mock(FeatureToggleService.class);
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepositoryMock);
 
         controller = new EventStreamController(
-                eventTypeRepository, topicRepositoryMock, objectMapper, eventStreamFactoryMock, metricRegistry, crutch,
+                eventTypeRepository, timelineService, objectMapper, eventStreamFactoryMock, metricRegistry, crutch,
                 blacklistService, consumerLimitingService, featureToggleService);
 
         settings = mock(SecuritySettings.class);
@@ -168,8 +173,8 @@ public class EventStreamControllerTest {
         final PartitionStatistics expectedStats = new KafkaPartitionStatistics(TEST_TOPIC, 0, 0L, 0L);
         when(topicRepositoryMock.loadTopicStatistics(eq(Collections.singletonList(TEST_TOPIC))))
                 .thenReturn(Collections.singletonList(expectedStats));
-        final List<NakadiCursor> topicPositions = controller.getStreamingStart(
-                TEST_TOPIC, "[{\"partition\":\"0\",\"offset\":\"BEGIN\"}]");
+        final List<NakadiCursor> topicPositions = controller
+                .getStreamingStart(topicRepositoryMock, TEST_TOPIC, "[{\"partition\":\"0\",\"offset\":\"BEGIN\"}]");
         Assert.assertEquals(1, topicPositions.size());
         Assert.assertEquals(expectedPosition, topicPositions.get(0));
     }

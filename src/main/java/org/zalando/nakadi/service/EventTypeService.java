@@ -31,6 +31,7 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.JsonUtils;
@@ -55,7 +56,7 @@ public class EventTypeService {
     private static final Logger LOG = LoggerFactory.getLogger(EventTypeService.class);
 
     private final EventTypeRepository eventTypeRepository;
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final SubscriptionDbRepository subscriptionRepository;
@@ -67,7 +68,7 @@ public class EventTypeService {
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
-                            final TopicRepository topicRepository,
+                            final TimelineService timelineService,
                             final PartitionResolver partitionResolver,
                             final Enrichment enrichment,
                             final SubscriptionDbRepository subscriptionRepository,
@@ -77,7 +78,7 @@ public class EventTypeService {
                             final TimelineSync timelineSync,
                             final NakadiSettings nakadiSettings) {
         this.eventTypeRepository = eventTypeRepository;
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.subscriptionRepository = subscriptionRepository;
@@ -93,6 +94,7 @@ public class EventTypeService {
     }
 
     public Result<Void> create(final EventTypeBase eventType) {
+        final TopicRepository topicRepository = timelineService.getDefaultTopicRepository();
         try {
             validateSchema(eventType);
             enrichment.validate(eventType);
@@ -125,11 +127,12 @@ public class EventTypeService {
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
-            final Optional<EventType> eventType = eventTypeRepository.findByNameO(eventTypeName);
-            if (!eventType.isPresent()) {
+            final Optional<EventType> eventTypeOpt = eventTypeRepository.findByNameO(eventTypeName);
+            if (!eventTypeOpt.isPresent()) {
                 return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
             }
-            if (!client.idMatches(eventType.get().getOwningApplication())) {
+            final EventType eventType = eventTypeOpt.get();
+            if (!client.idMatches(eventType.getOwningApplication())) {
                 return Result.forbidden("You don't have access to this event type");
             }
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
@@ -137,9 +140,9 @@ public class EventTypeService {
             if (!subscriptions.isEmpty()) {
                 return Result.conflict("Not possible to remove event-type as it has subscriptions");
             }
-
+            final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
             eventTypeRepository.removeEventType(eventTypeName);
-            topicRepository.deleteTopic(eventType.get().getTopic());
+            topicRepository.deleteTopic(eventType.getTopic());
             return Result.ok();
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();

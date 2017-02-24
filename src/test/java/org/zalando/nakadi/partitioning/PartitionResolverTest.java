@@ -11,6 +11,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
@@ -32,7 +33,9 @@ public class PartitionResolverTest {
     public void before() throws NakadiException {
         final TopicRepository topicRepository = Mockito.mock(TopicRepository.class);
         Mockito.when(topicRepository.listPartitionNames(any(String.class))).thenReturn(ImmutableList.of("0"));
-        partitionResolver = new PartitionResolver(topicRepository);
+        final TimelineService timelineService = Mockito.mock(TimelineService.class);
+        Mockito.when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        partitionResolver = new PartitionResolver(timelineService);
     }
 
     @Test

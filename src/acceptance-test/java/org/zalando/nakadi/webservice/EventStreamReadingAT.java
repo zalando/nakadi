@@ -7,13 +7,15 @@ import com.google.common.collect.Sets;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
 import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.utils.TestUtils;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
@@ -59,6 +61,11 @@ public class EventStreamReadingAT extends BaseAT {
         initialCursors = kafkaHelper.getOffsetsToReadFromLatest(TEST_TOPIC);
         kafkaInitialNextOffsets = kafkaHelper.getNextOffsets(TEST_TOPIC);
         xNakadiCursors = jsonMapper.writeValueAsString(initialCursors);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        SettingsControllerAT.whitelist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
     }
 
     @Test(timeout = 10000)
@@ -306,16 +313,16 @@ public class EventStreamReadingAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenReadEventsForBlockedConsumerThen403() throws Exception {
-
         readEvents()
                 .then()
                 .statusCode(HttpStatus.OK.value());
 
         SettingsControllerAT.blacklist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
-        readEvents()
-                .then()
-                .statusCode(403)
-                .body("detail", Matchers.equalTo("Application or event type is blocked"));
+
+        TestUtils.waitFor(() -> readEvents()
+                        .then()
+                        .statusCode(403)
+                        .body("detail", Matchers.equalTo("Application or event type is blocked")), 1000, 200);
 
         SettingsControllerAT.whitelist(EVENT_TYPE_NAME, BlacklistService.Type.CONSUMER_ET);
         readEvents()
@@ -358,6 +365,7 @@ public class EventStreamReadingAT extends BaseAT {
                 break;
             }
         }
+        range(0, 15).forEach(value -> NakadiTestUtils.publishEvent(etName, "{\"foo\": \"bar\"}"));
 
         // wait for Nakadi to recognize thаt connection is closed
         Thread.sleep(1000);

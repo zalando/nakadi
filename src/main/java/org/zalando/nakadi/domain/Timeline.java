@@ -205,7 +205,7 @@ public class Timeline {
         return timeline;
     }
 
-    public static Timeline createFakeTimeline(final EventType eventType, final Storage storage) {
+    public static Timeline createFakeTimeline(final EventTypeBase eventType, final Storage storage) {
         final Timeline timeline = new Timeline(eventType.getName(), 0, storage, eventType.getTopic(), new Date());
         timeline.fake = true;
         return timeline;
