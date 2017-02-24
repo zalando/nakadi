@@ -96,6 +96,9 @@ public abstract class AuthenticationTest {
         @Value("${nakadi.oauth2.scopes.eventStreamWrite}")
         protected String eventStreamWriteScope;
 
+        @Autowired
+        private Environment environment;
+
         private final Multimap<String, String> scopesForTokens = ArrayListMultimap.create();
 
         @PostConstruct
@@ -218,7 +221,7 @@ public abstract class AuthenticationTest {
         public DefaultStorage defaultStorage() throws InternalNakadiException {
             final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
             when(storageDbRepository.getStorage("default")).thenReturn(Optional.of(new Storage()));
-            final DefaultStorage defaultStorage = new DefaultStorage(storageDbRepository, mock(Environment.class));
+            final DefaultStorage defaultStorage = new DefaultStorage(storageDbRepository, environment);
             return defaultStorage;
         }
 
