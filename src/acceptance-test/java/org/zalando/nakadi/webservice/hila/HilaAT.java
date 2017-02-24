@@ -8,6 +8,7 @@ import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.http.HttpStatus;
@@ -80,15 +81,15 @@ public class HilaAT extends BaseAT {
         final TestStreamingClient client = TestStreamingClient
                 .create(URL, subscription.getId(), "stream_limit=1&stream_timeout=1")
                 .start();
-        waitFor(() -> Assert.assertFalse(client.getBatches().isEmpty()), 100L, 100);
+        waitFor(() -> Assert.assertFalse(client.getBatches().isEmpty()), TimeUnit.SECONDS.toMillis(1), 100);
         final SubscriptionCursor toCommit = client.getBatches().get(0).getCursor();
         client.close(); // connection is closed, and stream as well
 
-        final int statusCode = NakadiTestUtils.commitCursors(
+        final int statusCode = commitCursors(
                 subscription.getId(),
                 Collections.singletonList(toCommit),
                 client.getSessionId());
-        Assert.assertEquals(HttpStatus.SC_NO_CONTENT, statusCode);
+        Assert.assertEquals(SC_NO_CONTENT, statusCode);
     }
 
     @Test(timeout = 30000)

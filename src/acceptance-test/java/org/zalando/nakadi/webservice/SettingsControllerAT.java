@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.jayway.restassured.http.ContentType;
+import java.util.concurrent.TimeUnit;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
 import org.junit.After;
@@ -57,6 +58,8 @@ public class SettingsControllerAT extends BaseAT {
     public void testGetFlooders() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
+
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1)); // give time for TreeCache refresh
 
         given()
                 .contentType(ContentType.JSON)
