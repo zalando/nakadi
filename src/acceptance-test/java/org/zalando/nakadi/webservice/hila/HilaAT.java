@@ -73,6 +73,24 @@ public class HilaAT extends BaseAT {
         this.subscription = createSubscription(subscription);
     }
 
+    @Test(timeout = 10000)
+    public void whenStreamTimeoutReachedPossibleToCommit() throws Exception {
+        publishEvent(eventType.getName(),"{\"foo\":\"bar\"}");
+        publishEvent(eventType.getName(),"{\"foo\":\"bar\"}");
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "stream_limit=1&stream_timeout=1")
+                .start();
+        waitFor(() -> Assert.assertFalse(client.getBatches().isEmpty()), 100L, 100);
+        final SubscriptionCursor toCommit = client.getBatches().get(0).getCursor();
+        client.close(); // connection is closed, and stream as well
+
+        final int statusCode = NakadiTestUtils.commitCursors(
+                subscription.getId(),
+                Collections.singletonList(toCommit),
+                client.getSessionId());
+        Assert.assertEquals(HttpStatus.SC_NO_CONTENT, statusCode);
+    }
+
     @Test(timeout = 30000)
     public void whenOffsetIsCommittedNextSessionStartsFromNextEventAfterCommitted() throws Exception {
         // write 4 events to event-type
