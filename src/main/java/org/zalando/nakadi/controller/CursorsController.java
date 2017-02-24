@@ -94,9 +94,14 @@ public class CursorsController {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
+
+        LOG.debug("[COMMIT_CURSORS] checked feature toggle");
+
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
+
+        LOG.debug("[COMMIT_CURSORS] checked errors");
 
         try {
             validateSubscriptionReadScopes(client, subscriptionId);

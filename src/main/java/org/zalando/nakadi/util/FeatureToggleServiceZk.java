@@ -45,6 +45,7 @@ public class FeatureToggleServiceZk implements FeatureToggleService {
     }
 
     private Boolean isFeatureEnabledInZk(final Feature feature) throws Exception {
+        LOG.debug("[FEATURE_TOGGLE] updated feature toggle status from ZK for feature " + feature.getId());
         return null != zkHolder.get().checkExists().forPath(PREFIX + feature.getId());
     }
 
