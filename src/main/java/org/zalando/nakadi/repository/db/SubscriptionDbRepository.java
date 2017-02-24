@@ -78,7 +78,12 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             ServiceUnavailableException {
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription WHERE s_id = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
+            final long start = System.currentTimeMillis();
+            LOG.debug("[GET_SUBSCRIPTION] start ");
+            final Subscription subscription = jdbcTemplate.queryForObject(sql, new Object[]{id}, rowMapper);
+            final long diff = System.currentTimeMillis() - start;
+            LOG.debug("[GET_SUBSCRIPTION] end {} ms", diff);
+            return subscription;
         } catch (final EmptyResultDataAccessException e) {
             throw new NoSuchSubscriptionException("Subscription with id \"" + id + "\" does not exist", e);
         } catch (final DataAccessException e) {

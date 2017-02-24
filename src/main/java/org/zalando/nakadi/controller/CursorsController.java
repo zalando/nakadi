@@ -87,31 +87,20 @@ public class CursorsController {
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
-
-        LOG.debug("[COMMIT_CURSORS] committing {} cursor(s) for subscription {}", cursors.getItems().size(),
-                subscriptionId);
-
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
-
-        LOG.debug("[COMMIT_CURSORS] checked feature toggle");
-
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
-
-        LOG.debug("[COMMIT_CURSORS] checked errors");
-
         try {
-            validateSubscriptionReadScopes(client, subscriptionId);
 
+            LOG.debug("[COMMIT_CURSORS] scopes validation started");
+            validateSubscriptionReadScopes(client, subscriptionId);
             LOG.debug("[COMMIT_CURSORS] scopes validation finished");
 
             final List<CursorCommitResult> items = cursorsService.commitCursors(streamId, subscriptionId,
                     cursors.getItems());
-
-            LOG.debug("[COMMIT_CURSORS] commit finished");
 
             final boolean allCommited = items.stream()
                     .allMatch(cursor -> CursorCommitResult.COMMITTED.equals(cursor.getResult()));
