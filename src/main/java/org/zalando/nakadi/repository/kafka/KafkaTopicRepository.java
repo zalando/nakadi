@@ -1,28 +1,6 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
-
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
@@ -62,6 +40,27 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
@@ -352,28 +351,29 @@ public class KafkaTopicRepository implements TopicRepository {
                     .collect(Collectors.toList());
             return getSubscriptionTopicInitPositions(eventType.getTopic(), subscription, etInitialCursors);
 
-        } else try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
-            final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
-                    .partitionsFor(eventType.getTopic())
-                    .stream()
-                    .map(p -> new org.apache.kafka.common.TopicPartition(eventType.getTopic(), p.partition()))
-                    .toArray(org.apache.kafka.common.TopicPartition[]::new);
-            consumer.assign(Arrays.asList(kafkaTPs));
-            if (position == SubscriptionBase.InitialPosition.BEGIN) {
-                consumer.seekToBeginning(kafkaTPs);
-            } else if (position == SubscriptionBase.InitialPosition.END) {
-                consumer.seekToEnd(kafkaTPs);
-            } else {
-                throw new IllegalArgumentException("Bad offset specification " + position + " for topic " +
-                        eventType.getTopic());
+        } else {
+            try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+                final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
+                        .partitionsFor(eventType.getTopic())
+                        .stream()
+                        .map(p -> new org.apache.kafka.common.TopicPartition(eventType.getTopic(), p.partition()))
+                        .toArray(org.apache.kafka.common.TopicPartition[]::new);
+                consumer.assign(Arrays.asList(kafkaTPs));
+                if (position == SubscriptionBase.InitialPosition.BEGIN) {
+                    consumer.seekToBeginning(kafkaTPs);
+                } else if (position == SubscriptionBase.InitialPosition.END) {
+                    consumer.seekToEnd(kafkaTPs);
+                } else {
+                    throw new IllegalArgumentException("Bad offset specification " + position + " for topic " +
+                            eventType.getTopic());
+                }
+                return Stream.of(kafkaTPs).collect(Collectors.toMap(
+                        tp -> String.valueOf(tp.partition()),
+                        consumer::position));
+            } catch (final Exception e) {
+                throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
             }
-            return Stream.of(kafkaTPs).collect(Collectors.toMap(
-                    tp -> String.valueOf(tp.partition()),
-                    consumer::position));
-        } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
-
     }
 
     private Map<String, Long> getSubscriptionTopicInitPositions(final String topic, final Subscription subscription,
