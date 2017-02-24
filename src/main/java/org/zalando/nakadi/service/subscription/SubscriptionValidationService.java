@@ -22,7 +22,6 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.view.Cursor;
 
-import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -147,9 +146,8 @@ public class SubscriptionValidationService {
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
         if (!missingEventTypes.isEmpty()) {
-            throw new NoEventTypeException(MessageFormat.format(
-                    "Failed to create subscription, event type(s) not found: '{0}'",
-                    StringUtils.join(missingEventTypes, "','")));
+            throw new NoEventTypeException(String.format("Failed to create subscription, event type(s) not found: '%s'",
+                    StringUtils.join(missingEventTypes, "', '")));
         }
     }
 

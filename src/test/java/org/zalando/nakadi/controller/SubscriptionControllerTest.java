@@ -34,7 +34,7 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -120,7 +120,7 @@ public class SubscriptionControllerTest {
         final NakadiSettings settings = mock(NakadiSettings.class);
         when(settings.getMaxSubscriptionPartitions()).thenReturn(PARTITIONS_PER_SUBSCRIPTION);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
-                zkSubscriptionClientFactory, topicRepository, eventTypeRepository, settings);
+                zkSubscriptionClientFactory, topicRepository, eventTypeRepository, null);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, applicationService,
                 subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
