@@ -1245,7 +1245,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /timelines:
+  /event-types/{name}/timelines#post:
     post:
       tags:
         - timelines-api
@@ -1254,14 +1254,17 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
+        - name: name
+          in: path
+          description: Name of the EventType.
+          type: string
+          required: true
         - name: timeline_request
           in: body
           schema:
-            description: Event type and storage id to be used for timeline creation.
+            description: Storage id to be used for timeline creation.
             type: object
             properties:
-              event_type:
-                type: string
               storage_id:
                 type: string
           required: true
@@ -1273,15 +1276,20 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /timelines/{id}#1:
+  /event-types/{name}/timelines/{id}:
     delete:
       tags:
         - timelines-api
       description: |
-        Deletes a timeline by its id. Method call is quite dangerous, because it will remove any timeline.
+        Deletes a timeline if there is only one timeline.
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
+        - name: name
+          in: path
+          description: Name of the EventType.
+          type: string
+          required: true
         - name: id
           in: path
           description: timeline id
@@ -1300,7 +1308,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  /timelines/{event_type}#2:
+  /event-types/{name}/timelines#get:
     get:
       tags:
         - timelines-api
@@ -1309,9 +1317,9 @@ paths:
         The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
         to be able to access this endpoint.
       parameters:
-        - name: event_type
+        - name: name
           in: path
-          description: event type name to list timelines for
+          description: Name of the EventType to list timelines for.
           type: string
           required: true
       responses:

@@ -25,7 +25,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 @RestController
-@RequestMapping(value = "/timelines", produces = MediaType.APPLICATION_JSON)
+@RequestMapping(value = "/event-types/{name}/timelines", produces = MediaType.APPLICATION_JSON)
 public class TimelinesController {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimelinesController.class);
@@ -38,19 +38,21 @@ public class TimelinesController {
     }
 
     @RequestMapping(method = RequestMethod.POST)
-    public ResponseEntity<?> createTimeline(@RequestBody final TimelineRequest timelineRequest, final Client client) {
-        timelineService.createTimeline(timelineRequest.getEventType(), timelineRequest.getStorageId(), client);
+    public ResponseEntity<?> createTimeline(@PathVariable("name") final String eventTypeName,
+                                            @RequestBody final TimelineRequest timelineRequest, final Client client) {
+        timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId(), client);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @RequestMapping(value = "{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> deleteTimeline(@PathVariable("id") final String id, final Client client) {
-        timelineService.delete(id, client);
+    public ResponseEntity<?> deleteTimeline(@PathVariable("name") final String eventTypeName,
+                                            @PathVariable("id") final String timelineId, final Client client) {
+        timelineService.delete(eventTypeName, timelineId, client);
         return ResponseEntity.ok().build();
     }
 
-    @RequestMapping(value = "{event_type}", method = RequestMethod.GET)
-    public ResponseEntity<?> getTimelines(@PathVariable("event_type") final String eventTypeName, final Client client) {
+    @RequestMapping(method = RequestMethod.GET)
+    public ResponseEntity<?> getTimelines(@PathVariable("name") final String eventTypeName, final Client client) {
         return ResponseEntity.ok(timelineService.getTimelines(eventTypeName, client));
     }
 
