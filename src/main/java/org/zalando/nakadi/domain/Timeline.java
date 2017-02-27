@@ -52,7 +52,7 @@ public class Timeline {
     private String topic;
     private Date createdAt;
     private Date switchedAt;
-    private Date cleanupAt;
+    private Date cleanedUpAt;
     private StoragePosition latestPosition;
     private boolean fake;
 
@@ -138,12 +138,12 @@ public class Timeline {
     }
 
     @Nullable
-    public Date getCleanupAt() {
-        return cleanupAt;
+    public Date getCleanedUpAt() {
+        return cleanedUpAt;
     }
 
-    public void setCleanupAt(@Nullable final Date cleanupAt) {
-        this.cleanupAt = cleanupAt;
+    public void setCleanedUpAt(@Nullable final Date cleanedUpAt) {
+        this.cleanedUpAt = cleanedUpAt;
     }
 
     public boolean isFake() {
@@ -168,7 +168,7 @@ public class Timeline {
                 && Objects.equals(topic, that.topic)
                 && Objects.equals(createdAt, that.createdAt)
                 && Objects.equals(switchedAt, that.switchedAt)
-                && Objects.equals(cleanupAt, that.cleanupAt)
+                && Objects.equals(cleanedUpAt, that.cleanedUpAt)
                 && Objects.equals(latestPosition, that.latestPosition);
     }
 
@@ -187,7 +187,7 @@ public class Timeline {
         sb.append(", topic='").append(topic).append('\'');
         sb.append(", createdAt=").append(createdAt);
         sb.append(", switchedAt=").append(switchedAt);
-        sb.append(", cleanupAt=").append(cleanupAt);
+        sb.append(", cleanedUpAt=").append(cleanedUpAt);
         sb.append(", latestPosition=").append(latestPosition);
         sb.append(", fake=").append(fake);
         sb.append('}');

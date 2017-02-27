@@ -69,7 +69,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
         final Timeline modified = tRepository.getTimeline(initial.getId()).get();
         modified.setCreatedAt(new Date());
-        modified.setCleanupAt(new Date());
+        modified.setCleanedUpAt(new Date());
         modified.setSwitchedAt(new Date());
         final Timeline.KafkaStoragePosition pos = new Timeline.KafkaStoragePosition();
         pos.setOffsets(LongStream.range(0L, 10L).mapToObj(Long::new).collect(Collectors.toList()));
@@ -143,7 +143,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
         timeline.setId(id);
         timeline.setSwitchedAt(switchedAt);
-        timeline.setCleanupAt(cleanupAt);
+        timeline.setCleanedUpAt(cleanupAt);
         timeline.setLatestPosition(latestPosition);
         return timeline;
     }

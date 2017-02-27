@@ -113,7 +113,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
         final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
         timeline.setId(id);
         timeline.setSwitchedAt(switchedAt);
-        timeline.setCleanupAt(cleanupAt);
+        timeline.setCleanedUpAt(cleanupAt);
         timeline.setLatestPosition(latestPosition);
         return timeline;
     }
