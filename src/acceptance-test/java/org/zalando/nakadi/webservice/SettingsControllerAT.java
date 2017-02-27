@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.jayway.restassured.http.ContentType;
-import java.util.concurrent.TimeUnit;
+import java.io.IOException;
+import java.util.Collections;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
 import org.junit.After;
@@ -16,10 +17,6 @@ import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
-
-import java.io.IOException;
-import java.util.Collections;
-
 import static com.jayway.restassured.RestAssured.given;
 
 public class SettingsControllerAT extends BaseAT {
@@ -58,8 +55,6 @@ public class SettingsControllerAT extends BaseAT {
     public void testGetFlooders() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1)); // give time for TreeCache refresh
 
         given()
                 .contentType(ContentType.JSON)

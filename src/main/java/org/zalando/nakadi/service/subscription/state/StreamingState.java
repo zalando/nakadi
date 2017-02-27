@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -92,6 +93,7 @@ class StreamingState extends State {
     }
 
     private Map<Partition.PartitionKey, Long> getUncommittedOffsets() {
+        Preconditions.checkNotNull(uncommittedOffsets, "uncommittedOffsets should not be null on time of call");
         return uncommittedOffsets;
     }
 
