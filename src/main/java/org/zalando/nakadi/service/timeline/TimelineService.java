@@ -16,6 +16,7 @@ import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
@@ -104,7 +105,7 @@ public class TimelineService {
         } catch (final TopicCreationException | ServiceUnavailableException | InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         } catch (final NoSuchEventTypeException e) {
-            throw new UnableProcessException("EventType \"" + eventTypeName + "\" does not exist", e);
+            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
         }
     }
 
@@ -181,18 +182,27 @@ public class TimelineService {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
-        final UUID uuid = uuidGenerator.fromString(timelineId);
-        final List<Timeline> timelines = timelineDbRepository.listTimelines(eventTypeName);
-        if (timelines.size() != 1) {
-            throw new UnableProcessException("Timeline with id: " + uuid + " could not be deleted. " +
-                    "It is possible to delete a timeline if there is only one timeline");
+        final EventType eventType;
+        try {
+            eventType = eventTypeCache.getEventType(eventTypeName);
+        } catch (NoSuchEventTypeException e) {
+            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
+        } catch (InternalNakadiException e) {
+            throw new TimelineException("Internal service error", e);
         }
 
-        final Timeline activeTimeline = timelines.get(0);
-        if (activeTimeline.getId().equals(uuid)) {
-            switchToFakeTimeline(uuid, activeTimeline);
+        final UUID uuid = uuidGenerator.fromString(timelineId);
+        final List<Timeline> timelines = timelineDbRepository.listTimelines(eventType.getName());
+        if (timelines.size() == 1) {
+            final Timeline activeTimeline = timelines.get(0);
+            if (activeTimeline.getId().equals(uuid)) {
+                switchToFakeTimeline(uuid, activeTimeline);
+            } else {
+                throw new NotFoundException("Timeline with id: " + uuid + " not found");
+            }
         } else {
-            throw new UnableProcessException("Timeline with id: " + uuid + " not found");
+            throw new UnableProcessException("Timeline with id: " + uuid + " could not be deleted. " +
+                    "It is possible to delete a timeline if there is only one timeline");
         }
     }
 
@@ -224,7 +234,7 @@ public class TimelineService {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             return timelineDbRepository.listTimelines(eventType.getName());
         } catch (final NoSuchEventTypeException e) {
-            throw new UnableProcessException("EventType \"" + eventTypeName + "\" does not exist", e);
+            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
         } catch (final InternalNakadiException e) {
             throw new TimelineException("Could not get event type: " + eventTypeName, e);
         }

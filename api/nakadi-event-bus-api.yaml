@@ -1256,13 +1256,13 @@ paths:
       parameters:
         - name: name
           in: path
-          description: Name of the EventType.
+          description: Name of the EventType
           type: string
           required: true
         - name: timeline_request
           in: body
           schema:
-            description: Storage id to be used for timeline creation.
+            description: Storage id to be used for timeline creation
             type: object
             properties:
               storage_id:
@@ -1270,9 +1270,13 @@ paths:
           required: true
       responses:
         '201':
-          description: New timeline is created and in use.
+          description: New timeline is created and in use
+        '404':
+          description: No such event type
+          schema:
+            $ref: '#/definitions/Problem'
         '422':
-          description: Unprocessable entity due to non existing storage or event type
+          description: Unprocessable entity due to non existing storage
           schema:
             $ref: '#/definitions/Problem'
         '403':
@@ -1323,8 +1327,8 @@ paths:
                   format: date-time
                 latest_position:
                   type: object
-        '422':
-          description: Unprocessable entity due to non existing event type
+        '404':
+          description: No such event type
           schema:
             $ref: '#/definitions/Problem'
         '403':
@@ -1355,8 +1359,12 @@ paths:
       responses:
         '200':
           description: Timeline was deleted
+        '404':
+          description: No such event type or timeline id
+          schema:
+            $ref: '#/definitions/Problem'
         '422':
-          description: Unprocessable entity due to non existing timeline
+          description: could not delete timeline, because there is more than one timeline
           schema:
             $ref: '#/definitions/Problem'
         '403':
