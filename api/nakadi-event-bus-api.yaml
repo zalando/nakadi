@@ -1271,6 +1271,10 @@ paths:
       responses:
         '201':
           description: New timeline is created and in use.
+        '422':
+          description: Unprocessable entity due to non existing storage or event type
+          schema:
+            $ref: '#/definitions/Problem'
         '403':
           description: Access forbidden
           schema:
@@ -1314,11 +1318,11 @@ paths:
                 switched_at:
                   type: string
                   format: date-time
-                cleanedup_at:
+                cleaned_up_at:
                   type: string
                   format: date-time
                 latest_position:
-                  type: string
+                  type: object
         '422':
           description: Unprocessable entity due to non existing event type
           schema:

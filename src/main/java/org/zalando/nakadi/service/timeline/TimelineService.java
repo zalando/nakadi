@@ -40,7 +40,6 @@ public class TimelineService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimelineService.class);
     private static final String DEFAULT_STORAGE = "default";
-    private static final int DELETE_ONLY_FIRST_TIMELINE = 1;
 
     private final SecuritySettings securitySettings;
     private final EventTypeCache eventTypeCache;
@@ -184,15 +183,16 @@ public class TimelineService {
 
         final UUID uuid = uuidGenerator.fromString(timelineId);
         final List<Timeline> timelines = timelineDbRepository.listTimelines(eventTypeName);
-        if (timelines.size() != DELETE_ONLY_FIRST_TIMELINE) {
-            throw new UnableProcessException("Timeline with timelineId: " + uuid + " could not be deleted");
+        if (timelines.size() != 1) {
+            throw new UnableProcessException("Timeline with id: " + uuid + " could not be deleted. " +
+                    "It is possible to delete a timeline if there is only one timeline");
         }
 
         final Timeline activeTimeline = timelines.get(0);
         if (activeTimeline.getId().equals(uuid)) {
             switchToFakeTimeline(uuid, activeTimeline);
         } else {
-            throw new UnableProcessException("Timeline with timelineId: " + uuid + " not found");
+            throw new UnableProcessException("Timeline with id: " + uuid + " not found");
         }
     }
 
