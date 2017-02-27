@@ -10,12 +10,14 @@ import org.zalando.nakadi.repository.EventConsumer;
 public class EventStreamFactory {
 
     public EventStream createEventStream(final OutputStream outputStream, final EventConsumer eventConsumer,
-                                         final EventStreamConfig config, final BlacklistService blacklistService)
+                                         final EventStreamConfig config, final BlacklistService blacklistService,
+                                         final CursorConverter cursorConverter)
             throws NakadiException, InvalidCursorException {
         return new EventStream(
                 eventConsumer,
                 outputStream,
                 config,
-                blacklistService);
+                blacklistService,
+                cursorConverter);
     }
 }

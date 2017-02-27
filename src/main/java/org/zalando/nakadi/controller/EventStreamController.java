@@ -36,6 +36,7 @@ import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConnectionSlot;
 import org.zalando.nakadi.service.ConsumerLimitingService;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
@@ -80,6 +81,7 @@ public class EventStreamController {
     private final BlacklistService blacklistService;
     private final ConsumerLimitingService consumerLimitingService;
     private final FeatureToggleService featureToggleService;
+    private final CursorConverter cursorConverter;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository,
@@ -90,7 +92,8 @@ public class EventStreamController {
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
                                  final ConsumerLimitingService consumerLimitingService,
-                                 final FeatureToggleService featureToggleService) {
+                                 final FeatureToggleService featureToggleService,
+                                 final CursorConverter cursorConverter) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
@@ -100,6 +103,7 @@ public class EventStreamController {
         this.blacklistService = blacklistService;
         this.consumerLimitingService = consumerLimitingService;
         this.featureToggleService = featureToggleService;
+        this.cursorConverter = cursorConverter;
     }
 
     @VisibleForTesting
@@ -228,7 +232,7 @@ public class EventStreamController {
                         kafkaQuotaClientId,
                         streamConfig.getCursors());
                 eventStream = eventStreamFactory.createEventStream(
-                        outputStream, eventConsumer, streamConfig, blacklistService);
+                        outputStream, eventConsumer, streamConfig, blacklistService, cursorConverter);
 
                 outputStream.flush(); // Flush status code to client
 

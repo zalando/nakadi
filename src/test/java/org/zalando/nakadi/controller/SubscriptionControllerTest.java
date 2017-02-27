@@ -17,6 +17,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
@@ -56,6 +57,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -102,6 +105,7 @@ public class SubscriptionControllerTest {
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+    private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
 
     public SubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -117,8 +121,10 @@ public class SubscriptionControllerTest {
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
         final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        final NakadiSettings settings = mock(NakadiSettings.class);
+        when(settings.getMaxSubscriptionPartitions()).thenReturn(PARTITIONS_PER_SUBSCRIPTION);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
-                zkSubscriptionClientFactory, timelineService, eventTypeRepository);
+                zkSubscriptionClientFactory, timelineService, eventTypeRepository, settings);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, applicationService,
                 subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
@@ -171,7 +177,7 @@ public class SubscriptionControllerTest {
         existingSubscription.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
-        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType("myET"));
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
                 .thenReturn(true);
 
@@ -191,7 +197,7 @@ public class SubscriptionControllerTest {
                 .buildSubscriptionBase();
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
         when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
-        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType("myET"));
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isCreated())
@@ -216,7 +222,7 @@ public class SubscriptionControllerTest {
                 .buildSubscriptionBase();
         final Subscription subscription = new Subscription("123", new DateTime(DateTimeZone.UTC), subscriptionBase);
         when(subscriptionRepository.createSubscription(any())).thenReturn(subscription);
-        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType("myET"));
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isUnprocessableEntity())
@@ -239,18 +245,31 @@ public class SubscriptionControllerTest {
                 .withOwningApplication("app")
                 .withEventTypes(ImmutableSet.of())
                 .buildSubscriptionBase();
-        final Problem expectedProblem = invalidProblem("event_types", "size must be between 1 and 1");
+        final Problem expectedProblem = invalidProblem("event_types", "must contain at least one element");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
     @Test
-    // this test method will fail when we implement consuming from multiple event types
-    public void whenMoreThanOneEventTypeThenUnprocessableEntity() throws Exception {
+    public void whenMoreThanAllowedEventTypeThenUnprocessableEntity() throws Exception {
+        final Set<String> eventTypes = IntStream.range(0, PARTITIONS_PER_SUBSCRIPTION + 1)
+                .mapToObj(i -> "et_" + i)
+                .peek(eventType -> {
+                    try {
+                        final Optional<EventType> et = getOptionalEventType(eventType);
+                        when(eventTypeRepository.findByNameO(eq(eventType))).thenReturn(et);
+                        when(topicRepository.listPartitionNames(eq(et.get().getTopic())))
+                                .thenReturn(Collections.singletonList(null)); // 1 partition per event type.
+                    } catch (InternalNakadiException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toSet());
         final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication("app")
-                .withEventTypes(ImmutableSet.of("myET", "secondET"))
+                .withEventTypes(eventTypes)
                 .buildSubscriptionBase();
-        final Problem expectedProblem = invalidProblem("event_types", "size must be between 1 and 1");
+        final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY,
+                "total partition count for subscription is 6, but the maximum partition count is 5");
         checkForProblem(postSubscription(subscriptionBase), expectedProblem);
     }
 
@@ -295,7 +314,7 @@ public class SubscriptionControllerTest {
         existingSubscription.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
         when(subscriptionRepository.getSubscription(eq("app"), eq(ImmutableSet.of("myET")), any()))
                 .thenReturn(existingSubscription);
-        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType("myET"));
 
         postSubscription(subscriptionBase)
                 .andExpect(status().isOk())
@@ -405,7 +424,7 @@ public class SubscriptionControllerTest {
     public void whenPostSubscriptionAndExceptionThenServiceUnavailable() throws Exception {
         when(subscriptionRepository.createSubscription(any()))
                 .thenThrow(new ServiceUnavailableException("dummy message"));
-        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType());
+        when(eventTypeRepository.findByNameO("myET")).thenReturn(getOptionalEventType("myET"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         final SubscriptionBase subscription = builder()
                 .withOwningApplication("app")
@@ -588,8 +607,8 @@ public class SubscriptionControllerTest {
                 .perform(requestBuilder);
     }
 
-    private Optional<EventType> getOptionalEventType() {
-        return Optional.of(EventTypeTestBuilder.builder().name("myET").build());
+    private Optional<EventType> getOptionalEventType(final String name) {
+        return Optional.of(EventTypeTestBuilder.builder().name(name).build());
     }
 
     private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {

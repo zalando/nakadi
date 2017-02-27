@@ -14,16 +14,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
+import org.zalando.nakadi.util.FeatureToggleService;
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.core.Is.is;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -36,6 +39,16 @@ public class EventStreamTest {
     private static final String TOPIC = randomString();
     private static final String DUMMY = "DUMMY";
 
+    private static CursorConverter cursorConverter;
+
+    @BeforeClass
+    public static void createCursorConverter() {
+        final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+        when(featureToggleService.isFeatureEnabled(eq(FeatureToggleService.Feature.ZERO_PADDED_OFFSETS)))
+                .thenReturn(true);
+        cursorConverter = new CursorConverter(featureToggleService);
+    }
+
     @Test(timeout = 15000)
     public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
         final EventStreamConfig config = EventStreamConfig
@@ -45,8 +58,8 @@ public class EventStreamTest {
                 .withBatchTimeout(1)
                 .build();
         final OutputStream outputStreamMock = mock(OutputStream.class);
-        final EventStream eventStream =
-                new EventStream(emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class));
+        final EventStream eventStream = new EventStream(
+                emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class), cursorConverter);
 
         final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true)));
         thread.start();
@@ -72,8 +85,8 @@ public class EventStreamTest {
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
                 .build();
-        final EventStream eventStream =
-                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class));
+        final EventStream eventStream = new EventStream(
+                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter);
         final AtomicBoolean streamOpen = new AtomicBoolean(true);
         final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen));
         thread.start();
@@ -100,8 +113,8 @@ public class EventStreamTest {
                 .withBatchTimeout(1)
                 .withCursors(new ArrayList<>())
                 .build();
-        final EventStream eventStream =
-                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class));
+        final EventStream eventStream = new EventStream(
+                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -114,8 +127,8 @@ public class EventStreamTest {
                 .withBatchLimit(1)
                 .withStreamLimit(1)
                 .build();
-        final EventStream eventStream =
-                new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class));
+        final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config,
+                mock(BlacklistService.class), cursorConverter);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -129,8 +142,8 @@ public class EventStreamTest {
                 .withBatchTimeout(1)
                 .withStreamKeepAliveLimit(1)
                 .build();
-        final EventStream eventStream =
-                new EventStream(emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class));
+        final EventStream eventStream = new EventStream(
+                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -147,7 +160,8 @@ public class EventStreamTest {
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        final EventStream eventStream = new EventStream(emptyConsumer(), out, config, mock(BlacklistService.class));
+        final EventStream eventStream = new EventStream(
+                emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -155,7 +169,7 @@ public class EventStreamTest {
         Arrays
                 .stream(batches)
                 .forEach(batch ->
-                        assertThat(batch, sameJSONAs(jsonBatch("0", "0", empty()))));
+                        assertThat(batch, sameJSONAs(jsonBatch("0", "000000000000000000", empty()))));
     }
 
     @Test(timeout = 10000)
@@ -170,16 +184,16 @@ public class EventStreamTest {
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        final EventStream eventStream =
-                new EventStream(nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class));
+        final EventStream eventStream = new EventStream(
+                nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class), cursorConverter);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
-        assertThat(batches[0], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(5, DUMMY)))));
-        assertThat(batches[1], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(5, DUMMY)))));
-        assertThat(batches[2], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(2, DUMMY)))));
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(5, DUMMY)))));
+        assertThat(batches[1], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(5, DUMMY)))));
+        assertThat(batches[2], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
     }
 
     @Test(timeout = 10000)
@@ -202,7 +216,7 @@ public class EventStreamTest {
                 .collect(Collectors.toList()));
 
         final EventStream eventStream =
-                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class));
+                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -213,7 +227,8 @@ public class EventStreamTest {
                 .boxed()
                 .forEach(index -> assertThat(
                         batches[index],
-                        sameJSONAs(jsonBatch("0", String.valueOf(index), Optional.of(nCopies(1, "event" + index))))
+                        sameJSONAs(jsonBatch(
+                                "0", String.format("%018d", index), Optional.of(nCopies(1, "event" + index))))
                 ));
     }
 
@@ -243,15 +258,15 @@ public class EventStreamTest {
         events.add(new ConsumedEvent(DUMMY, new NakadiCursor(TOPIC, "2", "0")));
 
         final EventStream eventStream =
-                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class));
+                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
-        assertThat(batches[0], sameJSONAs(jsonBatch("0", "0", Optional.of(nCopies(2, DUMMY)))));
-        assertThat(batches[1], sameJSONAs(jsonBatch("1", "0", Optional.of(nCopies(2, DUMMY)))));
-        assertThat(batches[2], sameJSONAs(jsonBatch("2", "0", Optional.of(nCopies(2, DUMMY)))));
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
+        assertThat(batches[1], sameJSONAs(jsonBatch("1", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
+        assertThat(batches[2], sameJSONAs(jsonBatch("2", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
     }
 
     private static NakadiKafkaConsumer emptyConsumer() throws NakadiException {
@@ -275,8 +290,7 @@ public class EventStreamTest {
             if (eventsToCreate.get() > 0) {
                 eventsToCreate.set(eventsToCreate.get() - 1);
                 return Optional.of(new ConsumedEvent(DUMMY, new NakadiCursor(TOPIC, partition, "0")));
-            }
-            else {
+            } else {
                 return empty();
             }
         });
@@ -309,7 +323,7 @@ public class EventStreamTest {
                     return builder.toString();
                 })
                 .orElse("");
-        final String metadataStr = metadata.map(m -> ",\"metadata\":{\"debug\":\""+m+"\"}").orElse("");
+        final String metadataStr = metadata.map(m -> ",\"metadata\":{\"debug\":\"" + m + "\"}").orElse("");
 
         return String.format("{\"cursor\":{\"partition\":\"%s\",\"offset\":\"%s\"}%s%s}", partition, offset, eventsStr,
                 metadataStr);

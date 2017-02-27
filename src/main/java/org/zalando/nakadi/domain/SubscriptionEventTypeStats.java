@@ -1,11 +1,10 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 import java.util.Collections;
 import java.util.Set;
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
 
 @Immutable
 public class SubscriptionEventTypeStats {

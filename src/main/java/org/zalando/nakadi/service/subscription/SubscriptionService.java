@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -62,16 +63,19 @@ public class SubscriptionService {
     private final EventTypeRepository eventTypeRepository;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
     private final TimelineService timelineService;
+    private final int maxSubscriptionPartitions;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
                                final TimelineService timelineService,
-                               final EventTypeRepository eventTypeRepository) {
+                               final EventTypeRepository eventTypeRepository,
+                               final NakadiSettings nakadiSettings) {
         this.subscriptionRepository = subscriptionRepository;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
         this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
+        this.maxSubscriptionPartitions = nakadiSettings.getMaxSubscriptionPartitions();
     }
 
     public Result<Subscription> createSubscription(final SubscriptionBase subscriptionBase, final Client client)
@@ -108,7 +112,18 @@ public class SubscriptionService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
-
+        final int totalPartitions = eventTypeMapping.values().stream()
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(et -> timelineService.getTopicRepository(et).listPartitionNames(et.getTopic()))
+                .mapToInt(List::size)
+                .sum();
+        if (totalPartitions > maxSubscriptionPartitions) {
+            final String message = String.format(
+                    "total partition count for subscription is %d, but the maximum partition count is %d",
+                    totalPartitions, maxSubscriptionPartitions);
+            return Result.problem(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, message));
+        }
         // generate subscription id and try to create subscription in DB
         final Subscription subscription = subscriptionRepository.createSubscription(subscriptionBase);
         return Result.ok(subscription);
@@ -248,13 +263,13 @@ public class SubscriptionService {
                 .map(eventType -> {
                     final Set<SubscriptionEventTypeStats.Partition> statPartitions =
                             topicPartitions.stream()
-                            .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
-                            .map(Try.wrap(partition ->
-                                    mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
-                            .map(Try::getOrThrow)
-                            .collect(Collectors.toCollection(() ->
-                                    new TreeSet<>(Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
-                            );
+                                    .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
+                                    .map(Try.wrap(partition ->
+                                            mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
+                                    .map(Try::getOrThrow)
+                                    .collect(Collectors.toCollection(() -> new TreeSet<>(
+                                            Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
+                                    );
                     return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
                 })
                 .collect(Collectors.toList());
@@ -267,7 +282,8 @@ public class SubscriptionService {
         final boolean hasSessions = zkSubscriptionNode.getSessions().length > 0;
 
         final Partition partition = Arrays.stream(zkSubscriptionNode.getPartitions())
-                .filter(p -> p.getKey().getPartition().equals(topicPartition.getPartition()))
+                .filter(p -> p.getKey().getPartition().equals(topicPartition.getPartition())
+                        && p.getKey().getTopic().equals(topicPartition.getTopic()))
                 .findFirst()
                 .orElse(null);
 

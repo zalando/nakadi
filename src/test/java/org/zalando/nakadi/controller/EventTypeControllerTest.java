@@ -102,6 +102,7 @@ public class EventTypeControllerTest {
     private static final int NAKADI_SEND_TIMEOUT = 10000;
     private static final int NAKADI_POLL_TIMEOUT = 10000;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000;
+    private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
     private final TopicRepository topicRepository = mock(TopicRepository.class);
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
@@ -126,7 +127,8 @@ public class EventTypeControllerTest {
     public void init() throws Exception {
 
         final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES);
+                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES,
+                NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", objectMapper, nakadiSettings);
         final TimelineService timelineService = mock(TimelineService.class);

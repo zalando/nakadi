@@ -14,8 +14,8 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.TopicPartition;
 import org.zalando.problem.Problem;
 
@@ -36,11 +36,15 @@ public class PartitionsController {
 
     private final EventTypeRepository eventTypeRepository;
     private final TimelineService timelineService;
+    private final CursorConverter cursorConverter;
 
     @Autowired
-    public PartitionsController(final EventTypeRepository eventTypeRepository, final TimelineService timelineService) {
+    public PartitionsController(final EventTypeRepository eventTypeRepository,
+                                final TimelineService timelineService,
+                                final CursorConverter cursorConverter) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
+        this.cursorConverter = cursorConverter;
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
@@ -60,8 +64,8 @@ public class PartitionsController {
                                 stat.getPartition(),
                                 // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
                                 // Cursors here might be in different timeline
-                                Cursor.fromTopicPosition(stat.getFirst()).getOffset(),
-                                Cursor.fromTopicPosition(stat.getLast()).getOffset()))
+                                cursorConverter.convert(stat.getFirst()).getOffset(),
+                                cursorConverter.convert(stat.getLast()).getOffset()))
                         .collect(Collectors.toList());
                 return ok().body(result);
             }
@@ -90,8 +94,8 @@ public class PartitionsController {
                         .map(tp -> new TopicPartition(
                                 eventType.getName(),
                                 tp.getPartition(),
-                                Cursor.fromTopicPosition(tp.getFirst()).getOffset(),
-                                Cursor.fromTopicPosition(tp.getLast()).getOffset()));
+                                cursorConverter.convert(tp.getFirst()).getOffset(),
+                                cursorConverter.convert(tp.getLast()).getOffset()));
 
                 if (!result.isPresent()) {
                     return create(Problem.valueOf(NOT_FOUND, "partition not found"), request);

@@ -1,33 +1,35 @@
 package org.zalando.nakadi.webservice.hila;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.http.HttpStatus;
 import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.SettingsControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.IntStream;
-
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static java.text.MessageFormat.format;
@@ -43,6 +45,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.BEGIN;
+import static org.zalando.nakadi.domain.SubscriptionBase.InitialPosition.END;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.singleEventBatch;
@@ -54,7 +57,8 @@ import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID
 
 public class HilaAT extends BaseAT {
 
-    private static final JsonTestHelper JSON_TEST_HELPER = new JsonTestHelper(new JsonConfig().jacksonObjectMapper());
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    private static final JsonTestHelper JSON_TEST_HELPER = new JsonTestHelper(MAPPER);
     private EventType eventType;
     private Subscription subscription;
 
@@ -213,13 +217,13 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(3)));
 
         assertThat(client.getBatches().get(0).getEvents(), hasSize(5));
-        assertThat(client.getBatches().get(0).getCursor().getOffset(), is("4"));
+        assertThat(client.getBatches().get(0).getCursor().getOffset(), is("000000000000000004"));
 
         assertThat(client.getBatches().get(1).getEvents(), hasSize(5));
-        assertThat(client.getBatches().get(1).getCursor().getOffset(), is("9"));
+        assertThat(client.getBatches().get(1).getCursor().getOffset(), is("000000000000000009"));
 
         assertThat(client.getBatches().get(2).getEvents(), hasSize(2));
-        assertThat(client.getBatches().get(2).getCursor().getOffset(), is("11"));
+        assertThat(client.getBatches().get(2).getCursor().getOffset(), is("000000000000000011"));
     }
 
     @Test(timeout = 10000)
@@ -287,6 +291,47 @@ public class HilaAT extends BaseAT {
         NakadiTestUtils.getSubscriptionStat(subscription)
                 .then()
                 .content(new StringContains(JSON_TEST_HELPER.asJsonString(new ItemsWrapper<>(subscriptionStats))));
+    }
+
+    @Test
+    public void testSubscriptionStatsMultiET() throws IOException {
+        final List<EventType> eventTypes = Lists.newArrayList(createEventType(), createEventType());
+        IntStream.range(0, 10).forEach(x -> publishEvent(eventTypes.get(0).getName(), "{\"foo\":\"bar\"}"));
+        IntStream.range(0, 20).forEach(x -> publishEvent(eventTypes.get(1).getName(), "{\"foo\":\"bar\"}"));
+
+        final Subscription subscription = NakadiTestUtils.createSubscription(RandomSubscriptionBuilder.builder()
+                .withEventTypes(eventTypes.stream().map(EventType::getName).collect(Collectors.toSet()))
+                .withStartFrom(END)
+                .build());
+        // client is needed only to initialize stats
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_flush_timeout=1")
+                .start();
+
+        waitFor(() -> assertThat(client.getBatches().isEmpty(), is(false)));
+
+        IntStream.range(0, 1).forEach(x -> publishEvent(eventTypes.get(0).getName(), "{\"foo\":\"bar\"}"));
+        IntStream.range(0, 2).forEach(x -> publishEvent(eventTypes.get(1).getName(), "{\"foo\":\"bar\"}"));
+
+        NakadiTestUtils.getSubscriptionStat(subscription)
+                .then()
+                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
+                        eventTypes.get(0).getName(),
+                        Sets.newHashSet(new SubscriptionEventTypeStats.Partition(
+                                "0",
+                                "assigned",
+                                1L,
+                                client.getSessionId()
+                        ))))))
+                .content(new StringContains(JSON_TEST_HELPER.asJsonString(new SubscriptionEventTypeStats(
+                        eventTypes.get(1).getName(),
+                        Sets.newHashSet(new SubscriptionEventTypeStats.Partition(
+                                "0",
+                                "assigned",
+                                2L,
+                                client.getSessionId()
+                        ))))));
+        client.close();
     }
 
     @Test(timeout = 10000)

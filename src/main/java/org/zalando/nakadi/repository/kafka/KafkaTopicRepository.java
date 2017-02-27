@@ -386,12 +386,8 @@ public class KafkaTopicRepository implements TopicRepository {
                 nakadiSettings.getKafkaPollTimeoutMs());
     }
 
-    public int compareOffsets(final NakadiCursor first, final NakadiCursor second) {
-        try {
-            return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
-        } catch (final InvalidCursorException e) {
-            throw new IllegalArgumentException("Incorrect offset format, should be long", e);
-        }
+    public int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InvalidCursorException {
+        return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
     }
 
     private List<KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
@@ -429,11 +425,6 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
-        final List<String> partitions = this.listPartitionNames(position.getTopic());
-        validateCursorForNulls(position);
-        if (!partitions.contains(position.getPartition())) {
-            throw new InvalidCursorException(PARTITION_NOT_FOUND, position);
-        }
         KafkaCursor.fromNakadiCursor(position);
     }
 
