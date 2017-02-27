@@ -26,11 +26,14 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.isOneOf;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -57,14 +60,16 @@ public class SubscriptionValidationServiceTest {
         when(nakadiSettings.getMaxSubscriptionPartitions()).thenReturn(MAX_SUBSCRIPTION_PARTITIONS);
 
         topicRepository = mock(TopicRepository.class);
-        when(topicRepository.listPartitionNames(any())).thenReturn(ImmutableList.of(P0));
+        when(topicRepository.listPartitionNames(argThat(isOneOf(topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
+                .thenReturn(ImmutableList.of(P0));
 
         etRepo = mock(EventTypeRepository.class);
         when(etRepo.findByNameO(any())).thenAnswer(invocation -> {
             final String etName = (String) invocation.getArguments()[0];
             final EventType eventType = new EventType();
             eventType.setName(etName);
-            eventType.setTopic("topic_" + etName);
+            eventType.setTopic(topicForET(etName));
+            eventType.setReadScopes(scopesForET(etName));
             return Optional.of(eventType);
         });
 
@@ -79,15 +84,14 @@ public class SubscriptionValidationServiceTest {
 
     @Test(expected = InconsistentStateException.class)
     public void whenFindEventTypeThrowsInternalExceptionThenIncosistentState() throws Exception {
-        when(etRepo.findByNameO(any())).thenThrow(new InternalNakadiException(""));
+        when(etRepo.findByNameO(argThat(isOneOf(ET1, ET2, ET3)))).thenThrow(new InternalNakadiException(""));
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
     }
 
     @Test
     public void whenNoEventTypeThenException() throws Exception {
-        when(etRepo.findByNameO(ET1)).thenReturn(Optional.empty());
+        when(etRepo.findByNameO(argThat(isOneOf(ET1, ET3)))).thenReturn(Optional.empty());
         when(etRepo.findByNameO(ET2)).thenReturn(Optional.of(new EventType()));
-        when(etRepo.findByNameO(ET3)).thenReturn(Optional.empty());
 
         try {
             subscriptionValidationService.validateSubscription(subscriptionBase, client);
@@ -103,12 +107,16 @@ public class SubscriptionValidationServiceTest {
     public void whenValidatingThenScopesAreChecked() throws Exception {
         subscriptionBase.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
-        verify(client, times(3)).checkScopes(any());
+        verify(client, times(1)).checkScopes(scopesForET(ET1));
+        verify(client, times(1)).checkScopes(scopesForET(ET2));
+        verify(client, times(1)).checkScopes(scopesForET(ET3));
     }
 
     @Test(expected = TooManyPartitionsException.class)
     public void whenTooManyPartitionsThenException() throws Exception {
-        when(topicRepository.listPartitionNames(any())).thenReturn(Collections.nCopies(4, P0)); // 4 x 3 = 12 > 10
+        when(topicRepository.listPartitionNames(argThat(isOneOf(
+                topicForET(ET1), topicForET(ET2), topicForET(ET3)))))
+                .thenReturn(Collections.nCopies(4, P0)); // 4 x 3 = 12 > 10
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
     }
 
@@ -192,10 +200,18 @@ public class SubscriptionValidationServiceTest {
         ));
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
         final ImmutableList<NakadiCursor> nakadiCursors = ImmutableList.of(
-                new NakadiCursor("topic_" + ET1, P0, "o1"),
-                new NakadiCursor("topic_" + ET3, P0, "o3")
+                new NakadiCursor(topicForET(ET1), P0, "o1"),
+                new NakadiCursor(topicForET(ET3), P0, "o3")
         );
         verify(topicRepository, times(1)).validateCursors(nakadiCursors);
+    }
+
+    private static String topicForET(final String etName) {
+        return "topic_" + etName;
+    }
+
+    private static Set<String> scopesForET(final String etName) {
+        return ImmutableSet.of("read_scope_for_" + etName);
     }
 
 }

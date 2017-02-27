@@ -121,7 +121,7 @@ public class SubscriptionValidationService {
 
     private List<EventTypePartition> getAllPartitions(final List<EventType> eventTypes) {
         return eventTypes.stream()
-                .flatMap(et -> topicRepository.listPartitionNames(et.getName()).stream()
+                .flatMap(et -> topicRepository.listPartitionNames(et.getTopic()).stream()
                         .map(p -> new EventTypePartition(et.getName(), p)))
                 .collect(Collectors.toList());
     }
