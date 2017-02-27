@@ -93,8 +93,7 @@ public class SubscriptionService {
     }
 
     public UriComponents getSubscriptionUri(final Subscription subscription) {
-        final UriComponents path = SUBSCRIPTION_PATH.buildAndExpand(subscription.getId());
-        return path;
+        return SUBSCRIPTION_PATH.buildAndExpand(subscription.getId());
     }
 
     public Result listSubscriptions(@Nullable final String owningApplication, @Nullable final Set<String> eventTypes,
