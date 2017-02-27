@@ -17,12 +17,14 @@ import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.TimelineRequest;
+import org.zalando.nakadi.view.TimelineView;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(value = "/event-types/{name}/timelines", produces = MediaType.APPLICATION_JSON)
@@ -53,7 +55,9 @@ public class TimelinesController {
 
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity<?> getTimelines(@PathVariable("name") final String eventTypeName, final Client client) {
-        return ResponseEntity.ok(timelineService.getTimelines(eventTypeName, client));
+        return ResponseEntity.ok(timelineService.getTimelines(eventTypeName, client).stream()
+                .map(TimelineView::new)
+                .collect(Collectors.toList()));
     }
 
     @ExceptionHandler(ForbiddenAccessException.class)

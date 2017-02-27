@@ -28,14 +28,12 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.UUIDGenerator;
-import org.zalando.nakadi.view.TimelineView;
 
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class TimelineService {
@@ -216,7 +214,7 @@ public class TimelineService {
         }
     }
 
-    public List<TimelineView> getTimelines(final String eventTypeName, final Client client)
+    public List<Timeline> getTimelines(final String eventTypeName, final Client client)
             throws ForbiddenAccessException, UnableProcessException, TimelineException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
@@ -224,9 +222,7 @@ public class TimelineService {
 
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            return timelineDbRepository.listTimelines(eventType.getName()).stream()
-                    .map(TimelineView::new)
-                    .collect(Collectors.toList());
+            return timelineDbRepository.listTimelines(eventType.getName());
         } catch (final NoSuchEventTypeException e) {
             throw new UnableProcessException("EventType \"" + eventTypeName + "\" does not exist", e);
         } catch (final InternalNakadiException e) {
