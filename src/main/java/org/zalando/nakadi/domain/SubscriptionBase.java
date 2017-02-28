@@ -44,6 +44,7 @@ public class SubscriptionBase {
         this.setEventTypes(subscriptionBase.getEventTypes());
         this.setConsumerGroup(subscriptionBase.getConsumerGroup());
         this.setReadFrom(subscriptionBase.getReadFrom());
+        this.setInitialCursors(subscriptionBase.getInitialCursors());
     }
 
     public String getOwningApplication() {
@@ -98,7 +99,8 @@ public class SubscriptionBase {
         return owningApplication.equals(that.owningApplication)
                 && eventTypes.equals(that.eventTypes)
                 && consumerGroup.equals(that.consumerGroup)
-                && readFrom.equals(that.readFrom);
+                && readFrom.equals(that.readFrom)
+                && initialCursors.equals(that.initialCursors);
     }
 
     @Override
@@ -107,6 +109,7 @@ public class SubscriptionBase {
         result = 31 * result + (eventTypes != null ? eventTypes.hashCode() : 0);
         result = 31 * result + (consumerGroup != null ? consumerGroup.hashCode() : 0);
         result = 31 * result + (readFrom != null ? readFrom.hashCode() : 0);
+        result = 31 * result + (initialCursors != null ? initialCursors.hashCode() : 0);
         return result;
     }
 }

@@ -336,9 +336,9 @@ public class KafkaTopicRepositoryTest {
                 .withEventType(eventType.getName())
                 .withStartFrom(SubscriptionBase.InitialPosition.CURSORS)
                 .withInitialCursors(ImmutableList.of(
-                        new SubscriptionCursorWithoutToken("0", "41", "et"),
-                        new SubscriptionCursorWithoutToken("1", "124", "et"),
-                        new SubscriptionCursorWithoutToken("2", Cursor.BEFORE_OLDEST_OFFSET, "et")
+                        new SubscriptionCursorWithoutToken("et", "0", "41"),
+                        new SubscriptionCursorWithoutToken("et", "1", "124"),
+                        new SubscriptionCursorWithoutToken("et", "2", Cursor.BEFORE_OLDEST_OFFSET)
                 ))
                 .build();
 

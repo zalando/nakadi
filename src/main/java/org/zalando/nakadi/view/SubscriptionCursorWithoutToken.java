@@ -11,9 +11,9 @@ public class SubscriptionCursorWithoutToken extends Cursor {
     @NotNull
     private final String eventType;
 
-    public SubscriptionCursorWithoutToken(@JsonProperty("partition") final String partition,
-                                          @JsonProperty("offset") final String offset,
-                                          @JsonProperty("event_type") final String eventType) {
+    public SubscriptionCursorWithoutToken(@JsonProperty("event_type") final String eventType,
+                                          @JsonProperty("partition") final String partition,
+                                          @JsonProperty("offset") final String offset) {
         super(partition, offset);
         this.eventType = eventType;
     }

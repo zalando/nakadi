@@ -14,7 +14,7 @@ public class SubscriptionCursor extends SubscriptionCursorWithoutToken {
                               @JsonProperty("offset") final String offset,
                               @JsonProperty("event_type") final String eventType,
                               @JsonProperty("cursor_token") final String cursorToken) {
-        super(partition, offset, eventType);
+        super(eventType, partition, offset);
         this.cursorToken = cursorToken;
     }
 

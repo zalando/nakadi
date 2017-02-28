@@ -123,8 +123,8 @@ public class SubscriptionValidationServiceTest {
     @Test
     public void whenCursorForSomePartitionIsMissingThenException() throws Exception {
         subscriptionBase.setInitialCursors(ImmutableList.of(
-                new SubscriptionCursorWithoutToken(P0, "", ET1),
-                new SubscriptionCursorWithoutToken(P0, "", ET3)
+                new SubscriptionCursorWithoutToken(ET1, P0, ""),
+                new SubscriptionCursorWithoutToken(ET3, P0, "")
         ));
         try {
             subscriptionValidationService.validateSubscription(subscriptionBase, client);
@@ -138,10 +138,10 @@ public class SubscriptionValidationServiceTest {
     @Test
     public void whenCursorForWrongPartitionThenException() throws Exception {
         subscriptionBase.setInitialCursors(ImmutableList.of(
-                new SubscriptionCursorWithoutToken(P0, "", ET1),
-                new SubscriptionCursorWithoutToken(P0, "", ET2),
-                new SubscriptionCursorWithoutToken(P0, "", ET3),
-                new SubscriptionCursorWithoutToken(P0, "", "wrongET")
+                new SubscriptionCursorWithoutToken(ET1, P0, ""),
+                new SubscriptionCursorWithoutToken(ET2, P0, ""),
+                new SubscriptionCursorWithoutToken(ET3, P0, ""),
+                new SubscriptionCursorWithoutToken("wrongET", P0, "")
         ));
         try {
             subscriptionValidationService.validateSubscription(subscriptionBase, client);
@@ -155,10 +155,10 @@ public class SubscriptionValidationServiceTest {
     @Test
     public void whenMoreThanOneCursorPerPartitionThenException() throws Exception {
         subscriptionBase.setInitialCursors(ImmutableList.of(
-                new SubscriptionCursorWithoutToken(P0, "", ET1),
-                new SubscriptionCursorWithoutToken(P0, "", ET2),
-                new SubscriptionCursorWithoutToken(P0, "a", ET3),
-                new SubscriptionCursorWithoutToken(P0, "b", ET3)
+                new SubscriptionCursorWithoutToken(ET1, P0, ""),
+                new SubscriptionCursorWithoutToken(ET2, P0, ""),
+                new SubscriptionCursorWithoutToken(ET3, P0, "a"),
+                new SubscriptionCursorWithoutToken(ET3, P0, "b")
         ));
         try {
             subscriptionValidationService.validateSubscription(subscriptionBase, client);
@@ -172,20 +172,21 @@ public class SubscriptionValidationServiceTest {
     @Test(expected = WrongInitialCursorsException.class)
     public void whenInvalidCursorThenException() throws Exception {
         subscriptionBase.setInitialCursors(ImmutableList.of(
-                new SubscriptionCursorWithoutToken(P0, "", ET1),
-                new SubscriptionCursorWithoutToken(P0, "", ET2),
-                new SubscriptionCursorWithoutToken(P0, "", ET3)
+                new SubscriptionCursorWithoutToken(ET1, P0, ""),
+                new SubscriptionCursorWithoutToken(ET2, P0, ""),
+                new SubscriptionCursorWithoutToken(ET3, P0, "")
         ));
-        doThrow(new InvalidCursorException(CursorError.INVALID_FORMAT)).when(topicRepository).validateReadCursors(any());
+        doThrow(new InvalidCursorException(CursorError.INVALID_FORMAT))
+                .when(topicRepository).validateReadCursors(any());
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
     }
 
     @Test(expected = RepositoryProblemException.class)
     public void whenServiceUnavailableThenException() throws Exception {
         subscriptionBase.setInitialCursors(ImmutableList.of(
-                new SubscriptionCursorWithoutToken(P0, "", ET1),
-                new SubscriptionCursorWithoutToken(P0, "", ET2),
-                new SubscriptionCursorWithoutToken(P0, "", ET3)
+                new SubscriptionCursorWithoutToken(ET1, P0, ""),
+                new SubscriptionCursorWithoutToken(ET2, P0, ""),
+                new SubscriptionCursorWithoutToken(ET3, P0, "")
         ));
         doThrow(new ServiceUnavailableException("")).when(topicRepository).validateReadCursors(any());
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
@@ -194,9 +195,9 @@ public class SubscriptionValidationServiceTest {
     @Test
     public void whenValidatingOnlyNoneBeginCursorsValidatedInRepository() throws Exception {
         subscriptionBase.setInitialCursors(ImmutableList.of(
-                new SubscriptionCursorWithoutToken(P0, "o1", ET1),
-                new SubscriptionCursorWithoutToken(P0, Cursor.BEFORE_OLDEST_OFFSET, ET2),
-                new SubscriptionCursorWithoutToken(P0, "o3", ET3)
+                new SubscriptionCursorWithoutToken(ET1, P0, "o1"),
+                new SubscriptionCursorWithoutToken(ET2, P0, Cursor.BEFORE_OLDEST_OFFSET),
+                new SubscriptionCursorWithoutToken(ET3, P0, "o3")
         ));
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
         final ImmutableList<NakadiCursor> nakadiCursors = ImmutableList.of(
