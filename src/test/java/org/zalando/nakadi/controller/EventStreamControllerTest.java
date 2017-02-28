@@ -4,19 +4,6 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Assert;
 import org.junit.Before;
@@ -59,6 +46,21 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -109,7 +111,7 @@ public class EventStreamControllerTest {
     private MockMvc mockMvc;
 
     @Before
-    public void setup() throws NakadiException, UnknownHostException {
+    public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
         EVENT_TYPE.setName(TEST_EVENT_TYPE_NAME);
         EVENT_TYPE.setTopic(TEST_TOPIC);
 
@@ -127,7 +129,13 @@ public class EventStreamControllerTest {
         responseMock = mock(HttpServletResponse.class);
 
         metricRegistry = new MetricRegistry();
-        kafkaClientMetrics = new MetricRegistry();
+        kafkaClientMetrics = mock(MetricRegistry.class);
+        when(kafkaClientMetrics.register(any(), any()))
+                .thenReturn(null);
+        final EventConsumer eventConsumerMock = mock(EventConsumer.class);
+        when(topicRepositoryMock.createEventConsumer(
+                eq(KAFKA_CLIENT_ID), any()))
+                .thenReturn(eventConsumerMock);
 
         final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
         when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
@@ -182,6 +190,13 @@ public class EventStreamControllerTest {
     @SuppressWarnings("unchecked")
     public void whenNoParamsThenDefaultsAreUsed() throws Exception {
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
+
+        final EventConsumer eventConsumerMock = mock(EventConsumer.class);
+        when(eventConsumerMock.getConsumer()).thenReturn(null);
+        when(topicRepositoryMock.createEventConsumer(
+                any(), any()))
+                .thenReturn(eventConsumerMock);
+
         final EventStream eventStreamMock = mock(EventStream.class);
         when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any()))
                 .thenReturn(eventStreamMock);

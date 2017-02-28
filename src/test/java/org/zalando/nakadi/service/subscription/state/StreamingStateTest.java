@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,6 +14,9 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 
 import java.util.Collections;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+
 public class StreamingStateTest {
 
     private StreamingState state;
@@ -20,20 +24,25 @@ public class StreamingStateTest {
     private ZkSubscriptionClient zkMock;
 
     private static final String SESSION_ID = "ssid";
+    private MetricRegistry metricRegistry;
 
     @Before
     public void prepareMocks() {
         state = new StreamingState();
 
-        final StreamingContext contextMock = Mockito.mock(StreamingContext.class);
+        final StreamingContext contextMock = mock(StreamingContext.class);
 
         Mockito.when(contextMock.getSessionId()).thenReturn(SESSION_ID);
         Mockito.when(contextMock.isInState(Mockito.same(state))).thenReturn(true);
 
-        kafkaMock = Mockito.mock(KafkaClient.class);
+        kafkaMock = mock(KafkaClient.class);
         Mockito.when(contextMock.getKafkaClient()).thenReturn(kafkaMock);
 
-        zkMock = Mockito.mock(ZkSubscriptionClient.class);
+        metricRegistry = mock(MetricRegistry.class);
+        Mockito.when(metricRegistry.register(any(), any())).thenReturn(null);
+        Mockito.when(contextMock.getMetricRegistry()).thenReturn(metricRegistry);
+
+        zkMock = mock(ZkSubscriptionClient.class);
         Mockito.when(contextMock.getZkClient()).thenReturn(zkMock);
 
         final StreamParameters spMock = StreamParameters.of(
@@ -53,7 +62,7 @@ public class StreamingStateTest {
 
     @Test
     public void ensureTopologyEventListenerRegisteredRefreshedClosed() {
-        final ZKSubscription topologySubscription = Mockito.mock(ZKSubscription.class);
+        final ZKSubscription topologySubscription = mock(ZKSubscription.class);
         Mockito.when(zkMock.subscribeForTopologyChanges(Mockito.anyObject())).thenReturn(topologySubscription);
 
         state.onEnter();
@@ -75,12 +84,12 @@ public class StreamingStateTest {
 
     @Test
     public void ensureOffsetsSubscriptionsAreRefreshedAndClosed() {
-        final ZKSubscription offsetSubscription = Mockito.mock(ZKSubscription.class);
+        final ZKSubscription offsetSubscription = mock(ZKSubscription.class);
 
         final Partition.PartitionKey pk = new Partition.PartitionKey("t", "0");
         Mockito.when(zkMock.subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any())).thenReturn(offsetSubscription);
 
-        final Consumer kafkaConsumer = Mockito.mock(Consumer.class);
+        final Consumer kafkaConsumer = mock(Consumer.class);
         Mockito.when(kafkaConsumer.assignment()).thenReturn(Collections.emptySet());
         Mockito.when(kafkaMock.createKafkaConsumer()).thenReturn(kafkaConsumer);
 
