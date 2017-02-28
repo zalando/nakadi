@@ -12,6 +12,8 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.security.Principal;
+import java.util.Optional;
 
 public class MonitoringRequestFilter implements Filter {
 
@@ -42,7 +44,14 @@ public class MonitoringRequestFilter implements Filter {
         Timer.Context perPathTimerContext = null;
         if (request instanceof HttpServletRequest) {
             final HttpServletRequest httpRequest = (HttpServletRequest) request;
-            final String perPathMetricKey = httpRequest.getMethod() + httpRequest.getServletPath();
+            final String clientId = Optional.ofNullable(httpRequest.getUserPrincipal())
+                    .map(Principal::getName)
+                    .orElse("unauthenticated");
+            final String perPathMetricKey = MetricRegistry.name(
+                    clientId,
+                    httpRequest.getMethod(),
+                    httpRequest.getServletPath());
+
             perPathTimerContext = perPathMetricRegistry.timer(perPathMetricKey).time();
         }
 

@@ -6,21 +6,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -40,6 +29,8 @@ import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
+import org.zalando.nakadi.metrics.KafkaClientMetrics;
+import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -55,6 +46,20 @@ import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -79,11 +84,13 @@ public class EventStreamController {
     private final ConsumerLimitingService consumerLimitingService;
     private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
+    private final MetricRegistry kafkaClientMetrics;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
+                                 @Qualifier("kafkaClientsMetricRegistry") final MetricRegistry kafkaClientMetrics,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
                                  final ConsumerLimitingService consumerLimitingService,
@@ -94,6 +101,7 @@ public class EventStreamController {
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
+        this.kafkaClientMetrics = kafkaClientMetrics;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.blacklistService = blacklistService;
         this.consumerLimitingService = consumerLimitingService;
@@ -174,6 +182,12 @@ public class EventStreamController {
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
             EventStream eventStream = null;
+            EventConsumer eventConsumer = null;
+            final String kafkaClientMetricsName = MetricRegistry.name(
+                    "lola",
+                    client.getClientId(),
+                    eventTypeName,
+                    String.valueOf(MetricUtils.getSequenceNumber()));
 
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
 
@@ -216,9 +230,14 @@ public class EventStreamController {
 
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer(
+                eventConsumer = topicRepository.createEventConsumer(
                         kafkaQuotaClientId,
                         streamConfig.getCursors());
+
+                this.kafkaClientMetrics.register(
+                        kafkaClientMetricsName,
+                        new KafkaClientMetrics(eventConsumer.getConsumer()));
+
                 eventStream = eventStreamFactory.createEventStream(
                         outputStream, eventConsumer, streamConfig, blacklistService, cursorConverter);
 
@@ -253,6 +272,10 @@ public class EventStreamController {
                 }
                 if (eventStream != null) {
                     eventStream.close();
+                }
+                if (eventConsumer != null) {
+                    this.kafkaClientMetrics.removeMatching((name, metric) -> {
+                        return name.startsWith(kafkaClientMetricsName); });
                 }
                 try {
                     outputStream.flush();

@@ -1,9 +1,12 @@
 package org.zalando.nakadi.controller;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,8 +17,8 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -31,10 +34,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 @RestController
 public class SubscriptionStreamController {
+    public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
     private static final Logger LOG = LoggerFactory.getLogger(SubscriptionStreamController.class);
 
     private final SubscriptionStreamerFactory subscriptionStreamerFactory;
@@ -43,6 +48,7 @@ public class SubscriptionStreamController {
     private final ClosedConnectionsCrutch closedConnectionsCrutch;
     private final NakadiSettings nakadiSettings;
     private final BlacklistService blacklistService;
+    private final MetricRegistry metricRegistry;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -50,13 +56,15 @@ public class SubscriptionStreamController {
                                         final ObjectMapper objectMapper,
                                         final ClosedConnectionsCrutch closedConnectionsCrutch,
                                         final NakadiSettings nakadiSettings,
-                                        final BlacklistService blacklistService) {
+                                        final BlacklistService blacklistService,
+                                        @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.nakadiSettings = nakadiSettings;
         this.blacklistService = blacklistService;
+        this.metricRegistry = metricRegistry;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -124,11 +132,16 @@ public class SubscriptionStreamController {
             throws IOException {
 
         return outputStream -> {
+            Counter consumerCounter = null;
 
             if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
                 response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
                 return;
             }
+
+            final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
+            consumerCounter = metricRegistry.counter(metricName);
+            consumerCounter.inc();
 
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
 
@@ -153,6 +166,9 @@ public class SubscriptionStreamController {
             } catch (final Exception e) {
                 output.onException(e);
             } finally {
+                if (consumerCounter != null) {
+                    consumerCounter.dec();
+                }
                 outputStream.close();
             }
         };

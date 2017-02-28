@@ -1,12 +1,13 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
@@ -45,6 +46,8 @@ public class StreamingContext implements SubscriptionStreamer {
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
     private final String loggingPath;
     private final CursorConverter cursorConverter;
+    private final String subscriptionId;
+    private final MetricRegistry metricRegistry;
     private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
 
@@ -67,6 +70,8 @@ public class StreamingContext implements SubscriptionStreamer {
         this.objectMapper = builder.objectMapper;
         this.blacklistService = builder.blacklistService;
         this.cursorConverter = builder.cursorConverter;
+        this.subscriptionId = builder.subscriptionId;
+        this.metricRegistry = builder.metricRegistry;
     }
 
     public StreamParameters getParameters() {
@@ -95,6 +100,14 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public CursorConverter getCursorConverter() {
         return cursorConverter;
+    }
+
+    public String getSubscriptionId() {
+        return subscriptionId;
+    }
+
+    public MetricRegistry getMetricRegistry() {
+        return  metricRegistry;
     }
 
     @Override
@@ -224,6 +237,8 @@ public class StreamingContext implements SubscriptionStreamer {
         private ObjectMapper objectMapper;
         private BlacklistService blacklistService;
         private CursorConverter cursorConverter;
+        private String subscriptionId;
+        private MetricRegistry metricRegistry;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -300,10 +315,19 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
+        public Builder setSubscriptionId(final String subscriptionId) {
+            this.subscriptionId = subscriptionId;
+            return this;
+        }
+
+        public Builder setMetricRegistry(final MetricRegistry metricRegistry) {
+            this.metricRegistry = metricRegistry;
+            return this;
+        }
+
         public StreamingContext build() {
             return new StreamingContext(this);
         }
-
     }
 
 }

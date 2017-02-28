@@ -2,8 +2,8 @@ package org.zalando.nakadi.service.subscription;
 
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;

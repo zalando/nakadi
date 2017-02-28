@@ -1,6 +1,18 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.metrics.KafkaClientMetrics;
+import org.zalando.nakadi.metrics.MetricUtils;
+import org.zalando.nakadi.service.EventStream;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.view.SubscriptionCursor;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,14 +27,6 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.service.EventStream;
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
-import org.zalando.nakadi.view.SubscriptionCursor;
 
 
 class StreamingState extends State {
@@ -38,11 +42,23 @@ class StreamingState extends State {
     private long committedEvents;
     private long sentEvents;
     private long batchesSent;
+    private String kafkClientMetricsName;
 
     @Override
     public void onEnter() {
         // Create kafka consumer
+        kafkClientMetricsName = MetricRegistry.name(
+                "hila",
+                this.getContext().getParameters().getConsumingAppId(),
+                this.getContext().getSubscriptionId(),
+                MetricUtils.getSequenceNumber()); // necessary to avoid client-id conflict
+
         this.kafkaConsumer = getKafka().createKafkaConsumer();
+
+        this.getContext().getMetricRegistry().register(
+                kafkClientMetricsName,
+                new KafkaClientMetrics(this.kafkaConsumer));
+
         // Subscribe for topology changes.
         this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
         // and call directly
@@ -234,6 +250,8 @@ class StreamingState extends State {
         }
         if (null != kafkaConsumer) {
             try {
+                this.getContext().getMetricRegistry().removeMatching((name, metric) -> {
+                    return name.startsWith(kafkClientMetricsName); });
                 kafkaConsumer.close();
             } finally {
                 kafkaConsumer = null;

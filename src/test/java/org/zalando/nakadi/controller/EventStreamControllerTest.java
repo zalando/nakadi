@@ -102,6 +102,7 @@ public class EventStreamControllerTest {
     private EventStreamController controller;
     private JsonTestHelper jsonHelper;
     private MetricRegistry metricRegistry;
+    private MetricRegistry kafkaClientMetrics;
     private FeatureToggleService featureToggleService;
     private SecuritySettings settings;
     private BlacklistService blacklistService;
@@ -126,6 +127,7 @@ public class EventStreamControllerTest {
         responseMock = mock(HttpServletResponse.class);
 
         metricRegistry = new MetricRegistry();
+        kafkaClientMetrics = new MetricRegistry();
 
         final ClosedConnectionsCrutch crutch = mock(ClosedConnectionsCrutch.class);
         when(crutch.listenForConnectionClose(requestMock)).thenReturn(new AtomicBoolean(true));
@@ -139,8 +141,8 @@ public class EventStreamControllerTest {
         featureToggleService = mock(FeatureToggleService.class);
 
         controller = new EventStreamController(
-                eventTypeRepository, topicRepositoryMock, objectMapper, eventStreamFactoryMock, metricRegistry, crutch,
-                blacklistService, consumerLimitingService, featureToggleService,
+                eventTypeRepository, topicRepositoryMock, objectMapper, eventStreamFactoryMock, metricRegistry,
+                kafkaClientMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
                 new CursorConverter(featureToggleService));
 
         settings = mock(SecuritySettings.class);

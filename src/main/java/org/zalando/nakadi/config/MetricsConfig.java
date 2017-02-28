@@ -29,10 +29,22 @@ public class MetricsConfig {
         }
     }
 
+    class KafkaClientsMetricsServlet extends MetricsServlet {
+        public KafkaClientsMetricsServlet (final MetricRegistry metricRegistry) {
+            super(metricRegistry);
+        }
+    }
+
     @Bean
     public ServletRegistrationBean subscriptionsServletRegistrationBean(
             @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry) {
         return new ServletRegistrationBean(new SubscriptionMetricsServlet(metricRegistry), "/request-metrics/*");
+    }
+
+    @Bean
+    public ServletRegistrationBean kafkaClientsMetricsServletRegistrationBean(
+            @Qualifier("kafkaClientsMetricRegistry") final MetricRegistry metricRegistry) {
+        return new ServletRegistrationBean(new KafkaClientsMetricsServlet(metricRegistry), "/kafka-clients-metrics/*");
     }
 
     @Bean
@@ -48,6 +60,14 @@ public class MetricsConfig {
     @Bean
     @Qualifier("perPathMetricRegistry")
     public MetricRegistry perPathMetricRegistry() {
+        final MetricRegistry metricRegistry = new MetricRegistry();
+
+        return metricRegistry;
+    }
+
+    @Bean
+    @Qualifier("kafkaClientsMetricRegistry")
+    public MetricRegistry kafkaClientsMetricRegistry() {
         final MetricRegistry metricRegistry = new MetricRegistry();
 
         return metricRegistry;
