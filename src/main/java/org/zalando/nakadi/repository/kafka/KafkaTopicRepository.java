@@ -349,7 +349,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final List<SubscriptionCursorWithoutToken> etInitialCursors = subscription.getInitialCursors().stream()
                     .filter(c -> c.getEventType().equals(eventType.getName()))
                     .collect(Collectors.toList());
-            return getSubscriptionTopicInitPositions(eventType.getTopic(), subscription, etInitialCursors);
+            return getSubscriptionTopicInitPositions(eventType.getTopic(), etInitialCursors);
 
         } else {
             try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
@@ -376,7 +376,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    private Map<String, Long> getSubscriptionTopicInitPositions(final String topic, final Subscription subscription,
+    private Map<String, Long> getSubscriptionTopicInitPositions(final String topic,
                                                                 final List<SubscriptionCursorWithoutToken> etCursors) {
         final Map<String, Long> positions = new HashMap<>();
         final List<SubscriptionCursorWithoutToken> cursorsWithBegin = etCursors.stream()
