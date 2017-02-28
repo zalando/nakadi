@@ -24,8 +24,7 @@ public class SecuritySettings {
     public SecuritySettings(@Value("${nakadi.oauth2.tokenInfoUrl}") final String tokenInfoUrl,
                             @Value("${nakadi.oauth2.clientId}") final String clientId,
                             @Value("${nakadi.oauth2.mode:BASIC}") final AuthMode authMode,
-                            @Value("${nakadi.oauth2.adminClientId}") final String adminClientId)
-    {
+                            @Value("${nakadi.oauth2.adminClientId}") final String adminClientId) {
         this.tokenInfoUrl = tokenInfoUrl;
         this.clientId = clientId;
         this.authMode = authMode;

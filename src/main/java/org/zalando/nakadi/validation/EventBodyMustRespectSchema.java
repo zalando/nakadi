@@ -37,7 +37,7 @@ class JSONSchemaValidator implements EventValidator {
 
     private static final FormatValidator DATE_TIME_VALIDATOR = new RFC3339DateTimeValidator();
 
-    public JSONSchemaValidator(final JSONObject effectiveSchema) {
+    JSONSchemaValidator(final JSONObject effectiveSchema) {
         schema = SchemaLoader
                 .builder()
                 .schemaJson(effectiveSchema)

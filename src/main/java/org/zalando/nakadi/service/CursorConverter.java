@@ -1,46 +1,28 @@
 package org.zalando.nakadi.service;
 
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.util.FeatureToggleService;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
-@Service
-public class CursorConverter {
-    private final FeatureToggleService featureToggleService;
+/**
+ * The only place to create NakadiCursor from Cursor or SubscriptionCursor and back.
+ */
+public interface CursorConverter {
 
-    public static final int CURSOR_OFFSET_LENGTH = 18;
+    // Methods to convert from model to view
+    Cursor convert(NakadiCursor topicPosition);
 
-    @Autowired
-    public CursorConverter(final FeatureToggleService featureToggleService) {
-        this.featureToggleService = featureToggleService;
-    }
+    SubscriptionCursor convert(NakadiCursor nakadiCursor, String token);
 
-    public Cursor convert(final NakadiCursor nakadiCursor) {
-        final boolean zeroPaddedOffsets =
-                featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.ZERO_PADDED_OFFSETS);
-        final String offset;
-        if (nakadiCursor.getOffset().equals("-1")) {
-            offset = Cursor.BEFORE_OLDEST_OFFSET;
-        } else {
-            if (zeroPaddedOffsets) {
-                offset = StringUtils.leftPad(nakadiCursor.getOffset(), CURSOR_OFFSET_LENGTH, '0');
-            } else {
-                offset = nakadiCursor.getOffset();
-            }
-        }
-        return new Cursor(
-                nakadiCursor.getPartition(),
-                offset);
-    }
+    // Convert from view to model
+    NakadiCursor convert(String eventTypeName, Cursor cursor) throws
+            InternalNakadiException, NoSuchEventTypeException, InvalidCursorException, ServiceUnavailableException;
 
-    public SubscriptionCursor convert(
-            final NakadiCursor position, final String eventType, final String token) {
-        final Cursor oldCursor = convert(position);
-        return new SubscriptionCursor(oldCursor.getPartition(), oldCursor.getOffset(), eventType, token);
-    }
-
+    NakadiCursor convert(SubscriptionCursorWithoutToken cursor) throws
+            InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
 }

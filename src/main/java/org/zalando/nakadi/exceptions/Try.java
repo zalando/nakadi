@@ -114,6 +114,6 @@ public abstract class Try<T> {
     @FunctionalInterface
     public interface FunctionWithException<T, R> {
 
-        R apply(final T t) throws Exception;
+        R apply(T t) throws Exception;
     }
 }

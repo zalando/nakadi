@@ -83,7 +83,7 @@ public class GzipBodyRequestFilter implements Filter {
 
     private class GzipServletRequestWrapper extends HttpServletRequestWrapper{
 
-        public GzipServletRequestWrapper(final HttpServletRequest request) {
+        GzipServletRequestWrapper(final HttpServletRequest request) {
             super(request);
         }
 
@@ -103,7 +103,7 @@ public class GzipBodyRequestFilter implements Filter {
 
         private final InputStream inputStream;
 
-        public GzipServletInputStream(final InputStream inputStream) throws IOException {
+        GzipServletInputStream(final InputStream inputStream) throws IOException {
             super();
             this.inputStream = new GZIPInputStream(inputStream);
         }

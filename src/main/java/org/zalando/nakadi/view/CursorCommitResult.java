@@ -1,6 +1,4 @@
-package org.zalando.nakadi.domain;
-
-import org.zalando.nakadi.view.SubscriptionCursor;
+package org.zalando.nakadi.view;
 
 import javax.annotation.concurrent.Immutable;
 

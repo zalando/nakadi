@@ -1,5 +1,11 @@
 package org.zalando.nakadi.service.timeline;
 
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,12 +38,6 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.UUIDGenerator;
-
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class TimelineService {
@@ -93,7 +93,7 @@ public class TimelineService {
                     topicRepositoryHolder.getTopicRepository(activeTimeline.getStorage());
             final TopicRepository nextTopicRepo = topicRepositoryHolder.getTopicRepository(storage);
             final List<PartitionStatistics> partitionStatistics =
-                    currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline.getTopic()));
+                    currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline));
 
             final Timeline nextTimeline;
             if (activeTimeline.isFake()) {
@@ -114,6 +114,24 @@ public class TimelineService {
         }
     }
 
+    /**
+     * Returns list of ACTIVE timelines for event type.
+     *
+     * @param eventType
+     * @return list of active timelines. List is always NOT empty! At least fake timeline present there.
+     * @throws InternalNakadiException  everything can happen
+     * @throws NoSuchEventTypeException No such event type
+     */
+    public List<Timeline> getActiveTimelinesOrdered(final String eventType)
+            throws InternalNakadiException, NoSuchEventTypeException {
+        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventType);
+        if (timelines.isEmpty()) {
+            return Collections.singletonList(getFakeTimeline(eventTypeCache.getEventType(eventType)));
+        } else {
+            return timelines.stream().filter(t -> t.getSwitchedAt() != null).collect(Collectors.toList());
+        }
+    }
+
     public Timeline getTimeline(final EventTypeBase eventType) throws TimelineException {
         try {
             final String eventTypeName = eventType.getName();
@@ -129,9 +147,17 @@ public class TimelineService {
         }
     }
 
+    public Timeline getFakeTimeline(final EventType eventType) {
+        return Timeline.createFakeTimeline(eventType, defaultStorage);
+    }
+
     public TopicRepository getTopicRepository(final EventTypeBase eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getTimeline(eventType);
+        return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
+    }
+
+    public TopicRepository getTopicRepository(final Timeline timeline) {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
@@ -187,7 +213,7 @@ public class TimelineService {
         }
 
         final UUID uuid = uuidGenerator.fromString(timelineId);
-        final List<Timeline> timelines = timelineDbRepository.listTimelines(eventType.getName());
+        final List<Timeline> timelines = timelineDbRepository.listTimelinesOrdered(eventType.getName());
         if (timelines.size() == 1) {
             final Timeline activeTimeline = timelines.get(0);
             if (activeTimeline.getId().equals(uuid)) {
@@ -239,7 +265,7 @@ public class TimelineService {
 
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            return timelineDbRepository.listTimelines(eventType.getName());
+            return timelineDbRepository.listTimelinesOrdered(eventType.getName());
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
         } catch (final InternalNakadiException e) {

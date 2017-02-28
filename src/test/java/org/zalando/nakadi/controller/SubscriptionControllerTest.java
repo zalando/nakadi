@@ -2,6 +2,12 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import javax.ws.rs.core.Response;
 import org.junit.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -14,12 +20,14 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -42,14 +50,6 @@ import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
-
-import javax.ws.rs.core.Response;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -57,6 +57,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -70,6 +71,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
+import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
@@ -85,6 +87,7 @@ public class SubscriptionControllerTest {
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
     private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
+    private static final Timeline TIMELINE = createFakeTimeline("topic");
 
     public SubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -100,7 +103,9 @@ public class SubscriptionControllerTest {
         when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
         final TimelineService timelineService = mock(TimelineService.class);
-        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        when(timelineService.getTimeline(any())).thenReturn(TIMELINE);
+        when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
+        when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         final NakadiSettings settings = mock(NakadiSettings.class);
         when(settings.getMaxSubscriptionPartitions()).thenReturn(PARTITIONS_PER_SUBSCRIPTION);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
@@ -227,30 +232,14 @@ public class SubscriptionControllerTest {
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
         final List<PartitionStatistics> statistics = Collections.singletonList(
-                new KafkaPartitionStatistics("topic", 0, 0, 13));
-        when(topicRepository.loadTopicStatistics(Collections.singletonList("topic"))).thenReturn(statistics);
+                new KafkaPartitionStatistics(TIMELINE, 0, 0, 13));
+        when(topicRepository.loadTopicStatistics(eq(Collections.singletonList(TIMELINE)))).thenReturn(statistics);
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         "myET",
                         Collections.singleton(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
                 );
-
-        getSubscriptionStats(subscription.getId())
-                .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(subscriptionStats))));
-    }
-
-    @Test
-    public void whenGetSubscriptionNoPartitionsThenStatEmpty() throws Exception {
-        final Subscription subscription = builder().withEventType("myET").build();
-        when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
-        when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(new ZkSubscriptionNode());
-        when(eventTypeRepository.findByName("myET"))
-                .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
-
-        final List<SubscriptionEventTypeStats> subscriptionStats =
-                Collections.singletonList(new SubscriptionEventTypeStats("myET", Collections.emptySet()));
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isOk())
