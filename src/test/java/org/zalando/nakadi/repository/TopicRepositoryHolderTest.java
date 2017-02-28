@@ -37,7 +37,8 @@ public class TopicRepositoryHolderTest {
         }
 
         @Override
-        public Timeline.StoragePosition createStoragePosition(final List<NakadiCursor> offsets) throws NakadiRuntimeException {
+        public Timeline.StoragePosition createStoragePosition(final List<NakadiCursor> offsets)
+                throws NakadiRuntimeException {
             return null;
         }
 

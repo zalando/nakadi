@@ -41,7 +41,8 @@ public class TimelineServiceTest {
     private final NakadiSettings nakadiSettings = Mockito.mock(NakadiSettings.class);
     private final TimelineDbRepository timelineDbRepository = Mockito.mock(TimelineDbRepository.class);
     private final TopicRepositoryHolder topicRepositoryHolder = Mockito.mock(TopicRepositoryHolder.class);
-    private final TransactionTemplate transactionTemplate = new TransactionTemplate(Mockito.mock(PlatformTransactionManager.class));
+    private final TransactionTemplate transactionTemplate =
+            new TransactionTemplate(Mockito.mock(PlatformTransactionManager.class));
 
     private final TimelineService timelineService = new TimelineService(securitySettings, eventTypeCache,
             storageDbRepository, timelineSync, nakadiSettings, timelineDbRepository, topicRepositoryHolder,
@@ -78,7 +79,8 @@ public class TimelineServiceTest {
         Mockito.when(eventTypeCache.getActiveTimeline(Matchers.any())).thenReturn(Optional.of(activeTimeline));
         Mockito.when(storageDbRepository.getStorage(Matchers.any())).thenReturn(Optional.of(storage));
         Mockito.when(topicRepositoryHolder.getTopicRepository(storage)).thenReturn(topicRepository);
-        Mockito.when(topicRepositoryHolder.createStoragePosition(activeTimeline)).thenReturn(new Timeline.KafkaStoragePosition());
+        Mockito.when(topicRepositoryHolder.createStoragePosition(activeTimeline))
+                .thenReturn(new Timeline.KafkaStoragePosition());
         Mockito.when(topicRepository.loadTopicStatistics(Matchers.any())).thenReturn(Collections.emptyList());
         Mockito.when(topicRepository.createTopic(Matchers.anyInt(), Matchers.anyLong())).thenReturn("topic");
         Mockito.when(eventTypeCache.getEventType(Matchers.any())).thenReturn(EventTypeTestBuilder.builder().build());
@@ -86,7 +88,8 @@ public class TimelineServiceTest {
         timelineService.createTimeline("event_type", "storage_id", new FullAccessClient("clientId"));
 
         Mockito.verify(timelineDbRepository).createTimeline(Matchers.any());
-        Mockito.verify(timelineSync).startTimelineUpdate(Matchers.eq(activeTimeline.getEventType()), Matchers.anyLong());
+        Mockito.verify(timelineSync)
+                .startTimelineUpdate(Matchers.eq(activeTimeline.getEventType()), Matchers.anyLong());
         Mockito.verify(timelineDbRepository).updateTimelime(Matchers.eq(activeTimeline));
         Mockito.verify(timelineDbRepository).updateTimelime(Matchers.eq(activeTimeline));
         Mockito.verify(timelineSync).finishTimelineUpdate(activeTimeline.getEventType());
