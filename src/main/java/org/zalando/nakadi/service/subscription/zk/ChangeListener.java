@@ -59,7 +59,7 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
 
     private static class ChildrenListener extends ChangeListener {
 
-        public ChildrenListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
+        ChildrenListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
             super(curatorFramework, key, listener);
         }
 
@@ -71,7 +71,7 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
 
     private static class ValueListener extends ChangeListener {
 
-        public ValueListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
+        ValueListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
             super(curatorFramework, key, listener);
         }
 

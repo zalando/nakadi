@@ -1,5 +1,11 @@
 package org.zalando.nakadi.service.subscription;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,23 +17,17 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.view.Cursor;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 @Service
 public class SubscriptionValidationService {
@@ -35,14 +35,17 @@ public class SubscriptionValidationService {
     private final EventTypeRepository eventTypeRepository;
     private final TimelineService timelineService;
     private final int maxSubscriptionPartitions;
+    private final CursorConverter cursorConverter;
 
     @Autowired
     public SubscriptionValidationService(final TimelineService timelineService,
                                          final EventTypeRepository eventTypeRepository,
-                                         final NakadiSettings nakadiSettings) {
+                                         final NakadiSettings nakadiSettings,
+                                         final CursorConverter cursorConverter) {
         this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
         this.maxSubscriptionPartitions = nakadiSettings.getMaxSubscriptionPartitions();
+        this.cursorConverter = cursorConverter;
     }
 
     public void validateSubscription(final SubscriptionBase subscription, final Client client)
@@ -72,13 +75,12 @@ public class SubscriptionValidationService {
 
         // validate initial cursors if needed
         if (subscription.getReadFrom() == SubscriptionBase.InitialPosition.CURSORS) {
-            validateInitialCursors(subscription, allPartitions, eventTypes);
+            validateInitialCursors(subscription, allPartitions);
         }
     }
 
     private void validateInitialCursors(final SubscriptionBase subscription,
-                                        final List<EventTypePartition> allPartitions,
-                                        final List<EventType> eventTypes)
+                                        final List<EventTypePartition> allPartitions)
             throws WrongInitialCursorsException, RepositoryProblemException {
 
         final boolean cursorsMissing = allPartitions.stream()
@@ -100,25 +102,16 @@ public class SubscriptionValidationService {
                     "there should be no more than 1 cursor for each partition in initial_cursors");
         }
 
-        final Map<String, String> etTopics = eventTypes.stream()
-                .collect(Collectors.toMap(
-                        EventType::getName,
-                        EventType::getTopic
-                ));
-        final List<NakadiCursor> cursorsWithoutBegin = subscription.getInitialCursors()
-                .stream()
-                .filter(c -> !Cursor.BEFORE_OLDEST_OFFSET.equals(c.getOffset()))
-                .map(c -> new NakadiCursor(etTopics.get(c.getEventType()), c.getPartition(), c.getOffset()))
-                .collect(Collectors.toList());
-
         try {
-            // FIXME TIMELINES: has to be fixed during consumption task
-            final TopicRepository topicRepository = timelineService.getTopicRepository(eventTypes.get(0));
-            topicRepository.validateReadCursors(cursorsWithoutBegin);
-        } catch (InvalidCursorException e) {
-            throw new WrongInitialCursorsException(e.getMessage(), e);
-        } catch (ServiceUnavailableException e) {
-            throw new RepositoryProblemException("Topic repository problem occurred when validating cursors", e);
+            for (final SubscriptionCursorWithoutToken cursor : subscription.getInitialCursors()) {
+                final NakadiCursor nakadiCursor = cursorConverter.convert(cursor);
+                timelineService.getTopicRepository(nakadiCursor.getTimeline()).validateReadCursors(
+                        Collections.singletonList(nakadiCursor));
+            }
+        } catch (final InvalidCursorException ex) {
+            throw new WrongInitialCursorsException(ex.getMessage(), ex);
+        } catch (final NakadiException ex) {
+            throw new RepositoryProblemException("Topic repository problem occurred when validating cursors", ex);
         }
     }
 

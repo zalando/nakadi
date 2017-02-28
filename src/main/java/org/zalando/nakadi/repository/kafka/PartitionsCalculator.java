@@ -163,7 +163,7 @@ public class PartitionsCalculator {
     static PartitionsCalculator load(final ObjectMapper objectMapper, final String instanceType,
                                      final NakadiSettings nakadiSettings)
             throws IOException {
-        try (final InputStream in = PartitionsCalculator.class.getResourceAsStream(PARTITION_STATISTICS)) {
+        try (InputStream in = PartitionsCalculator.class.getResourceAsStream(PARTITION_STATISTICS)) {
             if (null == in) {
                 throw new IOException("Resource with name " + PARTITION_STATISTICS + " is not found");
             }

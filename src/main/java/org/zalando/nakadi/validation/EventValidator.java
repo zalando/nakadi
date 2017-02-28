@@ -1,9 +1,8 @@
 package org.zalando.nakadi.validation;
 
+import java.util.Optional;
 import org.json.JSONObject;
 
-import java.util.Optional;
-
-public interface EventValidator {
-    Optional<ValidationError> accepts(final JSONObject event);
+interface EventValidator {
+    Optional<ValidationError> accepts(JSONObject event);
 }

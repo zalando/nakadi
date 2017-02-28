@@ -1,5 +1,7 @@
 package org.zalando.nakadi.repository.db;
 
+import java.util.Collections;
+import java.util.List;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -15,9 +17,6 @@ import org.zalando.nakadi.validation.EventBodyMustRespectSchema;
 import org.zalando.nakadi.validation.EventMetadataValidationStrategy;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 import org.zalando.nakadi.validation.ValidationStrategy;
-
-import java.util.Collections;
-import java.util.List;
 
 public class EventTypeCacheTest {
     @BeforeClass
@@ -39,7 +38,7 @@ public class EventTypeCacheTest {
         Mockito.when(etRepo.list()).thenReturn(Collections.singletonList(et));
         final Timeline timeline = TestUtils.buildTimeline(et.getName());
         final List<Timeline> timelines = Collections.singletonList(timeline);
-        Mockito.when(timelineRepository.listTimelines()).thenReturn(timelines);
+        Mockito.when(timelineRepository.listTimelinesOrdered()).thenReturn(timelines);
         Mockito.when(timelineSync.registerTimelineChangeListener(Matchers.eq(et.getName()), Mockito.any()))
                 .thenReturn(() -> {});
         final EventTypeCache eventTypeCache = new EventTypeCache(etRepo, timelineRepository, zkHolder,
@@ -55,9 +54,9 @@ public class EventTypeCacheTest {
         Mockito.verify(etRepo, Mockito.times(0)).findByName(Mockito.any());
         Mockito.verify(etRepo, Mockito.times(1)).list();
 
-        Assert.assertEquals(timelines, eventTypeCache.getTimelines(et.getName()));
+        Assert.assertEquals(timelines, eventTypeCache.getTimelinesOrdered(et.getName()));
 
-        Mockito.verify(timelineRepository, Mockito.times(0)).listTimelines(Mockito.any());
-        Mockito.verify(timelineRepository, Mockito.times(1)).listTimelines();
+        Mockito.verify(timelineRepository, Mockito.times(0)).listTimelinesOrdered(Mockito.any());
+        Mockito.verify(timelineRepository, Mockito.times(1)).listTimelinesOrdered();
     }
 }

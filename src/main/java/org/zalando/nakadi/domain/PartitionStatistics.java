@@ -1,16 +1,20 @@
 package org.zalando.nakadi.domain;
 
 public abstract class PartitionStatistics {
-    private final String topic;
+    private final Timeline timeline;
     private final String partition;
 
-    public PartitionStatistics(final String topic, final String partition) {
-        this.topic = topic;
+    public PartitionStatistics(final Timeline timeline, final String partition) {
+        this.timeline = timeline;
         this.partition = partition;
     }
 
+    public Timeline getTimeline() {
+        return timeline;
+    }
+
     public String getTopic() {
-        return topic;
+        return getTimeline().getTopic();
     }
 
     public String getPartition() {

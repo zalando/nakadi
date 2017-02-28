@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -22,7 +24,16 @@ public class StartingState extends State {
         // check that subscription initialized in zk.
         if (getZk().createSubscription()) {
             // if not - create subscription node etc.
-            getZk().fillEmptySubscription(getKafka().getSubscriptionOffsets());
+            final Map<Partition.PartitionKey, String> cursors = getKafka().getSubscriptionOffsets().entrySet()
+                    .stream().collect(
+                            Collectors.toMap(
+                                    Map.Entry::getKey,
+                                    entry -> entry.getValue().getOffset()
+                            )
+                    );
+            // TODO: On the very first stage when only zero-version cursors are used, it will work.
+            // This should be fixed by using correct layering.
+            getZk().fillEmptySubscription(cursors);
         } else {
             final Session[] sessions = getZk().listSessions();
             final Partition[] partitions = getZk().listPartitions();

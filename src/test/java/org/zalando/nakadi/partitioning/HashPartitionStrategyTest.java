@@ -100,7 +100,7 @@ public class HashPartitionStrategyTest {
     public void createSampleSet() {
         final List<JSONObject> events = generateRandomEvents(10000);
 
-        for (JSONObject event : events) {
+        for (final JSONObject event : events) {
             System.out.println(event.toString());
         }
     }

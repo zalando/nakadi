@@ -339,6 +339,7 @@ task testWithReport() {
 
 checkstyle {
     configFile = new File(rootDir, "checkstyle.xml")
+    toolVersion = "7.6"
 }
 
 task checkstyle {

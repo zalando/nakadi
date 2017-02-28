@@ -2,6 +2,9 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -11,9 +14,10 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -21,19 +25,19 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.CursorConverter;
+import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.problem.Problem;
-
-import java.util.Collections;
-import java.util.List;
-
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -44,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
+import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
@@ -55,10 +60,16 @@ public class CursorsControllerTest {
     private static final String MY_ET = "my-et";
     private static final String TOKEN = "cursor-token";
 
-    private static final ImmutableList<SubscriptionCursor> DUMMY_CURSORS =
-            ImmutableList.of(
-                    new SubscriptionCursor("0", "10", MY_ET, TOKEN),
-                    new SubscriptionCursor("1", "10", MY_ET, TOKEN));
+    private static final Timeline TIMELINE = createFakeTimeline(MY_ET);
+
+    private static final ImmutableList<NakadiCursor> DUMMY_NAKADI_CURSORS = ImmutableList.of(
+            new NakadiCursor(TIMELINE, "0", "000000000000000010"),
+            new NakadiCursor(TIMELINE, "1", "000000000000000010")
+    );
+
+    private static final ImmutableList<SubscriptionCursor> DUMMY_CURSORS = ImmutableList.of(
+            new SubscriptionCursor("0", "10", MY_ET, TOKEN),
+            new SubscriptionCursor("1", "10", MY_ET, TOKEN));
 
     private final CursorsService cursorsService = mock(CursorsService.class);
     private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
@@ -66,6 +77,7 @@ public class CursorsControllerTest {
     private final JsonTestHelper jsonHelper;
     private final FeatureToggleService featureToggleService;
     private final SubscriptionDbRepository subscriptionRepository;
+    private final CursorConverter cursorConverter;
 
     public CursorsControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -74,11 +86,21 @@ public class CursorsControllerTest {
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
 
         subscriptionRepository = mock(SubscriptionDbRepository.class);
+        cursorConverter = mock(CursorConverter.class);
+
+        IntStream.range(0, DUMMY_CURSORS.size()).forEach(idx ->
+                when(cursorConverter.convert(eq(DUMMY_NAKADI_CURSORS.get(idx)), any()))
+                        .thenReturn(DUMMY_CURSORS.get(idx)));
+
         final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
         doReturn(buildDefaultEventType()).when(eventTypeRepository).findByName(any());
         doReturn(RandomSubscriptionBuilder.builder().build()).when(subscriptionRepository).getSubscription(any());
+        final CursorTokenService tokenService = mock(CursorTokenService.class);
+        when(tokenService.generateToken()).thenReturn(TOKEN);
+
         final CursorsController controller = new CursorsController(cursorsService, featureToggleService,
-                subscriptionRepository, eventTypeRepository);
+                subscriptionRepository, eventTypeRepository, cursorConverter, tokenService);
+
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
 
@@ -103,12 +125,14 @@ public class CursorsControllerTest {
     @Test
     public void whenCommitInvalidCursorsThenOk() throws Exception {
         when(cursorsService.commitCursors(any(), any(), any()))
-                .thenReturn(Collections.singletonList(new CursorCommitResult(DUMMY_CURSORS.get(0), false)));
+                .thenReturn(DUMMY_CURSORS.stream().map(v -> Boolean.FALSE).collect(Collectors.toList()));
+        final ItemsWrapper<CursorCommitResult> expectation = new ItemsWrapper<>(
+                DUMMY_CURSORS.stream()
+                        .map(c -> new CursorCommitResult(c, false))
+                        .collect(Collectors.toList()));
         postCursors(DUMMY_CURSORS)
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(
-                        Collections.singletonList(
-                                new CursorCommitResult(DUMMY_CURSORS.get(0), false))))));
+                .andExpect(content().string(jsonHelper.matchesObject(expectation)));
     }
 
     @Test
@@ -157,7 +181,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenGetThenOK() throws Exception {
-        when(cursorsService.getSubscriptionCursors(SUBSCRIPTION_ID)).thenReturn(DUMMY_CURSORS);
+        when(cursorsService.getSubscriptionCursors(SUBSCRIPTION_ID)).thenReturn(DUMMY_NAKADI_CURSORS);
         getCursors()
                 .andExpect(status().is(HttpStatus.OK.value()))
                 .andExpect(content().string(objectMapper.writeValueAsString(new ItemsWrapper<>(DUMMY_CURSORS))));

@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.StreamMetadata;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
@@ -221,7 +222,8 @@ public class UserJourneyAT extends RealEnvironmentAT {
         // validate the content of events
         for (int i = 0; i < batches.size(); i++) {
 
-            final SubscriptionCursor cursor = new SubscriptionCursor("0", String.format("%018d", i), eventTypeName, "");
+            final SubscriptionCursor cursor = new SubscriptionCursor(
+                    "0", KafkaCursor.toNakadiOffset(i), eventTypeName, "");
             final StreamBatch expectedBatch = new StreamBatch(cursor,
                     ImmutableList.of(ImmutableMap.of("foo", "bar" + i)),
                     i == 0 ? new StreamMetadata("Stream started") : null);
@@ -256,7 +258,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .then()
                 .statusCode(OK.value())
                 .body("items[0].partition", equalTo("0"))
-                .body("items[0].offset", equalTo(String.format("%018d", 3)));
+                .body("items[0].offset", equalTo(KafkaCursor.toNakadiOffset(3)));
 
         // delete subscription
         jsonRequestSpec()
