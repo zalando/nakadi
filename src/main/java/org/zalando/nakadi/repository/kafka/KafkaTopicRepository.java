@@ -439,15 +439,14 @@ public class KafkaTopicRepository implements TopicRepository {
                 .map(cursor -> cursor.addOffset(1)) // Position on data to consume, not the existing one
                 .collect(toList());
 
-        return kafkaFactory.createNakadiConsumer(clientId, kafkaCursors,
-                nakadiSettings.getKafkaPollTimeoutMs());
+        return kafkaFactory.createNakadiConsumer(clientId, kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs());
     }
 
     public int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InvalidCursorException {
         return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
     }
 
-    public void validateCursors(final List<NakadiCursor> cursors)
+    public void validateReadCursors(final List<NakadiCursor> cursors)
             throws InvalidCursorException, ServiceUnavailableException {
         convertToKafkaCursors(cursors);
     }

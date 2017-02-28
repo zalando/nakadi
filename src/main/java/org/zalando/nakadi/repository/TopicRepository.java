@@ -44,7 +44,7 @@ public interface TopicRepository {
 
     int compareOffsets(NakadiCursor first, NakadiCursor second) throws InvalidCursorException;
 
-    void validateCursors(final List<NakadiCursor> cursors) throws InvalidCursorException, ServiceUnavailableException;
+    void validateReadCursors(final List<NakadiCursor> cursors) throws InvalidCursorException, ServiceUnavailableException;
 
     void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
 }

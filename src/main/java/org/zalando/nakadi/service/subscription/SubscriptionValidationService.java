@@ -111,7 +111,7 @@ public class SubscriptionValidationService {
                 .collect(Collectors.toList());
 
         try {
-            topicRepository.validateCursors(cursorsWithoutBegin);
+            topicRepository.validateReadCursors(cursorsWithoutBegin);
         } catch (InvalidCursorException e) {
             throw new WrongInitialCursorsException(e.getMessage(), e);
         } catch (ServiceUnavailableException e) {

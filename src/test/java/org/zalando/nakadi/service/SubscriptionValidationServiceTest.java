@@ -176,7 +176,7 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken(P0, "", ET2),
                 new SubscriptionCursorWithoutToken(P0, "", ET3)
         ));
-        doThrow(new InvalidCursorException(CursorError.INVALID_FORMAT)).when(topicRepository).validateCursors(any());
+        doThrow(new InvalidCursorException(CursorError.INVALID_FORMAT)).when(topicRepository).validateReadCursors(any());
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
     }
 
@@ -187,7 +187,7 @@ public class SubscriptionValidationServiceTest {
                 new SubscriptionCursorWithoutToken(P0, "", ET2),
                 new SubscriptionCursorWithoutToken(P0, "", ET3)
         ));
-        doThrow(new ServiceUnavailableException("")).when(topicRepository).validateCursors(any());
+        doThrow(new ServiceUnavailableException("")).when(topicRepository).validateReadCursors(any());
         subscriptionValidationService.validateSubscription(subscriptionBase, client);
     }
 
@@ -203,7 +203,7 @@ public class SubscriptionValidationServiceTest {
                 new NakadiCursor(topicForET(ET1), P0, "o1"),
                 new NakadiCursor(topicForET(ET3), P0, "o3")
         );
-        verify(topicRepository, times(1)).validateCursors(nakadiCursors);
+        verify(topicRepository, times(1)).validateReadCursors(nakadiCursors);
     }
 
     private static String topicForET(final String etName) {
