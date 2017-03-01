@@ -114,11 +114,9 @@ public class TimelineService {
             final String eventTypeName = eventType.getName();
             final Optional<Timeline> activeTimeline = eventTypeCache.getActiveTimeline(eventTypeName);
             if (activeTimeline.isPresent()) {
-                LOG.debug("Retrieved real timeline {}", activeTimeline.get());
                 return activeTimeline.get();
             }
 
-            LOG.debug("No real timeline yet, creating fake timeline");
             final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
                     .orElseThrow(() -> new UnableProcessException("Fake timeline creation failed for event type " +
                             eventType.getName() + ".No default storage defined"));
@@ -169,12 +167,7 @@ public class TimelineService {
                 LOG.error(ex.getMessage(), ex);
                 throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType(), ex);
             } finally {
-                try {
-                    timelineSync.finishTimelineUpdate(activeTimeline.getEventType());
-                } catch (final InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new TimelineException("Timeline update was interrupted for:" + activeTimeline.getEventType());
-                }
+                finishTimelineUpdate(activeTimeline);
             }
         });
     }
@@ -218,12 +211,18 @@ public class TimelineService {
             Thread.currentThread().interrupt();
             throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
         } finally {
-            try {
-                timelineSync.finishTimelineUpdate(activeTimeline.getEventType());
-            } catch (final InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                throw new TimelineException("Timeline update was interrupted for:" + activeTimeline.getEventType());
-            }
+            finishTimelineUpdate(activeTimeline);
+        }
+    }
+
+    private void finishTimelineUpdate(Timeline activeTimeline) throws TimelineException {
+        try {
+            timelineSync.finishTimelineUpdate(activeTimeline.getEventType());
+        } catch (final InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new TimelineException("Timeline update was interrupted for:" + activeTimeline.getEventType());
+        } catch (final RuntimeException re) {
+            throw new TimelineException("Timeline update was interrupted for:" + activeTimeline.getEventType(), re);
         }
     }
 

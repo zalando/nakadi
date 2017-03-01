@@ -277,7 +277,7 @@ public class TimelineSyncImpl implements TimelineSync {
 
     @Override
     public void startTimelineUpdate(final String eventType, final long timeoutMs)
-            throws InterruptedException, RuntimeException  {
+            throws InterruptedException, RuntimeException {
         LOG.info("Starting timeline update for event type {} with timeout {} ms", eventType, timeoutMs);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
         boolean successful = false;
@@ -304,7 +304,7 @@ public class TimelineSyncImpl implements TimelineSync {
     }
 
     @Override
-    public void finishTimelineUpdate(final String eventType) throws InterruptedException, RuntimeException  {
+    public void finishTimelineUpdate(final String eventType) throws InterruptedException, RuntimeException {
         LOG.info("Finishing timeline update for event type {}", eventType);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
         try {

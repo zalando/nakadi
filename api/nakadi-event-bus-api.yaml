@@ -1267,6 +1267,8 @@ paths:
             properties:
               storage_id:
                 type: string
+            required:
+              - storage_id
           required: true
       responses:
         '201':

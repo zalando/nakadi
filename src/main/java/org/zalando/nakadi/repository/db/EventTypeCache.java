@@ -140,10 +140,7 @@ public class EventTypeCache {
         }
 
         timelineRegistrations.computeIfAbsent(name,
-                n -> timelineSync.registerTimelineChangeListener(n, (etName) -> {
-                    LOG.debug("Invalidating cache due to timeline change for {}", etName);
-                    eventTypeCache.invalidate(etName);
-                }));
+                n -> timelineSync.registerTimelineChangeListener(n, (etName) -> eventTypeCache.invalidate(etName)));
     }
 
     public void removed(final String name) throws Exception {
@@ -156,7 +153,6 @@ public class EventTypeCache {
     private Optional<CachedValue> getCached(final String name)
             throws NoSuchEventTypeException, InternalNakadiException {
         try {
-            LOG.debug("Get cached value for {}", name);
             return Optional.ofNullable(eventTypeCache.get(name));
         } catch (final ExecutionException e) {
             if (e.getCause() instanceof NoSuchEventTypeException) {
@@ -218,16 +214,10 @@ public class EventTypeCache {
             final EventTypeRepository eventTypeRepository, final TimelineDbRepository timelineRepository) {
         final CacheLoader<String, CachedValue> loader = new CacheLoader<String, CachedValue>() {
             public CachedValue load(final String key) throws Exception {
-                LOG.debug("Fetching data from DB for key: {}", key);
                 final EventType eventType = eventTypeRepository.findByName(key);
                 final List<Timeline> timelines = timelineRepository.listTimelines(key);
-                LOG.debug("Fetched data from DB for key: {} are event type {} and timelines {}",
-                        key, eventType, timelines);
                 timelineRegistrations.computeIfAbsent(key,
-                        n -> timelineSync.registerTimelineChangeListener(n, (etName) -> {
-                            LOG.debug("Invalidating cache due to timeline change for {}", etName);
-                            eventTypeCache.invalidate(etName);
-                        }));
+                        n -> timelineSync.registerTimelineChangeListener(n, (etName) -> eventTypeCache.invalidate(etName)));
                 return new CachedValue(eventType, EventValidation.forType(eventType), timelines);
             }
         };
