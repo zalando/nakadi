@@ -167,7 +167,7 @@ public class TimelineService {
                 LOG.error(ex.getMessage(), ex);
                 throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType(), ex);
             } finally {
-                finishTimelineUpdate(activeTimeline);
+                finishTimelineUpdate(activeTimeline.getEventType());
             }
         });
     }
@@ -211,18 +211,18 @@ public class TimelineService {
             Thread.currentThread().interrupt();
             throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
         } finally {
-            finishTimelineUpdate(activeTimeline);
+            finishTimelineUpdate(activeTimeline.getEventType());
         }
     }
 
-    private void finishTimelineUpdate(Timeline activeTimeline) throws TimelineException {
+    private void finishTimelineUpdate(final String eventTypeName) throws TimelineException {
         try {
-            timelineSync.finishTimelineUpdate(activeTimeline.getEventType());
+            timelineSync.finishTimelineUpdate(eventTypeName);
         } catch (final InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new TimelineException("Timeline update was interrupted for:" + activeTimeline.getEventType());
+            throw new TimelineException("Timeline update was interrupted for:" + eventTypeName);
         } catch (final RuntimeException re) {
-            throw new TimelineException("Timeline update was interrupted for:" + activeTimeline.getEventType(), re);
+            throw new TimelineException("Timeline update was interrupted for:" + eventTypeName, re);
         }
     }
 

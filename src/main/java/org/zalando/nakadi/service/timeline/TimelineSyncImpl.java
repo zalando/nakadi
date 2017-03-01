@@ -69,7 +69,6 @@ public class TimelineSyncImpl implements TimelineSync {
             throws InterruptedException {
         this.nodeId = uuidGenerator.randomUUID().toString();
         this.zooKeeperHolder = zooKeeperHolder;
-        LOG.debug("Creating new TimelineSyncImpl nodeId: {}", nodeId);
         this.initializeZkStructure();
     }
 
