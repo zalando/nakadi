@@ -96,7 +96,7 @@ public final class ExceptionHandling implements ProblemHandling {
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(InconsistentStateException.class)
+    @ExceptionHandler(MyNakadiRuntimeException1.class)
     public ResponseEntity<Problem> handleInternalError(final MyNakadiRuntimeException1 exception,
                                                        final NativeWebRequest request) {
         LOG.error("Unexpected problem occurred", exception);
