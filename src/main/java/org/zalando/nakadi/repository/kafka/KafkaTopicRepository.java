@@ -363,9 +363,6 @@ public class KafkaTopicRepository implements TopicRepository {
                     consumer.seekToBeginning(kafkaTPs);
                 } else if (position == SubscriptionBase.InitialPosition.END) {
                     consumer.seekToEnd(kafkaTPs);
-                } else {
-                    throw new IllegalArgumentException("Bad offset specification " + position + " for topic " +
-                            eventType.getTopic());
                 }
                 return Stream.of(kafkaTPs).collect(Collectors.toMap(
                         tp -> String.valueOf(tp.partition()),
