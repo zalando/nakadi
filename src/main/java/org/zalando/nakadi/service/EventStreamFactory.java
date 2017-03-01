@@ -1,6 +1,8 @@
 package org.zalando.nakadi.service;
 
 import java.io.OutputStream;
+
+import com.codahale.metrics.Meter;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -11,13 +13,14 @@ public class EventStreamFactory {
 
     public EventStream createEventStream(final OutputStream outputStream, final EventConsumer eventConsumer,
                                          final EventStreamConfig config, final BlacklistService blacklistService,
-                                         final CursorConverter cursorConverter)
+                                         final CursorConverter cursorConverter, final Meter bytesFlushedMeter)
             throws NakadiException, InvalidCursorException {
         return new EventStream(
                 eventConsumer,
                 outputStream,
                 config,
                 blacklistService,
-                cursorConverter);
+                cursorConverter,
+                bytesFlushedMeter);
     }
 }

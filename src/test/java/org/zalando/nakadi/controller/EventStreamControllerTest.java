@@ -104,7 +104,7 @@ public class EventStreamControllerTest {
     private EventStreamController controller;
     private JsonTestHelper jsonHelper;
     private MetricRegistry metricRegistry;
-    private MetricRegistry kafkaClientMetrics;
+    private MetricRegistry streamMetrics;
     private FeatureToggleService featureToggleService;
     private SecuritySettings settings;
     private BlacklistService blacklistService;
@@ -129,9 +129,7 @@ public class EventStreamControllerTest {
         responseMock = mock(HttpServletResponse.class);
 
         metricRegistry = new MetricRegistry();
-        kafkaClientMetrics = mock(MetricRegistry.class);
-        when(kafkaClientMetrics.register(any(), any()))
-                .thenReturn(null);
+        streamMetrics = new MetricRegistry();
         final EventConsumer eventConsumerMock = mock(EventConsumer.class);
         when(topicRepositoryMock.createEventConsumer(
                 eq(KAFKA_CLIENT_ID), any()))
@@ -150,7 +148,7 @@ public class EventStreamControllerTest {
 
         controller = new EventStreamController(
                 eventTypeRepository, topicRepositoryMock, objectMapper, eventStreamFactoryMock, metricRegistry,
-                kafkaClientMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
+                streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
                 new CursorConverter(featureToggleService));
 
         settings = mock(SecuritySettings.class);
@@ -198,7 +196,7 @@ public class EventStreamControllerTest {
                 .thenReturn(eventConsumerMock);
 
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any()))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any()))
                 .thenReturn(eventStreamMock);
 
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
@@ -304,7 +302,7 @@ public class EventStreamControllerTest {
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any()))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any()))
                 .thenReturn(eventStreamMock);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 1, 1, 0, null);
@@ -329,7 +327,7 @@ public class EventStreamControllerTest {
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any()))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any()))
                 .thenReturn(eventStreamMock);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(1, 2, 3, 4, 5,
@@ -357,7 +355,7 @@ public class EventStreamControllerTest {
         verify(topicRepositoryMock, times(1)).createEventConsumer(eq(KAFKA_CLIENT_ID),
                 eq(ImmutableList.of(new NakadiCursor(TEST_TOPIC, "0", "0"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
-                eq(eventConsumerMock), eq(streamConfig), any(), any());
+                eq(eventConsumerMock), eq(streamConfig), any(), any(), any());
         verify(eventStreamMock, times(1)).streamEvents(any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
@@ -395,7 +393,8 @@ public class EventStreamControllerTest {
             }
             return null;
         }).when(eventStream).streamEvents(any());
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any())).thenReturn(eventStream);
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any()))
+                .thenReturn(eventStream);
 
         // "connect" to the server
         final StreamingResponseBody responseBody = createStreamingResponseBody();
@@ -441,7 +440,7 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any()))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any()))
                 .thenReturn(mock(EventStream.class));
 
         writeStream(SCOPE_READ);
@@ -459,7 +458,7 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any()))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any()))
                 .thenReturn(mock(EventStream.class));
 
         writeStream(Collections.emptySet());

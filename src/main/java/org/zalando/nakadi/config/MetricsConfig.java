@@ -29,8 +29,8 @@ public class MetricsConfig {
         }
     }
 
-    class KafkaClientsMetricsServlet extends MetricsServlet {
-        public KafkaClientsMetricsServlet (final MetricRegistry metricRegistry) {
+    class StreamMetricsServlet extends MetricsServlet {
+        public StreamMetricsServlet(final MetricRegistry metricRegistry) {
             super(metricRegistry);
         }
     }
@@ -42,9 +42,9 @@ public class MetricsConfig {
     }
 
     @Bean
-    public ServletRegistrationBean kafkaClientsMetricsServletRegistrationBean(
-            @Qualifier("kafkaClientsMetricRegistry") final MetricRegistry metricRegistry) {
-        return new ServletRegistrationBean(new KafkaClientsMetricsServlet(metricRegistry), "/kafka-clients-metrics/*");
+    public ServletRegistrationBean streamMetricsServletRegistrationBean(
+            @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry) {
+        return new ServletRegistrationBean(new StreamMetricsServlet(metricRegistry), "/stream-metrics/*");
     }
 
     @Bean
@@ -66,8 +66,8 @@ public class MetricsConfig {
     }
 
     @Bean
-    @Qualifier("kafkaClientsMetricRegistry")
-    public MetricRegistry kafkaClientsMetricRegistry() {
+    @Qualifier("streamMetricsRegistry")
+    public MetricRegistry streamMetricRegistry() {
         final MetricRegistry metricRegistry = new MetricRegistry();
 
         return metricRegistry;

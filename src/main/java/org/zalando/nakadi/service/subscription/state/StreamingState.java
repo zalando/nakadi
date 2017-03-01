@@ -1,13 +1,12 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.metrics.KafkaClientMetrics;
-import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
@@ -42,22 +41,18 @@ class StreamingState extends State {
     private long committedEvents;
     private long sentEvents;
     private long batchesSent;
-    private String kafkClientMetricsName;
+    private Meter bytesSentMeter;
 
     @Override
     public void onEnter() {
-        // Create kafka consumer
-        kafkClientMetricsName = MetricRegistry.name(
+        final String kafkaFlushedBytesMetricName = MetricRegistry.name(
                 "hila",
-                this.getContext().getParameters().getConsumingAppId(),
+                this.getContext().getParameters().getConsumingAppId().replace('.', '#'),
                 this.getContext().getSubscriptionId(),
-                MetricUtils.getSequenceNumber()); // necessary to avoid client-id conflict
+                "bytes-flushed");
+        bytesSentMeter = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
 
         this.kafkaConsumer = getKafka().createKafkaConsumer();
-
-        this.getContext().getMetricRegistry().register(
-                kafkClientMetricsName,
-                new KafkaClientMetrics(this.kafkaConsumer));
 
         // Subscribe for topology changes.
         this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
@@ -202,7 +197,10 @@ class StreamingState extends State {
         try {
             final long numberOffset = offsets.get(pk).getSentOffset();
             final String batch = serializeBatch(pk, numberOffset, new ArrayList<>(data.values()), metadata);
-            getOut().streamData(batch.getBytes(EventStream.UTF8));
+
+            final byte[] batchBytes = batch.getBytes(EventStream.UTF8);
+            getOut().streamData(batchBytes);
+            bytesSentMeter.mark(batchBytes.length);
             batchesSent++;
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
@@ -250,8 +248,6 @@ class StreamingState extends State {
         }
         if (null != kafkaConsumer) {
             try {
-                this.getContext().getMetricRegistry().removeMatching((name, metric) -> {
-                    return name.startsWith(kafkClientMetricsName); });
                 kafkaConsumer.close();
             } finally {
                 kafkaConsumer = null;

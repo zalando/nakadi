@@ -1,6 +1,16 @@
 package org.zalando.nakadi.service;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
+import org.zalando.nakadi.util.FeatureToggleService;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -14,13 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
-import org.zalando.nakadi.util.FeatureToggleService;
+
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -38,6 +42,7 @@ public class EventStreamTest {
 
     private static final String TOPIC = randomString();
     private static final String DUMMY = "DUMMY";
+    private static final Meter BYTES_FLUSHED_METER = new MetricRegistry().meter("mock");
 
     private static CursorConverter cursorConverter;
 
@@ -59,7 +64,8 @@ public class EventStreamTest {
                 .build();
         final OutputStream outputStreamMock = mock(OutputStream.class);
         final EventStream eventStream = new EventStream(
-                emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class), cursorConverter);
+                emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class), cursorConverter,
+                BYTES_FLUSHED_METER);
 
         final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true)));
         thread.start();
@@ -86,7 +92,8 @@ public class EventStreamTest {
                 .withBatchTimeout(1)
                 .build();
         final EventStream eventStream = new EventStream(
-                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter);
+                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
+                BYTES_FLUSHED_METER);
         final AtomicBoolean streamOpen = new AtomicBoolean(true);
         final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen));
         thread.start();
@@ -114,7 +121,8 @@ public class EventStreamTest {
                 .withCursors(new ArrayList<>())
                 .build();
         final EventStream eventStream = new EventStream(
-                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter);
+                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
+                BYTES_FLUSHED_METER);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -128,7 +136,7 @@ public class EventStreamTest {
                 .withStreamLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config,
-                mock(BlacklistService.class), cursorConverter);
+                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -143,7 +151,8 @@ public class EventStreamTest {
                 .withStreamKeepAliveLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(
-                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter);
+                emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
+                BYTES_FLUSHED_METER);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -161,7 +170,7 @@ public class EventStreamTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream = new EventStream(
-                emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter);
+                emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -185,7 +194,8 @@ public class EventStreamTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream = new EventStream(
-                nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class), cursorConverter);
+                nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class), cursorConverter,
+                BYTES_FLUSHED_METER);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -216,7 +226,8 @@ public class EventStreamTest {
                 .collect(Collectors.toList()));
 
         final EventStream eventStream =
-                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter);
+                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
+                        BYTES_FLUSHED_METER);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -258,7 +269,8 @@ public class EventStreamTest {
         events.add(new ConsumedEvent(DUMMY, new NakadiCursor(TOPIC, "2", "0")));
 
         final EventStream eventStream =
-                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter);
+                new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
+                        BYTES_FLUSHED_METER);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);

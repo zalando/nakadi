@@ -52,7 +52,7 @@ public class SubscriptionStreamerFactory {
             final CursorTokenService cursorTokenService,
             final ObjectMapper objectMapper,
             final CursorConverter cursorConverter,
-            @Qualifier("kafkaClientsMetricRegistry") final MetricRegistry metricRegistry) {
+            @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry) {
         this.zkHolder = zkHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.topicRepository = topicRepository;

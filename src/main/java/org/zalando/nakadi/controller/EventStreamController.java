@@ -1,6 +1,7 @@
 package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.Counter;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,8 +30,6 @@ import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
-import org.zalando.nakadi.metrics.KafkaClientMetrics;
-import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -84,13 +83,13 @@ public class EventStreamController {
     private final ConsumerLimitingService consumerLimitingService;
     private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
-    private final MetricRegistry kafkaClientMetrics;
+    private final MetricRegistry streamMetrics;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
                                  final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
-                                 @Qualifier("kafkaClientsMetricRegistry") final MetricRegistry kafkaClientMetrics,
+                                 @Qualifier("streamMetricsRegistry") final MetricRegistry streamMetrics,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
                                  final ConsumerLimitingService consumerLimitingService,
@@ -101,7 +100,7 @@ public class EventStreamController {
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
-        this.kafkaClientMetrics = kafkaClientMetrics;
+        this.streamMetrics = streamMetrics;
         this.closedConnectionsCrutch = closedConnectionsCrutch;
         this.blacklistService = blacklistService;
         this.consumerLimitingService = consumerLimitingService;
@@ -182,13 +181,6 @@ public class EventStreamController {
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
             Counter consumerCounter = null;
             EventStream eventStream = null;
-            EventConsumer eventConsumer = null;
-            final String kafkaClientMetricsName = MetricRegistry.name(
-                    "lola",
-                    client.getClientId(),
-                    eventTypeName,
-                    String.valueOf(MetricUtils.getSequenceNumber()));
-
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
 
             try {
@@ -230,16 +222,21 @@ public class EventStreamController {
 
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
-                eventConsumer = topicRepository.createEventConsumer(
+                final EventConsumer eventConsumer = topicRepository.createEventConsumer(
                         kafkaQuotaClientId,
                         streamConfig.getCursors());
 
-                this.kafkaClientMetrics.register(
-                        kafkaClientMetricsName,
-                        new KafkaClientMetrics(eventConsumer.getConsumer()));
+                final String bytesFlushedMetricName = MetricRegistry.name(
+                        "lola",
+                        client.getClientId().replace(".", "#"),
+                        eventTypeName.replace(".", "#"),
+                        "bytes-flushed");
+
+                final Meter bytesFlushedMeter = this.streamMetrics.meter(bytesFlushedMetricName);
 
                 eventStream = eventStreamFactory.createEventStream(
-                        outputStream, eventConsumer, streamConfig, blacklistService, cursorConverter);
+                        outputStream, eventConsumer, streamConfig, blacklistService, cursorConverter,
+                        bytesFlushedMeter);
 
                 outputStream.flush(); // Flush status code to client
 
@@ -272,10 +269,6 @@ public class EventStreamController {
                 }
                 if (eventStream != null) {
                     eventStream.close();
-                }
-                if (eventConsumer != null) {
-                    this.kafkaClientMetrics.removeMatching((name, metric) -> {
-                        return name.startsWith(kafkaClientMetricsName); });
                 }
                 try {
                     outputStream.flush();
