@@ -161,6 +161,7 @@ public class TimelineService {
                 timelineDbRepository.updateTimelime(nextTimeline);
                 return null;
             } catch (final InterruptedException ie) {
+                LOG.error(ie.getMessage(), ie);
                 Thread.currentThread().interrupt();
                 throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
             } catch (final Exception ex) {
@@ -208,6 +209,7 @@ public class TimelineService {
             timelineSync.startTimelineUpdate(activeTimeline.getEventType(), nakadiSettings.getTimelineWaitTimeoutMs());
             timelineDbRepository.deleteTimeline(uuid);
         } catch (final InterruptedException ie) {
+            LOG.error(ie.getMessage(), ie);
             Thread.currentThread().interrupt();
             throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
         } finally {
@@ -222,7 +224,7 @@ public class TimelineService {
             Thread.currentThread().interrupt();
             throw new TimelineException("Timeline update was interrupted for:" + eventTypeName);
         } catch (final RuntimeException re) {
-            throw new TimelineException("Timeline update was interrupted for:" + eventTypeName, re);
+            throw new TimelineException("Failed to finish timeline update for:" + eventTypeName, re);
         }
     }
 
