@@ -223,6 +223,11 @@ public class EventTypeCache {
                 final List<Timeline> timelines = timelineRepository.listTimelines(key);
                 LOG.debug("Fetched data from DB for key: {} are event type {} and timelines {}",
                         key, eventType, timelines);
+                timelineRegistrations.computeIfAbsent(key,
+                        n -> timelineSync.registerTimelineChangeListener(n, (etName) -> {
+                            LOG.debug("Invalidating cache due to timeline change for {}", etName);
+                            eventTypeCache.invalidate(etName);
+                        }));
                 return new CachedValue(eventType, EventValidation.forType(eventType), timelines);
             }
         };
