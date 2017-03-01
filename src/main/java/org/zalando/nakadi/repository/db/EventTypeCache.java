@@ -140,7 +140,10 @@ public class EventTypeCache {
         }
 
         timelineRegistrations.computeIfAbsent(name,
-                n -> timelineSync.registerTimelineChangeListener(n, (etName) -> eventTypeCache.invalidate(etName)));
+                n -> timelineSync.registerTimelineChangeListener(n, (etName) -> {
+                    LOG.debug("Invalidating cache due to timeline change for {}" + etName);
+                    eventTypeCache.invalidate(etName);
+                }));
     }
 
     public void removed(final String name) throws Exception {
@@ -153,6 +156,7 @@ public class EventTypeCache {
     private Optional<CachedValue> getCached(final String name)
             throws NoSuchEventTypeException, InternalNakadiException {
         try {
+            LOG.debug("Get cached value for {}" + name);
             return Optional.ofNullable(eventTypeCache.get(name));
         } catch (final ExecutionException e) {
             if (e.getCause() instanceof NoSuchEventTypeException) {

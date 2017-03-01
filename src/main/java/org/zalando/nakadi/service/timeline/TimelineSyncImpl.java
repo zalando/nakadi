@@ -2,6 +2,22 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
+import org.apache.curator.framework.recipes.locks.InterProcessLock;
+import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,21 +35,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import javax.annotation.Nullable;
-import org.apache.curator.framework.recipes.locks.InterProcessLock;
-import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 @Service
 @Profile("!test")
@@ -68,6 +69,7 @@ public class TimelineSyncImpl implements TimelineSync {
             throws InterruptedException {
         this.nodeId = uuidGenerator.randomUUID().toString();
         this.zooKeeperHolder = zooKeeperHolder;
+        LOG.debug("Creating new TimelineSyncImpl nodeId: {}", nodeId);
         this.initializeZkStructure();
     }
 
