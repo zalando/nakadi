@@ -165,7 +165,7 @@ public class SubscriptionValidationServiceTest {
             fail("WrongInitialCursorsException expected");
         } catch (final WrongInitialCursorsException e) {
             assertThat(e.getMessage(),
-                    equalTo("there should be not more than 1 cursor for each partition in initial_cursors"));
+                    equalTo("there should be no more than 1 cursor for each partition in initial_cursors"));
         }
     }
 

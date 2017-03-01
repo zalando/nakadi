@@ -96,7 +96,7 @@ public class SubscriptionValidationService {
 
         if (subscription.getInitialCursors().size() > allPartitions.size()) {
             throw new WrongInitialCursorsException(
-                    "there should be not more than 1 cursor for each partition in initial_cursors");
+                    "there should be no more than 1 cursor for each partition in initial_cursors");
         }
 
         final Map<String, String> etTopics = eventTypes.stream()
