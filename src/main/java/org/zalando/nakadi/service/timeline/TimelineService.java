@@ -165,7 +165,7 @@ public class TimelineService {
             } catch (final InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
-            } catch (final Throwable ex) {
+            } catch (final Exception ex) {
                 LOG.error(ex.getMessage(), ex);
                 throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType(), ex);
             } finally {

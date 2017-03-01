@@ -224,7 +224,8 @@ public class TimelineSyncImpl implements TimelineSync {
         return localLocking.workWithEventType(eventType, timeoutMs);
     }
 
-    private void updateVersionAndWaitForAllNodes(@Nullable final Long timeoutMs) throws InterruptedException {
+    private void updateVersionAndWaitForAllNodes(@Nullable final Long timeoutMs)
+            throws InterruptedException, RuntimeException {
         // Create next version, that will contain locked event type.
         final Optional<Long> expectedFinish = Optional.ofNullable(timeoutMs).map(t -> System.currentTimeMillis() + t);
         final AtomicInteger versionToWait = new AtomicInteger();
@@ -275,7 +276,8 @@ public class TimelineSyncImpl implements TimelineSync {
     }
 
     @Override
-    public void startTimelineUpdate(final String eventType, final long timeoutMs) throws InterruptedException {
+    public void startTimelineUpdate(final String eventType, final long timeoutMs)
+            throws InterruptedException, RuntimeException  {
         LOG.info("Starting timeline update for event type {} with timeout {} ms", eventType, timeoutMs);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
         boolean successful = false;
@@ -302,7 +304,7 @@ public class TimelineSyncImpl implements TimelineSync {
     }
 
     @Override
-    public void finishTimelineUpdate(final String eventType) throws InterruptedException {
+    public void finishTimelineUpdate(final String eventType) throws InterruptedException, RuntimeException  {
         LOG.info("Finishing timeline update for event type {}", eventType);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
         try {
