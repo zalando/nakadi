@@ -279,19 +279,23 @@ public class TimelineSyncImpl implements TimelineSync {
             throws InterruptedException, RuntimeException {
         LOG.info("Starting timeline update for event type {} with timeout {} ms", eventType, timeoutMs);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
-        boolean successful = false;
+
         try {
             zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
                     .forPath(etZkPath, nodeId.getBytes(Charsets.UTF_8));
-            updateVersionAndWaitForAllNodes(timeoutMs);
-            successful = true;
         } catch (final KeeperException.NodeExistsException ex) {
             throw new IllegalStateException(ex);
+        } catch (final Exception ex) {
+            throw new RuntimeException(ex);
+        }
+
+        boolean successful = false;
+        try {
+            updateVersionAndWaitForAllNodes(timeoutMs);
+            successful = true;
         } catch (final InterruptedException ex) {
             throw ex;
-        } catch (final Exception e) {
-            throw new RuntimeException(e);
-        } finally {
+        }  finally {
             if (!successful) {
                 try {
                     zooKeeperHolder.get().delete().forPath(etZkPath);
