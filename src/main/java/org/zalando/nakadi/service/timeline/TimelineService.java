@@ -154,7 +154,7 @@ public class TimelineService {
             Thread.currentThread().interrupt();
             throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
         } catch (final IllegalStateException ie) {
-            throw new ConflictException("Timeline already exists for:" + activeTimeline.getEventType(), ie);
+            throw new ConflictException("Timeline is being created for:" + activeTimeline.getEventType(), ie);
         }
 
         try {
