@@ -82,7 +82,7 @@ public class TimelinesController {
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Problem> conflict(final ConflictException ex, final NativeWebRequest request) {
-        LOG.error(ex.getMessage(), ex);
+        LOG.debug(ex.getMessage(), ex);
         return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
     }
 

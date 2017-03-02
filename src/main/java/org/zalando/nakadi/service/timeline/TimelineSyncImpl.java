@@ -295,7 +295,7 @@ public class TimelineSyncImpl implements TimelineSync {
             successful = true;
         } catch (final InterruptedException ex) {
             throw ex;
-        }  finally {
+        } finally {
             if (!successful) {
                 try {
                     zooKeeperHolder.get().delete().forPath(etZkPath);
