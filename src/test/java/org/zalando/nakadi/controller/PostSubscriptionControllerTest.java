@@ -89,8 +89,7 @@ public class PostSubscriptionControllerTest {
         when(subscriptionService.getExistingSubscription(any())).thenThrow(new NoSubscriptionException("", null));
         when(featureToggleService.isFeatureEnabled(DISABLE_SUBSCRIPTION_CREATION)).thenReturn(true);
 
-        postSubscription(subscriptionBase)
-                .andExpect(status().isServiceUnavailable());
+        postSubscription(subscriptionBase).andExpect(status().isServiceUnavailable());
     }
 
     @Test
