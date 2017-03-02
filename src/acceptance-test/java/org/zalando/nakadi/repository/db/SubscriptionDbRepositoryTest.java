@@ -9,7 +9,7 @@ import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.util.UUIDGenerator;
@@ -37,7 +37,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     private SubscriptionDbRepository repository;
 
     public SubscriptionDbRepositoryTest() {
-        super(new String[]{"zn_data.subscription"});
+        super("zn_data.subscription");
     }
 
     @Before

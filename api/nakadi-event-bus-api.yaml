@@ -1533,6 +1533,18 @@ definitions:
           - event_type
           - cursor_token
 
+  SubscriptionCursorWithoutToken:
+    allOf:
+      - $ref: '#/definitions/Cursor'
+      - type: object
+        properties:
+          event_type:
+            type: string
+            description: |
+              The name of the event type this partition's events belong to.
+        required:
+          - event_type
+
   CursorCommitResult:
     description: |
       The result of single cursor commit. Holds a cursor itself and a result value.
@@ -1638,8 +1650,16 @@ definitions:
           Position to start reading events from. Currently supported values:
           - `begin` - read from the oldest available event.
           - `end` - read from the most recent offset.
+          - `cursors` - read from cursors provided in `initial_cursors` property.
           Applied in the moment when client starts reading from a subscription.
         default: 'end'
+      initial_cursors:
+        type: array
+        items:
+          $ref: '#/definitions/SubscriptionCursorWithoutToken'
+        description: |
+          List of cursors to start reading from. This property is required when `read_from` = `cursors`.
+          The initial cursors should cover all partitions of subscription.
 
     required:
       - owning_application
