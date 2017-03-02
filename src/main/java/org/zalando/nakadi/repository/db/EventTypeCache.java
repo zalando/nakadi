@@ -216,6 +216,8 @@ public class EventTypeCache {
             public CachedValue load(final String key) throws Exception {
                 final EventType eventType = eventTypeRepository.findByName(key);
                 final List<Timeline> timelines = timelineRepository.listTimelines(key);
+                timelineRegistrations.computeIfAbsent(key, n ->
+                        timelineSync.registerTimelineChangeListener(n, (etName) -> eventTypeCache.invalidate(etName)));
                 return new CachedValue(eventType, EventValidation.forType(eventType), timelines);
             }
         };

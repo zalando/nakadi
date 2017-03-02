@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
@@ -12,6 +13,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -146,11 +148,18 @@ public class TimelineService {
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline) {
         LOG.info("Switching timelines from {} to {}", activeTimeline, nextTimeline);
-        transactionTemplate.execute(status -> {
-            try {
+        try {
+            timelineSync.startTimelineUpdate(activeTimeline.getEventType(), nakadiSettings.getTimelineWaitTimeoutMs());
+        } catch (final InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new TimelineException("Failed to switch timeline for: " + activeTimeline.getEventType());
+        } catch (final IllegalStateException ie) {
+            throw new ConflictException("Timeline is already being created for: " + activeTimeline.getEventType(), ie);
+        }
+
+        try {
+            transactionTemplate.execute(status -> {
                 timelineDbRepository.createTimeline(nextTimeline);
-                timelineSync.startTimelineUpdate(activeTimeline.getEventType(),
-                        nakadiSettings.getTimelineWaitTimeoutMs());
                 nextTimeline.setSwitchedAt(new Date());
                 if (!activeTimeline.isFake()) {
                     final Timeline.StoragePosition storagePosition =
@@ -160,20 +169,13 @@ public class TimelineService {
                 }
                 timelineDbRepository.updateTimelime(nextTimeline);
                 return null;
-            } catch (final InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
-            } catch (final Exception ex) {
-                throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType(), ex);
-            } finally {
-                try {
-                    timelineSync.finishTimelineUpdate(activeTimeline.getEventType());
-                } catch (final InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new TimelineException("Timeline update was interrupted for:" + activeTimeline.getEventType());
-                }
-            }
-        });
+            });
+        } catch (final TransactionException tx) {
+            LOG.error(tx.getMessage(), tx);
+            throw new TimelineException("Failed to create timeline in DB for: " + activeTimeline.getEventType(), tx);
+        } finally {
+            finishTimelineUpdate(activeTimeline.getEventType());
+        }
     }
 
     public void delete(final String eventTypeName, final String timelineId, final Client client)
@@ -210,17 +212,29 @@ public class TimelineService {
         LOG.info("Reverting timelines from {} to fake timeline", activeTimeline);
         try {
             timelineSync.startTimelineUpdate(activeTimeline.getEventType(), nakadiSettings.getTimelineWaitTimeoutMs());
+        } catch (final InterruptedException ie) {
+            LOG.error(ie.getMessage(), ie);
+            Thread.currentThread().interrupt();
+            throw new TimelineException("Failed to switch timeline for: " + activeTimeline.getEventType());
+        } catch (final IllegalStateException ie) {
+            throw new ConflictException("Timeline is already being created for: " + activeTimeline.getEventType(), ie);
+        }
+
+        try {
             timelineDbRepository.deleteTimeline(uuid);
+        } finally {
+            finishTimelineUpdate(activeTimeline.getEventType());
+        }
+    }
+
+    private void finishTimelineUpdate(final String eventTypeName) throws TimelineException {
+        try {
+            timelineSync.finishTimelineUpdate(eventTypeName);
         } catch (final InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
-        } finally {
-            try {
-                timelineSync.finishTimelineUpdate(activeTimeline.getEventType());
-            } catch (final InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                throw new TimelineException("Timeline update was interrupted for:" + activeTimeline.getEventType());
-            }
+            throw new TimelineException("Timeline update was interrupted for:" + eventTypeName);
+        } catch (final RuntimeException re) {
+            throw new TimelineException("Failed to finish timeline update for:" + eventTypeName, re);
         }
     }
 
