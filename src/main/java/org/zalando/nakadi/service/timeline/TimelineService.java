@@ -152,9 +152,9 @@ public class TimelineService {
             timelineSync.startTimelineUpdate(activeTimeline.getEventType(), nakadiSettings.getTimelineWaitTimeoutMs());
         } catch (final InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
+            throw new TimelineException("Failed to switch timeline for: " + activeTimeline.getEventType());
         } catch (final IllegalStateException ie) {
-            throw new ConflictException("Timeline is being created for:" + activeTimeline.getEventType(), ie);
+            throw new ConflictException("Timeline is already being created for: " + activeTimeline.getEventType(), ie);
         }
 
         try {
@@ -215,9 +215,9 @@ public class TimelineService {
         } catch (final InterruptedException ie) {
             LOG.error(ie.getMessage(), ie);
             Thread.currentThread().interrupt();
-            throw new TimelineException("Failed to switch timeline for:" + activeTimeline.getEventType());
+            throw new TimelineException("Failed to switch timeline for: " + activeTimeline.getEventType());
         } catch (final IllegalStateException ie) {
-            throw new ConflictException("Timeline already exists for:" + activeTimeline.getEventType(), ie);
+            throw new ConflictException("Timeline is already being created for: " + activeTimeline.getEventType(), ie);
         }
 
         try {
