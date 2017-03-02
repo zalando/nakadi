@@ -132,15 +132,13 @@ public class SubscriptionStreamController {
             throws IOException {
 
         return outputStream -> {
-            Counter consumerCounter = null;
-
             if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
                 response.setStatus(HttpServletResponse.SC_NOT_IMPLEMENTED);
                 return;
             }
 
             final String metricName = metricNameForSubscription(subscriptionId, CONSUMERS_COUNT_METRIC_NAME);
-            consumerCounter = metricRegistry.counter(metricName);
+            final Counter consumerCounter = metricRegistry.counter(metricName);
             consumerCounter.inc();
 
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
@@ -166,9 +164,7 @@ public class SubscriptionStreamController {
             } catch (final Exception e) {
                 output.onException(e);
             } finally {
-                if (consumerCounter != null) {
-                    consumerCounter.dec();
-                }
+                consumerCounter.dec();
                 outputStream.close();
             }
         };

@@ -30,6 +30,7 @@ import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
+import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -226,11 +227,9 @@ public class EventStreamController {
                         kafkaQuotaClientId,
                         streamConfig.getCursors());
 
-                final String bytesFlushedMetricName = MetricRegistry.name(
-                        "lola",
-                        client.getClientId().replace(".", "#"),
-                        eventTypeName.replace(".", "#"),
-                        "bytes-flushed");
+                final String bytesFlushedMetricName = MetricUtils.metricNameForLoLAStream(
+                        client.getClientId(),
+                        eventTypeName);
 
                 final Meter bytesFlushedMeter = this.streamMetrics.meter(bytesFlushedMetricName);
 

@@ -1,12 +1,12 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
@@ -45,11 +45,10 @@ class StreamingState extends State {
 
     @Override
     public void onEnter() {
-        final String kafkaFlushedBytesMetricName = MetricRegistry.name(
-                "hila",
-                this.getContext().getParameters().getConsumingAppId().replace('.', '#'),
-                this.getContext().getSubscriptionId(),
-                "bytes-flushed");
+        final String kafkaFlushedBytesMetricName = MetricUtils.metricNameForHiLAStream(
+                this.getContext().getParameters().getConsumingAppId(),
+                this.getContext().getSubscriptionId()
+        );
         bytesSentMeter = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
 
         this.kafkaConsumer = getKafka().createKafkaConsumer();
