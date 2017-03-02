@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
@@ -77,6 +78,12 @@ public class TimelinesController {
     public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
         LOG.error(ex.getMessage(), ex);
         return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Problem> conflict(final ConflictException ex, final NativeWebRequest request) {
+        LOG.error(ex.getMessage(), ex);
+        return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
     }
 
 }
