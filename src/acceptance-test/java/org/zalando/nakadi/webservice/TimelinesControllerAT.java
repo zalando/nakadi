@@ -1,20 +1,37 @@
 package org.zalando.nakadi.webservice;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.ImmutableList;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
 import org.json.JSONObject;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 public class TimelinesControllerAT extends BaseAT {
 
+    private static EventType eventType = EventTypeTestBuilder.builder().build();
+
+    @BeforeClass
+    public static void setUp() throws JsonProcessingException {
+        NakadiTestUtils.createEventTypeInNakadi(eventType);
+    }
+
+    @AfterClass
+    public static void tearDown() {
+        TIMELINE_REPOSITORY.listTimelines(eventType.getName()).stream()
+                .forEach(timeline -> TIMELINE_REPOSITORY.deleteTimeline(timeline.getId()));
+        RestAssured.given().delete("/event-types/{name}", eventType.getName());
+    }
+
     @Test
     public void testCreateTimelineFromFake() throws Exception {
-        final EventType eventType = NakadiTestUtils.createEventType();
         postTimeline(eventType);
         RestAssured.given()
                 .contentType(ContentType.JSON)
@@ -28,7 +45,6 @@ public class TimelinesControllerAT extends BaseAT {
 
     @Test
     public void testCreateTimelineFromReal() throws Exception {
-        final EventType eventType = NakadiTestUtils.createEventType();
         postTimeline(eventType);
         postTimeline(eventType);
         RestAssured.given()
@@ -46,7 +62,6 @@ public class TimelinesControllerAT extends BaseAT {
 
     @Test
     public void testDeleteTimelineWhenOnlyOneTimeline() throws Exception {
-        final EventType eventType = NakadiTestUtils.createEventType();
         postTimeline(eventType);
         final String uuid = RestAssured.given()
                 .contentType(ContentType.JSON)
@@ -64,7 +79,6 @@ public class TimelinesControllerAT extends BaseAT {
 
     @Test
     public void testDeleteTimelineWhenMoreThanOneTimelineThenError() throws Exception {
-        final EventType eventType = NakadiTestUtils.createEventType();
         postTimeline(eventType);
         postTimeline(eventType);
         final String uuid = RestAssured.given()
