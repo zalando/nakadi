@@ -40,7 +40,7 @@ public class KafkaClient {
             for (final String eventTypeName : subscription.getEventTypes()) {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
                 final String topic = eventType.getTopic();
-                topicRepository.materializePositions(topic, subscription.getReadFrom())
+                topicRepository.materializePositions(eventType, subscription)
                         .entrySet()
                         .forEach(
                                 e -> offsets.put(new Partition.PartitionKey(topic, e.getKey()), e.getValue() - 1));

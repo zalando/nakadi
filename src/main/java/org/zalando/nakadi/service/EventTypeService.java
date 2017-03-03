@@ -18,7 +18,6 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -105,8 +104,7 @@ public class EventTypeService {
             eventType.setTopic(topicName);
             eventTypeRepository.saveEventType(eventType);
             return Result.ok();
-        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
-                DuplicatedEventTypeNameException e) {
+        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException e) {
             LOG.debug("Failed to create EventType.", e);
             if (null != eventType.getTopic()) {
                 try {

@@ -6,10 +6,6 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.response.Response;
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
 import org.apache.zookeeper.data.Stat;
@@ -18,23 +14,35 @@ import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
+import static java.util.stream.IntStream.range;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -46,8 +54,10 @@ import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
 
 public class SubscriptionAT extends BaseAT {
@@ -206,6 +216,73 @@ public class SubscriptionAT extends BaseAT {
         // check that committed offset in Zookeeper is not changed
         committedOffset = getCommittedOffsetFromZk(topic, subscription, "0");
         assertThat(committedOffset, equalTo("25"));
+    }
+
+    @Test
+    public void testSubscriptionWithReadFromCursorsWithoutInitialCursors() throws Exception {
+        final EventType eventType = createEventType();
+
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
+                .withEventType(eventType.getName())
+                .withStartFrom(SubscriptionBase.InitialPosition.CURSORS)
+                .buildSubscriptionBase();
+
+        given()
+                .body(JSON_HELPER.asJsonString(subscriptionBase))
+                .contentType(JSON)
+                .post(SUBSCRIPTIONS_URL)
+                .then()
+                .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+                .body("detail", equalTo("initial_cursors should contain cursors for all partitions of subscription"));
+    }
+
+    @Test
+    public void testSubscriptionWithInitialCursors() throws Exception {
+        final EventType et1 = createBusinessEventTypeWithPartitions(2);
+        final EventType et2 = createBusinessEventTypeWithPartitions(2);
+
+        // write 10 events to each partition of two event-types
+        range(0, 10).forEach(x -> publishBusinessEventWithUserDefinedPartition(et1.getName(), "dummy", "0"));
+        range(0, 10).forEach(x -> publishBusinessEventWithUserDefinedPartition(et1.getName(), "dummy", "1"));
+        range(0, 10).forEach(x -> publishBusinessEventWithUserDefinedPartition(et2.getName(), "dummy", "0"));
+        range(0, 10).forEach(x -> publishBusinessEventWithUserDefinedPartition(et2.getName(), "dummy", "1"));
+
+        // create subscription with initial cursors
+        final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
+                .withEventTypes(ImmutableSet.of(et1.getName(), et2.getName()))
+                .withStartFrom(SubscriptionBase.InitialPosition.CURSORS)
+                .withInitialCursors(ImmutableList.of(
+                        new SubscriptionCursorWithoutToken(et1.getName(), "0", "000000000000000007"),
+                        new SubscriptionCursorWithoutToken(et1.getName(), "1", "000000000000000002"),
+                        new SubscriptionCursorWithoutToken(et2.getName(), "0", Cursor.BEFORE_OLDEST_OFFSET),
+                        new SubscriptionCursorWithoutToken(et2.getName(), "1", "000000000000000009")
+                ))
+                .buildSubscriptionBase();
+        final Subscription subscription = createSubscription(subscriptionBase);
+
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "max_uncommitted_events=100")
+                .start();
+        waitFor(() -> assertThat(client.getBatches(), hasSize(19))); // we should read 19 events in total
+        final List<StreamBatch> batches = client.getBatches();
+
+        // check that first events of each partition have correct offsets
+        assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et1.getName(), "0")),
+                equalTo(Optional.of("000000000000000008")));
+        assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et1.getName(), "1")),
+                equalTo(Optional.of("000000000000000003")));
+        assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et2.getName(), "0")),
+                equalTo(Optional.of("000000000000000000")));
+        assertThat(getFirstBatchOffsetFor(batches, new EventTypePartition(et2.getName(), "1")),
+                equalTo(Optional.empty()));
+    }
+
+    private Optional<String> getFirstBatchOffsetFor(final List<StreamBatch> batches,
+                                                    final EventTypePartition etPartition) {
+        return batches.stream()
+                .filter(b -> etPartition.ownsCursor(b.getCursor()))
+                .findFirst()
+                .map(b -> b.getCursor().getOffset());
     }
 
     @Test

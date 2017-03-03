@@ -16,6 +16,8 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -78,14 +80,27 @@ public final class ExceptionHandling implements ProblemHandling {
 
     @ExceptionHandler
     public ResponseEntity<Problem> handleExceptionWrapper(final NakadiRuntimeException exception,
-                                                          final NativeWebRequest request) throws Exception
-    {
+                                                          final NativeWebRequest request) throws Exception {
         final Throwable cause = exception.getCause();
         if (cause instanceof NakadiException) {
             final NakadiException ne = (NakadiException) cause;
             return Responses.create(ne.asProblem(), request);
         }
         throw exception.getException();
+    }
+
+    @ExceptionHandler(RepositoryProblemException.class)
+    public ResponseEntity<Problem> handleRepositoryProblem(final RepositoryProblemException exception,
+                                                           final NativeWebRequest request) {
+        LOG.error("Repository problem occurred", exception);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(MyNakadiRuntimeException1.class)
+    public ResponseEntity<Problem> handleInternalError(final MyNakadiRuntimeException1 exception,
+                                                       final NativeWebRequest request) {
+        LOG.error("Unexpected problem occurred", exception);
+        return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
     }
 
     @ExceptionHandler(TimelineException.class)

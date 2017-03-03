@@ -20,8 +20,10 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -33,6 +35,8 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -330,30 +334,74 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public Map<String, Long> materializePositions(final String topicId, final SubscriptionBase.InitialPosition position)
+    public Map<String, Long> materializePositions(final EventType eventType, final Subscription subscription)
             throws ServiceUnavailableException {
-        try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
 
-            final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
-                    .partitionsFor(topicId)
-                    .stream()
-                    .map(p -> new org.apache.kafka.common.TopicPartition(topicId, p.partition()))
-                    .toArray(org.apache.kafka.common.TopicPartition[]::new);
-            consumer.assign(Arrays.asList(kafkaTPs));
-            if (position == SubscriptionBase.InitialPosition.BEGIN) {
-                consumer.seekToBeginning(kafkaTPs);
-            } else if (position == SubscriptionBase.InitialPosition.END) {
-                consumer.seekToEnd(kafkaTPs);
-            } else {
-                throw new IllegalArgumentException("Bad offset specification " + position + " for topic " + topicId);
+        final SubscriptionBase.InitialPosition position = subscription.getReadFrom();
+
+        if (position == SubscriptionBase.InitialPosition.CURSORS) {
+            final List<SubscriptionCursorWithoutToken> etInitialCursors = subscription.getInitialCursors().stream()
+                    .filter(c -> c.getEventType().equals(eventType.getName()))
+                    .collect(Collectors.toList());
+            return getSubscriptionTopicInitPositions(eventType.getTopic(), etInitialCursors);
+
+        } else {
+            try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+                final org.apache.kafka.common.TopicPartition[] kafkaTPs = consumer
+                        .partitionsFor(eventType.getTopic())
+                        .stream()
+                        .map(p -> new org.apache.kafka.common.TopicPartition(eventType.getTopic(), p.partition()))
+                        .toArray(org.apache.kafka.common.TopicPartition[]::new);
+                consumer.assign(Arrays.asList(kafkaTPs));
+                if (position == SubscriptionBase.InitialPosition.BEGIN) {
+                    consumer.seekToBeginning(kafkaTPs);
+                } else if (position == SubscriptionBase.InitialPosition.END) {
+                    consumer.seekToEnd(kafkaTPs);
+                }
+                return Stream.of(kafkaTPs).collect(Collectors.toMap(
+                        tp -> String.valueOf(tp.partition()),
+                        consumer::position));
+            } catch (final Exception e) {
+                throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
             }
-            return Stream.of(kafkaTPs).collect(Collectors.toMap(
-                    tp -> String.valueOf(tp.partition()),
-                    consumer::position));
-        } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
+    }
 
+    private Map<String, Long> getSubscriptionTopicInitPositions(final String topic,
+                                                                final List<SubscriptionCursorWithoutToken> etCursors) {
+        final Map<String, Long> positions = new HashMap<>();
+        final List<SubscriptionCursorWithoutToken> cursorsWithBegin = etCursors.stream()
+                .filter(c -> Cursor.BEFORE_OLDEST_OFFSET.equals(c.getOffset()))
+                .collect(Collectors.toList());
+
+        if (!cursorsWithBegin.isEmpty()) {
+            try (final Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+                final List<TopicPartition> kafkaTPs = cursorsWithBegin.stream()
+                        .map(c -> new TopicPartition(topic, KafkaCursor.toKafkaPartition(c.getPartition())))
+                        .collect(Collectors.toList());
+                consumer.assign(kafkaTPs);
+                consumer.seekToBeginning(kafkaTPs.toArray(new TopicPartition[kafkaTPs.size()]));
+                positions.putAll(kafkaTPs.stream()
+                        .collect(Collectors.toMap(
+                                tp -> KafkaCursor.toNakadiPartition(tp.partition()),
+                                consumer::position)));
+            }
+        }
+        positions.putAll(etCursors.stream()
+                .filter(c -> !cursorsWithBegin.contains(c))
+                .map(c -> {
+                    try {
+                        final NakadiCursor nakadiCursor = new NakadiCursor(topic, c.getPartition(), c.getOffset());
+                        return KafkaCursor.fromNakadiCursor(nakadiCursor).addOffset(1);
+                    } catch (final InvalidCursorException e) {
+                        throw new IllegalStateException("Subscription contains invalid initial cursor");
+                    }
+                })
+                .collect(Collectors.toMap(
+                        c -> c.toNakadiCursor().getPartition(),
+                        KafkaCursor::getOffset
+                )));
+        return positions;
     }
 
     @Override
@@ -382,12 +430,16 @@ public class KafkaTopicRepository implements TopicRepository {
                 .map(cursor -> cursor.addOffset(1)) // Position on data to consume, not the existing one
                 .collect(toList());
 
-        return kafkaFactory.createNakadiConsumer(clientId, kafkaCursors,
-                nakadiSettings.getKafkaPollTimeoutMs());
+        return kafkaFactory.createNakadiConsumer(clientId, kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs());
     }
 
     public int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InvalidCursorException {
         return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
+    }
+
+    public void validateReadCursors(final List<NakadiCursor> cursors)
+            throws InvalidCursorException, ServiceUnavailableException {
+        convertToKafkaCursors(cursors);
     }
 
     private List<KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
