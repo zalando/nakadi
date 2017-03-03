@@ -126,7 +126,7 @@ public class StoragesControllerTest {
         return storages;
     }
 
-    private Storage createKafkaStorage(final String id) {
+    public static Storage createKafkaStorage(final String id) {
         final Storage storage = new Storage();
         storage.setId(id);
         storage.setType(Storage.Type.KAFKA);
