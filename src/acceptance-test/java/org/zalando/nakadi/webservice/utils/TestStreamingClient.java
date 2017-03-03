@@ -29,7 +29,7 @@ public class TestStreamingClient implements Runnable {
     private volatile boolean running;
 
     private final List<StreamBatch> batches;
-    private InputStream inputStream;
+    private HttpURLConnection connection;
     private String sessionId;
     private Optional<String> token;
     private volatile int responseCode;
@@ -60,17 +60,17 @@ public class TestStreamingClient implements Runnable {
     public void run() {
         try {
             final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
-            final HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-            token.ifPresent(token -> conn.setRequestProperty("Authorization", "Bearer " + token));
-            responseCode = conn.getResponseCode();
-            conn.getHeaderFields().entrySet().stream()
+            connection = (HttpURLConnection) new URL(url).openConnection();
+            token.ifPresent(token -> connection.setRequestProperty("Authorization", "Bearer " + token));
+            responseCode = connection.getResponseCode();
+            connection.getHeaderFields().entrySet().stream()
                     .filter(entry -> entry.getKey() != null)
                     .forEach(entry ->  headers.put(entry.getKey(), entry.getValue()));
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 throw new IOException("Response code is " + responseCode);
             }
-            sessionId = conn.getHeaderField("X-Nakadi-StreamId");
-            inputStream = conn.getInputStream();
+            sessionId = connection.getHeaderField("X-Nakadi-StreamId");
+            final InputStream inputStream = connection.getInputStream();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             running = true;
 
@@ -118,9 +118,7 @@ public class TestStreamingClient implements Runnable {
     public boolean close() {
         if (running) {
             try {
-                inputStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+                connection.disconnect();
             } finally {
                 running = false;
             }

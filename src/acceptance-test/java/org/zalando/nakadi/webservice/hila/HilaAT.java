@@ -76,15 +76,16 @@ public class HilaAT extends BaseAT {
 
     @Test(timeout = 10000)
     public void whenStreamTimeoutReachedPossibleToCommit() throws Exception {
-        publishEvent(eventType.getName(),"{\"foo\":\"bar\"}");
-        publishEvent(eventType.getName(),"{\"foo\":\"bar\"}");
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "stream_limit=1&stream_timeout=1")
+                .create(URL, subscription.getId(), "batch_limit=1&stream_limit=2&stream_timeout=1")
                 .start();
-        waitFor(() -> Assert.assertFalse(client.getBatches().isEmpty()), TimeUnit.SECONDS.toMillis(1), 100);
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        publishEvent(eventType.getName(),"{\"foo\":\"bar\"}");
+        waitFor(() -> Assert.assertFalse(client.getBatches().isEmpty()), TimeUnit.SECONDS.toMillis(2), 100);
         final SubscriptionCursor toCommit = client.getBatches().get(0).getCursor();
         client.close(); // connection is closed, and stream as well
-
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         final int statusCode = commitCursors(
                 subscription.getId(),
                 Collections.singletonList(toCommit),

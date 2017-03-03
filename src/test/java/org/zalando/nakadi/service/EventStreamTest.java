@@ -10,10 +10,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.domain.ConsumedEvent;
@@ -32,6 +34,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.service.EventStream.BATCH_SEPARATOR;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventStreamTest {
@@ -91,14 +94,13 @@ public class EventStreamTest {
         final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen));
         thread.start();
 
-        Thread.sleep(3000);
-        assertThat("As there are no exit conditions in config - the thread should be running",
-                thread.isAlive(), is(true));
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+        waitFor(()-> Assert.assertTrue(thread.isAlive()));
 
         // simulation of client closing the connection using crutch
         streamOpen.set(false);
 
-        Thread.sleep(3000);
+        waitFor(() -> Assert.assertFalse(thread.isAlive()), TimeUnit.SECONDS.toMillis(3));
         assertThat("The thread should be dead now, as we simulated that client closed connection",
                 thread.isAlive(), is(false));
         thread.join();
