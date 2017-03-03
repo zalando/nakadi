@@ -47,17 +47,12 @@ public class MonitoringRequestFilter extends OncePerRequestFilter {
                 clientId,
                 request.getMethod(),
                 request.getServletPath());
-
         final Timer.Context perPathTimerContext = perPathMetricRegistry.timer(perPathMetricKey).time();
 
         try {
-
             filterChain.doFilter(request, response);
-
         } finally {
-            if (perPathTimerContext != null) {
-                perPathTimerContext.stop();
-            }
+            perPathTimerContext.stop();
             timerContext.stop();
             openHttpConnectionsCounter.dec();
         }
