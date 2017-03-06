@@ -3,6 +3,7 @@ package org.zalando.nakadi.service.timeline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -42,7 +43,6 @@ import java.util.UUID;
 public class TimelineService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimelineService.class);
-    private static final String DEFAULT_STORAGE = "default";
 
     private final SecuritySettings securitySettings;
     private final EventTypeCache eventTypeCache;
@@ -53,6 +53,7 @@ public class TimelineService {
     private final TopicRepositoryHolder topicRepositoryHolder;
     private final TransactionTemplate transactionTemplate;
     private final UUIDGenerator uuidGenerator;
+    private final Storage defaultStorage;
 
     @Autowired
     public TimelineService(final SecuritySettings securitySettings,
@@ -63,7 +64,8 @@ public class TimelineService {
                            final TimelineDbRepository timelineDbRepository,
                            final TopicRepositoryHolder topicRepositoryHolder,
                            final TransactionTemplate transactionTemplate,
-                           final UUIDGenerator uuidGenerator) {
+                           final UUIDGenerator uuidGenerator,
+                           @Qualifier("default_storage") final Storage defaultStorage) {
         this.securitySettings = securitySettings;
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
@@ -73,6 +75,7 @@ public class TimelineService {
         this.topicRepositoryHolder = topicRepositoryHolder;
         this.transactionTemplate = transactionTemplate;
         this.uuidGenerator = uuidGenerator;
+        this.defaultStorage = defaultStorage;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId, final Client client)
@@ -119,10 +122,7 @@ public class TimelineService {
                 return activeTimeline.get();
             }
 
-            final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
-                    .orElseThrow(() -> new UnableProcessException("Fake timeline creation failed for event type " +
-                            eventType.getName() + ".No default storage defined"));
-            return Timeline.createFakeTimeline(eventType, storage);
+            return Timeline.createFakeTimeline(eventType, defaultStorage);
         } catch (final NakadiException e) {
             LOG.error("Failed to get timeline for event type {}", eventType.getName(), e);
             throw new TimelineException("Failed to get timeline", e);
@@ -136,14 +136,7 @@ public class TimelineService {
     }
 
     public TopicRepository getDefaultTopicRepository() throws TopicRepositoryException {
-        try {
-            final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
-                    .orElseThrow(() -> new UnableProcessException("No default storage defined"));
-            return topicRepositoryHolder.getTopicRepository(storage);
-        } catch (final InternalNakadiException e) {
-            LOG.error("Failed to get default topic repository", e);
-            throw new TopicRepositoryException("Failed to get timeline", e);
-        }
+        return topicRepositoryHolder.getTopicRepository(defaultStorage);
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline) {

@@ -15,7 +15,6 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.TimelineException;
-import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
@@ -36,7 +35,8 @@ public class TimelineServiceTest {
     private final TimelineService timelineService = new TimelineService(securitySettings, eventTypeCache,
             storageDbRepository, Mockito.mock(TimelineSync.class), Mockito.mock(NakadiSettings.class),
             Mockito.mock(TimelineDbRepository.class), Mockito.mock(TopicRepositoryHolder.class),
-            new TransactionTemplate(Mockito.mock(PlatformTransactionManager.class)), new UUIDGenerator());
+            new TransactionTemplate(Mockito.mock(PlatformTransactionManager.class)), new UUIDGenerator(),
+            new Storage());
 
     @Test(expected = NotFoundException.class)
     public void testGetTimelinesNotFound() throws Exception {
@@ -73,15 +73,6 @@ public class TimelineServiceTest {
 
         final Timeline actualTimeline = timelineService.getTimeline(eventType);
         Assert.assertTrue(actualTimeline.isFake());
-    }
-
-    @Test(expected = UnableProcessException.class)
-    public void testGetTimelineUnableProcessException() throws Exception {
-        final EventType eventType = EventTypeTestBuilder.builder().build();
-        Mockito.when(eventTypeCache.getActiveTimeline(Matchers.any())).thenReturn(Optional.empty());
-        Mockito.when(storageDbRepository.getStorage("default")).thenReturn(Optional.empty());
-
-        timelineService.getTimeline(eventType);
     }
 
 }
