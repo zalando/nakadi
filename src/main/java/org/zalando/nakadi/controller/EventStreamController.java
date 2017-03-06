@@ -223,7 +223,7 @@ public class EventStreamController {
 
                 eventStream = eventStreamFactory.createEventStream(
                         outputStream, eventConsumer, streamConfig, blacklistService, cursorConverter,
-                        bytesFlushedMeter);
+                        bytesFlushedMeter, featureToggleService);
 
                 outputStream.flush(); // Flush status code to client
 
