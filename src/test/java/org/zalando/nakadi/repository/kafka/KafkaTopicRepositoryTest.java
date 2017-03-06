@@ -2,12 +2,6 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Future;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -26,14 +20,29 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventPublishingStatus;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Future;
+
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -275,6 +284,71 @@ public class KafkaTopicRepositoryTest {
                         assertThat(e.getError(), equalTo(testCase.getValue()));
                     }
                 });
+    }
+
+    @Test
+    public void whenMaterializePositionsFromBeginThenOk() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .topic(MY_TOPIC)
+                .name("et")
+                .build();
+        final Subscription subscription = RandomSubscriptionBuilder.builder()
+                .withEventType(eventType.getName())
+                .withStartFrom(SubscriptionBase.InitialPosition.BEGIN)
+                .build();
+
+        final Map<String, Long> positions = kafkaTopicRepository.materializePositions(eventType, subscription);
+
+        assertThat(positions, equalTo(ImmutableMap.of(
+                "0", 40L,
+                "1", 100L,
+                "2", 0L
+        )));
+    }
+
+    @Test
+    public void whenMaterializePositionsFromEndThenOk() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .topic(MY_TOPIC)
+                .name("et")
+                .build();
+        final Subscription subscription = RandomSubscriptionBuilder.builder()
+                .withEventType(eventType.getName())
+                .withStartFrom(SubscriptionBase.InitialPosition.END)
+                .build();
+
+        final Map<String, Long> positions = kafkaTopicRepository.materializePositions(eventType, subscription);
+
+        assertThat(positions, equalTo(ImmutableMap.of(
+                "0", 42L,
+                "1", 200L,
+                "2", 0L
+        )));
+    }
+
+    @Test
+    public void whenMaterializePositionsFromCursorsThenOk() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .topic(MY_TOPIC)
+                .name("et")
+                .build();
+        final Subscription subscription = RandomSubscriptionBuilder.builder()
+                .withEventType(eventType.getName())
+                .withStartFrom(SubscriptionBase.InitialPosition.CURSORS)
+                .withInitialCursors(ImmutableList.of(
+                        new SubscriptionCursorWithoutToken("et", "0", "41"),
+                        new SubscriptionCursorWithoutToken("et", "1", "124"),
+                        new SubscriptionCursorWithoutToken("et", "2", Cursor.BEFORE_OLDEST_OFFSET)
+                ))
+                .build();
+
+        final Map<String, Long> positions = kafkaTopicRepository.materializePositions(eventType, subscription);
+
+        assertThat(positions, equalTo(ImmutableMap.of(
+                "0", 42L,
+                "1", 125L,
+                "2", 0L
+        )));
     }
 
     @Test

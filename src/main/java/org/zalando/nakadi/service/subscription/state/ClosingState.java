@@ -1,7 +1,5 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,17 +7,23 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 
 class ClosingState extends State {
-    private final Map<Partition.PartitionKey, Long> uncommitedOffsets;
+    private final Supplier<Map<Partition.PartitionKey, Long>> uncommittedOffsetsSupplier;
+    private final LongSupplier lastCommitSupplier;
+    private Map<Partition.PartitionKey, Long> uncommittedOffsets;
     private final Map<Partition.PartitionKey, ZKSubscription> listeners = new HashMap<>();
-    private final long lastCommitMillis;
     private ZKSubscription topologyListener;
 
-    ClosingState(final Map<Partition.PartitionKey, Long> uncommitedOffsets, final long lastCommitMillis) {
-        this.uncommitedOffsets = uncommitedOffsets;
-        this.lastCommitMillis = lastCommitMillis;
+    ClosingState(final Supplier<Map<Partition.PartitionKey, Long>> uncommittedOffsetsSupplier,
+                 final LongSupplier lastCommitSupplier) {
+        this.uncommittedOffsetsSupplier = uncommittedOffsetsSupplier;
+        this.lastCommitSupplier = lastCommitSupplier;
     }
 
     @Override
@@ -39,9 +43,10 @@ class ClosingState extends State {
 
     @Override
     public void onEnter() {
-        final long timeToWaitMillis = getParameters().commitTimeoutMillis - (System.currentTimeMillis()
-                - lastCommitMillis);
-        if (timeToWaitMillis > 0) {
+        final long timeToWaitMillis = getParameters().commitTimeoutMillis -
+                (System.currentTimeMillis() - lastCommitSupplier.getAsLong());
+        uncommittedOffsets = uncommittedOffsetsSupplier.get();
+        if (!uncommittedOffsets.isEmpty() && timeToWaitMillis > 0) {
             scheduleTask(() -> switchState(new CleanupState()), timeToWaitMillis, TimeUnit.MILLISECONDS);
             topologyListener = getZk().subscribeForTopologyChanges(() -> addTask(this::onTopologyChanged));
             reactOnTopologyChange();
@@ -72,7 +77,7 @@ class ClosingState extends State {
         final Set<Partition.PartitionKey> addListeners = new HashSet<>();
         for (final Partition p : partitions.values()) {
             if (Partition.State.REASSIGNING.equals(p.getState())) {
-                if (!uncommitedOffsets.containsKey(p.getKey())) {
+                if (!uncommittedOffsets.containsKey(p.getKey())) {
                     freeRightNow.add(p.getKey());
                 } else {
                     if (!listeners.containsKey(p.getKey())) {
@@ -80,12 +85,12 @@ class ClosingState extends State {
                     }
                 }
             } else { // ASSIGNED
-                if (uncommitedOffsets.containsKey(p.getKey()) && !listeners.containsKey(p.getKey())) {
+                if (uncommittedOffsets.containsKey(p.getKey()) && !listeners.containsKey(p.getKey())) {
                     addListeners.add(p.getKey());
                 }
             }
         }
-        uncommitedOffsets.keySet().stream().filter(p -> !partitions.containsKey(p)).forEach(freeRightNow::add);
+        uncommittedOffsets.keySet().stream().filter(p -> !partitions.containsKey(p)).forEach(freeRightNow::add);
         freePartitions(freeRightNow);
         addListeners.forEach(this::registerListener);
         tryCompleteState();
@@ -108,14 +113,14 @@ class ClosingState extends State {
 
     private void reactOnOffset(final Partition.PartitionKey key) {
         final long newOffset = getZk().getOffset(key);
-        if (uncommitedOffsets.containsKey(key) && uncommitedOffsets.get(key) <= newOffset) {
+        if (uncommittedOffsets.containsKey(key) && uncommittedOffsets.get(key) <= newOffset) {
             freePartitions(Collections.singletonList(key));
         }
         tryCompleteState();
     }
 
     private void tryCompleteState() {
-        if (uncommitedOffsets.isEmpty()) {
+        if (uncommittedOffsets.isEmpty()) {
             switchState(new CleanupState());
         }
     }
@@ -123,7 +128,7 @@ class ClosingState extends State {
     private void freePartitions(final Collection<Partition.PartitionKey> keys) {
         RuntimeException exceptionCaught = null;
         for (final Partition.PartitionKey partitionKey : keys) {
-            uncommitedOffsets.remove(partitionKey);
+            uncommittedOffsets.remove(partitionKey);
             final ZKSubscription listener = listeners.remove(partitionKey);
             if (null != listener) {
                 try {

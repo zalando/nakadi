@@ -36,14 +36,15 @@ public interface TimelineSync {
      * @param timeoutMs Timeout for sync operation.
      * @throws IllegalStateException In case when timeline update already started for specified event type
      */
-    void startTimelineUpdate(String eventType, long timeoutMs) throws InterruptedException, IllegalStateException;
+    void startTimelineUpdate(String eventType, long timeoutMs)
+            throws InterruptedException, IllegalStateException, RuntimeException;
 
     /**
      * Release publishing lock to event type
      *
      * @param eventType Event type to unlock publishing to.
      */
-    void finishTimelineUpdate(String eventType) throws InterruptedException;
+    void finishTimelineUpdate(String eventType) throws InterruptedException, RuntimeException;
 
     interface ListenerRegistration {
         void cancel();

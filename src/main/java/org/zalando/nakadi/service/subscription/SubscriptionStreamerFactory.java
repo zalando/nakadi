@@ -15,13 +15,13 @@ import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.kafka.KafkaTopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.Map;
 import java.util.Set;
@@ -35,7 +35,7 @@ public class SubscriptionStreamerFactory {
     private long kafkaPollTimeout;
     private final ZooKeeperHolder zkHolder;
     private final SubscriptionDbRepository subscriptionDbRepository;
-    private final KafkaTopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final EventTypeRepository eventTypeRepository;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private final CursorTokenService cursorTokenService;
@@ -47,7 +47,7 @@ public class SubscriptionStreamerFactory {
     public SubscriptionStreamerFactory(
             final ZooKeeperHolder zkHolder,
             final SubscriptionDbRepository subscriptionDbRepository,
-            final KafkaTopicRepository topicRepository,
+            final TimelineService timelineService,
             final EventTypeRepository eventTypeRepository,
             final CursorTokenService cursorTokenService,
             final ObjectMapper objectMapper,
@@ -55,7 +55,7 @@ public class SubscriptionStreamerFactory {
             @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry) {
         this.zkHolder = zkHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -82,7 +82,7 @@ public class SubscriptionStreamerFactory {
                 .setSession(session)
                 .setTimer(executorService)
                 .setZkClient(new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get(), loggingPath))
-                .setKafkaClient(new KafkaClient(subscription, topicRepository, eventTypeRepository))
+                .setKafkaClient(new KafkaClient(subscription, timelineService, eventTypeRepository))
                 .setRebalancer(new ExactWeightRebalancer())
                 .setKafkaPollTimeout(kafkaPollTimeout)
                 .setLoggingPath(loggingPath)

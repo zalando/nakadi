@@ -42,6 +42,7 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
@@ -145,9 +146,11 @@ public class EventStreamControllerTest {
         when(consumerLimitingService.acquireConnectionSlots(any(), any(), any())).thenReturn(ImmutableList.of());
 
         featureToggleService = mock(FeatureToggleService.class);
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepositoryMock);
 
         controller = new EventStreamController(
-                eventTypeRepository, topicRepositoryMock, objectMapper, eventStreamFactoryMock, metricRegistry,
+                eventTypeRepository, timelineService, objectMapper, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
                 new CursorConverter(featureToggleService));
 
@@ -178,8 +181,8 @@ public class EventStreamControllerTest {
         final PartitionStatistics expectedStats = new KafkaPartitionStatistics(TEST_TOPIC, 0, 0L, 0L);
         when(topicRepositoryMock.loadTopicStatistics(eq(Collections.singletonList(TEST_TOPIC))))
                 .thenReturn(Collections.singletonList(expectedStats));
-        final List<NakadiCursor> topicPositions = controller.getStreamingStart(
-                TEST_TOPIC, "[{\"partition\":\"0\",\"offset\":\"BEGIN\"}]");
+        final List<NakadiCursor> topicPositions = controller
+                .getStreamingStart(topicRepositoryMock, TEST_TOPIC, "[{\"partition\":\"0\",\"offset\":\"BEGIN\"}]");
         Assert.assertEquals(1, topicPositions.size());
         Assert.assertEquals(expectedPosition, topicPositions.get(0));
     }

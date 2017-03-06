@@ -2,11 +2,10 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Matchers;
+import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -18,6 +17,7 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -25,6 +25,11 @@ import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.TopicPartition;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
@@ -75,13 +80,13 @@ public class PartitionsControllerTest {
 
         eventTypeRepositoryMock = mock(EventTypeRepository.class);
         topicRepositoryMock = mock(TopicRepository.class);
-
+        final TimelineService timelineService = Mockito.mock(TimelineService.class);
+        Mockito.when(timelineService.getTopicRepository(Matchers.any())).thenReturn(topicRepositoryMock);
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.ZERO_PADDED_OFFSETS)).thenReturn(true);
-
         final CursorConverter cursorConverter = new CursorConverter(featureToggleService);
-        final PartitionsController controller = new PartitionsController(
-                eventTypeRepositoryMock, topicRepositoryMock, cursorConverter);
+        final PartitionsController controller =
+                new PartitionsController(eventTypeRepositoryMock, timelineService, cursorConverter);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),

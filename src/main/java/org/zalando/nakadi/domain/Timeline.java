@@ -1,10 +1,12 @@
 package org.zalando.nakadi.domain;
 
+import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import javax.annotation.Nullable;
 
 public class Timeline {
 
@@ -50,8 +52,9 @@ public class Timeline {
     private String topic;
     private Date createdAt;
     private Date switchedAt;
-    private Date cleanupAt;
+    private Date cleanedUpAt;
     private StoragePosition latestPosition;
+    private boolean fake;
 
     public Timeline(
             final String eventType,
@@ -71,7 +74,8 @@ public class Timeline {
         return id;
     }
 
-    public void setId(@Nullable final UUID id) {
+    @Nullable
+    public void setId(final UUID id) {
         this.id = id;
     }
 
@@ -134,12 +138,16 @@ public class Timeline {
     }
 
     @Nullable
-    public Date getCleanupAt() {
-        return cleanupAt;
+    public Date getCleanedUpAt() {
+        return cleanedUpAt;
     }
 
-    public void setCleanupAt(@Nullable final Date cleanupAt) {
-        this.cleanupAt = cleanupAt;
+    public void setCleanedUpAt(@Nullable final Date cleanedUpAt) {
+        this.cleanedUpAt = cleanedUpAt;
+    }
+
+    public boolean isFake() {
+        return fake;
     }
 
     @Override
@@ -160,7 +168,7 @@ public class Timeline {
                 && Objects.equals(topic, that.topic)
                 && Objects.equals(createdAt, that.createdAt)
                 && Objects.equals(switchedAt, that.switchedAt)
-                && Objects.equals(cleanupAt, that.cleanupAt)
+                && Objects.equals(cleanedUpAt, that.cleanedUpAt)
                 && Objects.equals(latestPosition, that.latestPosition);
     }
 
@@ -168,4 +176,39 @@ public class Timeline {
     public int hashCode() {
         return id != null ? id.hashCode() : 0;
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Timeline{");
+        sb.append("id=").append(id);
+        sb.append(", eventType='").append(eventType).append('\'');
+        sb.append(", order=").append(order);
+        sb.append(", storage=").append(storage);
+        sb.append(", topic='").append(topic).append('\'');
+        sb.append(", createdAt=").append(createdAt);
+        sb.append(", switchedAt=").append(switchedAt);
+        sb.append(", cleanedUpAt=").append(cleanedUpAt);
+        sb.append(", latestPosition=").append(latestPosition);
+        sb.append(", fake=").append(fake);
+        sb.append('}');
+        return sb.toString();
+    }
+
+    public static Timeline createTimeline(
+            final String eventType,
+            final int order,
+            final Storage storage,
+            final String topic,
+            final Date createdAt) {
+        final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
+        timeline.setId(new UUIDGenerator().randomUUID());
+        return timeline;
+    }
+
+    public static Timeline createFakeTimeline(final EventTypeBase eventType, final Storage storage) {
+        final Timeline timeline = new Timeline(eventType.getName(), 0, storage, eventType.getTopic(), new Date());
+        timeline.fake = true;
+        return timeline;
+    }
+
 }

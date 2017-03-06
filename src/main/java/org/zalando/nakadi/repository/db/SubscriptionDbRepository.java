@@ -4,25 +4,27 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.DuplicatedSubscriptionException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.util.UUIDGenerator;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -51,8 +53,8 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
         this.uuidGenerator = uuidGenerator;
     }
 
-    public Subscription createSubscription(final SubscriptionBase subscriptionBase) throws InternalNakadiException,
-            DuplicatedSubscriptionException, ServiceUnavailableException {
+    public Subscription createSubscription(final SubscriptionBase subscriptionBase)
+            throws InconsistentStateException, DuplicatedSubscriptionException, RepositoryProblemException {
 
         try {
             final String newId = uuidGenerator.randomUUID().toString();
@@ -65,12 +67,11 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
             return subscription;
         } catch (final JsonProcessingException e) {
-            throw new InternalNakadiException("Serialization problem during persistence of event type", e);
+            throw new InconsistentStateException("Serialization problem during persistence of event type", e);
         } catch (final DuplicateKeyException e) {
             throw new DuplicatedSubscriptionException("Subscription with the same key properties already exists", e);
         } catch (final DataAccessException e) {
-            LOG.error("Database error when creating subscription", e);
-            throw new ServiceUnavailableException("Error occurred when running database request");
+            throw new RepositoryProblemException("Error occurred when running database request", e);
         }
     }
 
@@ -137,7 +138,7 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
     public Subscription getSubscription(final String owningApplication, final Set<String> eventTypes,
                                         final String consumerGroup)
-            throws NoSuchSubscriptionException, InternalNakadiException, ServiceUnavailableException {
+            throws InconsistentStateException, NoSubscriptionException, RepositoryProblemException {
 
         final String sql = "SELECT s_subscription_object FROM zn_data.subscription " +
                 "WHERE s_subscription_object->>'owning_application' = ? " +
@@ -148,12 +149,11 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
             return jdbcTemplate.queryForObject(sql, new Object[]{owningApplication, eventTypesJson, consumerGroup},
                     rowMapper);
         } catch (final JsonProcessingException e) {
-            throw new InternalNakadiException("Serialization problem during getting event type", e);
+            throw new InconsistentStateException("Deserialization problem during reading subscription from DB", e);
         } catch (final EmptyResultDataAccessException e) {
-            throw new NoSuchSubscriptionException("Subscription does not exist", e);
+            throw new NoSubscriptionException("Subscription does not exist", e);
         } catch (final DataAccessException e) {
-            LOG.error("Database error when getting subscription by key properties", e);
-            throw new ServiceUnavailableException("Error occurred when running database request");
+            throw new RepositoryProblemException("Error occurred when reading subscription from DB", e);
         }
     }
 

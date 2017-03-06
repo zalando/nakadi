@@ -8,6 +8,7 @@ import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.http.HttpStatus;
@@ -71,6 +72,25 @@ public class HilaAT extends BaseAT {
                 .withStartFrom(BEGIN)
                 .buildSubscriptionBase();
         this.subscription = createSubscription(subscription);
+    }
+
+    @Test(timeout = 10000)
+    public void whenStreamTimeoutReachedPossibleToCommit() throws Exception {
+        final TestStreamingClient client = TestStreamingClient
+                .create(URL, subscription.getId(), "batch_limit=1&stream_limit=2&stream_timeout=1")
+                .start();
+        waitFor(() -> assertThat(client.getSessionId(), not(equalTo(SESSION_ID_UNKNOWN))));
+
+        publishEvent(eventType.getName(),"{\"foo\":\"bar\"}");
+        waitFor(() -> Assert.assertFalse(client.getBatches().isEmpty()), TimeUnit.SECONDS.toMillis(2), 100);
+        final SubscriptionCursor toCommit = client.getBatches().get(0).getCursor();
+        client.close(); // connection is closed, and stream as well
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+        final int statusCode = commitCursors(
+                subscription.getId(),
+                Collections.singletonList(toCommit),
+                client.getSessionId());
+        Assert.assertEquals(SC_NO_CONTENT, statusCode);
     }
 
     @Test(timeout = 30000)
@@ -249,7 +269,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
 
         client.close();
-        Thread.sleep(2000);
+        Thread.sleep(2500);
 
         final TestStreamingClient anotherClient = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1");

@@ -1,16 +1,17 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.Lists;
-import java.util.List;
-import java.util.Optional;
-import java.util.Queue;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.repository.EventConsumer;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class NakadiKafkaConsumer implements EventConsumer {
 

@@ -2,6 +2,22 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
+import org.apache.curator.framework.recipes.locks.InterProcessLock;
+import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,21 +35,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import javax.annotation.Nullable;
-import org.apache.curator.framework.recipes.locks.InterProcessLock;
-import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.util.UUIDGenerator;
 
 @Service
 @Profile("!test")
@@ -222,7 +223,8 @@ public class TimelineSyncImpl implements TimelineSync {
         return localLocking.workWithEventType(eventType, timeoutMs);
     }
 
-    private void updateVersionAndWaitForAllNodes(@Nullable final Long timeoutMs) throws InterruptedException {
+    private void updateVersionAndWaitForAllNodes(@Nullable final Long timeoutMs)
+            throws InterruptedException, RuntimeException {
         // Create next version, that will contain locked event type.
         final Optional<Long> expectedFinish = Optional.ofNullable(timeoutMs).map(t -> System.currentTimeMillis() + t);
         final AtomicInteger versionToWait = new AtomicInteger();
@@ -273,21 +275,26 @@ public class TimelineSyncImpl implements TimelineSync {
     }
 
     @Override
-    public void startTimelineUpdate(final String eventType, final long timeoutMs) throws InterruptedException {
+    public void startTimelineUpdate(final String eventType, final long timeoutMs)
+            throws InterruptedException, RuntimeException {
         LOG.info("Starting timeline update for event type {} with timeout {} ms", eventType, timeoutMs);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
-        boolean successful = false;
+
         try {
             zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
                     .forPath(etZkPath, nodeId.getBytes(Charsets.UTF_8));
-            updateVersionAndWaitForAllNodes(timeoutMs);
-            successful = true;
         } catch (final KeeperException.NodeExistsException ex) {
             throw new IllegalStateException(ex);
+        } catch (final Exception ex) {
+            throw new RuntimeException(ex);
+        }
+
+        boolean successful = false;
+        try {
+            updateVersionAndWaitForAllNodes(timeoutMs);
+            successful = true;
         } catch (final InterruptedException ex) {
             throw ex;
-        } catch (final Exception e) {
-            throw new RuntimeException(e);
         } finally {
             if (!successful) {
                 try {
@@ -300,7 +307,7 @@ public class TimelineSyncImpl implements TimelineSync {
     }
 
     @Override
-    public void finishTimelineUpdate(final String eventType) throws InterruptedException {
+    public void finishTimelineUpdate(final String eventType) throws InterruptedException, RuntimeException {
         LOG.info("Finishing timeline update for event type {}", eventType);
         final String etZkPath = toZkPath("/locked_et/" + eventType);
         try {

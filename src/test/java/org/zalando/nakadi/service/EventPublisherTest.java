@@ -24,6 +24,7 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.EventTypeValidator;
@@ -77,8 +78,13 @@ public class EventPublisherTest {
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
-    private final EventPublisher publisher = new EventPublisher(topicRepository, cache, partitionResolver,
-            enrichment, nakadiSettings, timelineSync);
+    private final EventPublisher publisher;
+
+    public EventPublisherTest() {
+        final TimelineService ts = Mockito.mock(TimelineService.class);
+        Mockito.when(ts.getTopicRepository(any())).thenReturn(topicRepository);
+        publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync);
+    }
 
     @Test
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
