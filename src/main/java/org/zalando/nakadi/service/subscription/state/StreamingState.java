@@ -2,13 +2,17 @@ package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import java.nio.charset.StandardCharsets;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.service.EventStream;
+import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -32,6 +36,15 @@ import java.util.stream.Stream;
 
 
 class StreamingState extends State {
+
+    private static final byte[] B_CURSOR_START = "{\"cursor\":".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] B_EVENTS_START = ",\"events\":[".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] B_COMMA = ",".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] B_CLOSE_BRACKET = "]".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] B_METADATA_INFO_DEBUG = ",\"info\":{\"debug\":\"".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] B_QUOTE_CLOSE_BRACE = "\"}".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] B_CLOSE_BRACE = "}".getBytes(StandardCharsets.UTF_8);
+
     private final Map<Partition.PartitionKey, PartitionData> offsets = new HashMap<>();
     // Maps partition barrier when releasing must be completed or stream will be closed.
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
@@ -200,15 +213,20 @@ class StreamingState extends State {
     private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
                            final Optional<String> metadata) {
         final FeatureToggleService featureToggleService = getContext().getFeatureToggleService();
-
         if(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.SEND_SUBSCRIPTION_BATCH_VIA_OUTPUT_STREAM)) {
             try {
-                final long numberOffset = offsets.get(pk).getSentOffset();
-                final String batch = serializeBatch(pk, numberOffset, new ArrayList<>(data.values()), metadata);
-                final byte[] batchBytes = batch.getBytes(EventStream.UTF8);
-                getOut().streamData(batchBytes);
-                bytesSentMeter.mark(batchBytes.length);
-                batchesSent++;
+
+                final ObjectMapper mapper = getContext().getObjectMapper();
+                final String eventType = getContext().getEventTypesForTopics().get(pk.getTopic());
+                final String token = getContext().getCursorTokenService().generateToken();
+                final SubscriptionCursor cursor = getContext()
+                    .getCursorConverter()
+                    .convert(
+                        pk.createKafkaCursor(offsets.get(pk).getSentOffset())
+                            .toNakadiCursor(), eventType, token
+                    );
+
+                writeStreamBatch(data, metadata, cursor, getOut(), mapper, bytesSentMeter);
             } catch (final IOException e) {
                 getLog().error("Failed to write data to output.", e);
                 shutdownGracefully("Failed to write data to output");
@@ -251,6 +269,64 @@ class StreamingState extends State {
 
         builder.append("}").append(EventStream.BATCH_SEPARATOR);
         return builder.toString();
+    }
+
+    @VisibleForTesting
+    void writeStreamBatch(SortedMap<Long, String> events,
+        Optional<String> infoLog,
+        SubscriptionCursor cursor,
+        SubscriptionOutput out,
+        ObjectMapper mapper,
+        Meter bytesSentMeter
+    )
+            throws IOException {
+        int byteCount = 0;
+
+        final List<String> values = new ArrayList<>(events.values());
+
+        out.streamData(B_CURSOR_START);
+        byteCount += B_CURSOR_START.length;
+
+        // todo: sending direct to SubscriptionOutput's outputstream might be better here
+        final byte[] cursorBytes = mapper.writeValueAsBytes(cursor);
+        out.streamData(cursorBytes);
+        byteCount += cursorBytes.length;
+
+        if (!values.isEmpty()) {
+            out.streamData(B_EVENTS_START);
+            byteCount += B_EVENTS_START.length;
+            for (int i = 0; i < values.size(); i++) {
+                final byte[] event = values.get(i).getBytes(StandardCharsets.UTF_8);
+                out.streamData(event);
+                byteCount += event.length;
+                if(i < (values.size() - 1)) {
+                    out.streamData(B_COMMA);
+                    byteCount += 1;
+                }
+                else {
+                    out.streamData(B_CLOSE_BRACKET);
+                    byteCount += 1;
+                }
+            }
+        }
+
+        if(infoLog.isPresent()) {
+            out.streamData(B_METADATA_INFO_DEBUG);
+            byteCount += B_METADATA_INFO_DEBUG.length;
+            final byte[] metadataBytes = infoLog.get().getBytes(StandardCharsets.UTF_8);
+            out.streamData(metadataBytes);
+            byteCount += metadataBytes.length;
+            out.streamData(B_QUOTE_CLOSE_BRACE);
+            byteCount += B_QUOTE_CLOSE_BRACE.length;
+        }
+
+        out.streamData(B_CLOSE_BRACE);
+        byteCount += B_CLOSE_BRACE.length;
+        final byte[] B_BATCH_SEPARATOR = EventStream.BATCH_SEPARATOR.getBytes(StandardCharsets.UTF_8);
+        out.streamData(B_BATCH_SEPARATOR);
+        byteCount += B_BATCH_SEPARATOR.length;
+        bytesSentMeter.mark(byteCount);
+        batchesSent++;
     }
 
     @Override
