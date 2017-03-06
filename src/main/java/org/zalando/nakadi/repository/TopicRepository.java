@@ -5,7 +5,6 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -20,8 +19,7 @@ import java.util.Optional;
 
 public interface TopicRepository {
 
-    String createTopic(int partitionCount, Long retentionTimeMs)
-            throws TopicCreationException, DuplicatedEventTypeNameException;
+    String createTopic(int partitionCount, Long retentionTimeMs) throws TopicCreationException;
 
     void deleteTopic(String topic) throws TopicDeletionException;
 

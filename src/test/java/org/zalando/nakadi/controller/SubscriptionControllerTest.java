@@ -35,6 +35,7 @@ import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -97,12 +98,13 @@ public class SubscriptionControllerTest {
         final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
         when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
-
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
         final NakadiSettings settings = mock(NakadiSettings.class);
         when(settings.getMaxSubscriptionPartitions()).thenReturn(PARTITIONS_PER_SUBSCRIPTION);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
-                zkSubscriptionClientFactory, topicRepository, eventTypeRepository, null);
+                zkSubscriptionClientFactory, timelineService, eventTypeRepository, null);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
@@ -226,7 +228,7 @@ public class SubscriptionControllerTest {
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
         final List<PartitionStatistics> statistics = Collections.singletonList(
                 new KafkaPartitionStatistics("topic", 0, 0, 13));
-        when(topicRepository.loadTopicStatistics(Collections.singleton("topic"))).thenReturn(statistics);
+        when(topicRepository.loadTopicStatistics(Collections.singletonList("topic"))).thenReturn(statistics);
 
         final List<SubscriptionEventTypeStats> subscriptionStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(

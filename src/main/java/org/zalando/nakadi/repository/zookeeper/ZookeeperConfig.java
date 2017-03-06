@@ -10,7 +10,7 @@ import org.springframework.core.env.Environment;
 public class ZookeeperConfig {
 
     @Bean
-    public ZooKeeperHolder zooKeeperHolder(final Environment environment) {
+    public ZooKeeperHolder zooKeeperHolder(final Environment environment) throws Exception {
         return new ZooKeeperHolder(
                 environment.getProperty("nakadi.zookeeper.brokers"),
                 environment.getProperty("nakadi.zookeeper.kafkaNamespace", ""),

@@ -20,6 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 
 import java.util.List;
@@ -32,14 +33,14 @@ import java.util.stream.Collectors;
 public class SubscriptionValidationService {
 
     private final EventTypeRepository eventTypeRepository;
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final int maxSubscriptionPartitions;
 
     @Autowired
-    public SubscriptionValidationService(final TopicRepository topicRepository,
+    public SubscriptionValidationService(final TimelineService timelineService,
                                          final EventTypeRepository eventTypeRepository,
                                          final NakadiSettings nakadiSettings) {
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
         this.maxSubscriptionPartitions = nakadiSettings.getMaxSubscriptionPartitions();
     }
@@ -111,6 +112,8 @@ public class SubscriptionValidationService {
                 .collect(Collectors.toList());
 
         try {
+            // FIXME TIMELINES: has to be fixed during consumption task
+            final TopicRepository topicRepository = timelineService.getTopicRepository(eventTypes.get(0));
             topicRepository.validateReadCursors(cursorsWithoutBegin);
         } catch (InvalidCursorException e) {
             throw new WrongInitialCursorsException(e.getMessage(), e);
@@ -121,7 +124,7 @@ public class SubscriptionValidationService {
 
     private List<EventTypePartition> getAllPartitions(final List<EventType> eventTypes) {
         return eventTypes.stream()
-                .flatMap(et -> topicRepository.listPartitionNames(et.getTopic()).stream()
+                .flatMap(et -> timelineService.getTopicRepository(et).listPartitionNames(et.getTopic()).stream()
                         .map(p -> new EventTypePartition(et.getName(), p)))
                 .collect(Collectors.toList());
     }

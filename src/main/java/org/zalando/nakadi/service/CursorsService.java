@@ -31,6 +31,7 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -58,7 +59,7 @@ public class CursorsService {
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
 
     private final ZooKeeperHolder zkHolder;
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
     private final CursorTokenService cursorTokenService;
@@ -66,13 +67,13 @@ public class CursorsService {
 
     @Autowired
     public CursorsService(final ZooKeeperHolder zkHolder,
-                          final TopicRepository topicRepository,
+                          final TimelineService timelineService,
                           final SubscriptionDbRepository subscriptionRepository,
                           final EventTypeRepository eventTypeRepository,
                           final CursorTokenService cursorTokenService,
                           final CursorConverter cursorConverter) {
         this.zkHolder = zkHolder;
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.subscriptionRepository = subscriptionRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.cursorTokenService = cursorTokenService;
@@ -186,7 +187,7 @@ public class CursorsService {
                                 cursorToProcess.getPartition(),
                                 cursorToProcess.getOffset());
                         try {
-                            topicRepository.validateCommitCursor(nakadiCursor);
+                            timelineService.getTopicRepository(eventType).validateCommitCursor(nakadiCursor);
                             return nakadiCursor;
                         } catch (final InvalidCursorException e) {
                             throw new NakadiRuntimeException(e);
@@ -197,7 +198,7 @@ public class CursorsService {
             LOG.debug("[COMMIT_CURSORS] finished validation of {} cursor(s) for partition {}", cursors.size(),
                     eventTypePartition);
 
-            return commitPartitionCursors(subscriptionId, eventType.getTopic(), nakadiCursors, eventTypePartition);
+            return commitPartitionCursors(subscriptionId, eventType, nakadiCursors, eventTypePartition);
 
         } catch (final NakadiRuntimeException e) {
             throw (InvalidCursorException) e.getException();
@@ -205,12 +206,13 @@ public class CursorsService {
     }
 
     private List<Boolean> commitPartitionCursors(final String subscriptionId,
-                                                 final String topic,
+                                                 final EventType eventType,
                                                  final List<NakadiCursor> cursors,
                                                  final EventTypePartition etPartition)
             throws ServiceUnavailableException {
-
+        final String topic = eventType.getTopic();
         final String offsetPath = format(PATH_ZK_OFFSET, subscriptionId, topic, etPartition.getPartition());
+        final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
         try {
             @SuppressWarnings("unchecked")
             final List<Boolean> committed = executeWithRetry(() -> {

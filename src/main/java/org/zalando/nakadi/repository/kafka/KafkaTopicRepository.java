@@ -16,9 +16,6 @@ import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
@@ -69,8 +66,6 @@ import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 
-@Component
-@Profile("!test")
 public class KafkaTopicRepository implements TopicRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaTopicRepository.class);
@@ -83,7 +78,6 @@ public class KafkaTopicRepository implements TopicRepository {
     private final ConcurrentMap<String, HystrixKafkaCircuitBreaker> circuitBreakers;
     private final UUIDGenerator uuidGenerator;
 
-    @Autowired
     public KafkaTopicRepository(final ZooKeeperHolder zkFactory,
                                 final KafkaFactory kafkaFactory,
                                 final NakadiSettings nakadiSettings,

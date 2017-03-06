@@ -8,9 +8,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Component;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -22,8 +19,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-@Component
-@Profile("!test")
 public class KafkaFactory {
 
     private final KafkaLocationManager kafkaLocationManager;
@@ -36,7 +31,6 @@ public class KafkaFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaFactory.class);
 
-    @Autowired
     public KafkaFactory(final KafkaLocationManager kafkaLocationManager, final MetricRegistry metricRegistry) {
         this.kafkaLocationManager = kafkaLocationManager;
         this.useCountMetric = metricRegistry.counter("kafka.producer.use_count");

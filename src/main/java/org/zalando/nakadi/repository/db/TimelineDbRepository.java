@@ -66,7 +66,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
                     timeline.getTopic(),
                     timeline.getCreatedAt(),
                     timeline.getSwitchedAt(),
-                    timeline.getCleanupAt(),
+                    timeline.getCleanedUpAt(),
                     timeline.getLatestPosition() == null ? null :
                             jsonMapper.writer().writeValueAsString(timeline.getLatestPosition()));
             return timeline;
@@ -98,7 +98,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
                     timeline.getTopic(),
                     timeline.getCreatedAt(),
                     timeline.getSwitchedAt(),
-                    timeline.getCleanupAt(),
+                    timeline.getCleanedUpAt(),
                     timeline.getLatestPosition() == null ? null :
                             jsonMapper.writer().writeValueAsString(timeline.getLatestPosition()),
                     timeline.getId());
@@ -126,7 +126,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
                     rs.getTimestamp("tl_created_at")
             );
             result.setId((UUID) rs.getObject("tl_id"));
-            result.setCleanupAt(rs.getTimestamp("tl_cleanup_at"));
+            result.setCleanedUpAt(rs.getTimestamp("tl_cleanup_at"));
             result.setSwitchedAt(rs.getTimestamp("tl_switched_at"));
             result.setLatestPosition(
                     result.getStorage().restorePosition(jsonMapper, rs.getString("tl_latest_position")));

@@ -44,6 +44,7 @@ import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.EventTypeService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.UUIDGenerator;
@@ -130,7 +131,10 @@ public class EventTypeControllerTest {
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", objectMapper, nakadiSettings);
-        final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, topicRepository,
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, timelineSync, nakadiSettings);
 
@@ -315,19 +319,6 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostAndTopicExistsReturn409() throws Exception {
-        final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "dummy message");
-        final EventType et = buildDefaultEventType();
-        doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
-
-        Mockito.doThrow(new DuplicatedEventTypeNameException("dummy message")).when(topicRepository)
-                .createTopic(anyInt(), any());
-
-        postEventType(et).andExpect(status().isConflict()).andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenDeleteEventTypeThenOk() throws Exception {
 
         final EventType eventType = buildDefaultEventType();
@@ -476,9 +467,10 @@ public class EventTypeControllerTest {
         final String eventTypeName = randomValidEventTypeName();
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
 
-        Mockito.doThrow(new InternalNakadiException("dummy message")).when(eventTypeRepository).removeEventType(
-                eventTypeName);
-        doReturn(Optional.of(buildDefaultEventType())).when(eventTypeRepository).findByNameO(eventTypeName);
+        Mockito.doThrow(new InternalNakadiException("dummy message"))
+                .when(eventTypeRepository).removeEventType(eventTypeName);
+        doReturn(Optional.of(EventTypeTestBuilder.builder().name(eventTypeName).build()))
+                .when(eventTypeRepository).findByNameO(eventTypeName);
 
         deleteEventType(eventTypeName).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()

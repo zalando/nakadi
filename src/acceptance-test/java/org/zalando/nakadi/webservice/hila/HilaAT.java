@@ -249,7 +249,7 @@ public class HilaAT extends BaseAT {
         waitFor(() -> assertThat(client.getBatches(), hasSize(1)));
 
         client.close();
-        Thread.sleep(2000);
+        Thread.sleep(2500);
 
         final TestStreamingClient anotherClient = TestStreamingClient
                 .create(URL, subscription.getId(), "batch_flush_timeout=1");

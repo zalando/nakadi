@@ -21,6 +21,7 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -73,7 +74,9 @@ public class SubscriptionValidationServiceTest {
             return Optional.of(eventType);
         });
 
-        subscriptionValidationService = new SubscriptionValidationService(topicRepository, etRepo, nakadiSettings);
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        subscriptionValidationService = new SubscriptionValidationService(timelineService, etRepo, nakadiSettings);
 
         subscriptionBase = new SubscriptionBase();
         subscriptionBase.setEventTypes(ImmutableSet.of(ET1, ET2, ET3));
