@@ -56,6 +56,11 @@ public class NakadiKafkaConsumer implements EventConsumer {
     }
 
     @Override
+    public Consumer<String, String> getConsumer() {
+        return kafkaConsumer;
+    }
+
+    @Override
     public void close() {
         kafkaConsumer.close();
     }

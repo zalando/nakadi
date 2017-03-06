@@ -1,8 +1,10 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
@@ -39,6 +41,7 @@ public class SubscriptionStreamerFactory {
     private final CursorTokenService cursorTokenService;
     private final ObjectMapper objectMapper;
     private final CursorConverter cursorConverter;
+    private final MetricRegistry metricRegistry;
 
     @Autowired
     public SubscriptionStreamerFactory(
@@ -48,7 +51,8 @@ public class SubscriptionStreamerFactory {
             final EventTypeRepository eventTypeRepository,
             final CursorTokenService cursorTokenService,
             final ObjectMapper objectMapper,
-            final CursorConverter cursorConverter) {
+            final CursorConverter cursorConverter,
+            @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry) {
         this.zkHolder = zkHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.timelineService = timelineService;
@@ -56,6 +60,7 @@ public class SubscriptionStreamerFactory {
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
         this.cursorConverter = cursorConverter;
+        this.metricRegistry = metricRegistry;
     }
 
     public SubscriptionStreamer build(
@@ -87,6 +92,8 @@ public class SubscriptionStreamerFactory {
                 .setObjectMapper(objectMapper)
                 .setBlacklistService(blacklistService)
                 .setCursorConverter(cursorConverter)
+                .setSubscriptionId(subscriptionId)
+                .setMetricRegistry(metricRegistry)
                 .build();
     }
 
