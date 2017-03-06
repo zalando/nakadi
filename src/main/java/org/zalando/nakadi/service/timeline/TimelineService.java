@@ -37,6 +37,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 public class TimelineService {
@@ -53,6 +55,8 @@ public class TimelineService {
     private final TopicRepositoryHolder topicRepositoryHolder;
     private final TransactionTemplate transactionTemplate;
     private final UUIDGenerator uuidGenerator;
+    private final ReadWriteLock readWriteLock;
+    private Storage defaultStorage;
 
     @Autowired
     public TimelineService(final SecuritySettings securitySettings,
@@ -73,6 +77,7 @@ public class TimelineService {
         this.topicRepositoryHolder = topicRepositoryHolder;
         this.transactionTemplate = transactionTemplate;
         this.uuidGenerator = uuidGenerator;
+        this.readWriteLock = new ReentrantReadWriteLock();
     }
 
     public void createTimeline(final String eventTypeName, final String storageId, final Client client)
@@ -119,9 +124,7 @@ public class TimelineService {
                 return activeTimeline.get();
             }
 
-            final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
-                    .orElseThrow(() -> new UnableProcessException("Fake timeline creation failed for event type " +
-                            eventType.getName() + ".No default storage defined"));
+            final Storage storage = getCachedDefaultStorage();
             return Timeline.createFakeTimeline(eventType, storage);
         } catch (final NakadiException e) {
             LOG.error("Failed to get timeline for event type {}", eventType.getName(), e);
@@ -136,13 +139,33 @@ public class TimelineService {
     }
 
     public TopicRepository getDefaultTopicRepository() throws TopicRepositoryException {
+        final Storage storage = getCachedDefaultStorage();
+        return topicRepositoryHolder.getTopicRepository(storage);
+    }
+
+    private Storage getCachedDefaultStorage() throws TimelineException {
+        readWriteLock.readLock().lock();
         try {
-            final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
+            if (defaultStorage != null) {
+                return defaultStorage;
+            }
+        } finally {
+            readWriteLock.readLock().unlock();
+        }
+
+        readWriteLock.writeLock().lock();
+        try {
+            if (defaultStorage != null) {
+                return defaultStorage;
+            }
+
+            this.defaultStorage = storageDbRepository.getStorage(DEFAULT_STORAGE)
                     .orElseThrow(() -> new UnableProcessException("No default storage defined"));
-            return topicRepositoryHolder.getTopicRepository(storage);
+            return defaultStorage;
         } catch (final InternalNakadiException e) {
-            LOG.error("Failed to get default topic repository", e);
-            throw new TopicRepositoryException("Failed to get timeline", e);
+            throw new TimelineException("Failed to get default storage", e);
+        } finally {
+            readWriteLock.writeLock().unlock();
         }
     }
 
