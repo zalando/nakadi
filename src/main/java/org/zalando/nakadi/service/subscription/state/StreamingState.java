@@ -11,6 +11,7 @@ import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.domain.Timeline;
 
@@ -198,17 +199,32 @@ class StreamingState extends State {
 
     private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
                            final Optional<String> metadata) {
-        try {
-            final long numberOffset = offsets.get(pk).getSentOffset();
-            final String batch = serializeBatch(pk, numberOffset, new ArrayList<>(data.values()), metadata);
+        final FeatureToggleService featureToggleService = getContext().getFeatureToggleService();
 
-            final byte[] batchBytes = batch.getBytes(EventStream.UTF8);
-            getOut().streamData(batchBytes);
-            bytesSentMeter.mark(batchBytes.length);
-            batchesSent++;
-        } catch (final IOException e) {
-            getLog().error("Failed to write data to output.", e);
-            shutdownGracefully("Failed to write data to output");
+        if(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.SEND_SUBSCRIPTION_BATCH_VIA_OUTPUT_STREAM)) {
+            try {
+                final long numberOffset = offsets.get(pk).getSentOffset();
+                final String batch = serializeBatch(pk, numberOffset, new ArrayList<>(data.values()), metadata);
+                final byte[] batchBytes = batch.getBytes(EventStream.UTF8);
+                getOut().streamData(batchBytes);
+                bytesSentMeter.mark(batchBytes.length);
+                batchesSent++;
+            } catch (final IOException e) {
+                getLog().error("Failed to write data to output.", e);
+                shutdownGracefully("Failed to write data to output");
+            }
+        } else {
+            try {
+                final long numberOffset = offsets.get(pk).getSentOffset();
+                final String batch = serializeBatch(pk, numberOffset, new ArrayList<>(data.values()), metadata);
+                final byte[] batchBytes = batch.getBytes(EventStream.UTF8);
+                getOut().streamData(batchBytes);
+                bytesSentMeter.mark(batchBytes.length);
+                batchesSent++;
+            } catch (final IOException e) {
+                getLog().error("Failed to write data to output.", e);
+                shutdownGracefully("Failed to write data to output");
+            }
         }
     }
 
