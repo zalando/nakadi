@@ -2,6 +2,13 @@ package org.zalando.nakadi.service;
 
 import com.codahale.metrics.Meter;
 import com.google.common.collect.Lists;
+import java.nio.charset.StandardCharsets;
+import org.apache.kafka.common.KafkaException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.repository.EventConsumer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
@@ -18,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.Cursor;
 import static java.lang.System.currentTimeMillis;
 import static java.util.function.Function.identity;
@@ -28,24 +36,28 @@ public class EventStream {
     public static final String BATCH_SEPARATOR = "\n";
     public static final Charset UTF8 = Charset.forName("UTF-8");
 
+
     private final OutputStream outputStream;
     private final EventConsumer eventConsumer;
     private final EventStreamConfig config;
     private final BlacklistService blacklistService;
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
+    private final FeatureToggleService featureToggleService;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
                        final BlacklistService blacklistService,
-                       final CursorConverter cursorConverter, final Meter bytesFlushedMeter) {
+                       final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
+                       final FeatureToggleService featureToggleService) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
         this.blacklistService = blacklistService;
         this.cursorConverter = cursorConverter;
         this.bytesFlushedMeter = bytesFlushedMeter;
+        this.featureToggleService = featureToggleService;
     }
 
     public void streamEvents(final AtomicBoolean connectionReady) {
