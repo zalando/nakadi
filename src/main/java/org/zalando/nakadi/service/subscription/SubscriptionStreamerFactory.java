@@ -27,6 +27,7 @@ import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.FeatureToggleService;
 
 @Service
 public class SubscriptionStreamerFactory {
@@ -41,6 +42,7 @@ public class SubscriptionStreamerFactory {
     private final ObjectMapper objectMapper;
     private final CursorConverter cursorConverter;
     private final MetricRegistry metricRegistry;
+    private final FeatureToggleService featureToggleService;
 
     @Autowired
     public SubscriptionStreamerFactory(
@@ -51,7 +53,8 @@ public class SubscriptionStreamerFactory {
             final CursorTokenService cursorTokenService,
             final ObjectMapper objectMapper,
             final CursorConverter cursorConverter,
-            @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry) {
+            @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry,
+            final FeatureToggleService featureToggleService) {
         this.zkHolder = zkHolder;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.timelineService = timelineService;
@@ -60,6 +63,7 @@ public class SubscriptionStreamerFactory {
         this.objectMapper = objectMapper;
         this.cursorConverter = cursorConverter;
         this.metricRegistry = metricRegistry;
+        this.featureToggleService = featureToggleService;
     }
 
     public SubscriptionStreamer build(
@@ -93,6 +97,7 @@ public class SubscriptionStreamerFactory {
                 .setCursorConverter(cursorConverter)
                 .setSubscriptionId(subscriptionId)
                 .setMetricRegistry(metricRegistry)
+                .setFeatureToggleService(featureToggleService)
                 .build();
     }
 

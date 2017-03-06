@@ -26,6 +26,7 @@ import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.state.State;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.util.FeatureToggleService;
 
 public class StreamingContext implements SubscriptionStreamer {
 
@@ -49,6 +50,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final CursorConverter cursorConverter;
     private final String subscriptionId;
     private final MetricRegistry metricRegistry;
+    private final FeatureToggleService featureToggleService;
     private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
 
@@ -73,6 +75,7 @@ public class StreamingContext implements SubscriptionStreamer {
         this.cursorConverter = builder.cursorConverter;
         this.subscriptionId = builder.subscriptionId;
         this.metricRegistry = builder.metricRegistry;
+        this.featureToggleService = builder.featureToggleService;
     }
 
     public StreamParameters getParameters() {
@@ -109,6 +112,10 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public MetricRegistry getMetricRegistry() {
         return  metricRegistry;
+    }
+
+    public FeatureToggleService getFeatureToggleService() {
+        return featureToggleService;
     }
 
     @Override
@@ -241,6 +248,7 @@ public class StreamingContext implements SubscriptionStreamer {
         private CursorConverter cursorConverter;
         private String subscriptionId;
         private MetricRegistry metricRegistry;
+        private FeatureToggleService featureToggleService;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -324,6 +332,11 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setMetricRegistry(final MetricRegistry metricRegistry) {
             this.metricRegistry = metricRegistry;
+            return this;
+        }
+
+        public Builder setFeatureToggleService(FeatureToggleService featureToggleService) {
+            this.featureToggleService = featureToggleService;
             return this;
         }
 
