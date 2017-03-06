@@ -6,18 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,9 +40,24 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -70,7 +73,7 @@ public class EventStreamController {
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
 
     private final EventTypeRepository eventTypeRepository;
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final ObjectMapper jsonMapper;
     private final EventStreamFactory eventStreamFactory;
     private final MetricRegistry metricRegistry;
@@ -81,8 +84,10 @@ public class EventStreamController {
     private final CursorConverter cursorConverter;
 
     @Autowired
-    public EventStreamController(final EventTypeRepository eventTypeRepository, final TopicRepository topicRepository,
-                                 final ObjectMapper jsonMapper, final EventStreamFactory eventStreamFactory,
+    public EventStreamController(final EventTypeRepository eventTypeRepository,
+                                 final TimelineService timelineService,
+                                 final ObjectMapper jsonMapper,
+                                 final EventStreamFactory eventStreamFactory,
                                  final MetricRegistry metricRegistry,
                                  final ClosedConnectionsCrutch closedConnectionsCrutch,
                                  final BlacklistService blacklistService,
@@ -90,7 +95,7 @@ public class EventStreamController {
                                  final FeatureToggleService featureToggleService,
                                  final CursorConverter cursorConverter) {
         this.eventTypeRepository = eventTypeRepository;
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
         this.eventStreamFactory = eventStreamFactory;
         this.metricRegistry = metricRegistry;
@@ -102,7 +107,11 @@ public class EventStreamController {
     }
 
     @VisibleForTesting
-    List<NakadiCursor> getStreamingStart(final String topic, final String cursorsStr)
+    List<NakadiCursor> getStreamingStart(final TopicRepository topicRepository,
+                                         final String topic,
+                                         // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
+                                         // Cursors here might be in different timeline
+                                         final String cursorsStr)
             throws UnparseableCursorException, ServiceUnavailableException, InvalidCursorException {
         List<Cursor> cursors = null;
         if (cursorsStr != null) {
@@ -185,6 +194,7 @@ public class EventStreamController {
                 client.checkScopes(eventType.getReadScopes());
 
                 // validate parameters
+                final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
                 if (!topicRepository.topicExists(topic)) {
                     writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, "topic is absent in kafka");
                     return;
@@ -197,7 +207,9 @@ public class EventStreamController {
                         .withStreamKeepAliveLimit(streamKeepAliveLimit)
                         .withEtName(eventTypeName)
                         .withConsumingAppId(client.getClientId())
-                        .withCursors(getStreamingStart(topic, cursorsStr))
+                        // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
+                        // Cursors here might be in different timeline
+                        .withCursors(getStreamingStart(topicRepository, topic, cursorsStr))
                         .build();
 
                 // acquire connection slots to limit the number of simultaneous connections from one client
@@ -229,7 +241,6 @@ public class EventStreamController {
                 LOG.debug("Incorrect syntax of X-nakadi-cursors header: {}. Respond with BAD_REQUEST.",
                         e.getCursors(), e);
                 writeProblemResponse(response, outputStream, BAD_REQUEST, e.getMessage());
-
             } catch (final NoSuchEventTypeException e) {
                 writeProblemResponse(response, outputStream, NOT_FOUND, "topic not found");
             } catch (final NoConnectionSlotsException e) {

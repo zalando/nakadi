@@ -22,6 +22,7 @@ import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
 
+import javax.annotation.Nullable;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -174,17 +175,22 @@ public class EventTypeCache {
 
     public Optional<Timeline> getActiveTimeline(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
-        return getCached(name).map(CachedValue::getTimelines)
-                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"))
-                .stream()
+        final List<Timeline> timelines = getTimelines(name);
+        if (timelines == null) {
+            return Optional.empty();
+        }
+
+        return timelines.stream()
                 .filter(t -> t.getSwitchedAt() != null)
                 .max(Comparator.comparing(Timeline::getOrder));
     }
 
+    @Nullable
     public List<Timeline> getTimelines(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
-        return getCached(name).map(CachedValue::getTimelines)
-                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"));
+        return getCached(name)
+                .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"))
+                .getTimelines();
     }
 
     private void onZkEvent(final PathChildrenCacheEvent event) {
@@ -210,6 +216,8 @@ public class EventTypeCache {
             public CachedValue load(final String key) throws Exception {
                 final EventType eventType = eventTypeRepository.findByName(key);
                 final List<Timeline> timelines = timelineRepository.listTimelines(key);
+                timelineRegistrations.computeIfAbsent(key, n ->
+                        timelineSync.registerTimelineChangeListener(n, (etName) -> eventTypeCache.invalidate(etName)));
                 return new CachedValue(eventType, EventValidation.forType(eventType), timelines);
             }
         };
@@ -228,7 +236,7 @@ public class EventTypeCache {
 
         public CachedValue(final EventType eventType,
                            final EventTypeValidator eventTypeValidator,
-                           final List<Timeline> timelines) {
+                           @Nullable final List<Timeline> timelines) {
             this.eventType = eventType;
             this.eventTypeValidator = eventTypeValidator;
             this.timelines = timelines;
@@ -242,6 +250,7 @@ public class EventTypeCache {
             return eventTypeValidator;
         }
 
+        @Nullable
         public List<Timeline> getTimelines() {
             return timelines;
         }

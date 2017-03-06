@@ -1,15 +1,15 @@
 package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableMap;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.PartitioningException;
-import org.zalando.nakadi.repository.TopicRepository;
-import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 import java.util.List;
 import java.util.Map;
@@ -32,11 +32,11 @@ public class PartitionResolver {
 
     public static final List<String> ALL_PARTITION_STRATEGIES = newArrayList(PARTITION_STRATEGIES.keySet());
 
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
 
     @Autowired
-    public PartitionResolver(final TopicRepository topicRepository) {
-        this.topicRepository = topicRepository;
+    public PartitionResolver(final TimelineService timelineService) {
+        this.timelineService = timelineService;
     }
 
     public void validate(final EventTypeBase eventType) throws NoSuchPartitionStrategyException,
@@ -64,7 +64,8 @@ public class PartitionResolver {
                     eventTypeStrategy);
         }
 
-        final List<String> partitions = topicRepository.listPartitionNames(eventType.getTopic());
+        final List<String> partitions = timelineService.getTopicRepository(eventType)
+                .listPartitionNames(eventType.getTopic());
         return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
     }
 

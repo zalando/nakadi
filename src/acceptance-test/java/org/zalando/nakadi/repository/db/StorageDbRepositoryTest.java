@@ -34,8 +34,13 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
         eventTypeDbRepository = new EventTypeDbRepository(template, mapper);
     }
 
-    static Storage createStorage(final String name, final String zkAddress, final String zkPath) {
-        final Storage.KafkaConfiguration config = new Storage.KafkaConfiguration(zkAddress, zkPath);
+    static Storage createStorage(final String name,
+                                 final String exhibitorAddress,
+                                 final int exhibitorPort,
+                                 final String zkAddress,
+                                 final String zkPath) {
+        final Storage.KafkaConfiguration config =
+                new Storage.KafkaConfiguration(exhibitorAddress, exhibitorPort, zkAddress, zkPath);
         final Storage storage = new Storage();
         storage.setId(name);
         storage.setType(Storage.Type.KAFKA);
@@ -45,7 +50,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageCreated() throws Exception {
-        final Storage storage = createStorage("default", "address", "path");
+        final Storage storage = createStorage("default", "exaddress", 8181, "address", "path");
 
         repository.createStorage(storage);
 
@@ -58,9 +63,9 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageOrdered() throws Exception {
-        final Storage storage2 = repository.createStorage(createStorage("2", "address1", "path3"));
-        final Storage storage1 = repository.createStorage(createStorage("1", "address2", "path2"));
-        final Storage storage3 = repository.createStorage(createStorage("3", "address3", "path1"));
+        final Storage storage2 = repository.createStorage(createStorage("2", "exaddress", 8181, "address1", "path3"));
+        final Storage storage1 = repository.createStorage(createStorage("1", "exaddress", 8181, "address2", "path2"));
+        final Storage storage3 = repository.createStorage(createStorage("3", "exaddress", 8181, "address3", "path1"));
 
         final List<Storage> storages = repository.listStorages();
         assertEquals(3, storages.size());
@@ -71,7 +76,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testStorageDeleted() throws Exception {
-        final Storage storage = repository.createStorage(createStorage("1", "address2", "path2"));
+        final Storage storage = repository.createStorage(createStorage("1", "exaddress", 8181, "address2", "path2"));
         assertEquals(storage, repository.getStorage(storage.getId()).get());
         repository.deleteStorage(storage.getId());
         assertFalse(repository.getStorage(storage.getId()).isPresent());
@@ -80,13 +85,13 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testIsStorageUsedNo() throws Exception {
-        repository.createStorage(createStorage("s1", "address1", "path1"));
+        repository.createStorage(createStorage("s1", "exaddress", 8181, "address1", "path1"));
         assertFalse(repository.isStorageUsed("s1"));
     }
 
     @Test
     public void testIsStorageUsedYes() throws Exception {
-        final Storage storage1 = repository.createStorage(createStorage("s2", "address1", "path1"));
+        final Storage storage1 = repository.createStorage(createStorage("s2", "exaddress", 8181, "address1", "path1"));
         final EventType testEt = eventTypeDbRepository.saveEventType(TestUtils.buildDefaultEventType());
         final Timeline timeline = createTimeline(
                 storage1, UUID.randomUUID(), 0, "test_topic", testEt.getName(),
@@ -108,7 +113,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
         final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
         timeline.setId(id);
         timeline.setSwitchedAt(switchedAt);
-        timeline.setCleanupAt(cleanupAt);
+        timeline.setCleanedUpAt(cleanupAt);
         timeline.setLatestPosition(latestPosition);
         return timeline;
     }

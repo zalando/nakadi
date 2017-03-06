@@ -12,6 +12,7 @@ import org.zalando.nakadi.domain.CursorCommitResult;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -22,6 +23,7 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
@@ -93,6 +95,11 @@ public class CursorsServiceAT extends BaseAT {
 
         final TopicRepository topicRepository = mock(TopicRepository.class);
         when(topicRepository.compareOffsets(any(), any())).thenAnswer(FAKE_OFFSET_COMPARATOR);
+        final TimelineService timelineService = mock(TimelineService.class);
+        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        final Timeline timeline = mock(Timeline.class);
+        when(timelineService.getTimeline(any())).thenReturn(timeline);
+        when(timeline.getTopic()).thenReturn(topic);
 
         final Subscription subscription = mock(Subscription.class);
         when(subscription.getEventTypes()).thenReturn(ImmutableSet.of(etName));
@@ -101,7 +108,7 @@ public class CursorsServiceAT extends BaseAT {
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(eq(FeatureToggleService.Feature.ZERO_PADDED_OFFSETS)))
                 .thenReturn(Boolean.TRUE);
-        cursorsService = new CursorsService(zkHolder, topicRepository, subscriptionRepo, eventTypeRepository,
+        cursorsService = new CursorsService(zkHolder, timelineService, subscriptionRepo, eventTypeRepository,
                 tokenService, new CursorConverter(featureToggleService));
 
         // bootstrap data in ZK

@@ -20,11 +20,18 @@ public class Storage {
     }
 
     public static class KafkaConfiguration {
+        private String exhibitorAddress;
+        private Integer exhibitorPort;
         private String zkAddress;
         private String zkPath;
 
-        public KafkaConfiguration(@JsonProperty(value="zk_address", required = true) final String zkAddress,
-                                  @JsonProperty(value="zk_path", required = true) final String zkPath) {
+        public KafkaConfiguration(
+                @JsonProperty(value="exhibitor_address") final String exhibitorAddress,
+                @JsonProperty(value="exhibitor_port", defaultValue = "8181") final Integer exhibitorPort,
+                @JsonProperty(value="zk_address", defaultValue = "127.0.0.1:2181") final String zkAddress,
+                @JsonProperty(value="zk_path", defaultValue = "") final String zkPath) {
+            this.exhibitorAddress = exhibitorAddress;
+            this.exhibitorPort = exhibitorPort;
             this.zkAddress = zkAddress;
             this.zkPath = zkPath;
         }
@@ -45,32 +52,53 @@ public class Storage {
             this.zkPath = zkPath;
         }
 
+        public String getExhibitorAddress() {
+            return exhibitorAddress;
+        }
+
+        public void setExhibitorAddress(final String exhibitorAddress) {
+            this.exhibitorAddress = exhibitorAddress;
+        }
+
+        public Integer getExhibitorPort() {
+            return exhibitorPort;
+        }
+
+        public void setExhibitorPort(final Integer exhibitorPort) {
+            this.exhibitorPort = exhibitorPort;
+        }
+
         @Override
         public boolean equals(final Object o) {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof KafkaConfiguration)) {
+
+            if (o == null || getClass() != o.getClass()) {
                 return false;
             }
 
             final KafkaConfiguration that = (KafkaConfiguration) o;
-            return Objects.equals(zkAddress, that.zkAddress) && Objects.equals(zkPath, that.zkPath);
+            return Objects.equals(exhibitorAddress, that.exhibitorAddress) &&
+                    Objects.equals(exhibitorPort, that.exhibitorPort) &&
+                    Objects.equals(zkAddress, that.zkAddress) &&
+                    Objects.equals(zkPath, that.zkPath);
         }
 
         @Override
         public int hashCode() {
-            int result = zkAddress != null ? zkAddress.hashCode() : 0;
-            result = 31 * result + (zkPath != null ? zkPath.hashCode() : 0);
-            return result;
+            return Objects.hash(exhibitorAddress, exhibitorPort, zkAddress, zkPath);
         }
 
         @Override
         public String toString() {
-            return "KafkaConfiguration{" +
-                    "zkAddress='" + zkAddress + '\'' +
-                    ", zkPath='" + zkPath + '\'' +
-                    '}';
+            final StringBuilder sb = new StringBuilder("KafkaConfiguration{");
+            sb.append("exhibitorAddress='").append(exhibitorAddress).append('\'');
+            sb.append(", exhibitorPort=").append(exhibitorPort);
+            sb.append(", zkAddress='").append(zkAddress).append('\'');
+            sb.append(", zkPath='").append(zkPath).append('\'');
+            sb.append('}');
+            return sb.toString();
         }
     }
 
@@ -152,4 +180,5 @@ public class Storage {
                 ", configuration=" + configuration +
                 '}';
     }
+
 }

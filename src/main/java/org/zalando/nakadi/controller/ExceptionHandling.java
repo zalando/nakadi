@@ -10,10 +10,12 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.TimelineException;
+import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.problem.Problem;
@@ -78,8 +80,7 @@ public final class ExceptionHandling implements ProblemHandling {
 
     @ExceptionHandler
     public ResponseEntity<Problem> handleExceptionWrapper(final NakadiRuntimeException exception,
-                                                          final NativeWebRequest request) throws Exception
-    {
+                                                          final NativeWebRequest request) throws Exception {
         final Throwable cause = exception.getCause();
         if (cause instanceof NakadiException) {
             final NakadiException ne = (NakadiException) cause;
@@ -101,4 +102,24 @@ public final class ExceptionHandling implements ProblemHandling {
         LOG.error("Unexpected problem occurred", exception);
         return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
     }
+
+    @ExceptionHandler(TimelineException.class)
+    public ResponseEntity<Problem> handleTimelineException(final TimelineException exception,
+                                                           final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        final Throwable cause = exception.getCause();
+        if (cause instanceof NakadiException) {
+            final NakadiException ne = (NakadiException) cause;
+            return Responses.create(ne.asProblem(), request);
+        }
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(TopicCreationException.class)
+    public ResponseEntity<Problem> handleTopicCreationException(final TopicCreationException exception,
+                                                                final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
 }

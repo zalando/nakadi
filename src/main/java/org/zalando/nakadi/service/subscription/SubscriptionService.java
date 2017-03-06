@@ -37,13 +37,16 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
 
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -60,18 +63,18 @@ public class SubscriptionService {
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
     private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
                                final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
-                               final TopicRepository topicRepository,
+                               final TimelineService timelineService,
                                final EventTypeRepository eventTypeRepository,
                                final SubscriptionValidationService subscriptionValidationService) {
         this.subscriptionRepository = subscriptionRepository;
         this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
         this.subscriptionValidationService = subscriptionValidationService;
     }
@@ -186,11 +189,11 @@ public class SubscriptionService {
                 .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
-        final Set<String> topics = eventTypes.stream()
-                .map(EventType::getTopic)
-                .collect(Collectors.toSet());
-
-        final List<PartitionStatistics> topicPartitions = topicRepository.loadTopicStatistics(topics);
+        final List<PartitionStatistics> topicPartitions = new ArrayList<>();
+        for (final EventType eventType : eventTypes) {
+            final TopicRepository tp = timelineService.getTopicRepository(eventType);
+            topicPartitions.addAll(tp.loadTopicStatistics(Collections.singletonList(eventType.getTopic())));
+        }
 
         return eventTypes.stream()
                 .map(eventType -> {

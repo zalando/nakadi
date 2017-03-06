@@ -1245,6 +1245,135 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /event-types/{name}/timelines:
+    post:
+      tags:
+        - timelines-api
+      description: |
+        Creates a new timeline for an event type and makes it active.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType
+          type: string
+          required: true
+        - name: timeline_request
+          in: body
+          schema:
+            description: Storage id to be used for timeline creation
+            type: object
+            properties:
+              storage_id:
+                type: string
+            required:
+              - storage_id
+          required: true
+      responses:
+        '201':
+          description: New timeline is created and in use
+        '404':
+          description: No such event type
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable entity due to non existing storage
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+    get:
+      tags:
+        - timelines-api
+      description: |
+        List timelines for a given event type.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType to list timelines for.
+          type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: list of timelines.
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                event_type:
+                  type: string
+                order:
+                  type: integer
+                storage_id:
+                  type: string
+                topic:
+                  type: string
+                created_at:
+                  type: string
+                  format: date-time
+                switched_at:
+                  type: string
+                  format: date-time
+                cleaned_up_at:
+                  type: string
+                  format: date-time
+                latest_position:
+                  type: object
+        '404':
+          description: No such event type
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
+  /event-types/{name}/timelines/{id}:
+    delete:
+      tags:
+        - timelines-api
+      description: |
+        Deletes a timeline if there is only one timeline.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+        to be able to access this endpoint.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType.
+          type: string
+          required: true
+        - name: id
+          in: path
+          description: timeline id
+          type: string
+          format: uuid
+          required: true
+      responses:
+        '200':
+          description: Timeline was deleted
+        '404':
+          description: No such event type or timeline id
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: could not delete timeline, because there is more than one timeline
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
 # ################################### #
 #                                     #
 #             Definitions             #
@@ -1269,15 +1398,18 @@ definitions:
         description: configuration settings for kafka storage. Only necessary if the storage type is 'kafka'
         type: object
         properties:
+          exhibitor_address:
+            description: the Zookeeper address
+            type: string
+          exhibitor_port:
+            description: the Zookeeper path
+            type: string
           zk_address:
             description: the Zookeeper address
             type: string
           zk_path:
             description: the Zookeeper path
             type: string
-        required:
-          - zk_address
-          - zk_path
     required:
       - id
       - storage_type

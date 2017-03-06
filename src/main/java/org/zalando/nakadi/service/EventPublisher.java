@@ -22,9 +22,9 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
-import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
@@ -43,20 +43,20 @@ public class EventPublisher {
 
     private final NakadiSettings nakadiSettings;
 
-    private final TopicRepository topicRepository;
+    private final TimelineService timelineService;
     private final EventTypeCache eventTypeCache;
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
 
     @Autowired
-    public EventPublisher(final TopicRepository topicRepository,
+    public EventPublisher(final TimelineService timelineService,
                           final EventTypeCache eventTypeCache,
                           final PartitionResolver partitionResolver,
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync) {
-        this.topicRepository = topicRepository;
+        this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
@@ -157,8 +157,7 @@ public class EventPublisher {
     }
 
     private void submit(final List<BatchItem> batch, final EventType eventType) throws EventPublishingException {
-        // there is no need to group by partition since its already done by kafka client
-        topicRepository.syncPostBatch(eventType.getTopic(), batch);
+        timelineService.getTopicRepository(eventType).syncPostBatch(eventType.getTopic(), batch);
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,
