@@ -26,14 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
-import org.zalando.nakadi.util.FeatureToggleService;
+
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -62,6 +55,66 @@ public class EventStreamTest {
         when(featureToggleService.isFeatureEnabled(eq(FeatureToggleService.Feature.ZERO_PADDED_OFFSETS)))
                 .thenReturn(true);
         cursorConverter = new CursorConverter(featureToggleService);
+    }
+
+    private static NakadiKafkaConsumer emptyConsumer() throws NakadiException {
+        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+        when(nakadiKafkaConsumer.readEvent()).thenReturn(empty());
+        return nakadiKafkaConsumer;
+    }
+
+    private static NakadiKafkaConsumer endlessDummyConsumerForPartition(final String partition) throws NakadiException {
+        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+        when(nakadiKafkaConsumer.readEvent())
+                .thenReturn(Optional.of(new ConsumedEvent(DUMMY, new NakadiCursor(TOPIC, partition, "0"))));
+        return nakadiKafkaConsumer;
+    }
+
+    private static NakadiKafkaConsumer nCountDummyConsumerForPartition(final int eventNum, final String partition)
+            throws NakadiException {
+        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+        final AtomicInteger eventsToCreate = new AtomicInteger(eventNum);
+        when(nakadiKafkaConsumer.readEvent()).thenAnswer(invocation -> {
+            if (eventsToCreate.get() > 0) {
+                eventsToCreate.set(eventsToCreate.get() - 1);
+                return Optional.of(new ConsumedEvent(DUMMY, new NakadiCursor(TOPIC, partition, "0")));
+            } else {
+                return empty();
+            }
+        });
+        return nakadiKafkaConsumer;
+    }
+
+    private static NakadiKafkaConsumer predefinedConsumer(final Queue<ConsumedEvent> events)
+            throws NakadiException {
+        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
+        when(nakadiKafkaConsumer.readEvent()).thenAnswer(invocation -> Optional.ofNullable(events.poll()));
+        return nakadiKafkaConsumer;
+    }
+
+    private static NakadiKafkaConsumer endlessDummyConsumer() throws NakadiException {
+        return endlessDummyConsumerForPartition("0");
+    }
+
+    private static String jsonBatch(final String partition, final String offset,
+                                    final Optional<List<String>> eventsOrNone) {
+        return jsonBatch(partition, offset, eventsOrNone, Optional.empty());
+    }
+
+    private static String jsonBatch(final String partition, final String offset,
+                                    final Optional<List<String>> eventsOrNone, final Optional<String> metadata) {
+        final String eventsStr = eventsOrNone
+                .map(events -> {
+                    final StringBuilder builder = new StringBuilder(",\"events\":[");
+                    events.forEach(event -> builder.append("\"").append(event).append("\","));
+                    builder.deleteCharAt(builder.length() - 1).append("]");
+                    return builder.toString();
+                })
+                .orElse("");
+        final String metadataStr = metadata.map(m -> ",\"metadata\":{\"debug\":\"" + m + "\"}").orElse("");
+
+        return String.format("{\"cursor\":{\"partition\":\"%s\",\"offset\":\"%s\"}%s%s}", partition, offset, eventsStr,
+                metadataStr);
     }
 
     @Test(timeout = 15000)
@@ -109,7 +162,7 @@ public class EventStreamTest {
         thread.start();
 
         Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-        waitFor(()-> Assert.assertTrue(thread.isAlive()));
+        waitFor(() -> Assert.assertTrue(thread.isAlive()));
 
         // simulation of client closing the connection using crutch
         streamOpen.set(false);
@@ -288,66 +341,6 @@ public class EventStreamTest {
         assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
         assertThat(batches[1], sameJSONAs(jsonBatch("1", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
         assertThat(batches[2], sameJSONAs(jsonBatch("2", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
-    }
-
-    private static NakadiKafkaConsumer emptyConsumer() throws NakadiException {
-        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
-        when(nakadiKafkaConsumer.readEvent()).thenReturn(empty());
-        return nakadiKafkaConsumer;
-    }
-
-    private static NakadiKafkaConsumer endlessDummyConsumerForPartition(final String partition) throws NakadiException {
-        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
-        when(nakadiKafkaConsumer.readEvent())
-                .thenReturn(Optional.of(new ConsumedEvent(DUMMY, new NakadiCursor(TOPIC, partition, "0"))));
-        return nakadiKafkaConsumer;
-    }
-
-    private static NakadiKafkaConsumer nCountDummyConsumerForPartition(final int eventNum, final String partition)
-            throws NakadiException {
-        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
-        final AtomicInteger eventsToCreate = new AtomicInteger(eventNum);
-        when(nakadiKafkaConsumer.readEvent()).thenAnswer(invocation -> {
-            if (eventsToCreate.get() > 0) {
-                eventsToCreate.set(eventsToCreate.get() - 1);
-                return Optional.of(new ConsumedEvent(DUMMY, new NakadiCursor(TOPIC, partition, "0")));
-            } else {
-                return empty();
-            }
-        });
-        return nakadiKafkaConsumer;
-    }
-
-    private static NakadiKafkaConsumer predefinedConsumer(final Queue<ConsumedEvent> events)
-            throws NakadiException {
-        final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
-        when(nakadiKafkaConsumer.readEvent()).thenAnswer(invocation -> Optional.ofNullable(events.poll()));
-        return nakadiKafkaConsumer;
-    }
-
-    private static NakadiKafkaConsumer endlessDummyConsumer() throws NakadiException {
-        return endlessDummyConsumerForPartition("0");
-    }
-
-    private static String jsonBatch(final String partition, final String offset,
-                                    final Optional<List<String>> eventsOrNone) {
-        return jsonBatch(partition, offset, eventsOrNone, Optional.empty());
-    }
-
-    private static String jsonBatch(final String partition, final String offset,
-                                    final Optional<List<String>> eventsOrNone, final Optional<String> metadata) {
-        final String eventsStr = eventsOrNone
-                .map(events -> {
-                    final StringBuilder builder = new StringBuilder(",\"events\":[");
-                    events.forEach(event -> builder.append("\"").append(event).append("\","));
-                    builder.deleteCharAt(builder.length() - 1).append("]");
-                    return builder.toString();
-                })
-                .orElse("");
-        final String metadataStr = metadata.map(m -> ",\"metadata\":{\"debug\":\"" + m + "\"}").orElse("");
-
-        return String.format("{\"cursor\":{\"partition\":\"%s\",\"offset\":\"%s\"}%s%s}", partition, offset, eventsStr,
-                metadataStr);
     }
 
 }

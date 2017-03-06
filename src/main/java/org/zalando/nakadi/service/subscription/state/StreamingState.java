@@ -13,7 +13,6 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.view.SubscriptionCursor;
 
-import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,13 +30,13 @@ import java.util.stream.Stream;
 
 
 class StreamingState extends State {
-    private ZKSubscription topologyChangeSubscription;
-    private Consumer<String, String> kafkaConsumer;
     private final Map<Partition.PartitionKey, PartitionData> offsets = new HashMap<>();
     // Maps partition barrier when releasing must be completed or stream will be closed.
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<Partition.PartitionKey, Long> releasingPartitions = new HashMap<>();
+    private ZKSubscription topologyChangeSubscription;
+    private Consumer<String, String> kafkaConsumer;
     private boolean pollPaused;
     private long lastCommitMillis;
     private long committedEvents;
