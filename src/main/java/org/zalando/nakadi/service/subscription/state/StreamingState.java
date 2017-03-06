@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +39,8 @@ class StreamingState extends State {
     private long committedEvents;
     private long sentEvents;
     private long batchesSent;
+    // Uncommitted offsets are calculated right on exiting from Streaming state.
+    private Map<Partition.PartitionKey, Long> uncommittedOffsets;
 
     @Override
     public void onEnter() {
@@ -85,17 +88,18 @@ class StreamingState extends State {
                 .ifPresent(pk -> flushData(pk.getKey(), new TreeMap<>(), Optional.of(metadata)));
     }
 
+    private long getLastCommitMillis() {
+        return lastCommitMillis;
+    }
+
+    private Map<Partition.PartitionKey, Long> getUncommittedOffsets() {
+        Preconditions.checkNotNull(uncommittedOffsets, "uncommittedOffsets should not be null on time of call");
+        return uncommittedOffsets;
+    }
+
     private void shutdownGracefully(final String reason) {
         getLog().info("Shutting down gracefully. Reason: {}", reason);
-
-        final Map<Partition.PartitionKey, Long> uncommitted = offsets.entrySet().stream()
-                .filter(e -> !e.getValue().isCommitted())
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
-        if (uncommitted.isEmpty()) {
-            switchState(new CleanupState());
-        } else {
-            switchState(new ClosingState(uncommitted, lastCommitMillis));
-        }
+        switchState(new ClosingState(this::getUncommittedOffsets, this::getLastCommitMillis));
     }
 
     private void pollDataFromKafka() {
@@ -222,6 +226,10 @@ class StreamingState extends State {
 
     @Override
     public void onExit() {
+        uncommittedOffsets = offsets.entrySet().stream()
+                .filter(e -> !e.getValue().isCommitted())
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
+
         if (null != topologyChangeSubscription) {
             try {
                 topologyChangeSubscription.cancel();
