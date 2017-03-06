@@ -26,7 +26,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
+import org.zalando.nakadi.util.FeatureToggleService;
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
 import static org.hamcrest.MatcherAssert.assertThat;
