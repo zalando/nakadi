@@ -8,6 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.boot.test.WebIntegrationTest;
@@ -29,7 +30,6 @@ import org.springframework.web.context.WebApplicationContext;
 import org.zalando.nakadi.Application;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -39,7 +39,6 @@ import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
-import org.zalando.nakadi.repository.tool.DefaultStorage;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.EventPublisher;
@@ -52,7 +51,6 @@ import org.zalando.nakadi.util.UUIDGenerator;
 import javax.annotation.PostConstruct;
 import javax.servlet.Filter;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.isOneOf;
@@ -218,11 +216,14 @@ public abstract class AuthenticationTest {
         }
 
         @Bean
-        public DefaultStorage defaultStorage() throws InternalNakadiException {
-            final StorageDbRepository storageDbRepository = mock(StorageDbRepository.class);
-            when(storageDbRepository.getStorage("default")).thenReturn(Optional.of(new Storage()));
-            final DefaultStorage defaultStorage = new DefaultStorage(storageDbRepository, environment);
-            return defaultStorage;
+        @Qualifier("default_storage")
+        public Storage defaultStorage() {
+            return mock(Storage.class);
+        }
+
+        @Bean
+        public StorageDbRepository storageDbRepository() {
+            return mock(StorageDbRepository.class);
         }
 
     }

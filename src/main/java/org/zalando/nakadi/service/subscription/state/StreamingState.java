@@ -1,6 +1,19 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.codahale.metrics.Meter;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Preconditions;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.metrics.MetricUtils;
+import org.zalando.nakadi.service.EventStream;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.domain.Timeline;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,34 +28,35 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.service.EventStream;
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
-import org.zalando.nakadi.view.SubscriptionCursor;
 
 
 class StreamingState extends State {
-    private ZKSubscription topologyChangeSubscription;
-    private Consumer<String, String> kafkaConsumer;
     private final Map<Partition.PartitionKey, PartitionData> offsets = new HashMap<>();
     // Maps partition barrier when releasing must be completed or stream will be closed.
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<Partition.PartitionKey, Long> releasingPartitions = new HashMap<>();
+    private ZKSubscription topologyChangeSubscription;
+    private Consumer<String, String> kafkaConsumer;
     private boolean pollPaused;
     private long lastCommitMillis;
     private long committedEvents;
     private long sentEvents;
     private long batchesSent;
+    private Meter bytesSentMeter;
+    // Uncommitted offsets are calculated right on exiting from Streaming state.
+    private Map<Partition.PartitionKey, Long> uncommittedOffsets;
 
     @Override
     public void onEnter() {
-        // Create kafka consumer
+        final String kafkaFlushedBytesMetricName = MetricUtils.metricNameForHiLAStream(
+                this.getContext().getParameters().getConsumingAppId(),
+                this.getContext().getSubscriptionId()
+        );
+        bytesSentMeter = this.getContext().getMetricRegistry().meter(kafkaFlushedBytesMetricName);
+
         this.kafkaConsumer = getKafka().createKafkaConsumer();
+
         // Subscribe for topology changes.
         this.topologyChangeSubscription = getZk().subscribeForTopologyChanges(() -> addTask(this::topologyChanged));
         // and call directly
@@ -85,17 +99,18 @@ class StreamingState extends State {
                 .ifPresent(pk -> flushData(pk.getKey(), new TreeMap<>(), Optional.of(metadata)));
     }
 
+    private long getLastCommitMillis() {
+        return lastCommitMillis;
+    }
+
+    private Map<Partition.PartitionKey, Long> getUncommittedOffsets() {
+        Preconditions.checkNotNull(uncommittedOffsets, "uncommittedOffsets should not be null on time of call");
+        return uncommittedOffsets;
+    }
+
     private void shutdownGracefully(final String reason) {
         getLog().info("Shutting down gracefully. Reason: {}", reason);
-
-        final Map<Partition.PartitionKey, Long> uncommitted = offsets.entrySet().stream()
-                .filter(e -> !e.getValue().isCommitted())
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
-        if (uncommitted.isEmpty()) {
-            switchState(new CleanupState());
-        } else {
-            switchState(new ClosingState(uncommitted, lastCommitMillis));
-        }
+        switchState(new ClosingState(this::getUncommittedOffsets, this::getLastCommitMillis));
     }
 
     private void pollDataFromKafka() {
@@ -186,7 +201,10 @@ class StreamingState extends State {
         try {
             final long numberOffset = offsets.get(pk).getSentOffset();
             final String batch = serializeBatch(pk, numberOffset, new ArrayList<>(data.values()), metadata);
-            getOut().streamData(batch.getBytes(EventStream.UTF8));
+
+            final byte[] batchBytes = batch.getBytes(EventStream.UTF8);
+            getOut().streamData(batchBytes);
+            bytesSentMeter.mark(batchBytes.length);
             batchesSent++;
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
@@ -198,11 +216,10 @@ class StreamingState extends State {
                                   final List<String> events, final Optional<String> metadata)
             throws JsonProcessingException {
 
-        final String eventType = getContext().getEventTypesForTopics().get(partitionKey.getTopic());
+        final Timeline timeline = getContext().getTimelinesForTopics().get(partitionKey.getTopic());
         final String token = getContext().getCursorTokenService().generateToken();
         final SubscriptionCursor cursor = getContext().getCursorConverter().convert(
-                partitionKey.createKafkaCursor(offset).toNakadiCursor(),
-                eventType,
+                partitionKey.createKafkaCursor(offset).toNakadiCursor(timeline),
                 token);
         final String cursorSerialized = getContext().getObjectMapper().writeValueAsString(cursor);
 
@@ -222,6 +239,10 @@ class StreamingState extends State {
 
     @Override
     public void onExit() {
+        uncommittedOffsets = offsets.entrySet().stream()
+                .filter(e -> !e.getValue().isCommitted())
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSentOffset()));
+
         if (null != topologyChangeSubscription) {
             try {
                 topologyChangeSubscription.cancel();

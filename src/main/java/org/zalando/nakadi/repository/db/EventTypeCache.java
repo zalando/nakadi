@@ -4,6 +4,17 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -21,18 +32,6 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.EventValidation;
-
-import javax.annotation.Nullable;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 public class EventTypeCache {
 
@@ -95,14 +94,18 @@ public class EventTypeCache {
         final long start = System.currentTimeMillis();
         rwLock.writeLock().lock();
         try {
-            final Map<String, List<Timeline>> eventTypeTimelines = timelineRepository.listTimelines().stream()
+            final Map<String, List<Timeline>> eventTypeTimelines = timelineRepository.listTimelinesOrdered().stream()
                     .collect(Collectors.groupingBy(Timeline::getEventType));
+            final List<Timeline> emptyList = ImmutableList.of();
             final Map<String, CachedValue> preloaded = eventTypeRepository.list().stream().collect(Collectors.toMap(
                     EventType::getName,
-                    et -> new CachedValue(et, EventValidation.forType(et), eventTypeTimelines.get(et.getName()))
+                    et -> new CachedValue(
+                            et,
+                            EventValidation.forType(et),
+                            eventTypeTimelines.getOrDefault(et.getName(), emptyList))
             ));
             final Iterator<Map.Entry<String, CachedValue>> it = preloaded.entrySet().iterator();
-             while (it.hasNext()) {
+            while (it.hasNext()) {
                 String eventTypeName = null;
                 try {
                     eventTypeName = it.next().getKey();
@@ -175,18 +178,21 @@ public class EventTypeCache {
 
     public Optional<Timeline> getActiveTimeline(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
-        final List<Timeline> timelines = getTimelines(name);
+        final List<Timeline> timelines = getTimelinesOrdered(name);
         if (timelines == null) {
             return Optional.empty();
         }
-
-        return timelines.stream()
-                .filter(t -> t.getSwitchedAt() != null)
-                .max(Comparator.comparing(Timeline::getOrder));
+        final ListIterator<Timeline> rIterator = timelines.listIterator(timelines.size());
+        while (rIterator.hasPrevious()) {
+            final Timeline toCheck = rIterator.previous();
+            if (toCheck.getSwitchedAt() != null) {
+                return Optional.of(toCheck);
+            }
+        }
+        return Optional.empty();
     }
 
-    @Nullable
-    public List<Timeline> getTimelines(final String name) throws InternalNakadiException,
+    public List<Timeline> getTimelinesOrdered(final String name) throws InternalNakadiException,
             NoSuchEventTypeException {
         return getCached(name)
                 .orElseThrow(() -> new NoSuchEventTypeException("Event type " + name + " does not exists"))
@@ -215,7 +221,7 @@ public class EventTypeCache {
         final CacheLoader<String, CachedValue> loader = new CacheLoader<String, CachedValue>() {
             public CachedValue load(final String key) throws Exception {
                 final EventType eventType = eventTypeRepository.findByName(key);
-                final List<Timeline> timelines = timelineRepository.listTimelines(key);
+                final List<Timeline> timelines = timelineRepository.listTimelinesOrdered(key);
                 timelineRegistrations.computeIfAbsent(key, n ->
                         timelineSync.registerTimelineChangeListener(n, (etName) -> eventTypeCache.invalidate(etName)));
                 return new CachedValue(eventType, EventValidation.forType(eventType), timelines);
@@ -234,9 +240,9 @@ public class EventTypeCache {
         private final EventTypeValidator eventTypeValidator;
         private final List<Timeline> timelines;
 
-        public CachedValue(final EventType eventType,
-                           final EventTypeValidator eventTypeValidator,
-                           @Nullable final List<Timeline> timelines) {
+        CachedValue(final EventType eventType,
+                    final EventTypeValidator eventTypeValidator,
+                    final List<Timeline> timelines) {
             this.eventType = eventType;
             this.eventTypeValidator = eventTypeValidator;
             this.timelines = timelines;
@@ -250,7 +256,6 @@ public class EventTypeCache {
             return eventTypeValidator;
         }
 
-        @Nullable
         public List<Timeline> getTimelines() {
             return timelines;
         }

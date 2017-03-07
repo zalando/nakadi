@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.codahale.metrics.Meter;
 import com.google.common.collect.Lists;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
@@ -33,17 +34,19 @@ public class EventStream {
     private final EventStreamConfig config;
     private final BlacklistService blacklistService;
     private final CursorConverter cursorConverter;
+    private final Meter bytesFlushedMeter;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
                        final BlacklistService blacklistService,
-                       final CursorConverter cursorConverter) {
+                       final CursorConverter cursorConverter, final Meter bytesFlushedMeter) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
         this.blacklistService = blacklistService;
         this.cursorConverter = cursorConverter;
+        this.bytesFlushedMeter = bytesFlushedMeter;
     }
 
     public void streamEvents(final AtomicBoolean connectionReady) {
@@ -159,7 +162,9 @@ public class EventStream {
         // create stream event batch for current partition and send it; if there were
         // no events, it will be just a keep-alive
         final String streamEvent = createStreamEvent(cursorConverter.convert(topicPosition), currentBatch);
-        outputStream.write(streamEvent.getBytes(UTF8));
+        final byte[] batchBytes = streamEvent.getBytes(UTF8);
+        outputStream.write(batchBytes);
+        bytesFlushedMeter.mark(batchBytes.length);
         outputStream.flush();
     }
 

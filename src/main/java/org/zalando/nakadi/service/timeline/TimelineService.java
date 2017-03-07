@@ -1,8 +1,15 @@
 package org.zalando.nakadi.service.timeline;
 
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -32,17 +39,10 @@ import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.UUIDGenerator;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 @Service
 public class TimelineService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TimelineService.class);
-    private static final String DEFAULT_STORAGE = "default";
 
     private final SecuritySettings securitySettings;
     private final EventTypeCache eventTypeCache;
@@ -53,6 +53,7 @@ public class TimelineService {
     private final TopicRepositoryHolder topicRepositoryHolder;
     private final TransactionTemplate transactionTemplate;
     private final UUIDGenerator uuidGenerator;
+    private final Storage defaultStorage;
 
     @Autowired
     public TimelineService(final SecuritySettings securitySettings,
@@ -63,7 +64,8 @@ public class TimelineService {
                            final TimelineDbRepository timelineDbRepository,
                            final TopicRepositoryHolder topicRepositoryHolder,
                            final TransactionTemplate transactionTemplate,
-                           final UUIDGenerator uuidGenerator) {
+                           final UUIDGenerator uuidGenerator,
+                           @Qualifier("default_storage") final Storage defaultStorage) {
         this.securitySettings = securitySettings;
         this.eventTypeCache = eventTypeCache;
         this.storageDbRepository = storageDbRepository;
@@ -73,6 +75,7 @@ public class TimelineService {
         this.topicRepositoryHolder = topicRepositoryHolder;
         this.transactionTemplate = transactionTemplate;
         this.uuidGenerator = uuidGenerator;
+        this.defaultStorage = defaultStorage;
     }
 
     public void createTimeline(final String eventTypeName, final String storageId, final Client client)
@@ -90,7 +93,7 @@ public class TimelineService {
                     topicRepositoryHolder.getTopicRepository(activeTimeline.getStorage());
             final TopicRepository nextTopicRepo = topicRepositoryHolder.getTopicRepository(storage);
             final List<PartitionStatistics> partitionStatistics =
-                    currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline.getTopic()));
+                    currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline));
 
             final Timeline nextTimeline;
             if (activeTimeline.isFake()) {
@@ -111,6 +114,24 @@ public class TimelineService {
         }
     }
 
+    /**
+     * Returns list of ACTIVE timelines for event type.
+     *
+     * @param eventType
+     * @return list of active timelines. List is always NOT empty! At least fake timeline present there.
+     * @throws InternalNakadiException  everything can happen
+     * @throws NoSuchEventTypeException No such event type
+     */
+    public List<Timeline> getActiveTimelinesOrdered(final String eventType)
+            throws InternalNakadiException, NoSuchEventTypeException {
+        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventType);
+        if (timelines.isEmpty()) {
+            return Collections.singletonList(getFakeTimeline(eventTypeCache.getEventType(eventType)));
+        } else {
+            return timelines.stream().filter(t -> t.getSwitchedAt() != null).collect(Collectors.toList());
+        }
+    }
+
     public Timeline getTimeline(final EventTypeBase eventType) throws TimelineException {
         try {
             final String eventTypeName = eventType.getName();
@@ -119,14 +140,15 @@ public class TimelineService {
                 return activeTimeline.get();
             }
 
-            final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
-                    .orElseThrow(() -> new UnableProcessException("Fake timeline creation failed for event type " +
-                            eventType.getName() + ".No default storage defined"));
-            return Timeline.createFakeTimeline(eventType, storage);
+            return Timeline.createFakeTimeline(eventType, defaultStorage);
         } catch (final NakadiException e) {
             LOG.error("Failed to get timeline for event type {}", eventType.getName(), e);
             throw new TimelineException("Failed to get timeline", e);
         }
+    }
+
+    public Timeline getFakeTimeline(final EventType eventType) {
+        return Timeline.createFakeTimeline(eventType, defaultStorage);
     }
 
     public TopicRepository getTopicRepository(final EventTypeBase eventType)
@@ -135,15 +157,12 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
+    public TopicRepository getTopicRepository(final Timeline timeline) {
+        return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
+    }
+
     public TopicRepository getDefaultTopicRepository() throws TopicRepositoryException {
-        try {
-            final Storage storage = storageDbRepository.getStorage(DEFAULT_STORAGE)
-                    .orElseThrow(() -> new UnableProcessException("No default storage defined"));
-            return topicRepositoryHolder.getTopicRepository(storage);
-        } catch (final InternalNakadiException e) {
-            LOG.error("Failed to get default topic repository", e);
-            throw new TopicRepositoryException("Failed to get timeline", e);
-        }
+        return topicRepositoryHolder.getTopicRepository(defaultStorage);
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline) {
@@ -194,7 +213,7 @@ public class TimelineService {
         }
 
         final UUID uuid = uuidGenerator.fromString(timelineId);
-        final List<Timeline> timelines = timelineDbRepository.listTimelines(eventType.getName());
+        final List<Timeline> timelines = timelineDbRepository.listTimelinesOrdered(eventType.getName());
         if (timelines.size() == 1) {
             final Timeline activeTimeline = timelines.get(0);
             if (activeTimeline.getId().equals(uuid)) {
@@ -246,7 +265,7 @@ public class TimelineService {
 
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            return timelineDbRepository.listTimelines(eventType.getName());
+            return timelineDbRepository.listTimelinesOrdered(eventType.getName());
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
         } catch (final InternalNakadiException e) {

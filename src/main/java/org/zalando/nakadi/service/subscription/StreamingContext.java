@@ -1,12 +1,23 @@
 package org.zalando.nakadi.service.subscription;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
-import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
@@ -15,15 +26,6 @@ import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.state.State;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
-
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
-import java.util.stream.Stream;
 
 public class StreamingContext implements SubscriptionStreamer {
 
@@ -36,7 +38,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final SubscriptionOutput out;
     private final long kafkaPollTimeout;
     private final AtomicBoolean connectionReady;
-    private final Map<String, String> eventTypesForTopics;
+    private final Map<String, Timeline> timelinesForTopics;
     private final CursorTokenService cursorTokenService;
     private final ObjectMapper objectMapper;
     private final BlacklistService blacklistService;
@@ -45,6 +47,8 @@ public class StreamingContext implements SubscriptionStreamer {
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
     private final String loggingPath;
     private final CursorConverter cursorConverter;
+    private final String subscriptionId;
+    private final MetricRegistry metricRegistry;
     private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
 
@@ -62,11 +66,13 @@ public class StreamingContext implements SubscriptionStreamer {
         this.loggingPath = builder.loggingPath + ".stream";
         this.log = LoggerFactory.getLogger(builder.loggingPath);
         this.connectionReady = builder.connectionReady;
-        this.eventTypesForTopics = builder.eventTypesForTopics;
+        this.timelinesForTopics = builder.timelinesForTopics;
         this.cursorTokenService = builder.cursorTokenService;
         this.objectMapper = builder.objectMapper;
         this.blacklistService = builder.blacklistService;
         this.cursorConverter = builder.cursorConverter;
+        this.subscriptionId = builder.subscriptionId;
+        this.metricRegistry = builder.metricRegistry;
     }
 
     public StreamParameters getParameters() {
@@ -95,6 +101,14 @@ public class StreamingContext implements SubscriptionStreamer {
 
     public CursorConverter getCursorConverter() {
         return cursorConverter;
+    }
+
+    public String getSubscriptionId() {
+        return subscriptionId;
+    }
+
+    public MetricRegistry getMetricRegistry() {
+        return  metricRegistry;
     }
 
     @Override
@@ -179,12 +193,13 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isSubscriptionConsumptionBlocked() {
-        return blacklistService.isSubscriptionConsumptionBlocked(eventTypesForTopics.values(), parameters
-                .getConsumingAppId());
+        return blacklistService.isSubscriptionConsumptionBlocked(
+                timelinesForTopics.values().stream().map(Timeline::getEventType).collect(Collectors.toList()),
+                parameters.getConsumingAppId());
     }
 
-    public Map<String, String> getEventTypesForTopics() {
-        return eventTypesForTopics;
+    public Map<String, Timeline> getTimelinesForTopics() {
+        return timelinesForTopics;
     }
 
     public CursorTokenService getCursorTokenService() {
@@ -219,11 +234,13 @@ public class StreamingContext implements SubscriptionStreamer {
         private long kafkaPollTimeout;
         private String loggingPath;
         private AtomicBoolean connectionReady;
-        private Map<String, String> eventTypesForTopics;
+        private Map<String, Timeline> timelinesForTopics;
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
         private BlacklistService blacklistService;
         private CursorConverter cursorConverter;
+        private String subscriptionId;
+        private MetricRegistry metricRegistry;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -275,8 +292,8 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setEventTypesForTopics(final Map<String, String> eventTypesForTopics) {
-            this.eventTypesForTopics = eventTypesForTopics;
+        public Builder setEventTypesForTopics(final Map<String, Timeline> timelinesForTopics) {
+            this.timelinesForTopics = timelinesForTopics;
             return this;
         }
 
@@ -300,10 +317,19 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
+        public Builder setSubscriptionId(final String subscriptionId) {
+            this.subscriptionId = subscriptionId;
+            return this;
+        }
+
+        public Builder setMetricRegistry(final MetricRegistry metricRegistry) {
+            this.metricRegistry = metricRegistry;
+            return this;
+        }
+
         public StreamingContext build() {
             return new StreamingContext(this);
         }
-
     }
 
 }

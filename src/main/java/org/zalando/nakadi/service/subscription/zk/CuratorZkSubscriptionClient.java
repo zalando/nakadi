@@ -1,5 +1,13 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
 import org.apache.zookeeper.CreateMode;
@@ -10,15 +18,6 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
-
-import javax.annotation.Nullable;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private static final String STATE_INITIALIZED = "INITIALIZED";
@@ -44,23 +43,19 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
     @Override
     public void runLocked(final Runnable function) {
-        log.info("Taking lock for " + function.hashCode());
         try {
             Exception releaseException = null;
 
             lock.acquire();
-            log.debug("Lock taken " + function.hashCode());
             try {
                 function.run();
             } finally {
-                log.info("Releasing lock for " + function.hashCode());
                 try {
                     lock.release();
                 } catch (final Exception e) {
                     log.error("Failed to release lock", e);
                     releaseException = e;
                 }
-                log.debug("Lock released " + function.hashCode());
             }
             if (releaseException != null) {
                 throw releaseException;
@@ -117,7 +112,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public void fillEmptySubscription(final Map<Partition.PartitionKey, Long> partitionToOffset) {
+    public void fillEmptySubscription(final Map<Partition.PartitionKey, String> partitionOffsets) {
         try {
             log.info("Creating sessions root");
             if (null != curatorFramework.checkExists().forPath(getSubscriptionPath("/sessions"))) {
@@ -135,14 +130,14 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(getSubscriptionPath("/topics"));
 
             log.info("Creating partitions");
-            for (final Map.Entry<Partition.PartitionKey, Long> p : partitionToOffset.entrySet()) {
+            for (final Map.Entry<Partition.PartitionKey, String> p : partitionOffsets.entrySet()) {
                 final String partitionPath = getPartitionPath(p.getKey());
                 curatorFramework.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(
                         partitionPath,
                         serializeNode(null, null, Partition.State.UNASSIGNED));
                 curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(
                         partitionPath + "/offset",
-                        (String.valueOf(p.getValue())).getBytes(CHARSET));
+                        p.getValue().getBytes(CHARSET));
             }
             log.info("creating topology node");
             curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(getSubscriptionPath("/topology"),

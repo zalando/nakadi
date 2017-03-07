@@ -63,7 +63,7 @@ public class ZooKeeperHolder {
 
     private class ExhibitorEnsembleProvider extends org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider {
 
-        public ExhibitorEnsembleProvider(final Exhibitors exhibitors, final ExhibitorRestClient restClient,
+        ExhibitorEnsembleProvider(final Exhibitors exhibitors, final ExhibitorRestClient restClient,
                                          final String restUriPath, final int pollingMs, final RetryPolicy retryPolicy) {
             super(exhibitors, restClient, restUriPath, pollingMs, retryPolicy);
         }

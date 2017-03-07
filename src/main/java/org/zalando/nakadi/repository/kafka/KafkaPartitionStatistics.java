@@ -2,31 +2,35 @@ package org.zalando.nakadi.repository.kafka;
 
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Timeline;
 
 public class KafkaPartitionStatistics extends PartitionStatistics {
 
-    private final long firstOffset;
-    private final long lastOffset;
+    private final KafkaCursor first;
+    private final KafkaCursor last;
 
-    public KafkaPartitionStatistics(final String topic, final int partition, final long firstOffset,
+    public KafkaPartitionStatistics(final Timeline timeline, final int partition, final long firstOffset,
                                     final long lastOffset) {
-        super(topic, KafkaCursor.toNakadiPartition(partition));
-        this.firstOffset = firstOffset;
-        this.lastOffset = lastOffset;
+        super(timeline, KafkaCursor.toNakadiPartition(partition));
+        this.first = new KafkaCursor(timeline.getTopic(), partition, firstOffset);
+        this.last = new KafkaCursor(timeline.getTopic(), partition, lastOffset);
     }
 
     @Override
     public NakadiCursor getFirst() {
-        return new NakadiCursor(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(firstOffset));
+        // TODO: Support several timelines
+        return first.toNakadiCursor(getTimeline());
     }
 
     @Override
     public NakadiCursor getLast() {
-        return new NakadiCursor(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(lastOffset));
+        // TODO: Support several timelines
+        return last.toNakadiCursor(getTimeline());
     }
 
     @Override
     public NakadiCursor getBeforeFirst() {
-        return new NakadiCursor(getTopic(), getPartition(), KafkaCursor.toNakadiOffset(firstOffset - 1));
+        // TODO: Support several timelines
+        return first.addOffset(-1).toNakadiCursor(getTimeline());
     }
 }
