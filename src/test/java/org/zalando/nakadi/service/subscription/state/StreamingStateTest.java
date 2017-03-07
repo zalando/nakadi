@@ -1,21 +1,40 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.service.subscription.KafkaClient;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.StreamingContext;
+import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.view.SubscriptionCursor;
 
-import java.util.Collections;
-
+import static junit.framework.TestCase.fail;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class StreamingStateTest {
 
@@ -25,6 +44,8 @@ public class StreamingStateTest {
 
     private static final String SESSION_ID = "ssid";
     private MetricRegistry metricRegistry;
+
+    final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
 
     @Before
     public void prepareMocks() {
@@ -111,6 +132,145 @@ public class StreamingStateTest {
         Mockito.verify(zkMock, Mockito.times(1)).subscribeForOffsetChanges(Mockito.eq(pk), Mockito.any());
         Mockito.verify(offsetSubscription, Mockito.times(1)).cancel();
         Mockito.verify(offsetSubscription, Mockito.times(1)).refresh();
+    }
+
+    @Test
+    public void testWriteStreamBatch() {
+
+        final StreamingState state = new StreamingState();
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final Meter meter = mock(Meter.class);
+        final SubscriptionOutput so = new SubscriptionOutput() {
+            @Override public void onInitialized(String sessionId) throws IOException { }
+
+            @Override public void onException(Exception ex) {
+                fail(ex.getMessage());
+            }
+
+            @Override public void streamData(byte[] data) throws IOException {
+                baos.write(data);
+                baos.flush();
+            }
+        };
+
+        final SortedMap<Long, String> events = new TreeMap<>();
+        events.put(0L, "{\"a\":\"b\"}");
+        events.put(1L, "{\"c\":\"d\"}");
+        events.put(2L, "{\"e\":\"f\"}");
+
+        final String logline = "log-message";
+        final String partition = "12";
+        final String offset = "000000000000000023";
+        final String eventType = "et1";
+        final String cursorToken = "ct1";
+        final SubscriptionCursor cursor =
+            new SubscriptionCursor(partition, offset, eventType, cursorToken);
+
+        try {
+            state.writeStreamBatch(
+                events,
+                Optional.of(logline),
+                cursor,
+                so, mapper,
+                meter
+            );
+
+            final String json = baos.toString();
+
+            // there's only one newline and it's at the end
+            final int newlineCount = (json).replaceAll("[^\n]", "").length();
+            assertTrue(newlineCount == 1);
+            assertTrue(json.endsWith("\n"));
+
+            final Map<String, Object> batchM =
+                mapper.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {});
+
+            final Map<String, String> cursorM = (Map<String, String>) batchM.get("cursor");
+
+            assertEquals(partition, cursorM.get("partition"));
+            assertEquals(offset, cursorM.get("offset"));
+            assertEquals(eventType, cursorM.get("event_type"));
+            assertEquals(cursorToken, cursorM.get("cursor_token"));
+
+            final List<Map<String, String>> eventsM = (List<Map<String, String>>) batchM.get("events");
+            assertTrue(eventsM.size() == 3);
+
+            // check the order is preserved as well as the data via get
+            assertEquals("b", eventsM.get(0).get("a"));
+            assertEquals("d", eventsM.get(1).get("c"));
+            assertEquals("f", eventsM.get(2).get("e"));
+
+            verify(meter, times(1)).mark(anyInt());
+
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    @Test
+    public void testWriteStreamEventEmptyBatchProducesNoEventArray() {
+
+        final StreamingState state = new StreamingState();
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final Meter meter = mock(Meter.class);
+        final SubscriptionOutput so = new SubscriptionOutput() {
+            @Override public void onInitialized(String sessionId) throws IOException { }
+
+            @Override public void onException(Exception ex) {
+                fail(ex.getMessage());
+            }
+
+            @Override public void streamData(byte[] data) throws IOException {
+                baos.write(data);
+                baos.flush();
+            }
+        };
+
+        final SortedMap<Long, String> events = new TreeMap<>();
+        final String logline = "log-message";
+        final String partition = "12";
+        final String offset = "000000000000000023";
+        final String eventType = "et1";
+        final String cursorToken = "ct1";
+        final SubscriptionCursor cursor =
+            new SubscriptionCursor(partition, offset, eventType, cursorToken);
+
+        try {
+            state.writeStreamBatch(
+                events,
+                Optional.of(logline),
+                cursor,
+                so, mapper,
+                meter
+            );
+
+            final String json = baos.toString();
+
+            // there's only one newline and it's at the end
+            final int newlineCount = (json).replaceAll("[^\n]", "").length();
+            assertTrue(newlineCount == 1);
+            assertTrue(json.endsWith("\n"));
+
+            final Map<String, Object> batchM =
+                mapper.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {});
+
+            final Map<String, String> cursorM = (Map<String, String>) batchM.get("cursor");
+
+            assertEquals(partition, cursorM.get("partition"));
+            assertEquals(offset, cursorM.get("offset"));
+            assertEquals(eventType, cursorM.get("event_type"));
+            assertEquals(cursorToken, cursorM.get("cursor_token"));
+
+            final List<Map<String, String>> eventsM = (List<Map<String, String>>) batchM.get("events");
+            // did not write an empty batch
+            assertFalse(json.contains("\"events\""));
+            assertTrue(eventsM == null);
+
+            verify(meter, times(1)).mark(anyInt());
+
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
     }
 
 }
