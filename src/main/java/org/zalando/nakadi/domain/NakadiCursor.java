@@ -5,6 +5,7 @@ import java.util.Objects;
 
 public class NakadiCursor {
     public static final int VERSION_LENGTH = 3;
+
     public enum Version {
         ZERO("000"),
         ONE("001"),;
@@ -40,12 +41,24 @@ public class NakadiCursor {
         return timeline.getTopic();
     }
 
+    public String getEventType() {
+        return timeline.getEventType();
+    }
+
     public String getPartition() {
         return partition;
     }
 
     public String getOffset() {
         return offset;
+    }
+
+    public EventTypePartition getEventTypePartition() {
+        return new EventTypePartition(timeline.getEventType(), partition);
+    }
+
+    public TopicPartition getTopicPartition() {
+        return new TopicPartition(timeline.getTopic(), partition);
     }
 
     @Override

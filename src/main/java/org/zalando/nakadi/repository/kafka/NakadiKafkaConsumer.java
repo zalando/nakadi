@@ -2,8 +2,10 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.Lists;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -19,16 +21,16 @@ public class NakadiKafkaConsumer implements EventConsumer {
 
     private final Consumer<String, String> kafkaConsumer;
     private final long pollTimeout;
-    private final Timeline timeline;
+    private final Map<TopicPartition, Timeline> timelineMap;
 
     public NakadiKafkaConsumer(
             final Consumer<String, String> kafkaConsumer,
             final List<KafkaCursor> kafkaCursors,
-            final long pollTimeout,
-            final Timeline timeline) {
+            final Map<TopicPartition, Timeline> timelineMap,
+            final long pollTimeout) {
         this.kafkaConsumer = kafkaConsumer;
         this.pollTimeout = pollTimeout;
-        this.timeline = timeline;
+        this.timelineMap = timelineMap;
         eventQueue = Lists.newLinkedList();
         // define topic/partitions to consume from
         final List<TopicPartition> topicPartitions = kafkaCursors
@@ -51,16 +53,20 @@ public class NakadiKafkaConsumer implements EventConsumer {
     }
 
     @Override
+    public Set<org.zalando.nakadi.domain.TopicPartition> getAssignment() {
+        return kafkaConsumer.assignment().stream()
+                .map(tp -> new org.zalando.nakadi.domain.TopicPartition(
+                        tp.topic(),
+                        KafkaCursor.toNakadiPartition(tp.partition())))
+                .collect(Collectors.toSet());
+    }
+
+    @Override
     public Optional<ConsumedEvent> readEvent() {
         if (eventQueue.isEmpty()) {
             pollFromKafka();
         }
         return Optional.ofNullable(eventQueue.poll());
-    }
-
-    @Override
-    public Consumer<String, String> getConsumer() {
-        return kafkaConsumer;
     }
 
     @Override
@@ -74,6 +80,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
                 .stream(records.spliterator(), false)
                 .map(record -> {
                     final KafkaCursor cursor = new KafkaCursor(record.topic(), record.partition(), record.offset());
+                    final Timeline timeline = timelineMap.get(new TopicPartition(record.topic(), record.partition()));
                     return new ConsumedEvent(record.value(), cursor.toNakadiCursor(timeline));
                 })
                 .collect(Collectors.toCollection(Lists::newLinkedList));

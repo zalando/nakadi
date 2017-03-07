@@ -69,7 +69,7 @@ class VersionOneConverter implements VersionedConverter {
             );
         }
         final Timeline timeline = timelines.stream()
-                .filter(t -> t.getOrder().equals(order))
+                .filter(t -> t.getOrder() == order)
                 .findAny()
                 .orElseThrow(() -> new InvalidCursorException(CursorError.UNAVAILABLE));
         return new NakadiCursor(

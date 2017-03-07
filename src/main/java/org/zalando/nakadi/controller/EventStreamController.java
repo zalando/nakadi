@@ -177,7 +177,6 @@ public class EventStreamController {
                 client.checkScopes(eventType.getReadScopes());
 
                 // validate parameters
-                final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
                 final EventStreamConfig streamConfig = EventStreamConfig.builder()
                         .withBatchLimit(batchLimit)
                         .withStreamLimit(streamLimit)
@@ -205,9 +204,8 @@ public class EventStreamController {
 
                 response.setStatus(HttpStatus.OK.value());
                 response.setContentType("application/x-json-stream");
-                final EventConsumer eventConsumer = topicRepository.createEventConsumer(
-                        kafkaQuotaClientId,
-                        streamConfig.getCursors());
+                final EventConsumer eventConsumer = timelineService.createEventConsumer(
+                        kafkaQuotaClientId, streamConfig.getCursors());
 
                 final String bytesFlushedMetricName = MetricUtils.metricNameForLoLAStream(
                         client.getClientId(),
