@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import com.codahale.metrics.Meter;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import java.nio.charset.StandardCharsets;
 import org.apache.kafka.common.KafkaException;
@@ -205,7 +206,8 @@ public class EventStream {
         }
     }
 
-    private void writeStreamEvent(final OutputStream os, final Cursor cursor, final List<String> events)
+    @VisibleForTesting
+    void writeStreamEvent(final OutputStream os, final Cursor cursor, final List<String> events)
         throws IOException {
 
         int byteCount = B_FIXED_BYTE_COUNT;
