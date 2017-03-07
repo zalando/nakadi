@@ -192,7 +192,8 @@ public class EventStreamControllerTest {
                 .thenReturn(eventConsumerMock);
 
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(), eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(),
+            eq(featureToggleService)))
                 .thenReturn(eventStreamMock);
 
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
@@ -299,7 +300,8 @@ public class EventStreamControllerTest {
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(), eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(),
+            eq(featureToggleService)))
                 .thenReturn(eventStreamMock);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(1, 0, 1, 1, 0, null);
@@ -325,7 +327,8 @@ public class EventStreamControllerTest {
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(), eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(),
+            eq(featureToggleService)))
                 .thenReturn(eventStreamMock);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(1, 2, 3, 4, 5,
@@ -392,7 +395,8 @@ public class EventStreamControllerTest {
             }
             return null;
         }).when(eventStream).streamEvents(any());
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(), eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(),
+            eq(featureToggleService)))
                 .thenReturn(eventStream);
 
         // "connect" to the server
@@ -439,7 +443,8 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(), eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(),
+            eq(featureToggleService)))
                 .thenReturn(mock(EventStream.class));
 
         writeStream(SCOPE_READ);
@@ -457,7 +462,8 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(), eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(),
+            eq(featureToggleService)))
                 .thenReturn(mock(EventStream.class));
 
         writeStream(Collections.emptySet());

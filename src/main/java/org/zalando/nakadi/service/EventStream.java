@@ -38,7 +38,8 @@ public class EventStream {
     public static final Charset UTF8 = Charset.forName("UTF-8");
 
     private static final byte B_BATCH_SEPARATOR = '\n';
-    private static final byte[] B_CURSOR_PARTITION_BEGIN = "{\"cursor\":{\"partition\":\"".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] B_CURSOR_PARTITION_BEGIN =
+        "{\"cursor\":{\"partition\":\"".getBytes(StandardCharsets.UTF_8);
     private static final byte[] B_OFFSET_BEGIN = "\",\"offset\":\"".getBytes(StandardCharsets.UTF_8);
     private static final byte[] B_CURSOR_PARTITION_END = "\"}".getBytes(StandardCharsets.UTF_8);
     private static final byte[] B_CLOSE_CURLY_BRACKET = "}".getBytes(StandardCharsets.UTF_8);
