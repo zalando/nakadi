@@ -14,7 +14,7 @@ public class CompatibilityModeChangeConstraint implements SchemaEvolutionConstra
     final Map<CompatibilityMode, List<CompatibilityMode>> allowedChanges = ImmutableMap.of(
             CompatibilityMode.COMPATIBLE, Lists.newArrayList(CompatibilityMode.COMPATIBLE),
             CompatibilityMode.FORWARD, Lists.newArrayList(CompatibilityMode.FORWARD, CompatibilityMode.COMPATIBLE),
-            CompatibilityMode.NONE, Lists.newArrayList(CompatibilityMode.NONE)
+            CompatibilityMode.NONE, Lists.newArrayList(CompatibilityMode.NONE, CompatibilityMode.FORWARD)
     );
 
     @Override
