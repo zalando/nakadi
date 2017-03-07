@@ -623,6 +623,54 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  '/event-types/{name}/cursors':
+      get:
+        tags:
+          - unmanaged-api
+          - monitoring
+          - management-api
+        security:
+          - oauth2: ['nakadi.event_stream.read']
+        description: |
+          Transforms a list of Cursors with `shift` into a list without `shift`s. This is useful when there is the need
+          for randomly access events in the stream.
+
+        parameters:
+          - name: name
+            in: path
+            description: EventType name
+            type: string
+            required: true
+          - name: X-Flow-Id
+            in: header
+            description: |
+              The flow id of the request, which is written into the logs and passed to called services. Helpful
+              for operational troubleshooting and log analysis.
+            type: string
+          - name: X-nakadi-cursors
+            in: header
+            description: |
+              Cursors indicating the positions to be calculated. If a cursors contains `shift` property, this property
+              will be used to calculate the actual offset for the given position and in the response the cursor will
+              no longer contain the `shift`.
+            required: true
+            type: array
+            items:
+              type: string
+              format: '#/definitions/Cursor'
+        responses:
+          '200':
+            description: OK
+            schema:
+              type: array
+              description: An array of `Cursor`s
+              items:
+                $ref: '#/definitions/Cursor'
+          '401':
+            description: Client is not authenticated
+            schema:
+              $ref: '#/definitions/Problem'
+
   /subscriptions:
     post:
       tags:
@@ -1647,6 +1695,18 @@ definitions:
         type: string
         description: |
           Offset of the event being pointed to.
+      shift:
+        type: number
+        description: |
+          This number is a modifier for the offset. It moves the cursor forward or backwards by the number of events
+          provided.
+          For example, suppose a user wants to read events starting 100 positions before "001-000D-0000000000000009A8",
+          it's possible to specify shift with -100 and Nakadi will make the necessary calculations to move the cursor
+          relatively to the given offset.
+
+          Users should use this feature only for debugging purposes. Users should favor using offsets provided in
+          batches in order to keep reading sequentially. Navigating in the stream using shifts is provided only for
+          debugging purposes and might slowdown the request considerably.
 
   SubscriptionCursor:
     allOf:
