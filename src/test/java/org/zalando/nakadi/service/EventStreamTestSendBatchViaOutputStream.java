@@ -38,12 +38,13 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
+import static junit.framework.TestCase.assertSame;
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -72,7 +73,7 @@ public class EventStreamTestSendBatchViaOutputStream {
     private static CursorConverter cursorConverter;
     private static FeatureToggleService featureToggleService;
 
-    final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
+    private final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
 
     @BeforeClass
     public static void createCursorConverter() {
@@ -203,7 +204,8 @@ public class EventStreamTestSendBatchViaOutputStream {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream = new EventStream(
-            emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, featureToggleService);
+            emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER,
+                featureToggleService);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -227,8 +229,8 @@ public class EventStreamTestSendBatchViaOutputStream {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream = new EventStream(
-            nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class), cursorConverter,
-            BYTES_FLUSHED_METER, featureToggleService);
+            nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class),
+                cursorConverter, BYTES_FLUSHED_METER, featureToggleService);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -408,7 +410,7 @@ public class EventStreamTestSendBatchViaOutputStream {
             assertEquals("000000000000000023", cursorM.get("offset"));
 
             final List<Map<String, String>> eventsM = (List<Map<String, String>>) batch.get("events");
-            assertTrue(eventsM.size() == 3);
+            assertSame(eventsM.size(), 3);
 
             // check the order is preserved as well as the data via get
             assertEquals("b", eventsM.get(0).get("a"));
@@ -455,7 +457,7 @@ public class EventStreamTestSendBatchViaOutputStream {
 
             final List<Map<String, String>> eventsM = (List<Map<String, String>>) batch.get("events");
             // expecting events not to be written as an empty array
-            assertTrue(eventsM == null);
+            assertNull(eventsM);
 
             verify(meter, times(1)).mark(anyInt());
 
