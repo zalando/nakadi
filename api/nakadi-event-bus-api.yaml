@@ -574,6 +574,25 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+        - name: X-nakadi-cursors
+          in: header
+          description: |
+            Cursors indicating the partitions and offsets consumed by the client.
+
+            When this header is provided, Nakadi calculates the consumer lag, e.g. the number of events between the
+            provided offset and the most recent published event.
+
+            In this situation, the response will contain the `unconsumed_events` property for every partition.
+
+            The lag calculation is non inclusive, e.g. if the provided offset is the offset of the latest published
+            event, the number of `unconsumed_events` will be zero.
+
+            If this header is not present, partitions won't display `unconsumed_events`.
+          required: false
+          type: array
+          items:
+            type: string
+            format: '#/definitions/Cursor'
       responses:
         '200':
           description: OK
@@ -613,6 +632,15 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+        - name: partition
+          in: parameter
+          description: |
+            Partition to query for unconsumed events. Depends on `offset` parameter.
+        - name: offset
+          in: parameter
+          description: |
+            Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
+            `unconsumed_events` to the response partition object.
       responses:
         '200':
           description: OK
@@ -1626,6 +1654,11 @@ definitions:
           Might assume the special name BEGIN, meaning a pointer to the offset of the oldest
           available event in the partition.
         type: string
+      unconsumed_events:
+        description: |
+          Number of events unconsumed by the client. This is also known as consumer lag and is used for monitoring
+          purposes by consumers interested in keeping an eye on the number of unconsumed events.
+        type: number
 
   StreamInfo:
     type: object
