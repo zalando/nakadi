@@ -335,7 +335,7 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setFeatureToggleService(FeatureToggleService featureToggleService) {
+        public Builder setFeatureToggleService(final FeatureToggleService featureToggleService) {
             this.featureToggleService = featureToggleService;
             return this;
         }

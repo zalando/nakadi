@@ -213,7 +213,8 @@ class StreamingState extends State {
     private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
                            final Optional<String> metadata) {
         final FeatureToggleService featureToggleService = getContext().getFeatureToggleService();
-        if(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.SEND_SUBSCRIPTION_BATCH_VIA_OUTPUT_STREAM)) {
+        if(featureToggleService.isFeatureEnabled(
+            FeatureToggleService.Feature.SEND_SUBSCRIPTION_BATCH_VIA_OUTPUT_STREAM)) {
             try {
 
                 final ObjectMapper mapper = getContext().getObjectMapper();
@@ -272,59 +273,59 @@ class StreamingState extends State {
     }
 
     @VisibleForTesting
-    void writeStreamBatch(SortedMap<Long, String> events,
-        Optional<String> infoLog,
-        SubscriptionCursor cursor,
-        SubscriptionOutput out,
-        ObjectMapper mapper,
-        Meter bytesSentMeter
+    void writeStreamBatch(final SortedMap<Long, String> events,
+        final Optional<String> infoLog,
+        final SubscriptionCursor cursor,
+        final SubscriptionOutput subscriptionOutput,
+        final ObjectMapper mapper,
+        final Meter bytesSentMeter
     )
             throws IOException {
         int byteCount = 0;
 
         final List<String> values = new ArrayList<>(events.values());
 
-        out.streamData(B_CURSOR_START);
+        subscriptionOutput.streamData(B_CURSOR_START);
         byteCount += B_CURSOR_START.length;
 
         // todo: sending direct to SubscriptionOutput's outputstream might be better here
         final byte[] cursorBytes = mapper.writeValueAsBytes(cursor);
-        out.streamData(cursorBytes);
+        subscriptionOutput.streamData(cursorBytes);
         byteCount += cursorBytes.length;
 
         if (!values.isEmpty()) {
-            out.streamData(B_EVENTS_START);
+            subscriptionOutput.streamData(B_EVENTS_START);
             byteCount += B_EVENTS_START.length;
             for (int i = 0; i < values.size(); i++) {
                 final byte[] event = values.get(i).getBytes(StandardCharsets.UTF_8);
-                out.streamData(event);
+                subscriptionOutput.streamData(event);
                 byteCount += event.length;
                 if(i < (values.size() - 1)) {
-                    out.streamData(B_COMMA);
+                    subscriptionOutput.streamData(B_COMMA);
                     byteCount += 1;
                 }
                 else {
-                    out.streamData(B_CLOSE_BRACKET);
+                    subscriptionOutput.streamData(B_CLOSE_BRACKET);
                     byteCount += 1;
                 }
             }
         }
 
         if(infoLog.isPresent()) {
-            out.streamData(B_METADATA_INFO_DEBUG);
+            subscriptionOutput.streamData(B_METADATA_INFO_DEBUG);
             byteCount += B_METADATA_INFO_DEBUG.length;
             final byte[] metadataBytes = infoLog.get().getBytes(StandardCharsets.UTF_8);
-            out.streamData(metadataBytes);
+            subscriptionOutput.streamData(metadataBytes);
             byteCount += metadataBytes.length;
-            out.streamData(B_QUOTE_CLOSE_BRACE);
+            subscriptionOutput.streamData(B_QUOTE_CLOSE_BRACE);
             byteCount += B_QUOTE_CLOSE_BRACE.length;
         }
 
-        out.streamData(B_CLOSE_BRACE);
+        subscriptionOutput.streamData(B_CLOSE_BRACE);
         byteCount += B_CLOSE_BRACE.length;
-        final byte[] B_BATCH_SEPARATOR = EventStream.BATCH_SEPARATOR.getBytes(StandardCharsets.UTF_8);
-        out.streamData(B_BATCH_SEPARATOR);
-        byteCount += B_BATCH_SEPARATOR.length;
+        final byte[] batchSeparator = EventStream.BATCH_SEPARATOR.getBytes(StandardCharsets.UTF_8);
+        subscriptionOutput.streamData(batchSeparator);
+        byteCount += batchSeparator.length;
         bytesSentMeter.mark(byteCount);
         batchesSent++;
     }

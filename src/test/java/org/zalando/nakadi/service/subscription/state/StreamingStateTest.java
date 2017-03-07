@@ -26,9 +26,11 @@ import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.view.SubscriptionCursor;
 
+import static junit.framework.TestCase.assertSame;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
@@ -45,7 +47,7 @@ public class StreamingStateTest {
     private static final String SESSION_ID = "ssid";
     private MetricRegistry metricRegistry;
 
-    final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
+    private final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
 
     @Before
     public void prepareMocks() {
@@ -141,13 +143,15 @@ public class StreamingStateTest {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final Meter meter = mock(Meter.class);
         final SubscriptionOutput so = new SubscriptionOutput() {
-            @Override public void onInitialized(String sessionId) throws IOException { }
+            @Override public void onInitialized(final String sessionId) throws IOException {
+                // Not used in test
+            }
 
-            @Override public void onException(Exception ex) {
+            @Override public void onException(final Exception ex) {
                 fail(ex.getMessage());
             }
 
-            @Override public void streamData(byte[] data) throws IOException {
+            @Override public void streamData(final byte[] data) throws IOException {
                 baos.write(data);
                 baos.flush();
             }
@@ -179,7 +183,7 @@ public class StreamingStateTest {
 
             // there's only one newline and it's at the end
             final int newlineCount = (json).replaceAll("[^\n]", "").length();
-            assertTrue(newlineCount == 1);
+            assertSame(newlineCount, 1);
             assertTrue(json.endsWith("\n"));
 
             final Map<String, Object> batchM =
@@ -193,7 +197,7 @@ public class StreamingStateTest {
             assertEquals(cursorToken, cursorM.get("cursor_token"));
 
             final List<Map<String, String>> eventsM = (List<Map<String, String>>) batchM.get("events");
-            assertTrue(eventsM.size() == 3);
+            assertSame(eventsM.size(), 3);
 
             // check the order is preserved as well as the data via get
             assertEquals("b", eventsM.get(0).get("a"));
@@ -214,13 +218,15 @@ public class StreamingStateTest {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final Meter meter = mock(Meter.class);
         final SubscriptionOutput so = new SubscriptionOutput() {
-            @Override public void onInitialized(String sessionId) throws IOException { }
+            @Override public void onInitialized(final String sessionId) throws IOException {
+                // Not used in test
+            }
 
-            @Override public void onException(Exception ex) {
+            @Override public void onException(final Exception ex) {
                 fail(ex.getMessage());
             }
 
-            @Override public void streamData(byte[] data) throws IOException {
+            @Override public void streamData(final byte[] data) throws IOException {
                 baos.write(data);
                 baos.flush();
             }
@@ -248,7 +254,7 @@ public class StreamingStateTest {
 
             // there's only one newline and it's at the end
             final int newlineCount = (json).replaceAll("[^\n]", "").length();
-            assertTrue(newlineCount == 1);
+            assertSame(newlineCount, 1);
             assertTrue(json.endsWith("\n"));
 
             final Map<String, Object> batchM =
@@ -264,7 +270,7 @@ public class StreamingStateTest {
             final List<Map<String, String>> eventsM = (List<Map<String, String>>) batchM.get("events");
             // did not write an empty batch
             assertFalse(json.contains("\"events\""));
-            assertTrue(eventsM == null);
+            assertNull(eventsM );
 
             verify(meter, times(1)).mark(anyInt());
 
