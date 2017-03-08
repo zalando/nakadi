@@ -632,10 +632,6 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-        - name: partition
-          in: parameter
-          description: |
-            Partition to query for unconsumed events. Depends on `offset` parameter.
         - name: offset
           in: parameter
           description: |
