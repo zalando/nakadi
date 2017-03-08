@@ -1,5 +1,6 @@
 package org.zalando.nakadi.repository;
 
+import com.codahale.metrics.Meter;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -25,7 +26,7 @@ public interface TopicRepository {
 
     boolean topicExists(String topic) throws NakadiException;
 
-    void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
+    void syncPostBatch(String topicId, List<BatchItem> batch, final Meter meter) throws EventPublishingException;
 
     Optional<PartitionStatistics> loadPartitionStatistics(String topic, String partition)
             throws ServiceUnavailableException;

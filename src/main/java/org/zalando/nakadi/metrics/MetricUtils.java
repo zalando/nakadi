@@ -10,6 +10,8 @@ public class MetricUtils {
     private static final String LOW_LEVEL_STREAM = "lola";
     private static final String HIGH_LEVEL_STREAM = "hila";
     private static final String BYTES_FLUSHED = "bytes-flushed";
+    private static final String BYTES_SENT = "bytes-sent";
+    private static final String PUBLISHING = "publishing";
 
     public static String metricNameFor(final String eventTypeName, final String metricName) {
         return MetricRegistry.name(EVENTTYPES_PREFIX, eventTypeName.replace('.', '#'), metricName);
@@ -17,6 +19,14 @@ public class MetricUtils {
 
     public static String metricNameForSubscription(final String subscriptionId, final String metricName) {
         return MetricRegistry.name(SUBSCRIPTION_PREFIX, subscriptionId, metricName);
+    }
+
+    public static String metricNameForBytesSent(final String applicationId, final String eventTypeName) {
+        return MetricRegistry.name(
+                PUBLISHING,
+                applicationId.replace(".", "#"),
+                eventTypeName.replace(".", "#"),
+                BYTES_SENT);
     }
 
     public static String metricNameForLoLAStream(final String applicationId, final String eventTypeName) {
