@@ -558,7 +558,7 @@ paths:
         - oauth2: ['nakadi.event_stream.read']
       description: |
         Calculate the distance between two offsets. This is useful for performing checks for data completeness, when
-        a client had read some batches and wants to be sure that all delivered events have been correctly processed.
+        a client has read some batches and wants to be sure that all delivered events have been correctly processed.
       parameters:
         - name: X-nakadi-cursor-distances-query
           in: header
@@ -1695,7 +1695,7 @@ definitions:
         type: number
         description: |
           Number of events between two offsets. Initial offset is exclusive. It's only zero when both provided offsets
-          are equal.
+          are equal. If the `final_offset` is strictly smaller than the `initial_offset` it results in client error.
 
   Cursor:
     required:
