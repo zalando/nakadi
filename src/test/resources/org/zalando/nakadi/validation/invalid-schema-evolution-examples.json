@@ -76,6 +76,18 @@
     "errors": ["ATTRIBUTE_VALUE_CHANGED #/pattern"]
   },
   {
+    "description": "Correctly identifies changes to pattern",
+    "original_schema": {
+      "type": "string",
+      "pattern": "date-time"
+    },
+    "update_schema": {
+      "type": "string",
+      "pattern": "date-time"
+    },
+    "errors": []
+  },
+  {
     "description": "Do not allow changes to maximum number schema",
     "original_schema": {
       "type": "number",
