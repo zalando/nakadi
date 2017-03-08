@@ -60,7 +60,7 @@ public class Version {
 
     public Version bump(final Version.Level level) {
         switch (level) {
-            case MAJOR: return new Version(this.major + 1, this.minor, 0);
+            case MAJOR: return new Version(this.major + 1, 0, 0);
             case MINOR: return new Version(this.major, this.minor + 1, 0);
             case PATCH: return new Version(this.major, this.minor, this.patch + 1);
             default: return new Version(this.major, this.minor, this.patch);
