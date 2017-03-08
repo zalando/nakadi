@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.codahale.metrics.MetricRegistry;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -79,11 +80,13 @@ public class EventPublisherTest {
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
     private final EventPublisher publisher;
+    private final MetricRegistry metricRegistry = new MetricRegistry();
 
     public EventPublisherTest() {
         final TimelineService ts = Mockito.mock(TimelineService.class);
         Mockito.when(ts.getTopicRepository(any())).thenReturn(topicRepository);
-        publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync);
+        publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync,
+                metricRegistry);
     }
 
     @Test
@@ -97,7 +100,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any(), any());
     }
 
     @Test
@@ -111,7 +114,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
+        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any(), any());
     }
 
     @Test
@@ -148,7 +151,7 @@ public class EventPublisherTest {
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(createBatchItem(event), eventType);
         verify(partitionResolver, times(0)).resolvePartition(eventType, event);
-        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
     }
 
     @Test
@@ -188,7 +191,7 @@ public class EventPublisherTest {
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
     }
 
     @Test
@@ -269,7 +272,7 @@ public class EventPublisherTest {
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
         verify(partitionResolver, times(1)).resolvePartition(any(), any());
-        verify(topicRepository, times(1)).syncPostBatch(any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any());
     }
 
     @Test
@@ -284,7 +287,7 @@ public class EventPublisherTest {
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
     }
 
     @Test
@@ -299,7 +302,7 @@ public class EventPublisherTest {
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.ABORTED));
         verify(enrichment, times(0)).enrich(any(), any());
         verify(partitionResolver, times(0)).resolvePartition(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
     }
 
     @Test
@@ -314,7 +317,7 @@ public class EventPublisherTest {
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(enrichment, times(1)).enrich(any(), any());
         verify(partitionResolver, times(1)).resolvePartition(any(), any());
-        verify(topicRepository, times(1)).syncPostBatch(any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any());
     }
 
     @Test
@@ -374,7 +377,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.FAILED));
-        verify(topicRepository, times(1)).syncPostBatch(any(), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any(), any());
     }
 
     @Test
@@ -392,7 +395,7 @@ public class EventPublisherTest {
         verify(cache, times(1)).getValidator(eventType.getName());
         verify(partitionResolver, times(1)).resolvePartition(any(), any());
         verify(enrichment, times(1)).enrich(any(), any());
-        verify(topicRepository, times(0)).syncPostBatch(any(), any());
+        verify(topicRepository, times(0)).syncPostBatch(any(), any(), any());
     }
 
     @Test
@@ -443,7 +446,7 @@ public class EventPublisherTest {
         Mockito
                 .doThrow(EventPublishingException.class)
                 .when(topicRepository)
-                .syncPostBatch(any(), any());
+                .syncPostBatch(any(), any(), any());
     }
 
     private void mockFaultPartition(final EventType eventType, final BatchItem item) throws PartitioningException {
@@ -595,7 +598,7 @@ public class EventPublisherTest {
     private String createStringFromBatchItems(final List<BatchItem> batch) {
         final StringBuilder sb = new StringBuilder();
         sb.append("[");
-        for (BatchItem item:batch) {
+        for (final BatchItem item : batch) {
             sb.append(item.getEvent().toString());
             sb.append(",");
         }

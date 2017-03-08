@@ -1,9 +1,12 @@
 package org.zalando.nakadi.service;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchFactory;
@@ -36,6 +39,8 @@ import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static org.zalando.nakadi.metrics.MetricUtils.metricNameForBytesSent;
+
 @Component
 public class EventPublisher {
 
@@ -48,6 +53,7 @@ public class EventPublisher {
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
+    private final MetricRegistry metricRegistry;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -55,13 +61,15 @@ public class EventPublisher {
                           final PartitionResolver partitionResolver,
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
-                          final TimelineSync timelineSync) {
+                          final TimelineSync timelineSync,
+                          @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
+        this.metricRegistry = metricRegistry;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
@@ -78,7 +86,7 @@ public class EventPublisher {
             validate(batch, eventType);
             partition(batch, eventType);
             enrich(batch, eventType);
-            submit(batch, eventType);
+            submit(batch, eventType, client);
 
             return ok(batch);
         } catch (final EventValidationException e) {
@@ -156,8 +164,10 @@ public class EventPublisher {
         }
     }
 
-    private void submit(final List<BatchItem> batch, final EventType eventType) throws EventPublishingException {
-        timelineService.getTopicRepository(eventType).syncPostBatch(eventType.getTopic(), batch);
+    private void submit(final List<BatchItem> batch, final EventType eventType, final Client client)
+            throws EventPublishingException {
+        final Meter meter = metricRegistry.meter(metricNameForBytesSent(client.getClientId(), eventType.getName()));
+        timelineService.getTopicRepository(eventType).syncPostBatch(eventType.getTopic(), batch, meter);
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,
