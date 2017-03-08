@@ -17,7 +17,7 @@ class StringSchemaDiff {
             addChange("maxLength", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
         } else if (!Objects.equals(stringSchemaOriginal.getMinLength(), stringSchemaUpdate.getMinLength())) {
             addChange("minLength", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
-        } else if (!stringSchemaOriginal.getPattern().equals(stringSchemaUpdate.getPattern())) {
+        } else if (!stringSchemaOriginal.getPattern().pattern().equals(stringSchemaUpdate.getPattern().pattern())) {
             addChange("pattern", ATTRIBUTE_VALUE_CHANGED, jsonPath, changes);
         }
     }
