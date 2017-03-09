@@ -2,38 +2,42 @@ package org.zalando.nakadi.webservice.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.webservice.hila.StreamBatch;
+
+import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.annotation.Nullable;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.webservice.hila.StreamBatch;
+
 import static java.text.MessageFormat.format;
 
 public class TestStreamingClient implements Runnable {
 
-    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     public static final String SESSION_ID_UNKNOWN = "UNKNOWN";
-
+    private static final Logger LOG = LoggerFactory.getLogger(TestStreamingClient.class);
+    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     private final String baseUrl;
     private final String subscriptionId;
     private final String params;
-    private volatile boolean running;
-
     private final List<StreamBatch> batches;
+    private final Map<String, List<String>> headers;
+    private volatile boolean running;
     private HttpURLConnection connection;
     private String sessionId;
     private Optional<String> token;
     private volatile int responseCode;
-    private final Map<String, List<String>> headers;
 
     public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params) {
         this.baseUrl = baseUrl;
@@ -58,6 +62,7 @@ public class TestStreamingClient implements Runnable {
 
     @Override
     public void run() {
+        LOG.info("Started streaming client thread");
         try {
             final String url = format("{0}/subscriptions/{1}/events?{2}", baseUrl, subscriptionId, params);
             connection = (HttpURLConnection) new URL(url).openConnection();
@@ -65,47 +70,40 @@ public class TestStreamingClient implements Runnable {
             responseCode = connection.getResponseCode();
             connection.getHeaderFields().entrySet().stream()
                     .filter(entry -> entry.getKey() != null)
-                    .forEach(entry ->  headers.put(entry.getKey(), entry.getValue()));
+                    .forEach(entry -> headers.put(entry.getKey(), entry.getValue()));
+            connection.setReadTimeout(10);
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 throw new IOException("Response code is " + responseCode);
             }
             sessionId = connection.getHeaderField("X-Nakadi-StreamId");
             final InputStream inputStream = connection.getInputStream();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            running = true;
 
-            try {
-                while (true) {
-                    final String line = reader.readLine();
-                    if (line != null) {
-                        final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
-                        synchronized (batches) {
-                            batches.add(streamBatch);
-                        }
-                    } else {
-                        break;
-                    }
-                }
-            } finally {
+            while (running) {
                 try {
-                    inputStream.close();
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    final String line = reader.readLine();
+                    if (line == null) {
+                        return;
+                    }
+                    final StreamBatch streamBatch = MAPPER.readValue(line, StreamBatch.class);
+                    synchronized (batches) {
+                        batches.add(streamBatch);
+                    }
+                } catch (final SocketTimeoutException ste) {
+                    LOG.info("No data in 10 ms, retrying read data");
                 }
             }
         } catch (IOException e) {
-//            e.printStackTrace();
+            LOG.error(e.getMessage(), e);
         } finally {
-            running = false;
+            close();
         }
     }
 
     public TestStreamingClient start() {
         if (!running) {
-            synchronized (batches) {
-                batches.clear();
-            }
+            running = true;
+            batches.clear();
             headers.clear();
             final Thread thread = new Thread(this);
             thread.start();
@@ -117,11 +115,8 @@ public class TestStreamingClient implements Runnable {
 
     public boolean close() {
         if (running) {
-            try {
-                connection.disconnect();
-            } finally {
-                running = false;
-            }
+            running = false;
+            connection.disconnect();
             return true;
         } else {
             return false;
