@@ -657,19 +657,15 @@ paths:
             type: array
             items:
               type: string
-              format: '#/definitions/Cursor'
+              format: '#/definitions/ShiftedCursor'
         responses:
           '200':
             description: OK
             schema:
               type: array
-              description: An array of `Cursor`s
+              description: An array of `Cursor`s with shift applied to the offset.
               items:
                 $ref: '#/definitions/Cursor'
-          '401':
-            description: Client is not authenticated
-            schema:
-              $ref: '#/definitions/Problem'
 
   /subscriptions:
     post:
@@ -1695,19 +1691,26 @@ definitions:
         type: string
         description: |
           Offset of the event being pointed to.
-      shift:
-        type: number
-        description: |
-          This number is a modifier for the offset. It moves the cursor forward or backwards by the number of events
-          provided.
-          For example, suppose a user wants to read events starting 100 positions before "001-000D-0000000000000009A8",
-          it's possible to specify shift with -100 and Nakadi will make the necessary calculations to move the cursor
-          relatively to the given offset.
 
-          Users should use this feature only for debugging purposes. Users should favor using offsets provided in
-          batches in order to keep reading sequentially. Navigating in the stream using shifts is provided only for
-          debugging purposes and might slowdown the request considerably.
+  ShiftedCursor:
+    allOf:
+      - $ref: "#/definitions/Cursor"
+      - type: object
+        properties:
+          shift:
+            type: number
+            description: |
+              This number is a modifier for the offset. It moves the cursor forward or backwards by the number of events
+              provided.
+              For example, suppose a user wants to read events starting 100 positions before "001-000D-0000000000000009A8",
+              it's possible to specify shift with -100 and Nakadi will make the necessary calculations to move the cursor
+              relatively to the given offset.
 
+              Users should use this feature only for debugging purposes. Users should favor using offsets provided in
+              batches in order to keep reading sequentially. Navigating in the stream using shifts is provided only for
+              debugging purposes and might slowdown the request considerably.
+        required:
+          - shift
   SubscriptionCursor:
     allOf:
       - $ref: '#/definitions/Cursor'
