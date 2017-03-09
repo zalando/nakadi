@@ -24,13 +24,13 @@ public class MetricsConfig {
     }
 
     class SubscriptionMetricsServlet extends MetricsServlet {
-        public SubscriptionMetricsServlet(final MetricRegistry metricRegistry) {
+        SubscriptionMetricsServlet(final MetricRegistry metricRegistry) {
             super(metricRegistry);
         }
     }
 
     class StreamMetricsServlet extends MetricsServlet {
-        public StreamMetricsServlet(final MetricRegistry metricRegistry) {
+        StreamMetricsServlet(final MetricRegistry metricRegistry) {
             super(metricRegistry);
         }
     }

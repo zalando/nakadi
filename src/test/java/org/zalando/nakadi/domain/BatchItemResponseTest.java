@@ -28,8 +28,8 @@ public class BatchItemResponseTest {
         final String eid = UUID.randomUUID().toString();
         final TypeReference<Map<String, String>> typeRef = new TypeReference<Map<String, String>>() {
         };
-        for (EventPublishingStatus status : EventPublishingStatus.values()) {
-            for (EventPublishingStep step : EventPublishingStep.values()) {
+        for (final EventPublishingStatus status : EventPublishingStatus.values()) {
+            for (final EventPublishingStep step : EventPublishingStep.values()) {
                 final BatchItemResponse bir = new BatchItemResponse();
                 bir.setStep(step);
                 bir.setPublishingStatus(status);

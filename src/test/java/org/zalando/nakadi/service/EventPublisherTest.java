@@ -12,6 +12,7 @@ import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
@@ -83,7 +84,8 @@ public class EventPublisherTest {
 
     public EventPublisherTest() {
         final TimelineService ts = Mockito.mock(TimelineService.class);
-        Mockito.when(ts.getTopicRepository(any())).thenReturn(topicRepository);
+        Mockito.when(ts.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
+        Mockito.when(ts.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         final Timeline timeline = Mockito.mock(Timeline.class);
         Mockito.when(ts.getTimeline(any())).thenReturn(timeline);
         publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync);
@@ -597,7 +599,7 @@ public class EventPublisherTest {
     private String createStringFromBatchItems(final List<BatchItem> batch) {
         final StringBuilder sb = new StringBuilder();
         sb.append("[");
-        for (BatchItem item:batch) {
+        for (final BatchItem item : batch) {
             sb.append(item.getEvent().toString());
             sb.append(",");
         }

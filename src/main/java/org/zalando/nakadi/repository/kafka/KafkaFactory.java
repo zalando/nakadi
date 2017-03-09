@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.zalando.nakadi.domain.Timeline;
 
 public class KafkaFactory {
 
@@ -148,8 +149,8 @@ public class KafkaFactory {
     }
 
     public NakadiKafkaConsumer createNakadiConsumer(final String clientId, final List<KafkaCursor> kafkaCursors,
-                                                    final long pollTimeout) {
-        return new NakadiKafkaConsumer(getConsumer(clientId), kafkaCursors, pollTimeout);
+                                                    final long pollTimeout, final Timeline timeline) {
+        return new NakadiKafkaConsumer(getConsumer(clientId), kafkaCursors, pollTimeout, timeline);
     }
 
 }

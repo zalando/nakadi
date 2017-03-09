@@ -1,14 +1,15 @@
 package org.zalando.nakadi.domain;
 
-import org.zalando.nakadi.util.UUIDGenerator;
-
-import javax.annotation.Nullable;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.Nullable;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 public class Timeline {
+
+    public static final int STARTING_ORDER = 0;
 
     public interface StoragePosition {
 
@@ -205,8 +206,11 @@ public class Timeline {
         return timeline;
     }
 
+    private static final Date FAKE_CREATION_TIME = new Date(0L);
+
     public static Timeline createFakeTimeline(final EventTypeBase eventType, final Storage storage) {
-        final Timeline timeline = new Timeline(eventType.getName(), 0, storage, eventType.getTopic(), new Date());
+        final Timeline timeline = new Timeline(
+                eventType.getName(), STARTING_ORDER, storage, eventType.getTopic(), FAKE_CREATION_TIME);
         timeline.fake = true;
         return timeline;
     }
