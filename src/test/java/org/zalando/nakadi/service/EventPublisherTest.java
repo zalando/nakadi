@@ -86,6 +86,8 @@ public class EventPublisherTest {
         final TimelineService ts = Mockito.mock(TimelineService.class);
         Mockito.when(ts.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         Mockito.when(ts.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
+        final Timeline timeline = Mockito.mock(Timeline.class);
+        Mockito.when(ts.getTimeline(any())).thenReturn(timeline);
         publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync);
     }
 
@@ -93,14 +95,13 @@ public class EventPublisherTest {
     public void whenPublishIsSuccessfulThenResultIsSubmitted() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONArray batch = buildDefaultBatch(1);
-        final JSONObject event = batch.getJSONObject(0);
 
         mockSuccessfulValidation(eventType);
 
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any());
     }
 
     @Test
@@ -114,7 +115,7 @@ public class EventPublisherTest {
         final EventPublishResult result = publisher.publish(batch.toString(), eventType.getName(), FULL_ACCESS_CLIENT);
 
         assertThat(result.getResponses().get(0).getEid(), equalTo(event.getJSONObject("metadata").optString("eid")));
-        verify(topicRepository, times(1)).syncPostBatch(eq(eventType.getTopic()), any());
+        verify(topicRepository, times(1)).syncPostBatch(any(), any());
     }
 
     @Test
