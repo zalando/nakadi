@@ -7,6 +7,17 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +34,9 @@ import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
@@ -47,20 +60,6 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
-
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -113,12 +112,9 @@ public class EventStreamController {
     }
 
     @VisibleForTesting
-    List<NakadiCursor> getStreamingStart(final TopicRepository topicRepository,
-                                         final String topic,
-                                         // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
-                                         // Cursors here might be in different timeline
-                                         final String cursorsStr)
-            throws UnparseableCursorException, ServiceUnavailableException, InvalidCursorException {
+    List<NakadiCursor> getStreamingStart(final EventType eventType, final String cursorsStr)
+            throws UnparseableCursorException, ServiceUnavailableException, InvalidCursorException,
+            InternalNakadiException, NoSuchEventTypeException {
         List<Cursor> cursors = null;
         if (cursorsStr != null) {
             try {
@@ -128,31 +124,12 @@ public class EventStreamController {
                 throw new UnparseableCursorException("incorrect syntax of X-nakadi-cursors header", ex, cursorsStr);
             }
         }
+        final Timeline latestTimeline = timelineService.getTimeline(eventType);
+        final TopicRepository latestTopicRepository = timelineService.getTopicRepository(latestTimeline);
         if (null != cursors) {
-            Map<String, NakadiCursor> begin = null;
             final List<NakadiCursor> result = new ArrayList<>();
             for (final Cursor c : cursors) {
-                final NakadiCursor toUse;
-                if (Cursor.BEFORE_OLDEST_OFFSET.equalsIgnoreCase(c.getOffset())) {
-                    if (null == begin) {
-                        begin = topicRepository.loadTopicStatistics(Collections.singletonList(topic)).stream()
-                                .collect(Collectors.toMap(
-                                        PartitionStatistics::getPartition,
-                                        PartitionStatistics::getBeforeFirst));
-                    }
-                    toUse = begin.get(c.getPartition());
-                    if (null == toUse) {
-                        throw new InvalidCursorException(CursorError.PARTITION_NOT_FOUND, c);
-                    }
-                } else {
-                    if (null == c.getPartition()) {
-                        throw new InvalidCursorException(CursorError.NULL_PARTITION, c);
-                    } else if (null == c.getOffset()) {
-                        throw new InvalidCursorException(CursorError.NULL_OFFSET, c);
-                    }
-                    toUse = new NakadiCursor(topic, c.getPartition(), c.getOffset());
-                }
-                result.add(toUse);
+                result.add(cursorConverter.convert(eventType.getName(), c));
             }
             if (result.isEmpty()) {
                 throw new InvalidCursorException(CursorError.INVALID_FORMAT);
@@ -160,8 +137,10 @@ public class EventStreamController {
             return result;
         } else {
             // if no cursors provided - read from the newest available events
-            return topicRepository.loadTopicStatistics(Collections.singletonList(topic)).stream()
-                    .map(PartitionStatistics::getLast).collect(Collectors.toList());
+            return latestTopicRepository.loadTopicStatistics(Collections.singletonList(latestTimeline))
+                    .stream()
+                    .map(PartitionStatistics::getLast)
+                    .collect(Collectors.toList());
         }
     }
 
@@ -194,16 +173,11 @@ public class EventStreamController {
             try {
                 @SuppressWarnings("UnnecessaryLocalVariable")
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-                final String topic = eventType.getTopic();
 
                 client.checkScopes(eventType.getReadScopes());
 
                 // validate parameters
                 final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
-                if (!topicRepository.topicExists(topic)) {
-                    writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, "topic is absent in kafka");
-                    return;
-                }
                 final EventStreamConfig streamConfig = EventStreamConfig.builder()
                         .withBatchLimit(batchLimit)
                         .withStreamLimit(streamLimit)
@@ -212,9 +186,7 @@ public class EventStreamController {
                         .withStreamKeepAliveLimit(streamKeepAliveLimit)
                         .withEtName(eventTypeName)
                         .withConsumingAppId(client.getClientId())
-                        // FIXME TIMELINE: IT HAS TO BE FIXED TO SUPPORT MULTIPLE TL
-                        // Cursors here might be in different timeline
-                        .withCursors(getStreamingStart(topicRepository, topic, cursorsStr))
+                        .withCursors(getStreamingStart(eventType, cursorsStr))
                         .build();
 
                 // acquire connection slots to limit the number of simultaneous connections from one client

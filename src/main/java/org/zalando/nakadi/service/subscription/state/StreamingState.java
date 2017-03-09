@@ -12,6 +12,7 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.domain.Timeline;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -215,11 +216,10 @@ class StreamingState extends State {
                                   final List<String> events, final Optional<String> metadata)
             throws JsonProcessingException {
 
-        final String eventType = getContext().getEventTypesForTopics().get(partitionKey.getTopic());
+        final Timeline timeline = getContext().getTimelinesForTopics().get(partitionKey.getTopic());
         final String token = getContext().getCursorTokenService().generateToken();
         final SubscriptionCursor cursor = getContext().getCursorConverter().convert(
-                partitionKey.createKafkaCursor(offset).toNakadiCursor(),
-                eventType,
+                partitionKey.createKafkaCursor(offset).toNakadiCursor(timeline),
                 token);
         final String cursorSerialized = getContext().getObjectMapper().writeValueAsString(cursor);
 

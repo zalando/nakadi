@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.zalando.nakadi.domain.StreamMetadata;
+import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.view.SubscriptionCursor;
 
 import javax.annotation.Nullable;
@@ -15,7 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Collections.unmodifiableList;
-import static org.zalando.nakadi.service.CursorConverter.CURSOR_OFFSET_LENGTH;
 
 @Immutable
 public class StreamBatch {
@@ -71,7 +71,7 @@ public class StreamBatch {
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
                                                final Map event, final String metadata) {
-        final String paddedOffset = StringUtils.leftPad(offset, CURSOR_OFFSET_LENGTH, '0');
+        final String paddedOffset = StringUtils.leftPad(offset, KafkaTestHelper.CURSOR_OFFSET_LENGTH, '0');
         if (event.isEmpty()) {
             return new StreamBatch(new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
                     ImmutableList.of(), new StreamMetadata(metadata));
@@ -83,7 +83,7 @@ public class StreamBatch {
 
     public static StreamBatch singleEventBatch(final String partition, final String offset, final String eventType,
                                                final Map event) {
-        final String paddedOffset = StringUtils.leftPad(offset, CURSOR_OFFSET_LENGTH, '0');
+        final String paddedOffset = StringUtils.leftPad(offset, KafkaTestHelper.CURSOR_OFFSET_LENGTH, '0');
         return new StreamBatch(new SubscriptionCursor(partition, paddedOffset, eventType, DUMMY_TOKEN),
                 ImmutableList.of(event), null);
     }

@@ -3,12 +3,17 @@ package org.zalando.nakadi.service.subscription;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
@@ -22,12 +27,6 @@ import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
-
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class SubscriptionStreamerFactory {
@@ -72,7 +71,7 @@ public class SubscriptionStreamerFactory {
             InternalNakadiException, NoSuchEventTypeException {
 
         final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
-        final Map<String, String> eventTypesForTopics = createTopicsMap(subscription.getEventTypes());
+        final Map<String, Timeline> timelinesForTopics = createTimelinesMap(subscription.getEventTypes());
         final Session session = Session.generate(1);
         final String loggingPath = "subscription." + subscriptionId + "." + session.getId();
         // Create streaming context
@@ -82,12 +81,12 @@ public class SubscriptionStreamerFactory {
                 .setSession(session)
                 .setTimer(executorService)
                 .setZkClient(new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get(), loggingPath))
-                .setKafkaClient(new KafkaClient(subscription, timelineService, eventTypeRepository))
+                .setKafkaClient(new KafkaClient(subscription, timelineService, cursorConverter))
                 .setRebalancer(new ExactWeightRebalancer())
                 .setKafkaPollTimeout(kafkaPollTimeout)
                 .setLoggingPath(loggingPath)
                 .setConnectionReady(connectionReady)
-                .setEventTypesForTopics(eventTypesForTopics)
+                .setEventTypesForTopics(timelinesForTopics)
                 .setCursorTokenService(cursorTokenService)
                 .setObjectMapper(objectMapper)
                 .setBlacklistService(blacklistService)
@@ -97,12 +96,12 @@ public class SubscriptionStreamerFactory {
                 .build();
     }
 
-    private Map<String, String> createTopicsMap(final Set<String> eventTypes) throws InternalNakadiException,
+    private Map<String, Timeline> createTimelinesMap(final Set<String> eventTypes) throws InternalNakadiException,
             NoSuchEventTypeException {
-        final ImmutableMap.Builder<String, String> topicMapBuilder = ImmutableMap.builder();
+        final ImmutableMap.Builder<String, Timeline> topicMapBuilder = ImmutableMap.builder();
         for (final String eventTypeName : eventTypes) {
-            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            topicMapBuilder.put(eventType.getTopic(), eventTypeName);
+            final Timeline timeline = timelineService.getTimeline(eventTypeRepository.findByName(eventTypeName));
+            topicMapBuilder.put(timeline.getTopic(), timeline);
         }
         return topicMapBuilder.build();
     }

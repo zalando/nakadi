@@ -6,6 +6,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
@@ -34,7 +35,8 @@ public class PartitionResolverTest {
         final TopicRepository topicRepository = Mockito.mock(TopicRepository.class);
         Mockito.when(topicRepository.listPartitionNames(any(String.class))).thenReturn(ImmutableList.of("0"));
         final TimelineService timelineService = Mockito.mock(TimelineService.class);
-        Mockito.when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        Mockito.when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
+        Mockito.when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
         partitionResolver = new PartitionResolver(timelineService);
     }
 

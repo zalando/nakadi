@@ -1,5 +1,11 @@
 package org.zalando.nakadi.repository.db;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,13 +17,6 @@ import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.DuplicatedStorageIdException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.utils.TestUtils;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.LongStream;
 
 public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
@@ -110,7 +109,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
                 storage, UUID.randomUUID(), 0, "test_topic", testEt.getName(),
                 new Date(), null, null, null));
 
-        final List<Timeline> testTimelines = tRepository.listTimelines(testEt.getName());
+        final List<Timeline> testTimelines = tRepository.listTimelinesOrdered(testEt.getName());
         Assert.assertEquals(2, testTimelines.size());
         Assert.assertEquals(t0, testTimelines.get(0));
         Assert.assertEquals(t1, testTimelines.get(1));
@@ -125,9 +124,9 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         final Timeline t1 = tRepository.createTimeline(createTimeline(
                 storage, UUID.randomUUID(), 1, "test_topic", testEt.getName(),
                 new Date(), null, null, null));
-        Assert.assertEquals(1, tRepository.listTimelines(testEt.getName()).size());
+        Assert.assertEquals(1, tRepository.listTimelinesOrdered(testEt.getName()).size());
         tRepository.deleteTimeline(t1.getId());
-        Assert.assertEquals(0, tRepository.listTimelines(testEt.getName()).size());
+        Assert.assertEquals(0, tRepository.listTimelinesOrdered(testEt.getName()).size());
     }
 
     private static Timeline createTimeline(
