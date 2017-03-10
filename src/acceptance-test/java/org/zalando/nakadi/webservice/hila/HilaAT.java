@@ -5,12 +5,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.apache.http.HttpStatus;
 import org.hamcrest.core.StringContains;
 import org.junit.Assert;
@@ -31,6 +25,14 @@ import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.SettingsControllerAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static java.text.MessageFormat.format;
@@ -39,6 +41,7 @@ import static java.util.stream.IntStream.rangeClosed;
 import static org.apache.http.HttpStatus.SC_CONFLICT;
 import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.apache.http.HttpStatus.SC_OK;
+import static org.apache.http.HttpStatus.SC_UNPROCESSABLE_ENTITY;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -197,13 +200,21 @@ public class HilaAT extends BaseAT {
         publishEvent(eventType.getName(), "{\"foo\":\"bar\"}");
 
         final TestStreamingClient client = TestStreamingClient
-                .create(URL, subscription.getId(), "") // commit_timeout is 5 seconds for test
+                .create(URL, subscription.getId(), "commit_timeout=5") // commit_timeout is 5 seconds for test
                 .start();
 
         waitFor(() -> assertThat(client.getBatches(), hasSize(2)), 10000);
         waitFor(() -> assertThat(client.isRunning(), is(false)), 10000);
         assertThat(client.getBatches().get(1), equalToBatchIgnoringToken(singleEventBatch("0", "0", eventType.getName(),
                 ImmutableMap.of(), "Commit timeout reached")));
+    }
+
+    @Test(timeout = 15000)
+    public void whenCommitTimeoutOutOfRange() throws Exception {
+        given()
+                .get(format("/subscriptions/{0}/events?commit_timeout=3", subscription.getId()))
+                .then()
+                .statusCode(SC_UNPROCESSABLE_ENTITY);
     }
 
     @Test(timeout = 15000)

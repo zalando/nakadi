@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -128,6 +129,7 @@ public class SubscriptionStreamController {
             @Nullable @RequestParam(value = "stream_timeout", required = false) final Long streamTimeout,
             @Nullable
             @RequestParam(value = "stream_keep_alive_limit", required = false) final Integer streamKeepAliveLimit,
+            @RequestParam(value = "commit_timeout", required = false, defaultValue = "60") final int commitTimeout,
             final HttpServletRequest request, final HttpServletResponse response, final Client client)
             throws IOException {
 
@@ -152,9 +154,18 @@ public class SubscriptionStreamController {
                     return;
                 }
 
+                if (commitTimeout < nakadiSettings.getMinCommitTimeoutSeconds()
+                        || commitTimeout > nakadiSettings.getMaxCommitTimeoutSeconds()) {
+                    final String errorMessage = "commit_timeout must be bigger than "
+                            + nakadiSettings.getMinCommitTimeoutSeconds()
+                            + " and smaller than "
+                            + nakadiSettings.getMaxCommitTimeoutSeconds();
+                    throw new UnprocessableEntityException(errorMessage);
+                }
+
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
-                        nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
+                        commitTimeout, client.getClientId());
                 streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output,
                         connectionReady, blacklistService);
                 streamer.stream();
