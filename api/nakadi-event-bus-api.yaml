@@ -871,6 +871,35 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
+    patch:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Endpoint for reseting subscription committed offsets to provided.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+        - name: cursors
+          in: body
+          schema:
+            type: object
+            properties:
+              items:
+                description: |
+                  List of cursors that the consumer acknowledges to have successfully processed.
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionCursor'
+            required:
+              - items
+      responses:
+        '200':
+          description: Offsets were reseted
 
   /subscriptions/{subscription_id}/events:
     get:
