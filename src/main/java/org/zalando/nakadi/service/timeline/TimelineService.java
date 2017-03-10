@@ -31,6 +31,8 @@ import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -79,7 +81,8 @@ public class TimelineService {
     }
 
     public void createTimeline(final String eventTypeName, final String storageId, final Client client)
-            throws ForbiddenAccessException, TimelineException, TopicRepositoryException {
+            throws ForbiddenAccessException, TimelineException, TopicRepositoryException, InconsistentStateException,
+            RepositoryProblemException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
@@ -165,7 +168,8 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(defaultStorage);
     }
 
-    private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline) {
+    private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)
+            throws InconsistentStateException, RepositoryProblemException, TimelineException, ConflictException {
         LOG.info("Switching timelines from {} to {}", activeTimeline, nextTimeline);
         try {
             timelineSync.startTimelineUpdate(activeTimeline.getEventType(), nakadiSettings.getTimelineWaitTimeoutMs());

@@ -27,7 +27,7 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
         repository = new StorageDbRepository(template, mapper);
         timelineDbRepository = new TimelineDbRepository(template, mapper);
@@ -93,28 +93,11 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     public void testIsStorageUsedYes() throws Exception {
         final Storage storage1 = repository.createStorage(createStorage("s2", "exaddress", 8181, "address1", "path1"));
         final EventType testEt = eventTypeDbRepository.saveEventType(TestUtils.buildDefaultEventType());
-        final Timeline timeline = createTimeline(
+        final Timeline timeline = TimelineDbRepositoryTest.createTimeline(
                 storage1, UUID.randomUUID(), 0, "test_topic", testEt.getName(),
                 new Date(), null, null, null);
         timelineDbRepository.createTimeline(timeline);
         assertTrue(repository.isStorageUsed("s2"));
     }
 
-    private static Timeline createTimeline(
-            final Storage storage,
-            final UUID id,
-            final int order,
-            final String topic,
-            final String eventType,
-            final Date createdAt,
-            final Date switchedAt,
-            final Date cleanupAt,
-            final Timeline.StoragePosition latestPosition) {
-        final Timeline timeline = new Timeline(eventType, order, storage, topic, createdAt);
-        timeline.setId(id);
-        timeline.setSwitchedAt(switchedAt);
-        timeline.setCleanedUpAt(cleanupAt);
-        timeline.setLatestPosition(latestPosition);
-        return timeline;
-    }
 }

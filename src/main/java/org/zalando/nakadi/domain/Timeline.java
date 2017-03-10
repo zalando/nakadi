@@ -56,6 +56,7 @@ public class Timeline {
     private Date cleanedUpAt;
     private StoragePosition latestPosition;
     private boolean fake;
+    private boolean deleted;
 
     public Timeline(
             final String eventType,
@@ -68,6 +69,7 @@ public class Timeline {
         this.storage = storage;
         this.topic = topic;
         this.createdAt = createdAt;
+        this.deleted = false;
     }
 
     @Nullable
@@ -75,7 +77,6 @@ public class Timeline {
         return id;
     }
 
-    @Nullable
     public void setId(final UUID id) {
         this.id = id;
     }
@@ -149,6 +150,14 @@ public class Timeline {
 
     public boolean isFake() {
         return fake;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(final boolean deleted) {
+        this.deleted = deleted;
     }
 
     @Override

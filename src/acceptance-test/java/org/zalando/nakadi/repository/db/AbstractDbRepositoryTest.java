@@ -26,7 +26,7 @@ public abstract class AbstractDbRepositoryTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         try {
             mapper = (new JsonConfig()).jacksonObjectMapper();
             final DataSource datasource = new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD);

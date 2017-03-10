@@ -15,7 +15,11 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.NotFoundException;
+import org.zalando.nakadi.exceptions.TimelineException;
+import org.zalando.nakadi.exceptions.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.TimelineRequest;
@@ -43,7 +47,9 @@ public class TimelinesController {
 
     @RequestMapping(method = RequestMethod.POST)
     public ResponseEntity<?> createTimeline(@PathVariable("name") final String eventTypeName,
-                                            @RequestBody final TimelineRequest timelineRequest, final Client client) {
+                                            @RequestBody final TimelineRequest timelineRequest, final Client client)
+            throws ForbiddenAccessException, TimelineException, TopicRepositoryException, InconsistentStateException,
+            RepositoryProblemException {
         timelineService.createTimeline(eventTypeName, timelineRequest.getStorageId(), client);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
