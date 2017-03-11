@@ -10,6 +10,7 @@ import org.zalando.nakadi.service.subscription.state.DummyState;
 import org.zalando.nakadi.service.subscription.state.State;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -29,8 +30,8 @@ public class StreamingContextTest {
             }
 
             @Override
-            public void streamData(final byte[] data) throws IOException {
-
+            public OutputStream getOutputStream() {
+                return null;
             }
         };
         return new StreamingContext.Builder()

@@ -83,7 +83,7 @@ public class KafkaClient {
         }
     }
 
-    public org.apache.kafka.clients.consumer.Consumer<String, String> createKafkaConsumer() {
+    public org.apache.kafka.clients.consumer.Consumer<String, byte[]> createKafkaConsumer() {
         // TODO: Refactor to use correct layering
         return ((KafkaTopicRepository) topicRepository).createKafkaConsumer();
     }

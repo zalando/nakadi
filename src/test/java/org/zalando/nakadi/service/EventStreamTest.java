@@ -3,6 +3,7 @@ package org.zalando.nakadi.service;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -29,6 +31,7 @@ import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
+
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -46,7 +49,7 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 public class EventStreamTest {
 
     private static final String TOPIC = randomString();
-    private static final String DUMMY = "DUMMY";
+    private static final byte[] DUMMY = "DUMMY".getBytes();
     private static final Meter BYTES_FLUSHED_METER = new MetricRegistry().meter("mock");
 
     private static final Timeline TIMELINE = createFakeTimeline(TOPIC);
@@ -226,7 +229,8 @@ public class EventStreamTest {
                 .range(0, eventNum)
                 .boxed()
                 .map(index -> new ConsumedEvent(
-                        "event" + index, new NakadiCursor(TIMELINE, "0", KafkaCursor.toNakadiOffset(index))))
+                        ("event" + index).getBytes(), new NakadiCursor(TIMELINE, "0",
+                        KafkaCursor.toNakadiOffset(index))))
                 .collect(Collectors.toList()));
 
         final EventStream eventStream =
@@ -243,7 +247,8 @@ public class EventStreamTest {
                 .forEach(index -> assertThat(
                         batches[index],
                         sameJSONAs(jsonBatch(
-                                "0", KafkaCursor.toNakadiOffset(index), Optional.of(nCopies(1, "event" + index))))
+                                "0", KafkaCursor.toNakadiOffset(index),
+                                Optional.of(nCopies(1, ("event" + index).getBytes()))))
                 ));
     }
 
@@ -327,16 +332,16 @@ public class EventStreamTest {
     }
 
     private static String jsonBatch(final String partition, final String offset,
-                                    final Optional<List<String>> eventsOrNone) {
+                                    final Optional<List<byte[]>> eventsOrNone) {
         return jsonBatch(partition, offset, eventsOrNone, Optional.empty());
     }
 
     private static String jsonBatch(final String partition, final String offset,
-                                    final Optional<List<String>> eventsOrNone, final Optional<String> metadata) {
+                                    final Optional<List<byte[]>> eventsOrNone, final Optional<String> metadata) {
         final String eventsStr = eventsOrNone
                 .map(events -> {
                     final StringBuilder builder = new StringBuilder(",\"events\":[");
-                    events.forEach(event -> builder.append("\"").append(event).append("\","));
+                    events.forEach(event -> builder.append("\"").append(new String(event)).append("\","));
                     builder.deleteCharAt(builder.length() - 1).append("]");
                     return builder.toString();
                 })

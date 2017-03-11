@@ -10,6 +10,6 @@ public interface EventConsumer extends Closeable {
 
     Optional<ConsumedEvent> readEvent();
 
-    Consumer<String, String> getConsumer();
+    Consumer<String, byte[]> getConsumer();
 
 }

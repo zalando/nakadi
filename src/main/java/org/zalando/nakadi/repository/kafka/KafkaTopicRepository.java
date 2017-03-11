@@ -282,7 +282,7 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)
             throws ServiceUnavailableException {
-        try (Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+        try (Consumer<String, byte[]> consumer = kafkaFactory.getConsumer()) {
             final Optional<PartitionInfo> tp = consumer.partitionsFor(timeline.getTopic()).stream()
                     .filter(p -> KafkaCursor.toNakadiPartition(p.partition()).equals(partition))
                     .findAny();
@@ -306,7 +306,7 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public List<PartitionStatistics> loadTopicStatistics(final Collection<Timeline> timelines)
             throws ServiceUnavailableException {
-        try (Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+        try (Consumer<String, byte[]> consumer = kafkaFactory.getConsumer()) {
             final Map<TopicPartition, Timeline> backMap = new HashMap<>();
             for (final Timeline timeline : timelines) {
                 consumer.partitionsFor(timeline.getTopic())
@@ -347,7 +347,7 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public Consumer<String, String> createKafkaConsumer() {
+    public Consumer<String, byte[]> createKafkaConsumer() {
         return kafkaFactory.getConsumer();
     }
 

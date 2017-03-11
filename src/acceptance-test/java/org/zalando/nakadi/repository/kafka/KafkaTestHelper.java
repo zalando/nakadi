@@ -24,7 +24,7 @@ public class KafkaTestHelper {
         this.kafkaUrl = kafkaUrl;
     }
 
-    public KafkaConsumer<String, String> createConsumer() {
+    public KafkaConsumer<String, byte[]> createConsumer() {
         return new KafkaConsumer<>(createKafkaProperties());
     }
 
@@ -37,7 +37,7 @@ public class KafkaTestHelper {
         props.put("bootstrap.servers", kafkaUrl);
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         return props;
     }
@@ -76,7 +76,7 @@ public class KafkaTestHelper {
 
     public List<Cursor> getNextOffsets(final String topic) {
 
-        final KafkaConsumer<String, String> consumer = createConsumer();
+        final KafkaConsumer<String, byte[]> consumer = createConsumer();
         final List<TopicPartition> partitions = consumer
                 .partitionsFor(topic)
                 .stream()

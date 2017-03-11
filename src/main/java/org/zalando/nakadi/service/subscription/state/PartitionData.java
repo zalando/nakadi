@@ -11,7 +11,7 @@ import java.util.TreeMap;
 
 class PartitionData {
     private final ZKSubscription subscription;
-    private final NavigableMap<Long, String> nakadiEvents = new TreeMap<>();
+    private final NavigableMap<Long, byte[]> nakadiEvents = new TreeMap<>();
     private final Logger log;
 
     private long commitOffset;
@@ -33,7 +33,7 @@ class PartitionData {
     }
 
     @Nullable
-    SortedMap<Long, String> takeEventsToStream(final long currentTimeMillis, final int batchSize,
+    SortedMap<Long, byte[]> takeEventsToStream(final long currentTimeMillis, final int batchSize,
                                                final long batchTimeoutMillis) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
@@ -53,8 +53,8 @@ class PartitionData {
         return lastSendMillis;
     }
 
-    private SortedMap<Long, String> extract(final int count) {
-        final SortedMap<Long, String> result = new TreeMap<>();
+    private SortedMap<Long, byte[]> extract(final int count) {
+        final SortedMap<Long, byte[]> result = new TreeMap<>();
         for (int i = 0; i < count && !nakadiEvents.isEmpty(); ++i) {
             final Long offset = nakadiEvents.firstKey();
             result.put(offset, nakadiEvents.remove(offset));
@@ -127,7 +127,7 @@ class PartitionData {
         return new CommitResult(seekKafka, committed);
     }
 
-    void addEventFromKafka(final long offset, final String event) {
+    void addEventFromKafka(final long offset, final byte[] event) {
         if (offset > (sentOffset + nakadiEvents.size() + 1)) {
             log.warn(
                     "Adding event from kafka that is too far from last sent. " +

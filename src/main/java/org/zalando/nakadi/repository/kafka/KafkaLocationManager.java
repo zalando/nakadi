@@ -77,7 +77,7 @@ public class KafkaLocationManager {
     private Properties buildKafkaProperties(final List<Broker> brokers) {
         final Properties props = new Properties();
         props.put("bootstrap.servers", buildBootstrapServers(brokers));
-        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         return props;
     }
