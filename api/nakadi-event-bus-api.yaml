@@ -632,7 +632,7 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-        - name: offset
+        - name: consumed_offset
           in: parameter
           description: |
             Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
