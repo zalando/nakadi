@@ -579,6 +579,10 @@ paths:
             description: An array of `CursorDistanceResult`s with the distance between two offsets.
             items:
               $ref: '#/definitions/CursorDistanceResult'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/event-types/{name}/partitions':
     get:
