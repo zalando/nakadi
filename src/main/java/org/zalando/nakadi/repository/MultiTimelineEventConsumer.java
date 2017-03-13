@@ -68,7 +68,11 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         while ((task = queuedTasks.poll()) != null) {
             task.run();
         }
-        final Optional<ConsumedEvent> result = Optional.ofNullable(eventsQueue.poll());
+        Optional<ConsumedEvent> result = Optional.ofNullable(eventsQueue.poll());
+        if (!result.isPresent()) {
+            poll();
+            result = Optional.ofNullable(eventsQueue.poll());
+        }
         if (result.isPresent()) {
             final NakadiCursor position = result.get().getPosition();
             final EventTypePartition etp = position.getEventTypePartition();
@@ -83,16 +87,12 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                     }
                 });
             }
-        } else {
-            poll();
         }
         return result;
     }
 
     private void poll() {
-        eventConsumers.values().forEach(consumer -> {
-            consumer.readEvent().ifPresent(eventsQueue::add);
-        });
+        eventConsumers.values().forEach(consumer -> consumer.readEvent().ifPresent(eventsQueue::add));
     }
 
     private TopicRepository selectCorrectTopicRepo(
@@ -118,11 +118,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
             // It seems that cursor jumped to different timeline. One need to fetch very first cursor in timeline.
             cursorReplacer.accept(getBeforeFirstCursor(result, electedTimeline, cursor.getPartition()));
         }
-        if (electedTimeline.getLatestPosition() != null) {
-            electedTimeline.calculateNakadiLatestPosition(cursor.getPartition());
-        } else {
-            lastTimelinePosition.accept(null);
-        }
+        lastTimelinePosition.accept(electedTimeline.calculateNakadiLatestPosition(cursor.getPartition()));
         return result;
     }
 
@@ -232,9 +228,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                 .forEach(TimelineSync.ListenerRegistration::cancel);
 
         // remember new positions.
-        partitionsDiff.added.forEach(etp -> {
-            latestOffsets.put(etp, newCursorMap.get(etp));
-        });
+        partitionsDiff.added.forEach(etp -> latestOffsets.put(etp, newCursorMap.get(etp)));
         // add new timeline listeners
         eventTypesDiff.added.forEach(item ->
                 timelineRefreshListeners.put(
@@ -250,7 +244,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         partitions.forEach(latestOffsets::remove);
     }
 
-    private void onTimelineChange(final String ignore) {
+    void onTimelineChange(final String ignore) {
         queuedTasks.add(() -> {
             try {
                 timelinesChanged();

@@ -21,6 +21,13 @@ public class Timeline {
     public static class KafkaStoragePosition implements StoragePosition {
         private List<Long> offsets;
 
+        public KafkaStoragePosition() {
+        }
+
+        public KafkaStoragePosition(final List<Long> offsets) {
+            this.offsets = offsets;
+        }
+
         public List<Long> getOffsets() {
             return offsets;
         }
