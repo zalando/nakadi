@@ -1686,14 +1686,11 @@ definitions:
           Offset of the newer event in the stream.
 
   CursorDistanceResult:
+    allOf:
+      - $ref: '/definitions/CursorDistanceQuery'
     required:
-      - partition
       - distance
     properties:
-      partition:
-        type: string
-        description: |
-          Partition for which the offset distance is measured.
       distance:
         type: number
         description: |
