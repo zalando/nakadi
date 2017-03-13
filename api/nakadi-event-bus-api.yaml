@@ -877,7 +877,10 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for reseting subscription offsets.
+        Endpoint for resetting subscription offsets.
+        The subscription consumers will be disconnected during offset reset. The request can hang up until
+        subscription commit timeout. During that time requests to subscription streaming endpoint
+        will be rejected with 409. The clients should reconnect once the request is finished with 204.
       parameters:
         - name: subscription_id
           in: path
@@ -891,15 +894,23 @@ paths:
             properties:
               items:
                 description: |
-                  List of cursors to reset to.
+                  List of cursors to reset subscription to.
                 type: array
                 items:
-                  $ref: '#/definitions/SubscriptionCursor'
+                  $ref: '#/definitions/SubscriptionCursorWithoutToken'
             required:
               - items
       responses:
         '204':
-          description: Offsets were reseted
+          description: Offsets were reset
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
 
   /subscriptions/{subscription_id}/events:
     get:
@@ -962,6 +973,9 @@ paths:
           description: |
             Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
             already equals the maximal value - the total amount of this subscription partitions.
+
+            This status code is also returned in the case of resetting subscription cursors request still in the
+            progress.
           schema:
             $ref: '#/definitions/Problem'
         '403':
