@@ -877,7 +877,7 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        Endpoint for reseting subscription committed offsets to provided.
+        Endpoint for reseting subscription offsets.
       parameters:
         - name: subscription_id
           in: path
@@ -891,14 +891,14 @@ paths:
             properties:
               items:
                 description: |
-                  List of cursors that the consumer acknowledges to have successfully processed.
+                  List of cursors to reset to.
                 type: array
                 items:
                   $ref: '#/definitions/SubscriptionCursor'
             required:
               - items
       responses:
-        '200':
+        '204':
           description: Offsets were reseted
 
   /subscriptions/{subscription_id}/events:
