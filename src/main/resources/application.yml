@@ -83,6 +83,10 @@ nakadi:
   timeline.wait.timeoutMs: 40000
   subscription:
     maxPartitions: 100
+  jobs:
+    checkRunMs: 600000 # 10 min
+    timelineCleanup.runPeriodMs: 3600000 # 1 hour
+    consumerNodesCleanup.runPeriodMs: 21600000 # 6 hours
 
 twintip:
   mapping: /api
