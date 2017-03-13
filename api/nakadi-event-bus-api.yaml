@@ -666,6 +666,12 @@ paths:
               description: An array of `Cursor`s with shift applied to the offset.
               items:
                 $ref: '#/definitions/Cursor'
+          '422':
+            description: |
+              Unprocessable Entity. In case the provided parameters contain data that is not processable by
+              the server. For example, invalid cursors. More details are provided in the response body.
+            schema:
+              - $ref: '#/definitions/Problem'
 
   /subscriptions:
     post:
