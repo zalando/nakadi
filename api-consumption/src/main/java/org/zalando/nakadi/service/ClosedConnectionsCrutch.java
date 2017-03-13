@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.net.InetAddresses;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import org.zalando.nakadi.domain.Feature;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -194,7 +196,10 @@ public class ClosedConnectionsCrutch {
     @VisibleForTesting
     Map<ConnectionInfo, ConnectionState> getCurrentConnections(final InputStream in) throws IOException {
         final Map<ConnectionInfo, ConnectionState> connectionToState = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+        // Linux proc filesystem files aren't ordinary files and have problems with readLine method
+        // workaround problem by reading the contents to memory before processing
+        final ByteArrayInputStream fullyReadInput = new ByteArrayInputStream(IOUtils.toByteArray(in));
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(fullyReadInput))) {
             // /proc/net/tcp[6]
             // idx, local_address, remote_address, status, ...
 
