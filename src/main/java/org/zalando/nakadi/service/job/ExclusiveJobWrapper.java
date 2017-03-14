@@ -45,6 +45,10 @@ public class ExclusiveJobWrapper {
         if (!createJobLockNode()) {
             return;
         }
+        // we need to check it again after we acquired the lock
+        if (!timeToRunAction()) {
+            return;
+        }
         try {
             log.info("Execution of job will be performed on this instance");
             action.run();
