@@ -188,6 +188,7 @@ public class TimelineService {
                     final Timeline.StoragePosition storagePosition =
                             topicRepositoryHolder.createStoragePosition(activeTimeline);
                     activeTimeline.setLatestPosition(storagePosition);
+                    scheduleTimelineCleanup(activeTimeline);
                     timelineDbRepository.updateTimelime(activeTimeline);
                 }
                 timelineDbRepository.updateTimelime(nextTimeline);
@@ -198,6 +199,20 @@ public class TimelineService {
             throw new TimelineException("Failed to create timeline in DB for: " + activeTimeline.getEventType(), tx);
         } finally {
             finishTimelineUpdate(activeTimeline.getEventType());
+        }
+    }
+
+    private void scheduleTimelineCleanup(final Timeline timeline) throws InconsistentStateException {
+        try {
+            final EventType eventType = eventTypeCache.getEventType(timeline.getEventType());
+            final Long retentionTime = eventType.getOptions().getRetentionTime();
+            if (retentionTime == null) {
+                throw new InconsistentStateException("Event type should has information about its retention time");
+            }
+            final Date cleanupDate = new Date(System.currentTimeMillis() + retentionTime);
+            timeline.setCleanedUpAt(cleanupDate);
+        } catch (final InternalNakadiException | NoSuchEventTypeException e) {
+            throw new InconsistentStateException("Unexpected error occurred when scheduling timeline cleanup", e);
         }
     }
 

@@ -6,4 +6,8 @@ public class InconsistentStateException extends MyNakadiRuntimeException1 {
         super(msg, cause);
     }
 
+    public InconsistentStateException(final String msg) {
+        super(msg);
+    }
+
 }
