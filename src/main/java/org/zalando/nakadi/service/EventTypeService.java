@@ -170,6 +170,7 @@ public class EventTypeService {
     }
 
     public Result<Void> update(final String eventTypeName, final EventTypeBase eventTypeBase, final Client client) {
+        // todo: FIXME Timelines: we need to fix updating of retention time before we release timelines feature
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
