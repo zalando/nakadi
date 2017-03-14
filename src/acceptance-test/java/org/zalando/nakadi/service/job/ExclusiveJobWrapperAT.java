@@ -24,7 +24,7 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
-public class ExclusiveJobWrapperTest extends BaseAT {
+public class ExclusiveJobWrapperAT extends BaseAT {
 
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
     private static final int TEST_JOB_PERIOD_MS = 3 * 60 * 60 * 1000; // 3 hours
@@ -37,7 +37,7 @@ public class ExclusiveJobWrapperTest extends BaseAT {
     private String lockPath;
     private String latestPath;
 
-    public ExclusiveJobWrapperTest() {
+    public ExclusiveJobWrapperAT() {
         objectMapper = new JsonConfig().jacksonObjectMapper();
         zkHolder = Mockito.mock(ZooKeeperHolder.class);
         when(zkHolder.get()).thenReturn(CURATOR);

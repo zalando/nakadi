@@ -22,7 +22,6 @@ import static org.mockito.Mockito.when;
 public class ConsumerLimitingCleaningJobAT extends BaseAT {
 
     private static final CuratorFramework CURATOR = ZookeeperTestUtils.createCurator(ZOOKEEPER_URL);
-    private static final int JOB_PERIOD_MS = 6 * 60 * 60 * 1000;
 
     private ConsumerLimitingCleaningJob cleaningService;
 
@@ -36,7 +35,7 @@ public class ConsumerLimitingCleaningJobAT extends BaseAT {
         final ExclusiveJobWrapper jobWrapper = DummyJobWrapper.create();
         when(jobWrapperFactory.createExclusiveJobWrapper(any(), anyLong())).thenReturn(jobWrapper);
 
-        cleaningService = new ConsumerLimitingCleaningJob(zkHolder, jobWrapperFactory, limitingService, JOB_PERIOD_MS);
+        cleaningService = new ConsumerLimitingCleaningJob(zkHolder, jobWrapperFactory, limitingService, 0);
     }
 
     @Before

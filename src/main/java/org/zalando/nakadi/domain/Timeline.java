@@ -179,7 +179,8 @@ public class Timeline {
                 && Objects.equals(createdAt, that.createdAt)
                 && Objects.equals(switchedAt, that.switchedAt)
                 && Objects.equals(cleanedUpAt, that.cleanedUpAt)
-                && Objects.equals(latestPosition, that.latestPosition);
+                && Objects.equals(latestPosition, that.latestPosition)
+                && Objects.equals(deleted, that.deleted);
     }
 
     @Override
@@ -200,6 +201,7 @@ public class Timeline {
         sb.append(", cleanedUpAt=").append(cleanedUpAt);
         sb.append(", latestPosition=").append(latestPosition);
         sb.append(", fake=").append(fake);
+        sb.append(", deleted=").append(deleted);
         sb.append('}');
         return sb.toString();
     }
