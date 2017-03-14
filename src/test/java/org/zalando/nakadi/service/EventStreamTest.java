@@ -32,6 +32,7 @@ import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -49,7 +50,7 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 public class EventStreamTest {
 
     private static final String TOPIC = randomString();
-    private static final byte[] DUMMY = "DUMMY".getBytes();
+    private static final byte[] DUMMY = "DUMMY".getBytes(UTF_8);
     private static final Meter BYTES_FLUSHED_METER = new MetricRegistry().meter("mock");
 
     private static final Timeline TIMELINE = createFakeTimeline(TOPIC);
@@ -229,7 +230,7 @@ public class EventStreamTest {
                 .range(0, eventNum)
                 .boxed()
                 .map(index -> new ConsumedEvent(
-                        ("event" + index).getBytes(), new NakadiCursor(TIMELINE, "0",
+                        ("event" + index).getBytes(UTF_8), new NakadiCursor(TIMELINE, "0",
                         KafkaCursor.toNakadiOffset(index))))
                 .collect(Collectors.toList()));
 
@@ -248,7 +249,7 @@ public class EventStreamTest {
                         batches[index],
                         sameJSONAs(jsonBatch(
                                 "0", KafkaCursor.toNakadiOffset(index),
-                                Optional.of(nCopies(1, ("event" + index).getBytes()))))
+                                Optional.of(nCopies(1, ("event" + index).getBytes(UTF_8)))))
                 ));
     }
 
@@ -341,7 +342,7 @@ public class EventStreamTest {
         final String eventsStr = eventsOrNone
                 .map(events -> {
                     final StringBuilder builder = new StringBuilder(",\"events\":[");
-                    events.forEach(event -> builder.append("\"").append(new String(event)).append("\","));
+                    events.forEach(event -> builder.append("\"").append(new String(event, UTF_8)).append("\","));
                     builder.deleteCharAt(builder.length() - 1).append("]");
                     return builder.toString();
                 })

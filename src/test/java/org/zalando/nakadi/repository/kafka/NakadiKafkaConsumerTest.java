@@ -18,6 +18,8 @@ import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.utils.TestUtils;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -98,8 +100,8 @@ public class NakadiKafkaConsumerTest {
     public void whenReadEventsThenGetRightEvents() {
 
         // ARRANGE //
-        final byte[] event1 = randomString().getBytes();
-        final byte[] event2 = randomString().getBytes();
+        final byte[] event1 = randomString().getBytes(UTF_8);
+        final byte[] event2 = randomString().getBytes(UTF_8);
         final int event1Offset = randomUInt();
         final int event2Offset = randomUInt();
         final ConsumerRecords<String, byte[]> consumerRecords = new ConsumerRecords<>(ImmutableMap.of(

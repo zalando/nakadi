@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,13 +24,13 @@ import java.util.stream.Collectors;
 import org.zalando.nakadi.view.Cursor;
 
 import static java.lang.System.currentTimeMillis;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.function.Function.identity;
 
 public class EventStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
     public static final String BATCH_SEPARATOR = "\n";
-    public static final Charset UTF8 = Charset.forName("UTF-8");
 
     private final OutputStream outputStream;
     private final EventConsumer eventConsumer;
@@ -154,7 +153,7 @@ public class EventStream {
                 // block flushing
             }
         };
-        final Writer writer = new OutputStreamWriter(countingOutputStream);
+        final Writer writer = new OutputStreamWriter(countingOutputStream, UTF_8);
         writer.write("{\"cursor\":{\"partition\":\"");
         writer.write(cursor.getPartition());
         writer.write("\",\"offset\":\"");

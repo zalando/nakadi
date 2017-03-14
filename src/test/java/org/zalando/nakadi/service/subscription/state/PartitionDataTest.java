@@ -6,6 +6,7 @@ import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.System.currentTimeMillis;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -40,7 +41,7 @@ public class PartitionDataTest {
     public void normalOperationShouldNotReconfigureKafkaConsumer() {
         final PartitionData pd = new PartitionData(null, 100L);
         for (long i = 0; i < 100; ++i) {
-            pd.addEventFromKafka(100L + i + 1, ("test_" + i).getBytes());
+            pd.addEventFromKafka(100L + i + 1, ("test_" + i).getBytes(UTF_8));
         }
         // Now say to it that it was sent
         pd.takeEventsToStream(currentTimeMillis(), 1000, 0L);
@@ -57,9 +58,9 @@ public class PartitionDataTest {
     public void eventsMustBeReturnedInGuaranteedOrder() {
         final PartitionData pd = new PartitionData(null, 100L);
         for (long i = 0; i < 100; ++i) {
-            pd.addEventFromKafka(200L - i, ("test_" + (200L - i)).getBytes());
+            pd.addEventFromKafka(200L - i, ("test_" + (200L - i)).getBytes(UTF_8));
         }
-        pd.addEventFromKafka(201L, "fake".getBytes());
+        pd.addEventFromKafka(201L, "fake".getBytes(UTF_8));
         for (int i = 0; i < 10; ++i) {
             final SortedMap<Long, byte[]> data = pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
             assertNotNull(data);
@@ -68,13 +69,13 @@ public class PartitionDataTest {
             assertEquals(0, pd.getKeepAliveInARow());
             assertEquals(100L + i * 10L + 1L, data.firstKey().longValue());
             assertEquals(100L + i * 10L + 10L, data.lastKey().longValue());
-            data.forEach((k, v) -> assertArrayEquals(("test_" + k).getBytes(), v));
+            data.forEach((k, v) -> assertArrayEquals(("test_" + k).getBytes(UTF_8), v));
         }
         final SortedMap<Long, byte[]> data = pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
         assertNotNull(data);
         assertEquals(1, data.size());
         assertEquals(201L, data.firstKey().longValue());
-        assertArrayEquals("fake".getBytes(), data.get(data.firstKey()));
+        assertArrayEquals("fake".getBytes(UTF_8), data.get(data.firstKey()));
         assertEquals(0, pd.getKeepAliveInARow());
     }
 
@@ -98,7 +99,7 @@ public class PartitionDataTest {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
         final PartitionData pd = new PartitionData(null, 100L);
         for (int i = 0; i < 100; ++i) {
-            pd.addEventFromKafka(i + 100L + 1, "test".getBytes());
+            pd.addEventFromKafka(i + 100L + 1, "test".getBytes(UTF_8));
         }
         SortedMap<Long, byte[]> data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
         assertNull(data);
@@ -110,7 +111,7 @@ public class PartitionDataTest {
         assertEquals(100, data.size());
 
         for (int i = 100; i < 200; ++i) {
-            pd.addEventFromKafka(i + 100L + 1, "test".getBytes());
+            pd.addEventFromKafka(i + 100L + 1, "test".getBytes(UTF_8));
         }
         data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
         assertNull(data);
@@ -127,7 +128,7 @@ public class PartitionDataTest {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
         final PartitionData pd = new PartitionData(null, 100L);
         for (int i = 0; i < 100; ++i) {
-            pd.addEventFromKafka(i + 100L + 1, "test".getBytes());
+            pd.addEventFromKafka(i + 100L + 1, "test".getBytes(UTF_8));
         }
         assertNull(pd.takeEventsToStream(currentTimeMillis(), 1000, timeout));
         final SortedMap<Long, byte[]> eventsToStream = pd.takeEventsToStream(currentTimeMillis(), 99, timeout);

@@ -32,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 
 class StreamingState extends State {
     private final Map<Partition.PartitionKey, PartitionData> offsets = new HashMap<>();
@@ -230,7 +232,7 @@ class StreamingState extends State {
                 // block flushing
             }
         };
-        final Writer writer = new OutputStreamWriter(countingOutputStream);
+        final Writer writer = new OutputStreamWriter(countingOutputStream, UTF_8);
 
         writer.write("{\"cursor\":");
         writer.write(cursorSerialized);

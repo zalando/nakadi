@@ -28,6 +28,8 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.timeline.TimelineSync;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.fail;
@@ -83,7 +85,7 @@ public class EventTypeCacheTestAT {
                 .create()
                 .creatingParentsIfNeeded()
                 .withMode(CreateMode.PERSISTENT)
-                .forPath("/nakadi/event_types/" + et.getName(), "some-value".getBytes());
+                .forPath("/nakadi/event_types/" + et.getName(), "some-value".getBytes(UTF_8));
 
         etc.updated(et.getName());
 
