@@ -11,6 +11,7 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 
@@ -27,8 +28,8 @@ class VersionOneConverter implements VersionedConverter {
     }
 
     @Override
-    public NakadiCursor.Version getVersion() {
-        return NakadiCursor.Version.ONE;
+    public CursorConverter.Version getVersion() {
+        return CursorConverter.Version.ONE;
     }
 
     public NakadiCursor convert(final String eventTypeStr, final Cursor cursor)
@@ -38,7 +39,7 @@ class VersionOneConverter implements VersionedConverter {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
         final String versionStr = parts[0];
-        if (versionStr.length() != NakadiCursor.VERSION_LENGTH) {
+        if (versionStr.length() != CursorConverter.VERSION_LENGTH) {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
         final String orderStr = parts[1];
@@ -85,7 +86,7 @@ class VersionOneConverter implements VersionedConverter {
         // offset data - everything else
         return String.format(
                 "%s-%04x-%s",
-                NakadiCursor.Version.ONE.code,
+                CursorConverter.Version.ONE.code,
                 nakadiCursor.getTimeline().getOrder(),
                 nakadiCursor.getOffset());
     }

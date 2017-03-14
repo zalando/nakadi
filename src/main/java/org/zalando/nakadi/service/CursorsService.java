@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.InvalidStreamIdException;
@@ -34,7 +35,6 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import static java.text.MessageFormat.format;
@@ -127,12 +127,13 @@ public class CursorsService {
         }
     }
 
+    // TODO: Maybe it is better to use SubscriptionCursorWithoutToken.
     private String getPartitionSession(final String subscriptionId, final String topic, final NakadiCursor cursor)
             throws ServiceUnavailableException, InvalidCursorException {
         try {
             final String partitionPath = format(PATH_ZK_PARTITION, subscriptionId, topic, cursor.getPartition());
             final byte[] partitionData = zkHolder.get().getData().forPath(partitionPath);
-            final Partition.PartitionKey partitionKey = new Partition.PartitionKey(topic, cursor.getPartition());
+            final TopicPartition partitionKey = new TopicPartition(topic, cursor.getPartition());
             return CuratorZkSubscriptionClient.deserializeNode(partitionKey, partitionData).getSession();
         } catch (final KeeperException.NoNodeException e) {
             throw new InvalidCursorException(CursorError.PARTITION_NOT_FOUND, cursor);

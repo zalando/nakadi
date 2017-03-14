@@ -29,23 +29,14 @@ public class NakadiKafkaConsumer implements EventConsumer {
         this.pollTimeout = pollTimeout;
         this.timelineMap = timelineMap;
         // define topic/partitions to consume from
-        final List<TopicPartition> topicPartitions = kafkaCursors
-                .stream()
-                .map(cursor -> new TopicPartition(cursor.getTopic(), cursor.getPartition()))
-                .collect(Collectors.toList());
-        kafkaConsumer.assign(topicPartitions);
-
-        // set offsets
-        topicPartitions.forEach(topicPartition ->
-                kafkaConsumer.seek(
-                        topicPartition,
-                        kafkaCursors
-                                .stream()
-                                .filter(cursor -> cursor.getPartition() == topicPartition.partition())
-                                .findFirst()
-                                .get()
-                                .getOffset()
+        final Map<TopicPartition, KafkaCursor> topicCursors = kafkaCursors.stream().collect(
+                Collectors.toMap(
+                        cursor -> new TopicPartition(cursor.getTopic(), cursor.getPartition()),
+                        cursor -> cursor,
+                        (cursor1, cursor2) -> cursor2
                 ));
+        kafkaConsumer.assign(new ArrayList<>(topicCursors.keySet()));
+        topicCursors.forEach((topicPartition, cursor) -> kafkaConsumer.seek(topicPartition, cursor.getOffset()));
     }
 
     @Override

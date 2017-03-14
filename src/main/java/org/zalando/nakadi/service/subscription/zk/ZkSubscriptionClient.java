@@ -2,6 +2,8 @@ package org.zalando.nakadi.service.subscription.zk;
 
 import java.util.Collection;
 import java.util.Map;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -59,14 +61,13 @@ public interface ZkSubscriptionClient {
      * |  |- 1: {session: null, next_session: null, state: UNASSIGNED}
      * |   |- offset: {OFFSET}
      *
-     * @param partitionOffsets Data to use for subscription filling.
+     * @param cursors Data to use for subscription filling.
      */
-    void fillEmptySubscription(Map<Partition.PartitionKey, String> partitionOffsets);
+    void fillEmptySubscription(Collection<NakadiCursor> cursors);
 
 
     /**
      * Updates specified partition in zk.
-     *
      */
     void updatePartitionConfiguration(Partition partition);
 
@@ -106,14 +107,15 @@ public interface ZkSubscriptionClient {
      */
     ZKSubscription subscribeForTopologyChanges(Runnable listener);
 
-    ZKSubscription subscribeForOffsetChanges(Partition.PartitionKey key, Runnable commitListener);
+    ZKSubscription subscribeForOffsetChanges(TopicPartition key, Runnable commitListener);
 
     /**
      * Returns current offset value for specified partition key.
+     *
      * @param key Key to get offset for
      * @return commit offset
      */
-    long getOffset(Partition.PartitionKey key);
+    String getOffset(TopicPartition key);
 
     /**
      * Registers client connection using session id in /nakadi/subscriptions/{subscriptionId}/sessions/{session.id}
@@ -128,10 +130,10 @@ public interface ZkSubscriptionClient {
     /**
      * Transfers partitions to next client using data in zk. Updates topology_version if needed.
      *
-     * @param sessionId   Someone who actually tries to transfer data.
+     * @param sessionId  Someone who actually tries to transfer data.
      * @param partitions topic ids and partition ids of transferred data.
      */
-    void transfer(String sessionId, Collection<Partition.PartitionKey> partitions);
+    void transfer(String sessionId, Collection<TopicPartition> partitions);
 
     ZkSubscriptionNode getZkSubscriptionNodeLocked();
 }

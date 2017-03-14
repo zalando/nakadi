@@ -23,7 +23,7 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 @Service
 public class CursorConverterImpl implements CursorConverter {
 
-    private final Map<NakadiCursor.Version, VersionedConverter> converters = new EnumMap<>(NakadiCursor.Version.class);
+    private final Map<Version, VersionedConverter> converters = new EnumMap<>(Version.class);
 
     @Autowired
     public CursorConverterImpl(final EventTypeCache eventTypeCache, final TimelineService timelineService) {
@@ -56,28 +56,28 @@ public class CursorConverterImpl implements CursorConverter {
     }
 
     /**
-     * Method tries to get version of cursor. If version can not be restored, than {@link NakadiCursor.Version#ZERO}
+     * Method tries to get version of cursor. If version can not be restored, than {@link Version#ZERO}
      * will be returned
      *
      * @param offset Offset to guess version from
      * @return Version of offset.
      */
     @VisibleForTesting
-    static NakadiCursor.Version guessVersion(final String offset) {
-        if (offset.length() < (NakadiCursor.VERSION_LENGTH)) {
-            return NakadiCursor.Version.ZERO;
+    static Version guessVersion(final String offset) {
+        if (offset.length() < (CursorConverter.VERSION_LENGTH)) {
+            return CursorConverter.Version.ZERO;
         }
-        final String versionStr = offset.substring(0, NakadiCursor.VERSION_LENGTH);
-        final Optional<NakadiCursor.Version> version =
-                Stream.of(NakadiCursor.Version.values())
+        final String versionStr = offset.substring(0, CursorConverter.VERSION_LENGTH);
+        final Optional<Version> version =
+                Stream.of(CursorConverter.Version.values())
                         .filter(v -> v.code.equals(versionStr))
                         .findAny();
-        return version.orElse(NakadiCursor.Version.ZERO);
+        return version.orElse(CursorConverter.Version.ZERO);
     }
 
     public Cursor convert(final NakadiCursor nakadiCursor) {
-        final NakadiCursor.Version version = nakadiCursor.getTimeline().isFake() ? NakadiCursor.Version.ZERO
-                : NakadiCursor.Version.ONE;
+        final Version version = nakadiCursor.getTimeline().isFake() ? CursorConverter.Version.ZERO
+                : CursorConverter.Version.ONE;
         return new Cursor(
                 nakadiCursor.getPartition(),
                 converters.get(version).formatOffset(nakadiCursor));

@@ -28,6 +28,7 @@ import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -221,14 +222,14 @@ public class SubscriptionControllerTest {
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
         final Subscription subscription = builder().withEventType("myET").build();
-        final Partition.PartitionKey partitionKey = new Partition.PartitionKey("topic", "0");
+        final TopicPartition partitionKey = new TopicPartition("topic", "0");
         final Partition[] partitions = {new Partition(partitionKey, "xz", "xz", Partition.State.ASSIGNED)};
         final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
         zkSubscriptionNode.setPartitions(partitions);
         zkSubscriptionNode.setSessions(new Session[]{new Session("session-is", 0)});
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
-        when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn(3L);
+        when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn("3");
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
         final List<PartitionStatistics> statistics = Collections.singletonList(

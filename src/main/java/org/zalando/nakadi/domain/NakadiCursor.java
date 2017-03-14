@@ -81,7 +81,6 @@ public class NakadiCursor implements Comparable<NakadiCursor> {
         return new NakadiCursor(timeline, partition, offset);
     }
 
-
     @Override
     public int compareTo(final NakadiCursor other) {
         if ((other.getTimeline().isFake() && this.getTimeline().isFirstAfterFake())
@@ -111,4 +110,5 @@ public class NakadiCursor implements Comparable<NakadiCursor> {
                 ", timeline='" + timeline + '\'' +
                 '}';
     }
+
 }

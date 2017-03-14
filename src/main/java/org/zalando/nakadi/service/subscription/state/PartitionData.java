@@ -1,29 +1,36 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.NavigableSet;
+import java.util.Set;
+import java.util.TreeSet;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
-
-import javax.annotation.Nullable;
-import java.util.NavigableMap;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 class PartitionData {
     private final ZKSubscription subscription;
-    private final NavigableMap<Long, String> nakadiEvents = new TreeMap<>();
+    private final List<ConsumedEvent> nakadiEvents = new LinkedList<>();
+    private final NavigableSet<NakadiCursor> allCursorsOrdered = new TreeSet<>();
     private final Logger log;
 
-    private long commitOffset;
-    private long sentOffset;
+    private NakadiCursor commitOffset;
+    private NakadiCursor sentOffset;
     private long lastSendMillis;
     private int keepAliveInARow;
 
-    PartitionData(final ZKSubscription subscription, final Long commitOffset) {
+    @VisibleForTesting
+    PartitionData(final ZKSubscription subscription, final NakadiCursor commitOffset) {
         this(subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class));
     }
 
-    PartitionData(final ZKSubscription subscription, final Long commitOffset, final Logger log) {
+    PartitionData(final ZKSubscription subscription, final NakadiCursor commitOffset, final Logger log) {
         this.subscription = subscription;
         this.log = log;
 
@@ -33,8 +40,8 @@ class PartitionData {
     }
 
     @Nullable
-    SortedMap<Long, String> takeEventsToStream(final long currentTimeMillis, final int batchSize,
-                                               final long batchTimeoutMillis) {
+    List<ConsumedEvent> takeEventsToStream(final long currentTimeMillis, final int batchSize,
+                                           final long batchTimeoutMillis) {
         final boolean countReached = (nakadiEvents.size() >= batchSize) && batchSize > 0;
         final boolean timeReached = (currentTimeMillis - lastSendMillis) >= batchTimeoutMillis;
         if (countReached || timeReached) {
@@ -45,22 +52,25 @@ class PartitionData {
         }
     }
 
-    long getSentOffset() {
+    NakadiCursor getSentOffset() {
         return sentOffset;
+    }
+
+    NakadiCursor getCommitOffset() {
+        return commitOffset;
     }
 
     long getLastSendMillis() {
         return lastSendMillis;
     }
 
-    private SortedMap<Long, String> extract(final int count) {
-        final SortedMap<Long, String> result = new TreeMap<>();
+    private List<ConsumedEvent> extract(final int count) {
+        final List<ConsumedEvent> result = new ArrayList<>(count);
         for (int i = 0; i < count && !nakadiEvents.isEmpty(); ++i) {
-            final Long offset = nakadiEvents.firstKey();
-            result.put(offset, nakadiEvents.remove(offset));
+            result.add(nakadiEvents.remove(0));
         }
         if (!result.isEmpty()) {
-            this.sentOffset = result.lastKey();
+            this.sentOffset = result.get(result.size() - 1).getPosition();
             this.keepAliveInARow = 0;
         } else {
             this.keepAliveInARow += 1;
@@ -79,16 +89,16 @@ class PartitionData {
      * new positions, and update commit offset as well (because it could happened that there are no messages to
      * stream according to window size)
      *
-     * @param position First position available in kafka
+     * @param beforeFirst Position that
      */
-    void ensureDataAvailable(final long position) {
-        if (position > commitOffset + 1) {
-            log.warn("Oldest kafka position is {} and commit offset is {}, updating", position, commitOffset);
-            commitOffset = position;
+    void ensureDataAvailable(final NakadiCursor beforeFirst) {
+        if (beforeFirst.compareTo(commitOffset) > 0) {
+            log.warn("Oldest kafka position is {} and commit offset is {}, updating", beforeFirst, commitOffset);
+            commitOffset = beforeFirst;
         }
-        if (position > sentOffset + 1) {
-            log.warn("Oldest kafka position is {} and sent offset is {}, updating", position, sentOffset);
-            sentOffset = position;
+        if (beforeFirst.compareTo(sentOffset) > 0) {
+            log.warn("Oldest kafka position is {} and sent offset is {}, updating", beforeFirst, sentOffset);
+            sentOffset = beforeFirst;
         }
     }
 
@@ -102,51 +112,48 @@ class PartitionData {
         }
     }
 
-    CommitResult onCommitOffset(final Long offset) {
+    CommitResult onCommitOffset(final NakadiCursor offset) {
         boolean seekKafka = false;
-        if (offset > sentOffset) {
+        if (offset.compareTo(sentOffset) > 0) {
             log.error("Commit in future: current: {}, committed {} will skip sending obsolete data", sentOffset,
                     commitOffset);
             seekKafka = true;
             sentOffset = offset;
         }
         final long committed;
-        if (offset >= commitOffset) {
-            committed = offset - commitOffset;
+        if (offset.compareTo(commitOffset) >= 0) {
+            final Set<NakadiCursor> committedCursors = allCursorsOrdered.headSet(offset, true);
+            committed = committedCursors.size();
             commitOffset = offset;
+            // Operation is cascaded to allCursorsOrdered set.
+            committedCursors.clear();
         } else {
             log.error("Commits in past are evil!: Committing in {} while current commit is {}", offset, commitOffset);
+            // Commit in past occurred. One should move storage pointer to sentOffset.
             seekKafka = true;
             commitOffset = offset;
             sentOffset = commitOffset;
+            allCursorsOrdered.clear();
+            nakadiEvents.clear();
             committed = 0;
         }
-        while (nakadiEvents.floorKey(commitOffset) != null) {
-            nakadiEvents.pollFirstEntry();
+        while (!nakadiEvents.isEmpty() && nakadiEvents.get(0).getPosition().compareTo(commitOffset) <= 0) {
+            nakadiEvents.remove(0);
         }
         return new CommitResult(seekKafka, committed);
     }
 
-    void addEventFromKafka(final long offset, final String event) {
-        if (offset > (sentOffset + nakadiEvents.size() + 1)) {
-            log.warn(
-                    "Adding event from kafka that is too far from last sent. " +
-                            "Dunno how it happened, but it is. Sent offset: {}, Commit offset: {}, Adding offset: {}",
-                    sentOffset, commitOffset, offset);
-        }
-        nakadiEvents.put(offset, event);
-    }
-
-    void clearEvents() {
-        nakadiEvents.clear();
+    void addEvent(final ConsumedEvent event) {
+        nakadiEvents.add(event);
+        allCursorsOrdered.add(event.getPosition());
     }
 
     boolean isCommitted() {
-        return sentOffset <= commitOffset;
+        return sentOffset.compareTo(commitOffset) <= 0;
     }
 
-    long getUnconfirmed() {
-        return sentOffset - commitOffset;
+    int getUnconfirmed() {
+        return allCursorsOrdered.headSet(sentOffset, true).size();
     }
 
     public ZKSubscription getSubscription() {

@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,18 +15,17 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.CursorConverter;
-import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class KafkaClientTest {
+public class StartingStateTest {
 
     public static final String ET_0 = "et_0";
     public static final String ET_1 = "et_1";
-    private KafkaClient client;
     private Subscription subscription;
     private Timeline timelineEt00;
     private Timeline timelineEt01;
@@ -51,8 +49,6 @@ public class KafkaClientTest {
                 .thenReturn(ImmutableList.of(timelineEt10, timelineEt11));
 
         this.cursorConverter = mock(CursorConverter.class);
-
-        this.client = new KafkaClient(subscription, timelineService, cursorConverter);
     }
 
     @Test
@@ -85,10 +81,12 @@ public class KafkaClientTest {
         when(timelineService.getTopicRepository(eq(timelineEt00))).thenReturn(firstTR);
         when(timelineService.getTopicRepository(eq(timelineEt10))).thenReturn(secondTR);
 
-        final Map<Partition.PartitionKey, NakadiCursor> cursorMap = client.getSubscriptionOffsets();
-        Assert.assertEquals(cursorMap.size(), 2);
-        Assert.assertEquals(beforeBegin0, cursorMap.get(new Partition.PartitionKey(ET_0, "0")));
-        Assert.assertEquals(beforeBegin1, cursorMap.get(new Partition.PartitionKey(ET_1, "0")));
+        final List<NakadiCursor> cursors = StartingState.calculateStartPosition(
+                subscription, timelineService, cursorConverter);
+
+        Assert.assertEquals(cursors.size(), 2);
+        Assert.assertEquals(beforeBegin0, cursors.get(0));
+        Assert.assertEquals(beforeBegin1, cursors.get(1));
     }
 
     @Test
@@ -115,10 +113,11 @@ public class KafkaClientTest {
         when(timelineService.getTopicRepository(eq(timelineEt01))).thenReturn(firstTR);
         when(timelineService.getTopicRepository(eq(timelineEt11))).thenReturn(secondTR);
 
-        final Map<Partition.PartitionKey, NakadiCursor> cursorMap = client.getSubscriptionOffsets();
-        Assert.assertEquals(cursorMap.size(), 2);
-        Assert.assertEquals(end0, cursorMap.get(new Partition.PartitionKey(ET_0, "0")));
-        Assert.assertEquals(end1, cursorMap.get(new Partition.PartitionKey(ET_1, "0")));
+        final List<NakadiCursor> cursors = StartingState.calculateStartPosition(subscription, timelineService,
+                cursorConverter);
+        Assert.assertEquals(cursors.size(), 2);
+        Assert.assertEquals(end0, cursors.get(0));
+        Assert.assertEquals(end1, cursors.get(1));
     }
 
     @Test
@@ -138,11 +137,12 @@ public class KafkaClientTest {
 
         when(cursorConverter.convert(cursor1)).thenReturn(middle0);
         when(cursorConverter.convert(cursor2)).thenReturn(middle1);
-        final Map<Partition.PartitionKey, NakadiCursor> cursorMap = client.getSubscriptionOffsets();
-        Assert.assertEquals(cursorMap.size(), 2);
-        Assert.assertEquals(middle0, cursorMap.get(new Partition.PartitionKey(ET_0, "0")));
-        Assert.assertEquals(middle1, cursorMap.get(new Partition.PartitionKey(ET_1, "0")));
 
+        final List<NakadiCursor> cursors = StartingState.calculateStartPosition(subscription, timelineService,
+                cursorConverter);
+        Assert.assertEquals(cursors.size(), 2);
+        Assert.assertEquals(middle0, cursors.get(0));
+        Assert.assertEquals(middle1, cursors.get(1));
     }
 
 }

@@ -242,8 +242,9 @@ public class SubscriptionService {
             }
             final String total = topicPartition.getOffset();
             if (!Cursor.BEFORE_OLDEST_OFFSET.equals(total)) {
-                final long clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
-                unconsumedEvents = Long.valueOf(total) - clientOffset;
+                final String clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
+                // TODO! Use different service for this stuff
+                unconsumedEvents = Long.valueOf(total) - Long.valueOf(clientOffset);
             }
         }
         return new SubscriptionEventTypeStats.Partition(
