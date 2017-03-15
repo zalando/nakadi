@@ -105,7 +105,8 @@ public class EventTypeService {
             eventType.setTopic(topicName);
             eventTypeRepository.saveEventType(eventType);
             return Result.ok();
-        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException | DuplicatedEventTypeNameException e) {
+        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
+                DuplicatedEventTypeNameException e) {
             LOG.debug("Failed to create EventType.", e);
             if (null != eventType.getTopic()) {
                 try {
