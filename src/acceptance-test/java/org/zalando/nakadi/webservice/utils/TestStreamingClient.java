@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.hila.StreamBatch;
 
 import javax.annotation.Nullable;
@@ -58,6 +59,10 @@ public class TestStreamingClient implements Runnable {
 
     public static TestStreamingClient create(final String baseUrl, final String subscriptionId, final String params) {
         return new TestStreamingClient(baseUrl, subscriptionId, params);
+    }
+
+    public static TestStreamingClient create(final String subscriptionId) {
+        return new TestStreamingClient(BaseAT.URL, subscriptionId, "");
     }
 
     @Override

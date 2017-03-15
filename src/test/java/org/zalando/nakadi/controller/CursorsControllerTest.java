@@ -2,9 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -34,6 +31,11 @@ import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.problem.Problem;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.mockito.Matchers.any;
@@ -99,7 +101,7 @@ public class CursorsControllerTest {
         when(tokenService.generateToken()).thenReturn(TOKEN);
 
         final CursorsController controller = new CursorsController(cursorsService, featureToggleService,
-                subscriptionRepository, eventTypeRepository, cursorConverter, tokenService);
+                cursorConverter, tokenService);
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
@@ -116,7 +118,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenCommitValidCursorsThenNoContent() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenReturn(ImmutableList.of());
         postCursors(DUMMY_CURSORS)
                 .andExpect(status().isNoContent());
@@ -124,7 +126,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenCommitInvalidCursorsThenOk() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenReturn(DUMMY_CURSORS.stream().map(v -> Boolean.FALSE).collect(Collectors.toList()));
         final ItemsWrapper<CursorCommitResult> expectation = new ItemsWrapper<>(
                 DUMMY_CURSORS.stream()
@@ -137,7 +139,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenNoSubscriptionThenNotFound() throws Exception {
-        when(subscriptionRepository.getSubscription(SUBSCRIPTION_ID))
+        when(cursorsService.commitCursors(any(), eq(SUBSCRIPTION_ID), any(), any()))
                 .thenThrow(new NoSuchSubscriptionException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND, "dummy-message");
 
@@ -146,7 +148,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenNoEventTypeThenUnprocessableEntity() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenThrow(new NoSuchEventTypeException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "dummy-message");
 
@@ -155,7 +157,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenServiceUnavailableExceptionThenServiceUnavailable() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenThrow(new ServiceUnavailableException("dummy-message"));
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy-message");
 
@@ -164,7 +166,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenInvalidCursorExceptionThenUnprocessableEntity() throws Exception {
-        when(cursorsService.commitCursors(any(), any(), any()))
+        when(cursorsService.commitCursors(any(), any(), any(), any()))
                 .thenThrow((new InvalidCursorException(CursorError.NULL_PARTITION,
                         new SubscriptionCursor(null, null, null, null))));
 
@@ -181,7 +183,7 @@ public class CursorsControllerTest {
 
     @Test
     public void whenGetThenOK() throws Exception {
-        when(cursorsService.getSubscriptionCursors(SUBSCRIPTION_ID)).thenReturn(DUMMY_NAKADI_CURSORS);
+        when(cursorsService.getSubscriptionCursors(eq(SUBSCRIPTION_ID), any())).thenReturn(DUMMY_NAKADI_CURSORS);
         getCursors()
                 .andExpect(status().is(HttpStatus.OK.value()))
                 .andExpect(content().string(objectMapper.writeValueAsString(new ItemsWrapper<>(DUMMY_CURSORS))));

@@ -48,6 +48,10 @@ public class NakadiCursor {
         return offset;
     }
 
+    public String getEventType() {
+        return timeline.getEventType();
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
