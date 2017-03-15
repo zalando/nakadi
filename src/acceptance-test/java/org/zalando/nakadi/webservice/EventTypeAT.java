@@ -108,6 +108,7 @@ public class EventTypeAT extends BaseAT {
         );
         final JdbcTemplate template = new JdbcTemplate(datasource);
 
+        template.execute("DELETE FROM zn_data.timeline");
         template.execute("DELETE FROM zn_data.event_type_schema");
         template.execute("DELETE FROM zn_data.event_type");
     }
