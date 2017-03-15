@@ -151,6 +151,14 @@ public class Timeline {
         return fake;
     }
 
+    public boolean isOpen() {
+        return getSwitchedAt() == null;
+    }
+
+    public boolean isClosed() {
+        return !isOpen();
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {

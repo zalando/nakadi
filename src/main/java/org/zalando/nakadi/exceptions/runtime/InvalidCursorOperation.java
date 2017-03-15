@@ -1,6 +1,6 @@
 package org.zalando.nakadi.exceptions.runtime;
 
-public class InvalidCursorDistanceQuery extends MyNakadiRuntimeException1 {
+public class InvalidCursorOperation extends MyNakadiRuntimeException1 {
     private final Reason reason;
 
     public enum Reason {
@@ -11,7 +11,7 @@ public class InvalidCursorDistanceQuery extends MyNakadiRuntimeException1 {
         CURSORS_WITH_DIFFERENT_PARTITION
     }
 
-    public InvalidCursorDistanceQuery(final Reason reason) {
+    public InvalidCursorOperation(final Reason reason) {
         super();
         this.reason = reason;
     }
