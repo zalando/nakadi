@@ -111,6 +111,10 @@ public class TimelineDbRepository extends AbstractDbRepository {
         jdbcTemplate.update("DELETE FROM zn_data.timeline WHERE tl_id=?", id);
     }
 
+    public void deleteTimelinesForEventType(final String eventTypeName) {
+        jdbcTemplate.update("DELETE FROM zn_data.timeline WHERE et_name=?", eventTypeName);
+    }
+
     private final RowMapper<Timeline> timelineRowMapper = (rs, rowNum) -> {
         final UUID timelineId = (UUID) rs.getObject("tl_id");
         try {

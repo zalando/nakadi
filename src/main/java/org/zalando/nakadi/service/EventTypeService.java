@@ -139,6 +139,7 @@ public class EventTypeService {
                 return Result.conflict("Not possible to remove event-type as it has subscriptions");
             }
             final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
+            timelineService.deleteAllTimelinesForEventType(eventTypeName);
             eventTypeRepository.removeEventType(eventTypeName);
             topicRepository.deleteTopic(eventType.getTopic());
             return Result.ok();

@@ -201,6 +201,11 @@ public class TimelineService {
         }
     }
 
+    public void deleteAllTimelinesForEventType(final String eventTypeName) {
+        LOG.info("Deleting all timelines for event type {}", eventTypeName);
+        timelineDbRepository.deleteTimelinesForEventType(eventTypeName);
+    }
+
     private void switchToFakeTimeline(final UUID uuid, final Timeline activeTimeline) throws TimelineException {
         LOG.info("Reverting timelines from {} to fake timeline", activeTimeline);
         try {

@@ -2,14 +2,17 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
+import com.jayway.restassured.RestAssured;
+import com.jayway.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
+import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 
 import java.util.Set;
 
@@ -21,6 +24,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.junit.Assert.assertEquals;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 
@@ -84,19 +88,41 @@ public class EventTypeAT extends BaseAT {
 
         // ARRANGE //
         final EventType eventType = buildDefaultEventType();
-        final String body = MAPPER.writer().writeValueAsString(eventType);
-
-        given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
+        postEventType(eventType);
 
         // ACT //
-        when().delete(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_OK);
+        deleteEventTypeAndOK(eventType);
 
         // ASSERT //
-        when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
+        checkEventTypeIsDeleted(eventType);
+    }
 
-        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
-        final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
-        assertThat(allTopics, not(hasItem(eventType.getTopic())));
+    @Test
+    public void whenDELETEEventTypeWithSeveralTimelinesThenOK() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        postEventType(eventType);
+        postTimeline(eventType);
+        postTimeline(eventType);
+        postTimeline(eventType);
+
+        // ACT //
+        deleteEventTypeAndOK(eventType);
+
+        // ASSERT //
+        checkEventTypeIsDeleted(eventType);
+    }
+
+    @Test
+    public void whenDELETEEventTypeWithOneTimelineThenOK() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        postEventType(eventType);
+        postTimeline(eventType);
+
+        // ACT //
+        deleteEventTypeAndOK(eventType);
+
+        // ASSERT //
+        checkEventTypeIsDeleted(eventType);
     }
 
     @After
@@ -110,5 +136,31 @@ public class EventTypeAT extends BaseAT {
 
         template.execute("DELETE FROM zn_data.event_type_schema");
         template.execute("DELETE FROM zn_data.event_type");
+    }
+
+    private void postTimeline(final EventType eventType) {
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body(new JSONObject().put("storage_id", "default"))
+                .post("event-types/{et_name}/timelines", eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    private void checkEventTypeIsDeleted(final EventType eventType) {
+        when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
+        assertEquals(0, TIMELINE_REPOSITORY.listTimelines(eventType.getName()).size());
+        final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
+        final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
+        assertThat(allTopics, not(hasItem(eventType.getTopic())));
+    }
+
+    private void postEventType(final EventType eventType) throws JsonProcessingException {
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+        given().body(body).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
+    }
+
+    private void deleteEventTypeAndOK(final EventType eventType) {
+        when().delete(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_OK);
     }
 }
