@@ -1,11 +1,10 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class ChangeListener implements ZKSubscription, Watcher {
     protected final CuratorFramework curatorFramework;
