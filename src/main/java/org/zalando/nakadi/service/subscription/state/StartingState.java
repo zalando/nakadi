@@ -1,11 +1,14 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import java.util.Map;
-import java.util.stream.Collectors;
+import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+
+import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class StartingState extends State {
     @Override
@@ -43,6 +46,17 @@ public class StartingState extends State {
             }
         }
 
+        if (getZk().isCursorResetInProgress()) {
+            switchState(new CleanupState(
+                    new NakadiException("Resetting subscription cursors request still in the progress") {
+                        @Override
+                        protected Response.StatusType getStatus() {
+                            return Response.Status.CONFLICT;
+                        }
+                    }));
+            return;
+        }
+
         registerSession();
 
         try {
@@ -53,4 +67,5 @@ public class StartingState extends State {
             switchState(new CleanupState(e));
         }
     }
+
 }

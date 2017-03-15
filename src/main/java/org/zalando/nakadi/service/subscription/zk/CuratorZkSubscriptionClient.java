@@ -1,14 +1,7 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -19,6 +12,16 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final String NO_SESSION = "";
@@ -28,6 +31,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private final InterProcessSemaphoreMutex lock;
     private final String subscriptionId;
     private final Logger log;
+    private NodeCache cursorResetCache;
 
     public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework) {
         this(subscriptionId, curatorFramework, CuratorZkSubscriptionClient.class.getName());
@@ -73,12 +77,6 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
     private String getPartitionPath(final Partition.PartitionKey key) {
         return getSubscriptionPath("/topics/" + key.getTopic() + "/" + key.getPartition());
-    }
-
-    @Override
-    public boolean isSubscriptionCreated() throws Exception {
-        final Stat stat = curatorFramework.checkExists().forPath(getSubscriptionPath(""));
-        return stat != null;
     }
 
     @Override
@@ -239,7 +237,8 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public ZKSubscription subscribeForOffsetChanges(final Partition.PartitionKey key, final Runnable commitListener) {
+    public ZKSubscription subscribeForOffsetChanges(final Partition.PartitionKey key,
+                                                    final Runnable commitListener) {
         log.info("subscribeForOffsetChanges");
         return ChangeListener.forData(curatorFramework, getPartitionPath(key) + "/offset", commitListener);
     }
@@ -317,4 +316,48 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
         return subscriptionNode;
     }
+
+    @Override
+    public ZKSubscription subscribeForCursorsReset(final Runnable listener) {
+        cursorResetCache = new NodeCache(curatorFramework, getSubscriptionPath("/cursor_reset"));
+        cursorResetCache.getListenable().addListener(() -> listener.run());
+
+        try {
+            cursorResetCache.start();
+        } catch (final Exception e) {
+            throw new NakadiRuntimeException(e);
+        }
+        return new ZKSubscription() {
+            @Override
+            public void refresh() {
+                try {
+                    if (cursorResetCache != null) {
+                        cursorResetCache.rebuild();
+                    }
+                } catch (final Exception e) {
+                    throw new NakadiRuntimeException(e);
+                }
+            }
+
+            @Override
+            public void cancel() {
+                try {
+                    cursorResetCache.getListenable().clear();
+                    cursorResetCache.close();
+                    cursorResetCache = null;
+                } catch (final IOException e) {
+                    throw new NakadiRuntimeException(e);
+                }
+            }
+        };
+    }
+
+    @Override
+    public boolean isCursorResetInProgress() {
+        if (cursorResetCache == null) {
+            return false;
+        }
+        return cursorResetCache.getCurrentData() != null;
+    }
+
 }

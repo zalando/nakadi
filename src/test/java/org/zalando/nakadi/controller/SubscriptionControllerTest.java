@@ -2,12 +2,6 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import javax.ws.rs.core.Response;
 import org.junit.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -50,6 +44,14 @@ import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
+
+import javax.ws.rs.core.Response;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -100,7 +102,6 @@ public class SubscriptionControllerTest {
         topicRepository = mock(TopicRepository.class);
         final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
-        when(zkSubscriptionClient.isSubscriptionCreated()).thenReturn(true);
         when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
         final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getTimeline(any())).thenReturn(TIMELINE);

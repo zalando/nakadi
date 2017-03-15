@@ -46,6 +46,7 @@ class StreamingState extends State {
     private Meter bytesSentMeter;
     // Uncommitted offsets are calculated right on exiting from Streaming state.
     private Map<Partition.PartitionKey, Long> uncommittedOffsets;
+    private ZKSubscription cursorResetSubscription;
 
     @Override
     public void onEnter() {
@@ -74,6 +75,13 @@ class StreamingState extends State {
 
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
+
+        getLog().debug("Register cursor reset listener");
+        cursorResetSubscription = getZk().subscribeForCursorsReset(() -> {
+            final String message = "Resetting subscription cursors";
+            sendMetadata(message);
+            shutdownGracefully(message);
+        });
     }
 
     private void checkCommitTimeout() {
@@ -173,19 +181,19 @@ class StreamingState extends State {
 
     private void streamToOutput() {
         final long currentTimeMillis = System.currentTimeMillis();
-        int freeSlots = (int) getMessagesAllowedToSend();
+        int messagesAllowedToSend = (int) getMessagesAllowedToSend();
         SortedMap<Long, String> toSend;
         for (final Map.Entry<Partition.PartitionKey, PartitionData> e : offsets.entrySet()) {
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
-                    Math.min(getParameters().batchLimitEvents, freeSlots),
+                    Math.min(getParameters().batchLimitEvents, messagesAllowedToSend),
                     getParameters().batchTimeoutMillis))) {
                 flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
                     break;
                 }
-                freeSlots -= toSend.size();
+                messagesAllowedToSend -= toSend.size();
             }
         }
         pollPaused = getMessagesAllowedToSend() <= 0;
@@ -259,6 +267,12 @@ class StreamingState extends State {
             } finally {
                 kafkaConsumer = null;
             }
+        }
+
+        getLog().debug("Unregister cursor reset listener");
+        if (cursorResetSubscription != null) {
+            cursorResetSubscription.cancel();
+            cursorResetSubscription = null;
         }
     }
 

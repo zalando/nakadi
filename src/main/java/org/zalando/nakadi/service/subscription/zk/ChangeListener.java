@@ -1,10 +1,11 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class ChangeListener implements ZKSubscription, Watcher {
     protected final CuratorFramework curatorFramework;
@@ -13,7 +14,9 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private final AtomicBoolean registered = new AtomicBoolean();
 
-    protected ChangeListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
+    protected ChangeListener(final CuratorFramework curatorFramework,
+                             final String key,
+                             final Runnable listener) {
         this.curatorFramework = curatorFramework;
         this.key = key;
         this.listener = listener;
@@ -59,7 +62,8 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
 
     private static class ChildrenListener extends ChangeListener {
 
-        ChildrenListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
+        ChildrenListener(final CuratorFramework curatorFramework, final String key,
+                         final Runnable listener) {
             super(curatorFramework, key, listener);
         }
 
@@ -71,7 +75,8 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
 
     private static class ValueListener extends ChangeListener {
 
-        ValueListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
+        ValueListener(final CuratorFramework curatorFramework, final String key,
+                      final Runnable listener) {
             super(curatorFramework, key, listener);
         }
 
