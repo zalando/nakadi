@@ -14,9 +14,7 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private final AtomicBoolean registered = new AtomicBoolean();
 
-    protected ChangeListener(final CuratorFramework curatorFramework,
-                             final String key,
-                             final Runnable listener) {
+    protected ChangeListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
         this.curatorFramework = curatorFramework;
         this.key = key;
         this.listener = listener;
@@ -62,8 +60,7 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
 
     private static class ChildrenListener extends ChangeListener {
 
-        ChildrenListener(final CuratorFramework curatorFramework, final String key,
-                         final Runnable listener) {
+        ChildrenListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
             super(curatorFramework, key, listener);
         }
 
@@ -75,8 +72,7 @@ public abstract class ChangeListener implements ZKSubscription, Watcher {
 
     private static class ValueListener extends ChangeListener {
 
-        ValueListener(final CuratorFramework curatorFramework, final String key,
-                      final Runnable listener) {
+        ValueListener(final CuratorFramework curatorFramework, final String key, final Runnable listener) {
             super(curatorFramework, key, listener);
         }
 
