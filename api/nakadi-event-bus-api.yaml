@@ -574,20 +574,19 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
-        - name: X-nakadi-cursors
-          in: header
+        - name: cursors
+          in: query
           description: |
-            Cursors indicating the partitions and offsets consumed by the client.
+            Each cursor indicates the partition and offset consumed by the client. When this parameter is provided,
+            Nakadi calculates the consumer lag, e.g. the number of events between the provided offset and the most
+            recent published event. This lag will be present in the response as `unconsumed_events` property.
 
-            When this header is provided, Nakadi calculates the consumer lag, e.g. the number of events between the
-            provided offset and the most recent published event.
-
-            In this situation, the response will contain the `unconsumed_events` property for every partition.
+            It's not mandatory to specify cursors for every partition.
 
             The lag calculation is non inclusive, e.g. if the provided offset is the offset of the latest published
             event, the number of `unconsumed_events` will be zero.
 
-            If this header is not present, partitions won't display `unconsumed_events`.
+            The value of this parameter must be a json array URL encoded.
           required: false
           type: array
           items:
