@@ -1651,8 +1651,8 @@ definitions:
         type: string
       unconsumed_events:
         description: |
-          Number of events unconsumed by the client. This is also known as consumer lag and is used for monitoring
-          purposes by consumers interested in keeping an eye on the number of unconsumed events.
+          Approximate number of events unconsumed by the client. This is also known as consumer lag and is used for
+          monitoring purposes by consumers interested in keeping an eye on the number of unconsumed events.
         type: number
 
   StreamInfo:
