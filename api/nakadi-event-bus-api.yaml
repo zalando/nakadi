@@ -632,7 +632,7 @@ paths:
             for operational troubleshooting and log analysis.
           type: string
         - name: consumed_offset
-          in: parameter
+          in: query
           description: |
             Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
             `unconsumed_events` to the response partition object.
