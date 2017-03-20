@@ -624,7 +624,7 @@ paths:
             $ref: '#/definitions/Problem'
 
   '/event-types/{name}/cursors':
-      get:
+      post:
         tags:
           - unmanaged-api
           - monitoring
@@ -647,8 +647,8 @@ paths:
               The flow id of the request, which is written into the logs and passed to called services. Helpful
               for operational troubleshooting and log analysis.
             type: string
-          - name: X-nakadi-cursors
-            in: header
+          - name: cursors
+            in: body
             description: |
               Cursors indicating the positions to be calculated. If a cursors contains `shift` property, this property
               will be used to calculate the actual offset for the given position and in the response the cursor will
