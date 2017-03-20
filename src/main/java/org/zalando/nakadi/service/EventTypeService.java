@@ -112,7 +112,7 @@ public class EventTypeService {
                 try {
                     topicRepository.deleteTopic(eventType.getTopic());
                 } catch (final TopicDeletionException ex) {
-                    LOG.warn("failed to delete topic for event type that failed to be created", ex);
+                    LOG.error("failed to delete topic for event type that failed to be created", ex);
                 }
             }
             return Result.problem(e.asProblem());

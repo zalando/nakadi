@@ -759,7 +759,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenDuplicatedEventTypeThenTopicIsRemove() throws Exception {
+    public void whenDuplicatedEventTypeThenTopicIsRemoved() throws Exception {
         final EventType eventType = buildDefaultEventType();
         Mockito.doThrow(DuplicatedEventTypeNameException.class)
                 .when(eventTypeRepository).saveEventType(any(EventType.class));
