@@ -68,31 +68,30 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         while ((task = queuedTasks.poll()) != null) {
             task.run();
         }
-        Optional<ConsumedEvent> result = Optional.ofNullable(eventsQueue.poll());
-        if (!result.isPresent()) {
-            poll();
-            result = Optional.ofNullable(eventsQueue.poll());
-        }
+        final Optional<ConsumedEvent> result = poll();
         if (result.isPresent()) {
             final NakadiCursor position = result.get().getPosition();
             final EventTypePartition etp = position.getEventTypePartition();
             latestOffsets.put(etp, position);
             final String borderOffset = borderOffsets.get(etp);
             if (null != borderOffset && borderOffset.compareTo(position.getOffset()) <= 0) {
-                queuedTasks.add(() -> {
-                    try {
-                        reelectTopicRepositories();
-                    } catch (final NakadiException | InvalidCursorException e) {
-                        throw new NakadiRuntimeException(e);
-                    }
-                });
+                try {
+                    reelectTopicRepositories();
+                } catch (final NakadiException | InvalidCursorException e) {
+                    throw new NakadiRuntimeException(e);
+                }
             }
         }
         return result;
     }
 
-    private void poll() {
-        eventConsumers.values().forEach(consumer -> consumer.readEvent().ifPresent(eventsQueue::add));
+    private Optional<ConsumedEvent> poll() {
+        Optional<ConsumedEvent> result = Optional.ofNullable(eventsQueue.poll());
+        if (!result.isPresent()) {
+            eventConsumers.values().forEach(consumer -> consumer.readEvent().ifPresent(eventsQueue::add));
+            result = Optional.ofNullable(eventsQueue.poll());
+        }
+        return result;
     }
 
     private TopicRepository selectCorrectTopicRepo(
