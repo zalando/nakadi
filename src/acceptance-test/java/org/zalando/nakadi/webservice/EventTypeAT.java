@@ -158,9 +158,7 @@ public class EventTypeAT extends BaseAT {
         assertEquals(0, TIMELINE_REPOSITORY.listTimelines(eventType.getName()).size());
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
-        for (String topic:topics) {
-            assertThat(allTopics, not(hasItem(topic)));
-        }
+        topics.forEach(topic -> assertThat(allTopics, not(hasItem(topic))));
     }
 
     private void postEventType(final EventType eventType) throws JsonProcessingException {
