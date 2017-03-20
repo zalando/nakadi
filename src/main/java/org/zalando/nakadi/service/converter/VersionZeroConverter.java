@@ -13,8 +13,8 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 
-class VersionZeroConverter implements VersionedConverter {
-    static final int VERSION_ZERO_MIN_OFFSET_LENGTH = 18;
+public class VersionZeroConverter implements VersionedConverter {
+    public static final int VERSION_ZERO_MIN_OFFSET_LENGTH = 18;
     private final EventTypeCache eventTypeCache;
     private final TimelineService timelineService;
 

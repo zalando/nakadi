@@ -18,10 +18,9 @@ import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reaso
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.TIMELINE_NOT_FOUND;
+import static org.zalando.nakadi.service.converter.VersionZeroConverter.VERSION_ZERO_MIN_OFFSET_LENGTH;
 
 public class CursorOperationsService {
-    public static final int CURSOR_OFFSET_LENGTH = 18;
-
     private final TimelineService timelineService;
 
     public CursorOperationsService(final TimelineService timelineService) {
@@ -96,7 +95,7 @@ public class CursorOperationsService {
     }
 
     private String getPaddedOffset(final long finalOffset) {
-        return StringUtils.leftPad(String.valueOf(finalOffset), CURSOR_OFFSET_LENGTH, '0');
+        return StringUtils.leftPad(String.valueOf(finalOffset), VERSION_ZERO_MIN_OFFSET_LENGTH, '0');
     }
 
     private long getDistanceDifferentTimelines(final NakadiCursorDistanceQuery query, final NakadiCursor initialCursor,
