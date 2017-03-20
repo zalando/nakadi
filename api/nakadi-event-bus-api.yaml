@@ -658,10 +658,10 @@ paths:
               Note: It's not currently possible to shift cursors based on time. It's only possible to shift cursors
               based on the number of events to forward of backward given by `shift`.
             required: true
-            type: array
-            items:
-              type: string
-              format: '#/definitions/ShiftedCursor'
+            schema:
+              type: array
+              items:
+                - $ref: '#/definitions/ShiftedCursor'
         responses:
           '200':
             description: OK
