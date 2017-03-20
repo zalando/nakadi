@@ -18,6 +18,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -120,7 +121,7 @@ public class EventTypeService {
         }
     }
 
-    public Result<Void> delete(final String eventTypeName, final Client client) {
+    public Result<Void> delete(final String eventTypeName, final Client client) throws EventTypeDeletionException {
         Closeable deletionCloser = null;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
