@@ -667,7 +667,9 @@ paths:
             description: OK
             schema:
               type: array
-              description: An array of `Cursor`s with shift applied to the offset.
+              description: |
+                An array of `Cursor`s with shift applied to the offset. The response should contain cursors in the same
+                order as the request.
               items:
                 $ref: '#/definitions/Cursor'
           '422':
