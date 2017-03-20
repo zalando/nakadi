@@ -269,7 +269,7 @@ public class CursorOperationsServiceTest {
         final Timeline.KafkaStoragePosition intermediaryTimilinePositions = mock(Timeline.KafkaStoragePosition.class);
         when(intermediaryTimilinePositions.getOffsets()).thenReturn(Lists.newArrayList(latestOffset));
         when(intermediaryTimeline.getLatestPosition()).thenReturn(intermediaryTimilinePositions);
-        when(intermediaryTimeline.isClosed()).thenReturn(latestOffset != 0);
+        when(intermediaryTimeline.isActive()).thenReturn(latestOffset == 0);
         return intermediaryTimeline;
     }
 }

@@ -77,7 +77,7 @@ public class CursorOperationsService {
 
     private NakadiCursor moveCursorForward(final String topic, final Timeline timeline, final String partition,
                                     final long offset, final long shift) {
-        if (timeline.isClosed()) {
+        if (!timeline.isActive()) {
             if (offset + shift < totalEventsInTimeline(timeline, partition)) { // move right in the same timeline
                 final long finalOffset = offset + shift;
                 final String paddedOffset = getPaddedOffset(finalOffset);
