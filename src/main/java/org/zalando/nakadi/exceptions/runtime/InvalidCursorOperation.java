@@ -12,7 +12,6 @@ public class InvalidCursorOperation extends MyNakadiRuntimeException1 {
     }
 
     public InvalidCursorOperation(final Reason reason) {
-        super();
         this.reason = reason;
     }
 
