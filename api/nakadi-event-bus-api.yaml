@@ -568,10 +568,9 @@ paths:
         - name: cursors-distances-query
           in: body
           description: |
-            List of cursors with two special offsets: `initial_offset` and `final_offset`. Used as input by Nakadi to
-            calculate how many events there are between two offsets. The distance doesn't include the `initial_offset`
-            but includes the `final_offset`. So they are equal the result is zero. If the `initial_offset` is the one
-            before the last, the result is 1.
+            List of pairs of cursors: `initial_cursor` and `final_cursor`. Used as input by Nakadi to
+            calculate how many events there are between two cursors. The distance doesn't include the `initial_cursor`
+            but includes the `final_cursor`. So if they are equal the result is zero.
           schema:
             type: array
             items:
@@ -1678,22 +1677,13 @@ definitions:
 
   CursorDistanceQuery:
     required:
-      - partition
-      - initial_offset
-      - final_offset
+      - initial_cursor
+      - final_cursor
     properties:
-      partition:
-        type: string
-        description: |
-          Partition for which the offset distance is measured.
-      initial_offset:
-        type: string
-        description: |
-          Offset of the older event in the stream.
-      final_offset:
-        type: string
-        description: |
-          Offset of the newer event in the stream.
+      initial_cursor:
+        - $ref: "/definitions/Cursor"
+      final_cursor:
+        - $ref: "/definitions/Cursor"
 
   CursorDistanceResult:
     allOf:
@@ -1706,7 +1696,7 @@ definitions:
         format: int64
         description: |
           Number of events between two offsets. Initial offset is exclusive. It's only zero when both provided offsets
-          are equal. If the `final_offset` is strictly smaller than the `initial_offset` it results in client error.
+          are equal. If the `final_cursor` is strictly smaller than the `initial_cursor` it results in client error.
 
   Cursor:
     required:
