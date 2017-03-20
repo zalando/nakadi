@@ -114,6 +114,7 @@ public class EventTypeControllerTest {
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+    private final TimelineService timelineService = mock(TimelineService.class);
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaEvolutionService();
@@ -131,7 +132,6 @@ public class EventTypeControllerTest {
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", objectMapper, nakadiSettings);
-        final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
         when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
@@ -327,12 +327,12 @@ public class EventTypeControllerTest {
         Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
         Mockito.doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
 
-        Mockito.doNothing().when(topicRepository).deleteTopic(eventType.getTopic());
+        Mockito.doNothing().when(timelineService).deleteAllTimelinesForEventType(eventType.getTopic());
 
         deleteEventType(eventType.getName()).andExpect(status().isOk()).andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).removeEventType(eventType.getName());
-        verify(topicRepository, times(1)).deleteTopic(eventType.getTopic());
+        verify(timelineService, times(1)).deleteAllTimelinesForEventType(eventType.getName());
     }
 
     @Test
@@ -384,8 +384,8 @@ public class EventTypeControllerTest {
 
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-        Mockito.doThrow(new TopicDeletionException("dummy message", null)).when(topicRepository).deleteTopic(
-                eventType.getTopic());
+        Mockito.doThrow(new TopicDeletionException("dummy message", null)).when(timelineService)
+                .deleteAllTimelinesForEventType(eventType.getName());
 
         deleteEventType(eventType.getName()).andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()

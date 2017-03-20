@@ -23,6 +23,7 @@ import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
+import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -135,6 +136,11 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
+    public TopicRepository getTopicRepositoryForTimeline(final Timeline timeline)
+    throws TopicRepositoryException, TimelineException {
+        return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
+    }
+
     public TopicRepository getDefaultTopicRepository() throws TopicRepositoryException {
         return topicRepositoryHolder.getTopicRepository(defaultStorage);
     }
@@ -201,9 +207,14 @@ public class TimelineService {
         }
     }
 
-    public void deleteAllTimelinesForEventType(final String eventTypeName) {
+    public void deleteAllTimelinesForEventType(final String eventTypeName) throws TopicDeletionException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
-        timelineDbRepository.deleteTimelinesForEventType(eventTypeName);
+        final List<Timeline> timelines = getTimelines(eventTypeName);
+        for (Timeline timeline:timelines) {
+            final TopicRepository topicRepository = getTopicRepositoryForTimeline(timeline);
+            topicRepository.deleteTopic(timeline.getTopic());
+            timelineDbRepository.deleteTimeline(timeline.getId());
+        }
     }
 
     private void switchToFakeTimeline(final UUID uuid, final Timeline activeTimeline) throws TimelineException {
@@ -242,6 +253,17 @@ public class TimelineService {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
+        try {
+            final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+            return timelineDbRepository.listTimelines(eventType.getName());
+        } catch (final NoSuchEventTypeException e) {
+            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
+        } catch (final InternalNakadiException e) {
+            throw new TimelineException("Could not get event type: " + eventTypeName, e);
+        }
+    }
+
+    private List<Timeline> getTimelines(final String eventTypeName) {
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             return timelineDbRepository.listTimelines(eventType.getName());

@@ -141,7 +141,6 @@ public class EventTypeService {
             final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
             timelineService.deleteAllTimelinesForEventType(eventTypeName);
             eventTypeRepository.removeEventType(eventTypeName);
-            topicRepository.deleteTopic(eventType.getTopic());
             return Result.ok();
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();

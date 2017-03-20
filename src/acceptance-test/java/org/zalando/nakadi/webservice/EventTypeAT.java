@@ -12,9 +12,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
@@ -89,12 +92,13 @@ public class EventTypeAT extends BaseAT {
         // ARRANGE //
         final EventType eventType = buildDefaultEventType();
         postEventType(eventType);
+        final List<String> topics = getTopicsForEventType(eventType.getName());
 
         // ACT //
         deleteEventTypeAndOK(eventType);
 
         // ASSERT //
-        checkEventTypeIsDeleted(eventType);
+        checkEventTypeIsDeleted(eventType, topics);
     }
 
     @Test
@@ -104,12 +108,13 @@ public class EventTypeAT extends BaseAT {
         postTimeline(eventType);
         postTimeline(eventType);
         postTimeline(eventType);
+        final List<String> topics = getTopicsForEventType(eventType.getName());
 
         // ACT //
         deleteEventTypeAndOK(eventType);
 
         // ASSERT //
-        checkEventTypeIsDeleted(eventType);
+        checkEventTypeIsDeleted(eventType, topics);
     }
 
     @Test
@@ -117,12 +122,13 @@ public class EventTypeAT extends BaseAT {
         final EventType eventType = buildDefaultEventType();
         postEventType(eventType);
         postTimeline(eventType);
+        final List<String> topics = getTopicsForEventType(eventType.getName());
 
         // ACT //
         deleteEventTypeAndOK(eventType);
 
         // ASSERT //
-        checkEventTypeIsDeleted(eventType);
+        checkEventTypeIsDeleted(eventType, topics);
     }
 
     @After
@@ -147,12 +153,14 @@ public class EventTypeAT extends BaseAT {
                 .statusCode(HttpStatus.SC_CREATED);
     }
 
-    private void checkEventTypeIsDeleted(final EventType eventType) {
+    private void checkEventTypeIsDeleted(final EventType eventType, final List<String> topics) {
         when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
         assertEquals(0, TIMELINE_REPOSITORY.listTimelines(eventType.getName()).size());
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
-        assertThat(allTopics, not(hasItem(eventType.getTopic())));
+        for (String topic:topics) {
+            assertThat(allTopics, not(hasItem(topic)));
+        }
     }
 
     private void postEventType(final EventType eventType) throws JsonProcessingException {
@@ -162,5 +170,13 @@ public class EventTypeAT extends BaseAT {
 
     private void deleteEventTypeAndOK(final EventType eventType) {
         when().delete(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_OK);
+    }
+
+    private List<String> getTopicsForEventType(String eventType) {
+        return TIMELINE_REPOSITORY
+                .listTimelines(eventType)
+                .stream()
+                .map((Timeline t) -> t.getTopic())
+                .collect(Collectors.toList());
     }
 }
