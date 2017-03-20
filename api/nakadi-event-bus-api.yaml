@@ -650,9 +650,13 @@ paths:
           - name: cursors
             in: body
             description: |
-              Cursors indicating the positions to be calculated. If a cursors contains `shift` property, this property
-              will be used to calculate the actual offset for the given position and in the response the cursor will
-              no longer contain the `shift`.
+              Cursors indicating the positions to be calculated. Given a initial cursor, with partition and offset, it's
+              possible to obtain another cursor that is relatively forward or backward to it. When `shift` is positive,
+              Nakadi will respond with a cursor that in forward `shif` positions based on the initial `partition` and
+              `offset`. In case `shift` is negative, Nakadi will move the cursor backward.
+
+              Note: It's not currently possible to shift cursors based on time. It's only possible to shift cursors
+              based on the number of events to forward of backward given by `shift`.
             required: true
             type: array
             items:
@@ -668,8 +672,14 @@ paths:
                 $ref: '#/definitions/Cursor'
           '422':
             description: |
-              Unprocessable Entity. In case the provided parameters contain data that is not processable by
-              the server. For example, invalid cursors. More details are provided in the response body.
+              It's only possible to navigate from a valid cursor to another valid cursor, i.e. `partition`s and
+              `offset`s must exist and not be expired. Any combination of parameters that might break this rule will
+              result in 422. For example:
+
+              - if the initial `partition` and `offset` are expired.
+              - if the `shift` provided leads to a already expired cursor.
+              - if the `shift` provided leads to a cursor that is not yet existent, i.e. it's pointing to
+              some cursor yet to be generated in the future.
             schema:
               - $ref: '#/definitions/Problem'
 
@@ -1705,16 +1715,17 @@ definitions:
         properties:
           shift:
             type: number
+            format: int64
             description: |
               This number is a modifier for the offset. It moves the cursor forward or backwards by the number of events
               provided.
-              For example, suppose a user wants to read events starting 100 positions before "001-000D-0000000000000009A8",
-              it's possible to specify shift with -100 and Nakadi will make the necessary calculations to move the cursor
-              relatively to the given offset.
+              For example, suppose a user wants to read events starting 100 positions before offset
+              "001-000D-0000000000000009A8", it's possible to specify `shift` with -100 and Nakadi will make the
+              necessary calculations to move the cursor backwards relatively to the given `offset`.
 
-              Users should use this feature only for debugging purposes. Users should favor using offsets provided in
-              batches in order to keep reading sequentially. Navigating in the stream using shifts is provided only for
-              debugging purposes and might slowdown the request considerably.
+              Users should use this feature only for debugging purposes. Users should favor using cursors provided in
+              batches when streaming from Nakadi. Navigating in the stream using shifts is provided only for
+              debugging purposes.
         required:
           - shift
   SubscriptionCursor:
