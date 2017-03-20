@@ -549,7 +549,7 @@ paths:
             Schema object.
 
   '/event-types/{name}/cursor-distances':
-    get:
+    post:
       tags:
         - unmanaged-api
         - monitoring
@@ -560,17 +560,23 @@ paths:
         Calculate the distance between two offsets. This is useful for performing checks for data completeness, when
         a client has read some batches and wants to be sure that all delivered events have been correctly processed.
       parameters:
-        - name: X-nakadi-cursor-distances-query
-          in: header
+        - name: name
+          in: path
+          description: Name of the EventType
+          type: string
+          required: true
+        - name: cursors-distances-query
+          in: body
           description: |
             List of cursors with two special offsets: `initial_offset` and `final_offset`. Used as input by Nakadi to
             calculate how many events there are between two offsets. The distance doesn't include the `initial_offset`
             but includes the `final_offset`. So they are equal the result is zero. If the `initial_offset` is the one
             before the last, the result is 1.
-          type: array
-          items:
-            type: string
-            format: "#/definitions/CursorDistanceQuery"
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/CursorDistanceQuery"
+          required: true
       responses:
         '200':
           description: OK
@@ -1697,6 +1703,7 @@ definitions:
     properties:
       distance:
         type: number
+        format: int64
         description: |
           Number of events between two offsets. Initial offset is exclusive. It's only zero when both provided offsets
           are equal. If the `final_offset` is strictly smaller than the `initial_offset` it results in client error.
