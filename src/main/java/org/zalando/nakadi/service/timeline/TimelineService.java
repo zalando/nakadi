@@ -207,7 +207,8 @@ public class TimelineService {
         }
     }
 
-    public void deleteAllTimelinesForEventType(final String eventTypeName) throws TopicDeletionException {
+    public void deleteAllTimelinesForEventType(final String eventTypeName)
+            throws TopicDeletionException, TimelineException, NotFoundException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
         final List<Timeline> timelines = getTimelines(eventTypeName);
         for (Timeline timeline:timelines) {
@@ -253,17 +254,11 @@ public class TimelineService {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
-        try {
-            final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            return timelineDbRepository.listTimelines(eventType.getName());
-        } catch (final NoSuchEventTypeException e) {
-            throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
-        } catch (final InternalNakadiException e) {
-            throw new TimelineException("Could not get event type: " + eventTypeName, e);
-        }
+        return getTimelines(eventTypeName);
     }
 
-    private List<Timeline> getTimelines(final String eventTypeName) {
+    private List<Timeline> getTimelines(final String eventTypeName)
+            throws TimelineException, NotFoundException {
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
             return timelineDbRepository.listTimelines(eventType.getName());
