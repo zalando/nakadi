@@ -548,6 +548,64 @@ paths:
           description: |
             Schema object.
 
+  '/event-types/{name}/cursors-lag':
+    post:
+      tags:
+        - unmanaged-api
+        - monitoring
+        - management-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        This endpoint is mostly interesting for monitoring purposes. Used when a consumer wants to know how far behing
+        in the stream its application is lagging.
+
+        It provides the number of unconsummed events for each cursor's partition.
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: cursors
+          in: body
+          description: |
+            Each cursor indicates the partition and offset consumed by the client. When a cursor is provided,
+            Nakadi calculates the consumer lag, e.g. the number of events between the provided offset and the most
+            recent published event. This lag will be present in the response as `unconsumed_events` property.
+
+            It's not mandatory to specify cursors for every partition.
+
+            The lag calculation is non inclusive, e.g. if the provided offset is the offset of the latest published
+            event, the number of `unconsumed_events` will be zero.
+
+            All provided cursors must be valid, i.e. a non expired cursor of an event in the stream.
+          required: true
+          schema:
+            type: array
+            items:
+              - $ref: '#/definitions/Cursor'
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: |
+              List of partitions with the number of unconsummed events.
+            items:
+              $ref: '#/definitions/Partition'
+        '401':
+          description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+
+
   '/event-types/{name}/partitions':
     get:
       tags:
@@ -1654,6 +1712,7 @@ definitions:
           Approximate number of events unconsumed by the client. This is also known as consumer lag and is used for
           monitoring purposes by consumers interested in keeping an eye on the number of unconsumed events.
         type: number
+        format: int64
 
   StreamInfo:
     type: object
