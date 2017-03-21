@@ -345,7 +345,8 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
 
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to this event type");
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to event type "
+                + eventType.getName());
 
         deleteEventType(eventType.getName(), "alice")
                 .andExpect(status().isForbidden())
@@ -379,8 +380,9 @@ public class EventTypeControllerTest {
     @Test
     public void whenDeleteEventTypeAndTopicDeletionExceptionThen503() throws Exception {
 
-        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         final EventType eventType = buildDefaultEventType();
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
+                "Failed to delete Kafka topic for event type " + eventType.getName());
 
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
@@ -401,7 +403,7 @@ public class EventTypeControllerTest {
                 .thenReturn(ImmutableList.of(mock(Subscription.class)));
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT,
-                "Not possible to remove event-type as it has subscriptions");
+                "Can't remove event type " + eventType.getName() + ", as it has subscriptions");
 
         deleteEventType(eventType.getName())
                 .andExpect(status().isConflict())
@@ -465,7 +467,8 @@ public class EventTypeControllerTest {
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
         final String eventTypeName = randomValidEventTypeName();
-        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
+        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR,
+                "Failed to delete event type " + eventTypeName);
 
         Mockito.doThrow(new InternalNakadiException("dummy message"))
                 .when(eventTypeRepository).removeEventType(eventTypeName);
@@ -749,7 +752,7 @@ public class EventTypeControllerTest {
         final EventType eventType = buildDefaultEventType();
 
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
-                "Event type is currently in maintenance, please repeat request");
+                "Event type " + eventType.getName() + " is currently in maintenance, please repeat request");
 
         deleteEventType(eventType.getName())
                 .andExpect(status().isServiceUnavailable())

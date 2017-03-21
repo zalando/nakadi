@@ -18,13 +18,19 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
-import org.zalando.nakadi.exceptions.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.NotFoundException;
+import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -121,43 +127,49 @@ public class EventTypeService {
         }
     }
 
-    public Result<Void> delete(final String eventTypeName, final Client client) throws EventTypeDeletionException {
+    public void delete(final String eventTypeName, final Client client)
+            throws EventTypeDeletionException,
+            ForbiddenAccessException,
+            NoEventTypeException,
+            UnableProcessException {
         Closeable deletionCloser = null;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final Optional<EventType> eventTypeOpt = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventTypeOpt.isPresent()) {
-                return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
+                throw new NoEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }
             final EventType eventType = eventTypeOpt.get();
             if (!client.idMatches(eventType.getOwningApplication())) {
-                return Result.forbidden("You don't have access to this event type");
+                throw new ForbiddenAccessException("You don't have access to event type " + eventTypeName);
             }
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
                     ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
             if (!subscriptions.isEmpty()) {
-                return Result.conflict("Not possible to remove event-type as it has subscriptions");
+                throw new UnableProcessException("Can't remove event type " + eventTypeName
+                        + ", as it has subscriptions");
             }
-            final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
             timelineService.deleteAllTimelinesForEventType(eventTypeName);
             eventTypeRepository.removeEventType(eventTypeName);
-            return Result.ok();
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
-                    "Event type is currently in maintenance, please repeat request"));
+            throw new EventTypeUnavailableException("Event type " + eventTypeName
+                    + " is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
-                    "Event type is currently in maintenance, please repeat request"));
+            throw new EventTypeUnavailableException("Event type "+ eventTypeName
+                    + " is currently in maintenance, please repeat request");
         } catch (final TopicDeletionException e) {
             LOG.error("Problem deleting kafka topic " + eventTypeName, e);
-            return Result.problem(e.asProblem());
+            throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName);
+        } catch (final TimelineException|NotFoundException e) {
+            LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
+            throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName);
         } catch (final NakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
-            return Result.problem(e.asProblem());
+            throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
         } finally {
             try {
                 if (deletionCloser != null) {

@@ -349,7 +349,7 @@ public class SubscriptionAT extends BaseAT {
         createSubscriptionForEventType(etName);
 
         final ThrowableProblem expectedProblem = Problem.valueOf(CONFLICT,
-                "Not possible to remove event-type as it has subscriptions");
+                "Can't remove event-type " + etName + ", as it has subscriptions");
 
         when().delete("/event-types/{event-type}", etName)
                 .then()

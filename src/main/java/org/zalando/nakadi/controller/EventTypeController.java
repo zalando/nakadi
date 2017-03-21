@@ -1,10 +1,13 @@
 package org.zalando.nakadi.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +18,11 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
+import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
@@ -27,6 +35,7 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
+import javax.ws.rs.core.Response;
 import java.util.List;
 
 import static org.springframework.http.ResponseEntity.status;
@@ -37,6 +46,8 @@ import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT
 @RestController
 @RequestMapping(value = "/event-types")
 public class EventTypeController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TimelinesController.class);
 
     private final EventTypeService eventTypeService;
     private final FeatureToggleService featureToggleService;
@@ -107,10 +118,8 @@ public class EventTypeController {
             return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
         }
 
-        final Result<Void> result = eventTypeService.delete(eventTypeName, client);
-        if (!result.isSuccessful()) {
-            return Responses.create(result.getProblem(), request);
-        }
+        eventTypeService.delete(eventTypeName, client);
+
         return status(HttpStatus.OK).build();
     }
 
@@ -138,5 +147,40 @@ public class EventTypeController {
             return Responses.create(result.getProblem(), request);
         }
         return status(HttpStatus.OK).body(result.getValue());
+    }
+
+    @ExceptionHandler(EventTypeDeletionException.class)
+    public ResponseEntity<Problem> deletion(final EventTypeDeletionException exception,
+                                            final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(UnableProcessException.class)
+    public ResponseEntity<Problem> unableProcess(final UnableProcessException exception,
+                                                 final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(Response.Status.CONFLICT, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(ForbiddenAccessException.class)
+    public ResponseEntity<Problem> forbiddenAccess(final ForbiddenAccessException exception,
+                                                   final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(Response.Status.FORBIDDEN, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoEventTypeException.class)
+    public ResponseEntity<Problem> noEventType(final NoEventTypeException exception,
+                                               final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(EventTypeUnavailableException.class)
+    public ResponseEntity<Problem> eventTypeUnavailable(final EventTypeUnavailableException exception,
+                                                        final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 }

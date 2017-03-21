@@ -170,7 +170,7 @@ public class EventTypeAT extends BaseAT {
         when().delete(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_OK);
     }
 
-    private List<String> getTopicsForEventType(String eventType) {
+    private List<String> getTopicsForEventType(final String eventType) {
         return TIMELINE_REPOSITORY
                 .listTimelines(eventType)
                 .stream()

@@ -1,6 +1,6 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
-public class EventTypeDeletionException extends RuntimeException {
+public class EventTypeDeletionException extends MyNakadiRuntimeException1 {
 
     public EventTypeDeletionException(final String message) {
         super(message);

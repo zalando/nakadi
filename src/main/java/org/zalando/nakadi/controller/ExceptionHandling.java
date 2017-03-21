@@ -10,7 +10,6 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.nakadi.exceptions.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.IllegalClientIdException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -121,13 +120,6 @@ public final class ExceptionHandling implements ProblemHandling {
                                                                 final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
-    }
-
-    @ExceptionHandler(EventTypeDeletionException.class)
-    public ResponseEntity<Problem> handleEventTypeDeletionException(final EventTypeDeletionException exception,
-                                                                    final NativeWebRequest request) {
-        LOG.error(exception.getMessage(), exception);
-        return Responses.create(Response.Status.INTERNAL_SERVER_ERROR, exception.getMessage(), request);
     }
 
 }
