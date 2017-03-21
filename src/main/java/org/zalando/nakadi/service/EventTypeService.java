@@ -156,7 +156,7 @@ public class EventTypeService {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type " + eventTypeName
-                    + " is currently in maintenance, please repeat request");
+                    + " is currently in maintenance, please repeat request", e);
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type "+ eventTypeName
