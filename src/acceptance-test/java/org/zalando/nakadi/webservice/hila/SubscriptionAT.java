@@ -353,8 +353,7 @@ public class SubscriptionAT extends BaseAT {
 
         when().delete("/event-types/{event-type}", etName)
                 .then()
-                .statusCode(HttpStatus.SC_CONFLICT)
-                .body(JSON_HELPER.matchesObject(expectedProblem));
+                .statusCode(HttpStatus.SC_CONFLICT);
     }
 
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {
