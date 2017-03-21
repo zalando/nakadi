@@ -218,13 +218,13 @@ class StreamingState extends State {
             try {
 
                 final ObjectMapper mapper = getContext().getObjectMapper();
-                final String eventType = getContext().getEventTypesForTopics().get(pk.getTopic());
                 final String token = getContext().getCursorTokenService().generateToken();
+                final Timeline timeline = getContext().getTimelinesForTopics().get(pk.getTopic());
                 final SubscriptionCursor cursor = getContext()
                     .getCursorConverter()
                     .convert(
                         pk.createKafkaCursor(offsets.get(pk).getSentOffset())
-                            .toNakadiCursor(), eventType, token
+                            .toNakadiCursor(timeline), token
                     );
 
                 writeStreamBatch(data, metadata, cursor, getOut(), mapper, bytesSentMeter);
