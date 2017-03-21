@@ -46,7 +46,6 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -76,8 +75,6 @@ public class EventStreamTest {
         final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
         cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
         featureToggleService = mock(FeatureToggleService.class);
-        when(featureToggleService.isFeatureEnabled(eq(FeatureToggleService.Feature.ZERO_PADDED_OFFSETS)))
-                .thenReturn(true);
         cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
     }
 
