@@ -27,6 +27,7 @@ import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -133,7 +134,8 @@ public class EventTypeControllerTest {
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", objectMapper, nakadiSettings);
         when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
-        when(timelineService.getTopicRepository(any())).thenReturn(topicRepository);
+        when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
+        when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
                 featureToggleService, timelineSync, nakadiSettings);

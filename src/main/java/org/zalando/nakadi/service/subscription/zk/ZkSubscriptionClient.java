@@ -1,10 +1,9 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.model.Session;
-
 import java.util.Collection;
 import java.util.Map;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
 
 public interface ZkSubscriptionClient {
 
@@ -60,9 +59,9 @@ public interface ZkSubscriptionClient {
      * |  |- 1: {session: null, next_session: null, state: UNASSIGNED}
      * |   |- offset: {OFFSET}
      *
-     * @param partitions Data to use for subscription filling.
+     * @param partitionOffsets Data to use for subscription filling.
      */
-    void fillEmptySubscription(Map<Partition.PartitionKey, Long> partitions);
+    void fillEmptySubscription(Map<Partition.PartitionKey, String> partitionOffsets);
 
 
     /**

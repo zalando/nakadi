@@ -68,7 +68,7 @@ public class TopicRepositoryHolder {
         try {
             final Storage storage = timeline.getStorage();
             final List<NakadiCursor> offsets = getTopicRepository(storage)
-                    .loadTopicStatistics(Collections.singleton(timeline.getTopic())).stream()
+                    .loadTopicStatistics(Collections.singleton(timeline)).stream()
                     .map(PartitionStatistics::getLast)
                     .collect(Collectors.toList());
             return getTopicRepositoryCreator(storage.getType()).createStoragePosition(offsets);

@@ -3,6 +3,12 @@ package org.zalando.nakadi.utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
 import org.apache.commons.io.IOUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.joda.time.DateTime;
@@ -16,19 +22,12 @@ import org.springframework.validation.FieldError;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.problem.Problem;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
-
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -204,4 +203,15 @@ public class TestUtils {
         return new Timeline(etName, 0, new Storage(), randomUUID(), new Date());
     }
 
+    public static Timeline createFakeTimeline(final String topicName) {
+        return createFakeTimeline(topicName, topicName);
+    }
+
+    public static Timeline createFakeTimeline(final String eventType, final String topicName) {
+        final Storage storage = new Storage();
+        final EventTypeBase eventTypeBase = mock(EventTypeBase.class);
+        when(eventTypeBase.getTopic()).thenReturn(topicName);
+        when(eventTypeBase.getName()).thenReturn(eventType);
+        return Timeline.createFakeTimeline(eventTypeBase, storage);
+    }
 }

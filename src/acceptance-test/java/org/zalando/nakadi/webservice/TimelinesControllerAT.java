@@ -25,7 +25,7 @@ public class TimelinesControllerAT extends BaseAT {
 
     @AfterClass
     public static void tearDown() {
-        TIMELINE_REPOSITORY.listTimelines(eventType.getName()).stream()
+        TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).stream()
                 .forEach(timeline -> TIMELINE_REPOSITORY.deleteTimeline(timeline.getId()));
         RestAssured.given().delete("/event-types/{name}", eventType.getName());
     }

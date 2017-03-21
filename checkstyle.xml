@@ -45,7 +45,9 @@
         <module name="SimplifyBooleanExpression"/>
         <module name="SimplifyBooleanReturn"/>
         
-        <module name="FinalLocalVariableCheck"/>
+        <module name="FinalLocalVariableCheck">
+            <property name="validateEnhancedForLoopVariable" value="true"/>
+        </module>
         <module name="FinalParameters"/>
 
         <module name="LineLength">

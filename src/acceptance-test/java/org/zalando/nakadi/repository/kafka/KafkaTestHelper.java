@@ -1,25 +1,23 @@
 package org.zalando.nakadi.repository.kafka;
 
-import org.apache.commons.lang3.StringUtils;
-import org.zalando.nakadi.view.Cursor;
-import kafka.admin.AdminUtils;
-import kafka.utils.ZkUtils;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.TopicPartition;
-
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-
+import kafka.admin.AdminUtils;
+import kafka.utils.ZkUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
+import org.zalando.nakadi.view.Cursor;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
-import static org.zalando.nakadi.service.CursorConverter.CURSOR_OFFSET_LENGTH;
 
 public class KafkaTestHelper {
 
+    public static final int CURSOR_OFFSET_LENGTH = 18;
     private final String kafkaUrl;
 
     public KafkaTestHelper(final String kafkaUrl) {

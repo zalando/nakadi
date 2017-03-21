@@ -1,6 +1,5 @@
 approvals:
-  minimum: 1
-  ignore: pr_opener
+  minimum: 2
   pattern: "^(👍|:\\+1:|:thumbsup:|:shipit:)$"
   veto:
     pattern: "^(👎|:-1:|:thumbsdown:)$"
