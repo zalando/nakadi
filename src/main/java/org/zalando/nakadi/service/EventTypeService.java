@@ -160,16 +160,16 @@ public class EventTypeService {
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type "+ eventTypeName
-                    + " is currently in maintenance, please repeat request");
+                    + " is currently in maintenance, please repeat request", e);
         } catch (final TopicDeletionException e) {
             LOG.error("Problem deleting kafka topic " + eventTypeName, e);
-            throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName);
+            throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName, e);
         } catch (final TimelineException|NotFoundException e) {
             LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
-            throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName);
+            throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName, e);
         } catch (final NakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
-            throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
+            throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName, e);
         } finally {
             try {
                 if (deletionCloser != null) {
