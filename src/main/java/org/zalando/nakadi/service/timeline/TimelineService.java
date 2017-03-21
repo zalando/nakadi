@@ -1,11 +1,5 @@
 package org.zalando.nakadi.service.timeline;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +33,13 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.UUIDGenerator;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TimelineService {
@@ -237,7 +238,7 @@ public class TimelineService {
             throws TopicDeletionException, TimelineException, NotFoundException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
         final List<Timeline> timelines = getTimelines(eventTypeName);
-        for (Timeline timeline:timelines) {
+        for (final Timeline timeline:timelines) {
             final TopicRepository topicRepository = getTopicRepositoryForTimeline(timeline);
             topicRepository.deleteTopic(timeline.getTopic());
             timelineDbRepository.deleteTimeline(timeline.getId());

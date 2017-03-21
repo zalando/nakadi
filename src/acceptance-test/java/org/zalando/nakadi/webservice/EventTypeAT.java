@@ -155,7 +155,7 @@ public class EventTypeAT extends BaseAT {
 
     private void checkEventTypeIsDeleted(final EventType eventType, final List<String> topics) {
         when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
-        assertEquals(0, TIMELINE_REPOSITORY.listTimelines(eventType.getName()).size());
+        assertEquals(0, TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).size());
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
         topics.forEach(topic -> assertThat(allTopics, not(hasItem(topic))));
@@ -172,7 +172,7 @@ public class EventTypeAT extends BaseAT {
 
     private List<String> getTopicsForEventType(final String eventType) {
         return TIMELINE_REPOSITORY
-                .listTimelines(eventType)
+                .listTimelinesOrdered(eventType)
                 .stream()
                 .map((Timeline t) -> t.getTopic())
                 .collect(Collectors.toList());
