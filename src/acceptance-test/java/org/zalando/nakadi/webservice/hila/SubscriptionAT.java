@@ -29,8 +29,6 @@ import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
 
 import java.io.IOException;
 import java.util.List;
@@ -44,7 +42,6 @@ import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -348,9 +345,6 @@ public class SubscriptionAT extends BaseAT {
     public void testDeleteEventTypeRestriction() throws Exception {
         final String etName = createEventType().getName();
         createSubscriptionForEventType(etName);
-
-        final ThrowableProblem expectedProblem = Problem.valueOf(CONFLICT,
-                "Can't remove event-type " + etName + ", as it has subscriptions");
 
         when().delete("/event-types/{event-type}", etName)
                 .then()

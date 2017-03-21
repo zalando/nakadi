@@ -2,8 +2,6 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.restassured.RestAssured;
-import com.jayway.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
 import org.json.JSONObject;
 import org.junit.After;
@@ -145,8 +143,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     private void postTimeline(final EventType eventType) {
-        RestAssured.given()
-                .contentType(ContentType.JSON)
+        given().contentType(JSON)
                 .body(new JSONObject().put("storage_id", "default"))
                 .post("event-types/{et_name}/timelines", eventType.getName())
                 .then()
