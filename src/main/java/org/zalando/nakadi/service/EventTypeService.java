@@ -99,22 +99,30 @@ public class EventTypeService {
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
+
             final String topicName = topicRepository.createTopic(
                     partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
                     eventType.getOptions().getRetentionTime());
             eventType.setTopic(topicName);
-            eventTypeRepository.saveEventType(eventType);
+
+            boolean eventTypeCreated = false;
+            try {
+                eventTypeRepository.saveEventType(eventType);
+                eventTypeCreated = true;
+            }
+            finally {
+                if (!eventTypeCreated) {
+                    try {
+                        topicRepository.deleteTopic(eventType.getTopic());
+                    } catch (final TopicDeletionException ex) {
+                        LOG.error("failed to delete topic for event type that failed to be created", ex);
+                    }
+                }
+            }
             return Result.ok();
         } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
                 DuplicatedEventTypeNameException e) {
             LOG.debug("Failed to create EventType.", e);
-            if (null != eventType.getTopic()) {
-                try {
-                    topicRepository.deleteTopic(eventType.getTopic());
-                } catch (final TopicDeletionException ex) {
-                    LOG.error("failed to delete topic for event type that failed to be created", ex);
-                }
-            }
             return Result.problem(e.asProblem());
         } catch (final NakadiException e) {
             LOG.error("Error creating event type " + eventType, e);
