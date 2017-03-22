@@ -220,16 +220,16 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                 newValues.stream().map(NakadiCursor::getEventType).collect(Collectors.toSet()));
 
         // first step - remove everything that is to be removed.
-        cleanStreamedPartitions(partitionsDiff.removed);
+        cleanStreamedPartitions(partitionsDiff.getRemoved());
         // remove timeline sync listeners
-        eventTypesDiff.removed.stream()
+        eventTypesDiff.getRemoved().stream()
                 .map(timelineRefreshListeners::remove)
                 .forEach(TimelineSync.ListenerRegistration::cancel);
 
         // remember new positions.
-        partitionsDiff.added.forEach(etp -> latestOffsets.put(etp, newCursorMap.get(etp)));
+        partitionsDiff.getAdded().forEach(etp -> latestOffsets.put(etp, newCursorMap.get(etp)));
         // add new timeline listeners
-        eventTypesDiff.added.forEach(item ->
+        eventTypesDiff.getAdded().forEach(item ->
                 timelineRefreshListeners.put(
                         item,
                         timelineSync.registerTimelineChangeListener(item, this::onTimelineChange)));

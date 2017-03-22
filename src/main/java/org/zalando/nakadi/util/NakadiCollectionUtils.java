@@ -1,26 +1,36 @@
 package org.zalando.nakadi.util;
 
+import com.google.common.collect.ImmutableSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class NakadiCollectionUtils {
     public static class Diff<T> {
-        public final Set<T> added;
-        public final Set<T> removed;
+        private final ImmutableSet<T> added;
+        private final ImmutableSet<T> removed;
 
-        Diff(final Set<T> added, final Set<T> removed) {
+        Diff(final ImmutableSet<T> added, final ImmutableSet<T> removed) {
             this.added = added;
             this.removed = removed;
+        }
+
+        public ImmutableSet<T> getAdded() {
+            return added;
+        }
+
+        public ImmutableSet<T> getRemoved() {
+            return removed;
         }
     }
 
     public static <T> Diff<T> difference(final Set<T> oldSet, final Set<T> newSet) {
-        final Set<T> added = newSet.stream()
+        final ImmutableSet.Builder<T> addedBuilder = ImmutableSet.builder();
+        newSet.stream()
                 .filter(v -> !oldSet.contains(v))
-                .collect(Collectors.toSet());
-        final Set<T> removed = oldSet.stream()
+                .forEach(addedBuilder::add);
+        final ImmutableSet.Builder<T> removedBuilder = ImmutableSet.builder();
+        oldSet.stream()
                 .filter(v -> !newSet.contains(v))
-                .collect(Collectors.toSet());
-        return new Diff<>(added, removed);
+                .forEach(removedBuilder::add);
+        return new Diff<>(addedBuilder.build(), removedBuilder.build());
     }
 }
