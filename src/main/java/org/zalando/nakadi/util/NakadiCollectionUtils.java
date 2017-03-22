@@ -3,7 +3,7 @@ package org.zalando.nakadi.util;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class NakadiUtils {
+public class NakadiCollectionUtils {
     public static class Diff<T> {
         public final Set<T> added;
         public final Set<T> removed;
@@ -14,12 +14,12 @@ public class NakadiUtils {
         }
     }
 
-    public static <T> Diff<T> difference(final Set<T> oldCollection, final Set<T> newCollection) {
-        final Set<T> added = newCollection.stream()
-                .filter(v -> !oldCollection.contains(v))
+    public static <T> Diff<T> difference(final Set<T> oldSet, final Set<T> newSet) {
+        final Set<T> added = newSet.stream()
+                .filter(v -> !oldSet.contains(v))
                 .collect(Collectors.toSet());
-        final Set<T> removed = oldCollection.stream()
-                .filter(v -> !newCollection.contains(v))
+        final Set<T> removed = oldSet.stream()
+                .filter(v -> !newSet.contains(v))
                 .collect(Collectors.toSet());
         return new Diff<>(added, removed);
     }

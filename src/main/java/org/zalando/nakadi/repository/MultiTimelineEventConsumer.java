@@ -32,7 +32,7 @@ import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.NakadiUtils;
+import org.zalando.nakadi.util.NakadiCollectionUtils;
 
 public class MultiTimelineEventConsumer implements EventConsumer {
     private final String clientId;
@@ -212,10 +212,10 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         final Map<EventTypePartition, NakadiCursor> newCursorMap = newValues.stream()
                 .collect(Collectors.toMap(NakadiCursor::getEventTypePartition, Function.identity()));
 
-        final NakadiUtils.Diff<EventTypePartition> partitionsDiff = NakadiUtils.difference(
+        final NakadiCollectionUtils.Diff<EventTypePartition> partitionsDiff = NakadiCollectionUtils.difference(
                 latestOffsets.keySet(), newCursorMap.keySet());
 
-        final NakadiUtils.Diff<String> eventTypesDiff = NakadiUtils.difference(
+        final NakadiCollectionUtils.Diff<String> eventTypesDiff = NakadiCollectionUtils.difference(
                 timelineRefreshListeners.keySet(),
                 newValues.stream().map(NakadiCursor::getEventType).collect(Collectors.toSet()));
 
