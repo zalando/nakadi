@@ -69,7 +69,7 @@ public class ExclusiveJobWrapperAT extends BaseAT {
     public void whenJobIsAlreadyRunningOnAnotherNodeThenJobIsNotExecuted() throws Exception {
         // set latest job execution as 30 hours ago
         createLatestNode(30);
-        // another Nakadi instance already performs cleaning
+        // another Nakadi instance already performs job
         CURATOR.create().creatingParentsIfNeeded().forPath(lockPath);
 
         jobWrapper.runJobLocked(dummyJob);
@@ -92,8 +92,8 @@ public class ExclusiveJobWrapperAT extends BaseAT {
 
     private void createLatestNode(final int hoursAgo) throws Exception {
         final DateTime now = new DateTime(DateTimeZone.UTC);
-        final DateTime twoHoursAgo = now.minusHours(hoursAgo);
-        final byte[] data = objectMapper.writeValueAsString(twoHoursAgo).getBytes(Charset.forName("UTF-8"));
+        final DateTime pastDate = now.minusHours(hoursAgo);
+        final byte[] data = objectMapper.writeValueAsString(pastDate).getBytes(Charset.forName("UTF-8"));
         CURATOR.create().creatingParentsIfNeeded().forPath(latestPath, data);
     }
 }
