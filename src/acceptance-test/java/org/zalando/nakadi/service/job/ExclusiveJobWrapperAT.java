@@ -14,7 +14,6 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
-import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -93,7 +92,7 @@ public class ExclusiveJobWrapperAT extends BaseAT {
     private void createLatestNode(final int hoursAgo) throws Exception {
         final DateTime now = new DateTime(DateTimeZone.UTC);
         final DateTime pastDate = now.minusHours(hoursAgo);
-        final byte[] data = objectMapper.writeValueAsString(pastDate).getBytes(Charset.forName("UTF-8"));
+        final byte[] data = objectMapper.writeValueAsString(pastDate).getBytes(Charsets.UTF_8);
         CURATOR.create().creatingParentsIfNeeded().forPath(latestPath, data);
     }
 }
