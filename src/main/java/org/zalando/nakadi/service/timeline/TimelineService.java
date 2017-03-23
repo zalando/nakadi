@@ -234,7 +234,7 @@ public class TimelineService {
             throws TopicDeletionException, TimelineException, NotFoundException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
         final List<Timeline> timelines = getTimelines(eventTypeName);
-        for (final Timeline timeline:timelines) {
+        for (final Timeline timeline : timelines) {
             final TopicRepository topicRepository = getTopicRepository(timeline);
             topicRepository.deleteTopic(timeline.getTopic());
             timelineDbRepository.deleteTimeline(timeline.getId());
