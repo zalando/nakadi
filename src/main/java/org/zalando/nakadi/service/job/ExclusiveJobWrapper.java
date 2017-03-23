@@ -50,7 +50,7 @@ public class ExclusiveJobWrapper {
             if (!timeToRunAction()) {
                 return;
             }
-            log.info("Execution of job will be performed on this instance");
+            log.info("Job will be executed on this instance");
             action.run();
             updateJobTimestamp();
         } catch (final JsonProcessingException e) {
