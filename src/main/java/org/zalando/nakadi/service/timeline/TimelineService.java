@@ -159,11 +159,7 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
-    public TopicRepository getTopicRepository(final Timeline timeline) {
-        return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
-    }
-
-    public TopicRepository getTopicRepositoryForTimeline(final Timeline timeline)
+    public TopicRepository getTopicRepository(final Timeline timeline)
             throws TopicRepositoryException, TimelineException {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
@@ -239,7 +235,7 @@ public class TimelineService {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
         final List<Timeline> timelines = getTimelines(eventTypeName);
         for (final Timeline timeline:timelines) {
-            final TopicRepository topicRepository = getTopicRepositoryForTimeline(timeline);
+            final TopicRepository topicRepository = getTopicRepository(timeline);
             topicRepository.deleteTopic(timeline.getTopic());
             timelineDbRepository.deleteTimeline(timeline.getId());
         }
