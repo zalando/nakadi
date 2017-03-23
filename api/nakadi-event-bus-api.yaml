@@ -557,10 +557,12 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
       description: |
-        This endpoint is mostly interesting for monitoring purposes. Used when a consumer wants to know how far behing
+        GET with payload.
+
+        This endpoint is mostly interesting for monitoring purposes. Used when a consumer wants to know how far behind
         in the stream its application is lagging.
 
-        It provides the number of unconsummed events for each cursor's partition.
+        It provides the number of unconsumed events for each cursor's partition.
       parameters:
         - name: name
           in: path
