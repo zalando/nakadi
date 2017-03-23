@@ -107,6 +107,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         insertTimeline(yesterday.toDate(), true, 2);
         final Timeline t4 = insertTimeline(yesterday.toDate(), false, 3);
         final Timeline t5 = insertTimeline(twoDaysAgo.toDate(), false, 4);
+        insertTimeline(null, false, 5);
 
         final List<Timeline> expiredTimelines = tRepository.getExpiredTimelines();
 

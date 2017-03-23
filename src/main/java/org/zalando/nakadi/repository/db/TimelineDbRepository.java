@@ -128,7 +128,8 @@ public class TimelineDbRepository extends AbstractDbRepository {
         try {
             return jdbcTemplate.query(
                     BASE_TIMELINE_QUERY +
-                            " WHERE tl_deleted = FALSE AND tl_cleanup_at < now() ORDER BY t.et_name, t.tl_order",
+                            " WHERE tl_deleted = FALSE AND tl_cleanup_at IS NOT NULL AND tl_cleanup_at < now()" +
+                            " ORDER BY t.et_name, t.tl_order",
                     timelineRowMapper);
         } catch (final DataAccessException e) {
             throw new RepositoryProblemException("DB error occurred when fetching expired timelines", e);
