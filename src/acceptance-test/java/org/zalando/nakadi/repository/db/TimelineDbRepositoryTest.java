@@ -43,7 +43,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
     @Test
     public void testTimelineCreated() {
 
-        final Timeline timeline = insertTimelineWithOrder(0);
+        final Timeline timeline = insertTimeline(0);
 
         final Optional<Timeline> fromDb = tRepository.getTimeline(timeline.getId());
         Assert.assertTrue(fromDb.isPresent());
@@ -53,7 +53,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testTimelineUpdate() {
-        final Timeline initial = insertTimelineWithOrder(0);
+        final Timeline initial = insertTimeline(0);
 
         final Timeline modified = tRepository.getTimeline(initial.getId()).get();
         modified.setCreatedAt(new Date());
@@ -72,14 +72,14 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test(expected = DuplicatedTimelineException.class)
     public void testDuplicateOrderNotAllowed() {
-        insertTimelineWithOrder(0);
-        insertTimelineWithOrder(0);
+        insertTimeline(0);
+        insertTimeline(0);
     }
 
     @Test
     public void testListTimelinesOrdered() {
-        final Timeline t1 = insertTimelineWithOrder(1);
-        final Timeline t0 = insertTimelineWithOrder(0);
+        final Timeline t1 = insertTimeline(1);
+        final Timeline t0 = insertTimeline(0);
 
         final List<Timeline> testTimelines = tRepository.listTimelinesOrdered(testEt.getName());
         Assert.assertEquals(2, testTimelines.size());
@@ -89,7 +89,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void testTimelineDeleted() {
-        final Timeline t1 = insertTimelineWithOrder(1);
+        final Timeline t1 = insertTimeline(1);
         Assert.assertEquals(1, tRepository.listTimelinesOrdered(testEt.getName()).size());
         tRepository.deleteTimeline(t1.getId());
         Assert.assertEquals(0, tRepository.listTimelinesOrdered(testEt.getName()).size());
@@ -115,7 +115,7 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
         Assert.assertEquals(ImmutableList.of(t4, t5), expiredTimelines);
     }
 
-    private Timeline insertTimelineWithOrder(final int order) {
+    private Timeline insertTimeline(final int order) {
         return tRepository.createTimeline(createTimeline(
                 storage, UUID.randomUUID(), order, "test_topic", testEt.getName(),
                 new Date(), null, null, null));
