@@ -164,7 +164,7 @@ public class TimelineService {
     }
 
     public TopicRepository getTopicRepositoryForTimeline(final Timeline timeline)
-    throws TopicRepositoryException, TimelineException {
+            throws TopicRepositoryException, TimelineException {
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
