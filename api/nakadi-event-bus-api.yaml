@@ -623,7 +623,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
-  '/event-types/{name}/cursors':
+  '/event-types/{name}/shifted-cursors':
       post:
         tags:
           - unmanaged-api
