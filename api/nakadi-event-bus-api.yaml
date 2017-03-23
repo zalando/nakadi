@@ -650,6 +650,8 @@ paths:
           - name: cursors
             in: body
             description: |
+              GET with payload.
+
               Cursors indicating the positions to be calculated. Given a initial cursor, with partition and offset, it's
               possible to obtain another cursor that is relatively forward or backward to it. When `shift` is positive,
               Nakadi will respond with a cursor that in forward `shif` positions based on the initial `partition` and
