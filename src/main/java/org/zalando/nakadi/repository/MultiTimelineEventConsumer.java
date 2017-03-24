@@ -12,8 +12,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -36,15 +35,34 @@ import org.zalando.nakadi.util.NakadiCollectionUtils;
 
 public class MultiTimelineEventConsumer implements EventConsumer {
     private final String clientId;
+    /**
+     * Contains latest offsets that were sent to client of this class
+     */
     private final Map<EventTypePartition, NakadiCursor> latestOffsets = new HashMap<>();
-    private final Map<String, List<Timeline>> consumedEventTypes = new HashMap<>();
+    /**
+     * Active timelines list for consumed event types
+     */
+    private final Map<String, List<Timeline>> eventTypeTimelines = new HashMap<>();
+    /**
+     * Mapping from event type name to listener that is used to listen for timeline changes
+     */
     private final Map<String, TimelineSync.ListenerRegistration> timelineRefreshListeners = new HashMap<>();
+    /**
+     * Mapping from topic repository to event consumer that was created to consume events from this topic repository.
+     */
     private final Map<TopicRepository, EventConsumer> eventConsumers = new HashMap<>();
+    /**
+     * List of events that were consumed but not yet sent to client of this class.
+     */
     private final LinkedList<ConsumedEvent> eventsQueue = new LinkedList<>();
+    /**
+     * Offsets, that should trigger election of topic repository for next timeline. (Actually - map of latest offsets
+     * for each event type partition within current timeline.
+     */
     private final Map<EventTypePartition, String> borderOffsets = new HashMap<>();
     private final TimelineService timelineService;
     private final TimelineSync timelineSync;
-    private final BlockingQueue<Runnable> queuedTasks = new LinkedBlockingQueue<>();
+    private final AtomicBoolean timelinesChanged = new AtomicBoolean(false);
     private static final Logger LOG = LoggerFactory.getLogger(MultiTimelineEventConsumer.class);
 
     public MultiTimelineEventConsumer(
@@ -64,10 +82,14 @@ public class MultiTimelineEventConsumer implements EventConsumer {
 
     @Override
     public Optional<ConsumedEvent> readEvent() {
-        Runnable task;
-        while ((task = queuedTasks.poll()) != null) {
-            task.run();
+        if (timelinesChanged.compareAndSet(true, false)) {
+            try {
+                onTimelinesChanged();
+            } catch (final NakadiException | InvalidCursorException ex) {
+                throw new NakadiRuntimeException(ex);
+            }
         }
+
         final Optional<ConsumedEvent> result = poll();
         if (result.isPresent()) {
             final NakadiCursor position = result.get().getPosition();
@@ -76,7 +98,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
             final String borderOffset = borderOffsets.get(etp);
             if (null != borderOffset && borderOffset.compareTo(position.getOffset()) <= 0) {
                 try {
-                    reelectTopicRepositories();
+                    electTopicRepositories();
                 } catch (final NakadiException | InvalidCursorException e) {
                     throw new NakadiRuntimeException(e);
                 }
@@ -99,7 +121,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
             final Consumer<NakadiCursor> cursorReplacer,
             final Consumer<NakadiCursor> lastTimelinePosition)
             throws ServiceUnavailableException {
-        final List<Timeline> eventTimelines = consumedEventTypes.get(cursor.getEventType());
+        final List<Timeline> eventTimelines = eventTypeTimelines.get(cursor.getEventType());
         Timeline electedTimeline = null;
         final ListIterator<Timeline> itTimeline = eventTimelines.listIterator(eventTimelines.size());
         while (itTimeline.hasPrevious()) {
@@ -132,7 +154,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                                 " and partition " + partition + ", but it wasn't found")).getBeforeFirst();
     }
 
-    private void reelectTopicRepositories() throws NakadiException, InvalidCursorException {
+    private void electTopicRepositories() throws NakadiException, InvalidCursorException {
         final Map<TopicRepository, List<NakadiCursor>> newAssignment = new HashMap<>();
         borderOffsets.clear();
         // load new topic repositories and possibly replace cursors to newer timelines.
@@ -188,23 +210,23 @@ public class MultiTimelineEventConsumer implements EventConsumer {
     }
 
 
-    private void timelinesChanged() throws NakadiException, InvalidCursorException {
+    private void onTimelinesChanged() throws NakadiException, InvalidCursorException {
         final Set<String> eventTypes = latestOffsets.values().stream()
                 .map(NakadiCursor::getEventType)
                 .collect(Collectors.toSet());
         // Remove obsolete data
-        final List<String> toRemove = consumedEventTypes.keySet().stream()
+        final List<String> toRemove = eventTypeTimelines.keySet().stream()
                 .filter(et -> !eventTypes.contains(et))
                 .collect(Collectors.toList());
         for (final String item : toRemove) {
-            consumedEventTypes.remove(item);
+            eventTypeTimelines.remove(item);
         }
         // Add refreshed data.
         for (final String eventType : eventTypes) {
-            consumedEventTypes.put(eventType, timelineService.getActiveTimelinesOrdered(eventType));
+            eventTypeTimelines.put(eventType, timelineService.getActiveTimelinesOrdered(eventType));
         }
         // Second part - recreate TopicRepositories to fetch data from.
-        reelectTopicRepositories();
+        electTopicRepositories();
     }
 
 
@@ -235,7 +257,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                         timelineSync.registerTimelineChangeListener(item, this::onTimelineChange)));
 
         // fetch all the timelines as a part of usual timeline update process
-        timelinesChanged();
+        onTimelinesChanged();
     }
 
     private void cleanStreamedPartitions(final Set<EventTypePartition> partitions) {
@@ -244,13 +266,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
     }
 
     void onTimelineChange(final String ignore) {
-        queuedTasks.add(() -> {
-            try {
-                timelinesChanged();
-            } catch (final NakadiException | InvalidCursorException ex) {
-                throw new NakadiRuntimeException(ex);
-            }
-        });
+        timelinesChanged.set(true);
     }
 
     @Override
