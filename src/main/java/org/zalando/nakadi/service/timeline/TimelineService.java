@@ -236,7 +236,9 @@ public class TimelineService {
         final List<Timeline> timelines = getTimelines(eventTypeName);
         for (final Timeline timeline : timelines) {
             final TopicRepository topicRepository = getTopicRepository(timeline);
-            topicRepository.deleteTopic(timeline.getTopic());
+            if (topicRepository.topicExists(timeline.getTopic())) {
+                topicRepository.deleteTopic(timeline.getTopic());
+            }
             timelineDbRepository.deleteTimeline(timeline.getId());
         }
     }

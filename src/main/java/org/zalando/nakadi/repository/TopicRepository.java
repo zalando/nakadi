@@ -1,8 +1,5 @@
 package org.zalando.nakadi.repository;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
@@ -13,6 +10,11 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.TopicRepositoryException;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 public interface TopicRepository {
 
@@ -20,7 +22,7 @@ public interface TopicRepository {
 
     void deleteTopic(String topic) throws TopicDeletionException;
 
-    boolean topicExists(String topic) throws NakadiException;
+    boolean topicExists(String topic) throws TopicRepositoryException;
 
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
 
