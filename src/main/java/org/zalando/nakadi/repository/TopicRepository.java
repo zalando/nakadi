@@ -10,7 +10,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
-import org.zalando.nakadi.exceptions.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collection;
 import java.util.List;
