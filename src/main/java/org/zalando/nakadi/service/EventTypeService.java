@@ -162,10 +162,10 @@ public class EventTypeService {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type "+ eventTypeName
                     + " is currently in maintenance, please repeat request", e);
-        } catch (final TopicDeletionException|TopicRepositoryException e) {
+        } catch (final TopicDeletionException | TopicRepositoryException e) {
             LOG.error("Problem deleting kafka topic for event type " + eventTypeName, e);
             throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName, e);
-        } catch (final TimelineException|NotFoundException e) {
+        } catch (final TimelineException | NotFoundException e) {
             LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName, e);
         } catch (final NakadiException e) {
