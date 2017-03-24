@@ -231,13 +231,16 @@ public class TimelineService {
     }
 
     public void deleteAllTimelinesForEventType(final String eventTypeName)
-            throws TopicDeletionException, TopicRepositoryException, TimelineException, NotFoundException {
+            throws TopicDeletionException, TimelineException, NotFoundException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
         final List<Timeline> timelines = getTimelines(eventTypeName);
         for (final Timeline timeline : timelines) {
             final TopicRepository topicRepository = getTopicRepository(timeline);
-            if (topicRepository.topicExists(timeline.getTopic())) {
+            try {
                 topicRepository.deleteTopic(timeline.getTopic());
+            } catch (TopicDeletionException e) {
+                // If a timeline was marked as deleted, then the topic does not exist, and we should proceed.
+                LOG.info("Could not delete topic " + timeline.getTopic());
             }
             timelineDbRepository.deleteTimeline(timeline.getId());
         }
