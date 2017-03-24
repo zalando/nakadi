@@ -24,8 +24,8 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
-import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -231,7 +231,7 @@ public class TimelineService {
     }
 
     public void deleteAllTimelinesForEventType(final String eventTypeName)
-            throws TopicDeletionException, TimelineException, NotFoundException {
+            throws TopicDeletionException, TopicRepositoryException, TimelineException, NotFoundException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
         final List<Timeline> timelines = getTimelines(eventTypeName);
         for (final Timeline timeline : timelines) {

@@ -31,6 +31,7 @@ import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -161,8 +162,8 @@ public class EventTypeService {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type "+ eventTypeName
                     + " is currently in maintenance, please repeat request", e);
-        } catch (final TopicDeletionException e) {
-            LOG.error("Problem deleting kafka topic " + eventTypeName, e);
+        } catch (final TopicDeletionException|TopicRepositoryException e) {
+            LOG.error("Problem deleting kafka topic for event type " + eventTypeName, e);
             throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName, e);
         } catch (final TimelineException|NotFoundException e) {
             LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
