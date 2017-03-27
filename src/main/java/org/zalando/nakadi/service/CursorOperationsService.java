@@ -57,9 +57,7 @@ public class CursorOperationsService {
 
     private long getDistanceSameTimeline(final NakadiCursor initialCursor,
                                          final NakadiCursor finalCursor) {
-        final TopicRepository topicRepository = getTopicRepository(initialCursor.getTimeline());
-        final long distance = topicRepository.numberOfEventsBeforeCursor(finalCursor) -
-                topicRepository.numberOfEventsBeforeCursor(initialCursor);
+        final long distance = numberOfEventsBeforeCursor(finalCursor) - numberOfEventsBeforeCursor(initialCursor);
         if (distance < 0) {
             throw new InvalidCursorOperation(INVERTED_OFFSET_ORDER);
         }
