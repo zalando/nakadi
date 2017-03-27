@@ -136,6 +136,14 @@ public class TimelineDbRepository extends AbstractDbRepository {
         }
     }
 
+    public void deleteTimelinesMarkedDeletedForStorage(final String storageId) throws RepositoryProblemException {
+        try {
+            jdbcTemplate.update("DELETE FROM zn_data.timeline WHERE tl_deleted = TRUE AND st_id = ?", storageId);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("DB error occurred when deleting timelines", e);
+        }
+    }
+
     private final RowMapper<Timeline> timelineRowMapper = (rs, rowNum) -> {
         final UUID timelineId = (UUID) rs.getObject("tl_id");
         try {

@@ -5,6 +5,8 @@ import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.NoStorageException;
+import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.utils.TestUtils;
 
 import java.util.Date;
@@ -16,6 +18,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
+import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
     private StorageDbRepository repository;
@@ -83,21 +86,21 @@ public class StorageDbRepositoryTest extends AbstractDbRepositoryTest {
         assertEquals(0, repository.listStorages().size());
     }
 
-    @Test
-    public void testIsStorageUsedNo() throws Exception {
-        repository.createStorage(createStorage("s1", "exaddress", 8181, "address1", "path1"));
-        assertFalse(repository.isStorageUsed("s1"));
+    @Test(expected = NoStorageException.class)
+    public void testDeleteNoneExistingStorage() throws Exception {
+        repository.deleteStorage(randomUUID());
     }
 
-    @Test
-    public void testIsStorageUsedYes() throws Exception {
-        final Storage storage1 = repository.createStorage(createStorage("s2", "exaddress", 8181, "address1", "path1"));
-        final EventType testEt = eventTypeDbRepository.saveEventType(TestUtils.buildDefaultEventType());
-        final Timeline timeline = TimelineDbRepositoryTest.createTimeline(
-                storage1, UUID.randomUUID(), 0, "test_topic", testEt.getName(),
-                new Date(), null, null, null);
+    @Test(expected = StorageIsUsedException.class)
+    public void testDeleteUsedStorage() throws Exception {
+        final Storage storage = repository.createStorage(createStorage("1", "exaddress", 8181, "address", "path"));
+
+        final EventType eventType = eventTypeDbRepository.saveEventType(TestUtils.buildDefaultEventType());
+        final Timeline timeline = TimelineDbRepositoryTest.createTimeline(storage, UUID.randomUUID(), 0, "topic",
+                eventType.getName(), new Date(), new Date(), null, null);
         timelineDbRepository.createTimeline(timeline);
-        assertTrue(repository.isStorageUsed("s2"));
+
+        repository.deleteStorage(storage.getId());
     }
 
 }

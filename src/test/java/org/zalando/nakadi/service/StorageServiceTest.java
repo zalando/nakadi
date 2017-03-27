@@ -4,16 +4,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.runtime.NoStorageException;
+import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
+import org.zalando.nakadi.repository.db.TimelineDbRepository;
 
-import java.util.Optional;
-
-import static junit.framework.TestCase.assertFalse;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,7 +30,15 @@ public class StorageServiceTest {
     @Before
     public void setUp() {
         storageDbRepository = mock(StorageDbRepository.class);
-        storageService = new StorageService(objectMapper, storageDbRepository);
+        final TimelineDbRepository timelineDbRepository = mock(TimelineDbRepository.class);
+        final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
+            callback.doInTransaction(null);
+            return null;
+        });
+        storageService = new StorageService(objectMapper, storageDbRepository, timelineDbRepository,
+                transactionTemplate);
     }
 
     @Test
@@ -42,34 +54,29 @@ public class StorageServiceTest {
 
     @Test
     public void testDeleteUnusedStorage() throws Exception {
-        final Storage storage = new Storage();
-        storage.setId("s3");
-
-        when(storageDbRepository.getStorage("s3")).thenReturn(Optional.of(storage));
-        when(storageDbRepository.isStorageUsed("s3")).thenReturn(false);
-        doNothing().when(storageDbRepository).deleteStorage("s3");
         assertTrue(storageService.deleteStorage("s3").isSuccessful());
     }
 
     @Test
     public void testDeleteStorageInUse() throws Exception {
-        final Storage storage = new Storage();
-        storage.setId("s2");
+        doThrow(new StorageIsUsedException("", null)).when(storageDbRepository).deleteStorage("s");
 
-        when(storageDbRepository.getStorage("s2")).thenReturn(Optional.of(storage));
-        when(storageDbRepository.isStorageUsed("s2")).thenReturn(true);
-        doNothing().when(storageDbRepository).deleteStorage("s2");
+        final Result<Void> result = storageService.deleteStorage("s");
 
-        assertFalse(storageService.deleteStorage("s2").isSuccessful());
+        final Result<Void> expectedResult = Result.forbidden("Storage s is in use");
+        assertThat(result.getProblem().getStatus(), equalTo(expectedResult.getProblem().getStatus()));
+        assertThat(result.getProblem().getDetail(), equalTo(expectedResult.getProblem().getDetail()));
     }
 
     @Test
     public void testDeleteNonExistingStorage() throws Exception {
-        when(storageDbRepository.getStorage("s4")).thenReturn(Optional.empty());
-        when(storageDbRepository.isStorageUsed("s4")).thenReturn(false);
-        doNothing().when(storageDbRepository).deleteStorage("s4");
+        doThrow(new NoStorageException("")).when(storageDbRepository).deleteStorage("s");
 
-        assertFalse(storageService.deleteStorage("s4").isSuccessful());
+        final Result<Void> result = storageService.deleteStorage("s");
+
+        final Result<Void> expectedResult = Result.notFound("No storage with ID s");
+        assertThat(result.getProblem().getStatus(), equalTo(expectedResult.getProblem().getStatus()));
+        assertThat(result.getProblem().getDetail(), equalTo(expectedResult.getProblem().getDetail()));
     }
 
     private JSONObject createTestStorageJson(final String id) {

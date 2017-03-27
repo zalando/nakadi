@@ -18,6 +18,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
     private TimelineDbRepository tRepository;
@@ -113,6 +116,17 @@ public class TimelineDbRepositoryTest extends AbstractDbRepositoryTest {
 
         Assert.assertEquals(2, expiredTimelines.size());
         Assert.assertEquals(ImmutableList.of(t4, t5), expiredTimelines);
+    }
+
+    @Test
+    public void testDeleteTimelinesMarkedDeleted() {
+        final Timeline t1 = insertTimeline(new Date(), false, 1);
+        final Timeline t2 = insertTimeline(new Date(), true, 2);
+
+        tRepository.deleteTimelinesMarkedDeletedForStorage(storage.getId());
+
+        assertThat(tRepository.getTimeline(t1.getId()).isPresent(), is(true));
+        assertThat(tRepository.getTimeline(t2.getId()).isPresent(), is(false));
     }
 
     private Timeline insertTimeline(final int order) {
