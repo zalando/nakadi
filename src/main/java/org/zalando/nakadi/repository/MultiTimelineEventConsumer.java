@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -52,10 +51,6 @@ public class MultiTimelineEventConsumer implements EventConsumer {
      */
     private final Map<TopicRepository, EventConsumer> eventConsumers = new HashMap<>();
     /**
-     * List of events that were consumed but not yet sent to client of this class.
-     */
-    private final LinkedList<ConsumedEvent> eventsQueue = new LinkedList<>();
-    /**
      * Offsets, that should trigger election of topic repository for next timeline. (Actually - map of latest offsets
      * for each event type partition within current timeline.
      */
@@ -81,7 +76,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
 
 
     @Override
-    public Optional<ConsumedEvent> readEvent() {
+    public List<ConsumedEvent> readEvents() {
         if (timelinesChanged.compareAndSet(true, false)) {
             try {
                 onTimelinesChanged();
@@ -89,31 +84,41 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                 throw new NakadiRuntimeException(ex);
             }
         }
-
-        final Optional<ConsumedEvent> result = poll();
-        if (result.isPresent()) {
-            final NakadiCursor position = result.get().getPosition();
-            final EventTypePartition etp = position.getEventTypePartition();
-            latestOffsets.put(etp, position);
-            final String borderOffset = borderOffsets.get(etp);
-            if (null != borderOffset && borderOffset.compareTo(position.getOffset()) <= 0) {
-                try {
-                    electTopicRepositories();
-                } catch (final NakadiException | InvalidCursorException e) {
-                    throw new NakadiRuntimeException(e);
-                }
+        final List<ConsumedEvent> result = poll();
+        for (final ConsumedEvent event : result) {
+            final EventTypePartition etp = event.getPosition().getEventTypePartition();
+            latestOffsets.put(etp, event.getPosition());
+            final String border = borderOffsets.get(etp);
+            final boolean timelineBorderReached = null != border
+                    && border.compareTo(event.getPosition().getOffset()) <= 0;
+            if (timelineBorderReached) {
+                timelinesChanged.set(true);
             }
         }
         return result;
     }
 
-    private Optional<ConsumedEvent> poll() {
-        Optional<ConsumedEvent> result = Optional.ofNullable(eventsQueue.poll());
-        if (!result.isPresent()) {
-            eventConsumers.values().forEach(consumer -> consumer.readEvent().ifPresent(eventsQueue::add));
-            result = Optional.ofNullable(eventsQueue.poll());
+    /**
+     * Gets data from current event consumers. It tries to use as less list allocations as it is possible.
+     *
+     * @return List of consumed events.
+     */
+    private List<ConsumedEvent> poll() {
+        List<ConsumedEvent> result = null;
+        boolean newCollectionCreated = false;
+        for (final EventConsumer consumer : eventConsumers.values()) {
+            final List<ConsumedEvent> partialResult = consumer.readEvents();
+            if (null == result) {
+                result = partialResult;
+            } else {
+                if (!newCollectionCreated) {
+                    result = new ArrayList<>(result);
+                    newCollectionCreated = true;
+                }
+                result.addAll(partialResult);
+            }
         }
-        return result;
+        return result == null ? Collections.emptyList() : result;
     }
 
     private TopicRepository selectCorrectTopicRepo(
@@ -261,7 +266,6 @@ public class MultiTimelineEventConsumer implements EventConsumer {
     }
 
     private void cleanStreamedPartitions(final Set<EventTypePartition> partitions) {
-        eventsQueue.removeIf(event -> partitions.contains(event.getPosition().getEventTypePartition()));
         partitions.forEach(latestOffsets::remove);
     }
 

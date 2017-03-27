@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -127,24 +126,19 @@ public class NakadiKafkaConsumerTest {
         // ACT //
         final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(
                 kafkaConsumerMock, cursors, createTpTimelineMap(), POLL_TIMEOUT);
-        final Optional<ConsumedEvent> consumedEvent1 = consumer.readEvent();
-        final Optional<ConsumedEvent> consumedEvent2 = consumer.readEvent();
-        final Optional<ConsumedEvent> consumedEvent3 = consumer.readEvent();
+        final List<ConsumedEvent> consumedEvents = consumer.readEvents();
 
         // ASSERT //
-        assertThat("The event we read first should not be empty", consumedEvent1.isPresent(), equalTo(true));
+        assertThat("The event we read first should not be empty", consumedEvents.size(), equalTo(2));
         assertThat("The event we read first should have the same data as first mocked ConsumerRecord",
-                consumedEvent1.get(),
+                consumedEvents.get(0),
                 equalTo(new ConsumedEvent(event1,
                         new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiCursor(timeline))));
 
-        assertThat("The event we read second should not be empty", consumedEvent2.isPresent(), equalTo(true));
         assertThat("The event we read second should have the same data as second mocked ConsumerRecord",
-                consumedEvent2.get(),
+                consumedEvents.get(1),
                 equalTo(new ConsumedEvent(event2,
                         new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiCursor(timeline))));
-
-        assertThat("The event we read third should be empty", consumedEvent3.isPresent(), equalTo(false));
 
         assertThat("The kafka poll should be called with timeout we defined", pollTimeoutCaptor.getValue(),
                 equalTo(POLL_TIMEOUT));
@@ -168,7 +162,7 @@ public class NakadiKafkaConsumerTest {
                 // ACT //
                 final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock,
                         ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
-                consumer.readEvent();
+                consumer.readEvents();
 
                 // ASSERT //
                 fail("An Exception was expected to be be thrown");

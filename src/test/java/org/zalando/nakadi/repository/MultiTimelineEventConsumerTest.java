@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository;
 
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -47,8 +48,8 @@ public class MultiTimelineEventConsumerTest {
         first.setLatestPosition(new Timeline.KafkaStoragePosition(ImmutableList.of(2L)));
         final TopicRepository firstTopicRepo = mock(TopicRepository.class);
         final EventConsumer firstEventConsumer = mock(EventConsumer.class);
-        when(firstEventConsumer.readEvent())
-                .thenReturn(Optional.of(new ConsumedEvent("text", lastCursorInFirstTimeline)));
+        when(firstEventConsumer.readEvents())
+                .thenReturn(Collections.singletonList(new ConsumedEvent("text", lastCursorInFirstTimeline)));
         when(firstTopicRepo.createEventConsumer(eq(testClientId), eq(startFrom))).thenReturn(firstEventConsumer);
         when(timelineService.getTopicRepository(eq(first))).thenReturn(firstTopicRepo);
 
@@ -66,41 +67,36 @@ public class MultiTimelineEventConsumerTest {
                 eq(ImmutableList.of(beforeFirstInSecondTimeline))))
                 .thenReturn(secondEventConsumer);
         when(timelineService.getTopicRepository(eq(second))).thenReturn(secondTopicRepository);
-        when(secondEventConsumer.readEvent()).thenReturn(
-                Optional.of(
-                        new ConsumedEvent("test2", new NakadiCursor(second, partition, KafkaCursor.toNakadiOffset(0)))),
-                Optional.of(
-                        new ConsumedEvent("test3", new NakadiCursor(second, partition, KafkaCursor.toNakadiOffset(1)))),
-                Optional.empty()
+        when(secondEventConsumer.readEvents()).thenReturn(ImmutableList.of(
+                new ConsumedEvent("test2", new NakadiCursor(second, partition, KafkaCursor.toNakadiOffset(0))),
+                new ConsumedEvent("test3", new NakadiCursor(second, partition, KafkaCursor.toNakadiOffset(1)))),
+                Collections.emptyList()
         );
 
         final MultiTimelineEventConsumer consumer = new MultiTimelineEventConsumer(
                 testClientId, timelineService, timelineSync);
         try {
             // check that it works without assignment
-            Assert.assertFalse(consumer.readEvent().isPresent());
+            Assert.assertTrue(consumer.readEvents().isEmpty());
 
             // Now assign to new cursors
             consumer.reassign(startFrom);
 
-            final Optional<ConsumedEvent> fromFirstTimeline = consumer.readEvent();
-            Assert.assertTrue(fromFirstTimeline.isPresent());
-            Assert.assertEquals(lastCursorInFirstTimeline, fromFirstTimeline.get().getPosition());
-            final Optional<ConsumedEvent> fromSecondTimeline0 = consumer.readEvent();
-            Assert.assertTrue(fromSecondTimeline0.isPresent());
-            Assert.assertEquals("test2", fromSecondTimeline0.get().getEvent());
-            final Optional<ConsumedEvent> fromSecondTimeline1 = consumer.readEvent();
-            Assert.assertTrue(fromSecondTimeline1.isPresent());
-            Assert.assertEquals("test3", fromSecondTimeline1.get().getEvent());
-            final Optional<ConsumedEvent> fromSecondTimeline2 = consumer.readEvent();
-            Assert.assertFalse(fromSecondTimeline2.isPresent());
+            final List<ConsumedEvent> fromFirstTimeline = consumer.readEvents();
+            Assert.assertFalse(fromFirstTimeline.isEmpty());
+            Assert.assertEquals(lastCursorInFirstTimeline, fromFirstTimeline.get(0).getPosition());
+            final List<ConsumedEvent> fromSecondTimeline = consumer.readEvents();
+            Assert.assertEquals(2, fromSecondTimeline.size());
+            Assert.assertEquals("test2", fromSecondTimeline.get(0).getEvent());
+            Assert.assertEquals("test3", fromSecondTimeline.get(1).getEvent());
         } finally {
             consumer.close();
         }
 
-        verify(firstEventConsumer, times(1)).readEvent();
-        verify(secondEventConsumer, times(3)).readEvent();
-        verify(timelineService, times(1)).getActiveTimelinesOrdered(eq(et1));
+        verify(firstEventConsumer, times(1)).readEvents();
+        verify(secondEventConsumer, times(1)).readEvents();
+        // first call - from reassign, second call - while switch.
+        verify(timelineService, times(2)).getActiveTimelinesOrdered(eq(et1));
     }
 
     @Test
@@ -124,9 +120,9 @@ public class MultiTimelineEventConsumerTest {
 
         final TopicRepository firstTopicRepo = mock(TopicRepository.class);
         final EventConsumer firstEventConsumer = mock(EventConsumer.class);
-        when(firstEventConsumer.readEvent()).thenReturn(
-                Optional.of(new ConsumedEvent("text", lastCursorInFirstTimeline)),
-                Optional.empty());
+        when(firstEventConsumer.readEvents()).thenReturn(
+                Collections.singletonList(new ConsumedEvent("text", lastCursorInFirstTimeline)),
+                Collections.emptyList());
         when(firstTopicRepo.createEventConsumer(eq(testClientId), eq(startFrom))).thenReturn(firstEventConsumer);
         when(timelineService.getTopicRepository(eq(first))).thenReturn(firstTopicRepo);
 
@@ -149,12 +145,11 @@ public class MultiTimelineEventConsumerTest {
                 eq(ImmutableList.of(beforeFirstInSecondTimeline))))
                 .thenReturn(secondEventConsumer);
         when(timelineService.getTopicRepository(eq(second))).thenReturn(secondTopicRepository);
-        when(secondEventConsumer.readEvent()).thenReturn(
-                Optional.of(new ConsumedEvent("test2",
-                        new NakadiCursor(second, partition, KafkaCursor.toNakadiOffset(0)))),
-                Optional.of(new ConsumedEvent("test3",
-                        new NakadiCursor(second, partition, KafkaCursor.toNakadiOffset(1)))),
-                Optional.empty()
+        when(secondEventConsumer.readEvents()).thenReturn(
+                ImmutableList.of(
+                        new ConsumedEvent("test2", new NakadiCursor(second, partition, KafkaCursor.toNakadiOffset(0))),
+                        new ConsumedEvent("test3", new NakadiCursor(second, partition, KafkaCursor.toNakadiOffset(1)))),
+                Collections.emptyList()
         );
 
         final MultiTimelineEventConsumer consumer = new MultiTimelineEventConsumer(
@@ -163,29 +158,26 @@ public class MultiTimelineEventConsumerTest {
             // Now assign to new cursors
             consumer.reassign(startFrom);
 
-            final Optional<ConsumedEvent> fromFirstTimeline = consumer.readEvent();
-            Assert.assertTrue(fromFirstTimeline.isPresent());
-            Assert.assertEquals(lastCursorInFirstTimeline, fromFirstTimeline.get().getPosition());
+            final List<ConsumedEvent> fromFirstTimeline = consumer.readEvents();
+            Assert.assertFalse(fromFirstTimeline.isEmpty());
+            Assert.assertEquals(lastCursorInFirstTimeline, fromFirstTimeline.get(0).getPosition());
 
-            final Optional<ConsumedEvent> fromFristTimelineAbsent = consumer.readEvent();
-            Assert.assertFalse(fromFristTimelineAbsent.isPresent());
+            final List<ConsumedEvent> fromFristTimelineAbsent = consumer.readEvents();
+            Assert.assertTrue(fromFristTimelineAbsent.isEmpty());
             // Suppose that timeline change occurred now
             consumer.onTimelineChange(et1);
             // One must switch to next timeline.
 
-            final Optional<ConsumedEvent> fromSecond1 = consumer.readEvent();
-            Assert.assertTrue(fromSecond1.isPresent());
-            Assert.assertEquals("test2", fromSecond1.get().getEvent());
-
-            final Optional<ConsumedEvent> fromSecond2 = consumer.readEvent();
-            Assert.assertTrue(fromSecond2.isPresent());
-            Assert.assertEquals("test3", fromSecond2.get().getEvent());
+            final List<ConsumedEvent> fromSecond1 = consumer.readEvents();
+            Assert.assertFalse(fromSecond1.isEmpty());
+            Assert.assertEquals("test2", fromSecond1.get(0).getEvent());
+            Assert.assertEquals("test3", fromSecond1.get(1).getEvent());
 
         } finally {
             consumer.close();
         }
 
-        verify(firstEventConsumer, times(2)).readEvent();
+        verify(firstEventConsumer, times(2)).readEvents();
         verify(timelineService, times(2)).getActiveTimelinesOrdered(eq(et1));
     }
 
