@@ -40,4 +40,10 @@ public interface TopicRepository {
             ServiceUnavailableException;
 
     void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
+
+    long totalEventsInPartition(Timeline timeline, String partition);
+
+    long numberOfEventsBeforeCursor(NakadiCursor cursor);
+
+    String getOffsetForPosition(long shiftedOffset);
 }
