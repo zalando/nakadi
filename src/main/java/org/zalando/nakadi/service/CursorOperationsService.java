@@ -55,8 +55,7 @@ public class CursorOperationsService {
         }
     }
 
-    private long getDistanceSameTimeline(final NakadiCursor initialCursor,
-                                         final NakadiCursor finalCursor) {
+    private long getDistanceSameTimeline(final NakadiCursor initialCursor, final NakadiCursor finalCursor) {
         final long distance = numberOfEventsBeforeCursor(finalCursor) - numberOfEventsBeforeCursor(initialCursor);
         if (distance < 0) {
             throw new InvalidCursorOperation(INVERTED_OFFSET_ORDER);
