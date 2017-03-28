@@ -84,6 +84,10 @@ public class CursorOperationsService {
         return distance;
     }
 
+    public List<NakadiCursor> unshiftCursors(final List<ShiftedNakadiCursor> cursors) throws InvalidCursorOperation {
+        return cursors.stream().map(this::unshiftCursor).collect(Collectors.toList());
+    }
+
     public NakadiCursor unshiftCursor(final ShiftedNakadiCursor cursor) throws InvalidCursorOperation {
         if (cursor.getShift() < 0) {
             return moveCursorBackwards(cursor.getTopic(), cursor.getTimeline(), cursor.getPartition(),

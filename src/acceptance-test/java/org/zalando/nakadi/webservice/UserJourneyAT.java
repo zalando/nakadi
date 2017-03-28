@@ -158,6 +158,31 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"000000000000000001\"},\"events\":"
                         + "[" + EVENT1 + "," + EVENT2 + "]}\n"));
 
+        // get distance between cursors
+        jsonRequestSpec()
+                .body("[{\"initial_cursor\": {\"partition\": \"0\", \"offset\":\"000000000000000000\"}, " +
+                        "\"final_cursor\": {\"partition\": \"0\", \"offset\":\"000000000000000001\"}}]")
+                .when()
+                .post("/event-types/" + eventTypeName + "/cursor-distances")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("initial_cursor[0].offset", equalTo("000000000000000000"))
+                .body("final_cursor[0].offset", equalTo("000000000000000001"))
+                .body("distance[0]", equalTo(1));
+
+        // navigate between cursors
+        jsonRequestSpec()
+                .body("[{\"partition\": \"0\", \"offset\":\"000000000000000000\", \"shift\": 1}, " +
+                        "{\"partition\": \"0\", \"offset\":\"000000000000000001\", \"shift\": -1}]")
+                .when()
+                .post("/event-types/" + eventTypeName + "/shifted-cursors")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(2))
+                .body("offset[0]", equalTo("000000000000000001"))
+                .body("offset[1]", equalTo("000000000000000000"));
+
         // delete event type
         jsonRequestSpec()
                 .when()
