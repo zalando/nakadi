@@ -183,6 +183,18 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("offset[0]", equalTo("000000000000000001"))
                 .body("offset[1]", equalTo("000000000000000000"));
 
+        // navigate between cursors
+        jsonRequestSpec()
+                .body("[{\"partition\": \"0\", \"offset\":\"000000000000000000\"}]")
+                .when()
+                .post("/event-types/" + eventTypeName + "/cursors-lag")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("newest_available_offset[0]", equalTo("000000000000000001"))
+                .body("oldest_available_offset[0]", equalTo("000000000000000000"))
+                .body("unconsumed_events[0]", equalTo(1));
+
         // delete event type
         jsonRequestSpec()
                 .when()

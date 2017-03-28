@@ -27,7 +27,7 @@ public interface TopicRepository {
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
             throws ServiceUnavailableException;
 
-    List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> topics) throws ServiceUnavailableException;
+    List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> timelines) throws ServiceUnavailableException;
 
     List<String> listPartitionNames(String topicId);
 

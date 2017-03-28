@@ -2,17 +2,24 @@ package org.zalando.nakadi.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorDistanceQuery;
 import org.zalando.nakadi.domain.NakadiCursorDistanceResult;
+import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
@@ -82,6 +89,43 @@ public class CursorOperationsService {
         distance += numberOfEventsBeforeCursor(finalCursor);
 
         return distance;
+    }
+
+    public List<NakadiCursorLag> cursorsLag(final String eventTypeName, final List<NakadiCursor> cursors) {
+        try {
+            final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
+            final Timeline oldestTimeline = timelines.get(0);
+            final Timeline newestTimeline = timelines.get(timelines.size() - 1);
+            final List<PartitionStatistics> oldestStats = getStatsForTimeline(oldestTimeline);
+            final List<PartitionStatistics> newestStats = getStatsForTimeline(newestTimeline);
+            final Map<String, NakadiCursorLag> stats = new HashMap<>();
+
+            // assume all timelines have an equal number of partitions
+            for (int i = 0; i < oldestStats.size(); i++) {
+                final PartitionStatistics oldStat = oldestStats.get(i);
+                final PartitionStatistics newStat = newestStats.get(i);
+                final NakadiCursorLag nakadiCursorLag = new NakadiCursorLag(oldStat.getTopic(), oldStat.getPartition(),
+                        oldStat.getFirst(), newStat.getLast());
+                stats.put(oldStat.getPartition(), nakadiCursorLag);
+            }
+
+            // assume all partitions are present in the `stats` map
+            return cursors.stream().map(cursor -> {
+                final NakadiCursorLag nakadiCursorLag = stats.get(cursor.getPartition());
+                final NakadiCursorDistanceQuery query = new NakadiCursorDistanceQuery(cursor,
+                        nakadiCursorLag.getLastCursor());
+                final NakadiCursorDistanceResult distance = this.calculateDistance(query);
+                nakadiCursorLag.setLag(distance.getDistance());
+                return nakadiCursorLag;
+            }).collect(Collectors.toList());
+        } catch (final NakadiException e) {
+            throw new MyNakadiRuntimeException1("error", e);
+        }
+    }
+
+    private List<PartitionStatistics> getStatsForTimeline(final Timeline timeline) throws ServiceUnavailableException {
+        return timelineService.getTopicRepository(timeline)
+                .loadTopicStatistics(Collections.singletonList(timeline));
     }
 
     public List<NakadiCursor> unshiftCursors(final List<ShiftedNakadiCursor> cursors) throws InvalidCursorOperation {
