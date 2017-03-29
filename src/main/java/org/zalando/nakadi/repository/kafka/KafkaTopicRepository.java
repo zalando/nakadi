@@ -30,6 +30,7 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -380,18 +381,26 @@ public class KafkaTopicRepository implements TopicRepository {
         return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
     }
 
-    public long totalEventsInPartition(final Timeline timeline, final String partitionString) {
-        final Timeline.StoragePosition positions = timeline.getLatestPosition();
-        if (positions == null) {
-            throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
-        }
-        final int partition = Integer.valueOf(partitionString);
-        final Timeline.KafkaStoragePosition kafkaPositions = (Timeline.KafkaStoragePosition) positions;
-        final List<Long> offsets = kafkaPositions.getOffsets();
-        if (offsets.size() - 1 < partition) {
-            throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
-        } else {
-            return offsets.get(partition);
+    public long totalEventsInPartition(final Timeline timeline, final String partitionString)
+            throws InvalidCursorOperation {
+        try {
+            final Timeline.StoragePosition positions = timeline.getLatestPosition();
+            if (positions == null) {
+                final Optional<PartitionStatistics> statsO = loadPartitionStatistics(timeline, partitionString);
+                return statsO.map(stats -> numberOfEventsBeforeCursor(stats.getLast())).orElseThrow(
+                        MyNakadiRuntimeException1::new
+                );
+            }
+            final int partition = Integer.valueOf(partitionString);
+            final Timeline.KafkaStoragePosition kafkaPositions = (Timeline.KafkaStoragePosition) positions;
+            final List<Long> offsets = kafkaPositions.getOffsets();
+            if (offsets.size() - 1 < partition) {
+                throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
+            } else {
+                return offsets.get(partition);
+            }
+        } catch (final ServiceUnavailableException e) {
+            throw new MyNakadiRuntimeException1("Problem calculating partition statistics", e);
         }
     }
 
