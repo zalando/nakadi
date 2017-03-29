@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -129,10 +130,18 @@ public class EventStreamController {
         if (null != cursors) {
             final List<NakadiCursor> result = new ArrayList<>();
             for (final Cursor c : cursors) {
-                result.add(cursorConverter.convert(eventType.getName(), c));
+                final NakadiCursor nakadiCursor = cursorConverter.convert(eventType.getName(), c);
+                result.add(nakadiCursor);
             }
             if (result.isEmpty()) {
                 throw new InvalidCursorException(CursorError.INVALID_FORMAT);
+            }
+            final Map<TopicRepository, List<NakadiCursor>> timelineToCursors = result.stream()
+                    .collect(Collectors.groupingBy(
+                            c -> timelineService.getTopicRepository(c.getTimeline())
+                    ));
+            for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : timelineToCursors.entrySet()) {
+                entry.getKey().validateReadCursors(entry.getValue());
             }
             return result;
         } else {
@@ -171,7 +180,6 @@ public class EventStreamController {
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
 
             try {
-                @SuppressWarnings("UnnecessaryLocalVariable")
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
                 client.checkScopes(eventType.getReadScopes());
