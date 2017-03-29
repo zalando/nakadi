@@ -1,7 +1,9 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.collect.Lists;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.stream.Collectors;
@@ -31,23 +33,13 @@ public class NakadiKafkaConsumer implements EventConsumer {
         this.timeline = timeline;
         eventQueue = Lists.newLinkedList();
         // define topic/partitions to consume from
-        final List<TopicPartition> topicPartitions = kafkaCursors
-                .stream()
-                .map(cursor -> new TopicPartition(cursor.getTopic(), cursor.getPartition()))
-                .collect(Collectors.toList());
-        kafkaConsumer.assign(topicPartitions);
-
-        // set offsets
-        topicPartitions.forEach(topicPartition ->
-                kafkaConsumer.seek(
-                        topicPartition,
-                        kafkaCursors
-                                .stream()
-                                .filter(cursor -> cursor.getPartition() == topicPartition.partition())
-                                .findFirst()
-                                .get()
-                                .getOffset()
+        final Map<TopicPartition, KafkaCursor> topicCursors = kafkaCursors.stream().collect(
+                Collectors.toMap(
+                        cursor -> new TopicPartition(cursor.getTopic(), cursor.getPartition()),
+                        cursor -> cursor
                 ));
+        kafkaConsumer.assign(new ArrayList<>(topicCursors.keySet()));
+        topicCursors.forEach((topicPartition, cursor) -> kafkaConsumer.seek(topicPartition, cursor.getOffset()));
     }
 
     @Override
