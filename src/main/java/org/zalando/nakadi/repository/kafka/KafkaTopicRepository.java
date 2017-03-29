@@ -396,15 +396,11 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public long numberOfEventsBeforeCursor(final NakadiCursor cursor) {
-        return kafkaOffset(cursor);
+        return KafkaCursor.toKafkaOffset(cursor.getOffset());
     }
 
     public String getOffsetForPosition(final long offset) {
         return StringUtils.leftPad(String.valueOf(offset), VERSION_ZERO_MIN_OFFSET_LENGTH, '0');
-    }
-
-    private long kafkaOffset(final NakadiCursor cursor) {
-        return Long.parseLong(cursor.getOffset(), 10);
     }
 
     public void validateReadCursors(final List<NakadiCursor> cursors)
