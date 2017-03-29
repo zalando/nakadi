@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
@@ -71,6 +72,7 @@ public class EventTypeService {
     private final FeatureToggleService featureToggleService;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
+    private final TransactionTemplate transactionTemplate;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -82,6 +84,7 @@ public class EventTypeService {
                             final PartitionsCalculator partitionsCalculator,
                             final FeatureToggleService featureToggleService,
                             final TimelineSync timelineSync,
+                            final TransactionTemplate transactionTemplate,
                             final NakadiSettings nakadiSettings) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
@@ -92,6 +95,7 @@ public class EventTypeService {
         this.partitionsCalculator = partitionsCalculator;
         this.featureToggleService = featureToggleService;
         this.timelineSync = timelineSync;
+        this.transactionTemplate = transactionTemplate;
         this.nakadiSettings = nakadiSettings;
     }
 
@@ -150,8 +154,11 @@ public class EventTypeService {
                 throw new UnableProcessException("Can't remove event type " + eventTypeName
                         + ", as it has subscriptions");
             }
-            timelineService.deleteAllTimelinesForEventType(eventTypeName);
-            eventTypeRepository.removeEventType(eventTypeName);
+            transactionTemplate.execute(action -> {
+                deleteEventType(eventTypeName);
+                return null;
+            });
+
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
@@ -161,12 +168,6 @@ public class EventTypeService {
             LOG.error("Failed to wait for timeline switch", e);
             throw new EventTypeUnavailableException("Event type "+ eventTypeName
                     + " is currently in maintenance, please repeat request", e);
-        } catch (final TopicDeletionException e) {
-            LOG.error("Problem deleting kafka topic for event type " + eventTypeName, e);
-            throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName, e);
-        } catch (final TimelineException | NotFoundException e) {
-            LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
-            throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName, e);
         } catch (final NakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
             throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName, e);
@@ -236,6 +237,23 @@ public class EventTypeService {
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type " + eventTypeName, e);
             return Result.problem(e.asProblem());
+        }
+    }
+
+    private void deleteEventType(final String eventTypeName)
+            throws EventTypeUnavailableException, EventTypeDeletionException {
+        try {
+            timelineService.deleteAllTimelinesForEventType(eventTypeName);
+            eventTypeRepository.removeEventType(eventTypeName);
+        } catch (TopicDeletionException e) {
+            LOG.error("Problem deleting kafka topic for event type " + eventTypeName, e);
+            throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName, e);
+        } catch (TimelineException | NotFoundException e) {
+            LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
+            throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName, e);
+        } catch (NakadiException e) {
+            LOG.error("Error deleting event type " + eventTypeName, e);
+            throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName, e);
         }
     }
 
