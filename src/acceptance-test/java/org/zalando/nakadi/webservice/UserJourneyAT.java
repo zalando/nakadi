@@ -183,7 +183,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body("offset[0]", equalTo("000000000000000001"))
                 .body("offset[1]", equalTo("000000000000000000"));
 
-        // navigate between cursors
+        // query for lag
         jsonRequestSpec()
                 .body("[{\"partition\": \"0\", \"offset\":\"000000000000000000\"}]")
                 .when()
