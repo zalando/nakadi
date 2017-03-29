@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.apache.http.HttpStatus;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
@@ -82,6 +83,15 @@ public class NakadiTestUtils {
                 .body(format("[{0}]", event))
                 .contentType(JSON)
                 .post(format("/event-types/{0}/events", eventType));
+    }
+
+    public static void createTimeline(final String eventType) {
+        given()
+                .body("{\"storage_id\": \"default\"}")
+                .contentType(JSON)
+                .post(format("/event-types/{0}/timelines", eventType))
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
     }
 
     public static void publishBusinessEventWithUserDefinedPartition(final String eventType,
@@ -167,7 +177,8 @@ public class NakadiTestUtils {
     public static ItemsWrapper<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription)
             throws IOException {
         final Response response = given().get(format("/subscriptions/{0}/cursors", subscription.getId()));
-        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
+        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {
+        });
     }
 
 }
