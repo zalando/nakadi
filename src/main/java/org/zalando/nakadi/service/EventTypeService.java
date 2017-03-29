@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -154,10 +155,19 @@ public class EventTypeService {
                 throw new UnableProcessException("Can't remove event type " + eventTypeName
                         + ", as it has subscriptions");
             }
-            transactionTemplate.execute(action -> {
-                deleteEventType(eventTypeName);
-                return null;
+            final Multimap<TopicRepository, String> topicsToDelete = transactionTemplate.execute(action -> {
+                return deleteEventType(eventTypeName);
             });
+            for (final TopicRepository topicRepository : topicsToDelete.keySet()) {
+                for (final String topic : topicsToDelete.get(topicRepository)) {
+                    try {
+                        topicRepository.deleteTopic(topic);
+                    } catch (TopicDeletionException e) {
+                        // If a timeline was marked as deleted, then the topic does not exist, and we should proceed.
+                        LOG.info("Could not delete topic " + topic);
+                    }
+                }
+            }
 
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -240,11 +250,13 @@ public class EventTypeService {
         }
     }
 
-    private void deleteEventType(final String eventTypeName)
+    private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
             throws EventTypeUnavailableException, EventTypeDeletionException {
         try {
-            timelineService.deleteAllTimelinesForEventType(eventTypeName);
+            final Multimap<TopicRepository, String> topicsToDelete =
+                    timelineService.deleteAllTimelinesForEventType(eventTypeName);
             eventTypeRepository.removeEventType(eventTypeName);
+            return topicsToDelete;
         } catch (TopicDeletionException e) {
             LOG.error("Problem deleting kafka topic for event type " + eventTypeName, e);
             throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName, e);

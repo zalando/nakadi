@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service.timeline;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -230,20 +232,19 @@ public class TimelineService {
         }
     }
 
-    public void deleteAllTimelinesForEventType(final String eventTypeName)
+    public Multimap<TopicRepository, String> deleteAllTimelinesForEventType(final String eventTypeName)
             throws TopicDeletionException, TimelineException, NotFoundException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
-        final List<Timeline> timelines = getTimelines(eventTypeName);
-        for (final Timeline timeline : timelines) {
-            final TopicRepository topicRepository = getTopicRepository(timeline);
-            try {
-                topicRepository.deleteTopic(timeline.getTopic());
-            } catch (TopicDeletionException e) {
-                // If a timeline was marked as deleted, then the topic does not exist, and we should proceed.
-                LOG.info("Could not delete topic " + timeline.getTopic());
-            }
+        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
+        for (final Timeline timeline : getTimelines(eventTypeName)) {
+            topicsToDelete.put(getTopicRepository(timeline), timeline.getTopic());
             timelineDbRepository.deleteTimeline(timeline.getId());
         }
+        final List<Timeline> timelines = getTimelines(eventTypeName);
+        for (final Timeline timeline : timelines) {
+            timelineDbRepository.deleteTimeline(timeline.getId());
+        }
+        return topicsToDelete;
     }
 
     private void switchToFakeTimeline(final UUID uuid, final Timeline activeTimeline) throws TimelineException {
