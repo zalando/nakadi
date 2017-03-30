@@ -12,6 +12,10 @@ public class Timeline {
 
     public static final int STARTING_ORDER = 0;
 
+    public boolean isFirstAfterFake() {
+        return order == STARTING_ORDER + 1;
+    }
+
     public interface StoragePosition {
 
         NakadiCursor toNakadiCursor(Timeline timeline, String partition);

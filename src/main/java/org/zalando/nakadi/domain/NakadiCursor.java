@@ -3,7 +3,7 @@ package org.zalando.nakadi.domain;
 import com.google.common.base.Preconditions;
 import java.util.Objects;
 
-public class NakadiCursor {
+public class NakadiCursor implements Comparable<NakadiCursor> {
     public static final int VERSION_LENGTH = 3;
 
     public enum Version {
@@ -79,6 +79,16 @@ public class NakadiCursor {
     // TODO: Remove method one subscriptions are transferred to use timelines.
     public NakadiCursor withOffset(final String offset) {
         return new NakadiCursor(timeline, partition, offset);
+    }
+
+
+    @Override
+    public int compareTo(final NakadiCursor other) {
+        final int orderDiffers = Integer.compare(this.getTimeline().getOrder(), other.getTimeline().getOrder());
+        if (0 != orderDiffers) {
+            return orderDiffers;
+        }
+        return this.getOffset().compareTo(other.getOffset());
     }
 
     @Override

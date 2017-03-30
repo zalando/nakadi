@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -127,12 +128,13 @@ public class MultiTimelineEventConsumer implements EventConsumer {
             final Consumer<NakadiCursor> lastTimelinePosition)
             throws ServiceUnavailableException {
         final List<Timeline> eventTimelines = eventTypeTimelines.get(cursor.getEventType());
-        Timeline electedTimeline = null;
         final ListIterator<Timeline> itTimeline = eventTimelines.listIterator(eventTimelines.size());
+        // select last timeline, and then move back until position was found.
+        Timeline electedTimeline = itTimeline.previous();
         while (itTimeline.hasPrevious()) {
             final Timeline toCheck = itTimeline.previous();
             final NakadiCursor latest = toCheck.calculateNakadiLatestPosition(cursor.getPartition());
-            if (latest == null || latest.getOffset().compareTo(cursor.getOffset()) > 0) {
+            if (latest == null || latest.compareTo(cursor) > 0) {
                 electedTimeline = toCheck;
             } else {
                 break;
@@ -142,7 +144,16 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         final TopicRepository result = timelineService.getTopicRepository(electedTimeline);
         if (electedTimeline.getOrder() > cursor.getTimeline().getOrder()) {
             // It seems that cursor jumped to different timeline. One need to fetch very first cursor in timeline.
-            cursorReplacer.accept(getBeforeFirstCursor(result, electedTimeline, cursor.getPartition()));
+            final NakadiCursor replacement;
+            if (cursor.getTimeline().isFake() && electedTimeline.isFirstAfterFake()) {
+                // There should be special treatment when there is a jump from fake timeline to first one, cause
+                // in this case consumption should start from the same offset, instead of starting from before first
+                replacement = new NakadiCursor(electedTimeline, cursor.getPartition(), cursor.getOffset());
+            } else {
+                replacement = getBeforeFirstCursor(result, electedTimeline, cursor.getPartition());
+            }
+            LOG.info("Replacing cursor from {} to {}", cursor, replacement);
+            cursorReplacer.accept(replacement);
         }
         lastTimelinePosition.accept(electedTimeline.calculateNakadiLatestPosition(cursor.getPartition()));
         return result;
@@ -162,6 +173,8 @@ public class MultiTimelineEventConsumer implements EventConsumer {
     private void electTopicRepositories() throws NakadiException, InvalidCursorException {
         final Map<TopicRepository, List<NakadiCursor>> newAssignment = new HashMap<>();
         borderOffsets.clear();
+        // Purpose of this collection is to hold tr that definitely changed their positions and should be recreated.
+        final Set<TopicPartition> actualReadPositionChanged = new HashSet<>();
         // load new topic repositories and possibly replace cursors to newer timelines.
         for (final NakadiCursor cursor : latestOffsets.values()) {
             final AtomicReference<NakadiCursor> cursorReplacement = new AtomicReference<>();
@@ -173,7 +186,12 @@ public class MultiTimelineEventConsumer implements EventConsumer {
             if (!newAssignment.containsKey(topicRepository)) {
                 newAssignment.put(topicRepository, new ArrayList<>());
             }
-            newAssignment.get(topicRepository).add(Optional.ofNullable(cursorReplacement.get()).orElse(cursor));
+            if (cursorReplacement.get() != null) {
+                actualReadPositionChanged.add(cursor.getTopicPartition());
+                newAssignment.get(topicRepository).add(cursorReplacement.get());
+            } else {
+                newAssignment.get(topicRepository).add(cursor);
+            }
         }
         final Set<TopicRepository> removedTopicRepositories = eventConsumers.keySet().stream()
                 .filter(tr -> !newAssignment.containsKey(tr))
@@ -189,7 +207,9 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                 final Set<TopicPartition> newTopicPartitions = entry.getValue().stream()
                         .map(NakadiCursor::getTopicPartition)
                         .collect(Collectors.toSet());
-                if (!existingEventConsumer.getAssignment().equals(newTopicPartitions)) {
+                final Set<TopicPartition> oldAssignment = existingEventConsumer.getAssignment();
+                if (!oldAssignment.equals(newTopicPartitions)
+                        || oldAssignment.stream().anyMatch(actualReadPositionChanged::contains)) {
                     stopAndRemoveConsumer(entry.getKey());
                 }
             }
@@ -228,7 +248,8 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         }
         // Add refreshed data.
         for (final String eventType : eventTypes) {
-            eventTypeTimelines.put(eventType, timelineService.getActiveTimelinesOrdered(eventType));
+            final List<Timeline> newActiveTimelines = timelineService.getActiveTimelinesOrdered(eventType);
+            eventTypeTimelines.put(eventType, newActiveTimelines);
         }
         // Second part - recreate TopicRepositories to fetch data from.
         electTopicRepositories();
@@ -269,7 +290,8 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         partitions.forEach(latestOffsets::remove);
     }
 
-    void onTimelineChange(final String ignore) {
+    void onTimelineChange(final String eventType) {
+        LOG.info("Received timeiline change notification for event type {}", eventType);
         timelinesChanged.set(true);
     }
 
