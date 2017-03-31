@@ -28,7 +28,8 @@ import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.UnableProcessException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -266,8 +267,8 @@ public class CursorsService {
     }
 
     public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors, final Client client)
-            throws MyNakadiRuntimeException1, ServiceUnavailableException, NoSuchSubscriptionException,
-            UnableProcessException, IllegalScopeException {
+            throws ServiceUnavailableException, NoSuchSubscriptionException,
+            UnableProcessException, IllegalScopeException, OperationTimeoutException, ZookeeperException {
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         validateSubscriptionCursors(subscription, cursors);
         validateSubscriptionReadScopes(subscription, client);
@@ -291,7 +292,7 @@ public class CursorsService {
                         }
                     }
                 } catch (final Exception e) {
-                    throw new MyNakadiRuntimeException1("Unexpected problem occurred when resetting cursor", e);
+                    throw new ZookeeperException("Unexpected problem occurred when resetting cursor", e);
                 }
             });
 
@@ -306,10 +307,10 @@ public class CursorsService {
         } catch (final InterruptedException e) {
             LOG.info(e.getMessage(), e);
             Thread.currentThread().interrupt();
-            throw new MyNakadiRuntimeException1("Timeout resetting cursor", e);
+            throw new OperationTimeoutException("Timeout resetting cursor", e);
         } catch (final Exception e) {
             LOG.error(e.getMessage(), e);
-            throw new MyNakadiRuntimeException1("Unexpected problem occurred when resetting cursor", e);
+            throw new ZookeeperException("Unexpected problem occurred when resetting cursor", e);
         } finally {
             if (sessionsListener != null) {
                 sessionsListener.cancel();
@@ -320,13 +321,12 @@ public class CursorsService {
                 throw new UnableProcessException(
                         "Impossible to reset cursor. Subscription has not been streamed yet", e);
             } catch (final Exception e) {
-                throw new MyNakadiRuntimeException1("Unexpected problem occurred when deleting zk node", e);
+                throw new ZookeeperException("Unexpected problem occurred when deleting zk node", e);
             }
         }
     }
 
-    private void storeCursorsInZk(final String subscriptionId, final List<NakadiCursor> cursors)
-            throws Exception {
+    private void storeCursorsInZk(final String subscriptionId, final List<NakadiCursor> cursors) throws Exception {
         for (final NakadiCursor cursor : cursors) {
             final String path = format(PATH_ZK_OFFSET, subscriptionId, cursor.getTopic(), cursor.getPartition());
             zkHolder.get().setData().forPath(path, cursor.getOffset().getBytes(Charsets.UTF_8));

@@ -19,9 +19,11 @@ public class StartingState extends State {
     /**
      * 1. Checks, that subscription node is present in zk. If not - creates it.
      * <p>
-     * 2. Registers session.
+     * 2. If cursor reset is in progress it will switch to cleanup state.
      * <p>
-     * 3. Switches to streaming state.
+     * 3. Registers session.
+     * <p>
+     * 4. Switches to streaming state.
      */
     private void createSubscriptionLocked() {
         // check that subscription initialized in zk.
@@ -48,7 +50,7 @@ public class StartingState extends State {
 
         if (getZk().isCursorResetInProgress()) {
             switchState(new CleanupState(
-                    new NakadiException("Resetting subscription cursors request still in the progress") {
+                    new NakadiException("Resetting subscription cursors request is still in progress") {
                         @Override
                         protected Response.StatusType getStatus() {
                             return Response.Status.CONFLICT;

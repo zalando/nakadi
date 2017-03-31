@@ -135,7 +135,7 @@ public interface ZkSubscriptionClient {
     ZkSubscriptionNode getZkSubscriptionNodeLocked();
 
     /**
-     * Subscribes for cursor reset event.
+     * Subscribes to cursor reset event.
      *
      * @param listener callback which is called when cursor reset happens
      * @return {@link org.zalando.nakadi.service.subscription.zk.ZKSubscription}
