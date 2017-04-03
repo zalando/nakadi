@@ -465,7 +465,7 @@ The typical workflow when using subscriptions is:
 
 1. Commit the cursors found in the event batches back to Nakadi, which will store the offsets. 
 
-_\* Note: the API signature can support subscribing to multiple event types with a single subscription, but this is not implemented yet; it's planned to be enabled soon._
+_\* Note: the API signature supports subscribing to multiple event types with a single subscription._
 
 
 If the connection is closed, and later restarted, clients will get events from 
