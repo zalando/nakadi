@@ -2,10 +2,8 @@ package org.zalando.nakadi.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.NakadiCursorDistanceQuery;
-import org.zalando.nakadi.domain.NakadiCursorDistanceResult;
+import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
@@ -36,16 +34,8 @@ public class CursorOperationsService {
         this.timelineService = timelineService;
     }
 
-    public List<NakadiCursorDistanceResult> calculateDistance(final List<NakadiCursorDistanceQuery> cursors)
+    public Long calculateDistance(final NakadiCursor initialCursor, final NakadiCursor finalCursor)
         throws InvalidCursorOperation {
-        return cursors.stream().map(this::calculateDistance).collect(Collectors.toList());
-    }
-
-    public NakadiCursorDistanceResult calculateDistance(final NakadiCursorDistanceQuery query)
-            throws InvalidCursorOperation {
-        final NakadiCursor initialCursor = query.getInitialCursor();
-        final NakadiCursor finalCursor = query.getFinalCursor();
-
         // Validate query
         if (!initialCursor.getPartition().equals(finalCursor.getPartition())) {
             throw new InvalidCursorOperation(CURSORS_WITH_DIFFERENT_PARTITION);
@@ -54,11 +44,9 @@ public class CursorOperationsService {
         }
 
         if (initialCursor.getTimeline().getOrder().equals(finalCursor.getTimeline().getOrder())) {
-            final long distance = getDistanceSameTimeline(initialCursor, finalCursor);
-            return new NakadiCursorDistanceResult(query, distance);
+            return getDistanceSameTimeline(initialCursor, finalCursor);
         } else {
-            final long distance = getDistanceDifferentTimelines(initialCursor, finalCursor);
-            return new NakadiCursorDistanceResult(query, distance);
+            return getDistanceDifferentTimelines(initialCursor, finalCursor);
         }
     }
 
@@ -112,10 +100,8 @@ public class CursorOperationsService {
             // assume all partitions are present in the `stats` map
             return cursors.stream().map(cursor -> {
                 final NakadiCursorLag nakadiCursorLag = stats.get(cursor.getPartition());
-                final NakadiCursorDistanceQuery query = new NakadiCursorDistanceQuery(cursor,
-                        nakadiCursorLag.getLastCursor());
-                final NakadiCursorDistanceResult distance = this.calculateDistance(query);
-                nakadiCursorLag.setLag(distance.getDistance());
+                final Long distance = this.calculateDistance(cursor, nakadiCursorLag.getLastCursor());
+                nakadiCursorLag.setLag(distance);
                 return nakadiCursorLag;
             }).collect(Collectors.toList());
         } catch (final NakadiException e) {
@@ -190,10 +176,10 @@ public class CursorOperationsService {
         return topicRepository.totalEventsInPartition(cursor.getTimeline(), cursor.getPartition());
     }
 
-    private Timeline getTimeline(final String topic, final int order) {
+    private Timeline getTimeline(final String eventTypeName, final int order) {
         final List<Timeline> timelines;
         try {
-            timelines = timelineService.getActiveTimelinesOrdered(topic);
+            timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
         } catch (final NakadiException e) {
             throw new RuntimeException(e);
         }

@@ -4,8 +4,6 @@ import com.google.common.collect.Lists;
 import org.junit.Test;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.NakadiCursorDistanceQuery;
-import org.zalando.nakadi.domain.NakadiCursorDistanceResult;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
@@ -41,20 +39,18 @@ public class CursorOperationsServiceTest {
     public void whenCursorsAreInTheSameTimeline() throws Exception {
         final NakadiCursor initialCursor = new NakadiCursor(timeline, "0", "0000000000000001");
         final NakadiCursor finalCursor = new NakadiCursor(timeline, "0", "0000000000000002");
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
 
-        final NakadiCursorDistanceResult distanceResult = service.calculateDistance(distanceQuery);
+        final Long distance = service.calculateDistance(initialCursor, finalCursor);
 
-        assertThat(distanceResult.getDistance(), equalTo(1L));
+        assertThat(distance, equalTo(1L));
     }
 
     @Test
     public void whenCursorsOffsetsAreInvertedThenException() throws Exception {
         final NakadiCursor initialCursor = new NakadiCursor(timeline, "0", "0000000000000002");
         final NakadiCursor finalCursor = new NakadiCursor(timeline, "0", "0000000000000001");
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
 
-        expectException(distanceQuery, INVERTED_OFFSET_ORDER);
+        expectException(initialCursor, finalCursor, INVERTED_OFFSET_ORDER);
     }
 
     @Test
@@ -64,18 +60,16 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000001");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000002");
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
 
-        expectException(distanceQuery, INVERTED_TIMELINE_ORDER);
+        expectException(initialCursor, finalCursor, INVERTED_TIMELINE_ORDER);
     }
 
     @Test
     public void whenPartitionsDontMatch() throws Exception {
         final NakadiCursor initialCursor = new NakadiCursor(timeline, "1", "0000000000000001");
         final NakadiCursor finalCursor = new NakadiCursor(timeline, "0", "0000000000000002");
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
 
-        expectException(distanceQuery, CURSORS_WITH_DIFFERENT_PARTITION);
+        expectException(initialCursor, finalCursor, CURSORS_WITH_DIFFERENT_PARTITION);
     }
 
     @Test
@@ -86,10 +80,8 @@ public class CursorOperationsServiceTest {
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000003");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
 
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
-
-        final NakadiCursorDistanceResult distanceResult = service.calculateDistance(distanceQuery);
-        assertThat(distanceResult.getDistance(), equalTo(8L));
+        final Long distance = service.calculateDistance(initialCursor, finalCursor);
+        assertThat(distance, equalTo(8L));
     }
 
 
@@ -103,10 +95,8 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000003");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
 
-        final NakadiCursorDistanceResult distanceResult = service.calculateDistance(distanceQuery);
-        assertThat(distanceResult.getDistance(), equalTo(7L + 9L + 1L));
+        assertThat(service.calculateDistance(initialCursor, finalCursor), equalTo(7L + 9L + 1L));
     }
 
     @Test(expected = InvalidCursorOperation.class)
@@ -119,9 +109,8 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor initialCursor = new NakadiCursor(expiredTimeline, "0", "0000000000000001");
         final NakadiCursor finalCursor = new NakadiCursor(expiredTimeline, "2", "0000000000000002");
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
 
-        final NakadiCursorDistanceResult distanceResult = service.calculateDistance(distanceQuery);
+        service.calculateDistance(initialCursor, finalCursor);
     }
 
     @Test
@@ -134,9 +123,8 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor initialCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
         final NakadiCursor finalCursor = new NakadiCursor(futureTimeline, "0", "0000000000000002");
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
 
-        expectException(distanceQuery, TIMELINE_NOT_FOUND);
+        expectException(initialCursor, finalCursor, TIMELINE_NOT_FOUND);
     }
 
     @Test
@@ -149,9 +137,8 @@ public class CursorOperationsServiceTest {
 
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "1", "0000000000000003");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "1", "0000000000000001");
-        final NakadiCursorDistanceQuery distanceQuery = new NakadiCursorDistanceQuery(initialCursor, finalCursor);
 
-        expectException(distanceQuery, PARTITION_NOT_FOUND);
+        expectException(initialCursor, finalCursor, PARTITION_NOT_FOUND);
     }
 
     @Test
@@ -244,10 +231,10 @@ public class CursorOperationsServiceTest {
         assertThat(cursor.getOffset(), equalTo("000000000000000006"));
     }
 
-    private void expectException(final NakadiCursorDistanceQuery distanceQuery,
+    private void expectException(final NakadiCursor initialCursor, final NakadiCursor finalCursor,
                                  final InvalidCursorOperation.Reason invertedOffsetOrder) {
         try {
-            service.calculateDistance(distanceQuery);
+            service.calculateDistance(initialCursor, finalCursor);
             fail();
         } catch (final InvalidCursorOperation e) {
             assertThat(e.getReason(), equalTo(invertedOffsetOrder));

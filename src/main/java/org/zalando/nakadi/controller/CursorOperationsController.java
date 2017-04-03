@@ -13,20 +13,20 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.NakadiCursorDistanceQuery;
-import org.zalando.nakadi.domain.NakadiCursorDistanceResult;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.view.Cursor;
-import org.zalando.nakadi.view.CursorDistanceQuery;
-import org.zalando.nakadi.view.CursorDistanceResult;
+import org.zalando.nakadi.view.CursorDistance;
 import org.zalando.nakadi.view.CursorLag;
 import org.zalando.nakadi.view.ShiftedCursor;
 import org.zalando.problem.MoreStatus;
@@ -58,24 +58,28 @@ public class CursorOperationsController {
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursor-distances", method = RequestMethod.POST)
     public ResponseEntity<?> getDistance(@PathVariable("eventTypeName") final String eventTypeName,
-                                         @Valid @RequestBody final List<CursorDistanceQuery> queries,
+                                         @Valid @RequestBody final List<CursorDistance> queries,
                                          final Errors errors,
                                          final NativeWebRequest request) {
-
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        final List<NakadiCursorDistanceQuery> domainQueries = queries.stream()
-                .map(this.toCursorDistanceQuery(eventTypeName))
-                .collect(Collectors.toList());
+        queries.forEach(query -> {
+            try {
+                final NakadiCursor initialCursor = cursorConverter
+                        .convert(eventTypeName, query.getInitialCursor());
+                final NakadiCursor finalCursor = cursorConverter
+                        .convert(eventTypeName, query.getFinalCursor());
+                final Long distance = cursorOperationsService.calculateDistance(initialCursor, finalCursor);
+                query.setDistance(distance);
+            } catch (InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
+                    ServiceUnavailableException e) {
+                throw new MyNakadiRuntimeException1("problem calculating cursors distance", e);
+            }
+        });
 
-        final List<NakadiCursorDistanceResult> domainResult = cursorOperationsService.calculateDistance(domainQueries);
-
-        final List<CursorDistanceResult> viewResult = domainResult.stream().map(this::toCursorDistanceResult)
-                .collect(Collectors.toList());
-
-        return status(OK).body(viewResult);
+        return status(OK).body(queries);
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/shifted-cursors", method = RequestMethod.POST)
@@ -132,8 +136,9 @@ public class CursorOperationsController {
 
     private String clientErrorMessage(final InvalidCursorOperation.Reason reason) {
         switch (reason) {
-            case INVERTED_TIMELINE_ORDER: return "Inverted timelines. Final cursor must correspond to a newer timeline " +
-                    "than initial cursor.";
+            case INVERTED_TIMELINE_ORDER: return "Inverted timelines. Final cursor must correspond to a newer " +
+                    "timeline than initial cursor.";
+
             case TIMELINE_NOT_FOUND: return "Timeline not found. It might happen in case the cursor refers to a " +
                     "timeline that has already expired.";
             case INVERTED_OFFSET_ORDER: return "Inverted offsets. Final cursor offsets must be newer than initial " +
@@ -167,19 +172,6 @@ public class CursorOperationsController {
         };
     }
 
-    private Function<CursorDistanceQuery, NakadiCursorDistanceQuery> toCursorDistanceQuery(final String eventTypeName) {
-        return (query) -> {
-            try {
-                return new NakadiCursorDistanceQuery(
-                        cursorConverter.convert(eventTypeName, query.getInitialCursor()),
-                        cursorConverter.convert(eventTypeName, query.getFinalCursor())
-                );
-            } catch (final NakadiException | InvalidCursorException e) {
-                throw new MyNakadiRuntimeException1("problem converting cursors", e);
-            }
-        };
-    }
-
     private Function<ShiftedCursor, ShiftedNakadiCursor> toShiftedNakadiCursor(final String eventTypeName) {
         return (cursor) -> {
             try {
@@ -190,13 +182,5 @@ public class CursorOperationsController {
                 throw new MyNakadiRuntimeException1("problem converting cursors", e);
             }
         };
-    }
-
-    private CursorDistanceResult toCursorDistanceResult(final NakadiCursorDistanceResult domainResult) {
-        final CursorDistanceResult viewResult = new CursorDistanceResult();
-        viewResult.setDistance(domainResult.getDistance());
-        viewResult.setInitialCursor(cursorConverter.convert(domainResult.getQuery().getInitialCursor()));
-        viewResult.setFinalCursor(cursorConverter.convert(domainResult.getQuery().getFinalCursor()));
-        return viewResult;
     }
 }
