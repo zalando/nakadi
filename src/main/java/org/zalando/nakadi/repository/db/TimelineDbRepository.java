@@ -2,11 +2,6 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
@@ -18,6 +13,12 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @DB
 @Repository
@@ -133,14 +134,6 @@ public class TimelineDbRepository extends AbstractDbRepository {
                     timelineRowMapper);
         } catch (final DataAccessException e) {
             throw new RepositoryProblemException("DB error occurred when fetching expired timelines", e);
-        }
-    }
-
-    public void deleteTimelinesMarkedDeletedForStorage(final String storageId) throws RepositoryProblemException {
-        try {
-            jdbcTemplate.update("DELETE FROM zn_data.timeline WHERE tl_deleted = TRUE AND st_id = ?", storageId);
-        } catch (final DataAccessException e) {
-            throw new RepositoryProblemException("DB error occurred when deleting timelines", e);
         }
     }
 

@@ -118,7 +118,6 @@ public class StorageService {
     public Result<Void> deleteStorage(final String id) {
         try {
             transactionTemplate.execute(action -> {
-                timelineDbRepository.deleteTimelinesMarkedDeletedForStorage(id);
                 storageDbRepository.deleteStorage(id);
                 return null;
             });
