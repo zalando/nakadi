@@ -4,7 +4,6 @@ import com.google.common.base.Preconditions;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -64,7 +63,6 @@ import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
 import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
-import static org.zalando.nakadi.service.converter.VersionZeroConverter.VERSION_ZERO_MIN_OFFSET_LENGTH;
 
 public class KafkaTopicRepository implements TopicRepository {
 
@@ -391,7 +389,7 @@ public class KafkaTopicRepository implements TopicRepository {
                         MyNakadiRuntimeException1::new
                 );
             }
-            final int partition = Integer.valueOf(partitionString);
+            final int partition = KafkaCursor.toKafkaPartition(partitionString);
             final Timeline.KafkaStoragePosition kafkaPositions = (Timeline.KafkaStoragePosition) positions;
             final List<Long> offsets = kafkaPositions.getOffsets();
             if (offsets.size() - 1 < partition) {
@@ -409,7 +407,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public String getOffsetForPosition(final long offset) {
-        return StringUtils.leftPad(String.valueOf(offset), VERSION_ZERO_MIN_OFFSET_LENGTH, '0');
+        return KafkaCursor.toNakadiOffset(offset);
     }
 
     public void validateReadCursors(final List<NakadiCursor> cursors)
