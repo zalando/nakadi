@@ -459,7 +459,7 @@ to avoid managing stream state locally.
 
 The typical workflow when using subscriptions is:
 
-1. Create a Subscription specifying the event-types\* you want to read.
+1. Create a Subscription specifying the event-types you want to read.
 
 1. Start reading batches of events from the subscription. 
 
