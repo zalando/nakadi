@@ -184,6 +184,13 @@ public class EventTypeService {
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
+            final Long newRetentionTime = eventTypeBase.getOptions().getRetentionTime();
+            final Long oldRetentionTime = original.getOptions().getRetentionTime();
+            if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
+                timelineService.getActiveTimelinesOrdered(eventTypeName)
+                        .forEach(timeline -> timelineService.getTopicRepository(timeline)
+                                .setRetentionTime(timeline.getTopic(), newRetentionTime));
+            }
             eventTypeRepository.update(eventType);
             return Result.ok();
         } catch (final InterruptedException e) {
