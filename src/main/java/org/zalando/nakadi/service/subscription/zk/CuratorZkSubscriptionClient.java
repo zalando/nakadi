@@ -31,7 +31,6 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private final InterProcessSemaphoreMutex lock;
     private final String subscriptionId;
     private final Logger log;
-    private NodeCache cursorResetCache;
 
     public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework) {
         this(subscriptionId, curatorFramework, CuratorZkSubscriptionClient.class.getName());
@@ -319,7 +318,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
     @Override
     public ZKSubscription subscribeForCursorsReset(final Runnable listener) {
-        cursorResetCache = new NodeCache(curatorFramework, getSubscriptionPath("/cursor_reset"));
+        final NodeCache cursorResetCache = new NodeCache(curatorFramework, getSubscriptionPath("/cursor_reset"));
         cursorResetCache.getListenable().addListener(() -> listener.run());
 
         try {
@@ -327,13 +326,12 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
+
         return new ZKSubscription() {
             @Override
             public void refresh() {
                 try {
-                    if (cursorResetCache != null) {
-                        cursorResetCache.rebuild();
-                    }
+                    cursorResetCache.rebuild();
                 } catch (final Exception e) {
                     throw new NakadiRuntimeException(e);
                 }
@@ -344,7 +342,6 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 try {
                     cursorResetCache.getListenable().clear();
                     cursorResetCache.close();
-                    cursorResetCache = null;
                 } catch (final IOException e) {
                     throw new NakadiRuntimeException(e);
                 }
@@ -354,10 +351,12 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
     @Override
     public boolean isCursorResetInProgress() {
-        if (cursorResetCache == null) {
-            return false;
+        try {
+            return curatorFramework.checkExists().forPath(getSubscriptionPath("/cursor_reset")) != null;
+        } catch (final Exception e) {
+            // nothing in the path
         }
-        return cursorResetCache.getCurrentData() != null;
+        return false;
     }
 
 }
