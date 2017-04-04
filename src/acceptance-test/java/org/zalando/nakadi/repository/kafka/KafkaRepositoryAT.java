@@ -1,13 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
-import kafka.admin.AdminUtils;
-import kafka.server.ConfigType;
-import kafka.utils.ZkUtils;
 import org.apache.curator.CuratorZookeeperClient;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -25,6 +17,12 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
@@ -158,17 +156,11 @@ public class KafkaRepositoryAT extends BaseAT {
         final String topicName = kafkaTopicRepository.createTopic(DEFAULT_PARTITION_COUNT, RETENTION_TIME);
 
         // ASSERT //
-        executeWithRetry(() -> Assert.assertEquals(getTopicRetentionTime(topicName), RETENTION_TIME),
+        executeWithRetry(() -> Assert.assertEquals(
+                KafkaTestHelper.getTopicRetentionTime(topicName, ZOOKEEPER_URL), RETENTION_TIME),
                 new RetryForSpecifiedTimeStrategy<Void>(5000)
                         .withExceptionsThatForceRetry(AssertionError.class)
                         .withWaitBetweenEachTry(500));
-    }
-
-
-    private Long getTopicRetentionTime(final String topic) {
-        final ZkUtils zkUtils = ZkUtils.apply(ZOOKEEPER_URL, 30000, 10000, false);
-        final Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
-        return Long.valueOf(topicConfig.getProperty("retention.ms"));
     }
 
     private Map<String, List<PartitionInfo>> getAllTopics() {

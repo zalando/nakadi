@@ -142,10 +142,4 @@ public class EventTypeController {
         return status(HttpStatus.OK).body(result.getValue());
     }
 
-    // TODO
-//    @ExceptionHandler( MethodArgumentNotValidException.class)
-//    protected ResponseEntity<Problem> handleValidationException(final MethodArgumentNotValidException ex,
-//                                                                final NativeWebRequest request) {
-//        return Responses.create(new ValidationProblem(ex.getBindingResult()), request);
-//    }
 }
