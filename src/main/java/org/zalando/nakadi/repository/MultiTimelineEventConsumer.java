@@ -142,10 +142,10 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         }
         Preconditions.checkNotNull(electedTimeline);
         final TopicRepository result = timelineService.getTopicRepository(electedTimeline);
-        if (electedTimeline.getOrder() > cursor.getTimeline().getOrder()) {
+        if (electedTimeline.getOrder() != cursor.getTimeline().getOrder()) {
             // It seems that cursor jumped to different timeline. One need to fetch very first cursor in timeline.
             final NakadiCursor replacement;
-            if (cursor.getTimeline().isFake() && electedTimeline.isFirstAfterFake()) {
+            if (electedTimeline.isFake() || (cursor.getTimeline().isFake() && electedTimeline.isFirstAfterFake())) {
                 // There should be special treatment when there is a jump from fake timeline to first one, cause
                 // in this case consumption should start from the same offset, instead of starting from before first
                 replacement = new NakadiCursor(electedTimeline, cursor.getPartition(), cursor.getOffset());

@@ -16,6 +16,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
@@ -28,6 +29,7 @@ import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.TimelineView;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
@@ -92,6 +94,19 @@ public class NakadiTestUtils {
                 .post(format("/event-types/{0}/timelines", eventType))
                 .then()
                 .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    public static void deleteTimeline(final String eventType) throws IOException {
+        final Response response = given()
+                .accept(JSON)
+                .get(format("/event-types/{0}/timelines", eventType));
+        final String data = response.print();
+        final TimelineView[] timelines = MAPPER.readerFor(TimelineView[].class).readValue(data);
+        Assert.assertEquals(1, timelines.length);
+        given()
+                .delete(format("/event-types/{0}/timelines/{1}", eventType, timelines[0].getId().toString()))
+                .then()
+                .statusCode(HttpStatus.SC_OK);
     }
 
     public static void publishBusinessEventWithUserDefinedPartition(final String eventType,

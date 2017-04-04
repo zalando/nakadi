@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import org.apache.http.HttpStatus;
 import org.junit.Assert;
@@ -21,6 +22,7 @@ import org.zalando.nakadi.webservice.BaseAT;
 import static com.jayway.restassured.RestAssured.given;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createTimeline;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.deleteTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 
 public class TimelineConsumptionTest extends BaseAT {
@@ -30,21 +32,10 @@ public class TimelineConsumptionTest extends BaseAT {
     @BeforeClass
     public static void setupEventTypeWithEvents() throws JsonProcessingException, InterruptedException {
         eventType = createEventType();
-        final CountDownLatch started = new CountDownLatch(1);
         final CountDownLatch finished = new CountDownLatch(1);
         final AtomicReference<String[]> inTimeCursors = new AtomicReference<>();
-        new Thread(() -> {
-            started.countDown();
-            try {
-                // Suppose that everything will take less then 30 seconds
-                inTimeCursors.set(readCursors("BEGIN", 8, 30));
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            } finally {
-                finished.countDown();
-            }
-        }).start();
-        started.await();
+        createParallelConsumer(eventType.getName(), 8, finished, inTimeCursors::set);
+
         IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
         createTimeline(eventType.getName());
         IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
@@ -54,6 +45,50 @@ public class TimelineConsumptionTest extends BaseAT {
         IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
         finished.await();
         cursorsDuringPublish = inTimeCursors.get();
+    }
+
+    private static void createParallelConsumer(
+            final String eventTypeName,
+            final int expectedEvents,
+            final CountDownLatch finished,
+            final Consumer<String[]> inTimeCursors) throws InterruptedException {
+        final CountDownLatch started = new CountDownLatch(1);
+        new Thread(() -> {
+            started.countDown();
+            try {
+                // Suppose that everything will take less then 30 seconds
+                inTimeCursors.accept(readCursors(eventTypeName, "BEGIN", expectedEvents, 30));
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            } finally {
+                finished.countDown();
+            }
+        }).start();
+        started.await();
+    }
+
+    @Test
+    public void testTimelineDelete() throws IOException, InterruptedException {
+        final EventType eventType = createEventType();
+        final CountDownLatch finished = new CountDownLatch(1);
+        final AtomicReference<String[]> inTimelineCursors = new AtomicReference<>();
+        createParallelConsumer(eventType.getName(), 6, finished, inTimelineCursors::set);
+        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        createTimeline(eventType.getName());
+        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        deleteTimeline(eventType.getName());
+        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        finished.await();
+        Assert.assertArrayEquals(
+                new String[]{
+                        "000000000000000000",
+                        "000000000000000001",
+                        "001-0001-000000000000000002",
+                        "001-0001-000000000000000003",
+                        "000000000000000004",
+                        "000000000000000005"
+                },
+                inTimelineCursors.get());
     }
 
     @Test
@@ -88,7 +123,7 @@ public class TimelineConsumptionTest extends BaseAT {
 
         // Do not test last case, because it makes no sense...
         for (int idx = -1; idx < expected.length - 1; ++idx) {
-            final String[] receivedOffsets = readCursors(
+            final String[] receivedOffsets = readCursors(eventType.getName(),
                     idx == -1 ? "BEGIN" : expected[idx], expected.length - 1 - idx, 1);
             final String[] testedOffsets = Arrays.copyOfRange(expected, idx + 1, expected.length);
             Assert.assertArrayEquals(testedOffsets, receivedOffsets);
@@ -111,7 +146,8 @@ public class TimelineConsumptionTest extends BaseAT {
 
     }
 
-    private static String[] readCursors(final String startOffset, final int streamLimit, final int streamTimeout)
+    private static String[] readCursors(
+            final String eventTypeName, final String startOffset, final int streamLimit, final int streamTimeout)
             throws IOException {
         final Response response = given()
                 .header(new Header("X-nakadi-cursors", "[{\"partition\": \"0\", \"offset\": \"" + startOffset + "\"}]"))
@@ -120,7 +156,7 @@ public class TimelineConsumptionTest extends BaseAT {
                 .param("stream_limit", streamLimit)
                 .param("stream_timeout", streamTimeout)
                 .when()
-                .get("/event-types/" + eventType.getName() + "/events");
+                .get("/event-types/" + eventTypeName + "/events");
 
         response
                 .then()
