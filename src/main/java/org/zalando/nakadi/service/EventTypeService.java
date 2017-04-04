@@ -164,7 +164,7 @@ public class EventTypeService {
                         topicRepository.deleteTopic(topic);
                     } catch (TopicDeletionException e) {
                         // If a timeline was marked as deleted, then the topic does not exist, and we should proceed.
-                        LOG.info("Could not delete topic " + topic);
+                        LOG.info("Could not delete topic " + topic, e);
                     }
                 }
             }
