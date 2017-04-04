@@ -3,7 +3,6 @@ package org.zalando.nakadi.service;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedCountStrategy;
@@ -37,7 +36,6 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
-import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
@@ -61,7 +59,6 @@ public class CursorsService {
     private static final String PATH_ZK_PARTITION = "/nakadi/subscriptions/{0}/topics/{1}/{2}";
     private static final String PATH_ZK_PARTITIONS = "/nakadi/subscriptions/{0}/topics/{1}";
     private static final String PATH_ZK_SESSION = "/nakadi/subscriptions/{0}/sessions/{1}";
-    private static final String PATH_ZK_CURSOR_RESET = "/nakadi/subscriptions/{0}/cursor_reset";
     private static final String ERROR_COMMUNICATING_WITH_ZOOKEEPER = "Error communicating with zookeeper";
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
 
@@ -273,64 +270,8 @@ public class CursorsService {
         validateSubscriptionCursors(subscription, cursors);
         validateSubscriptionReadScopes(subscription, client);
 
-        final String resetStatusPath = format(PATH_ZK_CURSOR_RESET, subscriptionId);
-        ZKSubscription sessionsListener = null;
-        try {
-            // close subscription connections
-            zkHolder.get().create().withMode(CreateMode.EPHEMERAL).forPath(resetStatusPath);
-
-            final String sessionsPath = format("/nakadi/subscriptions/{0}/sessions", subscriptionId);
-            final ZkSubscriptionClient zkSubClient = new CuratorZkSubscriptionClient(subscriptionId, zkHolder.get());
-            final Object lock = new Object();
-            sessionsListener = zkSubClient.subscribeForSessionListChanges(() -> {
-                try {
-                    // wait until all connections are closed by nakadi
-                    if (zkHolder.get().getChildren().forPath(sessionsPath).isEmpty()) {
-                        storeCursorsInZk(subscriptionId, cursors);
-                        synchronized (lock) {
-                            lock.notify();
-                        }
-                    }
-                } catch (final Exception e) {
-                    throw new ZookeeperException("Unexpected problem occurred when resetting cursor", e);
-                }
-            });
-
-            if (zkHolder.get().getChildren().forPath(sessionsPath).isEmpty()) {
-                storeCursorsInZk(subscriptionId, cursors);
-                return;
-            }
-
-            synchronized (lock) {
-                lock.wait(TimeUnit.SECONDS.toMillis(nakadiSettings.getDefaultCommitTimeoutSeconds()));
-            }
-        } catch (final InterruptedException e) {
-            LOG.info(e.getMessage(), e);
-            Thread.currentThread().interrupt();
-            throw new OperationTimeoutException("Timeout resetting cursor", e);
-        } catch (final Exception e) {
-            LOG.error(e.getMessage(), e);
-            throw new ZookeeperException("Unexpected problem occurred when resetting cursor", e);
-        } finally {
-            if (sessionsListener != null) {
-                sessionsListener.cancel();
-            }
-            try {
-                zkHolder.get().delete().forPath(resetStatusPath);
-            } catch (final KeeperException.NoNodeException e) {
-                throw new UnableProcessException(
-                        "Impossible to reset cursor. Subscription has not been streamed yet", e);
-            } catch (final Exception e) {
-                throw new ZookeeperException("Unexpected problem occurred when deleting zk node", e);
-            }
-        }
-    }
-
-    private void storeCursorsInZk(final String subscriptionId, final List<NakadiCursor> cursors) throws Exception {
-        for (final NakadiCursor cursor : cursors) {
-            final String path = format(PATH_ZK_OFFSET, subscriptionId, cursor.getTopic(), cursor.getPartition());
-            zkHolder.get().setData().forPath(path, cursor.getOffset().getBytes(Charsets.UTF_8));
-        }
+        final ZkSubscriptionClient zkClient = new CuratorZkSubscriptionClient(subscriptionId, zkHolder.get());
+        zkClient.resetCursors(cursors, TimeUnit.SECONDS.toMillis(nakadiSettings.getDefaultCommitTimeoutSeconds()));
     }
 
     private void validateSubscriptionCursors(final Subscription subscription, final List<NakadiCursor> cursors)

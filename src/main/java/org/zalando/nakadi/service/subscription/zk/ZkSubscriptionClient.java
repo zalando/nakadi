@@ -1,9 +1,13 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 public interface ZkSubscriptionClient {
@@ -148,4 +152,14 @@ public interface ZkSubscriptionClient {
      * @return true if cursor reset in progress
      */
     boolean isCursorResetInProgress();
+
+    /**
+     * Resets subscription offsets for provided cursors.
+     *
+     * @param cursors cursors to reset
+     * @param timeout wait until give up resetting
+     * @throws OperationTimeoutException
+     * @throws ZookeeperException
+     */
+    void resetCursors(List<NakadiCursor> cursors, Long timeout) throws OperationTimeoutException, ZookeeperException;
 }
