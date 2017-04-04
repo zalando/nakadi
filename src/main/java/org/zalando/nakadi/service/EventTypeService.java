@@ -138,6 +138,7 @@ public class EventTypeService {
             NoEventTypeException,
             UnableProcessException {
         Closeable deletionCloser = null;
+        Multimap<TopicRepository, String> topicsToDelete = null;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
@@ -155,20 +156,9 @@ public class EventTypeService {
                 throw new UnableProcessException("Can't remove event type " + eventTypeName
                         + ", as it has subscriptions");
             }
-            final Multimap<TopicRepository, String> topicsToDelete = transactionTemplate.execute(action -> {
+            topicsToDelete = transactionTemplate.execute(action -> {
                 return deleteEventType(eventTypeName);
             });
-            for (final TopicRepository topicRepository : topicsToDelete.keySet()) {
-                for (final String topic : topicsToDelete.get(topicRepository)) {
-                    try {
-                        topicRepository.deleteTopic(topic);
-                    } catch (TopicDeletionException e) {
-                        // If a timeline was marked as deleted, then the topic does not exist, and we should proceed.
-                        LOG.info("Could not delete topic " + topic, e);
-                    }
-                }
-            }
-
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
@@ -188,6 +178,18 @@ public class EventTypeService {
                 }
             } catch (final IOException e) {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
+            }
+        }
+        if (topicsToDelete != null) {
+            for (final TopicRepository topicRepository : topicsToDelete.keySet()) {
+                for (final String topic : topicsToDelete.get(topicRepository)) {
+                    try {
+                        topicRepository.deleteTopic(topic);
+                    } catch (TopicDeletionException e) {
+                        // If a timeline was marked as deleted, then the topic does not exist, and we should proceed.
+                        LOG.info("Could not delete topic " + topic, e);
+                    }
+                }
             }
         }
     }
