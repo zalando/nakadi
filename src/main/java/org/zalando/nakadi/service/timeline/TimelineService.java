@@ -240,10 +240,6 @@ public class TimelineService {
             topicsToDelete.put(getTopicRepository(timeline), timeline.getTopic());
             timelineDbRepository.deleteTimeline(timeline.getId());
         }
-        final List<Timeline> timelines = getTimelines(eventTypeName);
-        for (final Timeline timeline : timelines) {
-            timelineDbRepository.deleteTimeline(timeline.getId());
-        }
         return topicsToDelete;
     }
 
