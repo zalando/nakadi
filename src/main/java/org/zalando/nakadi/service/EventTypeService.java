@@ -24,6 +24,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -169,7 +170,8 @@ public class EventTypeService {
         }
     }
 
-    public Result<Void> update(final String eventTypeName, final EventTypeBase eventTypeBase, final Client client) {
+    public Result<Void> update(final String eventTypeName, final EventTypeBase eventTypeBase, final Client client)
+            throws TopicConfigException {
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
@@ -186,12 +188,28 @@ public class EventTypeService {
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
             final Long newRetentionTime = eventTypeBase.getOptions().getRetentionTime();
             final Long oldRetentionTime = original.getOptions().getRetentionTime();
-            if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
-                timelineService.getActiveTimelinesOrdered(eventTypeName)
-                        .forEach(timeline -> timelineService.getTopicRepository(timeline)
-                                .setRetentionTime(timeline.getTopic(), newRetentionTime));
+            boolean retentionTimeUpdated = false;
+            try {
+                if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
+                    updateRetentionTime(eventTypeName, newRetentionTime);
+                }
+                retentionTimeUpdated = true;
+            } finally {
+                if (!retentionTimeUpdated) {
+                    updateRetentionTime(eventTypeName, oldRetentionTime);
+                }
             }
-            eventTypeRepository.update(eventType);
+
+            retentionTimeUpdated = false;
+            try {
+                eventTypeRepository.update(eventType);
+                retentionTimeUpdated = true;
+            } finally {
+                if (!retentionTimeUpdated) {
+                    updateRetentionTime(eventTypeName, oldRetentionTime);
+                }
+            }
+
             return Result.ok();
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -219,6 +237,13 @@ public class EventTypeService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
+    }
+
+    private void updateRetentionTime(final String eventTypeName, final Long retentionTime)
+            throws InternalNakadiException, NoSuchEventTypeException {
+        timelineService.getActiveTimelinesOrdered(eventTypeName)
+                .forEach(timeline -> timelineService.getTopicRepository(timeline)
+                        .setRetentionTime(timeline.getTopic(), retentionTime));
     }
 
     public Result<EventType> get(final String eventTypeName) {
