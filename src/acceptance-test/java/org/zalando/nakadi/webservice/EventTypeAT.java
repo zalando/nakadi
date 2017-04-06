@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.apache.http.HttpStatus;
 import org.junit.After;
@@ -97,6 +98,20 @@ public class EventTypeAT extends BaseAT {
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
         final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
         assertThat(allTopics, not(hasItem(eventType.getTopic())));
+    }
+
+    @Test
+    public void whenUpdatePartitioningStrategyFromRandomThenOK() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final String bodyRandom = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(bodyRandom).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
+
+        eventType.setPartitionStrategy(PartitionStrategy.USER_DEFINED_STRATEGY);
+        final String bodyUserDefined = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(bodyUserDefined).header("accept", "application/json").contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName()).then().statusCode(HttpStatus.SC_OK);
     }
 
     @After
