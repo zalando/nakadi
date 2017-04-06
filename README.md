@@ -185,7 +185,8 @@ curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/j
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
   "category": "business",
-  "partition_strategy": "random",
+  "partition_strategy": "hash",
+  "partition_key_fields": ["order_number"],
   "enrichment_strategies": ["metadata_enrichment"],
   "default_statistic": {
     "messages_per_minute": 1000,	
@@ -233,8 +234,8 @@ Content-Type: application/json;charset=UTF-8
     "enrichment_strategies": ["metadata_enrichment"],
     "name": "order.ORDER_RECEIVED",
     "owning_application": "order-service",
-    "partition_key_fields": [],
-    "partition_strategy": "random",
+    "partition_key_fields": ["order_number"],
+    "partition_strategy": "hash",
     "schema": {
       "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }",
       "type": "json_schema"
@@ -260,8 +261,8 @@ Content-Type: application/json;charset=UTF-8
   "enrichment_strategies": ["metadata_enrichment"],
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
-  "partition_key_fields": [],
-  "partition_strategy": "random",
+  "partition_key_fields": ["order_number"],
+  "partition_strategy": "hash",
   "schema": {
     "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }",
     "type": "json_schema"
