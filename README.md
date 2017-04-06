@@ -459,13 +459,11 @@ to avoid managing stream state locally.
 
 The typical workflow when using subscriptions is:
 
-1. Create a Subscription specifying the event-types\* you want to read.
+1. Create a Subscription specifying the event-types you want to read.
 
 1. Start reading batches of events from the subscription. 
 
 1. Commit the cursors found in the event batches back to Nakadi, which will store the offsets. 
-
-_\* Note: the API signature can support subscribing to multiple event types with a single subscription, but this is not implemented yet; it's planned to be enabled soon._
 
 
 If the connection is closed, and later restarted, clients will get events from 
