@@ -311,6 +311,26 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenPUTwithPartitionStrategyChangeFromRandomToHashAndEmptyKeyThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
+                .build();
+
+        final EventType randomEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .topic(eventType.getTopic())
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(Collections.emptyList())
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(randomEventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     public void whenPUTwithPartitionStrategyChangeFromUserDefinedToRandomThen422() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder()
                 .partitionStrategy(PartitionStrategy.USER_DEFINED_STRATEGY)
