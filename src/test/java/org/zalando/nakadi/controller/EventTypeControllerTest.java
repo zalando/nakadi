@@ -280,6 +280,7 @@ public class EventTypeControllerTest {
                 .name(eventType.getName())
                 .topic(eventType.getTopic())
                 .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(Collections.singletonList("foo"))
                 .createdAt(eventType.getCreatedAt())
                 .build();
 
