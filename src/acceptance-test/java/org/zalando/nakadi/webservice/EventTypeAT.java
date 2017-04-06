@@ -101,7 +101,8 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenDELETEEventTypeWithSeveralTimelinesThenOK() throws JsonProcessingException, NoSuchEventTypeException {
+    public void whenDELETEEventTypeWithSeveralTimelinesThenOK()
+            throws JsonProcessingException, NoSuchEventTypeException {
         final EventType eventType = buildDefaultEventType();
         postEventType(eventType);
         postTimeline(eventType);
@@ -169,7 +170,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     private List<String> getTopicsForEventType(final String eventType) throws NoSuchEventTypeException {
-        List<String> topics = TIMELINE_REPOSITORY
+        final List<String> topics = TIMELINE_REPOSITORY
                 .listTimelinesOrdered(eventType)
                 .stream()
                 .map((Timeline t) -> t.getTopic())
