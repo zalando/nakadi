@@ -11,6 +11,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 
 import java.util.List;
@@ -85,7 +86,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenDELETEEventTypeThenOK() throws JsonProcessingException {
+    public void whenDELETEEventTypeThenOK() throws JsonProcessingException, NoSuchEventTypeException {
 
         // ARRANGE //
         final EventType eventType = buildDefaultEventType();
@@ -100,7 +101,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenDELETEEventTypeWithSeveralTimelinesThenOK() throws JsonProcessingException {
+    public void whenDELETEEventTypeWithSeveralTimelinesThenOK() throws JsonProcessingException, NoSuchEventTypeException {
         final EventType eventType = buildDefaultEventType();
         postEventType(eventType);
         postTimeline(eventType);
@@ -116,7 +117,7 @@ public class EventTypeAT extends BaseAT {
     }
 
     @Test
-    public void whenDELETEEventTypeWithOneTimelineThenOK() throws JsonProcessingException {
+    public void whenDELETEEventTypeWithOneTimelineThenOK() throws JsonProcessingException, NoSuchEventTypeException {
         final EventType eventType = buildDefaultEventType();
         postEventType(eventType);
         postTimeline(eventType);
@@ -167,11 +168,15 @@ public class EventTypeAT extends BaseAT {
         when().delete(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_OK);
     }
 
-    private List<String> getTopicsForEventType(final String eventType) {
-        return TIMELINE_REPOSITORY
+    private List<String> getTopicsForEventType(final String eventType) throws NoSuchEventTypeException {
+        List<String> topics = TIMELINE_REPOSITORY
                 .listTimelinesOrdered(eventType)
                 .stream()
                 .map((Timeline t) -> t.getTopic())
                 .collect(Collectors.toList());
+        if (topics.isEmpty()) {
+            topics.add(EVENT_TYPE_REPO.findByName(eventType).getTopic());
+        }
+        return topics;
     }
 }

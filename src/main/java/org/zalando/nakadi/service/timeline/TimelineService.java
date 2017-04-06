@@ -233,10 +233,14 @@ public class TimelineService {
     }
 
     public Multimap<TopicRepository, String> deleteAllTimelinesForEventType(final String eventTypeName)
-            throws TopicDeletionException, TimelineException, NotFoundException {
+            throws TopicDeletionException,
+            TimelineException,
+            NotFoundException,
+            InternalNakadiException,
+            NoSuchEventTypeException {
         LOG.info("Deleting all timelines for event type {}", eventTypeName);
         final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
-        for (final Timeline timeline : getTimelines(eventTypeName)) {
+        for (final Timeline timeline : getActiveTimelinesOrdered(eventTypeName)) {
             topicsToDelete.put(getTopicRepository(timeline), timeline.getTopic());
             timelineDbRepository.deleteTimeline(timeline.getId());
         }
