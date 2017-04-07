@@ -144,7 +144,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                 if (latest.compareTo(firstItem) > 0) {
                     electedTimeline = toCheck;
                 } else {
-                    LOG.info("Timeline {} doesn't have any data inside, skipping", toCheck);
+                    LOG.info("Timeline {} is empty, skipping", toCheck);
                 }
             } else {
                 break;
