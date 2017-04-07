@@ -193,15 +193,6 @@ public class EventTypeService {
                 if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
                     updateRetentionTime(eventTypeName, newRetentionTime);
                 }
-                retentionTimeUpdated = true;
-            } finally {
-                if (!retentionTimeUpdated) {
-                    updateRetentionTime(eventTypeName, oldRetentionTime);
-                }
-            }
-
-            retentionTimeUpdated = false;
-            try {
                 eventTypeRepository.update(eventType);
                 retentionTimeUpdated = true;
             } finally {
