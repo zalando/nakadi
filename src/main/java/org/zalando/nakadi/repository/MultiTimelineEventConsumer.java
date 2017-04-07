@@ -1,6 +1,5 @@
 package org.zalando.nakadi.repository;
 
-import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -134,13 +133,23 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         while (itTimeline.hasPrevious()) {
             final Timeline toCheck = itTimeline.previous();
             final NakadiCursor latest = toCheck.calculateNakadiLatestPosition(cursor.getPartition());
-            if (latest == null || latest.compareTo(cursor) > 0) {
+            if (latest == null) {
                 electedTimeline = toCheck;
+            } else if (latest.compareTo(cursor) > 0) {
+                // There is a border case - latest is equal to begin (that means that there are no available events
+                // there), and one should position on timeline that have something inside.
+                final NakadiCursor firstItem = timelineService.getTopicRepository(toCheck)
+                        .loadPartitionStatistics(toCheck, cursor.getPartition())
+                        .get().getFirst();
+                if (latest.compareTo(firstItem) > 0) {
+                    electedTimeline = toCheck;
+                } else {
+                    LOG.info("Timeline {} doesn't have any data inside, skipping", toCheck);
+                }
             } else {
                 break;
             }
         }
-        Preconditions.checkNotNull(electedTimeline);
         final TopicRepository result = timelineService.getTopicRepository(electedTimeline);
         if (electedTimeline.getOrder() != cursor.getTimeline().getOrder()) {
             // It seems that cursor jumped to different timeline. One need to fetch very first cursor in timeline.

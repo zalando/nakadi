@@ -92,6 +92,75 @@ public class TimelineConsumptionTest extends BaseAT {
     }
 
     @Test
+    public void test2TimelinesInaRow() throws IOException, InterruptedException {
+        final EventType eventType = createEventType();
+        final CountDownLatch finished = new CountDownLatch(1);
+        final AtomicReference<String[]> inTimelineCursors = new AtomicReference<>();
+        createParallelConsumer(eventType.getName(), 6, finished, inTimelineCursors::set);
+        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        createTimeline(eventType.getName()); // Still old topic
+        createTimeline(eventType.getName()); // New topic
+        createTimeline(eventType.getName()); // Another new topic
+        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        createTimeline(eventType.getName());
+        createTimeline(eventType.getName());
+        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        finished.await();
+        Assert.assertArrayEquals(
+                new String[]{
+                        "000000000000000000",
+                        "000000000000000001",
+                        "001-0003-000000000000000000",
+                        "001-0003-000000000000000001",
+                        "001-0005-000000000000000000",
+                        "001-0005-000000000000000001"
+                },
+                inTimelineCursors.get()
+        );
+
+        final String[] receivedOffsets = readCursors(eventType.getName(), "BEGIN", 6, 2);
+        Assert.assertArrayEquals(
+                new String[]{
+                        "001-0001-000000000000000000",
+                        "001-0001-000000000000000001",
+                        "001-0003-000000000000000000",
+                        "001-0003-000000000000000001",
+                        "001-0005-000000000000000000",
+                        "001-0005-000000000000000001"
+                },
+                receivedOffsets
+        );
+    }
+
+    @Test
+    public void test2TimelinesInaRowNoBegin() throws IOException, InterruptedException {
+        final EventType eventType = createEventType();
+        final CountDownLatch finished = new CountDownLatch(1);
+        final AtomicReference<String[]> inTimelineCursors = new AtomicReference<>();
+        createParallelConsumer(eventType.getName(), 2, finished, inTimelineCursors::set);
+        createTimeline(eventType.getName()); // Still old topic
+        createTimeline(eventType.getName()); // New topic
+        createTimeline(eventType.getName()); // Another new topic
+        IntStream.range(0, 2).forEach(idx -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        finished.await();
+        Assert.assertArrayEquals(
+                new String[]{
+                        "001-0003-000000000000000000",
+                        "001-0003-000000000000000001",
+                },
+                inTimelineCursors.get()
+        );
+        final String[] receivedOffsets = readCursors(eventType.getName(), "BEGIN", 2, 1);
+        Assert.assertArrayEquals(
+                new String[]{
+                        "001-0003-000000000000000000",
+                        "001-0003-000000000000000001",
+                },
+                receivedOffsets
+        );
+    }
+
+    @Test
     public void testInTimeCursorsCorrect() {
         Assert.assertArrayEquals(
                 new String[]{
