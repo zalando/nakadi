@@ -92,8 +92,7 @@ public class CursorOperationsService {
             for (int i = 0; i < oldestStats.size(); i++) {
                 final PartitionStatistics oldStat = oldestStats.get(i);
                 final PartitionStatistics newStat = newestStats.get(i);
-                final NakadiCursorLag nakadiCursorLag = new NakadiCursorLag(oldStat.getTopic(), oldStat.getPartition(),
-                        oldStat.getFirst(), newStat.getLast());
+                final NakadiCursorLag nakadiCursorLag = new NakadiCursorLag(oldStat.getFirst(), newStat.getLast());
                 stats.put(oldStat.getPartition(), nakadiCursorLag);
             }
 
