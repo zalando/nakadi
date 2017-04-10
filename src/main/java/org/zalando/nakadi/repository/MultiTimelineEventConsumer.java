@@ -141,7 +141,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
                 final NakadiCursor firstItem = timelineService.getTopicRepository(toCheck)
                         .loadPartitionStatistics(toCheck, cursor.getPartition())
                         .get().getFirst();
-                if (latest.compareTo(firstItem) > 0) {
+                if (latest.compareTo(firstItem) >= 0) {
                     electedTimeline = toCheck;
                 } else {
                     LOG.info("Timeline {} is empty, skipping", toCheck);
