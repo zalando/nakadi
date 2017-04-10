@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,11 +22,11 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
-import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.util.ValidListWrapper;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.CursorDistance;
 import org.zalando.nakadi.view.CursorLag;
@@ -63,18 +62,12 @@ public class CursorOperationsController {
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursor-distances", method = RequestMethod.POST)
     public ResponseEntity<?> getDistance(@PathVariable("eventTypeName") final String eventTypeName,
-                                         @Valid @RequestBody final List<CursorDistance> queries,
-                                         final Errors errors,
-                                         final NativeWebRequest request,
+                                         @Valid @RequestBody final ValidListWrapper<CursorDistance> queries,
                                          final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-        if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
-        }
-
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         client.checkScopes(eventType.getReadScopes());
 
-        queries.forEach(query -> {
+        queries.getList().forEach(query -> {
             try {
                 final NakadiCursor initialCursor = cursorConverter
                         .convert(eventTypeName, query.getInitialCursor());
@@ -88,24 +81,17 @@ public class CursorOperationsController {
             }
         });
 
-        return status(OK).body(queries);
+        return status(OK).body(queries.getList());
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/shifted-cursors", method = RequestMethod.POST)
     public ResponseEntity<?> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
-                                         @Valid @RequestBody final List<ShiftedCursor> cursors,
-                                         final Errors errors,
-                                         final NativeWebRequest request,
+                                         @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors,
                                          final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-
-        if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
-        }
-
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         client.checkScopes(eventType.getReadScopes());
 
-        final List<ShiftedNakadiCursor> domainCursor = cursors.stream()
+        final List<ShiftedNakadiCursor> domainCursor = cursors.getList().stream()
                 .map(this.toShiftedNakadiCursor(eventTypeName))
                 .collect(Collectors.toList());
 
@@ -119,19 +105,12 @@ public class CursorOperationsController {
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursors-lag", method = RequestMethod.POST)
     public ResponseEntity<?> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
-                                        @Valid @RequestBody final List<Cursor> cursors,
-                                        final Errors errors,
-                                        final NativeWebRequest request,
+                                        @Valid @RequestBody final ValidListWrapper<Cursor> cursors,
                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-
-        if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
-        }
-
         final EventType eventType = eventTypeRepository.findByName(eventTypeName);
         client.checkScopes(eventType.getReadScopes());
 
-        final List<NakadiCursor> domainCursor = cursors.stream()
+        final List<NakadiCursor> domainCursor = cursors.getList().stream()
                 .map(toNakadiCursor(eventTypeName))
                 .collect(Collectors.toList());
 
