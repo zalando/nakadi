@@ -1,20 +1,23 @@
 package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
+import org.apache.commons.io.output.CountingOutputStream;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.view.SubscriptionCursor;
-import org.zalando.nakadi.domain.Timeline;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 
 class StreamingState extends State {
     private final Map<Partition.PartitionKey, PartitionData> offsets = new HashMap<>();
@@ -37,7 +42,7 @@ class StreamingState extends State {
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
     private final Map<Partition.PartitionKey, Long> releasingPartitions = new HashMap<>();
     private ZKSubscription topologyChangeSubscription;
-    private Consumer<String, String> kafkaConsumer;
+    private Consumer<String, byte[]> kafkaConsumer;
     private boolean pollPaused;
     private long lastCommitMillis;
     private long committedEvents;
@@ -135,7 +140,7 @@ class StreamingState extends State {
             scheduleTask(this::pollDataFromKafka, getKafkaPollTimeout(), TimeUnit.MILLISECONDS);
             return;
         }
-        final ConsumerRecords<String, String> records = kafkaConsumer.poll(getKafkaPollTimeout());
+        final ConsumerRecords<String, byte[]> records = kafkaConsumer.poll(getKafkaPollTimeout());
         if (!records.isEmpty()) {
             for (final TopicPartition tp : records.partitions()) {
                 final Partition.PartitionKey pk = new Partition.PartitionKey(tp.topic(),
@@ -174,7 +179,7 @@ class StreamingState extends State {
     private void streamToOutput() {
         final long currentTimeMillis = System.currentTimeMillis();
         int freeSlots = (int) getMessagesAllowedToSend();
-        SortedMap<Long, String> toSend;
+        SortedMap<Long, byte[]> toSend;
         for (final Map.Entry<Partition.PartitionKey, PartitionData> e : offsets.entrySet()) {
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
@@ -196,15 +201,13 @@ class StreamingState extends State {
         }
     }
 
-    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, String> data,
+    private void flushData(final Partition.PartitionKey pk, final SortedMap<Long, byte[]> data,
                            final Optional<String> metadata) {
         try {
             final long numberOffset = offsets.get(pk).getSentOffset();
-            final String batch = serializeBatch(pk, numberOffset, new ArrayList<>(data.values()), metadata);
-
-            final byte[] batchBytes = batch.getBytes(EventStream.UTF8);
-            getOut().streamData(batchBytes);
-            bytesSentMeter.mark(batchBytes.length);
+            final int batchBytesCount = writeBatch(getOut().getOutputStream(), pk, numberOffset,
+                    new ArrayList<>(data.values()), metadata);
+            bytesSentMeter.mark(batchBytesCount);
             batchesSent++;
         } catch (final IOException e) {
             getLog().error("Failed to write data to output.", e);
@@ -212,9 +215,9 @@ class StreamingState extends State {
         }
     }
 
-    private String serializeBatch(final Partition.PartitionKey partitionKey, final long offset,
-                                  final List<String> events, final Optional<String> metadata)
-            throws JsonProcessingException {
+    private int writeBatch(final OutputStream outputStream, final Partition.PartitionKey partitionKey,
+                           final long offset, final List<byte[]> events, final Optional<String> metadata)
+            throws IOException {
 
         final Timeline timeline = getContext().getTimelinesForTopics().get(partitionKey.getTopic());
         final String token = getContext().getCursorTokenService().generateToken();
@@ -223,18 +226,39 @@ class StreamingState extends State {
                 token);
         final String cursorSerialized = getContext().getObjectMapper().writeValueAsString(cursor);
 
-        final StringBuilder builder = new StringBuilder()
-                .append("{\"cursor\":")
-                .append(cursorSerialized);
-        if (!events.isEmpty()) {
-            builder.append(",\"events\":[");
-            events.forEach(event -> builder.append(event).append(","));
-            builder.deleteCharAt(builder.length() - 1).append("]");
-        }
-        metadata.ifPresent(s -> builder.append(",\"info\":{\"debug\":\"").append(s).append("\"}"));
+        final CountingOutputStream countingOutputStream = new CountingOutputStream(outputStream) {
+            @Override
+            public void flush() throws IOException {
+                // block flushing
+            }
+        };
+        final Writer writer = new OutputStreamWriter(countingOutputStream, UTF_8);
 
-        builder.append("}").append(EventStream.BATCH_SEPARATOR);
-        return builder.toString();
+        writer.write("{\"cursor\":");
+        writer.write(cursorSerialized);
+        if (!events.isEmpty()) {
+            writer.write(",\"events\":[");
+            writer.flush();
+            boolean first = true;
+            for (final byte[] event : events) {
+                if (!first) {
+                    countingOutputStream.write(',');
+                }
+                countingOutputStream.write(event);
+                first = false;
+            }
+            countingOutputStream.write(']');
+        }
+        if (metadata.isPresent()) {
+            writer.write(",\"info\":{\"debug\":\"");
+            writer.write(metadata.get());
+            writer.write("\"}");
+            writer.flush();
+        }
+        writer.append("}").append(EventStream.BATCH_SEPARATOR);
+        writer.flush();
+        outputStream.flush();
+        return countingOutputStream.getCount();
     }
 
     @Override

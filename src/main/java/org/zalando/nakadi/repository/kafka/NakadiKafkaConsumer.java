@@ -17,12 +17,12 @@ public class NakadiKafkaConsumer implements EventConsumer {
 
     private Queue<ConsumedEvent> eventQueue;
 
-    private final Consumer<String, String> kafkaConsumer;
+    private final Consumer<String, byte[]> kafkaConsumer;
     private final long pollTimeout;
     private final Timeline timeline;
 
     public NakadiKafkaConsumer(
-            final Consumer<String, String> kafkaConsumer,
+            final Consumer<String, byte[]> kafkaConsumer,
             final List<KafkaCursor> kafkaCursors,
             final long pollTimeout,
             final Timeline timeline) {
@@ -59,7 +59,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
     }
 
     @Override
-    public Consumer<String, String> getConsumer() {
+    public Consumer<String, byte[]> getConsumer() {
         return kafkaConsumer;
     }
 
@@ -69,7 +69,7 @@ public class NakadiKafkaConsumer implements EventConsumer {
     }
 
     private void pollFromKafka() {
-        final ConsumerRecords<String, String> records = kafkaConsumer.poll(pollTimeout);
+        final ConsumerRecords<String, byte[]> records = kafkaConsumer.poll(pollTimeout);
         eventQueue = StreamSupport
                 .stream(records.spliterator(), false)
                 .map(record -> {

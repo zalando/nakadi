@@ -17,6 +17,7 @@ import java.util.zip.GZIPOutputStream;
 
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.text.MessageFormat.format;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_ENCODING;
 import static javax.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
@@ -70,7 +71,7 @@ public class CompressedEventPublishingAT extends BaseAT {
     private byte[] compressWithGzip(final String string) throws IOException {
         final ByteArrayOutputStream baOutputStream = new ByteArrayOutputStream(string.length());
         final GZIPOutputStream gzipOutputStream = new GZIPOutputStream(baOutputStream);
-        gzipOutputStream.write(string.getBytes());
+        gzipOutputStream.write(string.getBytes(UTF_8));
         gzipOutputStream.close();
         final byte[] compressed = baOutputStream.toByteArray();
         baOutputStream.close();

@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import com.codahale.metrics.Meter;
 import com.google.common.collect.Lists;
+import org.apache.commons.io.output.CountingOutputStream;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,23 +12,25 @@ import org.zalando.nakadi.repository.EventConsumer;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import org.zalando.nakadi.view.Cursor;
 
 import static java.lang.System.currentTimeMillis;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.function.Function.identity;
 
 public class EventStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
     public static final String BATCH_SEPARATOR = "\n";
-    public static final Charset UTF8 = Charset.forName("UTF-8");
 
     private final OutputStream outputStream;
     private final EventConsumer eventConsumer;
@@ -54,7 +57,7 @@ public class EventStream {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
 
-            final Map<String, List<String>> currentBatches =
+            final Map<String, List<byte[]>> currentBatches =
                     createMapWithPartitionKeys(partition -> Lists.newArrayList());
             // Partition to NakadiCursor.
             final Map<String, NakadiCursor> latestOffsets = config.getCursors().stream().collect(
@@ -142,30 +145,47 @@ public class EventStream {
                 .collect(Collectors.toMap(identity(), valueFunction));
     }
 
-    public static String createStreamEvent(final Cursor cursor, final List<String> events) {
-        final StringBuilder builder = new StringBuilder()
-                .append("{\"cursor\":{\"partition\":\"").append(cursor.getPartition())
-                .append("\",\"offset\":\"").append(cursor.getOffset()).append("\"}");
+    public static int writeStreamEvent(final OutputStream outputStream, final Cursor cursor, final List<byte[]> events)
+            throws IOException {
+        final CountingOutputStream countingOutputStream = new CountingOutputStream(outputStream) {
+            @Override
+            public void flush() throws IOException {
+                // block flushing
+            }
+        };
+        final Writer writer = new OutputStreamWriter(countingOutputStream, UTF_8);
+        writer.write("{\"cursor\":{\"partition\":\"");
+        writer.write(cursor.getPartition());
+        writer.write("\",\"offset\":\"");
+        writer.write(cursor.getOffset());
+        writer.write("\"}");
         if (!events.isEmpty()) {
-            builder.append(",\"events\":[");
-            events.forEach(event -> builder.append(event).append(","));
-            builder.deleteCharAt(builder.length() - 1).append("]");
+            writer.write(",\"events\":[");
+            writer.flush();
+            boolean first = true;
+            for (final byte[] event : events) {
+                if (!first) {
+                    countingOutputStream.write(',');
+                }
+                countingOutputStream.write(event);
+                first = false;
+            }
+            countingOutputStream.write(']');
         }
-
-        builder.append("}").append(BATCH_SEPARATOR);
-
-        return builder.toString();
+        writer.write("}");
+        writer.write(BATCH_SEPARATOR);
+        writer.flush();
+        outputStream.flush();
+        return countingOutputStream.getCount();
     }
 
-    private void sendBatch(final NakadiCursor topicPosition, final List<String> currentBatch)
+    private void sendBatch(final NakadiCursor topicPosition, final List<byte[]> currentBatch)
             throws IOException {
         // create stream event batch for current partition and send it; if there were
         // no events, it will be just a keep-alive
-        final String streamEvent = createStreamEvent(cursorConverter.convert(topicPosition), currentBatch);
-        final byte[] batchBytes = streamEvent.getBytes(UTF8);
-        outputStream.write(batchBytes);
-        bytesFlushedMeter.mark(batchBytes.length);
-        outputStream.flush();
+        final int batchBytesCount = writeStreamEvent(outputStream, cursorConverter.convert(topicPosition),
+                currentBatch);
+        bytesFlushedMeter.mark(batchBytesCount);
     }
 
     public void close() throws IOException {

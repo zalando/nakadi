@@ -134,15 +134,15 @@ public class KafkaFactory {
         }
     }
 
-    public Consumer<String, String> getConsumer(final Properties properties) {
+    public Consumer<String, byte[]> getConsumer(final Properties properties) {
         return new KafkaConsumer<>(properties);
     }
 
-    public Consumer<String, String> getConsumer() {
+    public Consumer<String, byte[]> getConsumer() {
         return getConsumer(kafkaLocationManager.getKafkaConsumerProperties());
     }
 
-    public Consumer<String, String> getConsumer(final String clientId) {
+    public Consumer<String, byte[]> getConsumer(final String clientId) {
         final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
         // properties.put("client.id", clientId);
         return this.getConsumer(properties);

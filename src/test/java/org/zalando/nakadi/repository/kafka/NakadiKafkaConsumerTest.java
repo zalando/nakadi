@@ -18,6 +18,8 @@ import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.utils.TestUtils;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -51,7 +53,7 @@ public class NakadiKafkaConsumerTest {
     public void whenCreateConsumerThenKafkaConsumerConfiguredCorrectly() {
 
         // ARRANGE //
-        final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
+        final KafkaConsumer<String, byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
 
         final Class<List<TopicPartition>> topicPartitionListClass = (Class) List.class;
         final ArgumentCaptor<List<TopicPartition>> partitionsCaptor = ArgumentCaptor.forClass(topicPartitionListClass);
@@ -98,18 +100,18 @@ public class NakadiKafkaConsumerTest {
     public void whenReadEventsThenGetRightEvents() {
 
         // ARRANGE //
-        final String event1 = randomString();
-        final String event2 = randomString();
+        final byte[] event1 = randomString().getBytes(UTF_8);
+        final byte[] event2 = randomString().getBytes(UTF_8);
         final int event1Offset = randomUInt();
         final int event2Offset = randomUInt();
-        final ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(ImmutableMap.of(
+        final ConsumerRecords<String, byte[]> consumerRecords = new ConsumerRecords<>(ImmutableMap.of(
                     new TopicPartition(TOPIC, PARTITION),
                     ImmutableList.of(new ConsumerRecord<>(TOPIC, PARTITION, event1Offset, "k1", event1),
                         new ConsumerRecord<>(TOPIC, PARTITION, event2Offset, "k2", event2))));
         final Timeline timeline = createFakeTimeline(TOPIC);
-        final ConsumerRecords<String, String> emptyRecords = new ConsumerRecords<>(ImmutableMap.of());
+        final ConsumerRecords<String, byte[]> emptyRecords = new ConsumerRecords<>(ImmutableMap.of());
 
-        final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
+        final KafkaConsumer<String, byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
         final ArgumentCaptor<Long> pollTimeoutCaptor = ArgumentCaptor.forClass(Long.class);
         when(kafkaConsumerMock.poll(pollTimeoutCaptor.capture())).thenReturn(consumerRecords, emptyRecords);
 
@@ -152,7 +154,7 @@ public class NakadiKafkaConsumerTest {
 
         int numberOfNakadiExceptions = 0;
         for (final Exception exception : exceptions) {
-            final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
+            final KafkaConsumer<String, byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
             when(kafkaConsumerMock.poll(POLL_TIMEOUT)).thenThrow(exception);
 
             try {
@@ -177,7 +179,7 @@ public class NakadiKafkaConsumerTest {
     @SuppressWarnings("unchecked")
     public void whenCloseThenKafkaConsumerIsClosed() {
         // ARRANGE //
-        final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
+        final KafkaConsumer<String, byte[]> kafkaConsumerMock = mock(KafkaConsumer.class);
         final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(kafkaConsumerMock,
                 ImmutableList.of(), POLL_TIMEOUT, createFakeTimeline(TOPIC));
         // ACT //
