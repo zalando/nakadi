@@ -941,6 +941,7 @@ paths:
         - $ref: '#/parameters/StreamLimit'
         - $ref: '#/parameters/BatchFlushTimeout'
         - $ref: '#/parameters/StreamTimeout'
+        - $ref: '#/parameters/CommitTimeout'
         - $ref: '#/parameters/StreamKeepAliveLimit'
         - name: X-Flow-Id
           in: header
@@ -2267,6 +2268,20 @@ parameters:
     format: int32
     required: false
     default: 0
+
+  CommitTimeout:
+    name: commit_timeout
+    in: query
+    description: |
+      Maximum time in seconds a stream will wait for a commit before being closed by the server. If the application
+      streaming has consumed a batch but did not commit this batch within `commit_timeout` seconds, then the stream is
+      closed.
+
+      The minimum value is 60 and the maximum value is 300.
+    type: number
+    format: int32
+    required: false
+    default: 60
 
   SubscriptionId:
     name: subscription_id

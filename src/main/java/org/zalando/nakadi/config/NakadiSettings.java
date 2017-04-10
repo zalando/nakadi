@@ -12,7 +12,8 @@ public class NakadiSettings {
     private final int defaultTopicReplicaFactor;
     private final long defaultTopicRetentionMs;
     private final long defaultTopicRotationMs;
-    private final long defaultCommitTimeoutSeconds;
+    private final long minCommitTimeoutSeconds;
+    private final long maxCommitTimeoutSeconds;
     private final long kafkaPollTimeoutMs;
     private final long kafkaSendTimeoutMs;
     private final long timelineWaitTimeoutMs;
@@ -25,7 +26,8 @@ public class NakadiSettings {
                           @Value("${nakadi.topic.default.replicaFactor}") final int defaultTopicReplicaFactor,
                           @Value("${nakadi.topic.default.retentionMs}") final long defaultTopicRetentionMs,
                           @Value("${nakadi.topic.default.rotationMs}") final long defaultTopicRotationMs,
-                          @Value("${nakadi.stream.default.commitTimeout}") final long defaultCommitTimeoutSeconds,
+                          @Value("${nakadi.stream.default.minCommitTimeout}") final long minCommitTimeoutSeconds,
+                          @Value("${nakadi.stream.default.maxCommitTimeout}") final long maxCommitTimeoutSeconds,
                           @Value("${nakadi.kafka.poll.timeoutMs}") final long kafkaPollTimeoutMs,
                           @Value("${nakadi.kafka.send.timeoutMs}") final long kafkaSendTimeoutMs,
                           @Value("${nakadi.timeline.wait.timeoutMs}") final long timelineWaitTimeoutMs,
@@ -36,7 +38,8 @@ public class NakadiSettings {
         this.defaultTopicReplicaFactor = defaultTopicReplicaFactor;
         this.defaultTopicRetentionMs = defaultTopicRetentionMs;
         this.defaultTopicRotationMs = defaultTopicRotationMs;
-        this.defaultCommitTimeoutSeconds = defaultCommitTimeoutSeconds;
+        this.minCommitTimeoutSeconds = minCommitTimeoutSeconds;
+        this.maxCommitTimeoutSeconds = maxCommitTimeoutSeconds;
         this.kafkaPollTimeoutMs = kafkaPollTimeoutMs;
         this.kafkaSendTimeoutMs = kafkaSendTimeoutMs;
         this.eventMaxBytes = eventMaxBytes;
@@ -64,8 +67,12 @@ public class NakadiSettings {
         return defaultTopicRotationMs;
     }
 
-    public long getDefaultCommitTimeoutSeconds() {
-        return defaultCommitTimeoutSeconds;
+    public long getMinCommitTimeoutSeconds() {
+        return minCommitTimeoutSeconds;
+    }
+
+    public long getMaxCommitTimeoutSeconds() {
+        return maxCommitTimeoutSeconds;
     }
 
     public long getKafkaPollTimeoutMs() {

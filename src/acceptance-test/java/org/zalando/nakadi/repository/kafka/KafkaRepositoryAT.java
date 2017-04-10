@@ -1,10 +1,5 @@
 package org.zalando.nakadi.repository.kafka;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
 import kafka.admin.AdminUtils;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
@@ -25,6 +20,13 @@ import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.webservice.BaseAT;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
@@ -41,7 +43,8 @@ public class KafkaRepositoryAT extends BaseAT {
     private static final int DEFAULT_REPLICA_FACTOR = 1;
     private static final int MAX_TOPIC_PARTITION_COUNT = 10;
     private static final int DEFAULT_TOPIC_ROTATION = 50000000;
-    private static final int DEFAULT_COMMIT_TIMEOUT = 60;
+    private static final int MIN_COMMIT_TIMEOUT = 60;
+    private static final int MAX_COMMIT_TIMEOUT = 300;
     private static final int ZK_SESSION_TIMEOUT = 30000;
     private static final int ZK_CONNECTION_TIMEOUT = 10000;
     private static final int NAKADI_SEND_TIMEOUT = 10000;
@@ -70,7 +73,8 @@ public class KafkaRepositoryAT extends BaseAT {
                 DEFAULT_REPLICA_FACTOR,
                 DEFAULT_TOPIC_RETENTION,
                 DEFAULT_TOPIC_ROTATION,
-                DEFAULT_COMMIT_TIMEOUT,
+                MIN_COMMIT_TIMEOUT,
+                MAX_COMMIT_TIMEOUT,
                 NAKADI_POLL_TIMEOUT,
                 NAKADI_SEND_TIMEOUT,
                 TIMELINE_WAIT_TIMEOUT,

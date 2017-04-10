@@ -129,12 +129,12 @@ public class HilaRebalanceAT extends BaseAT {
                         eventType.getName(), "blah" + x, String.valueOf(x % 8)));
 
         final TestStreamingClient clientA = TestStreamingClient
-                .create(URL, subscription.getId(), "")
+                .create(URL, subscription.getId(), "commit_timeout=5")
                 .start();
         waitFor(() -> assertThat(clientA.getBatches(), hasSize(2)));
 
         final TestStreamingClient clientB = TestStreamingClient
-                .create(URL, subscription.getId(), "")
+                .create(URL, subscription.getId(), "commit_timeout=5")
                 .start();
 
         // after commit_timeout of first client exceeds it is closed and all events are resent to second client

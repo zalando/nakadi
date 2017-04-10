@@ -49,7 +49,9 @@ nakadi:
       rotationMs: 86400000 # 1 day
   stream:
     timeoutMs: 31536000000 # 1 year :-P
-    default.commitTimeout: 60 # 1 minute
+    default:
+      minCommitTimeout: 60 # 1 minute
+      maxCommitTimeout: 300
     maxConnections: 5
   featureToggle.default: false
   kafka:
@@ -95,7 +97,7 @@ spring:
 nakadi:
   stream:
     default:
-      commitTimeout: 5 # seconds
+      minCommitTimeout: 5 # seconds
   subscription:
     maxPartitions: 30
 
