@@ -1,8 +1,8 @@
 package org.zalando.nakadi.domain;
 
 public class NakadiCursorLag {
-    final private NakadiCursor firstCursor;
-    final private NakadiCursor lastCursor;
+    private final NakadiCursor firstCursor;
+    private final NakadiCursor lastCursor;
     private long lag;
 
     public NakadiCursorLag(final NakadiCursor first, final NakadiCursor last) {
