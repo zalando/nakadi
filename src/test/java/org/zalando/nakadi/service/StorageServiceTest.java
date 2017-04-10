@@ -4,14 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
-import org.zalando.nakadi.repository.db.TimelineDbRepository;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
@@ -30,15 +27,7 @@ public class StorageServiceTest {
     @Before
     public void setUp() {
         storageDbRepository = mock(StorageDbRepository.class);
-        final TimelineDbRepository timelineDbRepository = mock(TimelineDbRepository.class);
-        final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
-        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
-            final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
-            callback.doInTransaction(null);
-            return null;
-        });
-        storageService = new StorageService(objectMapper, storageDbRepository, timelineDbRepository,
-                transactionTemplate);
+        storageService = new StorageService(objectMapper, storageDbRepository);
     }
 
     @Test

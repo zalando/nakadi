@@ -8,14 +8,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.runtime.NoStorageException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
-import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.problem.Problem;
 
 import java.io.IOException;
@@ -34,18 +32,12 @@ public class StorageService {
 
     private final ObjectMapper objectMapper;
     private final StorageDbRepository storageDbRepository;
-    private final TimelineDbRepository timelineDbRepository;
-    private final TransactionTemplate transactionTemplate;
 
     @Autowired
     public StorageService(final ObjectMapper objectMapper,
-                          final StorageDbRepository storageDbRepository,
-                          final TimelineDbRepository timelineDbRepository,
-                          final TransactionTemplate transactionTemplate) {
+                          final StorageDbRepository storageDbRepository) {
         this.objectMapper = objectMapper;
         this.storageDbRepository = storageDbRepository;
-        this.timelineDbRepository = timelineDbRepository;
-        this.transactionTemplate = transactionTemplate;
     }
 
     public Result<List<Storage>> listStorages() {
@@ -117,10 +109,7 @@ public class StorageService {
 
     public Result<Void> deleteStorage(final String id) {
         try {
-            transactionTemplate.execute(action -> {
-                storageDbRepository.deleteStorage(id);
-                return null;
-            });
+            storageDbRepository.deleteStorage(id);
         } catch (final NoStorageException e) {
             return Result.notFound("No storage with ID " + id);
         } catch (final StorageIsUsedException e) {
