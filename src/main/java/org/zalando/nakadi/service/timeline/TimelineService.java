@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,7 +132,14 @@ public class TimelineService {
         if (timelines.isEmpty()) {
             return Collections.singletonList(getFakeTimeline(eventTypeCache.getEventType(eventType)));
         } else {
-            return timelines.stream().filter(t -> t.getSwitchedAt() != null).collect(Collectors.toList());
+            final Date currentDate = new Date();
+            return timelines.stream()
+                    .filter(t -> {
+                        final boolean timelineExpired = t.getCleanedUpAt() != null
+                                && currentDate.after(t.getCleanedUpAt());
+                        return t.getSwitchedAt() != null && !timelineExpired;
+                    })
+                    .collect(Collectors.toList());
         }
     }
 
