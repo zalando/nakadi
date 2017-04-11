@@ -181,6 +181,7 @@ public class EventTypeService {
 
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
+            partitionResolver.validate(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
@@ -199,6 +200,9 @@ public class EventTypeService {
             return Result.problem(e.asProblem());
         } catch (final NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", eventTypeName);
+            return Result.problem(e.asProblem());
+        } catch (final NoSuchPartitionStrategyException e) {
+            LOG.debug("Partition strategy does not exist", e);
             return Result.problem(e.asProblem());
         } catch (final NakadiException e) {
             LOG.error("Unable to update event type", e);
