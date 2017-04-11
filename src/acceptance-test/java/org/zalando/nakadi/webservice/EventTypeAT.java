@@ -114,6 +114,20 @@ public class EventTypeAT extends BaseAT {
                 .put(ENDPOINT + "/" + eventType.getName()).then().statusCode(HttpStatus.SC_OK);
     }
 
+    @Test
+    public void whenUpdatePartitioningStrategyToNonExistingStrategyThen422() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final String bodyRandom = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(bodyRandom).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
+
+        eventType.setPartitionStrategy("random1");
+        final String bodyUserDefined = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(bodyUserDefined).header("accept", "application/json").contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName()).then().statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    }
+
     @After
     public void tearDown() {
         final DriverManagerDataSource datasource = new DriverManagerDataSource(
