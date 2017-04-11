@@ -2,22 +2,6 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
-import org.apache.curator.framework.recipes.locks.InterProcessLock;
-import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
-import org.zalando.nakadi.util.UUIDGenerator;
-
-import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,6 +19,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import javax.annotation.Nullable;
+import org.apache.curator.framework.recipes.locks.InterProcessLock;
+import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 @Service
 @Profile("!test")
@@ -100,9 +99,7 @@ public class TimelineSyncImpl implements TimelineSync {
                 }
 
                 LOG.info("Registering node in zk");
-                zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL)
-                        .forPath(toZkPath("/nodes/" + nodeId), "0".getBytes(Charsets.UTF_8));
-
+                updateSelfVersionTo(0);
             } catch (final Exception e) {
                 LOG.error("Failed to initialize timeline synchronization", e);
                 throw new RuntimeException(e);
@@ -150,14 +147,23 @@ public class TimelineSyncImpl implements TimelineSync {
                 }
             }
             try {
-                zooKeeperHolder.get().setData().forPath(
-                        toZkPath("/nodes/" + nodeId), String.valueOf(change.version).getBytes(Charsets.UTF_8));
+                updateSelfVersionTo(change.version);
             } catch (final Exception ex) {
                 LOG.error("Failed to update node version in zk. Will try to reprocess again", ex);
                 return;
             }
             queuedChanges.poll();
             LOG.info("Delayed change {} successfully processed", change);
+        }
+    }
+
+    private void updateSelfVersionTo(final int version) throws Exception {
+        final String zkPath = toZkPath("/nodes/" + nodeId);
+        final byte[] versionBytes = String.valueOf(version).getBytes(Charsets.UTF_8);
+        try {
+            zooKeeperHolder.get().setData().forPath(zkPath, versionBytes);
+        } catch (final KeeperException.NoNodeException ex) {
+            zooKeeperHolder.get().create().withMode(CreateMode.EPHEMERAL).forPath(zkPath, versionBytes);
         }
     }
 
