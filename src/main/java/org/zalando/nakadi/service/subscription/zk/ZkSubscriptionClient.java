@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -144,7 +145,8 @@ public interface ZkSubscriptionClient {
      * @param listener callback which is called when cursor reset happens
      * @return {@link org.zalando.nakadi.service.subscription.zk.ZKSubscription}
      */
-    ZKSubscription subscribeForCursorsReset(Runnable listener);
+    ZKSubscription subscribeForCursorsReset(Runnable listener)
+            throws NakadiRuntimeException, UnsupportedOperationException;
 
     /**
      * Gets current status of cursor reset request.

@@ -271,7 +271,10 @@ public class CursorsService {
         validateSubscriptionReadScopes(subscription, client);
 
         final ZkSubscriptionClient zkClient = new CuratorZkSubscriptionClient(subscriptionId, zkHolder.get());
-        zkClient.resetCursors(cursors, TimeUnit.SECONDS.toMillis(nakadiSettings.getDefaultCommitTimeoutSeconds()));
+        // add 1 second to commit timeout in order to give time to finish reset if there is uncommitted events
+        final long timeout = TimeUnit.SECONDS.toMillis(nakadiSettings.getDefaultCommitTimeoutSeconds()) +
+                TimeUnit.SECONDS.toMillis(1);
+        zkClient.resetCursors(cursors, timeout);
     }
 
     private void validateSubscriptionCursors(final Subscription subscription, final List<NakadiCursor> cursors)

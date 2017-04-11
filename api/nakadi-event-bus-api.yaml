@@ -907,6 +907,10 @@ paths:
           description: Subscription not found
           schema:
             $ref: '#/definitions/Problem'
+        '409':
+          description: Cursors reset is already in progress for provided subscription
+          schema:
+            $ref: '#/definitions/Problem'
         '422':
           description: Unprocessable Entity
           schema:

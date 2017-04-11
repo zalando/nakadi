@@ -76,12 +76,14 @@ class StreamingState extends State {
         this.lastCommitMillis = System.currentTimeMillis();
         scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
 
-        getLog().debug("Register cursor reset listener");
-        cursorResetSubscription = getZk().subscribeForCursorsReset(() -> {
-            final String message = "Resetting subscription cursors";
-            sendMetadata(message);
-            shutdownGracefully(message);
-        });
+        cursorResetSubscription = getZk().subscribeForCursorsReset(
+                () -> addTask(this::resetSubscriptionCursorsCallback));
+    }
+
+    private void resetSubscriptionCursorsCallback() {
+        final String message = "Resetting subscription cursors";
+        sendMetadata(message);
+        shutdownGracefully(message);
     }
 
     private void checkCommitTimeout() {
@@ -269,7 +271,6 @@ class StreamingState extends State {
             }
         }
 
-        getLog().debug("Unregister cursor reset listener");
         if (cursorResetSubscription != null) {
             cursorResetSubscription.cancel();
             cursorResetSubscription = null;

@@ -21,6 +21,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
@@ -36,6 +37,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -153,7 +155,7 @@ public class CursorsController {
     }
 
     private List<NakadiCursor> convertToNakadiCursors(
-            @Valid @RequestBody final ItemsWrapper<? extends SubscriptionCursorWithoutToken> cursors) throws
+            final ItemsWrapper<? extends SubscriptionCursorWithoutToken> cursors) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException {
         final List<NakadiCursor> nakadiCursors = new ArrayList<>();
         for (final SubscriptionCursorWithoutToken cursor : cursors.getItems()) {
@@ -167,6 +169,13 @@ public class CursorsController {
                                                                 final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RequestInProgressException.class)
+    public ResponseEntity<Problem> handleRequestInProgressException(final RequestInProgressException ex,
+                                                                    final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
     }
 
 }
