@@ -65,16 +65,31 @@ public class TimelineCleanupJob {
     }
 
     private void markTimelineDeleted(final Timeline timeline) {
+        boolean timelineUpdatedInDB = false;
+        boolean cacheUpdated = false;
         try {
             timeline.setDeleted(true);
             timelineDbRepository.updateTimelime(timeline);
+            timelineUpdatedInDB = true;
+
             eventTypeCache.updated(timeline.getEventType());
+            cacheUpdated = true;
         } catch (final InconsistentStateException e) {
             LOG.error("Failed to serialize timeline to DB when marking timeline as deleted", e);
         } catch (final RepositoryProblemException e) {
             LOG.error("DB failure when marking timeline as deleted", e);
         } catch (Exception e) {
             LOG.error("ZK error occurred when updating ET cache", e);
+        } finally {
+            // revert timeline state in a case if cache wasn't updated successfully
+            if (timelineUpdatedInDB && !cacheUpdated) {
+                try {
+                    timeline.setDeleted(false);
+                    timelineDbRepository.updateTimelime(timeline);
+                } catch (final Exception e) {
+                    LOG.error("Failed to revert timeline state", e);
+                }
+            }
         }
     }
 
