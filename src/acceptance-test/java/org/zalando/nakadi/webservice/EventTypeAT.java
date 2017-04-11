@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
+import java.util.Collections;
 import java.util.Set;
 
 import static com.jayway.restassured.RestAssured.given;
@@ -107,7 +108,8 @@ public class EventTypeAT extends BaseAT {
 
         given().body(bodyRandom).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
 
-        eventType.setPartitionStrategy(PartitionStrategy.USER_DEFINED_STRATEGY);
+        eventType.setPartitionStrategy(PartitionStrategy.HASH_STRATEGY);
+        eventType.setPartitionKeyFields(Collections.singletonList("foo"));
         final String bodyUserDefined = MAPPER.writer().writeValueAsString(eventType);
 
         given().body(bodyUserDefined).header("accept", "application/json").contentType(JSON)
