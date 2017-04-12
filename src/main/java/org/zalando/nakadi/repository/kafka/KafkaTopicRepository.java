@@ -1,27 +1,9 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
+import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
@@ -47,11 +29,33 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
@@ -417,6 +421,19 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
         KafkaCursor.fromNakadiCursor(position);
+    }
+
+    @Override
+    public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
+         try {
+            doWithZkUtils(zkUtils -> {
+                final Properties topicProps = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
+                topicProps.setProperty("retention.ms", Long.toString(retentionMs));
+                AdminUtils.changeTopicConfig(zkUtils, topic, topicProps);
+            });
+        } catch (final Exception e) {
+            throw new TopicConfigException("Unable to update retention time for topic " + topic, e);
+        }
     }
 
     private void validateCursorForNulls(final NakadiCursor cursor) throws InvalidCursorException {
