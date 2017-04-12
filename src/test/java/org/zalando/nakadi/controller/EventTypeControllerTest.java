@@ -780,15 +780,15 @@ public class EventTypeControllerTest {
     public void whenDuplicatedEventTypeThenTopicIsRemoved() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        Mockito.doThrow(DuplicatedEventTypeNameException.class)
+        doThrow(DuplicatedEventTypeNameException.class)
                 .when(eventTypeRepository).saveEventType(any(EventType.class));
-        Mockito.when(topicRepository.createTopic(0, 150L)).thenReturn("test-topic");
+        when(topicRepository.createTopic(0, 150L)).thenReturn("test-topic");
 
         postEventType(eventType)
                 .andExpect(status().isConflict())
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.CONFLICT))));
 
-        Mockito.verify(topicRepository).deleteTopic("test-topic");
+        verify(topicRepository).deleteTopic("test-topic");
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
