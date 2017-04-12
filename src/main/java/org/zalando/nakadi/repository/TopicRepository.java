@@ -10,6 +10,11 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collection;
@@ -42,4 +47,6 @@ public interface TopicRepository {
             ServiceUnavailableException;
 
     void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
+
+    void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
 }

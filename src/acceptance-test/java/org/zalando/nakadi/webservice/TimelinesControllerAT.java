@@ -6,7 +6,6 @@ import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
-import org.json.JSONObject;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -32,7 +31,7 @@ public class TimelinesControllerAT extends BaseAT {
 
     @Test
     public void testCreateTimelineFromFake() throws Exception {
-        postTimeline(eventType);
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
         RestAssured.given()
                 .contentType(ContentType.JSON)
                 .get("event-types/{et_name}/timelines", eventType.getName())
@@ -45,8 +44,8 @@ public class TimelinesControllerAT extends BaseAT {
 
     @Test
     public void testCreateTimelineFromReal() throws Exception {
-        postTimeline(eventType);
-        postTimeline(eventType);
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
         RestAssured.given()
                 .contentType(ContentType.JSON)
                 .get("event-types/{et_name}/timelines", eventType.getName())
@@ -62,7 +61,7 @@ public class TimelinesControllerAT extends BaseAT {
 
     @Test
     public void testDeleteTimelineWhenOnlyOneTimeline() throws Exception {
-        postTimeline(eventType);
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
         final String uuid = RestAssured.given()
                 .contentType(ContentType.JSON)
                 .get("event-types/{et_name}/timelines", eventType.getName())
@@ -79,8 +78,8 @@ public class TimelinesControllerAT extends BaseAT {
 
     @Test
     public void testDeleteTimelineWhenMoreThanOneTimelineThenError() throws Exception {
-        postTimeline(eventType);
-        postTimeline(eventType);
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
         final String uuid = RestAssured.given()
                 .contentType(ContentType.JSON)
                 .get("event-types/{et_name}/timelines", eventType.getName())
@@ -95,15 +94,6 @@ public class TimelinesControllerAT extends BaseAT {
                 .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
                 .body("detail", Matchers.stringContainsInOrder(ImmutableList.of("Timeline with id:",
                         "could not be deleted. It is possible to delete a timeline if there is only one timeline")));
-    }
-
-    private void postTimeline(final EventType eventType) {
-        RestAssured.given()
-                .contentType(ContentType.JSON)
-                .body(new JSONObject().put("storage_id", "default"))
-                .post("event-types/{et_name}/timelines", eventType.getName())
-                .then()
-                .statusCode(HttpStatus.SC_CREATED);
     }
 
 }

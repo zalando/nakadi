@@ -3,6 +3,7 @@ package org.zalando.nakadi.repository.kafka;
 import com.google.common.base.Preconditions;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
+import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
@@ -28,6 +29,7 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -420,6 +422,19 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public void validateCommitCursor(final NakadiCursor position) throws InvalidCursorException {
         KafkaCursor.fromNakadiCursor(position);
+    }
+
+    @Override
+    public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
+         try {
+            doWithZkUtils(zkUtils -> {
+                final Properties topicProps = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
+                topicProps.setProperty("retention.ms", Long.toString(retentionMs));
+                AdminUtils.changeTopicConfig(zkUtils, topic, topicProps);
+            });
+        } catch (final Exception e) {
+            throw new TopicConfigException("Unable to update retention time for topic " + topic, e);
+        }
     }
 
     private void validateCursorForNulls(final NakadiCursor cursor) throws InvalidCursorException {
