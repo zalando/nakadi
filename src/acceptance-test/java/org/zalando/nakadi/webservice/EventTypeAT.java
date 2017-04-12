@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 
 public class EventTypeAT extends BaseAT {
@@ -134,8 +135,8 @@ public class EventTypeAT extends BaseAT {
         Assert.assertEquals(checkingRetentionTime, eventType.getOptions().getRetentionTime());
         TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).stream()
                 .map(Timeline::getTopic)
-                .map(topic -> KafkaTestHelper.getTopicRetentionTime(topic, ZOOKEEPER_URL))
-                .forEach(retentionTime -> Assert.assertEquals(checkingRetentionTime, retentionTime));
+                .forEach(topic -> waitFor(() -> Assert.assertEquals(checkingRetentionTime,
+                        KafkaTestHelper.getTopicRetentionTime(topic, ZOOKEEPER_URL))));
     }
 
     @After
