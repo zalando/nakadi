@@ -13,12 +13,14 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NotFoundException;
@@ -27,6 +29,8 @@ import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
@@ -168,6 +172,13 @@ public class TimelineService {
 
     public TopicRepository getDefaultTopicRepository() throws TopicRepositoryException {
         return topicRepositoryHolder.getTopicRepository(defaultStorage);
+    }
+
+    public EventConsumer createEventConsumer(final String clientId, final List<NakadiCursor> positions)
+            throws NakadiException, InvalidCursorException {
+        final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(clientId, this, timelineSync);
+        result.reassign(positions);
+        return result;
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline) {

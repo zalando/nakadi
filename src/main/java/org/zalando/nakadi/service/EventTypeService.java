@@ -20,6 +20,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
@@ -110,21 +111,30 @@ public class EventTypeService {
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
+
             final String topicName = topicRepository.createTopic(
                     partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
                     eventType.getOptions().getRetentionTime());
             eventType.setTopic(topicName);
-            eventTypeRepository.saveEventType(eventType);
-            return Result.ok();
-        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException e) {
-            LOG.debug("Failed to create EventType.", e);
-            if (null != eventType.getTopic()) {
-                try {
-                    topicRepository.deleteTopic(eventType.getTopic());
-                } catch (final TopicDeletionException ex) {
-                    LOG.warn("failed to delete topic for event type that failed to be created", ex);
+
+            boolean eventTypeCreated = false;
+            try {
+                eventTypeRepository.saveEventType(eventType);
+                eventTypeCreated = true;
+            }
+            finally {
+                if (!eventTypeCreated) {
+                    try {
+                        topicRepository.deleteTopic(eventType.getTopic());
+                    } catch (final TopicDeletionException ex) {
+                        LOG.error("failed to delete topic for event type that failed to be created", ex);
+                    }
                 }
             }
+            return Result.ok();
+        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
+                DuplicatedEventTypeNameException e) {
+            LOG.debug("Failed to create EventType.", e);
             return Result.problem(e.asProblem());
         } catch (final NakadiException e) {
             LOG.error("Error creating event type " + eventType, e);

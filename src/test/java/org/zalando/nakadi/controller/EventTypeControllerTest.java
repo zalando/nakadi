@@ -776,6 +776,21 @@ public class EventTypeControllerTest {
                 .andExpect(content().string(matchesProblem(expectedProblem)));
     }
 
+    @Test
+    public void whenDuplicatedEventTypeThenTopicIsRemoved() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        Mockito.doThrow(DuplicatedEventTypeNameException.class)
+                .when(eventTypeRepository).saveEventType(any(EventType.class));
+        Mockito.when(topicRepository.createTopic(0, 150L)).thenReturn("test-topic");
+
+        postEventType(eventType)
+                .andExpect(status().isConflict())
+                .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.CONFLICT))));
+
+        Mockito.verify(topicRepository).deleteTopic("test-topic");
+    }
+
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
         return mockMvc.perform(delete("/event-types/" + eventTypeName));
     }

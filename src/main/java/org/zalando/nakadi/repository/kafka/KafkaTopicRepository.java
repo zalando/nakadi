@@ -1,6 +1,25 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.utils.ZkUtils;
@@ -358,20 +377,22 @@ public class KafkaTopicRepository implements TopicRepository {
     public EventConsumer createEventConsumer(final String clientId, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
 
-        final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
-
-        Preconditions.checkArgument(
-                timelines.size() == 1,
-                "Single topic repository responsible for one timeline only"
-        );
-
-        final List<KafkaCursor> kafkaCursors = this.convertToKafkaCursors(cursors)
-                .stream()
-                .map(cursor -> cursor.addOffset(1)) // Position on data to consume, not the existing one
+        final Map<NakadiCursor, KafkaCursor> cursorMapping = this.convertToKafkaCursors(cursors);
+        final Map<TopicPartition, Timeline> timelineMap = cursorMapping.entrySet().stream()
+                .collect(Collectors.toMap(
+                        entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),
+                        entry -> entry.getKey().getTimeline(),
+                        (v1, v2) -> v2));
+        final List<KafkaCursor> kafkaCursors = cursorMapping.values().stream()
+                .map(kafkaCursor -> kafkaCursor.addOffset(1))
                 .collect(toList());
 
-        return kafkaFactory.createNakadiConsumer(clientId, kafkaCursors, nakadiSettings.getKafkaPollTimeoutMs(),
-                timelines.get(0));
+        return new NakadiKafkaConsumer(
+                kafkaFactory.getConsumer(clientId),
+                kafkaCursors,
+                timelineMap,
+                nakadiSettings.getKafkaPollTimeoutMs());
+
     }
 
     public int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InvalidCursorException {
@@ -383,12 +404,12 @@ public class KafkaTopicRepository implements TopicRepository {
         convertToKafkaCursors(cursors);
     }
 
-    private List<KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
+    private Map<NakadiCursor, KafkaCursor> convertToKafkaCursors(final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
         final List<Timeline> timelines = cursors.stream().map(NakadiCursor::getTimeline).distinct().collect(toList());
         final List<PartitionStatistics> statistics = loadTopicStatistics(timelines);
 
-        final List<KafkaCursor> result = new ArrayList<>(cursors.size());
+        final Map<NakadiCursor, KafkaCursor> result = new HashMap<>();
         for (final NakadiCursor position : cursors) {
             validateCursorForNulls(position);
             final Optional<PartitionStatistics> partition =
@@ -410,7 +431,7 @@ public class KafkaTopicRepository implements TopicRepository {
             if (toCheck.compareTo(newestPosition) > 0) {
                 throw new InvalidCursorException(UNAVAILABLE, position);
             } else {
-                result.add(toCheck);
+                result.put(position, toCheck);
             }
         }
         return result;
