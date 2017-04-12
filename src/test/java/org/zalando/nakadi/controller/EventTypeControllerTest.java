@@ -128,7 +128,6 @@ public class EventTypeControllerTest {
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaEvolutionService();
-    private final TimelineService timelineService = mock(TimelineService.class);
 
     private MockMvc mockMvc;
 
