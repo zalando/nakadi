@@ -164,7 +164,7 @@ public class EventTypeCacheTestAT {
 
         etc.created(et.getName());
         final Optional<Timeline> timeline = etc.getActiveTimeline(et.getName());
-        Assert.assertEquals(Integer.valueOf(1), timeline.get().getOrder());
+        Assert.assertEquals(1, timeline.get().getOrder());
     }
 
     @Test

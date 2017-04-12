@@ -86,6 +86,6 @@ public class CursorConverterImpl implements CursorConverter {
     public SubscriptionCursor convert(final NakadiCursor position, final String token) {
         final Cursor oldCursor = convert(position);
         return new SubscriptionCursor(
-                oldCursor.getPartition(), oldCursor.getOffset(), position.getTimeline().getEventType(), token);
+                oldCursor.getPartition(), oldCursor.getOffset(), position.getEventType(), token);
     }
 }

@@ -13,6 +13,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
@@ -25,6 +26,7 @@ import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.TimelineView;
 
 import java.io.IOException;
 import java.util.List;
@@ -87,6 +89,28 @@ public class NakadiTestUtils {
                 .body(format("[{0}]", event))
                 .contentType(JSON)
                 .post(format("/event-types/{0}/events", eventType));
+    }
+
+    public static void createTimeline(final String eventType) {
+        given()
+                .body("{\"storage_id\": \"default\"}")
+                .contentType(JSON)
+                .post(format("/event-types/{0}/timelines", eventType))
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    public static void deleteTimeline(final String eventType) throws IOException {
+        final Response response = given()
+                .accept(JSON)
+                .get(format("/event-types/{0}/timelines", eventType));
+        final String data = response.print();
+        final TimelineView[] timelines = MAPPER.readerFor(TimelineView[].class).readValue(data);
+        Assert.assertEquals(1, timelines.length);
+        given()
+                .delete(format("/event-types/{0}/timelines/{1}", eventType, timelines[0].getId().toString()))
+                .then()
+                .statusCode(HttpStatus.SC_OK);
     }
 
     public static void publishBusinessEventWithUserDefinedPartition(final String eventType,
@@ -172,7 +196,8 @@ public class NakadiTestUtils {
     public static ItemsWrapper<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription)
             throws IOException {
         final Response response = given().get(format("/subscriptions/{0}/cursors", subscription.getId()));
-        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
+        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {
+        });
     }
 
     public static void switchTimelineDefaultStorage(final EventType eventType) {

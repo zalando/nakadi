@@ -27,7 +27,7 @@ import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
-import org.zalando.nakadi.view.TopicPartition;
+import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -50,12 +50,12 @@ public class PartitionsControllerTest {
     private static final String TEST_PARTITION = "0";
     private static final String UNKNOWN_PARTITION = "unknown-partition";
 
-    private static final TopicPartition TEST_TOPIC_PARTITION_0 = new TopicPartition(TEST_EVENT_TYPE, "0",
-            "000000000000000012", "000000000000000067");
-    private static final TopicPartition TEST_TOPIC_PARTITION_1 = new TopicPartition(TEST_EVENT_TYPE, "1",
-            "000000000000000043", "000000000000000098");
+    private static final EventTypePartitionView TEST_TOPIC_PARTITION_0 =
+            new EventTypePartitionView(TEST_EVENT_TYPE, "0", "000000000000000012", "000000000000000067");
+    private static final EventTypePartitionView TEST_TOPIC_PARTITION_1 =
+            new EventTypePartitionView(TEST_EVENT_TYPE, "1", "000000000000000043", "000000000000000098");
 
-    private static final List<TopicPartition> TEST_TOPIC_PARTITIONS = ImmutableList.of(
+    private static final List<EventTypePartitionView> TEST_TOPIC_PARTITIONS = ImmutableList.of(
             TEST_TOPIC_PARTITION_0,
             TEST_TOPIC_PARTITION_1);
 
