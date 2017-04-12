@@ -5,18 +5,32 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import javax.annotation.Nullable;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 public class Timeline {
 
     public static final int STARTING_ORDER = 0;
 
+    public boolean isFirstAfterFake() {
+        return order == STARTING_ORDER + 1;
+    }
+
     public interface StoragePosition {
+
+        NakadiCursor toNakadiCursor(Timeline timeline, String partition);
 
     }
 
     public static class KafkaStoragePosition implements StoragePosition {
         private List<Long> offsets;
+
+        public KafkaStoragePosition() {
+        }
+
+        public KafkaStoragePosition(final List<Long> offsets) {
+            this.offsets = offsets;
+        }
 
         public List<Long> getOffsets() {
             return offsets;
@@ -24,6 +38,14 @@ public class Timeline {
 
         public void setOffsets(final List<Long> offsets) {
             this.offsets = offsets;
+        }
+
+        @Override
+        public NakadiCursor toNakadiCursor(final Timeline timeline, final String partitionStr) {
+            final int partition = KafkaCursor.toKafkaPartition(partitionStr);
+
+            final KafkaCursor cursor = new KafkaCursor(timeline.getTopic(), partition, offsets.get(partition));
+            return cursor.toNakadiCursor(timeline);
         }
 
         @Override
@@ -89,11 +111,11 @@ public class Timeline {
         this.eventType = eventType;
     }
 
-    public Integer getOrder() {
+    public int getOrder() {
         return order;
     }
 
-    public void setOrder(final Integer order) {
+    public void setOrder(final int order) {
         this.order = order;
     }
 
@@ -137,6 +159,14 @@ public class Timeline {
 
     public void setLatestPosition(@Nullable final StoragePosition latestPosition) {
         this.latestPosition = latestPosition;
+    }
+
+    @Nullable
+    public NakadiCursor calculateNakadiLatestPosition(final String partition) {
+        if (null == latestPosition) {
+            return null;
+        }
+        return latestPosition.toNakadiCursor(this, partition);
     }
 
     @Nullable

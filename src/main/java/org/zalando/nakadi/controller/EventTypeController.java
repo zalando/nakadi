@@ -121,9 +121,11 @@ public class EventTypeController {
             final Errors errors,
             final NativeWebRequest request,
             final Client client) {
+        ValidationUtils.invokeValidator(eventTypeOptionsValidator, eventType.getOptions(), errors);
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
+
         final Result<Void> update = eventTypeService.update(name, eventType, client);
         if (!update.isSuccessful()) {
             return Responses.create(update.getProblem(), request);
@@ -139,4 +141,5 @@ public class EventTypeController {
         }
         return status(HttpStatus.OK).body(result.getValue());
     }
+
 }

@@ -1,21 +1,23 @@
 package org.zalando.nakadi.view;
 
-import org.zalando.nakadi.domain.Timeline;
-
 import java.util.Date;
 import java.util.UUID;
+import org.zalando.nakadi.domain.Timeline;
 
 public class TimelineView {
 
-    private final UUID id;
-    private final String eventType;
-    private final int order;
-    private final String storageId;
-    private final String topic;
-    private final Date createdAt;
-    private final Date switchedAt;
-    private final Date cleanedUpAt;
-    private final Timeline.StoragePosition latestPosition;
+    private UUID id;
+    private String eventType;
+    private int order;
+    private String storageId;
+    private String topic;
+    private Date createdAt;
+    private Date switchedAt;
+    private Date cleanedUpAt;
+    private Timeline.StoragePosition latestPosition;
+
+    public TimelineView() {
+    }
 
     public TimelineView(final Timeline timeline) {
         this.id = timeline.getId();

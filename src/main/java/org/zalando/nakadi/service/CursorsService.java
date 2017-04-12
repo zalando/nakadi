@@ -74,7 +74,7 @@ public class CursorsService {
      * It is guaranteed, that len(cursors) == len(result)
      **/
     public List<Boolean> commitCursors(final String streamId, final String subscriptionId,
-                                                  final List<NakadiCursor> cursors)
+                                       final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException {
 
@@ -84,7 +84,7 @@ public class CursorsService {
 
         final Map<EventTypePartition, List<NakadiCursor>> cursorsByPartition = cursors.stream()
                 .collect(Collectors.groupingBy(
-                        cursor -> new EventTypePartition(cursor.getTimeline().getEventType(), cursor.getPartition())));
+                        cursor -> new EventTypePartition(cursor.getEventType(), cursor.getPartition())));
 
         final HashMap<EventTypePartition, Iterator<Boolean>> partitionCommits = new HashMap<>();
         for (final EventTypePartition etPartition : cursorsByPartition.keySet()) {
@@ -98,11 +98,7 @@ public class CursorsService {
         }
 
         return cursors.stream()
-                .map(cursor -> {
-                    final EventTypePartition etPartition = new EventTypePartition(cursor.getTimeline().getEventType(),
-                            cursor.getPartition());
-                    return partitionCommits.get(etPartition).next();
-                })
+                .map(cursor -> partitionCommits.get(cursor.getEventTypePartition()).next())
                 .collect(Collectors.toList());
     }
 
@@ -117,8 +113,7 @@ public class CursorsService {
 
         final HashMap<EventTypePartition, String> partitionSessions = new HashMap<>();
         for (final NakadiCursor cursor : cursors) {
-            final EventTypePartition etPartition = new EventTypePartition(
-                    cursor.getTimeline().getEventType(), cursor.getPartition());
+            final EventTypePartition etPartition = cursor.getEventTypePartition();
             String partitionSession = partitionSessions.get(etPartition);
             if (partitionSession == null) {
                 partitionSession = getPartitionSession(subscriptionId, cursor.getTopic(), cursor);
@@ -179,7 +174,7 @@ public class CursorsService {
                     .collect(Collectors.toList());
 
             LOG.debug("[COMMIT_CURSORS] finished validation of {} cursor(s) for partition {} {}", cursors.size(),
-                    cursors.get(0).getTimeline().getEventType(), cursors.get(0).getTopic());
+                    cursors.get(0).getEventType(), cursors.get(0).getTopic());
 
             return commitPartitionCursors(subscriptionId, nakadiCursors);
 

@@ -26,6 +26,7 @@ import org.zalando.nakadi.config.ValidatorConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
@@ -36,6 +37,7 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -61,6 +63,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
@@ -74,6 +77,7 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -118,6 +122,7 @@ public class EventTypeControllerTest {
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaEvolutionService();
+    private final TimelineService timelineService = mock(TimelineService.class);
 
     private MockMvc mockMvc;
 
@@ -132,7 +137,6 @@ public class EventTypeControllerTest {
                 NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
         final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
                 "t2.large", objectMapper, nakadiSettings);
-        final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
@@ -157,6 +161,7 @@ public class EventTypeControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setControllerAdvice(new ExceptionHandling())
                 .build();
 
     }
@@ -771,6 +776,52 @@ public class EventTypeControllerTest {
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.CONFLICT))));
 
         Mockito.verify(topicRepository).deleteTopic("test-topic");
+    }
+
+    @Test
+    public void whenUpdateRetentionTimeAndKafkaFails() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder().build();
+        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+        eventTypeOptions.setRetentionTime(100L);
+        eventType.setOptions(eventTypeOptions);
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doThrow(TopicConfigException.class).when(topicRepository).setRetentionTime(anyString(), anyLong());
+        when(timelineService.getActiveTimelinesOrdered(any()))
+                .thenReturn(Collections.singletonList(
+                        Timeline.createTimeline(eventType.getName(), 0, null, "topic", new Date())));
+
+        final EventType eventType2 = EventTypeTestBuilder.builder().name(eventType.getName()).build();
+        final EventTypeOptions eventTypeOptions2 = new EventTypeOptions();
+        eventTypeOptions2.setRetentionTime(200L);
+        eventType2.setOptions(eventTypeOptions2);
+
+        putEventType(eventType2, eventType2.getName(), "nakadi")
+                .andExpect(status().isInternalServerError());
+        verify(topicRepository, times(2)).setRetentionTime(anyString(), anyLong());
+        verify(eventTypeRepository, times(0)).update(any());
+    }
+
+    @Test
+    public void whenUpdateRetentionTimeAndDbFails() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder().build();
+        final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+        eventTypeOptions.setRetentionTime(100L);
+        eventType.setOptions(eventTypeOptions);
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doThrow(InternalNakadiException.class).when(eventTypeRepository).update(any());
+        when(timelineService.getActiveTimelinesOrdered(any()))
+                .thenReturn(Collections.singletonList(
+                        Timeline.createTimeline(eventType.getName(), 0, null, "topic", new Date())));
+
+        final EventType eventType2 = EventTypeTestBuilder.builder().name(eventType.getName()).build();
+        final EventTypeOptions eventTypeOptions2 = new EventTypeOptions();
+        eventTypeOptions2.setRetentionTime(200L);
+        eventType2.setOptions(eventTypeOptions2);
+
+        putEventType(eventType2, eventType2.getName(), "nakadi")
+                .andExpect(status().isInternalServerError());
+        verify(topicRepository, times(2)).setRetentionTime(anyString(), anyLong());
+        verify(eventTypeRepository).update(any());
     }
 
     private ResultActions deleteEventType(final String eventTypeName) throws Exception {
