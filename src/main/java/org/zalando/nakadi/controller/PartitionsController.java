@@ -19,7 +19,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.view.TopicPartition;
+import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.problem.Problem;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.springframework.http.ResponseEntity.ok;
@@ -55,11 +55,11 @@ public class PartitionsController {
                 lastStats = timelineService.getTopicRepository(timelines.get(timelines.size() - 1))
                         .loadTopicStatistics(Collections.singletonList(timelines.get(timelines.size() - 1)));
             }
-            final List<TopicPartition> result = firstStats.stream().map(first -> {
+            final List<EventTypePartitionView> result = firstStats.stream().map(first -> {
                 final PartitionStatistics last = lastStats.stream()
                         .filter(l -> l.getPartition().equals(first.getPartition()))
                         .findAny().get();
-                return new TopicPartition(
+                return new EventTypePartitionView(
                         eventTypeName,
                         first.getPartition(),
                         cursorConverter.convert(first.getFirst()).getOffset(),
@@ -93,7 +93,7 @@ public class PartitionsController {
                 lastStats = timelineService.getTopicRepository(timelines.get(timelines.size() - 1))
                         .loadPartitionStatistics(timelines.get(timelines.size() - 1), partition).get();
             }
-            final TopicPartition result = new TopicPartition(
+            final EventTypePartitionView result = new EventTypePartitionView(
                     eventTypeName,
                     lastStats.getPartition(),
                     cursorConverter.convert(firstStats.get().getFirst()).getOffset(),

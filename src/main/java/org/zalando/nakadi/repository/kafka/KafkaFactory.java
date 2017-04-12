@@ -2,15 +2,6 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,7 +9,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.zalando.nakadi.domain.Timeline;
+import javax.annotation.Nullable;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class KafkaFactory {
 
@@ -146,11 +143,6 @@ public class KafkaFactory {
         final Properties properties = kafkaLocationManager.getKafkaConsumerProperties();
         // properties.put("client.id", clientId);
         return this.getConsumer(properties);
-    }
-
-    public NakadiKafkaConsumer createNakadiConsumer(final String clientId, final List<KafkaCursor> kafkaCursors,
-                                                    final long pollTimeout, final Timeline timeline) {
-        return new NakadiKafkaConsumer(getConsumer(clientId), kafkaCursors, pollTimeout, timeline);
     }
 
 }
