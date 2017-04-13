@@ -2,10 +2,6 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.partitioning.PartitionStrategy;
-import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.apache.http.HttpStatus;
 import org.junit.After;
 import org.junit.Assert;
@@ -15,11 +11,12 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
-import java.util.Collections;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.IntStream;
 
