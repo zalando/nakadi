@@ -8,12 +8,20 @@ import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.apache.http.HttpStatus;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.util.Collections;
+import java.io.IOException;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
@@ -25,6 +33,8 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 
 public class EventTypeAT extends BaseAT {
 
@@ -130,6 +140,39 @@ public class EventTypeAT extends BaseAT {
                 .put(ENDPOINT + "/" + eventType.getName()).then().statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
+    @Test
+    public void whenUpdateRetentionTimeThenUpdateInKafkaAndDB() throws Exception {
+        final EventType eventType = NakadiTestUtils.createEventType();
+        IntStream.range(0, 15).forEach(x -> publishEvent(eventType.getName(), "{\"foo\":\"bar\"}"));
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
+
+        final Long defaultRetentionTime = 172800000L;
+        assertRetentionTime(defaultRetentionTime, eventType.getName());
+
+        final Long newRetentionTime = 345600000L;
+        eventType.getOptions().setRetentionTime(newRetentionTime);
+        final String updateBody = MAPPER.writer().writeValueAsString(eventType);
+        given().body(updateBody)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .body(equalTo(""))
+                .statusCode(HttpStatus.SC_OK);
+
+        assertRetentionTime(newRetentionTime, eventType.getName());
+    }
+
+    private void assertRetentionTime(final Long checkingRetentionTime, final String etName) throws IOException {
+        final EventType eventType = NakadiTestUtils.getEventType(etName);
+        Assert.assertEquals(checkingRetentionTime, eventType.getOptions().getRetentionTime());
+        TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).stream()
+                .map(Timeline::getTopic)
+                .forEach(topic -> waitFor(() -> Assert.assertEquals(checkingRetentionTime,
+                        KafkaTestHelper.getTopicRetentionTime(topic, ZOOKEEPER_URL))));
+    }
+
     @After
     public void tearDown() {
         final DriverManagerDataSource datasource = new DriverManagerDataSource(
@@ -139,6 +182,7 @@ public class EventTypeAT extends BaseAT {
         );
         final JdbcTemplate template = new JdbcTemplate(datasource);
 
+        template.execute("DELETE FROM zn_data.timeline");
         template.execute("DELETE FROM zn_data.event_type_schema");
         template.execute("DELETE FROM zn_data.event_type");
     }
