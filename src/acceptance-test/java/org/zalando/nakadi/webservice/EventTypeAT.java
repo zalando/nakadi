@@ -86,8 +86,14 @@ public class EventTypeAT extends BaseAT {
 
         final String updateBody = MAPPER.writer().writeValueAsString(retrievedEventType);
 
-        given().body(updateBody).header("accept", "application/json").contentType(JSON).when()
-               .put(ENDPOINT + "/" + eventType.getName()).then().body(equalTo("")).statusCode(HttpStatus.SC_OK);
+        given().body(updateBody)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .when()
+                .put(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .body(equalTo(""))
+                .statusCode(HttpStatus.SC_OK);
     }
 
     @Test
