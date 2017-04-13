@@ -11,6 +11,7 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 import java.util.Collection;
 import java.util.List;
@@ -22,7 +23,7 @@ public interface TopicRepository {
 
     void deleteTopic(String topic) throws TopicDeletionException;
 
-    boolean topicExists(String topic) throws NakadiException;
+    boolean topicExists(String topic) throws TopicRepositoryException;
 
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
 

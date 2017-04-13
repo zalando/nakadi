@@ -30,6 +30,7 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
@@ -90,13 +91,13 @@ public class KafkaTopicRepository implements TopicRepository {
         this.circuitBreakers = new ConcurrentHashMap<>();
     }
 
-    public List<String> listTopics() throws ServiceUnavailableException {
+    public List<String> listTopics() throws TopicRepositoryException {
         try {
             return zkFactory.get()
                     .getChildren()
                     .forPath("/brokers/topics");
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Failed to list topics", e);
+            throw new TopicRepositoryException("Failed to list topics", e);
         }
     }
 
@@ -144,7 +145,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public boolean topicExists(final String topic) throws ServiceUnavailableException {
+    public boolean topicExists(final String topic) throws TopicRepositoryException {
         return listTopics()
                 .stream()
                 .anyMatch(t -> t.equals(topic));
