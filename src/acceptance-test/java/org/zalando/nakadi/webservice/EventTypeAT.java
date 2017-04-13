@@ -12,14 +12,14 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
