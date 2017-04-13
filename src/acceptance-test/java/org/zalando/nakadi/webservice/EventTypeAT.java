@@ -13,10 +13,12 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -141,6 +143,35 @@ public class EventTypeAT extends BaseAT {
 
         // ASSERT //
         checkEventTypeIsDeleted(eventType, topics);
+    }
+
+    @Test
+    public void whenUpdatePartitioningStrategyFromRandomThenOK() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final String bodyRandom = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(bodyRandom).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
+
+        eventType.setPartitionStrategy(PartitionStrategy.HASH_STRATEGY);
+        eventType.setPartitionKeyFields(Collections.singletonList("foo"));
+        final String bodyUserDefined = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(bodyUserDefined).header("accept", "application/json").contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName()).then().statusCode(HttpStatus.SC_OK);
+    }
+
+    @Test
+    public void whenUpdatePartitioningStrategyToNonExistingStrategyThen422() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+        final String bodyRandom = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(bodyRandom).header("accept", "application/json").contentType(JSON).post(ENDPOINT);
+
+        eventType.setPartitionStrategy("random1");
+        final String bodyUserDefined = MAPPER.writer().writeValueAsString(eventType);
+
+        given().body(bodyUserDefined).header("accept", "application/json").contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName()).then().statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     }
 
     @Test
