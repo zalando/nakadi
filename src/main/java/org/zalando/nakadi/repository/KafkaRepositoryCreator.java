@@ -8,7 +8,7 @@ import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
-import org.zalando.nakadi.exceptions.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.kafka.KafkaFactory;
 import org.zalando.nakadi.repository.kafka.KafkaLocationManager;
 import org.zalando.nakadi.repository.kafka.KafkaSettings;

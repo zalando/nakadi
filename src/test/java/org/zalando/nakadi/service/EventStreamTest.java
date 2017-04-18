@@ -8,10 +8,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -287,14 +287,14 @@ public class EventStreamTest {
 
     private static NakadiKafkaConsumer emptyConsumer() throws NakadiException {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
-        when(nakadiKafkaConsumer.readEvent()).thenReturn(empty());
+        when(nakadiKafkaConsumer.readEvents()).thenReturn(Collections.emptyList());
         return nakadiKafkaConsumer;
     }
 
     private static NakadiKafkaConsumer endlessDummyConsumerForPartition(final String partition) throws NakadiException {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
-        when(nakadiKafkaConsumer.readEvent())
-                .thenReturn(Optional.of(
+        when(nakadiKafkaConsumer.readEvents())
+                .thenReturn(Collections.singletonList(
                         new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, partition, "0"))));
         return nakadiKafkaConsumer;
     }
@@ -303,22 +303,30 @@ public class EventStreamTest {
             throws NakadiException {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
         final AtomicInteger eventsToCreate = new AtomicInteger(eventNum);
-        when(nakadiKafkaConsumer.readEvent()).thenAnswer(invocation -> {
+        when(nakadiKafkaConsumer.readEvents()).thenAnswer(invocation -> {
             if (eventsToCreate.get() > 0) {
                 eventsToCreate.set(eventsToCreate.get() - 1);
-                return Optional.of(
+                return Collections.singletonList(
                         new ConsumedEvent(DUMMY, new NakadiCursor(TIMELINE, partition, "000000000000000000")));
             } else {
-                return empty();
+                return Collections.emptyList();
             }
         });
         return nakadiKafkaConsumer;
     }
 
-    private static NakadiKafkaConsumer predefinedConsumer(final Queue<ConsumedEvent> events)
+    private static NakadiKafkaConsumer predefinedConsumer(final List<ConsumedEvent> events)
             throws NakadiException {
         final NakadiKafkaConsumer nakadiKafkaConsumer = mock(NakadiKafkaConsumer.class);
-        when(nakadiKafkaConsumer.readEvent()).thenAnswer(invocation -> Optional.ofNullable(events.poll()));
+        final AtomicBoolean sent = new AtomicBoolean(false);
+        when(nakadiKafkaConsumer.readEvents()).thenAnswer(invocation -> {
+            if (sent.get()) {
+                return Collections.emptyList();
+            } else {
+                sent.set(true);
+                return events;
+            }
+        });
         return nakadiKafkaConsumer;
     }
 

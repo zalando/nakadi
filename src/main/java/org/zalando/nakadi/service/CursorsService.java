@@ -97,7 +97,7 @@ public class CursorsService {
 
         final Map<EventTypePartition, List<NakadiCursor>> cursorsByPartition = cursors.stream()
                 .collect(Collectors.groupingBy(
-                        cursor -> new EventTypePartition(cursor.getTimeline().getEventType(), cursor.getPartition())));
+                        cursor -> new EventTypePartition(cursor.getEventType(), cursor.getPartition())));
 
         final HashMap<EventTypePartition, Iterator<Boolean>> partitionCommits = new HashMap<>();
         for (final EventTypePartition etPartition : cursorsByPartition.keySet()) {
@@ -111,11 +111,7 @@ public class CursorsService {
         }
 
         return cursors.stream()
-                .map(cursor -> {
-                    final EventTypePartition etPartition = new EventTypePartition(cursor.getTimeline().getEventType(),
-                            cursor.getPartition());
-                    return partitionCommits.get(etPartition).next();
-                })
+                .map(cursor -> partitionCommits.get(cursor.getEventTypePartition()).next())
                 .collect(Collectors.toList());
     }
 
@@ -130,8 +126,7 @@ public class CursorsService {
 
         final HashMap<EventTypePartition, String> partitionSessions = new HashMap<>();
         for (final NakadiCursor cursor : cursors) {
-            final EventTypePartition etPartition = new EventTypePartition(
-                    cursor.getTimeline().getEventType(), cursor.getPartition());
+            final EventTypePartition etPartition = cursor.getEventTypePartition();
             String partitionSession = partitionSessions.get(etPartition);
             if (partitionSession == null) {
                 partitionSession = getPartitionSession(subscriptionId, cursor.getTopic(), cursor);
