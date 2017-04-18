@@ -98,6 +98,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
@@ -469,6 +470,43 @@ public class EventTypeControllerTest {
         deleteEventType(eventType.getName(), "alice")
                 .andExpect(status().isForbidden())
                 .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenDeleteEventTypeNotAdminAndDeletionDeactivatedThenForbidden() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+
+        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
+        doReturn(true).when(featureToggleService).isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION);
+
+        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
+        topicsToDelete.put(topicRepository, eventType.getTopic());
+        doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
+
+        deleteEventType(eventType.getName(), "somebody").andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void whenDeleteEventTypeAdminAndDeletionDeactivatedThen200() throws Exception {
+
+        final EventType eventType = buildDefaultEventType();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+
+        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
+        doReturn(true).when(featureToggleService).isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION);
+
+        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
+        topicsToDelete.put(topicRepository, eventType.getTopic());
+        doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
+
+        deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
     }
 
     @Test
