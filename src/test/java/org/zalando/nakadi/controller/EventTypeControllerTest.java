@@ -476,16 +476,8 @@ public class EventTypeControllerTest {
     public void whenDeleteEventTypeNotAdminAndDeletionDeactivatedThenForbidden() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-        doReturn(true).when(featureToggleService).isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION);
-
-        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
-        topicsToDelete.put(topicRepository, eventType.getTopic());
-        doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
+        postEventType(eventType);
+        disableETDeletionFeature();
 
         deleteEventType(eventType.getName(), "somebody").andExpect(status().isForbidden());
     }
@@ -495,16 +487,8 @@ public class EventTypeControllerTest {
 
         final EventType eventType = buildDefaultEventType();
 
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-        doReturn(true).when(featureToggleService).isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION);
-
-        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
-        topicsToDelete.put(topicRepository, eventType.getTopic());
-        doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
+        postEventType(eventType);
+        disableETDeletionFeature();
 
         deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
     }
@@ -1039,5 +1023,11 @@ public class EventTypeControllerTest {
 
     private String asJsonString(final Object object) throws JsonProcessingException {
         return objectMapper.writeValueAsString(object);
+    }
+
+    private void disableETDeletionFeature() {
+        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
+        doReturn(true).when(featureToggleService).isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION);
     }
 }
