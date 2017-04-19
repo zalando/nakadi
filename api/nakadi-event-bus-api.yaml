@@ -278,8 +278,8 @@ paths:
 
          * Events in the stream may be visible for a short period of time before being removed.
 
-         On nakadi-live, the oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
-         to be able to access this endpoint.
+         Depending on the Nakadi configuration, the oauth resource owner username may have to be equal to
+         'nakadi.oauth2.adminClientId' property to be able to access this endpoint.
 
       parameters:
         - name: name
