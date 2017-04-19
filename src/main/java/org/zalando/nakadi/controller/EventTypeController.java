@@ -118,7 +118,7 @@ public class EventTypeController {
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName,
                                     final NativeWebRequest request,
                                     final Client client) {
-        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION) && isNotAdmin(client)) {
+        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION) && !isAdmin(client)) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
 
@@ -190,8 +190,8 @@ public class EventTypeController {
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
-    private boolean isNotAdmin(final Client client) {
-        return !client.getClientId().equals(securitySettings.getAdminClientId());
+    private boolean isAdmin(final Client client) {
+        return client.getClientId().equals(securitySettings.getAdminClientId());
     }
 
 }
