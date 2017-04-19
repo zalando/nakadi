@@ -487,6 +487,8 @@ public class EventTypeControllerTest {
 
         final EventType eventType = buildDefaultEventType();
 
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+
         postEventType(eventType);
         disableETDeletionFeature();
 
