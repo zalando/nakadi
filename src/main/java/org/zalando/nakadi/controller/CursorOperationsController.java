@@ -20,8 +20,10 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
@@ -63,9 +65,8 @@ public class CursorOperationsController {
     @RequestMapping(path = "/event-types/{eventTypeName}/cursor-distances", method = RequestMethod.POST)
     public ResponseEntity<?> getDistance(@PathVariable("eventTypeName") final String eventTypeName,
                                          @Valid @RequestBody final ValidListWrapper<CursorDistance> queries,
-                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-        client.checkScopes(eventType.getReadScopes());
+                                         final Client client) {
+        accessControl(eventTypeName, client);
 
         queries.getList().forEach(query -> {
             try {
@@ -87,9 +88,8 @@ public class CursorOperationsController {
     @RequestMapping(path = "/event-types/{eventTypeName}/shifted-cursors", method = RequestMethod.POST)
     public ResponseEntity<?> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
                                          @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors,
-                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-        client.checkScopes(eventType.getReadScopes());
+                                         final Client client) {
+        accessControl(eventTypeName, client);
 
         final List<ShiftedNakadiCursor> domainCursor = cursors.getList().stream()
                 .map(this.toShiftedNakadiCursor(eventTypeName))
@@ -106,9 +106,8 @@ public class CursorOperationsController {
     @RequestMapping(path = "/event-types/{eventTypeName}/cursors-lag", method = RequestMethod.POST)
     public ResponseEntity<?> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
                                         @Valid @RequestBody final ValidListWrapper<Cursor> cursors,
-                                        final Client client) throws InternalNakadiException, NoSuchEventTypeException {
-        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-        client.checkScopes(eventType.getReadScopes());
+                                        final Client client) {
+        accessControl(eventTypeName, client);
 
         final List<NakadiCursor> domainCursor = cursors.getList().stream()
                 .map(toNakadiCursor(eventTypeName))
@@ -124,8 +123,9 @@ public class CursorOperationsController {
     }
 
     @ExceptionHandler(InvalidCursorOperation.class)
-    public ResponseEntity<Problem> invalidCursorOperation(final InvalidCursorOperation e,
+    public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
                                                           final NativeWebRequest request) {
+        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
         return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
                 clientErrorMessage(e.getReason())), request);
     }
@@ -143,6 +143,18 @@ public class CursorOperationsController {
             case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
                     "have matching partitions.";
             default: return unexpectedErrorReason(reason);
+        }
+    }
+
+    private void accessControl(final String eventTypeName, final Client client) {
+        final EventType eventType;
+        try {
+            eventType = eventTypeRepository.findByName(eventTypeName);
+            client.checkScopes(eventType.getReadScopes());
+        } catch (final InternalNakadiException e) {
+            throw new MyNakadiRuntimeException1("failed to get event type", e);
+        } catch (final NoSuchEventTypeException e) {
+            throw new NoEventTypeException(e.getMessage(), e);
         }
     }
 
@@ -165,7 +177,7 @@ public class CursorOperationsController {
             try {
                 return cursorConverter.convert(eventTypeName, cursor);
             } catch (final NakadiException | InvalidCursorException e) {
-                throw new MyNakadiRuntimeException1("problem converting cursors", e);
+                throw new CursorConversionException("problem converting cursors", e);
             }
         };
     }
@@ -177,7 +189,7 @@ public class CursorOperationsController {
                 return new ShiftedNakadiCursor(nakadiCursor.getTimeline(), nakadiCursor.getPartition(),
                         nakadiCursor.getOffset(), cursor.getShift());
             } catch (final NakadiException | InvalidCursorException e) {
-                throw new MyNakadiRuntimeException1("problem converting cursors", e);
+                throw new CursorConversionException("problem converting cursors", e);
             }
         };
     }

@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service.converter;
 
 import com.google.common.base.Preconditions;
-import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
@@ -13,6 +12,10 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
+
+import java.util.List;
+
+import static org.zalando.nakadi.util.CursorConversionUtils.NUMBERS_ONLY_PATTERN;
 
 class VersionOneConverter implements VersionedConverter {
     private static final int TIMELINE_ORDER_LENGTH = 4;
@@ -46,7 +49,7 @@ class VersionOneConverter implements VersionedConverter {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
         final String offsetStr = parts[2];
-        if (offsetStr.isEmpty()) {
+        if (offsetStr.isEmpty() || !NUMBERS_ONLY_PATTERN.matcher(offsetStr).matches()) {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
         final int order;

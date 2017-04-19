@@ -22,6 +22,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
@@ -34,6 +35,7 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -51,6 +53,7 @@ public class PartitionsController {
     private final TimelineService timelineService;
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
+    private static final String INVALID_CURSOR_MESSAGE = "invalid consumed_offset or partition";
 
     @Autowired
     public PartitionsController(final TimelineService timelineService,
@@ -116,9 +119,22 @@ public class PartitionsController {
             LOG.error("Could not get partition. Respond with SERVICE_UNAVAILABLE.", e);
             return create(e.asProblem(), request);
         } catch (final InvalidCursorException e) {
-            return create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "invalid consumed_offset and partition"),
+            return create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE),
                     request);
         }
+    }
+
+    @ExceptionHandler(InvalidCursorOperation.class)
+    public ResponseEntity<?> invalidCursorOperation(final InvalidCursorOperation e,
+                                                    final NativeWebRequest request) {
+        LOG.debug("User provided invalid cursor for operation. Reason: " + e.getReason(), e);
+        return Responses.create(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, INVALID_CURSOR_MESSAGE), request);
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Problem> notFound(final NotFoundException ex, final NativeWebRequest request) {
+        LOG.error(ex.getMessage(), ex);
+        return Responses.create(Response.Status.NOT_FOUND, ex.getMessage(), request);
     }
 
     private CursorLag getCursorLag(final String eventTypeName, final String partition, final String consumedOffset)
@@ -163,11 +179,5 @@ public class PartitionsController {
                 cursorConverter.convert(nakadiCursorLag.getLastCursor()).getOffset(),
                 nakadiCursorLag.getLag()
         );
-    }
-
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Problem> invalidCursorOperation(final NotFoundException e,
-                                                          final NativeWebRequest request) {
-        return Responses.create(Problem.valueOf(NOT_FOUND, "partition not found"), request);
     }
 }

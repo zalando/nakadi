@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER;
+import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.TIMELINE_NOT_FOUND;
 
 @Service
@@ -79,7 +80,8 @@ public class CursorOperationsService {
         return distance;
     }
 
-    public List<NakadiCursorLag> cursorsLag(final String eventTypeName, final List<NakadiCursor> cursors) {
+    public List<NakadiCursorLag> cursorsLag(final String eventTypeName, final List<NakadiCursor> cursors)
+            throws InvalidCursorOperation {
         try {
             final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
             final Timeline oldestTimeline = timelines.get(0);
@@ -99,6 +101,9 @@ public class CursorOperationsService {
             // assume all partitions are present in the `stats` map
             return cursors.stream().map(cursor -> {
                 final NakadiCursorLag nakadiCursorLag = stats.get(cursor.getPartition());
+                if (nakadiCursorLag == null) {
+                    throw new InvalidCursorOperation(PARTITION_NOT_FOUND);
+                }
                 final Long distance = this.calculateDistance(cursor, nakadiCursorLag.getLastCursor());
                 nakadiCursorLag.setLag(distance);
                 return nakadiCursorLag;
