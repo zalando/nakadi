@@ -399,7 +399,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 }
 
                 synchronized (sessionsChanged) {
-                    sessionsChanged.wait(1000);
+                    sessionsChanged.wait(100);
                 }
             }
         } catch (final InterruptedException e) {
@@ -420,12 +420,10 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
             try {
                 if (!resetWasAlreadyInitiated) {
-                    curatorFramework.delete().forPath(resetCursorPath);
+                    curatorFramework.delete().guaranteed().forPath(resetCursorPath);
                 }
-            } catch (final KeeperException.NoNodeException e) {
-                log.warn(e.getMessage(), e);
             } catch (final Exception e) {
-                throw new ZookeeperException("Unexpected problem occurred when deleting zk node", e);
+                log.error(e.getMessage(), e);
             }
         }
 
