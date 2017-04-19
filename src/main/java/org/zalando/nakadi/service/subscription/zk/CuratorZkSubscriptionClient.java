@@ -368,7 +368,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public void resetCursors(final List<NakadiCursor> cursors, final Long timeout) throws OperationTimeoutException,
+    public void resetCursors(final List<NakadiCursor> cursors, final long timeout) throws OperationTimeoutException,
             ZookeeperException, OperationInterruptedException, RequestInProgressException{
         ZKSubscription sessionsListener = null;
         boolean resetWasAlreadyInitiated = false;
@@ -377,23 +377,30 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             curatorFramework.create().withMode(CreateMode.EPHEMERAL).forPath(resetCursorPath);
 
             final AtomicBoolean sessionsChanged = new AtomicBoolean(true);
-            sessionsListener = subscribeForSessionListChanges(() -> sessionsChanged.set(true));
+            sessionsListener = subscribeForSessionListChanges(() -> {
+                sessionsChanged.set(true);
+                synchronized (sessionsChanged) {
+                    sessionsChanged.notifyAll();
+                }
+            });
 
-            final String sessionsPath = MessageFormat.format("/nakadi/subscriptions/{0}/sessions", subscriptionId);
             final long finishAt = System.currentTimeMillis() + timeout;
             while (finishAt > System.currentTimeMillis()) {
-                if (sessionsChanged.compareAndSet(true, false) &&
-                        curatorFramework.getChildren().forPath(sessionsPath).isEmpty()) {
-                    for (final NakadiCursor cursor : cursors) {
-                        final String path = MessageFormat
-                                .format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset",
-                                        subscriptionId, cursor.getTopic(), cursor.getPartition());
-                        curatorFramework.setData().forPath(path, cursor.getOffset().getBytes(Charsets.UTF_8));
+                if (sessionsChanged.compareAndSet(true, false)) {
+                    if (listSessions().length == 0) {
+                        for (final NakadiCursor cursor : cursors) {
+                            final String path = MessageFormat.format(getSubscriptionPath("/topics/{0}/{1}/offset"),
+                                    cursor.getTopic(), cursor.getPartition());
+                            curatorFramework.setData().forPath(path, cursor.getOffset().getBytes(Charsets.UTF_8));
+                        }
+                        return;
                     }
-                    return;
+                    sessionsListener.refresh();
                 }
 
-                Thread.sleep(100);
+                synchronized (sessionsChanged) {
+                    sessionsChanged.wait(1000);
+                }
             }
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -401,7 +408,10 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         } catch (final KeeperException.NodeExistsException e) {
             resetWasAlreadyInitiated = true;
             throw new RequestInProgressException("Cursors reset is already in progress for provided subscription", e);
+        } catch (final KeeperException.NoNodeException e) {
+            throw new UnableProcessException("Impossible to reset cursors for subscription", e);
         } catch (final Exception e) {
+            log.error(e.getMessage(), e);
             throw new ZookeeperException("Unexpected problem occurred when resetting cursors", e);
         } finally {
             if (sessionsListener != null) {
@@ -413,8 +423,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                     curatorFramework.delete().forPath(resetCursorPath);
                 }
             } catch (final KeeperException.NoNodeException e) {
-                throw new UnableProcessException(
-                        "Impossible to reset cursors. Subscription has not been streamed yet", e);
+                log.warn(e.getMessage(), e);
             } catch (final Exception e) {
                 throw new ZookeeperException("Unexpected problem occurred when deleting zk node", e);
             }

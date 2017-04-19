@@ -163,5 +163,5 @@ public interface ZkSubscriptionClient {
      * @throws OperationTimeoutException
      * @throws ZookeeperException
      */
-    void resetCursors(List<NakadiCursor> cursors, Long timeout) throws OperationTimeoutException, ZookeeperException;
+    void resetCursors(List<NakadiCursor> cursors, long timeout) throws OperationTimeoutException, ZookeeperException;
 }

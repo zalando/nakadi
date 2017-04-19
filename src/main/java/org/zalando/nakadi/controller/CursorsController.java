@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.Errors;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -94,7 +94,6 @@ public class CursorsController {
     @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.POST)
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                            @Valid @RequestBody final ItemsWrapper<SubscriptionCursor> cursors,
-                                           final Errors errors,
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
@@ -104,9 +103,6 @@ public class CursorsController {
 
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
-        if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
         }
 
         try {
@@ -137,12 +133,8 @@ public class CursorsController {
     public ResponseEntity<?> resetCursors(
             @PathVariable("subscriptionId") final String subscriptionId,
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
-            final Errors errors,
             final NativeWebRequest request,
             final Client client) {
-        if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
-        }
 
         try {
             cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors), client);
@@ -176,6 +168,13 @@ public class CursorsController {
                                                                     final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Problem> handleMethodArgumentNotValidException(final MethodArgumentNotValidException ex,
+                                                                         final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(new ValidationProblem(ex.getBindingResult()), request);
     }
 
 }
