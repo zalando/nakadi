@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
@@ -55,6 +56,7 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
 import static org.zalando.nakadi.domain.SchemaChange.Type.TYPE_CHANGED;
 import static org.zalando.nakadi.domain.Version.Level.MAJOR;
 import static org.zalando.nakadi.domain.Version.Level.MINOR;
+import static org.zalando.nakadi.domain.Version.Level.NO_CHANGES;
 import static org.zalando.nakadi.domain.Version.Level.PATCH;
 import static org.zalando.nakadi.utils.TestUtils.readFile;
 
@@ -122,6 +124,20 @@ public class SchemaEvolutionServiceTest {
         assertThat(eventType.getSchema().getVersion(), is(equalTo(new Version("1.0.1"))));
 
         verify(evolutionConstraint).validate(oldEventType, newEventType);
+    }
+
+    @Test(expected = MyNakadiRuntimeException1.class)
+    public void whenNoChangesDetectedButSchemaIsDifferent() throws Exception {
+        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
+        final EventType oldEventType = builder.schema("{}").build();
+        final EventType newEventType = builder.schema("{\"example\":\"something\"}").build();
+
+        Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
+        Mockito.doReturn(NO_CHANGES).when(compatibleChanges).get(any());
+        Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
+                .collectChanges(any(), any());
+
+        final EventType eventType = service.evolve(oldEventType, newEventType);
     }
 
     @Test

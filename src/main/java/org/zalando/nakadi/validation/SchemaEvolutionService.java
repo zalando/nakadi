@@ -8,16 +8,19 @@ import org.everit.json.schema.loader.SchemaLoader;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
-import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
+import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +38,8 @@ import static org.zalando.nakadi.domain.Version.Level.MAJOR;
 import static org.zalando.nakadi.domain.Version.Level.NO_CHANGES;
 
 public class SchemaEvolutionService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaEvolutionService.class);
 
     private final List<SchemaEvolutionConstraint> schemaEvolutionConstraints;
     private final Schema metaSchema;
@@ -96,6 +101,12 @@ public class SchemaEvolutionService {
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
 
         final Version.Level changeLevel = semanticOfChange(changes, original.getCompatibilityMode());
+
+        if (changeLevel == NO_CHANGES && !original.getSchema().getSchema().equals(eventType.getSchema().getSchema())) {
+            LOG.error("undetected schema changes from {} to {}", original.getSchema().getSchema(),
+                    eventType.getSchema().getSchema());
+            throw new MyNakadiRuntimeException1("undetected schema changes");
+        }
 
         if (isForwardToCompatibleUpgrade(original, eventType)) {
             validateCompatibilityModeMigration(original, eventType, changes);
