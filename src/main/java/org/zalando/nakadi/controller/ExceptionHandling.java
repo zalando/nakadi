@@ -73,7 +73,7 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler(NoEventTypeException.class)
     public ResponseEntity<Problem> noEventTypeException(final NoEventTypeException exception,
                                                                final NativeWebRequest request) {
-        return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+        return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalScopeException.class)
