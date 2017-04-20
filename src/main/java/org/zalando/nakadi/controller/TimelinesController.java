@@ -16,7 +16,7 @@ import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.TimelineException;
-import org.zalando.nakadi.exceptions.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
