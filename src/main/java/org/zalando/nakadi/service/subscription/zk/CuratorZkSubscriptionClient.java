@@ -387,7 +387,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             final long finishAt = System.currentTimeMillis() + timeout;
             while (finishAt > System.currentTimeMillis()) {
                 if (sessionsChanged.compareAndSet(true, false)) {
-                    if (listSessions().length == 0) {
+                    if (curatorFramework.getChildren().forPath(getSubscriptionPath("/sessions")).isEmpty()) {
                         for (final NakadiCursor cursor : cursors) {
                             final String path = MessageFormat.format(getSubscriptionPath("/topics/{0}/{1}/offset"),
                                     cursor.getTopic(), cursor.getPartition());
