@@ -3,9 +3,11 @@ package org.zalando.nakadi.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 import com.google.common.io.Resources;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
@@ -13,12 +15,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
@@ -39,6 +42,7 @@ import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -76,6 +80,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -119,10 +124,11 @@ public class EventTypeControllerTest {
     private final SecuritySettings settings = mock(SecuritySettings.class);
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
+    private final TimelineService timelineService = mock(TimelineService.class);
     private final TimelineSync timelineSync = mock(TimelineSync.class);
+    private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaEvolutionService();
-    private final TimelineService timelineService = mock(TimelineService.class);
 
     private MockMvc mockMvc;
 
@@ -140,9 +146,14 @@ public class EventTypeControllerTest {
         when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
+        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
+            return callback.doInTransaction(null);
+        });
+
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
-                featureToggleService, timelineSync, nakadiSettings);
+                featureToggleService, timelineSync, transactionTemplate, nakadiSettings);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
@@ -232,8 +243,7 @@ public class EventTypeControllerTest {
     public void whenPOSTWithInvalidPartitionStrategyThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        Mockito
-                .doThrow(InvalidEventTypeException.class)
+        doThrow(InvalidEventTypeException.class)
                 .when(partitionResolver)
                 .validate(any());
 
@@ -251,6 +261,105 @@ public class EventTypeControllerTest {
         doReturn(eventType).when(eventTypeRepository).findByName(any());
 
         putEventType(eventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"));
+    }
+
+    @Test
+    public void whenPUTwithPartitionStrategyChangeFromRandomToUserDefinedThenOK() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
+                .build();
+
+        final EventType randomEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .topic(eventType.getTopic())
+                .partitionStrategy(PartitionStrategy.USER_DEFINED_STRATEGY)
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(randomEventType, eventType.getName())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPUTwithPartitionStrategyChangeFromRandomToHashThenOK() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
+                .build();
+
+        final EventType randomEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .topic(eventType.getTopic())
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(Collections.singletonList("foo"))
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(randomEventType, eventType.getName())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void whenPUTwithPartitionStrategyChangeFromRandomToHashAndIncorrectKeyThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
+                .partitionKeyFields(Collections.singletonList("blabla"))
+                .build();
+
+        final EventType randomEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .topic(eventType.getTopic())
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(randomEventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenPUTwithPartitionStrategyChangeFromRandomToHashAndEmptyKeyThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
+                .build();
+
+        final EventType randomEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .topic(eventType.getTopic())
+                .partitionStrategy(PartitionStrategy.HASH_STRATEGY)
+                .partitionKeyFields(Collections.emptyList())
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(randomEventType, eventType.getName())
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    public void whenPUTwithPartitionStrategyChangeFromUserDefinedToRandomThen422() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder()
+                .partitionStrategy(PartitionStrategy.USER_DEFINED_STRATEGY)
+                .build();
+
+        final EventType randomEventType = EventTypeTestBuilder.builder()
+                .name(eventType.getName())
+                .topic(eventType.getTopic())
+                .partitionStrategy(PartitionStrategy.RANDOM_STRATEGY)
+                .createdAt(eventType.getCreatedAt())
+                .build();
+
+        doReturn(eventType).when(eventTypeRepository).findByName(any());
+
+        putEventType(randomEventType, eventType.getName())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"));
     }
@@ -317,7 +426,7 @@ public class EventTypeControllerTest {
     public void whenPostDuplicatedEventTypeReturn409() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT, "some-name");
 
-        Mockito.doThrow(new DuplicatedEventTypeNameException("some-name")).when(eventTypeRepository).saveEventType(any(
+        doThrow(new DuplicatedEventTypeNameException("some-name")).when(eventTypeRepository).saveEventType(any(
                 EventTypeBase.class));
 
         postEventType(buildDefaultEventType()).andExpect(status().isConflict())
@@ -331,15 +440,17 @@ public class EventTypeControllerTest {
         final EventType eventType = buildDefaultEventType();
 
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        Mockito.doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-        Mockito.doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+        doNothing().when(eventTypeRepository).removeEventType(eventType.getName());
 
-        Mockito.doNothing().when(topicRepository).deleteTopic(eventType.getTopic());
+        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
+        topicsToDelete.put(topicRepository, eventType.getTopic());
+        doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
 
         deleteEventType(eventType.getName()).andExpect(status().isOk()).andExpect(content().string(""));
 
         verify(eventTypeRepository, times(1)).removeEventType(eventType.getName());
-        verify(topicRepository, times(1)).deleteTopic(eventType.getTopic());
+        verify(timelineService, times(1)).deleteAllTimelinesForEventType(eventType.getName());
     }
 
     @Test
@@ -352,7 +463,8 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
 
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to this event type");
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to event type "
+                + eventType.getName());
 
         deleteEventType(eventType.getName(), "alice")
                 .andExpect(status().isForbidden())
@@ -370,6 +482,10 @@ public class EventTypeControllerTest {
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
         doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
 
+        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
+        topicsToDelete.put(topicRepository, eventType.getTopic());
+        doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
+
         deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
     }
 
@@ -386,13 +502,14 @@ public class EventTypeControllerTest {
     @Test
     public void whenDeleteEventTypeAndTopicDeletionExceptionThen503() throws Exception {
 
-        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE, "dummy message");
         final EventType eventType = buildDefaultEventType();
+        final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
+                "Failed to delete Kafka topic for event type " + eventType.getName());
 
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-        Mockito.doThrow(new TopicDeletionException("dummy message", null)).when(topicRepository).deleteTopic(
-                eventType.getTopic());
+        doThrow(new TopicDeletionException("dummy message", null)).when(timelineService)
+                .deleteAllTimelinesForEventType(eventType.getName());
 
         deleteEventType(eventType.getName()).andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentType("application/problem+json")).andExpect(content()
@@ -408,7 +525,7 @@ public class EventTypeControllerTest {
                 .thenReturn(ImmutableList.of(mock(Subscription.class)));
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.CONFLICT,
-                "Not possible to remove event-type as it has subscriptions");
+                "Can't remove event type " + eventType.getName() + ", as it has subscriptions");
 
         deleteEventType(eventType.getName())
                 .andExpect(status().isConflict())
@@ -472,9 +589,10 @@ public class EventTypeControllerTest {
     public void whenDeleteEventTypeAndNakadiExceptionThen500() throws Exception {
 
         final String eventTypeName = randomValidEventTypeName();
-        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR, "dummy message");
+        final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR,
+                "Failed to delete event type " + eventTypeName);
 
-        Mockito.doThrow(new InternalNakadiException("dummy message"))
+        doThrow(new InternalNakadiException("dummy message"))
                 .when(eventTypeRepository).removeEventType(eventTypeName);
         doReturn(Optional.of(EventTypeTestBuilder.builder().name(eventTypeName).build()))
                 .when(eventTypeRepository).findByNameO(eventTypeName);
@@ -488,7 +606,7 @@ public class EventTypeControllerTest {
     public void whenPersistencyErrorThen500() throws Exception {
         final Problem expectedProblem = Problem.valueOf(Response.Status.INTERNAL_SERVER_ERROR);
 
-        Mockito.doThrow(InternalNakadiException.class).when(eventTypeRepository).saveEventType(any(EventType.class));
+        doThrow(InternalNakadiException.class).when(eventTypeRepository).saveEventType(any(EventType.class));
 
         postEventType(buildDefaultEventType()).andExpect(status().isInternalServerError())
                 .andExpect(content().contentType("application/problem+json")).andExpect(
@@ -514,9 +632,9 @@ public class EventTypeControllerTest {
         final EventType et = buildDefaultEventType();
         doReturn(et).when(eventTypeRepository).saveEventType(any(EventType.class));
 
-        Mockito.doThrow(TopicCreationException.class).when(topicRepository).createTopic(anyInt(), any());
+        doThrow(TopicCreationException.class).when(topicRepository).createTopic(anyInt(), any());
 
-        Mockito.doNothing().when(eventTypeRepository).removeEventType(et.getName());
+        doNothing().when(eventTypeRepository).removeEventType(et.getName());
 
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE);
 
@@ -566,7 +684,7 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND);
 
-        Mockito.doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eventType.getName());
+        doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eventType.getName());
 
         putEventType(eventType, eventType.getName()).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"))
@@ -579,7 +697,7 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem = Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY);
 
-        Mockito.doThrow(UnprocessableEntityException.class).when(eventTypeRepository).findByName(eventType.getName());
+        doThrow(UnprocessableEntityException.class).when(eventTypeRepository).findByName(eventType.getName());
 
         putEventType(eventType, eventType.getName()).andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentType("application/problem+json"))
@@ -650,8 +768,7 @@ public class EventTypeControllerTest {
     public void whenPOSTWithInvalidEnrichmentStrategyThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        Mockito
-                .doThrow(InvalidEventTypeException.class)
+        doThrow(InvalidEventTypeException.class)
                 .when(enrichment)
                 .validate(any());
 
@@ -756,7 +873,7 @@ public class EventTypeControllerTest {
         final EventType eventType = buildDefaultEventType();
 
         final Problem expectedProblem = Problem.valueOf(SERVICE_UNAVAILABLE,
-                "Event type is currently in maintenance, please repeat request");
+                "Event type " + eventType.getName() + " is currently in maintenance, please repeat request");
 
         deleteEventType(eventType.getName())
                 .andExpect(status().isServiceUnavailable())
@@ -767,15 +884,15 @@ public class EventTypeControllerTest {
     public void whenDuplicatedEventTypeThenTopicIsRemoved() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        Mockito.doThrow(DuplicatedEventTypeNameException.class)
+        doThrow(DuplicatedEventTypeNameException.class)
                 .when(eventTypeRepository).saveEventType(any(EventType.class));
-        Mockito.when(topicRepository.createTopic(0, 150L)).thenReturn("test-topic");
+        when(topicRepository.createTopic(0, 150L)).thenReturn("test-topic");
 
         postEventType(eventType)
                 .andExpect(status().isConflict())
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.CONFLICT))));
 
-        Mockito.verify(topicRepository).deleteTopic("test-topic");
+        verify(topicRepository).deleteTopic("test-topic");
     }
 
     @Test
