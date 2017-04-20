@@ -377,15 +377,15 @@ class StreamingState extends State {
                 throw new NakadiRuntimeException(ex);
             }
         }
-        final Set<TopicPartition> currentKafkaAssignment = eventConsumer.getAssignment().stream()
+        final Set<TopicPartition> currentAssignment = eventConsumer.getAssignment().stream()
                 .map(tp -> new TopicPartition(tp.getTopic(), String.valueOf(tp.getPartition())))
                 .collect(Collectors.toSet());
 
         getLog().info("Changing kafka assignment from {} to {}",
-                Arrays.deepToString(currentKafkaAssignment.toArray()),
+                Arrays.deepToString(currentAssignment.toArray()),
                 Arrays.deepToString(newAssignment.toArray()));
 
-        if (!currentKafkaAssignment.equals(newAssignment)) {
+        if (!currentAssignment.equals(newAssignment)) {
             try {
                 final Map<TopicPartition, Timeline> temporaryMapping = loadPartitionsMapping(newAssignment);
                 final List<NakadiCursor> cursors = new ArrayList<>();

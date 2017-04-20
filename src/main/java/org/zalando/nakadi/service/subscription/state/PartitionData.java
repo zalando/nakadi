@@ -89,7 +89,7 @@ class PartitionData {
      * new positions, and update commit offset as well (because it could happened that there are no messages to
      * stream according to window size)
      *
-     * @param beforeFirst Position that
+     * @param beforeFirst Position to check against (last inaccessible position in stream)
      */
     void ensureDataAvailable(final NakadiCursor beforeFirst) {
         if (beforeFirst.compareTo(commitOffset) > 0) {

@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import java.util.Collection;
-import java.util.Map;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -31,7 +30,7 @@ public interface ZkSubscriptionClient {
      *
      * @return true if subscription was created. False if subscription already present. To operate on this value
      * additional field 'state' is used /nakadi/subscriptions/{subscriptionId}/state. Just after creation it has value
-     * CREATED. After {{@link #fillEmptySubscription(Map)}} call it will have value INITIALIZED. So true
+     * CREATED. After {{@link #fillEmptySubscription}} call it will have value INITIALIZED. So true
      * will be returned in case of state is equal to CREATED.
      */
     boolean createSubscription();
