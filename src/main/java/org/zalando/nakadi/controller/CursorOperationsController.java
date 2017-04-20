@@ -66,7 +66,7 @@ public class CursorOperationsController {
     public ResponseEntity<?> getDistance(@PathVariable("eventTypeName") final String eventTypeName,
                                          @Valid @RequestBody final ValidListWrapper<CursorDistance> queries,
                                          final Client client) {
-        accessControl(eventTypeName, client);
+        checkReadScopes(eventTypeName, client);
 
         queries.getList().forEach(query -> {
             try {
@@ -89,7 +89,7 @@ public class CursorOperationsController {
     public ResponseEntity<?> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
                                          @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors,
                                          final Client client) {
-        accessControl(eventTypeName, client);
+        checkReadScopes(eventTypeName, client);
 
         final List<ShiftedNakadiCursor> domainCursor = cursors.getList().stream()
                 .map(this.toShiftedNakadiCursor(eventTypeName))
@@ -107,7 +107,7 @@ public class CursorOperationsController {
     public ResponseEntity<?> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
                                         @Valid @RequestBody final ValidListWrapper<Cursor> cursors,
                                         final Client client) {
-        accessControl(eventTypeName, client);
+        checkReadScopes(eventTypeName, client);
 
         final List<NakadiCursor> domainCursor = cursors.getList().stream()
                 .map(toNakadiCursor(eventTypeName))
@@ -146,7 +146,7 @@ public class CursorOperationsController {
         }
     }
 
-    private void accessControl(final String eventTypeName, final Client client) {
+    private void checkReadScopes(final String eventTypeName, final Client client) {
         final EventType eventType;
         try {
             eventType = eventTypeRepository.findByName(eventTypeName);
