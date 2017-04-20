@@ -142,7 +142,9 @@ public class CursorOperationsController {
             case PARTITION_NOT_FOUND: return "Partition not found.";
             case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
                     "have matching partitions.";
-            default: return unexpectedErrorReason(reason);
+            default:
+                LOG.error("Unexpected invalid cursor operation reason " + reason);
+                throw new MyNakadiRuntimeException1();
         }
     }
 
@@ -156,11 +158,6 @@ public class CursorOperationsController {
         } catch (final NoSuchEventTypeException e) {
             throw new NoEventTypeException(e.getMessage(), e);
         }
-    }
-
-    private String unexpectedErrorReason(final InvalidCursorOperation.Reason reason) throws MyNakadiRuntimeException1 {
-        LOG.error("Unexpected invalid cursor operation reason " + reason);
-        throw new MyNakadiRuntimeException1();
     }
 
     private CursorLag toCursorLag(final NakadiCursorLag nakadiCursorLag) {
