@@ -98,6 +98,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
 import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
@@ -158,7 +159,7 @@ public class EventTypeControllerTest {
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
         final EventTypeController controller = new EventTypeController(eventTypeService,
-                featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings);
+                featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings, settings);
         doReturn(randomUUID).when(uuid).randomUUID();
 
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
@@ -469,6 +470,29 @@ public class EventTypeControllerTest {
         deleteEventType(eventType.getName(), "alice")
                 .andExpect(status().isForbidden())
                 .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenDeleteEventTypeNotAdminAndDeletionDeactivatedThenForbidden() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        postEventType(eventType);
+        disableETDeletionFeature();
+
+        deleteEventType(eventType.getName(), "somebody").andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void whenDeleteEventTypeAdminAndDeletionDeactivatedThen200() throws Exception {
+
+        final EventType eventType = buildDefaultEventType();
+
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
+
+        postEventType(eventType);
+        disableETDeletionFeature();
+
+        deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
     }
 
     @Test
@@ -1001,5 +1025,11 @@ public class EventTypeControllerTest {
 
     private String asJsonString(final Object object) throws JsonProcessingException {
         return objectMapper.writeValueAsString(object);
+    }
+
+    private void disableETDeletionFeature() {
+        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
+        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
+        doReturn(true).when(featureToggleService).isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION);
     }
 }
