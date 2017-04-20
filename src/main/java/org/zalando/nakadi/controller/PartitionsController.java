@@ -29,7 +29,7 @@ import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.CursorLag;
-import org.zalando.nakadi.view.TopicPartition;
+import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -79,11 +79,11 @@ public class PartitionsController {
                 lastStats = timelineService.getTopicRepository(timelines.get(timelines.size() - 1))
                         .loadTopicStatistics(Collections.singletonList(timelines.get(timelines.size() - 1)));
             }
-            final List<TopicPartition> result = firstStats.stream().map(first -> {
+            final List<EventTypePartitionView> result = firstStats.stream().map(first -> {
                 final PartitionStatistics last = lastStats.stream()
                         .filter(l -> l.getPartition().equals(first.getPartition()))
                         .findAny().get();
-                return new TopicPartition(
+                return new EventTypePartitionView(
                         eventTypeName,
                         first.getPartition(),
                         cursorConverter.convert(first.getFirst()).getOffset(),
@@ -109,7 +109,7 @@ public class PartitionsController {
                 final CursorLag cursorLag = getCursorLag(eventTypeName, partition, consumedOffset);
                 return ok().body(cursorLag);
             } else {
-                final TopicPartition result = getTopicPartition(eventTypeName, partition);
+                final EventTypePartitionView result = getTopicPartition(eventTypeName, partition);
 
                 return ok().body(result);
             }
@@ -149,7 +149,7 @@ public class PartitionsController {
                 .orElseThrow(MyNakadiRuntimeException1::new);
     }
 
-    private TopicPartition getTopicPartition(final String eventTypeName, final String partition)
+    private EventTypePartitionView getTopicPartition(final String eventTypeName, final String partition)
             throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
         final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
         final Optional<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
@@ -165,7 +165,7 @@ public class PartitionsController {
                     .loadPartitionStatistics(timelines.get(timelines.size() - 1), partition).get();
         }
 
-        return new TopicPartition(
+        return new EventTypePartitionView(
                 eventTypeName,
                 lastStats.getPartition(),
                 cursorConverter.convert(firstStats.get().getFirst()).getOffset(),

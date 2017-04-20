@@ -44,7 +44,7 @@ public class CursorOperationsService {
             throw new InvalidCursorOperation(INVERTED_TIMELINE_ORDER);
         }
 
-        if (initialCursor.getTimeline().getOrder().equals(finalCursor.getTimeline().getOrder())) {
+        if (initialCursor.getTimeline().getOrder() == finalCursor.getTimeline().getOrder()) {
             return getDistanceSameTimeline(initialCursor, finalCursor);
         } else {
             return getDistanceDifferentTimelines(initialCursor, finalCursor);

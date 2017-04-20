@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -10,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
@@ -18,12 +20,21 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
+import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
+import org.zalando.nakadi.exceptions.NotFoundException;
+import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
+import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -64,6 +75,7 @@ public class EventTypeService {
     private final FeatureToggleService featureToggleService;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
+    private final TransactionTemplate transactionTemplate;
 
     @Autowired
     public EventTypeService(final EventTypeRepository eventTypeRepository,
@@ -75,6 +87,7 @@ public class EventTypeService {
                             final PartitionsCalculator partitionsCalculator,
                             final FeatureToggleService featureToggleService,
                             final TimelineSync timelineSync,
+                            final TransactionTemplate transactionTemplate,
                             final NakadiSettings nakadiSettings) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
@@ -85,6 +98,7 @@ public class EventTypeService {
         this.partitionsCalculator = partitionsCalculator;
         this.featureToggleService = featureToggleService;
         this.timelineSync = timelineSync;
+        this.transactionTemplate = transactionTemplate;
         this.nakadiSettings = nakadiSettings;
     }
 
@@ -98,21 +112,30 @@ public class EventTypeService {
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
+
             final String topicName = topicRepository.createTopic(
                     partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
                     eventType.getOptions().getRetentionTime());
             eventType.setTopic(topicName);
-            eventTypeRepository.saveEventType(eventType);
-            return Result.ok();
-        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException e) {
-            LOG.debug("Failed to create EventType.", e);
-            if (null != eventType.getTopic()) {
-                try {
-                    topicRepository.deleteTopic(eventType.getTopic());
-                } catch (final TopicDeletionException ex) {
-                    LOG.warn("failed to delete topic for event type that failed to be created", ex);
+
+            boolean eventTypeCreated = false;
+            try {
+                eventTypeRepository.saveEventType(eventType);
+                eventTypeCreated = true;
+            }
+            finally {
+                if (!eventTypeCreated) {
+                    try {
+                        topicRepository.deleteTopic(eventType.getTopic());
+                    } catch (final TopicDeletionException ex) {
+                        LOG.error("failed to delete topic for event type that failed to be created", ex);
+                    }
                 }
             }
+            return Result.ok();
+        } catch (final InvalidEventTypeException | NoSuchPartitionStrategyException |
+                DuplicatedEventTypeNameException e) {
+            LOG.debug("Failed to create EventType.", e);
             return Result.problem(e.asProblem());
         } catch (final NakadiException e) {
             LOG.error("Error creating event type " + eventType, e);
@@ -120,44 +143,45 @@ public class EventTypeService {
         }
     }
 
-    public Result<Void> delete(final String eventTypeName, final Client client) {
+    public void delete(final String eventTypeName, final Client client)
+            throws EventTypeDeletionException,
+            ForbiddenAccessException,
+            NoEventTypeException,
+            UnableProcessException {
         Closeable deletionCloser = null;
+        Multimap<TopicRepository, String> topicsToDelete = null;
         try {
             deletionCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final Optional<EventType> eventTypeOpt = eventTypeRepository.findByNameO(eventTypeName);
             if (!eventTypeOpt.isPresent()) {
-                return Result.notFound("EventType \"" + eventTypeName + "\" does not exist.");
+                throw new NoEventTypeException("EventType \"" + eventTypeName + "\" does not exist.");
             }
             final EventType eventType = eventTypeOpt.get();
             if (!client.idMatches(eventType.getOwningApplication())) {
-                return Result.forbidden("You don't have access to this event type");
+                throw new ForbiddenAccessException("You don't have access to event type " + eventTypeName);
             }
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
                     ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
             if (!subscriptions.isEmpty()) {
-                return Result.conflict("Not possible to remove event-type as it has subscriptions");
+                throw new UnableProcessException("Can't remove event type " + eventTypeName
+                        + ", as it has subscriptions");
             }
-            final TopicRepository topicRepository = timelineService.getTopicRepository(eventType);
-            // TODO: Cascading delete. Event Type must be deleted with all it's timelines.
-            eventTypeRepository.removeEventType(eventTypeName);
-            topicRepository.deleteTopic(eventType.getTopic());
-            return Result.ok();
+            topicsToDelete = transactionTemplate.execute(action -> {
+                return deleteEventType(eventTypeName);
+            });
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to wait for timeline switch", e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
-                    "Event type is currently in maintenance, please repeat request"));
+            throw new EventTypeUnavailableException("Event type " + eventTypeName
+                    + " is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
-                    "Event type is currently in maintenance, please repeat request"));
-        } catch (final TopicDeletionException e) {
-            LOG.error("Problem deleting kafka topic " + eventTypeName, e);
-            return Result.problem(e.asProblem());
+            throw new EventTypeUnavailableException("Event type "+ eventTypeName
+                    + " is currently in maintenance, please repeat request");
         } catch (final NakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
-            return Result.problem(e.asProblem());
+            throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
         } finally {
             try {
                 if (deletionCloser != null) {
@@ -167,9 +191,22 @@ public class EventTypeService {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
         }
+        if (topicsToDelete != null) {
+            for (final TopicRepository topicRepository : topicsToDelete.keySet()) {
+                for (final String topic : topicsToDelete.get(topicRepository)) {
+                    try {
+                        topicRepository.deleteTopic(topic);
+                    } catch (TopicDeletionException e) {
+                        // If a timeline was marked as deleted, then the topic does not exist, and we should proceed.
+                        LOG.info("Could not delete topic " + topic, e);
+                    }
+                }
+            }
+        }
     }
 
-    public Result<Void> update(final String eventTypeName, final EventTypeBase eventTypeBase, final Client client) {
+    public Result<Void> update(final String eventTypeName, final EventTypeBase eventTypeBase, final Client client)
+            throws TopicConfigException {
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
@@ -181,10 +218,25 @@ public class EventTypeService {
 
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
+            partitionResolver.validate(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
-            eventTypeRepository.update(eventType);
+            final Long newRetentionTime = eventTypeBase.getOptions().getRetentionTime();
+            final Long oldRetentionTime = original.getOptions().getRetentionTime();
+            boolean retentionTimeUpdated = false;
+            try {
+                if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
+                    updateRetentionTime(eventTypeName, newRetentionTime);
+                }
+                eventTypeRepository.update(eventType);
+                retentionTimeUpdated = true;
+            } finally {
+                if (!retentionTimeUpdated) {
+                    updateRetentionTime(eventTypeName, oldRetentionTime);
+                }
+            }
+
             return Result.ok();
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -200,6 +252,9 @@ public class EventTypeService {
         } catch (final NoSuchEventTypeException e) {
             LOG.debug("Could not find EventType: {}", eventTypeName);
             return Result.problem(e.asProblem());
+        } catch (final NoSuchPartitionStrategyException e) {
+            LOG.debug("Partition strategy does not exist", e);
+            return Result.problem(e.asProblem());
         } catch (final NakadiException e) {
             LOG.error("Unable to update event type", e);
             return Result.problem(e.asProblem());
@@ -214,6 +269,13 @@ public class EventTypeService {
         }
     }
 
+    private void updateRetentionTime(final String eventTypeName, final Long retentionTime)
+            throws InternalNakadiException, NoSuchEventTypeException {
+        timelineService.getActiveTimelinesOrdered(eventTypeName)
+                .forEach(timeline -> timelineService.getTopicRepository(timeline)
+                        .setRetentionTime(timeline.getTopic(), retentionTime));
+    }
+
     public Result<EventType> get(final String eventTypeName) {
         try {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
@@ -224,6 +286,25 @@ public class EventTypeService {
         } catch (final InternalNakadiException e) {
             LOG.error("Problem loading event type " + eventTypeName, e);
             return Result.problem(e.asProblem());
+        }
+    }
+
+    private Multimap<TopicRepository, String> deleteEventType(final String eventTypeName)
+            throws EventTypeUnavailableException, EventTypeDeletionException {
+        try {
+            final Multimap<TopicRepository, String> topicsToDelete =
+                    timelineService.deleteAllTimelinesForEventType(eventTypeName);
+            eventTypeRepository.removeEventType(eventTypeName);
+            return topicsToDelete;
+        } catch (TopicDeletionException e) {
+            LOG.error("Problem deleting kafka topic for event type " + eventTypeName, e);
+            throw new EventTypeUnavailableException("Failed to delete Kafka topic for event type " + eventTypeName);
+        } catch (TimelineException | NotFoundException e) {
+            LOG.error("Problem deleting timeline for event type " + eventTypeName, e);
+            throw new EventTypeDeletionException("Failed to delete timelines for event type " + eventTypeName);
+        } catch (NakadiException e) {
+            LOG.error("Error deleting event type " + eventTypeName, e);
+            throw new EventTypeDeletionException("Failed to delete event type " + eventTypeName);
         }
     }
 

@@ -1,11 +1,10 @@
 package org.zalando.nakadi.service;
 
 import java.util.List;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.exceptions.UnprocessableEntityException;
-
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 
 @Immutable
 public class EventStreamConfig {
@@ -48,6 +47,13 @@ public class EventStreamConfig {
 
     public int getStreamLimit() {
         return streamLimit;
+    }
+
+    public int getMessagesAllowedToSendInBatch(final int sentSoFar) {
+        if (streamLimit > 0) {
+            return Math.min(streamLimit - sentSoFar, batchLimit);
+        }
+        return batchLimit;
     }
 
     public int getBatchTimeout() {

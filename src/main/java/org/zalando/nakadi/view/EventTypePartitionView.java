@@ -3,33 +3,28 @@ package org.zalando.nakadi.view;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class TopicPartition {
+public class EventTypePartitionView {
     @JsonIgnore
-    private String topicId;
+    private String eventType;
     @JsonProperty("partition")
     private String partitionId;
     private String oldestAvailableOffset;
     private String newestAvailableOffset;
 
-    public TopicPartition(final String topicId, final String partitionId) {
-        setTopicId(topicId);
-        setPartitionId(partitionId);
-    }
-
-    public TopicPartition(final String topicId, final String partitionId, final String oldestAvailableOffset,
-                          final String newestAvailableOffset) {
-        this.topicId = topicId;
+    public EventTypePartitionView(final String eventType, final String partitionId, final String oldestAvailableOffset,
+                                  final String newestAvailableOffset) {
+        this.eventType = eventType;
         this.partitionId = partitionId;
         this.oldestAvailableOffset = oldestAvailableOffset;
         this.newestAvailableOffset = newestAvailableOffset;
     }
 
-    public String getTopicId() {
-        return topicId;
+    public String getEventType() {
+        return eventType;
     }
 
-    public void setTopicId(final String topicId) {
-        this.topicId = topicId;
+    public void setEventType(final String eventType) {
+        this.eventType = eventType;
     }
 
     public String getPartitionId() {
@@ -66,9 +61,9 @@ public class TopicPartition {
             return false;
         }
 
-        final TopicPartition that = (TopicPartition) o;
+        final EventTypePartitionView that = (EventTypePartitionView) o;
 
-        if (topicId != null ? !topicId.equals(that.topicId) : that.topicId != null) {
+        if (eventType != null ? !eventType.equals(that.eventType) : that.eventType != null) {
             return false;
         }
 
@@ -88,7 +83,7 @@ public class TopicPartition {
 
     @Override
     public int hashCode() {
-        int result = topicId != null ? topicId.hashCode() : 0;
+        int result = eventType != null ? eventType.hashCode() : 0;
         result = 31 * result + (partitionId != null ? partitionId.hashCode() : 0);
         result = 31 * result + (oldestAvailableOffset != null ? oldestAvailableOffset.hashCode() : 0);
         result = 31 * result + (newestAvailableOffset != null ? newestAvailableOffset.hashCode() : 0);
@@ -97,8 +92,8 @@ public class TopicPartition {
 
     @Override
     public String toString() {
-        return "TopicPartition{" +
-                "topicId='" + topicId + '\'' +
+        return "EventTypePartitionView{" +
+                "eventType='" + eventType + '\'' +
                 ", partitionId='" + partitionId + '\'' +
                 ", oldestAvailableOffset='" + oldestAvailableOffset + '\'' +
                 ", newestAvailableOffset='" + newestAvailableOffset + '\'' +

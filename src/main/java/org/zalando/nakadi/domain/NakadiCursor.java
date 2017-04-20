@@ -3,7 +3,7 @@ package org.zalando.nakadi.domain;
 import com.google.common.base.Preconditions;
 import java.util.Objects;
 
-public class NakadiCursor {
+public class NakadiCursor implements Comparable<NakadiCursor> {
     public static final int VERSION_LENGTH = 3;
     /**
      * - ZERO is reserved for old offset format, e.g. those previous to timelines: "000000000000000010"
@@ -44,12 +44,24 @@ public class NakadiCursor {
         return timeline.getTopic();
     }
 
+    public String getEventType() {
+        return timeline.getEventType();
+    }
+
     public String getPartition() {
         return partition;
     }
 
     public String getOffset() {
         return offset;
+    }
+
+    public EventTypePartition getEventTypePartition() {
+        return new EventTypePartition(timeline.getEventType(), partition);
+    }
+
+    public TopicPartition getTopicPartition() {
+        return new TopicPartition(timeline.getTopic(), partition);
     }
 
     @Override
@@ -70,6 +82,20 @@ public class NakadiCursor {
     // TODO: Remove method one subscriptions are transferred to use timelines.
     public NakadiCursor withOffset(final String offset) {
         return new NakadiCursor(timeline, partition, offset);
+    }
+
+
+    @Override
+    public int compareTo(final NakadiCursor other) {
+        if ((other.getTimeline().isFake() && this.getTimeline().isFirstAfterFake())
+                || (this.getTimeline().isFake() && other.getTimeline().isFirstAfterFake())) {
+            return this.getOffset().compareTo(other.getOffset());
+        }
+        final int orderDiffers = Integer.compare(this.getTimeline().getOrder(), other.getTimeline().getOrder());
+        if (0 != orderDiffers) {
+            return orderDiffers;
+        }
+        return this.getOffset().compareTo(other.getOffset());
     }
 
     @Override
