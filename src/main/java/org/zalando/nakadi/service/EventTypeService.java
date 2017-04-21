@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
@@ -352,7 +351,8 @@ public class EventTypeService {
         }
     }
 
-    private void validateJsonSchemaConstraints(final EventTypeBase eventType, final JSONObject schema) throws InvalidEventTypeException {
+    private void validateJsonSchemaConstraints(final EventTypeBase eventType, final JSONObject schema)
+            throws InvalidEventTypeException {
         final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService
                 .collectIncompatibilities(eventType, schema);
 
