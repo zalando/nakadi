@@ -261,6 +261,9 @@ public class CursorsService {
     public void resetCursors(final String subscriptionId, final List<NakadiCursor> cursors, final Client client)
             throws ServiceUnavailableException, NoSuchSubscriptionException,
             UnableProcessException, IllegalScopeException, OperationTimeoutException, ZookeeperException {
+        if (cursors.isEmpty()) {
+            throw new UnableProcessException("Cursors are absent");
+        }
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         validateSubscriptionCursors(subscription, cursors);
         validateSubscriptionReadScopes(subscription, client);

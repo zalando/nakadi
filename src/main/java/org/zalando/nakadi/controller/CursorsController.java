@@ -151,10 +151,6 @@ public class CursorsController {
     private List<NakadiCursor> convertToNakadiCursors(
             final ItemsWrapper<? extends SubscriptionCursorWithoutToken> cursors) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException {
-        if (cursors.getItems().isEmpty()) {
-            throw new UnableProcessException("Cursors are absent");
-        }
-
         final List<NakadiCursor> nakadiCursors = new ArrayList<>();
         for (final SubscriptionCursorWithoutToken cursor : cursors.getItems()) {
             nakadiCursors.add(cursorConverter.convert(cursor));
