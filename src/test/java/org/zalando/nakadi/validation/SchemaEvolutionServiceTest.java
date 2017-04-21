@@ -137,7 +137,7 @@ public class SchemaEvolutionServiceTest {
         Mockito.doReturn(Lists.newArrayList(new SchemaChange(TITLE_CHANGED, "#/"))).when(schemaDiff)
                 .collectChanges(any(), any());
 
-        final EventType eventType = service.evolve(oldEventType, newEventType);
+        service.evolve(oldEventType, newEventType);
     }
 
     @Test
