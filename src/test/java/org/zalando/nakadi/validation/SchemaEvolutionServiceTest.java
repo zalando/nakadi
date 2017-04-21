@@ -15,7 +15,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.UnexpectedSchemaChangeException;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
@@ -127,7 +127,7 @@ public class SchemaEvolutionServiceTest {
         verify(evolutionConstraint).validate(oldEventType, newEventType);
     }
 
-    @Test(expected = MyNakadiRuntimeException1.class)
+    @Test(expected = UnexpectedSchemaChangeException.class)
     public void whenNoChangesDetectedButSchemaIsDifferent() throws Exception {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.schema("{}").build();

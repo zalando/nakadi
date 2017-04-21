@@ -16,7 +16,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.exceptions.runtime.UnexpectedSchemaChangeException;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
@@ -106,7 +106,7 @@ public class SchemaEvolutionService {
         if (changeLevel == NO_CHANGES && !original.getSchema().getSchema().equals(eventType.getSchema().getSchema())) {
             LOG.error("undetected schema changes from {} to {}", original.getSchema().getSchema(),
                     eventType.getSchema().getSchema());
-            throw new MyNakadiRuntimeException1("undetected schema changes");
+            throw new UnexpectedSchemaChangeException("undetected schema changes");
         }
 
         if (isForwardToCompatibleUpgrade(original, eventType)) {
