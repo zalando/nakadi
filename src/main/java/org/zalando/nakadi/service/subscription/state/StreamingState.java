@@ -321,9 +321,7 @@ class StreamingState extends State {
                 .collect(Collectors.toList()).forEach(releasingPartitions::remove);
 
         // 3. Add releasing partitions information
-        if (!newReassigning.isEmpty()) {
-            newReassigning.keySet().forEach(this::addPartitionToReassigned);
-        }
+        newReassigning.keySet().forEach(this::addPartitionToReassigned);
 
         // 4. Select which partitions must be added and add it.
         newAssigned.values()
@@ -351,11 +349,13 @@ class StreamingState extends State {
     }
 
     private void addPartitionToReassigned(final TopicPartition partitionKey) {
-        final long currentTime = System.currentTimeMillis();
-        final long barrier = currentTime + getParameters().commitTimeoutMillis;
-        releasingPartitions.put(partitionKey, barrier);
-        scheduleTask(() -> barrierOnRebalanceReached(partitionKey), getParameters().commitTimeoutMillis,
-                TimeUnit.MILLISECONDS);
+        if (!releasingPartitions.containsKey(partitionKey)) {
+            final long currentTime = System.currentTimeMillis();
+            final long barrier = currentTime + getParameters().commitTimeoutMillis;
+            releasingPartitions.put(partitionKey, barrier);
+            scheduleTask(() -> barrierOnRebalanceReached(partitionKey), getParameters().commitTimeoutMillis,
+                    TimeUnit.MILLISECONDS);
+        }
     }
 
     private void barrierOnRebalanceReached(final TopicPartition pk) {
