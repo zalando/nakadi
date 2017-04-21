@@ -343,7 +343,7 @@ public class EventTypeService {
                 validatePartitionKeys(schema, eventType);
             }
 
-            if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
+            if (eventType.getCompatibilityMode() != CompatibilityMode.NONE) {
                 validateJsonSchemaConstraints(schemaAsJson);
             }
         } catch (final JSONException e) {
