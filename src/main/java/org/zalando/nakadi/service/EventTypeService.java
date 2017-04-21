@@ -344,7 +344,7 @@ public class EventTypeService {
             }
 
             if (eventType.getCompatibilityMode() != CompatibilityMode.NONE) {
-                validateJsonSchemaConstraints(schemaAsJson);
+                validateJsonSchemaConstraints(eventType, schemaAsJson);
             }
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
@@ -353,8 +353,9 @@ public class EventTypeService {
         }
     }
 
-    private void validateJsonSchemaConstraints(final JSONObject schema) throws InvalidEventTypeException {
-        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.collectIncompatibilities(schema);
+    private void validateJsonSchemaConstraints(final EventTypeBase eventType, final JSONObject schema) throws InvalidEventTypeException {
+        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService
+                .collectIncompatibilities(eventType, schema);
 
         if (!incompatibilities.isEmpty()) {
             final String errorMessage = incompatibilities.stream().map(Object::toString)

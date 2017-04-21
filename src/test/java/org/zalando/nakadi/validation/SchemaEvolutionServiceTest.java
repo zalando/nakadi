@@ -17,9 +17,9 @@ import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
+import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -71,10 +71,11 @@ public class SchemaEvolutionServiceTest {
     @Before
     public void setUp() throws IOException {
         final List<SchemaEvolutionConstraint> evolutionConstraints= Lists.newArrayList(evolutionConstraint);
-        final JSONObject metaSchemaJson = new JSONObject(Resources.toString(Resources.getResource("schema.json"),
-                Charsets.UTF_8));
-        final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
-        this.service = new SchemaEvolutionService(metaSchema, evolutionConstraints, schemaDiff, compatibleChanges,
+        final Map<CompatibilityMode, Schema> schemaValidator = new HashMap<>();
+        schemaValidator.put(CompatibilityMode.COMPATIBLE, loadSchema("compatible-schema.json"));
+        schemaValidator.put(CompatibilityMode.FORWARD, loadSchema("forward-schema.json"));
+        schemaValidator.put(CompatibilityMode.NONE, loadSchema("none-schema.json"));
+        this.service = new SchemaEvolutionService(schemaValidator, evolutionConstraints, schemaDiff, compatibleChanges,
                 forwardChanges, errorMessages);
 
         Mockito.doReturn("error").when(errorMessages).get(any());
@@ -249,10 +250,37 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
-    public void checksJsonSchemaConstraints() throws Exception {
+    public void checksCompatibleJsonSchemaConstraints() throws Exception {
         final JSONArray testCases = new JSONArray(
-                readFile("org/zalando/nakadi/validation/invalid-json-schema-examples.json"));
+                readFile("org/zalando/nakadi/validation/invalid-compatible-json-schema-examples.json"));
+        final EventType eventType = EventTypeTestBuilder.builder().compatibilityMode(CompatibilityMode.COMPATIBLE)
+                .build();
 
+
+        runTestExamples(testCases, eventType);
+    }
+
+    @Test
+    public void checksForwardJsonSchemaConstraints() throws Exception {
+        final JSONArray testCases = new JSONArray(
+                readFile("org/zalando/nakadi/validation/invalid-forward-json-schema-examples.json"));
+        final EventType eventType = EventTypeTestBuilder.builder().compatibilityMode(CompatibilityMode.FORWARD)
+                .build();
+
+        runTestExamples(testCases, eventType);
+    }
+
+    @Test
+    public void checksNoneJsonSchemaConstraints() throws Exception {
+        final JSONArray testCases = new JSONArray(
+                readFile("org/zalando/nakadi/validation/invalid-none-json-schema-examples.json"));
+        final EventType eventType = EventTypeTestBuilder.builder().compatibilityMode(CompatibilityMode.NONE)
+                .build();
+
+        runTestExamples(testCases, eventType);
+    }
+
+    private void runTestExamples(final JSONArray testCases, final EventType eventType) {
         for(final Object testCaseObject : testCases) {
             final JSONObject testCase = (JSONObject) testCaseObject;
             final JSONObject schemaJson = testCase.getJSONObject("schema");
@@ -264,8 +292,16 @@ public class SchemaEvolutionServiceTest {
                     .collect(toList());
             final String description = testCase.getString("description");
 
-            assertThat(description, service.collectIncompatibilities(schemaJson).stream().map(Object::toString)
-                            .collect(toList()), is(errorMessages));
+            assertThat(description, service.collectIncompatibilities(eventType, schemaJson).stream()
+                    .map(Object::toString)
+                    .collect(toList()), is(errorMessages));
         }
+    }
+
+    private Schema loadSchema(final String filename) throws IOException {
+        final JSONObject metaSchemaJson = new JSONObject(
+                Resources.toString(Resources.getResource(filename), Charsets.UTF_8)
+        );
+        return SchemaLoader.load(metaSchemaJson);
     }
 }

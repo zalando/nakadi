@@ -42,7 +42,7 @@ public class SchemaEvolutionService {
     private static final Logger LOG = LoggerFactory.getLogger(SchemaEvolutionService.class);
 
     private final List<SchemaEvolutionConstraint> schemaEvolutionConstraints;
-    private final Schema metaSchema;
+    private final Map<CompatibilityMode, Schema> metaSchema;
     private final SchemaDiff schemaDiff;
     private final Map<SchemaChange.Type, Version.Level> forwardChanges;
     private final Map<SchemaChange.Type, Version.Level> compatibleChanges;
@@ -52,7 +52,7 @@ public class SchemaEvolutionService {
             ADDITIONAL_PROPERTIES_CHANGED, ADDITIONAL_ITEMS_CHANGED);
 
 
-    public SchemaEvolutionService(final Schema metaSchema,
+    public SchemaEvolutionService(final Map<CompatibilityMode, Schema> metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
                                   final SchemaDiff schemaDiff,
                                   final Map<SchemaChange.Type, Version.Level> compatibleChanges,
@@ -66,11 +66,12 @@ public class SchemaEvolutionService {
         this.errorMessages = errorMessages;
     }
 
-    public List<SchemaIncompatibility> collectIncompatibilities(final JSONObject schemaJson) {
+    public List<SchemaIncompatibility> collectIncompatibilities(final EventTypeBase eventType,
+                                                                final JSONObject schemaJson) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<>();
 
         try {
-            metaSchema.validate(schemaJson);
+            metaSchema.get(eventType.getCompatibilityMode()).validate(schemaJson);
         } catch (final ValidationException e) {
             collectErrorMessages(e, incompatibilities);
         }
