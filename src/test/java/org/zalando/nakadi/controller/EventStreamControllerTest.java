@@ -252,6 +252,16 @@ public class EventStreamControllerTest {
     }
 
     @Test
+    public void whenBatchLimitLowerThan1ThenUnprocessableEntity() throws NakadiException, IOException {
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
+
+        final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "batch_limit can't be lower than 1");
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+    }
+
+    @Test
     public void whenWrongCursorsFormatThenBadRequest() throws NakadiException, IOException {
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
 
@@ -269,7 +279,7 @@ public class EventStreamControllerTest {
         when(timelineService.createEventConsumer(eq(KAFKA_CLIENT_ID), any()))
                 .thenThrow(new InvalidCursorException(CursorError.UNAVAILABLE, cursor));
 
-        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0,
+        final StreamingResponseBody responseBody = createStreamingResponseBody(1, 0, 0, 0, 0,
                 "[{\"partition\":\"0\",\"offset\":\"00000000000000000\"}]");
 
         final Problem expectedProblem = Problem.valueOf(PRECONDITION_FAILED,
@@ -292,7 +302,7 @@ public class EventStreamControllerTest {
         when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any()))
                 .thenReturn(eventStreamMock);
 
-        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 1, 1, 0, null);
+        final StreamingResponseBody responseBody = createStreamingResponseBody(1, 0, 1, 1, 0, null);
         responseBody.writeTo(new ByteArrayOutputStream());
 
         final EventStreamConfig streamConfig = configCaptor.getValue();
@@ -496,7 +506,7 @@ public class EventStreamControllerTest {
     }
 
     protected StreamingResponseBody createStreamingResponseBody() throws IOException {
-        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 0, 0, 0, 0, 0, null, requestMock, responseMock,
+        return controller.streamEvents(TEST_EVENT_TYPE_NAME, 1, 0, 0, 0, 0, null, requestMock, responseMock,
                 FULL_ACCESS_CLIENT);
     }
 

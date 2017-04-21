@@ -146,7 +146,7 @@ public class SubscriptionStreamController {
             SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
-                if  (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
+                if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
                     writeProblemResponse(response, outputStream,
                             Problem.valueOf(Response.Status.FORBIDDEN, "Application or event type is blocked"));
                     return;

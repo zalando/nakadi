@@ -27,7 +27,7 @@ public class StreamingStateTest {
     private MetricRegistry metricRegistry;
 
     @Before
-    public void prepareMocks() {
+    public void prepareMocks() throws Exception {
         state = new StreamingState();
 
         final StreamingContext contextMock = mock(StreamingContext.class);
