@@ -782,10 +782,7 @@ public class EventTypeControllerTest {
                 Charsets.UTF_8);
         eventType.getSchema().setSchema(jsonSchemaString);
 
-        final Problem expectedProblem = new InvalidEventTypeException("schema must be a valid json-schema").asProblem();
-
-        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
-                matchesProblem(expectedProblem))));
+        postEventType(eventType).andExpect(status().isUnprocessableEntity());
     }
 
     @Test
