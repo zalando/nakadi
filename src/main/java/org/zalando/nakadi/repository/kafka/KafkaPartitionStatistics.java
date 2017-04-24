@@ -33,4 +33,25 @@ public class KafkaPartitionStatistics extends PartitionStatistics {
         // TODO: Support several timelines
         return first.addOffset(-1).toNakadiCursor(getTimeline());
     }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        final KafkaPartitionStatistics that = (KafkaPartitionStatistics) o;
+
+        return first.equals(that.first) && last.equals(that.last) && getTimeline().equals(that.getTimeline())
+                && getPartition().equals(that.getPartition());
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = first.hashCode();
+        result = 31 * result + last.hashCode();
+        result = 31 * result + getTimeline().hashCode();
+        result = 31 * result + getPartition().hashCode();
+        return result;
+    }
 }

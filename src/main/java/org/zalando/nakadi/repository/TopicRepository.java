@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository;
 
 import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.EventPublishingException;
@@ -31,6 +32,8 @@ public interface TopicRepository {
             throws ServiceUnavailableException;
 
     List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> topics) throws ServiceUnavailableException;
+
+    List<PartitionEndStatistics> loadTopicEndStatistics(Collection<Timeline> topics) throws ServiceUnavailableException;
 
     List<String> listPartitionNames(String topicId);
 

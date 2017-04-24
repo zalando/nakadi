@@ -8,6 +8,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -27,6 +29,8 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -34,6 +38,8 @@ import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.view.Cursor;
+
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -172,6 +178,25 @@ public class KafkaTopicRepositoryTest {
             assertThat(e.getError(), equalTo(CursorError.INVALID_FORMAT));
         }
 
+    }
+
+    @Test
+    public void canLoadPartitionStatistics() throws Exception {
+        final Timeline t1 = mock(Timeline.class);
+        when(t1.getTopic()).thenReturn(MY_TOPIC);
+        final Timeline t2 = mock(Timeline.class);
+        when(t2.getTopic()).thenReturn(ANOTHER_TOPIC);
+        final ImmutableList<Timeline> timelines = ImmutableList.of(t1, t2);
+
+        final List<PartitionStatistics> stats = kafkaTopicRepository.loadTopicStatistics(timelines);
+
+        final Set<PartitionStatistics> expected = PARTITIONS.stream()
+                .map(p -> {
+                    final Timeline timeline = p.topic.equals(MY_TOPIC) ? t1 : t2;
+                    return new KafkaPartitionStatistics(timeline, p.partition, p.earliestOffset, p.latestOffset - 1);
+                })
+                .collect(Collectors.toSet());
+        assertThat(newHashSet(stats), equalTo(expected));
     }
 
     @Test

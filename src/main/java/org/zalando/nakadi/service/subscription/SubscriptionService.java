@@ -1,17 +1,6 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableSet;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +12,7 @@ import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
@@ -41,6 +30,7 @@ import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.Result;
@@ -52,6 +42,18 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 @Component
 public class SubscriptionService {
@@ -188,12 +190,16 @@ public class SubscriptionService {
                 .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
-        final List<PartitionStatistics> topicPartitions = new ArrayList<>();
-        for (final EventType eventType : eventTypes) {
-            final Timeline timeline = timelineService.getTimeline(eventType);
-            topicPartitions.addAll(
-                    timelineService.getTopicRepository(timeline)
-                            .loadTopicStatistics(Collections.singletonList(timeline)));
+        final List<PartitionEndStatistics> topicPartitions = new ArrayList<>();
+
+        final Map<TopicRepository, List<Timeline>> timelinesByRepo = eventTypes.stream()
+                .map(timelineService::getTimeline)
+                .collect(Collectors.groupingBy(timelineService::getTopicRepository));
+
+        for (final Map.Entry<TopicRepository, List<Timeline>> repoEntry : timelinesByRepo.entrySet()) {
+            final TopicRepository topicRepository = repoEntry.getKey();
+            final List<Timeline> timelinesForRepo = repoEntry.getValue();
+            topicPartitions.addAll(topicRepository.loadTopicEndStatistics(timelinesForRepo));
         }
 
         return eventTypes.stream()
@@ -215,7 +221,7 @@ public class SubscriptionService {
     private SubscriptionEventTypeStats.Partition mergePartitions(
             final ZkSubscriptionClient zkSubscriptionClient,
             final ZkSubscriptionNode zkSubscriptionNode,
-            final PartitionStatistics topicPartition) throws NakadiException {
+            final PartitionEndStatistics topicPartition) throws NakadiException {
         final boolean hasSessions = zkSubscriptionNode.getSessions().length > 0;
 
         final Partition partition = Arrays.stream(zkSubscriptionNode.getPartitions())
