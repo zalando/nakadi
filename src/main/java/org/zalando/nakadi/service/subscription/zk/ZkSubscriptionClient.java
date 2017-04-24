@@ -1,9 +1,15 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import java.util.Collection;
-import java.util.Map;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 public interface ZkSubscriptionClient {
 
@@ -15,14 +21,6 @@ public interface ZkSubscriptionClient {
      * @param function Function to call in context of runLocked.
      */
     void runLocked(Runnable function);
-
-    /**
-     * Checks if path /nakadi/subscriptions/{subscriptionId} exists in zookeeper
-     *
-     * @return true if exists, false otherwise
-     * @throws Exception
-     */
-    boolean isSubscriptionCreated() throws Exception;
 
     /**
      * Creates subscription node in zookeeper on path /nakadi/subscriptions/{subscriptionId}
@@ -133,5 +131,37 @@ public interface ZkSubscriptionClient {
      */
     void transfer(String sessionId, Collection<Partition.PartitionKey> partitions);
 
+    /**
+     * Retrieves subscription data like partitions and sessions from ZK under lock.
+     *
+     * @return list of partitions and sessions wrapped in
+     * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
+     */
     ZkSubscriptionNode getZkSubscriptionNodeLocked();
+
+    /**
+     * Subscribes to cursor reset event.
+     *
+     * @param listener callback which is called when cursor reset happens
+     * @return {@link org.zalando.nakadi.service.subscription.zk.ZKSubscription}
+     */
+    ZKSubscription subscribeForCursorsReset(Runnable listener)
+            throws NakadiRuntimeException, UnsupportedOperationException;
+
+    /**
+     * Gets current status of cursor reset request.
+     *
+     * @return true if cursor reset in progress
+     */
+    boolean isCursorResetInProgress();
+
+    /**
+     * Resets subscription offsets for provided cursors.
+     *
+     * @param cursors cursors to reset
+     * @param timeout wait until give up resetting
+     * @throws OperationTimeoutException
+     * @throws ZookeeperException
+     */
+    void resetCursors(List<NakadiCursor> cursors, long timeout) throws OperationTimeoutException, ZookeeperException;
 }

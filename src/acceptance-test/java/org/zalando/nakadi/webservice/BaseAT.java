@@ -26,7 +26,7 @@ public abstract class BaseAT {
     public static final String POSTGRES_PWD = "nakadi";
 
     protected static final int PORT = 8080;
-    protected static final String URL = "http://localhost:" + PORT;
+    public static final String URL = "http://localhost:" + PORT;
 
     protected static final String ZOOKEEPER_URL = "localhost:2181";
     protected static final String KAFKA_URL = "localhost:9092";
