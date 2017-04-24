@@ -88,6 +88,22 @@ public class CursorOperationsService {
             final Timeline newestTimeline = timelines.get(timelines.size() - 1);
             final List<PartitionStatistics> oldestStats = getStatsForTimeline(oldestTimeline);
             final List<PartitionStatistics> newestStats = getStatsForTimeline(newestTimeline);
+
+            // Cursors to empty partitions were represeted as BEGIN. But with multiple timelines, if current one is
+            // empty, we point to the latest event from the previous one.
+            // For example: given there 2 timelines, the first one with 123 events and the second one is empty, instead
+            // of exposing as latest cursor "001-0002--1" we'll be displaying "001-0001-000000000000000123" (latest
+            // event from timeline 1)
+            // TODO cannot handle two empty timelines in a row
+            for (int i = 0; i < newestStats.size(); i++) {
+                if (newestStats.get(i).getLast().getOffset().equals("-1") && timelines.size() > 1) {
+                    final Timeline newestTimelineNotEmpty = timelines.get(timelines.size() - 2);
+                    final List<PartitionStatistics> newestStatsNotEmptyTmp = getStatsForTimeline(
+                            newestTimelineNotEmpty);
+                    newestStats.set(i, newestStatsNotEmptyTmp.get(i));
+                }
+            }
+
             final Map<String, NakadiCursorLag> stats = new HashMap<>();
 
             // assume all timelines have an equal number of partitions
