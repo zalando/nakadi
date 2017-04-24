@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import org.zalando.nakadi.exceptions.NakadiException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,6 +17,8 @@ import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+
+import javax.ws.rs.core.Response;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 public class StartingState extends State {
@@ -27,9 +30,11 @@ public class StartingState extends State {
     /**
      * 1. Checks, that subscription node is present in zk. If not - creates it.
      * <p>
-     * 2. Registers session.
+     * 2. If cursor reset is in progress it will switch to cleanup state.
      * <p>
-     * 3. Switches to streaming state.
+     * 3. Registers session.
+     * <p>
+     * 4. Switches to streaming state.
      */
     private void createSubscriptionLocked() {
         // check that subscription initialized in zk.
@@ -49,6 +54,17 @@ public class StartingState extends State {
                 switchState(new CleanupState(new NoStreamingSlotsAvailable(partitions.length)));
                 return;
             }
+        }
+
+        if (getZk().isCursorResetInProgress()) {
+            switchState(new CleanupState(
+                    new NakadiException("Resetting subscription cursors request is still in progress") {
+                        @Override
+                        protected Response.StatusType getStatus() {
+                            return Response.Status.CONFLICT;
+                        }
+                    }));
+            return;
         }
 
         registerSession();

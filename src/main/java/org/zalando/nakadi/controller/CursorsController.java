@@ -1,16 +1,11 @@
 package org.zalando.nakadi.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.Errors;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -20,15 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
@@ -36,8 +30,19 @@ import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
+
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.ResponseEntity.noContent;
@@ -54,22 +59,16 @@ public class CursorsController {
 
     private final CursorsService cursorsService;
     private final FeatureToggleService featureToggleService;
-    private final SubscriptionDbRepository subscriptionRepository;
-    private final EventTypeRepository eventTypeRepository;
     private final CursorConverter cursorConverter;
     private final CursorTokenService cursorTokenService;
 
     @Autowired
     public CursorsController(final CursorsService cursorsService,
                              final FeatureToggleService featureToggleService,
-                             final SubscriptionDbRepository subscriptionRepository,
-                             final EventTypeRepository eventTypeRepository,
                              final CursorConverter cursorConverter,
                              final CursorTokenService cursorTokenService) {
         this.cursorsService = cursorsService;
         this.featureToggleService = featureToggleService;
-        this.subscriptionRepository = subscriptionRepository;
-        this.eventTypeRepository = eventTypeRepository;
         this.cursorConverter = cursorConverter;
         this.cursorTokenService = cursorTokenService;
     }
@@ -82,8 +81,7 @@ public class CursorsController {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
         try {
-            validateSubscriptionReadScopes(client, subscriptionId);
-            final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId)
+            final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId, client)
                     .stream()
                     .map(cursor -> cursorConverter.convert(cursor, cursorTokenService.generateToken()))
                     .collect(Collectors.toList());
@@ -96,7 +94,6 @@ public class CursorsController {
     @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.POST)
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                            @Valid @RequestBody final ItemsWrapper<SubscriptionCursor> cursors,
-                                           final Errors errors,
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
@@ -107,20 +104,12 @@ public class CursorsController {
         if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
             return new ResponseEntity<>(NOT_IMPLEMENTED);
         }
-        if (errors.hasErrors()) {
-            return Responses.create(new ValidationProblem(errors), request);
-        }
 
         try {
-            final List<NakadiCursor> nakadiCursors = new ArrayList<>();
-            for (final SubscriptionCursor cursor : cursors.getItems()) {
-                nakadiCursors.add(cursorConverter.convert(cursor));
-            }
-            validateSubscriptionReadScopes(client, subscriptionId);
-
             LOG.debug("[COMMIT_CURSORS] scopes validation finished");
 
-            final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, nakadiCursors);
+            final List<Boolean> items = cursorsService
+                    .commitCursors(streamId, subscriptionId, convertToNakadiCursors(cursors), client);
 
             LOG.debug("[COMMIT_CURSORS] commit finished");
 
@@ -129,7 +118,7 @@ public class CursorsController {
                 return noContent().build();
             } else {
                 final List<CursorCommitResult> body = IntStream.range(0, cursors.getItems().size())
-                        .mapToObj( idx -> new CursorCommitResult(cursors.getItems().get(idx), items.get(idx)))
+                        .mapToObj(idx -> new CursorCommitResult(cursors.getItems().get(idx), items.get(idx)))
                         .collect(Collectors.toList());
                 return ok(new ItemsWrapper<>(body));
             }
@@ -140,12 +129,54 @@ public class CursorsController {
         }
     }
 
-    private void validateSubscriptionReadScopes(final Client client, final String subscriptionId)
-            throws ServiceUnavailableException, NoSuchSubscriptionException {
-        subscriptionRepository.getSubscription(subscriptionId)
-                .getEventTypes().stream().map(Try.wrap(eventTypeRepository::findByName))
-                .map(Try::getOrThrow)
-                .forEach(eventType -> client.checkScopes(eventType.getReadScopes()));
+    @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.PATCH)
+    public ResponseEntity<?> resetCursors(
+            @PathVariable("subscriptionId") final String subscriptionId,
+            @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
+            final NativeWebRequest request,
+            final Client client) {
+
+        try {
+            cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors), client);
+            return noContent().build();
+        } catch (final NoSuchEventTypeException e) {
+            throw new UnableProcessException(e.getMessage());
+        } catch (final InvalidCursorException e) {
+            return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
+        } catch (final NakadiException e) {
+            return create(e.asProblem(), request);
+        }
+    }
+
+    private List<NakadiCursor> convertToNakadiCursors(
+            final ItemsWrapper<? extends SubscriptionCursorWithoutToken> cursors) throws
+            InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException {
+        final List<NakadiCursor> nakadiCursors = new ArrayList<>();
+        for (final SubscriptionCursorWithoutToken cursor : cursors.getItems()) {
+            nakadiCursors.add(cursorConverter.convert(cursor));
+        }
+        return nakadiCursors;
+    }
+
+    @ExceptionHandler(UnableProcessException.class)
+    public ResponseEntity<Problem> handleUnableProcessException(final UnableProcessException ex,
+                                                                final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RequestInProgressException.class)
+    public ResponseEntity<Problem> handleRequestInProgressException(final RequestInProgressException ex,
+                                                                    final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Response.Status.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Problem> handleMethodArgumentNotValidException(final MethodArgumentNotValidException ex,
+                                                                         final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(new ValidationProblem(ex.getBindingResult()), request);
     }
 
 }

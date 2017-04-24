@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -16,10 +17,19 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
+import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
+import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import static com.google.common.base.Charsets.UTF_8;
+
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private static final String STATE_INITIALIZED = "INITIALIZED";
@@ -29,6 +39,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private final InterProcessSemaphoreMutex lock;
     private final String subscriptionId;
     private final Logger log;
+    private final String resetCursorPath;
 
     public CuratorZkSubscriptionClient(final String subscriptionId, final CuratorFramework curatorFramework) {
         this(subscriptionId, curatorFramework, CuratorZkSubscriptionClient.class.getName());
@@ -40,6 +51,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         this.curatorFramework = curatorFramework;
         this.lock = new InterProcessSemaphoreMutex(curatorFramework, "/nakadi/locks/subscription_" + subscriptionId);
         this.log = LoggerFactory.getLogger(loggingPath + ".zk");
+        this.resetCursorPath = getSubscriptionPath("/cursor_reset");
     }
 
     @Override
@@ -74,12 +86,6 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
     private String getPartitionPath(final TopicPartition key) {
         return getSubscriptionPath("/topics/" + key.getTopic() + "/" + key.getPartition());
-    }
-
-    @Override
-    public boolean isSubscriptionCreated() throws Exception {
-        final Stat stat = curatorFramework.checkExists().forPath(getSubscriptionPath(""));
-        return stat != null;
     }
 
     @Override
@@ -320,4 +326,108 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
 
         return subscriptionNode;
     }
+
+    @Override
+    public ZKSubscription subscribeForCursorsReset(final Runnable listener)
+            throws NakadiRuntimeException, UnsupportedOperationException {
+        final NodeCache cursorResetCache = new NodeCache(curatorFramework, resetCursorPath);
+        cursorResetCache.getListenable().addListener(() -> listener.run());
+
+        try {
+            cursorResetCache.start();
+        } catch (final Exception e) {
+            throw new NakadiRuntimeException(e);
+        }
+
+        return new ZKSubscription() {
+            @Override
+            public void refresh() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void cancel() {
+                try {
+                    cursorResetCache.getListenable().clear();
+                    cursorResetCache.close();
+                } catch (final IOException e) {
+                    throw new NakadiRuntimeException(e);
+                }
+            }
+        };
+    }
+
+    @Override
+    public boolean isCursorResetInProgress() {
+        try {
+            return curatorFramework.checkExists().forPath(resetCursorPath) != null;
+        } catch (final Exception e) {
+            // nothing in the path
+        }
+        return false;
+    }
+
+    @Override
+    public void resetCursors(final List<NakadiCursor> cursors, final long timeout) throws OperationTimeoutException,
+            ZookeeperException, OperationInterruptedException, RequestInProgressException{
+        ZKSubscription sessionsListener = null;
+        boolean resetWasAlreadyInitiated = false;
+        try {
+            // close subscription connections
+            curatorFramework.create().withMode(CreateMode.EPHEMERAL).forPath(resetCursorPath);
+
+            final AtomicBoolean sessionsChanged = new AtomicBoolean(true);
+            sessionsListener = subscribeForSessionListChanges(() -> {
+                sessionsChanged.set(true);
+                synchronized (sessionsChanged) {
+                    sessionsChanged.notifyAll();
+                }
+            });
+
+            final long finishAt = System.currentTimeMillis() + timeout;
+            while (finishAt > System.currentTimeMillis()) {
+                if (sessionsChanged.compareAndSet(true, false)) {
+                    if (curatorFramework.getChildren().forPath(getSubscriptionPath("/sessions")).isEmpty()) {
+                        for (final NakadiCursor cursor : cursors) {
+                            final String path = MessageFormat.format(getSubscriptionPath("/topics/{0}/{1}/offset"),
+                                    cursor.getTopic(), cursor.getPartition());
+                            curatorFramework.setData().forPath(path, cursor.getOffset().getBytes(Charsets.UTF_8));
+                        }
+                        return;
+                    }
+                    sessionsListener.refresh();
+                }
+
+                synchronized (sessionsChanged) {
+                    sessionsChanged.wait(100);
+                }
+            }
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new OperationInterruptedException("Resetting cursors is interrupted", e);
+        } catch (final KeeperException.NodeExistsException e) {
+            resetWasAlreadyInitiated = true;
+            throw new RequestInProgressException("Cursors reset is already in progress for provided subscription", e);
+        } catch (final KeeperException.NoNodeException e) {
+            throw new UnableProcessException("Impossible to reset cursors for subscription", e);
+        } catch (final Exception e) {
+            log.error(e.getMessage(), e);
+            throw new ZookeeperException("Unexpected problem occurred when resetting cursors", e);
+        } finally {
+            if (sessionsListener != null) {
+                sessionsListener.cancel();
+            }
+
+            try {
+                if (!resetWasAlreadyInitiated) {
+                    curatorFramework.delete().guaranteed().forPath(resetCursorPath);
+                }
+            } catch (final Exception e) {
+                log.error(e.getMessage(), e);
+            }
+        }
+
+        throw new OperationTimeoutException("Timeout resetting cursors");
+    }
+
 }

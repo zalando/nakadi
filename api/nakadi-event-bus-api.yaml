@@ -278,6 +278,9 @@ paths:
 
          * Events in the stream may be visible for a short period of time before being removed.
 
+         Depending on the Nakadi configuration, the oauth resource owner username may have to be equal to
+         'nakadi.oauth2.adminClientId' property to be able to access this endpoint.
+
       parameters:
         - name: name
           in: path
@@ -295,6 +298,10 @@ paths:
           description: EventType is successfuly removed
         '401':
           description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
           schema:
             $ref: '#/definitions/Problem'
 
@@ -905,6 +912,10 @@ paths:
           description: Offsets were reset
         '404':
           description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: Cursors reset is already in progress for provided subscription
           schema:
             $ref: '#/definitions/Problem'
         '422':
