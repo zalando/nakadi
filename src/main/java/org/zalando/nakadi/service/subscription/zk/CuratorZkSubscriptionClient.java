@@ -391,7 +391,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                         for (final NakadiCursor cursor : cursors) {
                             final String path = MessageFormat.format(getSubscriptionPath("/topics/{0}/{1}/offset"),
                                     cursor.getTopic(), cursor.getPartition());
-                            curatorFramework.setData().forPath(path, cursor.getOffset().getBytes(Charsets.UTF_8));
+                            curatorFramework.setData().forPath(path, cursor.getOffset().getBytes(UTF_8));
                         }
                         return;
                     }
