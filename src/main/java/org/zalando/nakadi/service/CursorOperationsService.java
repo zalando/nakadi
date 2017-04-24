@@ -70,7 +70,7 @@ public class CursorOperationsService {
         for (int order = initialCursor.getTimeline().getOrder() + 1;
              order < finalCursor.getTimeline().getOrder();
              order++) {
-            final Timeline timeline = getTimeline(initialCursor.getTopic(), order);
+            final Timeline timeline = getTimeline(initialCursor.getEventType(), order);
             distance += totalEventsInTimeline(timeline, partitionString);
         }
 
