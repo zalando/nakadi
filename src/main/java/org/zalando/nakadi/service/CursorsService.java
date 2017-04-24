@@ -89,7 +89,9 @@ public class CursorsService {
             throws ServiceUnavailableException, InvalidCursorException, InvalidStreamIdException,
             NoSuchEventTypeException, InternalNakadiException, NoSuchSubscriptionException, UnableProcessException,
             IllegalScopeException {
-
+        if (cursors.isEmpty()) {
+            throw new UnableProcessException("Cursors are absent");
+        }
         final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
         validateSubscriptionCursors(subscription, cursors);
         validateSubscriptionReadScopes(subscription, client);
