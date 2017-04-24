@@ -17,6 +17,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -34,7 +35,6 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -55,11 +55,14 @@ import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 public class CursorsService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CursorsService.class);
+
     private static final String PATH_ZK_OFFSET = "/nakadi/subscriptions/{0}/topics/{1}/{2}/offset";
     private static final String PATH_ZK_PARTITION = "/nakadi/subscriptions/{0}/topics/{1}/{2}";
     private static final String PATH_ZK_PARTITIONS = "/nakadi/subscriptions/{0}/topics/{1}";
     private static final String PATH_ZK_SESSION = "/nakadi/subscriptions/{0}/sessions/{1}";
+
     private static final String ERROR_COMMUNICATING_WITH_ZOOKEEPER = "Error communicating with zookeeper";
+
     private static final int COMMIT_CONFLICT_RETRY_TIMES = 5;
 
     private final ZooKeeperHolder zkHolder;
@@ -142,12 +145,13 @@ public class CursorsService {
         LOG.debug("[COMMIT_CURSORS] stream IDs validation finished");
     }
 
+    // TODO: Maybe it is better to use SubscriptionCursorWithoutToken.
     private String getPartitionSession(final String subscriptionId, final String topic, final NakadiCursor cursor)
             throws ServiceUnavailableException, InvalidCursorException {
         try {
             final String partitionPath = format(PATH_ZK_PARTITION, subscriptionId, topic, cursor.getPartition());
             final byte[] partitionData = zkHolder.get().getData().forPath(partitionPath);
-            final Partition.PartitionKey partitionKey = new Partition.PartitionKey(topic, cursor.getPartition());
+            final TopicPartition partitionKey = new TopicPartition(topic, cursor.getPartition());
             return CuratorZkSubscriptionClient.deserializeNode(partitionKey, partitionData).getSession();
         } catch (final KeeperException.NoNodeException e) {
             throw new InvalidCursorException(CursorError.PARTITION_NOT_FOUND, cursor);

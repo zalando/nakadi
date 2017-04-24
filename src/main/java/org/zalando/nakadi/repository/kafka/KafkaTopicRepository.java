@@ -351,15 +351,12 @@ public class KafkaTopicRepository implements TopicRepository {
         }
     }
 
-    public Consumer<String, String> createKafkaConsumer() {
-        return kafkaFactory.getConsumer();
-    }
-
     @Override
-    public EventConsumer createEventConsumer(final String clientId, final List<NakadiCursor> cursors)
+    public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
 
         final Map<NakadiCursor, KafkaCursor> cursorMapping = this.convertToKafkaCursors(cursors);
+        cursorMapping.entrySet().forEach(entry -> LOG.info("Mapped to {} from {}", entry.getValue(), entry.getKey()));
         final Map<TopicPartition, Timeline> timelineMap = cursorMapping.entrySet().stream()
                 .collect(Collectors.toMap(
                         entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),

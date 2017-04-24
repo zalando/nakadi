@@ -9,6 +9,7 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
 import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
@@ -24,8 +25,8 @@ class VersionZeroConverter implements VersionedConverter {
     }
 
     @Override
-    public NakadiCursor.Version getVersion() {
-        return NakadiCursor.Version.ZERO;
+    public CursorConverter.Version getVersion() {
+        return CursorConverter.Version.ZERO;
     }
 
     @Override

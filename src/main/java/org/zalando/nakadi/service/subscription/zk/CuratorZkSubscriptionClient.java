@@ -1,6 +1,11 @@
 package org.zalando.nakadi.service.subscription.zk;
 
-import com.google.common.base.Charsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex;
@@ -10,31 +15,25 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+import static com.google.common.base.Charsets.UTF_8;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     private static final String STATE_INITIALIZED = "INITIALIZED";
     private static final String NO_SESSION = "";
-    private static final Charset CHARSET = Charset.forName("UTF-8");
 
     private final CuratorFramework curatorFramework;
     private final InterProcessSemaphoreMutex lock;
@@ -85,7 +84,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         return "/nakadi/subscriptions/" + subscriptionId + value;
     }
 
-    private String getPartitionPath(final Partition.PartitionKey key) {
+    private String getPartitionPath(final TopicPartition key) {
         return getSubscriptionPath("/topics/" + key.getTopic() + "/" + key.getPartition());
     }
 
@@ -99,7 +98,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                 curatorFramework.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(statePath);
                 return true;
             } else {
-                final String state = new String(curatorFramework.getData().forPath(statePath), CHARSET);
+                final String state = new String(curatorFramework.getData().forPath(statePath), UTF_8);
                 return !state.equals(STATE_INITIALIZED);
             }
         } catch (final Exception e) {
@@ -120,7 +119,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public void fillEmptySubscription(final Map<Partition.PartitionKey, String> partitionOffsets) {
+    public void fillEmptySubscription(final Collection<NakadiCursor> cursors) {
         try {
             log.info("Creating sessions root");
             if (null != curatorFramework.checkExists().forPath(getSubscriptionPath("/sessions"))) {
@@ -138,20 +137,20 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(getSubscriptionPath("/topics"));
 
             log.info("Creating partitions");
-            for (final Map.Entry<Partition.PartitionKey, String> p : partitionOffsets.entrySet()) {
-                final String partitionPath = getPartitionPath(p.getKey());
+            for (final NakadiCursor cursor : cursors) {
+                final String partitionPath = getPartitionPath(cursor.getTopicPartition());
                 curatorFramework.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(
                         partitionPath,
                         serializeNode(null, null, Partition.State.UNASSIGNED));
                 curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(
                         partitionPath + "/offset",
-                        p.getValue().getBytes(CHARSET));
+                        cursor.getOffset().getBytes(UTF_8));
             }
             log.info("creating topology node");
             curatorFramework.create().withMode(CreateMode.PERSISTENT).forPath(getSubscriptionPath("/topology"),
-                    "0".getBytes(CHARSET));
+                    "0".getBytes(UTF_8));
             log.info("updating state");
-            curatorFramework.setData().forPath(getSubscriptionPath("/state"), STATE_INITIALIZED.getBytes(CHARSET));
+            curatorFramework.setData().forPath(getSubscriptionPath("/state"), STATE_INITIALIZED.getBytes(UTF_8));
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -162,11 +161,11 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         return Stream.of(
                 session == null ? NO_SESSION : session,
                 nextSession == null ? NO_SESSION : nextSession,
-                state.name()).collect(Collectors.joining(":")).getBytes(CHARSET);
+                state.name()).collect(Collectors.joining(":")).getBytes(UTF_8);
     }
 
-    public static Partition deserializeNode(final Partition.PartitionKey key, final byte[] data) {
-        final String[] parts = new String(data, CHARSET).split(":");
+    public static Partition deserializeNode(final TopicPartition key, final byte[] data) {
+        final String[] parts = new String(data, UTF_8).split(":");
         return new Partition(
                 key,
                 NO_SESSION.equals(parts[0]) ? null : parts[0],
@@ -192,9 +191,9 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         try {
             log.info("Incrementing topology version");
             final Integer curVersion = Integer.parseInt(new String(curatorFramework.getData()
-                    .forPath(getSubscriptionPath("/topology")), CHARSET));
+                    .forPath(getSubscriptionPath("/topology")), UTF_8));
             curatorFramework.setData().forPath(getSubscriptionPath("/topology"), String.valueOf(curVersion + 1)
-                    .getBytes(CHARSET));
+                    .getBytes(UTF_8));
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -208,7 +207,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
             for (final String topic : curatorFramework.getChildren().forPath(getSubscriptionPath("/topics"))) {
                 for (final String partition : curatorFramework.getChildren().forPath(getSubscriptionPath("/topics/"
                         + topic))) {
-                    final Partition.PartitionKey key = new Partition.PartitionKey(topic, partition);
+                    final TopicPartition key = new TopicPartition(topic, partition);
                     partitions.add(deserializeNode(key, curatorFramework.getData().forPath(getPartitionPath(key))));
                 }
             }
@@ -225,7 +224,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         try {
             for (final String sessionId : curatorFramework.getChildren().forPath(getSubscriptionPath("/sessions"))) {
                 final int weight = Integer.parseInt(new String(curatorFramework.getData()
-                        .forPath(getSubscriptionPath("/sessions/" + sessionId)), CHARSET));
+                        .forPath(getSubscriptionPath("/sessions/" + sessionId)), UTF_8));
                 sessions.add(new Session(sessionId, weight));
             }
             return sessions.toArray(new Session[sessions.size()]);
@@ -247,17 +246,18 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public ZKSubscription subscribeForOffsetChanges(final Partition.PartitionKey key,
-                                                    final Runnable commitListener) {
-        log.info("subscribeForOffsetChanges");
+    public ZKSubscription subscribeForOffsetChanges(final TopicPartition key, final Runnable commitListener) {
+        log.info("subscribeForOffsetChanges: {}", key);
         return ChangeListener.forData(curatorFramework, getPartitionPath(key) + "/offset", commitListener);
     }
 
     @Override
-    public long getOffset(final Partition.PartitionKey key) {
+    public String getOffset(final TopicPartition key) {
         try {
-            return Long.parseLong(new String(curatorFramework.getData().forPath(getPartitionPath(key) + "/offset"),
-                    CHARSET));
+            // TODO: Store nakadi cursor view in zk.
+            final String result =
+                    new String(curatorFramework.getData().forPath(getPartitionPath(key) + "/offset"), UTF_8);
+            return KafkaCursor.toNakadiOffset(Long.parseLong(result));
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -269,7 +269,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
         try {
             final String clientPath = getSubscriptionPath("/sessions/" + session.getId());
             curatorFramework.create().withMode(CreateMode.EPHEMERAL).forPath(clientPath,
-                    String.valueOf(session.getWeight()).getBytes(CHARSET));
+                    String.valueOf(session.getWeight()).getBytes(UTF_8));
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -285,11 +285,11 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
     }
 
     @Override
-    public void transfer(final String sessionId, final Collection<Partition.PartitionKey> partitions) {
+    public void transfer(final String sessionId, final Collection<TopicPartition> partitions) {
         log.info("session " + sessionId + " releases partitions " + partitions);
         boolean changed = false;
         try {
-            for (final Partition.PartitionKey pk : partitions) {
+            for (final TopicPartition pk : partitions) {
                 final Partition realPartition = deserializeNode(
                         pk,
                         curatorFramework.getData().forPath(getPartitionPath(pk)));
@@ -391,7 +391,7 @@ public class CuratorZkSubscriptionClient implements ZkSubscriptionClient {
                         for (final NakadiCursor cursor : cursors) {
                             final String path = MessageFormat.format(getSubscriptionPath("/topics/{0}/{1}/offset"),
                                     cursor.getTopic(), cursor.getPartition());
-                            curatorFramework.setData().forPath(path, cursor.getOffset().getBytes(Charsets.UTF_8));
+                            curatorFramework.setData().forPath(path, cursor.getOffset().getBytes(UTF_8));
                         }
                         return;
                     }
