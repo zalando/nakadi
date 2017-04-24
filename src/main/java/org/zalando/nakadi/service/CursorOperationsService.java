@@ -74,8 +74,7 @@ public class CursorOperationsService {
             distance += totalEventsInTimeline(timeline, partitionString);
         }
 
-        // do not check if the offset exists because there is no reason to do it.
-        distance += numberOfEventsBeforeCursor(finalCursor);
+        distance += numberOfEventsBeforeCursor(finalCursor) + 1; // count latest cursor, inclusive
 
         return distance;
     }

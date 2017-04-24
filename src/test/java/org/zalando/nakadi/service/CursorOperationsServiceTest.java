@@ -81,7 +81,7 @@ public class CursorOperationsServiceTest {
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
 
         final Long distance = service.calculateDistance(initialCursor, finalCursor);
-        assertThat(distance, equalTo(8L));
+        assertThat(distance, equalTo(9L));
     }
 
 
@@ -96,7 +96,7 @@ public class CursorOperationsServiceTest {
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000003");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
 
-        assertThat(service.calculateDistance(initialCursor, finalCursor), equalTo(7L + 9L + 1L));
+        assertThat(service.calculateDistance(initialCursor, finalCursor), equalTo(7L + 9L + 2L));
     }
 
     @Test(expected = InvalidCursorOperation.class)
