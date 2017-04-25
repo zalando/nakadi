@@ -63,7 +63,11 @@ public class CursorOperationsService {
         long distance = 0;
 
         // get distance from initialCursor to the end of the timeline
-        distance += totalEventsInTimeline(initialCursor) - numberOfEventsBeforeCursor(initialCursor);
+        if (numberOfEventsBeforeCursor(initialCursor) < 0) { // special case for BEGIN
+            distance += totalEventsInTimeline(initialCursor);
+        } else {
+            distance += totalEventsInTimeline(initialCursor) - numberOfEventsBeforeCursor(initialCursor);
+        }
 
         // get all intermediary timelines sizes
         final String partitionString = initialCursor.getPartition();

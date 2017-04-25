@@ -50,7 +50,7 @@ public class CursorOperationsAT {
 
         RestAssured.given()
                 .contentType(ContentType.JSON)
-                .body("[{\"partition\": \"0\", \"offset\":\"000000000000000000\"}]")
+                .body("[{\"partition\": \"0\", \"offset\":\"BEGIN\"}]")
                 .when()
                 .post("/event-types/" + eventType.getName() + "/cursors-lag")
                 .then()
@@ -58,7 +58,7 @@ public class CursorOperationsAT {
                 .body("size()", equalTo(1))
                 .body("newest_available_offset[0]", equalTo("000000000000000001"))
                 .body("oldest_available_offset[0]", equalTo("000000000000000000"))
-                .body("unconsumed_events[0]", equalTo(1));
+                .body("unconsumed_events[0]", equalTo(2));
 
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
 
@@ -101,5 +101,33 @@ public class CursorOperationsAT {
                 .body("newest_available_offset[0]", equalTo("001-0002-000000000000000001"))
                 .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(4));
+
+        NakadiTestUtils.switchTimelineDefaultStorage(eventType);
+
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body("[{\"partition\": \"0\", \"offset\":\"BEGIN\"}]")
+                .when()
+                .post("/event-types/" + eventType.getName() + "/cursors-lag")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("newest_available_offset[0]", equalTo("001-0002-000000000000000001"))
+                .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
+                .body("unconsumed_events[0]", equalTo(4));
+
+        postEvents(eventType.getName(), EVENT, EVENT, EVENT);
+
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body("[{\"partition\": \"0\", \"offset\":\"BEGIN\"}]")
+                .when()
+                .post("/event-types/" + eventType.getName() + "/cursors-lag")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("newest_available_offset[0]", equalTo("001-0003-000000000000000002"))
+                .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
+                .body("unconsumed_events[0]", equalTo(7));
     }
 }

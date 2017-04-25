@@ -399,7 +399,10 @@ public class KafkaTopicRepository implements TopicRepository {
             if (offsets.size() - 1 < partition) {
                 throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
             } else {
-                return offsets.get(partition);
+                // The number stored in positions is the Kafka offset, which could be -1, for example, when a partition
+                // is empty, or zero when there is only one event. In order to count precisely the amount of events
+                // in a partition, we need to adjust it by adding one.
+                return offsets.get(partition) + 1;
             }
         } catch (final ServiceUnavailableException e) {
             throw new MyNakadiRuntimeException1("Problem calculating partition statistics", e);
@@ -407,6 +410,7 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     public long numberOfEventsBeforeCursor(final NakadiCursor cursor) {
+        // could be -1 in case the cursor points to BEGIN
         return KafkaCursor.toKafkaOffset(cursor.getOffset());
     }
 
