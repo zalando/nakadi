@@ -29,6 +29,7 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.EventPublishingException;
@@ -194,6 +195,25 @@ public class KafkaTopicRepositoryTest {
                 .map(p -> {
                     final Timeline timeline = p.topic.equals(MY_TOPIC) ? t1 : t2;
                     return new KafkaPartitionStatistics(timeline, p.partition, p.earliestOffset, p.latestOffset - 1);
+                })
+                .collect(Collectors.toSet());
+        assertThat(newHashSet(stats), equalTo(expected));
+    }
+
+    @Test
+    public void canLoadPartitionEndStatistics() throws Exception {
+        final Timeline t1 = mock(Timeline.class);
+        when(t1.getTopic()).thenReturn(MY_TOPIC);
+        final Timeline t2 = mock(Timeline.class);
+        when(t2.getTopic()).thenReturn(ANOTHER_TOPIC);
+        final ImmutableList<Timeline> timelines = ImmutableList.of(t1, t2);
+
+        final List<PartitionEndStatistics> stats = kafkaTopicRepository.loadTopicEndStatistics(timelines);
+
+        final Set<PartitionEndStatistics> expected = PARTITIONS.stream()
+                .map(p -> {
+                    final Timeline timeline = p.topic.equals(MY_TOPIC) ? t1 : t2;
+                    return new KafkaPartitionEndStatistics(timeline, p.partition, p.latestOffset - 1);
                 })
                 .collect(Collectors.toSet());
         assertThat(newHashSet(stats), equalTo(expected));
