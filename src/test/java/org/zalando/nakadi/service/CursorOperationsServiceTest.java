@@ -81,7 +81,7 @@ public class CursorOperationsServiceTest {
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
 
         final Long distance = service.calculateDistance(initialCursor, finalCursor);
-        assertThat(distance, equalTo(9L));
+        assertThat(distance, equalTo(10L));
     }
 
 
@@ -96,7 +96,7 @@ public class CursorOperationsServiceTest {
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000003");
         final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000001");
 
-        assertThat(service.calculateDistance(initialCursor, finalCursor), equalTo(7L + 9L + 2L));
+        assertThat(service.calculateDistance(initialCursor, finalCursor), equalTo(8L + 10L + 2L));
     }
 
     @Test(expected = InvalidCursorOperation.class)
@@ -167,7 +167,7 @@ public class CursorOperationsServiceTest {
         final NakadiCursor cursor = service.unshiftCursor(shiftedCursor);
 
         assertThat(cursor.getTimeline().getOrder(), equalTo(0));
-        assertThat(cursor.getOffset(), equalTo("000000000000000007"));
+        assertThat(cursor.getOffset(), equalTo("000000000000000009"));
     }
 
     @Test
@@ -207,7 +207,7 @@ public class CursorOperationsServiceTest {
     @Test
     public void shiftCursorRightToNextTimeline() throws Exception {
         final Timeline initialTimeline = mockTimeline(0, 10);
-        final Timeline nextTimeline = mockTimeline(1);
+        final Timeline nextTimeline = mockTimeline(1, 3);
         final ShiftedNakadiCursor shiftedCursor = new ShiftedNakadiCursor(initialTimeline, "0", "000000000000000003",
                 9L);
 
@@ -217,12 +217,12 @@ public class CursorOperationsServiceTest {
         final NakadiCursor cursor = service.unshiftCursor(shiftedCursor);
 
         assertThat(cursor.getTimeline().getOrder(), equalTo(1));
-        assertThat(cursor.getOffset(), equalTo("000000000000000002"));
+        assertThat(cursor.getOffset(), equalTo("000000000000000001"));
     }
 
     @Test
     public void shiftCursorForwardInTheSameTimelineOpen() {
-        final Timeline initialTimeline = mockTimeline(0);
+        final Timeline initialTimeline = mockTimeline(0, 10);
         final ShiftedNakadiCursor shiftedCursor = new ShiftedNakadiCursor(initialTimeline, "0", "000000000000000003",
                 3L);
 

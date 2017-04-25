@@ -389,7 +389,7 @@ public class KafkaTopicRepository implements TopicRepository {
             final Timeline.StoragePosition positions = timeline.getLatestPosition();
             if (positions == null) {
                 final Optional<PartitionStatistics> statsO = loadPartitionStatistics(timeline, partitionString);
-                return statsO.map(stats -> numberOfEventsBeforeCursor(stats.getLast())).orElseThrow(
+                return statsO.map(stats -> numberOfEventsBeforeCursor(stats.getLast()) + 1).orElseThrow(
                         MyNakadiRuntimeException1::new
                 );
             }
