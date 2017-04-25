@@ -131,6 +131,18 @@ public class CursorOperationsAT {
                 .body("newest_available_offset[0]", equalTo("001-0003-000000000000000002"))
                 .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
                 .body("unconsumed_events[0]", equalTo(7));
+
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body("[{\"partition\": \"0\", \"offset\":\"001-0001-000000000000000000\"}]")
+                .when()
+                .post("/event-types/" + eventType.getName() + "/cursors-lag")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("newest_available_offset[0]", equalTo("001-0003-000000000000000002"))
+                .body("oldest_available_offset[0]", equalTo("001-0001-000000000000000000"))
+                .body("unconsumed_events[0]", equalTo(6));
     }
 
     @Test

@@ -69,7 +69,8 @@ public class CursorOperationsService {
         if (numberOfEventsBeforeCursor(initialCursor) < 0) { // special case for BEGIN
             distance += totalEventsInTimeline(initialCursor);
         } else {
-            distance += totalEventsInTimeline(initialCursor) - numberOfEventsBeforeCursor(initialCursor);
+            // does not count the initial cursor as consumed
+            distance += totalEventsInTimeline(initialCursor) - numberOfEventsBeforeCursor(initialCursor) - 1;
         }
 
         // get all intermediary timelines sizes
