@@ -275,8 +275,8 @@ public class EventTypeService {
                                      final Long oldRetentionTime) throws NakadiException {
         final NakadiException exception = transactionTemplate.execute(action -> {
             try {
-                eventTypeRepository.update(eventType);
                 updateTimelinesCleanup(eventType.getName(), newRetentionTime, oldRetentionTime);
+                eventTypeRepository.update(eventType);
                 return null;
             } catch (final NakadiException e) {
                 return e;
