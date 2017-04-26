@@ -555,6 +555,49 @@ paths:
           description: |
             Schema object.
 
+  '/event-types/{name}/cursor-distances':
+    post:
+      tags:
+        - unmanaged-api
+        - monitoring
+        - management-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        GET with payload.
+
+        Calculate the distance between two offsets. This is useful for performing checks for data completeness, when
+        a client has read some batches and wants to be sure that all delivered events have been correctly processed.
+      parameters:
+        - name: name
+          in: path
+          description: Name of the EventType
+          type: string
+          required: true
+        - name: cursors-distances-query
+          in: body
+          description: |
+            List of pairs of cursors: `initial_cursor` and `final_cursor`. Used as input by Nakadi to
+            calculate how many events there are between two cursors. The distance doesn't include the `initial_cursor`
+            but includes the `final_cursor`. So if they are equal the result is zero.
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/CursorDistanceQuery"
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: An array of `CursorDistanceResult`s with the distance between two offsets.
+            items:
+              $ref: '#/definitions/CursorDistanceResult'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+
   '/event-types/{name}/cursors-lag':
     post:
       tags:
@@ -609,11 +652,10 @@ paths:
               List of partitions with the number of unconsummed events.
             items:
               $ref: '#/definitions/Partition'
-        '401':
-          description: Client is not authenticated
+        '422':
+          description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
-
 
   '/event-types/{name}/partitions':
     get:
@@ -1840,6 +1882,29 @@ definitions:
       This object contains general information about the stream. Used only for debugging
       purposes. We recommend logging this object in order to solve connection issues. Clients
       should not parse this structure.
+
+  CursorDistanceQuery:
+    required:
+      - initial_cursor
+      - final_cursor
+    properties:
+      initial_cursor:
+        - $ref: "/definitions/Cursor"
+      final_cursor:
+        - $ref: "/definitions/Cursor"
+
+  CursorDistanceResult:
+    allOf:
+      - $ref: '/definitions/CursorDistanceQuery'
+    required:
+      - distance
+    properties:
+      distance:
+        type: number
+        format: int64
+        description: |
+          Number of events between two offsets. Initial offset is exclusive. It's only zero when both provided offsets
+          are equal. If the `final_cursor` is strictly smaller than the `initial_cursor` it results in client error.
 
   Cursor:
     required:
