@@ -40,12 +40,13 @@
         <!-- See http://checkstyle.sf.net/config_coding.html -->
         <module name="EqualsHashCode"/>
         <module name="IllegalInstantiation"/>
-        <module name="InnerAssignment"/>
         <module name="MissingSwitchDefault"/>
         <module name="SimplifyBooleanExpression"/>
         <module name="SimplifyBooleanReturn"/>
         
-        <module name="FinalLocalVariableCheck"/>
+        <module name="FinalLocalVariableCheck">
+            <property name="validateEnhancedForLoopVariable" value="true"/>
+        </module>
         <module name="FinalParameters"/>
 
         <module name="LineLength">

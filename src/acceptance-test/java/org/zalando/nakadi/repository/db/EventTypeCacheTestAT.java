@@ -1,6 +1,14 @@
 package org.zalando.nakadi.repository.db;
 
 import com.google.common.collect.ImmutableList;
+import java.io.Closeable;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -20,16 +28,6 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.timeline.TimelineSync;
-
-import java.io.Closeable;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
-
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.fail;
@@ -160,12 +158,13 @@ public class EventTypeCacheTestAT {
                 .eventTypeCache(client, eventTypeRepository, timelineRepository, timelineSync);
         final EventType et = buildDefaultEventType();
 
-        Mockito.when(timelineRepository.listTimelines(et.getName())).thenReturn(getMockedTimelines(et.getName()));
+        Mockito.when(timelineRepository.listTimelinesOrdered(et.getName()))
+                .thenReturn(getMockedTimelines(et.getName()));
         Mockito.doReturn(et).when(eventTypeRepository).findByName(et.getName());
 
         etc.created(et.getName());
         final Optional<Timeline> timeline = etc.getActiveTimeline(et.getName());
-        Assert.assertEquals(Integer.valueOf(1), timeline.get().getOrder());
+        Assert.assertEquals(1, timeline.get().getOrder());
     }
 
     @Test
@@ -174,10 +173,11 @@ public class EventTypeCacheTestAT {
                 .eventTypeCache(client, eventTypeRepository, timelineRepository, timelineSync);
         final EventType et = buildDefaultEventType();
 
-        Mockito.when(timelineRepository.listTimelines(et.getName())).thenReturn(getMockedTimelines(et.getName()));
+        Mockito.when(timelineRepository.listTimelinesOrdered(et.getName()))
+                .thenReturn(getMockedTimelines(et.getName()));
         Mockito.doReturn(et).when(eventTypeRepository).findByName(et.getName());
 
-        final List<Timeline> timelines = etc.getTimelines(et.getName());
+        final List<Timeline> timelines = etc.getTimelinesOrdered(et.getName());
         Assert.assertEquals(3, timelines.size());
     }
 
@@ -188,7 +188,8 @@ public class EventTypeCacheTestAT {
                 .eventTypeCache(client, eventTypeRepository, timelineRepository, timelineSync);
         final EventType et = buildDefaultEventType();
 
-        Mockito.when(timelineRepository.listTimelines(et.getName())).thenReturn(getMockedTimelines(et.getName()));
+        Mockito.when(timelineRepository.listTimelinesOrdered(et.getName()))
+                .thenReturn(getMockedTimelines(et.getName()));
         Mockito.doReturn(et).when(eventTypeRepository).findByName(et.getName());
 
         etc.created(et.getName());
@@ -196,8 +197,8 @@ public class EventTypeCacheTestAT {
 
         executeWithRetry(() -> {
                     try {
-                        etc.getTimelines(et.getName());
-                        verify(timelineRepository, times(1)).listTimelines(et.getName());
+                        etc.getTimelinesOrdered(et.getName());
+                        verify(timelineRepository, times(1)).listTimelinesOrdered(et.getName());
                     } catch (final Exception e) {
                         fail();
                     }

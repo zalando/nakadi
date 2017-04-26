@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -16,11 +15,13 @@ import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.utils.TestUtils;
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -30,6 +31,7 @@ import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaPartition;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiPartition;
+import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.randomUInt;
 import static org.zalando.nakadi.utils.TestUtils.randomULong;
@@ -42,6 +44,13 @@ public class NakadiKafkaConsumerTest {
 
     private static KafkaCursor kafkaCursor(final String topic, final int partition, final long offset) {
         return new KafkaCursor(topic, partition, offset);
+    }
+
+    private static Map<TopicPartition, Timeline> createTpTimelineMap() {
+        final Timeline timeline = createFakeTimeline(TOPIC);
+        final Map<TopicPartition, Timeline> mockMap = mock(Map.class);
+        when(mockMap.get(any())).thenReturn(timeline);
+        return mockMap;
     }
 
     @Test
@@ -65,12 +74,12 @@ public class NakadiKafkaConsumerTest {
                 kafkaCursor(TOPIC, randomUInt(), randomULong()));
 
         // ACT //
-        new NakadiKafkaConsumer(kafkaConsumerMock, kafkaCursors, POLL_TIMEOUT);
+        new NakadiKafkaConsumer(kafkaConsumerMock, kafkaCursors, createTpTimelineMap(), POLL_TIMEOUT);
 
         // ASSERT //
         final Map<String, String> cursors = kafkaCursors.stream().collect(Collectors.toMap(kafkaCursor ->
                         toNakadiPartition(kafkaCursor.getPartition()),
-                    kafkaCursor -> toNakadiOffset(kafkaCursor.getOffset())));
+                kafkaCursor -> toNakadiOffset(kafkaCursor.getOffset())));
 
         final List<TopicPartition> assignedPartitions = partitionsCaptor.getValue();
         assertThat(assignedPartitions, hasSize(cursors.size()));
@@ -84,11 +93,11 @@ public class NakadiKafkaConsumerTest {
         assertThat(topicPartitions, hasSize(cursors.size()));
         assertThat(offsets, hasSize(cursors.size()));
         cursors
-            .entrySet().forEach(cursor -> {
-                assertThat(topicPartitions,
-                        Matchers.hasItem(new TopicPartition(TOPIC, toKafkaPartition(cursor.getKey()))));
-                assertThat(offsets, Matchers.hasItem(toKafkaOffset(cursor.getValue())));
-            });
+                .entrySet().forEach(cursor -> {
+            assertThat(topicPartitions,
+                    Matchers.hasItem(new TopicPartition(TOPIC, toKafkaPartition(cursor.getKey()))));
+            assertThat(offsets, Matchers.hasItem(toKafkaOffset(cursor.getValue())));
+        });
     }
 
     @Test
@@ -101,9 +110,10 @@ public class NakadiKafkaConsumerTest {
         final int event1Offset = randomUInt();
         final int event2Offset = randomUInt();
         final ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(ImmutableMap.of(
-                    new TopicPartition(TOPIC, PARTITION),
-                    ImmutableList.of(new ConsumerRecord<>(TOPIC, PARTITION, event1Offset, "k1", event1),
+                new TopicPartition(TOPIC, PARTITION),
+                ImmutableList.of(new ConsumerRecord<>(TOPIC, PARTITION, event1Offset, "k1", event1),
                         new ConsumerRecord<>(TOPIC, PARTITION, event2Offset, "k2", event2))));
+        final Timeline timeline = createFakeTimeline(TOPIC);
         final ConsumerRecords<String, String> emptyRecords = new ConsumerRecords<>(ImmutableMap.of());
 
         final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
@@ -114,26 +124,24 @@ public class NakadiKafkaConsumerTest {
         final List<KafkaCursor> cursors = ImmutableList.of(kafkaCursor(TOPIC, PARTITION, 0));
 
         // ACT //
-        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock, cursors, POLL_TIMEOUT);
-        final Optional<ConsumedEvent> consumedEvent1 = consumer.readEvent();
-        final Optional<ConsumedEvent> consumedEvent2 = consumer.readEvent();
-        final Optional<ConsumedEvent> consumedEvent3 = consumer.readEvent();
+        final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(
+                kafkaConsumerMock, cursors, createTpTimelineMap(), POLL_TIMEOUT);
+        final List<ConsumedEvent> consumedEvents = consumer.readEvents();
 
         // ASSERT //
-        assertThat("The event we read first should not be empty", consumedEvent1.isPresent(), equalTo(true));
+        assertThat("The event we read first should not be empty", consumedEvents.size(), equalTo(2));
         assertThat("The event we read first should have the same data as first mocked ConsumerRecord",
-            consumedEvent1.get(),
-            equalTo(new ConsumedEvent(event1, new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiCursor())));
+                consumedEvents.get(0),
+                equalTo(new ConsumedEvent(event1,
+                        new KafkaCursor(TOPIC, PARTITION, event1Offset).toNakadiCursor(timeline))));
 
-        assertThat("The event we read second should not be empty", consumedEvent2.isPresent(), equalTo(true));
         assertThat("The event we read second should have the same data as second mocked ConsumerRecord",
-            consumedEvent2.get(),
-            equalTo(new ConsumedEvent(event2, new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiCursor())));
-
-        assertThat("The event we read third should be empty", consumedEvent3.isPresent(), equalTo(false));
+                consumedEvents.get(1),
+                equalTo(new ConsumedEvent(event2,
+                        new KafkaCursor(TOPIC, PARTITION, event2Offset).toNakadiCursor(timeline))));
 
         assertThat("The kafka poll should be called with timeout we defined", pollTimeoutCaptor.getValue(),
-            equalTo(POLL_TIMEOUT));
+                equalTo(POLL_TIMEOUT));
     }
 
     @Test
@@ -142,7 +150,7 @@ public class NakadiKafkaConsumerTest {
 
         // ARRANGE //
         final ImmutableList<RuntimeException> exceptions = ImmutableList.of(new NoOffsetForPartitionException(
-                    new TopicPartition("", 0)), new KafkaException());
+                new TopicPartition("", 0)), new KafkaException());
 
         int numberOfNakadiExceptions = 0;
         for (final Exception exception : exceptions) {
@@ -153,8 +161,8 @@ public class NakadiKafkaConsumerTest {
 
                 // ACT //
                 final NakadiKafkaConsumer consumer = new NakadiKafkaConsumer(kafkaConsumerMock,
-                        ImmutableList.of(), POLL_TIMEOUT);
-                consumer.readEvent();
+                        ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
+                consumer.readEvents();
 
                 // ASSERT //
                 fail("An Exception was expected to be be thrown");
@@ -164,7 +172,7 @@ public class NakadiKafkaConsumerTest {
         }
 
         assertThat("We should get a NakadiException for every call", numberOfNakadiExceptions,
-            equalTo(exceptions.size()));
+                equalTo(exceptions.size()));
     }
 
     @Test
@@ -173,7 +181,7 @@ public class NakadiKafkaConsumerTest {
         // ARRANGE //
         final KafkaConsumer<String, String> kafkaConsumerMock = mock(KafkaConsumer.class);
         final NakadiKafkaConsumer nakadiKafkaConsumer = new NakadiKafkaConsumer(kafkaConsumerMock,
-                ImmutableList.of(), POLL_TIMEOUT);
+                ImmutableList.of(), createTpTimelineMap(), POLL_TIMEOUT);
         // ACT //
         nakadiKafkaConsumer.close();
         // ASSERT //

@@ -31,6 +31,16 @@ public class CompatibilityModeChangeConstraintTest {
     }
 
     @Test
+    public void canPromoteFromNoneToForward() throws Exception {
+        final EventTypeTestBuilder builder = new EventTypeTestBuilder();
+        final EventType oldET = builder.compatibilityMode(CompatibilityMode.NONE).build();
+        final EventType newET = builder.compatibilityMode(CompatibilityMode.FORWARD).build();
+        final CompatibilityModeChangeConstraint constraint = new CompatibilityModeChangeConstraint();
+
+        assertThat(constraint.validate(oldET, newET), isAbsent());
+    }
+
+    @Test
     public void passWhenNoChanges() throws Exception {
         final EventTypeTestBuilder builder = new EventTypeTestBuilder();
         final EventType oldET = builder.compatibilityMode(CompatibilityMode.NONE).build();

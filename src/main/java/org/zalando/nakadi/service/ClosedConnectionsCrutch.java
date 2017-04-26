@@ -193,7 +193,7 @@ public class ClosedConnectionsCrutch {
     @VisibleForTesting
     Map<ConnectionInfo, ConnectionState> getCurrentConnections(final InputStream in) throws IOException {
         final Map<ConnectionInfo, ConnectionState> connectionToState = new HashMap<>();
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
             // /proc/net/tcp[6]
             // idx, local_address, remote_address, status, ...
 

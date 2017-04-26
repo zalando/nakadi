@@ -1,12 +1,11 @@
 package org.zalando.nakadi.service.subscription.model;
 
+import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
 import java.util.Collection;
-
-import com.google.common.collect.ImmutableList;
 import org.junit.Assert;
 import org.junit.Test;
-
+import org.zalando.nakadi.domain.TopicPartition;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -38,7 +37,7 @@ public class PartitionTest {
     @Test
     public void moveToSessionIdUnassignedShouldProduceCorrectData() {
         final Collection<String> valid = singletonList("T");
-        final Partition.PartitionKey pk = mock(Partition.PartitionKey.class);
+        final TopicPartition pk = mock(TopicPartition.class);
         final Partition test = new Partition(pk, "x", "x", Partition.State.UNASSIGNED).moveToSessionId("T", valid);
         assertSame(pk, test.getKey());
         assertEquals("T", test.getSession());
@@ -49,7 +48,7 @@ public class PartitionTest {
     @Test
     public void moveReassigningPartitionShouldPutToAssignedState() {
         final Collection<String> validSessions = Arrays.asList("T", "T1", "T2");
-        final Partition.PartitionKey pk = mock(Partition.PartitionKey.class);
+        final TopicPartition pk = mock(TopicPartition.class);
 
         ImmutableList.of(
                 new Partition(pk, "x", "x1", Partition.State.REASSIGNING),
@@ -68,7 +67,7 @@ public class PartitionTest {
     @Test
     public void moveReassigningPartitionShouldStayInReassigningStateWhenNextSessionIsTheSame() {
         final Collection<String> validSessions = Arrays.asList("T", "T1", "T2");
-        final Partition.PartitionKey pk = mock(Partition.PartitionKey.class);
+        final TopicPartition pk = mock(TopicPartition.class);
         final Partition test = new Partition(pk, "T1", "T2", Partition.State.REASSIGNING)
                 .moveToSessionId("T", validSessions);
         assertSame(pk, test.getKey());
@@ -80,7 +79,7 @@ public class PartitionTest {
     @Test
     public void moveAssignedShouldPutToReassigningState() {
         final Collection<String> valid = Arrays.asList("T", "T1");
-        final Partition.PartitionKey pk = mock(Partition.PartitionKey.class);
+        final TopicPartition pk = mock(TopicPartition.class);
         final Partition test = new Partition(pk, "T1", null, Partition.State.ASSIGNED).moveToSessionId("T", valid);
         assertSame(pk, test.getKey());
         Assert.assertEquals(Partition.State.REASSIGNING, test.getState());
@@ -91,7 +90,7 @@ public class PartitionTest {
     @Test
     public void moveAssignedShouldPutToAssignedStateIfOwnerSessionIsInvalid() {
         final Collection<String> valid = Arrays.asList("T", "T1");
-        final Partition.PartitionKey pk = mock(Partition.PartitionKey.class);
+        final TopicPartition pk = mock(TopicPartition.class);
         final Partition test = new Partition(pk, "x", null, Partition.State.ASSIGNED).moveToSessionId("T", valid);
         assertSame(pk, test.getKey());
         Assert.assertEquals(Partition.State.ASSIGNED, test.getState());
@@ -102,7 +101,7 @@ public class PartitionTest {
     @Test
     public void moveAssignedShouldPutToAssignedStateIfMoveToSelf() {
         final Collection<String> valid = Arrays.asList("T", "T1");
-        final Partition.PartitionKey pk = mock(Partition.PartitionKey.class);
+        final TopicPartition pk = mock(TopicPartition.class);
         final Partition test = new Partition(pk, "T", null, Partition.State.ASSIGNED).moveToSessionId("T", valid);
         assertSame(pk, test.getKey());
         Assert.assertEquals(Partition.State.ASSIGNED, test.getState());

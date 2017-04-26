@@ -13,7 +13,7 @@ import org.mockito.Mockito;
 public class KafkaFactoryTest {
     private static class FakeKafkaFactory extends KafkaFactory {
 
-        public FakeKafkaFactory(final MetricRegistry metricRegistry) {
+        FakeKafkaFactory(final MetricRegistry metricRegistry) {
             super(null, metricRegistry);
         }
 

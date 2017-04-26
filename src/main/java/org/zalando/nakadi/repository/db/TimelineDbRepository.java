@@ -2,18 +2,17 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.Timeline;
-
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @DB
 @Repository
@@ -32,11 +31,11 @@ public class TimelineDbRepository extends AbstractDbRepository {
         super(jdbcTemplate, jsonMapper);
     }
 
-    public List<Timeline> listTimelines() {
-        return jdbcTemplate.query(BASE_TIMELINE_QUERY, timelineRowMapper);
+    public List<Timeline> listTimelinesOrdered() {
+        return jdbcTemplate.query(BASE_TIMELINE_QUERY + " order by t.et_name, t.tl_order", timelineRowMapper);
     }
 
-    public List<Timeline> listTimelines(final String eventType) {
+    public List<Timeline> listTimelinesOrdered(final String eventType) {
         return jdbcTemplate.query(
                 BASE_TIMELINE_QUERY + " WHERE t.et_name=? order by t.tl_order",
                 timelineRowMapper,

@@ -13,6 +13,7 @@ import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
@@ -157,7 +158,8 @@ public class EventPublisher {
     }
 
     private void submit(final List<BatchItem> batch, final EventType eventType) throws EventPublishingException {
-        timelineService.getTopicRepository(eventType).syncPostBatch(eventType.getTopic(), batch);
+        final Timeline activeTimeline = timelineService.getTimeline(eventType);
+        timelineService.getTopicRepository(eventType).syncPostBatch(activeTimeline.getTopic(), batch);
     }
 
     private void validateSchema(final JSONObject event, final EventType eventType) throws EventValidationException,

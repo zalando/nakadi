@@ -4,17 +4,16 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.jayway.restassured.RestAssured;
+import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.specification.RequestSpecification;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import org.apache.http.HttpStatus;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
@@ -27,9 +26,18 @@ import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.TimelineView;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
+import static org.springframework.http.HttpStatus.OK;
 
 public class NakadiTestUtils {
 
@@ -82,6 +90,28 @@ public class NakadiTestUtils {
                 .body(format("[{0}]", event))
                 .contentType(JSON)
                 .post(format("/event-types/{0}/events", eventType));
+    }
+
+    public static void createTimeline(final String eventType) {
+        given()
+                .body("{\"storage_id\": \"default\"}")
+                .contentType(JSON)
+                .post(format("/event-types/{0}/timelines", eventType))
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    public static void deleteTimeline(final String eventType) throws IOException {
+        final Response response = given()
+                .accept(JSON)
+                .get(format("/event-types/{0}/timelines", eventType));
+        final String data = response.print();
+        final TimelineView[] timelines = MAPPER.readerFor(TimelineView[].class).readValue(data);
+        Assert.assertEquals(1, timelines.length);
+        given()
+                .delete(format("/event-types/{0}/timelines/{1}", eventType, timelines[0].getId().toString()))
+                .then()
+                .statusCode(HttpStatus.SC_OK);
     }
 
     public static void publishBusinessEventWithUserDefinedPartition(final String eventType,
@@ -167,7 +197,34 @@ public class NakadiTestUtils {
     public static ItemsWrapper<SubscriptionCursor> getSubscriptionCursors(final Subscription subscription)
             throws IOException {
         final Response response = given().get(format("/subscriptions/{0}/cursors", subscription.getId()));
-        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {});
+        return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {
+        });
     }
 
+    public static void postEvents(final String eventTypeName, final String... events) {
+        final String batch = "[" + String.join(",", events) + "]";
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body(batch)
+                .when()
+                .post("/event-types/" + eventTypeName + "/events")
+                .then()
+                .statusCode(OK.value());
+    }
+
+    public static void switchTimelineDefaultStorage(final EventType eventType) {
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body(new JSONObject().put("storage_id", "default"))
+                .post("event-types/{et_name}/timelines", eventType.getName())
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    public static EventType getEventType(final String name) throws IOException {
+        return MAPPER.readValue(given()
+                .header("accept", "application/json")
+                .get("/event-types/{name}", name)
+                .getBody().asString(), EventType.class);
+    }
 }

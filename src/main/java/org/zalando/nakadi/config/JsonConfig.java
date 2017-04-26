@@ -66,7 +66,7 @@ public class JsonConfig {
     private static class LowerCaseEnumJsonDeserializer extends JsonDeserializer<Enum> {
         private final JavaType type;
 
-        public LowerCaseEnumJsonDeserializer(final JavaType type) {
+        LowerCaseEnumJsonDeserializer(final JavaType type) {
             this.type = type;
         }
 
@@ -88,7 +88,7 @@ public class JsonConfig {
     }
 
     private static class LowerCaseEnumJsonSerializer extends StdSerializer<Enum> {
-        public LowerCaseEnumJsonSerializer() {
+        LowerCaseEnumJsonSerializer() {
             super(Enum.class);
         }
 

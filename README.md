@@ -185,7 +185,8 @@ curl -v -XPOST http://localhost:8080/event-types -H "Content-type: application/j
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
   "category": "business",
-  "partition_strategy": "random",
+  "partition_strategy": "hash",
+  "partition_key_fields": ["order_number"],
   "enrichment_strategies": ["metadata_enrichment"],
   "default_statistic": {
     "messages_per_minute": 1000,	
@@ -233,8 +234,8 @@ Content-Type: application/json;charset=UTF-8
     "enrichment_strategies": ["metadata_enrichment"],
     "name": "order.ORDER_RECEIVED",
     "owning_application": "order-service",
-    "partition_key_fields": [],
-    "partition_strategy": "random",
+    "partition_key_fields": ["order_number"],
+    "partition_strategy": "hash",
     "schema": {
       "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }",
       "type": "json_schema"
@@ -260,8 +261,8 @@ Content-Type: application/json;charset=UTF-8
   "enrichment_strategies": ["metadata_enrichment"],
   "name": "order.ORDER_RECEIVED",
   "owning_application": "order-service",
-  "partition_key_fields": [],
-  "partition_strategy": "random",
+  "partition_key_fields": ["order_number"],
+  "partition_strategy": "hash",
   "schema": {
     "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }",
     "type": "json_schema"
@@ -459,13 +460,11 @@ to avoid managing stream state locally.
 
 The typical workflow when using subscriptions is:
 
-1. Create a Subscription specifying the event-types\* you want to read.
+1. Create a Subscription specifying the event-types you want to read.
 
 1. Start reading batches of events from the subscription. 
 
 1. Commit the cursors found in the event batches back to Nakadi, which will store the offsets. 
-
-_\* Note: the API signature can support subscribing to multiple event types with a single subscription, but this is not implemented yet; it's planned to be enabled soon._
 
 
 If the connection is closed, and later restarted, clients will get events from 
