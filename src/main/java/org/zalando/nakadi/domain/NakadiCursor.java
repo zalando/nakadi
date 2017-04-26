@@ -5,7 +5,10 @@ import java.util.Objects;
 
 public class NakadiCursor implements Comparable<NakadiCursor> {
     public static final int VERSION_LENGTH = 3;
-
+    /**
+     * - ZERO is reserved for old offset format, e.g. those previous to timelines: "000000000000000010"
+     * - ONE is reserved for the first version of timeline offsets: "001-0001-0000000000000001"
+     **/
     public enum Version {
         ZERO("000"),
         ONE("001"),;

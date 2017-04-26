@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
+import static org.springframework.http.HttpStatus.OK;
 
 public class NakadiTestUtils {
 
@@ -198,6 +199,17 @@ public class NakadiTestUtils {
         final Response response = given().get(format("/subscriptions/{0}/cursors", subscription.getId()));
         return MAPPER.readValue(response.print(), new TypeReference<ItemsWrapper<SubscriptionCursor>>() {
         });
+    }
+
+    public static void postEvents(final String eventTypeName, final String... events) {
+        final String batch = "[" + String.join(",", events) + "]";
+        RestAssured.given()
+                .contentType(ContentType.JSON)
+                .body(batch)
+                .when()
+                .post("/event-types/" + eventTypeName + "/events")
+                .then()
+                .statusCode(OK.value());
     }
 
     public static void switchTimelineDefaultStorage(final EventType eventType) {

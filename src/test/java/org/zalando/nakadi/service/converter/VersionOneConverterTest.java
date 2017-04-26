@@ -89,6 +89,11 @@ public class VersionOneConverterTest {
         converter.convert("my_et", new Cursor("1", "001-fjur-48rre64545"));
     }
 
+    @Test(expected = InvalidCursorException.class)
+    public void testIncorrectOffset() throws Exception {
+        converter.convert("my_et", new Cursor("1", "001-0010-xyz"));
+    }
+
     @Test
     public void testFormatOffset() {
         final Timeline timeline = mock(Timeline.class);
