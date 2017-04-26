@@ -125,7 +125,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                         .withWaitBetweenEachTry(500));
 
         // push two events to event-type
-        postEvents(EVENT1, EVENT2);
+        postEvents(eventTypeName, EVENT1, EVENT2);
 
         // get offsets for partition
         jsonRequestSpec()
