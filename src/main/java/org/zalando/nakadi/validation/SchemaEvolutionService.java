@@ -66,12 +66,12 @@ public class SchemaEvolutionService {
         this.errorMessages = errorMessages;
     }
 
-    public List<SchemaIncompatibility> collectIncompatibilities(final EventTypeBase eventType,
+    public List<SchemaIncompatibility> collectIncompatibilities(final CompatibilityMode compatibilityMode,
                                                                 final JSONObject schemaJson) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<>();
 
         try {
-            metaSchema.get(eventType.getCompatibilityMode()).validate(schemaJson);
+            metaSchema.get(compatibilityMode).validate(schemaJson);
         } catch (final ValidationException e) {
             collectErrorMessages(e, incompatibilities);
         }
