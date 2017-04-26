@@ -1,5 +1,14 @@
 package org.zalando.nakadi.service.timeline;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,20 +20,25 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
-import org.zalando.nakadi.exceptions.TopicRepositoryException;
+import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
+import org.zalando.nakadi.repository.EventConsumer;
+import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.TopicRepositoryHolder;
 import org.zalando.nakadi.repository.db.EventTypeCache;
@@ -32,12 +46,6 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.UUIDGenerator;
-
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class TimelineService {
@@ -93,7 +101,7 @@ public class TimelineService {
                     topicRepositoryHolder.getTopicRepository(activeTimeline.getStorage());
             final TopicRepository nextTopicRepo = topicRepositoryHolder.getTopicRepository(storage);
             final List<PartitionStatistics> partitionStatistics =
-                    currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline.getTopic()));
+                    currentTopicRepo.loadTopicStatistics(Collections.singleton(activeTimeline));
 
             final Timeline nextTimeline;
             if (activeTimeline.isFake()) {
@@ -114,6 +122,24 @@ public class TimelineService {
         }
     }
 
+    /**
+     * Returns list of ACTIVE timelines for event type.
+     *
+     * @param eventType
+     * @return list of active timelines. List is always NOT empty! At least fake timeline present there.
+     * @throws InternalNakadiException  everything can happen
+     * @throws NoSuchEventTypeException No such event type
+     */
+    public List<Timeline> getActiveTimelinesOrdered(final String eventType)
+            throws InternalNakadiException, NoSuchEventTypeException {
+        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventType);
+        if (timelines.isEmpty()) {
+            return Collections.singletonList(getFakeTimeline(eventTypeCache.getEventType(eventType)));
+        } else {
+            return timelines.stream().filter(t -> t.getSwitchedAt() != null).collect(Collectors.toList());
+        }
+    }
+
     public Timeline getTimeline(final EventTypeBase eventType) throws TimelineException {
         try {
             final String eventTypeName = eventType.getName();
@@ -129,14 +155,34 @@ public class TimelineService {
         }
     }
 
+    public Timeline getFakeTimeline(final EventType eventType) {
+        return Timeline.createFakeTimeline(eventType, defaultStorage);
+    }
+
     public TopicRepository getTopicRepository(final EventTypeBase eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getTimeline(eventType);
         return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
     }
 
+    public TopicRepository getTopicRepository(final Timeline timeline)
+            throws TopicRepositoryException, TimelineException {
+        return topicRepositoryHolder.getTopicRepository(timeline.getStorage());
+    }
+
     public TopicRepository getDefaultTopicRepository() throws TopicRepositoryException {
         return topicRepositoryHolder.getTopicRepository(defaultStorage);
+    }
+
+    public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
+            throws NakadiException, InvalidCursorException {
+        final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(clientId, this, timelineSync);
+        result.reassign(positions);
+        return result;
+    }
+
+    public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
+        return new MultiTimelineEventConsumer(clientId, this, timelineSync);
     }
 
     private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline) {
@@ -187,7 +233,7 @@ public class TimelineService {
         }
 
         final UUID uuid = uuidGenerator.fromString(timelineId);
-        final List<Timeline> timelines = timelineDbRepository.listTimelines(eventType.getName());
+        final List<Timeline> timelines = timelineDbRepository.listTimelinesOrdered(eventType.getName());
         if (timelines.size() == 1) {
             final Timeline activeTimeline = timelines.get(0);
             if (activeTimeline.getId().equals(uuid)) {
@@ -199,6 +245,21 @@ public class TimelineService {
             throw new UnableProcessException("Timeline with id: " + uuid + " could not be deleted. " +
                     "It is possible to delete a timeline if there is only one timeline");
         }
+    }
+
+    public Multimap<TopicRepository, String> deleteAllTimelinesForEventType(final String eventTypeName)
+            throws TopicDeletionException,
+            TimelineException,
+            NotFoundException,
+            InternalNakadiException,
+            NoSuchEventTypeException {
+        LOG.info("Deleting all timelines for event type {}", eventTypeName);
+        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
+        for (final Timeline timeline : getActiveTimelinesOrdered(eventTypeName)) {
+            topicsToDelete.put(getTopicRepository(timeline), timeline.getTopic());
+            timelineDbRepository.deleteTimeline(timeline.getId());
+        }
+        return topicsToDelete;
     }
 
     private void switchToFakeTimeline(final UUID uuid, final Timeline activeTimeline) throws TimelineException {
@@ -237,9 +298,14 @@ public class TimelineService {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
+        return getTimelines(eventTypeName);
+    }
+
+    private List<Timeline> getTimelines(final String eventTypeName)
+            throws TimelineException, NotFoundException {
         try {
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            return timelineDbRepository.listTimelines(eventType.getName());
+            return timelineDbRepository.listTimelinesOrdered(eventType.getName());
         } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
         } catch (final InternalNakadiException e) {

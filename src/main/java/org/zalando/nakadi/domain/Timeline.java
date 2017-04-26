@@ -1,21 +1,36 @@
 package org.zalando.nakadi.domain;
 
-import org.zalando.nakadi.util.UUIDGenerator;
-
-import javax.annotation.Nullable;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import javax.annotation.Nullable;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
+import org.zalando.nakadi.util.UUIDGenerator;
 
 public class Timeline {
 
+    public static final int STARTING_ORDER = 0;
+
+    public boolean isFirstAfterFake() {
+        return order == STARTING_ORDER + 1;
+    }
+
     public interface StoragePosition {
+
+        NakadiCursor toNakadiCursor(Timeline timeline, String partition);
 
     }
 
     public static class KafkaStoragePosition implements StoragePosition {
         private List<Long> offsets;
+
+        public KafkaStoragePosition() {
+        }
+
+        public KafkaStoragePosition(final List<Long> offsets) {
+            this.offsets = offsets;
+        }
 
         public List<Long> getOffsets() {
             return offsets;
@@ -23,6 +38,14 @@ public class Timeline {
 
         public void setOffsets(final List<Long> offsets) {
             this.offsets = offsets;
+        }
+
+        @Override
+        public NakadiCursor toNakadiCursor(final Timeline timeline, final String partitionStr) {
+            final int partition = KafkaCursor.toKafkaPartition(partitionStr);
+
+            final KafkaCursor cursor = new KafkaCursor(timeline.getTopic(), partition, offsets.get(partition));
+            return cursor.toNakadiCursor(timeline);
         }
 
         @Override
@@ -87,11 +110,11 @@ public class Timeline {
         this.eventType = eventType;
     }
 
-    public Integer getOrder() {
+    public int getOrder() {
         return order;
     }
 
-    public void setOrder(final Integer order) {
+    public void setOrder(final int order) {
         this.order = order;
     }
 
@@ -138,6 +161,14 @@ public class Timeline {
     }
 
     @Nullable
+    public NakadiCursor calculateNakadiLatestPosition(final String partition) {
+        if (null == latestPosition) {
+            return null;
+        }
+        return latestPosition.toNakadiCursor(this, partition);
+    }
+
+    @Nullable
     public Date getCleanedUpAt() {
         return cleanedUpAt;
     }
@@ -148,6 +179,10 @@ public class Timeline {
 
     public boolean isFake() {
         return fake;
+    }
+
+    public boolean isActive() {
+        return getSwitchedAt() == null;
     }
 
     @Override
@@ -205,8 +240,11 @@ public class Timeline {
         return timeline;
     }
 
+    private static final Date FAKE_CREATION_TIME = new Date(0L);
+
     public static Timeline createFakeTimeline(final EventTypeBase eventType, final Storage storage) {
-        final Timeline timeline = new Timeline(eventType.getName(), 0, storage, eventType.getTopic(), new Date());
+        final Timeline timeline = new Timeline(
+                eventType.getName(), STARTING_ORDER, storage, eventType.getTopic(), FAKE_CREATION_TIME);
         timeline.fake = true;
         return timeline;
     }

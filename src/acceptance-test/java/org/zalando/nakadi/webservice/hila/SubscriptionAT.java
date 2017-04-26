@@ -19,6 +19,7 @@ import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import org.zalando.nakadi.view.Cursor;
@@ -28,8 +29,6 @@ import org.zalando.nakadi.webservice.BaseAT;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,7 +42,6 @@ import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
 import static java.text.MessageFormat.format;
 import static java.util.stream.IntStream.range;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -204,7 +202,7 @@ public class SubscriptionAT extends BaseAT {
 
         // check that offset is actually committed to Zookeeper
         String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0");
-        assertThat(committedOffset, equalTo("25"));
+        assertThat(committedOffset, equalTo(KafkaCursor.toNakadiOffset(25)));
 
         // commit lower offsets and expect 200
         cursor = "{\"items\":[{\"partition\":\"0\",\"offset\":\"10\",\"event_type\":\"" + etName +
@@ -215,7 +213,7 @@ public class SubscriptionAT extends BaseAT {
 
         // check that committed offset in Zookeeper is not changed
         committedOffset = getCommittedOffsetFromZk(topic, subscription, "0");
-        assertThat(committedOffset, equalTo("25"));
+        assertThat(committedOffset, equalTo(KafkaCursor.toNakadiOffset(25)));
     }
 
     @Test
@@ -306,7 +304,7 @@ public class SubscriptionAT extends BaseAT {
 
         final SubscriptionCursor actualCursor = actualCursors.get(0);
         assertThat(actualCursor.getPartition(), equalTo("0"));
-        assertThat(actualCursor.getOffset(), equalTo(String.format("%018d", 25)));
+        assertThat(actualCursor.getOffset(), equalTo(KafkaCursor.toNakadiOffset(25)));
         assertThat(actualCursor.getEventType(), equalTo(etName));
     }
 
@@ -348,13 +346,9 @@ public class SubscriptionAT extends BaseAT {
         final String etName = createEventType().getName();
         createSubscriptionForEventType(etName);
 
-        final ThrowableProblem expectedProblem = Problem.valueOf(CONFLICT,
-                "Not possible to remove event-type as it has subscriptions");
-
         when().delete("/event-types/{event-type}", etName)
                 .then()
-                .statusCode(HttpStatus.SC_CONFLICT)
-                .body(JSON_HELPER.matchesObject(expectedProblem));
+                .statusCode(HttpStatus.SC_CONFLICT);
     }
 
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {

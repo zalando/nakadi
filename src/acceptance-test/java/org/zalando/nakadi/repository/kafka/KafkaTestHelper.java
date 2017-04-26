@@ -1,13 +1,14 @@
 package org.zalando.nakadi.repository.kafka;
 
-import org.apache.commons.lang3.StringUtils;
-import org.zalando.nakadi.view.Cursor;
 import kafka.admin.AdminUtils;
+import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.zalando.nakadi.view.Cursor;
 
 import java.util.List;
 import java.util.Properties;
@@ -16,10 +17,10 @@ import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toKafkaOffset;
 import static org.zalando.nakadi.repository.kafka.KafkaCursor.toNakadiOffset;
-import static org.zalando.nakadi.service.CursorConverter.CURSOR_OFFSET_LENGTH;
 
 public class KafkaTestHelper {
 
+    public static final int CURSOR_OFFSET_LENGTH = 18;
     private final String kafkaUrl;
 
     public KafkaTestHelper(final String kafkaUrl) {
@@ -106,5 +107,11 @@ public class KafkaTestHelper {
                 zkUtils.close();
             }
         }
+    }
+
+    public static Long getTopicRetentionTime(final String topic, final String zkPath) {
+        final ZkUtils zkUtils = ZkUtils.apply(zkPath, 30000, 10000, false);
+        final Properties topicConfig = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
+        return Long.valueOf(topicConfig.getProperty("retention.ms"));
     }
 }

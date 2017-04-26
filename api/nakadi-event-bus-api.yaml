@@ -278,6 +278,9 @@ paths:
 
          * Events in the stream may be visible for a short period of time before being removed.
 
+         Depending on the Nakadi configuration, the oauth resource owner username may have to be equal to
+         'nakadi.oauth2.adminClientId' property to be able to access this endpoint.
+
       parameters:
         - name: name
           in: path
@@ -295,6 +298,10 @@ paths:
           description: EventType is successfuly removed
         '401':
           description: Client is not authenticated
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
           schema:
             $ref: '#/definitions/Problem'
 
@@ -591,6 +598,65 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  '/event-types/{name}/cursors-lag':
+    post:
+      tags:
+        - unmanaged-api
+        - monitoring
+        - management-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        GET with payload.
+
+        This endpoint is mostly interesting for monitoring purposes. Used when a consumer wants to know how far behind
+        in the stream its application is lagging.
+
+        It provides the number of unconsumed events for each cursor's partition.
+      parameters:
+        - name: name
+          in: path
+          description: EventType name
+          type: string
+          required: true
+        - name: X-Flow-Id
+          in: header
+          description: |
+            The flow id of the request, which is written into the logs and passed to called services. Helpful
+            for operational troubleshooting and log analysis.
+          type: string
+        - name: cursors
+          in: body
+          description: |
+            Each cursor indicates the partition and offset consumed by the client. When a cursor is provided,
+            Nakadi calculates the consumer lag, e.g. the number of events between the provided offset and the most
+            recent published event. This lag will be present in the response as `unconsumed_events` property.
+
+            It's not mandatory to specify cursors for every partition.
+
+            The lag calculation is non inclusive, e.g. if the provided offset is the offset of the latest published
+            event, the number of `unconsumed_events` will be zero.
+
+            All provided cursors must be valid, i.e. a non expired cursor of an event in the stream.
+          required: true
+          schema:
+            type: array
+            items:
+              - $ref: '#/definitions/Cursor'
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            description: |
+              List of partitions with the number of unconsummed events.
+            items:
+              $ref: '#/definitions/Partition'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+
   '/event-types/{name}/partitions':
     get:
       tags:
@@ -617,6 +683,24 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+        - name: cursors
+          in: query
+          description: |
+            Each cursor indicates the partition and offset consumed by the client. When this parameter is provided,
+            Nakadi calculates the consumer lag, e.g. the number of events between the provided offset and the most
+            recent published event. This lag will be present in the response as `unconsumed_events` property.
+
+            It's not mandatory to specify cursors for every partition.
+
+            The lag calculation is non inclusive, e.g. if the provided offset is the offset of the latest published
+            event, the number of `unconsumed_events` will be zero.
+
+            The value of this parameter must be a json array URL encoded.
+          required: false
+          type: array
+          items:
+            type: string
+            format: '#/definitions/Cursor'
       responses:
         '200':
           description: OK
@@ -656,6 +740,11 @@ paths:
             The flow id of the request, which is written into the logs and passed to called services. Helpful
             for operational troubleshooting and log analysis.
           type: string
+        - name: consumed_offset
+          in: query
+          description: |
+            Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
+            `unconsumed_events` to the response partition object.
       responses:
         '200':
           description: OK
@@ -914,6 +1003,50 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
+    patch:
+      tags:
+        - subscription-api
+      security:
+        - oauth2: ['nakadi.event_stream.read']
+      description: |
+        Endpoint for resetting subscription offsets.
+        The subscription consumers will be disconnected during offset reset. The request can hang up until
+        subscription commit timeout. During that time requests to subscription streaming endpoint
+        will be rejected with 409. The clients should reconnect once the request is finished with 204.
+      parameters:
+        - name: subscription_id
+          in: path
+          type: string
+          description: Id of subscription
+          required: true
+        - name: cursors
+          in: body
+          schema:
+            type: object
+            properties:
+              items:
+                description: |
+                  List of cursors to reset subscription to.
+                type: array
+                items:
+                  $ref: '#/definitions/SubscriptionCursorWithoutToken'
+            required:
+              - items
+      responses:
+        '204':
+          description: Offsets were reset
+        '404':
+          description: Subscription not found
+          schema:
+            $ref: '#/definitions/Problem'
+        '409':
+          description: Cursors reset is already in progress for provided subscription
+          schema:
+            $ref: '#/definitions/Problem'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
 
   /subscriptions/{subscription_id}/events:
     get:
@@ -976,6 +1109,9 @@ paths:
           description: |
             Conflict. There are no empty slots for this subscriptions. The amount of consumers for this subscription
             already equals the maximal value - the total amount of this subscription partitions.
+
+            This status code is also returned in the case of resetting subscription cursors request still in the
+            progress.
           schema:
             $ref: '#/definitions/Problem'
         '403':
@@ -1669,6 +1805,12 @@ definitions:
           Might assume the special name BEGIN, meaning a pointer to the offset of the oldest
           available event in the partition.
         type: string
+      unconsumed_events:
+        description: |
+          Approximate number of events unconsumed by the client. This is also known as consumer lag and is used for
+          monitoring purposes by consumers interested in keeping an eye on the number of unconsumed events.
+        type: number
+        format: int64
 
   StreamInfo:
     type: object
@@ -2237,9 +2379,6 @@ parameters:
     in: query
     description: |
       Maximum number of `Event`s in each chunk (and therefore per partition) of the stream.
-
-      * If 0 or unspecified will buffer Events indefinitely and flush on reaching of
-      `batch_flush_timeout`.
     type: integer
     format: int32
     required: false

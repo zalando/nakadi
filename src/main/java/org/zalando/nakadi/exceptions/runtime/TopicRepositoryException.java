@@ -1,6 +1,6 @@
-package org.zalando.nakadi.exceptions;
+package org.zalando.nakadi.exceptions.runtime;
 
-public class TopicRepositoryException extends RuntimeException {
+public class TopicRepositoryException extends MyNakadiRuntimeException1 {
 
     public TopicRepositoryException(final String message) {
         super(message);

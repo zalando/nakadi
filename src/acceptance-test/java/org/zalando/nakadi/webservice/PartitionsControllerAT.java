@@ -113,6 +113,17 @@ public class PartitionsControllerAT extends BaseAT {
     }
 
     @Test
+    public void whenGetPartitionWithConsumedOffsetThenOk() throws IOException {
+        // ACT //
+        final Response response = when().get(String.format("/event-types/%s/partitions/0?consumed_offset=BEGIN",
+                EVENT_TYPE_NAME));
+
+        // ASSERT //
+        response.then().statusCode(HttpStatus.OK.value());
+        validateUnconsumedEventsStructure(asMap(response.print()));
+    }
+
+    @Test
     public void whenGetPartitionThenTopicNotFound() throws IOException {
         when()
                 .get("/event-types/not-existing-topic/partitions/0")
@@ -178,6 +189,13 @@ public class PartitionsControllerAT extends BaseAT {
         assertThat(pMap.get("partition"), Matchers.notNullValue());
         assertThat(pMap.get("newest_available_offset"), Matchers.notNullValue());
         assertThat(pMap.get("oldest_available_offset"), Matchers.notNullValue());
+    }
+
+    private void validateUnconsumedEventsStructure(final Map<String, String> pMap) {
+        assertThat(pMap.get("partition"), Matchers.notNullValue());
+        assertThat(pMap.get("newest_available_offset"), Matchers.notNullValue());
+        assertThat(pMap.get("oldest_available_offset"), Matchers.notNullValue());
+        assertThat(pMap.get("unconsumed_events"), Matchers.notNullValue());
     }
 
 }

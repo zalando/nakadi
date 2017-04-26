@@ -2,60 +2,9 @@ package org.zalando.nakadi.service.subscription.model;
 
 import java.util.Collection;
 import javax.annotation.Nullable;
-import org.zalando.nakadi.repository.kafka.KafkaCursor;
+import org.zalando.nakadi.domain.TopicPartition;
 
 public class Partition {
-    public static class PartitionKey {
-        private final String topic;
-
-        private final String partition;
-
-        public PartitionKey(final String topic, final String partition) {
-            this.topic = topic;
-            this.partition = partition;
-        }
-
-        public KafkaCursor createKafkaCursor(final long offset) {
-            return new KafkaCursor(
-                    topic,
-                    KafkaCursor.toKafkaPartition(partition),
-                    offset);
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-
-            final PartitionKey that = (PartitionKey) o;
-            return topic.equals(that.topic) && partition.equals(that.partition);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = topic.hashCode();
-            result = 31 * result + partition.hashCode();
-            return result;
-        }
-
-        @Override
-        public String toString() {
-            return "{" + topic + ':' + partition + '}';
-        }
-
-        public String getTopic() {
-            return topic;
-        }
-
-        public String getPartition() {
-            return partition;
-        }
-    }
-
     public enum State {
         UNASSIGNED("unassigned"),
         REASSIGNING("reassigning"),
@@ -72,12 +21,12 @@ public class Partition {
         }
     }
 
-    private final PartitionKey key;
+    private final TopicPartition key;
     private final String session;
     private final String nextSession;
     private final State state;
 
-    public Partition(final PartitionKey key, @Nullable final String session, @Nullable final String nextSession,
+    public Partition(final TopicPartition key, @Nullable final String session, @Nullable final String nextSession,
                      final State state) {
         this.key = key;
         this.session = session;
@@ -91,7 +40,9 @@ public class Partition {
 
     /**
      * Creates new Partition object that must be moved to session with id {@code sessionId}.
-     * @param sessionId Session id to move to. It must be guaranteed that existingSessionIds do not contain sessionId.
+     *
+     * @param sessionId          Session id to move to. It must be guaranteed that existingSessionIds do not contain
+     *                           sessionId.
      * @param existingSessionIds List of currently available session ids.
      * @return new Partition object with changed sessionId, nextSessionId, state values.
      */
@@ -127,7 +78,7 @@ public class Partition {
 
     }
 
-    public PartitionKey getKey() {
+    public TopicPartition getKey() {
         return key;
     }
 

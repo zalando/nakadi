@@ -2,8 +2,16 @@ package org.zalando.nakadi.service.subscription;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
@@ -16,15 +24,7 @@ import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.state.State;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
-
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
-import java.util.stream.Stream;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 public class StreamingContext implements SubscriptionStreamer {
 
@@ -33,11 +33,10 @@ public class StreamingContext implements SubscriptionStreamer {
     private final StreamParameters parameters;
     private final Session session;
     private final ZkSubscriptionClient zkClient;
-    private final KafkaClient kafkaClient;
     private final SubscriptionOutput out;
     private final long kafkaPollTimeout;
     private final AtomicBoolean connectionReady;
-    private final Map<String, String> eventTypesForTopics;
+    private final TimelineService timelineService;
     private final CursorTokenService cursorTokenService;
     private final ObjectMapper objectMapper;
     private final BlacklistService blacklistService;
@@ -46,7 +45,7 @@ public class StreamingContext implements SubscriptionStreamer {
     private final BiFunction<Session[], Partition[], Partition[]> rebalancer;
     private final String loggingPath;
     private final CursorConverter cursorConverter;
-    private final String subscriptionId;
+    private final Subscription subscription;
     private final MetricRegistry metricRegistry;
     private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
@@ -60,18 +59,21 @@ public class StreamingContext implements SubscriptionStreamer {
         this.rebalancer = builder.rebalancer;
         this.timer = builder.timer;
         this.zkClient = builder.zkClient;
-        this.kafkaClient = builder.kafkaClient;
         this.kafkaPollTimeout = builder.kafkaPollTimeout;
         this.loggingPath = builder.loggingPath + ".stream";
         this.log = LoggerFactory.getLogger(builder.loggingPath);
         this.connectionReady = builder.connectionReady;
-        this.eventTypesForTopics = builder.eventTypesForTopics;
+        this.timelineService = builder.timelineService;
         this.cursorTokenService = builder.cursorTokenService;
         this.objectMapper = builder.objectMapper;
         this.blacklistService = builder.blacklistService;
         this.cursorConverter = builder.cursorConverter;
-        this.subscriptionId = builder.subscriptionId;
+        this.subscription = builder.subscription;
         this.metricRegistry = builder.metricRegistry;
+    }
+
+    public TimelineService getTimelineService() {
+        return timelineService;
     }
 
     public StreamParameters getParameters() {
@@ -86,10 +88,6 @@ public class StreamingContext implements SubscriptionStreamer {
         return session.getId();
     }
 
-    public KafkaClient getKafkaClient() {
-        return kafkaClient;
-    }
-
     public SubscriptionOutput getOut() {
         return out;
     }
@@ -102,12 +100,12 @@ public class StreamingContext implements SubscriptionStreamer {
         return cursorConverter;
     }
 
-    public String getSubscriptionId() {
-        return subscriptionId;
+    public Subscription getSubscription() {
+        return subscription;
     }
 
     public MetricRegistry getMetricRegistry() {
-        return  metricRegistry;
+        return metricRegistry;
     }
 
     @Override
@@ -192,12 +190,9 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     public boolean isSubscriptionConsumptionBlocked() {
-        return blacklistService.isSubscriptionConsumptionBlocked(eventTypesForTopics.values(), parameters
-                .getConsumingAppId());
-    }
-
-    public Map<String, String> getEventTypesForTopics() {
-        return eventTypesForTopics;
+        return blacklistService.isSubscriptionConsumptionBlocked(
+                subscription.getEventTypes(),
+                parameters.getConsumingAppId());
     }
 
     public CursorTokenService getCursorTokenService() {
@@ -227,18 +222,17 @@ public class StreamingContext implements SubscriptionStreamer {
         private Session session;
         private ScheduledExecutorService timer;
         private ZkSubscriptionClient zkClient;
-        private KafkaClient kafkaClient;
         private BiFunction<Session[], Partition[], Partition[]> rebalancer;
         private long kafkaPollTimeout;
         private String loggingPath;
         private AtomicBoolean connectionReady;
-        private Map<String, String> eventTypesForTopics;
         private CursorTokenService cursorTokenService;
         private ObjectMapper objectMapper;
         private BlacklistService blacklistService;
         private CursorConverter cursorConverter;
-        private String subscriptionId;
+        private Subscription subscription;
         private MetricRegistry metricRegistry;
+        private TimelineService timelineService;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -265,11 +259,6 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setKafkaClient(final KafkaClient kafkaClient) {
-            this.kafkaClient = kafkaClient;
-            return this;
-        }
-
         public Builder setRebalancer(final BiFunction<Session[], Partition[], Partition[]> rebalancer) {
             this.rebalancer = rebalancer;
             return this;
@@ -290,8 +279,8 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setEventTypesForTopics(final Map<String, String> eventTypesForTopics) {
-            this.eventTypesForTopics = eventTypesForTopics;
+        public Builder setTimelineService(final TimelineService timelineService) {
+            this.timelineService = timelineService;
             return this;
         }
 
@@ -315,8 +304,8 @@ public class StreamingContext implements SubscriptionStreamer {
             return this;
         }
 
-        public Builder setSubscriptionId(final String subscriptionId) {
-            this.subscriptionId = subscriptionId;
+        public Builder setSubscription(final Subscription subscription) {
+            this.subscription = subscription;
             return this;
         }
 
