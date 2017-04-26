@@ -2,9 +2,9 @@ package org.zalando.nakadi.domain;
 
 public class PartitionBaseStatisticsImpl implements PartitionBaseStatistics {
 
-    private Timeline timeline;
+    private final Timeline timeline;
 
-    private String partition;
+    private final String partition;
 
     public PartitionBaseStatisticsImpl(final Timeline timeline, final String partition) {
         this.timeline = timeline;
