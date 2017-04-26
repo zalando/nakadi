@@ -39,7 +39,7 @@ public class StreamingStateTest {
     private Subscription subscription;
 
     @Before
-    public void prepareMocks() {
+    public void prepareMocks() throws Exception {
         state = new StreamingState();
 
         final StreamingContext contextMock = mock(StreamingContext.class);
