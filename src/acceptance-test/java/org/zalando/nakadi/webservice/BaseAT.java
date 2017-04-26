@@ -3,6 +3,7 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.parsing.Parser;
+import java.util.Optional;
 import org.junit.BeforeClass;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -14,9 +15,6 @@ import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-
-import java.util.Optional;
-
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public abstract class BaseAT {
@@ -40,7 +38,7 @@ public abstract class BaseAT {
 
     private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
             new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
-    private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
+    protected static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
     protected static final EventTypeDbRepository EVENT_TYPE_REPO = new EventTypeDbRepository(JDBC_TEMPLATE, MAPPER);
     protected static final StorageDbRepository STORAGE_DB_REPOSITORY = new StorageDbRepository(JDBC_TEMPLATE, MAPPER);
     protected static final TimelineDbRepository TIMELINE_REPOSITORY = new TimelineDbRepository(JDBC_TEMPLATE, MAPPER);

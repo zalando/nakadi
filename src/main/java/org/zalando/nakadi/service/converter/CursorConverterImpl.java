@@ -88,4 +88,11 @@ public class CursorConverterImpl implements CursorConverter {
         return new SubscriptionCursor(
                 oldCursor.getPartition(), oldCursor.getOffset(), position.getEventType(), token);
     }
+
+    @Override
+    public SubscriptionCursorWithoutToken convertToNoToken(final NakadiCursor position) {
+        final Cursor oldCursor = convert(position);
+        return new SubscriptionCursorWithoutToken(
+                position.getEventType(), oldCursor.getPartition(), oldCursor.getOffset());
+    }
 }

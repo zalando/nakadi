@@ -6,7 +6,6 @@ import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,10 +19,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.TopicPartition;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
@@ -36,14 +35,15 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 
 class StreamingState extends State {
-    private final Map<TopicPartition, PartitionData> offsets = new HashMap<>();
+    private final Map<EventTypePartition, PartitionData> offsets = new HashMap<>();
     // Maps partition barrier when releasing must be completed or stream will be closed.
     // The reasons for that if there are two partitions (p0, p1) and p0 is reassigned, if p1 is working
     // correctly, and p0 is not receiving any updates - reassignment won't complete.
-    private final Map<TopicPartition, Long> releasingPartitions = new HashMap<>();
+    private final Map<EventTypePartition, Long> releasingPartitions = new HashMap<>();
     private ZKSubscription topologyChangeSubscription;
     private EventConsumer.ReassignableEventConsumer eventConsumer;
     private boolean pollPaused;
@@ -53,7 +53,7 @@ class StreamingState extends State {
     private long batchesSent;
     private Meter bytesSentMeter;
     // Uncommitted offsets are calculated right on exiting from Streaming state.
-    private Map<TopicPartition, NakadiCursor> uncommittedOffsets;
+    private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
     private ZKSubscription cursorResetSubscription;
 
     @Override
@@ -121,7 +121,7 @@ class StreamingState extends State {
         return lastCommitMillis;
     }
 
-    private Map<TopicPartition, NakadiCursor> getUncommittedOffsets() {
+    private Map<EventTypePartition, NakadiCursor> getUncommittedOffsets() {
         Preconditions.checkNotNull(uncommittedOffsets, "uncommittedOffsets should not be null on time of call");
         return uncommittedOffsets;
     }
@@ -166,7 +166,8 @@ class StreamingState extends State {
     }
 
     private void rememberEvent(final ConsumedEvent event) {
-        Optional.ofNullable(offsets.get(event.getPosition().getTopicPartition())).ifPresent(pd -> pd.addEvent(event));
+        Optional.ofNullable(offsets.get(event.getPosition().getEventTypePartition()))
+                .ifPresent(pd -> pd.addEvent(event));
     }
 
     private long getMessagesAllowedToSend() {
@@ -191,7 +192,7 @@ class StreamingState extends State {
     private void streamToOutput() {
         final long currentTimeMillis = System.currentTimeMillis();
         int messagesAllowedToSend = (int) getMessagesAllowedToSend();
-        for (final Map.Entry<TopicPartition, PartitionData> e : offsets.entrySet()) {
+        for (final Map.Entry<EventTypePartition, PartitionData> e : offsets.entrySet()) {
             List<ConsumedEvent> toSend;
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
@@ -213,7 +214,7 @@ class StreamingState extends State {
         }
     }
 
-    private void flushData(final TopicPartition pk, final List<ConsumedEvent> data,
+    private void flushData(final EventTypePartition pk, final List<ConsumedEvent> data,
                            final Optional<String> metadata) {
         try {
             final NakadiCursor sentOffset = offsets.get(pk).getSentOffset();
@@ -301,11 +302,11 @@ class StreamingState extends State {
     }
 
     void refreshTopologyUnlocked(final Partition[] assignedPartitions) {
-        final Map<TopicPartition, Partition> newAssigned = Stream.of(assignedPartitions)
+        final Map<EventTypePartition, Partition> newAssigned = Stream.of(assignedPartitions)
                 .filter(p -> p.getState() == Partition.State.ASSIGNED)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
 
-        final Map<TopicPartition, Partition> newReassigning = Stream.of(assignedPartitions)
+        final Map<EventTypePartition, Partition> newReassigning = Stream.of(assignedPartitions)
                 .filter(p -> p.getState() == Partition.State.REASSIGNING)
                 .collect(Collectors.toMap(Partition::getKey, p -> p));
 
@@ -342,13 +343,13 @@ class StreamingState extends State {
             getLog().info("{}. Streaming partitions: [{}]. Reassigning partitions: [{}]",
                     reason,
                     offsets.keySet().stream().filter(p -> !releasingPartitions.containsKey(p))
-                            .map(TopicPartition::toString).collect(Collectors.joining(",")),
-                    releasingPartitions.keySet().stream().map(TopicPartition::toString)
+                            .map(EventTypePartition::toString).collect(Collectors.joining(",")),
+                    releasingPartitions.keySet().stream().map(EventTypePartition::toString)
                             .collect(Collectors.joining(", ")));
         }
     }
 
-    private void addPartitionToReassigned(final TopicPartition partitionKey) {
+    private void addPartitionToReassigned(final EventTypePartition partitionKey) {
         if (!releasingPartitions.containsKey(partitionKey)) {
             final long currentTime = System.currentTimeMillis();
             final long barrier = currentTime + getParameters().commitTimeoutMillis;
@@ -358,7 +359,7 @@ class StreamingState extends State {
         }
     }
 
-    private void barrierOnRebalanceReached(final TopicPartition pk) {
+    private void barrierOnRebalanceReached(final EventTypePartition pk) {
         if (!releasingPartitions.containsKey(pk)) {
             return;
         }
@@ -379,7 +380,7 @@ class StreamingState extends State {
             throw new IllegalStateException(
                     "kafkaConsumer should not be null when calling reconfigureKafkaConsumer method");
         }
-        final Set<TopicPartition> newAssignment = offsets.keySet().stream()
+        final Set<EventTypePartition> newAssignment = offsets.keySet().stream()
                 .filter(o -> !this.releasingPartitions.containsKey(o))
                 .collect(Collectors.toSet());
         if (forceSeek) {
@@ -392,9 +393,7 @@ class StreamingState extends State {
                 throw new NakadiRuntimeException(ex);
             }
         }
-        final Set<TopicPartition> currentAssignment = eventConsumer.getAssignment().stream()
-                .map(tp -> new TopicPartition(tp.getTopic(), String.valueOf(tp.getPartition())))
-                .collect(Collectors.toSet());
+        final Set<EventTypePartition> currentAssignment = eventConsumer.getAssignment();
 
         getLog().info("Changing kafka assignment from {} to {}",
                 Arrays.deepToString(currentAssignment.toArray()),
@@ -402,11 +401,10 @@ class StreamingState extends State {
 
         if (!currentAssignment.equals(newAssignment)) {
             try {
-                final Map<TopicPartition, Timeline> temporaryMapping = loadPartitionsMapping(newAssignment);
                 final List<NakadiCursor> cursors = new ArrayList<>();
-                for (final TopicPartition pk : newAssignment) {
+                for (final EventTypePartition pk : newAssignment) {
                     // Next 2 lines checks that current cursor is still available in storage
-                    final NakadiCursor beforeFirstAvailable = getBeforeFirstCursor(temporaryMapping, pk);
+                    final NakadiCursor beforeFirstAvailable = getBeforeFirstCursor(pk);
                     offsets.get(pk).ensureDataAvailable(beforeFirstAvailable);
                     // Now it is safe to reposition.
                     cursors.add(offsets.get(pk).getSentOffset());
@@ -418,12 +416,10 @@ class StreamingState extends State {
         }
     }
 
-    private NakadiCursor getBeforeFirstCursor(final Map<TopicPartition, Timeline> temporaryMapping,
-                                              final TopicPartition pk)
+    private NakadiCursor getBeforeFirstCursor(final EventTypePartition pk)
             throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException {
-        final Timeline timeline = temporaryMapping.get(pk);
         final Timeline firstTimelineForET = getContext().getTimelineService()
-                .getActiveTimelinesOrdered(timeline.getEventType()).get(0);
+                .getActiveTimelinesOrdered(pk.getEventType()).get(0);
 
         final Optional<PartitionStatistics> stats = getContext().getTimelineService()
                 .getTopicRepository(firstTimelineForET)
@@ -432,36 +428,16 @@ class StreamingState extends State {
         return stats.get().getBeforeFirst();
     }
 
-    private Map<TopicPartition, Timeline> loadPartitionsMapping(
-            final Collection<TopicPartition> partitions) throws InternalNakadiException, NoSuchEventTypeException {
-        final Map<TopicPartition, Timeline> result = new HashMap<>();
-        for (final String et : getContext().getSubscription().getEventTypes()) {
-            final List<Timeline> timelines = getContext().getTimelineService().getActiveTimelinesOrdered(et);
-            for (final Timeline timeline : timelines) {
-                final List<TopicPartition> matchingPartitions = partitions.stream()
-                        .filter(p -> p.getTopic().equals(timeline.getTopic()))
-                        .collect(Collectors.toList());
-
-                for (final TopicPartition pk : matchingPartitions) {
-                    result.put(pk, timeline);
-                }
-            }
-        }
-        return result;
-    }
-
-    private NakadiCursor createNakadiCursor(final TopicPartition key, final String offset) {
-        final Timeline timeline;
+    private NakadiCursor createNakadiCursor(final SubscriptionCursorWithoutToken cursor) {
         try {
-            timeline = loadPartitionsMapping(Collections.singletonList(key)).get(key);
-        } catch (InternalNakadiException | NoSuchEventTypeException e) {
-            throw new NakadiRuntimeException(e);
+            return getContext().getCursorConverter().convert(cursor);
+        } catch (final Exception ex) {
+            throw new NakadiRuntimeException(ex);
         }
-        return new NakadiCursor(timeline, key.getPartition(), offset);
     }
 
     private void addToStreaming(final Partition partition) {
-        final NakadiCursor cursor = createNakadiCursor(partition.getKey(), getZk().getOffset(partition.getKey()));
+        final NakadiCursor cursor = createNakadiCursor(getZk().getOffset(partition.getKey()));
         getLog().info("Adding to streaming {} with start position {}", partition.getKey(), cursor);
         final ZKSubscription subscription = getZk().subscribeForOffsetChanges(
                 partition.getKey(),
@@ -475,7 +451,7 @@ class StreamingState extends State {
     }
 
     private void reassignCommitted() {
-        final List<TopicPartition> keysToRelease = releasingPartitions.keySet().stream()
+        final List<EventTypePartition> keysToRelease = releasingPartitions.keySet().stream()
                 .filter(pk -> !offsets.containsKey(pk) || offsets.get(pk).isCommitted())
                 .collect(Collectors.toList());
         if (!keysToRelease.isEmpty()) {
@@ -487,17 +463,18 @@ class StreamingState extends State {
         }
     }
 
-    void offsetChanged(final TopicPartition key) {
+    void offsetChanged(final EventTypePartition key) {
         if (offsets.containsKey(key)) {
             final PartitionData data = offsets.get(key);
             data.getSubscription().refresh();
 
-            final NakadiCursor cursor = createNakadiCursor(key, getZk().getOffset(key));
+            final NakadiCursor cursor = createNakadiCursor(getZk().getOffset(key));
 
             final PartitionData.CommitResult commitResult = data.onCommitOffset(cursor);
             if (commitResult.seekOnKafka) {
                 reconfigureKafkaConsumer(true);
             }
+            getLog().error("Committed items: " + commitResult.committedCount);
             if (commitResult.committedCount > 0) {
                 committedEvents += commitResult.committedCount;
                 this.lastCommitMillis = System.currentTimeMillis();
@@ -515,7 +492,7 @@ class StreamingState extends State {
         }
     }
 
-    private void removeFromStreaming(final TopicPartition key) {
+    private void removeFromStreaming(final EventTypePartition key) {
         getLog().info("Removing partition {} from streaming", key);
         releasingPartitions.remove(key);
         final PartitionData data = offsets.remove(key);

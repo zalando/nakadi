@@ -1,9 +1,21 @@
 package org.zalando.nakadi.controller;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
+import static org.springframework.http.HttpStatus.OK;
 import org.springframework.http.ResponseEntity;
+import static org.springframework.http.ResponseEntity.noContent;
+import static org.springframework.http.ResponseEntity.ok;
+import static org.springframework.http.ResponseEntity.status;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,28 +40,15 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import org.zalando.nakadi.util.TimeLogger;
 import org.zalando.nakadi.view.CursorCommitResult;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.MoreStatus;
+import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
-import static org.springframework.http.HttpStatus.OK;
-import static org.springframework.http.ResponseEntity.noContent;
-import static org.springframework.http.ResponseEntity.ok;
-import static org.springframework.http.ResponseEntity.status;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
-import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -83,7 +82,7 @@ public class CursorsController {
         try {
             final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId, client)
                     .stream()
-                    .map(cursor -> cursorConverter.convert(cursor, cursorTokenService.generateToken()))
+                    .map(cursor -> cursor.withToken(cursorTokenService.generateToken()))
                     .collect(Collectors.toList());
             return status(OK).body(new ItemsWrapper<>(cursors));
         } catch (final NakadiException e) {
@@ -93,39 +92,44 @@ public class CursorsController {
 
     @RequestMapping(value = "/subscriptions/{subscriptionId}/cursors", method = RequestMethod.POST)
     public ResponseEntity<?> commitCursors(@PathVariable("subscriptionId") final String subscriptionId,
-                                           @Valid @RequestBody final ItemsWrapper<SubscriptionCursor> cursors,
+                                           @Valid @RequestBody final ItemsWrapper<SubscriptionCursor> cursorsIn,
                                            @NotNull @RequestHeader("X-Nakadi-StreamId") final String streamId,
                                            final NativeWebRequest request,
                                            final Client client) {
 
-        LOG.debug("[COMMIT_CURSORS] committing {} cursor(s) for subscription {}", cursors.getItems().size(),
-                subscriptionId);
-
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
-
+        TimeLogger.startMeasure(
+                "COMMIT_CURSORS sid:" + subscriptionId + ", size=" + cursorsIn.getItems().size(),
+                "isFeatureEnabled");
         try {
-            LOG.debug("[COMMIT_CURSORS] scopes validation finished");
-
-            final List<Boolean> items = cursorsService
-                    .commitCursors(streamId, subscriptionId, convertToNakadiCursors(cursors), client);
-
-            LOG.debug("[COMMIT_CURSORS] commit finished");
-
-            final boolean allCommited = items.stream().allMatch(item -> item);
-            if (allCommited) {
-                return noContent().build();
-            } else {
-                final List<CursorCommitResult> body = IntStream.range(0, cursors.getItems().size())
-                        .mapToObj(idx -> new CursorCommitResult(cursors.getItems().get(idx), items.get(idx)))
-                        .collect(Collectors.toList());
-                return ok(new ItemsWrapper<>(body));
+            if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
+                return new ResponseEntity<>(NOT_IMPLEMENTED);
             }
-        } catch (final NoSuchEventTypeException | InvalidCursorException e) {
-            return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
-        } catch (final NakadiException e) {
-            return create(e.asProblem(), request);
+
+            try {
+                TimeLogger.addMeasure("convertToNakadiCursors");
+                final List<NakadiCursor> cursors = convertToNakadiCursors(cursorsIn);
+
+                TimeLogger.addMeasure("callService");
+                final List<Boolean> items = cursorsService.commitCursors(streamId, subscriptionId, cursors, client);
+
+                TimeLogger.addMeasure("prepareResponse");
+                final boolean allCommited = items.stream().allMatch(item -> item);
+                if (allCommited) {
+                    return noContent().build();
+                } else {
+                    final List<CursorCommitResult> body = IntStream.range(0, cursorsIn.getItems().size())
+                            .mapToObj(idx -> new CursorCommitResult(cursorsIn.getItems().get(idx), items.get(idx)))
+                            .collect(Collectors.toList());
+                    return ok(new ItemsWrapper<>(body));
+                }
+            } catch (final NoSuchEventTypeException | InvalidCursorException e) {
+                return create(Problem.valueOf(UNPROCESSABLE_ENTITY, e.getMessage()), request);
+            } catch (final NakadiException e) {
+                LOG.error("Failed to commit cursors", e);
+                return create(e.asProblem(), request);
+            }
+        } finally {
+            LOG.info(TimeLogger.finishMeasure());
         }
     }
 

@@ -1,10 +1,9 @@
 package org.zalando.nakadi.util;
 
-import org.springframework.stereotype.Service;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 
 @Service
 public interface FeatureToggleService {
@@ -29,6 +28,7 @@ public interface FeatureToggleService {
         CHECK_APPLICATION_LEVEL_PERMISSIONS("check_application_level_permissions"),
         CHECK_PARTITIONS_KEYS("check_partitions_keys"),
         CHECK_OWNING_APPLICATION("check_owning_application"),
+        HILA_USE_TOPOLOGY_OBJECT("hila_use_topology"),
         LIMIT_CONSUMERS_NUMBER("limit_consumers_number");
 
         private final String id;

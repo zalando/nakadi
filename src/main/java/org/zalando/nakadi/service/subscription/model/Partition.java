@@ -1,8 +1,10 @@
 package org.zalando.nakadi.service.subscription.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Collection;
 import javax.annotation.Nullable;
-import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.domain.EventTypePartition;
 
 public class Partition {
     public enum State {
@@ -21,21 +23,35 @@ public class Partition {
         }
     }
 
-    private final TopicPartition key;
-    private final String session;
-    private final String nextSession;
-    private final State state;
+    @JsonProperty("event_type")
+    private String eventType;
+    @JsonProperty("partition")
+    private String partition;
+    @JsonProperty("session")
+    private String session;
+    @JsonProperty("next_session")
+    private String nextSession;
+    @JsonProperty("state")
+    private State state;
 
-    public Partition(final TopicPartition key, @Nullable final String session, @Nullable final String nextSession,
-                     final State state) {
-        this.key = key;
+    public Partition() {
+    }
+
+    public Partition(
+            final String eventType,
+            final String partition,
+            @Nullable final String session,
+            @Nullable final String nextSession,
+            final State state) {
+        this.eventType = eventType;
+        this.partition = partition;
         this.session = session;
         this.nextSession = nextSession;
         this.state = state;
     }
 
     public Partition toState(final State state, @Nullable final String session, @Nullable final String nextSession) {
-        return new Partition(key, session, nextSession, state);
+        return new Partition(eventType, partition, session, nextSession, state);
     }
 
     /**
@@ -78,8 +94,17 @@ public class Partition {
 
     }
 
-    public TopicPartition getKey() {
-        return key;
+    @JsonIgnore
+    public EventTypePartition getKey() {
+        return new EventTypePartition(eventType, partition);
+    }
+
+    public String getEventType() {
+        return eventType;
+    }
+
+    public String getPartition() {
+        return partition;
     }
 
     public State getState() {
@@ -97,6 +122,7 @@ public class Partition {
     }
 
     @Nullable
+    @JsonIgnore
     public String getSessionOrNextSession() {
         if (state == State.REASSIGNING) {
             return nextSession;
@@ -106,6 +132,6 @@ public class Partition {
 
     @Override
     public String toString() {
-        return key + "->" + state + ":" + session + "->" + nextSession;
+        return eventType + ":" + partition + "->" + state + ":" + session + "->" + nextSession;
     }
 }

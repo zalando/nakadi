@@ -15,19 +15,17 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.subscription.model.Session;
-import org.zalando.nakadi.service.subscription.zk.CuratorZkSubscriptionClient;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
 
 @Service
 public class SubscriptionStreamerFactory {
     @Value("${nakadi.kafka.poll.timeoutMs}")
     private long kafkaPollTimeout;
-    private final ZooKeeperHolder zkHolder;
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final TimelineService timelineService;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -35,23 +33,24 @@ public class SubscriptionStreamerFactory {
     private final ObjectMapper objectMapper;
     private final CursorConverter cursorConverter;
     private final MetricRegistry metricRegistry;
+    private final SubscriptionClientFactory zkClientFactory;
 
     @Autowired
     public SubscriptionStreamerFactory(
-            final ZooKeeperHolder zkHolder,
             final SubscriptionDbRepository subscriptionDbRepository,
             final TimelineService timelineService,
             final CursorTokenService cursorTokenService,
             final ObjectMapper objectMapper,
             final CursorConverter cursorConverter,
-            @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry) {
-        this.zkHolder = zkHolder;
+            @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry,
+            final SubscriptionClientFactory zkClientFactory) {
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
         this.cursorConverter = cursorConverter;
         this.metricRegistry = metricRegistry;
+        this.zkClientFactory = zkClientFactory;
     }
 
     public SubscriptionStreamer build(
@@ -71,7 +70,7 @@ public class SubscriptionStreamerFactory {
                 .setParameters(streamParameters)
                 .setSession(session)
                 .setTimer(executorService)
-                .setZkClient(new CuratorZkSubscriptionClient(subscription.getId(), zkHolder.get(), loggingPath))
+                .setZkClient(zkClientFactory.createClient(subscription, loggingPath))
                 .setRebalancer(new ExactWeightRebalancer())
                 .setKafkaPollTimeout(kafkaPollTimeout)
                 .setLoggingPath(loggingPath)

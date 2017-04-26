@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.subscription.state;
 
-import org.zalando.nakadi.exceptions.NakadiException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,18 +7,18 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import org.zalando.nakadi.domain.NakadiCursor;
+import javax.ws.rs.core.Response;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
-
-import javax.ws.rs.core.Response;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 public class StartingState extends State {
     @Override
@@ -38,10 +37,10 @@ public class StartingState extends State {
      */
     private void createSubscriptionLocked() {
         // check that subscription initialized in zk.
-        if (getZk().createSubscription()) {
+        if (!getZk().isSubscriptionCreatedAndInitialized()) {
 
             // if not - create subscription node etc.
-            final List<NakadiCursor> cursors = calculateStartPosition(
+            final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
                     getContext().getSubscription(),
                     getContext().getTimelineService(),
                     getContext().getCursorConverter());
@@ -81,7 +80,7 @@ public class StartingState extends State {
     public interface PositionCalculator {
         Subscription.InitialPosition getType();
 
-        List<NakadiCursor> calculate(
+        List<SubscriptionCursorWithoutToken> calculate(
                 Subscription subscription, TimelineService timelineService, CursorConverter converter);
     }
 
@@ -93,18 +92,18 @@ public class StartingState extends State {
         }
 
         @Override
-        public List<NakadiCursor> calculate(
+        public List<SubscriptionCursorWithoutToken> calculate(
                 final Subscription subscription,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            final List<NakadiCursor> result = new ArrayList<>();
+            final List<SubscriptionCursorWithoutToken> result = new ArrayList<>();
             try {
                 for (final String eventType : subscription.getEventTypes()) {
                     final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(eventType);
                     final Timeline timeline = activeTimelines.get(0);
                     timelineService.getTopicRepository(timeline)
                             .loadTopicStatistics(Collections.singletonList(timeline))
-                            .forEach(stat -> result.add(stat.getBeforeFirst()));
+                            .forEach(stat -> result.add(converter.convertToNoToken(stat.getBeforeFirst())));
                 }
                 return result;
             } catch (final Exception ex) {
@@ -120,18 +119,18 @@ public class StartingState extends State {
         }
 
         @Override
-        public List<NakadiCursor> calculate(
+        public List<SubscriptionCursorWithoutToken> calculate(
                 final Subscription subscription,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            final List<NakadiCursor> result = new ArrayList<>();
+            final List<SubscriptionCursorWithoutToken> result = new ArrayList<>();
             try {
                 for (final String eventType : subscription.getEventTypes()) {
                     final List<Timeline> activeTimelines = timelineService.getActiveTimelinesOrdered(eventType);
                     final Timeline timeline = activeTimelines.get(activeTimelines.size() - 1);
                     timelineService.getTopicRepository(timeline)
                             .loadTopicStatistics(Collections.singletonList(timeline))
-                            .forEach(stat -> result.add(stat.getLast()));
+                            .forEach(stat -> result.add(converter.convertToNoToken(stat.getLast())));
                 }
                 return result;
             } catch (final Exception ex) {
@@ -147,24 +146,16 @@ public class StartingState extends State {
         }
 
         @Override
-        public List<NakadiCursor> calculate(
+        public List<SubscriptionCursorWithoutToken> calculate(
                 final Subscription subscription,
                 final TimelineService timelineService,
                 final CursorConverter converter) {
-            final List<NakadiCursor> result = new ArrayList<>();
-            subscription.getInitialCursors().forEach(cursor -> {
-                try {
-                    result.add(converter.convert(cursor));
-                } catch (final Exception e) {
-                    throw new NakadiRuntimeException(e);
-                }
-            });
-            return result;
+            return subscription.getInitialCursors();
         }
     }
 
 
-    public static List<NakadiCursor> calculateStartPosition(
+    public static List<SubscriptionCursorWithoutToken> calculateStartPosition(
             final Subscription subscription,
             final TimelineService timelineService,
             final CursorConverter converter) {

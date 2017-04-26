@@ -50,7 +50,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     /**
      * Mapping from topic repository to event consumer that was created to consume events from this topic repository.
      */
-    private final Map<TopicRepository, EventConsumer> eventConsumers = new HashMap<>();
+    private final Map<TopicRepository, EventConsumer.LowLevelConsumer> eventConsumers = new HashMap<>();
     /**
      * Offsets, that should trigger election of topic repository for next timeline. (Actually - map of latest offsets
      * for each event type partition within current timeline.
@@ -71,8 +71,8 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
     }
 
     @Override
-    public Set<TopicPartition> getAssignment() {
-        return latestOffsets.values().stream().map(NakadiCursor::getTopicPartition).collect(Collectors.toSet());
+    public Set<EventTypePartition> getAssignment() {
+        return latestOffsets.keySet();
     }
 
     @Override
@@ -211,7 +211,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
         }
         // Stop and remove event consumers with changed configuration
         for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : newAssignment.entrySet()) {
-            final EventConsumer existingEventConsumer = eventConsumers.get(entry.getKey());
+            final EventConsumer.LowLevelConsumer existingEventConsumer = eventConsumers.get(entry.getKey());
             if (null != existingEventConsumer) {
                 final Set<TopicPartition> newTopicPartitions = entry.getValue().stream()
                         .map(NakadiCursor::getTopicPartition)
@@ -229,7 +229,7 @@ public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEve
                 final TopicRepository repo = entry.getKey();
                 LOG.info("Creating underlying consumer for client id {} and cursors {}",
                         clientId, Arrays.deepToString(entry.getValue().toArray()));
-                final EventConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
+                final EventConsumer.LowLevelConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
                 eventConsumers.put(repo, consumer);
             }
         }
