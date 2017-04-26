@@ -292,7 +292,8 @@ public class SchemaEvolutionServiceTest {
                     .collect(toList());
             final String description = testCase.getString("description");
 
-            assertThat(description, service.collectIncompatibilities(eventType.getCompatibilityMode(), schemaJson).stream()
+            assertThat(description, service.collectIncompatibilities(eventType.getCompatibilityMode(), schemaJson)
+                    .stream()
                     .map(Object::toString)
                     .collect(toList()), is(errorMessages));
         }
