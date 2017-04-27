@@ -39,7 +39,7 @@ public class Aruha771MigrationHelper {
 
     public void fillSubscriptionsHashes() throws Exception {
 
-        try (final Connection con = DriverManager.getConnection(url, user, pass)) {
+        try (Connection con = DriverManager.getConnection(url, user, pass)) {
             final Statement st = con.createStatement();
             final ResultSet rs = st.executeQuery("SELECT s_subscription_object FROM zn_data.subscription");
 
