@@ -11,7 +11,7 @@ import static com.google.common.base.Charsets.UTF_8;
 public class HashGenerator {
 
     public String generateSubscriptionKeyFieldsHash(final SubscriptionBase subscription) {
-        final Hasher hasher = Hashing.murmur3_128()
+        final Hasher hasher = Hashing.md5()
                 .newHasher()
                 .putString(subscription.getOwningApplication(), UTF_8)
                 .putString(subscription.getConsumerGroup(), UTF_8);
