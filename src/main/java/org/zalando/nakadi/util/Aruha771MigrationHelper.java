@@ -14,13 +14,13 @@ import java.sql.Statement;
  */
 public class Aruha771MigrationHelper {
 
-    private HashGenerator hashGenerator;
-    private ObjectMapper jsonMapper;
+    private final HashGenerator hashGenerator;
+    private final ObjectMapper jsonMapper;
     private final String url;
     private final String user;
     private final String pass;
 
-    public static void main(String[] args) throws Exception {
+    public static void main(final String[] args) throws Exception {
         final Aruha771MigrationHelper helper = new Aruha771MigrationHelper(
                 new HashGenerator(),
                 new JsonConfig().jacksonObjectMapper());
@@ -39,9 +39,9 @@ public class Aruha771MigrationHelper {
 
     public void fillSubscriptionsHashes() throws Exception {
 
-        try (Connection con = DriverManager.getConnection(url, user, pass)) {
-            Statement st = con.createStatement();
-            ResultSet rs = st.executeQuery("SELECT s_subscription_object FROM zn_data.subscription");
+        try (final Connection con = DriverManager.getConnection(url, user, pass)) {
+            final Statement st = con.createStatement();
+            final ResultSet rs = st.executeQuery("SELECT s_subscription_object FROM zn_data.subscription");
 
             int i = 0;
             while (rs.next()) {
@@ -55,7 +55,7 @@ public class Aruha771MigrationHelper {
 
                 System.out.println(++i + " | " + subscription.getId() + " | " + hash);
             }
-        } catch (Exception e) {
+        } catch (final Exception e) {
             e.printStackTrace();
         }
     }
