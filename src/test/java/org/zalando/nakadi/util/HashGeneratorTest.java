@@ -19,6 +19,14 @@ public class HashGeneratorTest {
     }
 
     @Test
+    public void testActualHashImplementationIsNotChanged() {
+        final SubscriptionBase subscription = createSubscription("my-app", "my-consumer-group", "et1", "et2");
+        assertThat(
+                hashGenerator.generateSubscriptionKeyFieldsHash(subscription),
+                equalTo("a2749954511a4ff3423fe4cefd76b011"));
+    }
+
+    @Test
     public void whenGenerateHashForEqualSubscriptionsThenHashIsEqual() {
         final SubscriptionBase s1 = createSubscription("my-app", "abc", "et1", "et2");
         s1.setReadFrom(SubscriptionBase.InitialPosition.BEGIN);
