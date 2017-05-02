@@ -1,8 +1,9 @@
-package org.zalando.nakadi.util;
+package org.zalando.nakadi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.util.HashGenerator;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -10,7 +11,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 /**
- * Temporary class to be used for DB migration of ARUHA-771
+ * Script to be used for DB migration of ARUHA-771
  */
 public class Aruha771MigrationHelper {
 
