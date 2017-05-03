@@ -1,5 +1,8 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.ChildData;
@@ -18,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class BlacklistService {
@@ -28,6 +32,14 @@ public class BlacklistService {
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final ZooKeeperHolder zooKeeperHolder;
     private TreeCache blacklistCache;
+    private final LoadingCache<String, Boolean> blacklistFirstLevelCache = CacheBuilder.newBuilder()
+            .expireAfterWrite(1000L, TimeUnit.MILLISECONDS)
+            .build(new CacheLoader<String, Boolean>() {
+                @Override
+                public Boolean load(final String key) throws Exception {
+                    return keyExistsInZkCache(key);
+                }
+            });
 
     @Autowired
     public BlacklistService(final SubscriptionDbRepository subscriptionDbRepository,
@@ -54,7 +66,7 @@ public class BlacklistService {
 
     private boolean isBlocked(final Type type, final String name) {
         try {
-            final boolean blocked = blacklistCache.getCurrentData(type.getZkPath() + "/" + name) != null;
+            final boolean blocked = blacklistFirstLevelCache.get(createFlooderPath(name, type));
             if (blocked) {
                 LOG.info("{} {} is blocked", type.name(), name);
             }
@@ -63,6 +75,10 @@ public class BlacklistService {
             LOG.error(e.getMessage(), e);
         }
         return false;
+    }
+
+    private boolean keyExistsInZkCache(final String key) {
+        return blacklistCache.getCurrentData(key) != null;
     }
 
     public boolean isProductionBlocked(final String etName, final String appId) {
@@ -84,14 +100,14 @@ public class BlacklistService {
     }
 
     public boolean isSubscriptionConsumptionBlocked(final Collection<String> etNames, final String appId) {
-            return etNames.stream()
-                    .map(etName -> isBlocked(Type.CONSUMER_ET, etName)).findFirst().orElse(false) ||
-                    isBlocked(Type.CONSUMER_APP, appId);
+        return etNames.stream()
+                .map(etName -> isBlocked(Type.CONSUMER_ET, etName)).findFirst().orElse(false) ||
+                isBlocked(Type.CONSUMER_APP, appId);
     }
 
     public Map<String, Map> getBlacklist() {
         return ImmutableMap.of(
-                "consumers",  ImmutableMap.of(
+                "consumers", ImmutableMap.of(
                         "event_types", getChildren(Type.CONSUMER_ET),
                         "apps", getChildren(Type.CONSUMER_APP)),
                 "producers", ImmutableMap.of(
@@ -106,6 +122,7 @@ public class BlacklistService {
             if (curator.checkExists().forPath(path) == null) {
                 curator.create().creatingParentsIfNeeded().forPath(path);
             }
+            blacklistFirstLevelCache.refresh(path);
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while creating node in zk", e);
         }
@@ -118,6 +135,7 @@ public class BlacklistService {
             if (curator.checkExists().forPath(path) != null) {
                 curator.delete().forPath(path);
             }
+            blacklistFirstLevelCache.refresh(path);
         } catch (final Exception e) {
             throw new RuntimeException("Issue occurred while deleting node from zk", e);
         }
