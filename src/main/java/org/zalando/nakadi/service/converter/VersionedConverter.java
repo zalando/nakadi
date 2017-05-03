@@ -5,11 +5,12 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.view.Cursor;
 
 interface VersionedConverter {
 
-    NakadiCursor.Version getVersion();
+    CursorConverter.Version getVersion();
 
     /**
      * Converts cursor to nakadi cursor having in mind that preliminary checks for format were performed.

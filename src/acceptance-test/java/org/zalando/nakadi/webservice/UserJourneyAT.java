@@ -46,6 +46,7 @@ import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
+import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.postEvents;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
@@ -124,7 +125,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                         .withWaitBetweenEachTry(500));
 
         // push two events to event-type
-        postEvents(EVENT1, EVENT2);
+        postEvents(eventTypeName, EVENT1, EVENT2);
 
         // get offsets for partition
         jsonRequestSpec()
@@ -158,6 +159,43 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .body(equalTo("{\"cursor\":{\"partition\":\"0\",\"offset\":\"000000000000000001\"},\"events\":"
                         + "[" + EVENT1 + "," + EVENT2 + "]}\n"));
 
+        // get distance between cursors
+        jsonRequestSpec()
+                .body("[{\"initial_cursor\": {\"partition\": \"0\", \"offset\":\"000000000000000000\"}, " +
+                        "\"final_cursor\": {\"partition\": \"0\", \"offset\":\"000000000000000001\"}}]")
+                .when()
+                .post("/event-types/" + eventTypeName + "/cursor-distances")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("initial_cursor[0].offset", equalTo("000000000000000000"))
+                .body("final_cursor[0].offset", equalTo("000000000000000001"))
+                .body("distance[0]", equalTo(1));
+
+        // navigate between cursors
+        jsonRequestSpec()
+                .body("[{\"partition\": \"0\", \"offset\":\"000000000000000000\", \"shift\": 1}, " +
+                        "{\"partition\": \"0\", \"offset\":\"000000000000000001\", \"shift\": -1}]")
+                .when()
+                .post("/event-types/" + eventTypeName + "/shifted-cursors")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(2))
+                .body("offset[0]", equalTo("000000000000000001"))
+                .body("offset[1]", equalTo("000000000000000000"));
+
+        // query for lag
+        jsonRequestSpec()
+                .body("[{\"partition\": \"0\", \"offset\":\"000000000000000000\"}]")
+                .when()
+                .post("/event-types/" + eventTypeName + "/cursors-lag")
+                .then()
+                .statusCode(OK.value())
+                .body("size()", equalTo(1))
+                .body("newest_available_offset[0]", equalTo("000000000000000001"))
+                .body("oldest_available_offset[0]", equalTo("000000000000000000"))
+                .body("unconsumed_events[0]", equalTo(1));
+
         // delete event type
         jsonRequestSpec()
                 .when()
@@ -190,7 +228,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
     public void userJourneyHila() throws InterruptedException, IOException {
         // create event-type and push some events
         createEventType();
-        postEvents(rangeClosed(0, 3)
+        postEvents(eventTypeName, rangeClosed(0, 3)
                 .boxed()
                 .map(x -> "{\"foo\":\"bar" + x + "\"}")
                 .collect(Collectors.toList())
@@ -279,16 +317,6 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .post("/event-types")
                 .then()
                 .statusCode(CREATED.value());
-    }
-
-    private void postEvents(final String... events) {
-        final String batch = "[" + String.join(",", events) + "]";
-        jsonRequestSpec()
-                .body(batch)
-                .when()
-                .post("/event-types/" + eventTypeName + "/events")
-                .then()
-                .statusCode(OK.value());
     }
 
     private RequestSpecification jsonRequestSpec() {

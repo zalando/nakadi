@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
@@ -54,18 +55,21 @@ public class EventTypeController {
     private final EventTypeOptionsValidator eventTypeOptionsValidator;
     private final ApplicationService applicationService;
     private final NakadiSettings nakadiSettings;
+    private final SecuritySettings securitySettings;
 
     @Autowired
     public EventTypeController(final EventTypeService eventTypeService,
                                final FeatureToggleService featureToggleService,
                                final EventTypeOptionsValidator eventTypeOptionsValidator,
                                final ApplicationService applicationService,
-                               final NakadiSettings nakadiSettings) {
+                               final NakadiSettings nakadiSettings,
+                               final SecuritySettings securitySettings) {
         this.eventTypeService = eventTypeService;
         this.featureToggleService = featureToggleService;
         this.eventTypeOptionsValidator = eventTypeOptionsValidator;
         this.applicationService = applicationService;
         this.nakadiSettings = nakadiSettings;
+        this.securitySettings = securitySettings;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -114,8 +118,8 @@ public class EventTypeController {
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName,
                                     final NativeWebRequest request,
                                     final Client client) {
-        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION)) {
-            return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
+        if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION) && !isAdmin(client)) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
 
         eventTypeService.delete(eventTypeName, client);
@@ -184,6 +188,10 @@ public class EventTypeController {
                                                         final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
+    private boolean isAdmin(final Client client) {
+        return client.getClientId().equals(securitySettings.getAdminClientId());
     }
 
 }

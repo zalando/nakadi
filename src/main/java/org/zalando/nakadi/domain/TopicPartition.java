@@ -37,4 +37,12 @@ public class TopicPartition {
     public int hashCode() {
         return Objects.hash(topic, partition);
     }
+
+    @Override
+    public String toString() {
+        return "TopicPartition{" +
+                "topic='" + topic + '\'' +
+                ", partition='" + partition + '\'' +
+                '}';
+    }
 }

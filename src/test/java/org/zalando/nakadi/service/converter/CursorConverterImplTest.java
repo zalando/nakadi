@@ -20,23 +20,23 @@ public class CursorConverterImplTest {
 
     @Test
     public void testGuessVersionForObsoleteOffsets() {
-        Assert.assertEquals(NakadiCursor.Version.ZERO, CursorConverterImpl.guessVersion("0"));
+        Assert.assertEquals(CursorConverter.Version.ZERO, CursorConverterImpl.guessVersion("0"));
     }
 
     @Test
     public void testGuessVersionForIncorrectOffsets() {
-        Assert.assertEquals(NakadiCursor.Version.ZERO, CursorConverterImpl.guessVersion("0101000001"));
+        Assert.assertEquals(CursorConverter.Version.ZERO, CursorConverterImpl.guessVersion("0101000001"));
     }
 
     @Test
     public void testGuessVersionZero() {
-        Assert.assertEquals(NakadiCursor.Version.ZERO, CursorConverterImpl.guessVersion("000000000000000"));
+        Assert.assertEquals(CursorConverter.Version.ZERO, CursorConverterImpl.guessVersion("000000000000000"));
     }
 
     @Test
     public void testGuessVersionOne() {
-        Assert.assertEquals(NakadiCursor.Version.ONE, CursorConverterImpl.guessVersion("001"));
-        Assert.assertEquals(NakadiCursor.Version.ONE, CursorConverterImpl.guessVersion("001-0000-0000000000000000"));
+        Assert.assertEquals(CursorConverter.Version.ONE, CursorConverterImpl.guessVersion("001"));
+        Assert.assertEquals(CursorConverter.Version.ONE, CursorConverterImpl.guessVersion("001-0000-0000000000000000"));
     }
 
     @Test
