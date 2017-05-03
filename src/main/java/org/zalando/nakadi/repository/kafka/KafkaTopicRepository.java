@@ -29,6 +29,8 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
@@ -376,6 +378,41 @@ public class KafkaTopicRepository implements TopicRepository {
 
     public int compareOffsets(final NakadiCursor first, final NakadiCursor second) throws InvalidCursorException {
         return KafkaCursor.fromNakadiCursor(first).compareTo(KafkaCursor.fromNakadiCursor(second));
+    }
+
+    public long totalEventsInPartition(final Timeline timeline, final String partitionString)
+            throws InvalidCursorOperation {
+        try {
+            final Timeline.StoragePosition positions = timeline.getLatestPosition();
+            if (positions == null) {
+                final Optional<PartitionStatistics> statsO = loadPartitionStatistics(timeline, partitionString);
+                return statsO.map(stats -> numberOfEventsBeforeCursor(stats.getLast()) + 1).orElseThrow(
+                        MyNakadiRuntimeException1::new
+                );
+            }
+            final int partition = KafkaCursor.toKafkaPartition(partitionString);
+            final Timeline.KafkaStoragePosition kafkaPositions = (Timeline.KafkaStoragePosition) positions;
+            final List<Long> offsets = kafkaPositions.getOffsets();
+            if (offsets.size() - 1 < partition) {
+                throw new InvalidCursorOperation(InvalidCursorOperation.Reason.PARTITION_NOT_FOUND);
+            } else {
+                // The number stored in positions is the Kafka offset, which could be -1, for example, when a partition
+                // is empty, or zero when there is only one event. In order to count precisely the amount of events
+                // in a partition, we need to adjust it by adding one.
+                return offsets.get(partition) + 1;
+            }
+        } catch (final ServiceUnavailableException e) {
+            throw new MyNakadiRuntimeException1("Problem calculating partition statistics", e);
+        }
+    }
+
+    public long numberOfEventsBeforeCursor(final NakadiCursor cursor) {
+        // could be -1 in case the cursor points to BEGIN
+        return KafkaCursor.toKafkaOffset(cursor.getOffset());
+    }
+
+    public String getOffsetForPosition(final long offset) {
+        return KafkaCursor.toNakadiOffset(offset);
     }
 
     public void validateReadCursors(final List<NakadiCursor> cursors)

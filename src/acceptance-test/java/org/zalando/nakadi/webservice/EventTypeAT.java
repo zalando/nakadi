@@ -3,6 +3,7 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
+import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Assert;
@@ -20,6 +21,7 @@ import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -27,6 +29,7 @@ import java.util.stream.IntStream;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
@@ -181,6 +184,9 @@ public class EventTypeAT extends BaseAT {
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
 
+        List<Map> timelines = NakadiTestUtils.listTimelines(eventType.getName());
+        final String cleanupTimeBeforeUpdate = (String) timelines.get(0).get("cleaned_up_at");
+
         final Long defaultRetentionTime = 172800000L;
         assertRetentionTime(defaultRetentionTime, eventType.getName());
 
@@ -194,6 +200,12 @@ public class EventTypeAT extends BaseAT {
                 .then()
                 .body(equalTo(""))
                 .statusCode(HttpStatus.SC_OK);
+
+        timelines = NakadiTestUtils.listTimelines(eventType.getName());
+        final String cleanupTimeAfterUpdate = (String) timelines.get(0).get("cleaned_up_at");
+        final long cleanupTimeDiff = DateTime.parse(cleanupTimeAfterUpdate).getMillis() -
+                DateTime.parse(cleanupTimeBeforeUpdate).getMillis();
+        Assert.assertThat(cleanupTimeDiff, is(newRetentionTime - defaultRetentionTime));
 
         assertRetentionTime(newRetentionTime, eventType.getName());
     }

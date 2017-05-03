@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service.converter;
 
 import org.apache.commons.lang3.StringUtils;
+import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
@@ -12,10 +13,12 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
 
-class VersionZeroConverter implements VersionedConverter {
-    static final int VERSION_ZERO_MIN_OFFSET_LENGTH = 18;
+import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
+import static org.zalando.nakadi.util.CursorConversionUtils.NUMBERS_ONLY_PATTERN;
+
+public class VersionZeroConverter implements VersionedConverter {
+    public static final int VERSION_ZERO_MIN_OFFSET_LENGTH = 18;
     private final EventTypeCache eventTypeCache;
     private final TimelineService timelineService;
 
@@ -40,6 +43,8 @@ class VersionZeroConverter implements VersionedConverter {
                     .loadPartitionStatistics(timeline, cursor.getPartition())
                     .orElseThrow(() -> new InvalidCursorException(PARTITION_NOT_FOUND))
                     .getBeforeFirst();
+        } else if (!NUMBERS_ONLY_PATTERN.matcher(offset).matches()) {
+            throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
         return new NakadiCursor(
                 timelineService.getFakeTimeline(eventType),

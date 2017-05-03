@@ -19,6 +19,7 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
@@ -52,6 +53,7 @@ import org.zalando.problem.Problem;
 import javax.ws.rs.core.Response;
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -227,13 +229,13 @@ public class EventTypeService {
             boolean retentionTimeUpdated = false;
             try {
                 if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
-                    updateRetentionTime(eventTypeName, newRetentionTime);
+                    updateTopicRetentionTime(eventTypeName, newRetentionTime);
                 }
-                eventTypeRepository.update(eventType);
+                updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
                 retentionTimeUpdated = true;
             } finally {
                 if (!retentionTimeUpdated) {
-                    updateRetentionTime(eventTypeName, oldRetentionTime);
+                    updateTopicRetentionTime(eventTypeName, oldRetentionTime);
                 }
             }
 
@@ -269,7 +271,43 @@ public class EventTypeService {
         }
     }
 
-    private void updateRetentionTime(final String eventTypeName, final Long retentionTime)
+    private void updateEventTypeInDB(final EventType eventType, final Long newRetentionTime,
+                                     final Long oldRetentionTime) throws NakadiException {
+        final NakadiException exception = transactionTemplate.execute(action -> {
+            try {
+                updateTimelinesCleanup(eventType.getName(), newRetentionTime, oldRetentionTime);
+                eventTypeRepository.update(eventType);
+                return null;
+            } catch (final NakadiException e) {
+                return e;
+            }
+        });
+        if (exception != null) {
+            throw exception;
+        }
+    }
+
+    private void updateTimelinesCleanup(final String eventType, final Long newRetentionTime,
+                                        final Long oldRetentionTime)
+            throws InternalNakadiException, NoSuchEventTypeException {
+
+        if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
+            if (oldRetentionTime == null) {
+                throw new InternalNakadiException("Empty value for retention time in existing EventType");
+            }
+            final long retentionDiffMs = newRetentionTime - oldRetentionTime;
+            final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventType);
+
+            for (final Timeline timeline : timelines) {
+                if (timeline.getCleanedUpAt() != null) {
+                    timeline.setCleanedUpAt(new Date(timeline.getCleanedUpAt().getTime() + retentionDiffMs));
+                    timelineService.updateTimeline(timeline);
+                }
+            }
+        }
+    }
+
+    private void updateTopicRetentionTime(final String eventTypeName, final Long retentionTime)
             throws InternalNakadiException, NoSuchEventTypeException {
         timelineService.getActiveTimelinesOrdered(eventTypeName)
                 .forEach(timeline -> timelineService.getTopicRepository(timeline)

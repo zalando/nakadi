@@ -8,6 +8,7 @@ CREATE TABLE zn_data.timeline (
   tl_switched_at     TIMESTAMP WITH TIME ZONE DEFAULT NULL,
   tl_cleanup_at      TIMESTAMP WITH TIME ZONE DEFAULT NULL,
   tl_latest_position JSONB                    DEFAULT NULL,
+  tl_deleted         BOOLEAN                  DEFAULT FALSE,
   UNIQUE (et_name, tl_order)
 );
 

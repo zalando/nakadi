@@ -14,7 +14,7 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.exceptions.DuplicatedStorageIdException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.plugin.api.ApplicationServiceFactory;
@@ -80,7 +80,7 @@ public class NakadiConfig {
                 environment.getProperty("nakadi.zookeeper.kafkaNamespace", "")));
         try {
             storageDbRepository.createStorage(storage);
-        } catch (final DuplicatedStorageIdException e) {
+        } catch (final DuplicatedStorageException e) {
             LOGGER.info("Creation of default storage failed: {}", e.getMessage());
         }
         return storage;

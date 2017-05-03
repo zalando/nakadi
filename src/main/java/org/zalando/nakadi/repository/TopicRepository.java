@@ -30,7 +30,7 @@ public interface TopicRepository {
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
             throws ServiceUnavailableException;
 
-    List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> topics) throws ServiceUnavailableException;
+    List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> timelines) throws ServiceUnavailableException;
 
     List<String> listPartitionNames(String topicId);
 
@@ -43,6 +43,12 @@ public interface TopicRepository {
             ServiceUnavailableException;
 
     void validateCommitCursor(NakadiCursor cursor) throws InvalidCursorException;
+
+    long totalEventsInPartition(Timeline timeline, String partition);
+
+    long numberOfEventsBeforeCursor(NakadiCursor cursor);
+
+    String getOffsetForPosition(long shiftedOffset);
 
     void setRetentionTime(String topic, Long retentionMs) throws TopicConfigException;
 }
