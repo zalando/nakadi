@@ -78,6 +78,7 @@ public class Timeline {
     private Date cleanedUpAt;
     private StoragePosition latestPosition;
     private boolean fake;
+    private boolean deleted;
 
     public Timeline(
             final String eventType,
@@ -90,6 +91,7 @@ public class Timeline {
         this.storage = storage;
         this.topic = topic;
         this.createdAt = createdAt;
+        this.deleted = false;
     }
 
     @Nullable
@@ -97,7 +99,6 @@ public class Timeline {
         return id;
     }
 
-    @Nullable
     public void setId(final UUID id) {
         this.id = id;
     }
@@ -185,6 +186,14 @@ public class Timeline {
         return getSwitchedAt() == null;
     }
 
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(final boolean deleted) {
+        this.deleted = deleted;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -204,7 +213,8 @@ public class Timeline {
                 && Objects.equals(createdAt, that.createdAt)
                 && Objects.equals(switchedAt, that.switchedAt)
                 && Objects.equals(cleanedUpAt, that.cleanedUpAt)
-                && Objects.equals(latestPosition, that.latestPosition);
+                && Objects.equals(latestPosition, that.latestPosition)
+                && Objects.equals(deleted, that.deleted);
     }
 
     @Override
@@ -225,6 +235,7 @@ public class Timeline {
         sb.append(", cleanedUpAt=").append(cleanedUpAt);
         sb.append(", latestPosition=").append(latestPosition);
         sb.append(", fake=").append(fake);
+        sb.append(", deleted=").append(deleted);
         sb.append('}');
         return sb.toString();
     }

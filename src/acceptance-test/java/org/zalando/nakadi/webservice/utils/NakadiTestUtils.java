@@ -101,6 +101,15 @@ public class NakadiTestUtils {
                 .statusCode(HttpStatus.SC_CREATED);
     }
 
+    public static List<Map> listTimelines(final String eventType) throws IOException {
+        final Response response = given()
+                .accept(JSON)
+                .get(format("/event-types/{0}/timelines", eventType));
+        final String data = response.print();
+        final TypeReference<List<Map>> typeReference = new TypeReference<List<Map>>(){};
+        return MAPPER.readValue(data, typeReference);
+    }
+
     public static void deleteTimeline(final String eventType) throws IOException {
         final Response response = given()
                 .accept(JSON)

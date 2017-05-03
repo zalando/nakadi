@@ -8,14 +8,17 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.exceptions.DuplicatedStorageIdException;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
+import org.zalando.nakadi.exceptions.runtime.NoStorageException;
+import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.StorageIsUsedException;
 
 @DB
 @Repository
@@ -25,33 +28,32 @@ public class StorageDbRepository extends AbstractDbRepository {
         super(template, mapper);
     }
 
-    public List<Storage> listStorages() throws InternalNakadiException {
+    public List<Storage> listStorages() throws RepositoryProblemException {
         final List<Storage> storages;
         try {
             storages = jdbcTemplate.query("SELECT st_id, st_type, st_configuration FROM zn_data.storage ORDER BY st_id",
                     storageRowMapper);
-        } catch (DataAccessException e) {
-            throw new InternalNakadiException("Error occurred when fetching list of Storages", e);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("Error occurred when fetching list of Storages", e);
         }
 
         return storages;
     }
 
-    public Optional<Storage> getStorage(final String id) throws InternalNakadiException {
+    public Optional<Storage> getStorage(final String id) throws RepositoryProblemException {
         final List<Storage> storages;
         try {
             storages = jdbcTemplate.query(
                     "SELECT st_id, st_type, st_configuration FROM zn_data.storage WHERE st_id=?",
                     storageRowMapper,
                     id);
-        } catch (DataAccessException e) {
-            throw new InternalNakadiException("Error occurred when fetching Storage " + id, e);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("Error occurred when fetching Storage " + id, e);
         }
         return Optional.ofNullable(storages.isEmpty() ? null : storages.get(0));
     }
 
-    public Storage createStorage(final Storage storage)
-            throws DataAccessException, DuplicatedStorageIdException, InternalNakadiException {
+    public Storage createStorage(final Storage storage) throws DuplicatedStorageException, RepositoryProblemException {
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.storage (st_id, st_type, st_configuration) VALUES (?, ?, ?::jsonb)",
@@ -62,29 +64,25 @@ public class StorageDbRepository extends AbstractDbRepository {
         } catch (final JsonProcessingException ex) {
             throw new IllegalArgumentException("Storage configuration " + storage.getConfiguration(Object.class) +
                     " can't be mapped to json", ex);
-        } catch (DuplicateKeyException e) {
-            throw new DuplicatedStorageIdException("A storage with id '" + storage.getId() + "' already exists.", e);
-        } catch (DataAccessException e) {
-            throw new InternalNakadiException("Error occurred when creating Storage " + storage.getId(), e);
+        } catch (final DuplicateKeyException e) {
+            throw new DuplicatedStorageException("A storage with id '" + storage.getId() + "' already exists.", e);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("Error occurred when creating Storage " + storage.getId(), e);
         }
     }
 
-    public void deleteStorage(final String id) throws InternalNakadiException {
+    public void deleteStorage(final String id)
+            throws NoStorageException, StorageIsUsedException, RepositoryProblemException {
         try {
-            jdbcTemplate.update("DELETE FROM zn_data.storage WHERE st_id=?", id);
-        } catch (DataAccessException e) {
-            throw new InternalNakadiException("Error occurred when deleting Storage " + id, e);
+            final int rowDeleted = jdbcTemplate.update("DELETE FROM zn_data.storage WHERE st_id=?", id);
+            if (rowDeleted == 0) {
+                throw new NoStorageException("Tried to remove storage that doesn't exist, id: " + id);
+            }
+        } catch (final DataIntegrityViolationException e) {
+            throw new StorageIsUsedException("Can't delete storage as it is still used, id: " + id, e);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("Error occurred when deleting Storage " + id, e);
         }
-    }
-
-    public boolean isStorageUsed(final String id) throws InternalNakadiException {
-        final boolean used;
-        try {
-            used = !jdbcTemplate.queryForList("SELECT FROM zn_data.timeline WHERE st_id=?", id).isEmpty();
-        } catch (DataAccessException e) {
-            throw new InternalNakadiException("Error occurred when querying for Storage " + id, e);
-        }
-        return used;
     }
 
     static Storage buildStorage(final ObjectMapper mapper, final String id, final String type, final String config)

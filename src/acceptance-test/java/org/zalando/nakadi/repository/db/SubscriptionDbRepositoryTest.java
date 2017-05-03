@@ -41,7 +41,7 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
         repository = new SubscriptionDbRepository(template, mapper, new UUIDGenerator());
     }
