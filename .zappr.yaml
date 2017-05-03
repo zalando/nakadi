@@ -1,9 +1,10 @@
-approvals:
-  groups:
-    zalando:
-      minimum: 2
-      from:
-        orgs:
-          - zalando
-X-Zalando-Team: "aruha"
+X-Zalando-Team: aruha
 X-Zalando-Type: code
+ 
+approvals:
+  groups:
+    zalando:
+      minimum: 2
+      from:
+        orgs:
+          - zalando
