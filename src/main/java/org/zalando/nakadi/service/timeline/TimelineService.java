@@ -335,4 +335,7 @@ public class TimelineService {
         }
     }
 
+    public void updateTimeline(final Timeline timeline) {
+        timelineDbRepository.updateTimelime(timeline);
+    }
 }
