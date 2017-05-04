@@ -97,8 +97,8 @@ public class SchemaEvolutionService {
 
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
 
-        final Version.Level changeLevel = semanticOfChange(original, eventType, changes,
-                original.getCompatibilityMode());
+        final Version.Level changeLevel = semanticOfChange(original.getSchema().getSchema(),
+                eventType.getSchema().getSchema(), changes, original.getCompatibilityMode());
 
         if (isForwardToCompatibleUpgrade(original, eventType)) {
             validateCompatibilityModeMigration(original, eventType, changes);
@@ -143,10 +143,10 @@ public class SchemaEvolutionService {
         return change.getJsonPath() + ": " + errorMessages.get(change.getType());
     }
 
-    private Version.Level semanticOfChange(final EventTypeBase original, final EventTypeBase eventType,
+    private Version.Level semanticOfChange(final String originalSchema, final String updatedSchema,
                                            final List<SchemaChange> changes,
                                            final CompatibilityMode compatibilityMode) {
-        if (changes.isEmpty() && !original.getSchema().getSchema().equals(eventType.getSchema().getSchema())) {
+        if (changes.isEmpty() && !originalSchema.equals(updatedSchema)) {
             return PATCH;
         } else {
             final Map<SchemaChange.Type, Version.Level> semanticOfChange = compatibilityMode
