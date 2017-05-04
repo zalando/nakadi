@@ -1,52 +1,53 @@
 Timelines
 ---------
 
-This document covers Timeline internals. It's meant to explain how
-timelines work so to help you understand the code and what each part
-of it contributes to the overall picture.
+This document covers Timelines internals. It's meant to explain how
+timelines work, to help you understand the code and what each part of
+it contributes to the overall picture.
 
 # Fake timeline: your first timeline
 
-Previous to timelines, Nakadi would connect to a single Kafka cluster,
-which used to be specified in the application yaml file. So this was a
+Before timelines, Nakadi would connect to a single Kafka cluster,
+which used to be specified in the application yaml file. This was a
 static configuration loaded during boot time. Once timelines were
-introduced, in order to easy the migration process and remove special
+introduced, in order to ease the migration process and remove special
 cases from the implementation, a fake timeline was introduced.
 
-Fake timelines exists only in memory. It's a Timeline which is not
+Fake timelines exist only in memory. They are Timelines that are not
 stored in the database. Fake timelines can be seen as a fallback
 strategy for when there is no actual timeline for a given event type.
 
-Also, fake timelines use the default storage:the on defined in the
+Also, fake timelines use the default storage defined in the
 application configuration.
 
 # Timeline creation
 
 Timeline creation is coordinated through a series of locks and
-barriers using Zookeeper. Following we depict an example on how ZK
-datastructure looks like at each step.
+barriers using Zookeeper. Following we depict an example of what the
+ZK datastructure looks like at each step.
 
 ## Initial state
 
-Every time a Nakadi application is launched, it trys to create the
+Every time a Nakadi application is launched, it tries to create the
 following ZK structure:
 
 ```
 - timelines
   + - lock                    lock for timeline versions synchronization
   + - version: {version}      monotonically incremented long value (version of timelines configuration)
-  + - locked_et:
+  + - locked_et
   + - nodes                   nakadi nodes
-    + - {node1}: {version}    Each nakadi node exposes version being used on this node
+    + - {node1}: {version}    Each nakadi node exposes the version used on this node
     + - {node2}: {version}
 ```
 
-In order not to override it, each instance needs to take the lock
-`/nakadi/timelines/lock` before executing.
+In order to not override the initial structure, due to concurrency,
+each instance needs to take the lock `/nakadi/timelines/lock` before
+executing.
 
 ## Start timeline creation for et_1
 
-When a new timeline creation is initiated, the first step it to
+When a new timeline creation is initiated, the first step is to
 acquire a lock to update timelines for et_1 by creating an ephemeral
 node at `/timelines/locked_et/et_1`.
 
@@ -63,9 +64,9 @@ node at `/timelines/locked_et/et_1`.
 
 ## Notify all Nakadi nodes about change: the version barrier
 
-Next, it bumps the version node, which all Nakadi instances are
-listening for changes, so that they get to be aware that something is
-changing with timelines.
+Next, the instance coordinating the timeline creation bumps the
+version node, which all Nakadi instances are listening to changes, so
+they are notified when something changes.
 
 ```
 - timelines
@@ -80,13 +81,13 @@ changing with timelines.
 
 ## Wait for all nodes to react to the new version
 
-Each Nakadi instance checks watches the value of
+Each Nakadi instance watches the value of the
 `/nakadi/timelines/version/` node. When it changes, each instance
-checks all locked event types and react accordingly, by either
-releasing or blocking publishers.
+checks all locked event types and reacts accordingly, by either
+releasing or blocking publishers locally.
 
-Once each instace has updated it's local list of locked event types,
-it bumps its own version so to let the timeline creator initiator know
+Once each instance has updated its local list of locked event types,
+it bumps its own version, to let the timeline creator initiator know
 that it can proceed.
 
 ```
@@ -102,19 +103,18 @@ that it can proceed.
 
 ## Proceed with timeline creation
 
-Once all instances reacted accordingly, the creation proceeds with the
-initiator inserting the necessary database entries in timelines table
-and by snapshotting the latest available offset at the existing
-storage. Be aware that if a timeline partition has never been used,
-the offset stored is -1. If it has a single event, the offset is zero
-and so on.
+Once all instances reacted, the creation proceeds with the initiator
+inserting the necessary database entries in the timelines table, and
+by snapshotting the latest available offset for the existing
+storage. It also creates a topic in the new storage. Be aware that if
+a timeline partition has never been used, the offset stored is -1. If
+it has a single event, the offset is zero and so on.
 
-## Removes lock and notify all instances again
+## Remove lock and notify all instances again
 
 Following the same logic for initiating the creation of a timeline,
-locks are deleted and version is bumped. All Nakadi instances react
-accordingly by removing their local locks and switching timeline if
-necessary.
+locks are deleted and version is bumped. All Nakadi instances react by
+removing their local locks and switching timeline if necessary.
 
 ```
 - timelines
