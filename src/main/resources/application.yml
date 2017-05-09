@@ -27,6 +27,9 @@ spring:
     testWhileIdle: true
     timeBetweenEvictionRunsMillis: 5000
     minEvictableIdleTimeMillis: 60000
+    socketTimeout: 2
+    loginTimeout: 2
+    connectTimeout: 2
 
 hystrix.command.default.execution.isolation.strategy: SEMAPHORE
 hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
