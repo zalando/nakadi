@@ -17,8 +17,7 @@ class CombinedSchemaDiff {
     static void recursiveCheck(final CombinedSchema combinedSchemaOriginal, final CombinedSchema combinedSchemaUpdate,
                                        final Stack<String> jsonPath,
                                        final List<SchemaChange> changes) {
-        if(!(combinedSchemaOriginal.getSubschemas().containsAll(combinedSchemaUpdate.getSubschemas())
-                && combinedSchemaUpdate.getSubschemas().containsAll(combinedSchemaOriginal.getSubschemas()))) {
+        if(combinedSchemaOriginal.getSubschemas().size() != combinedSchemaUpdate.getSubschemas().size()) {
             SchemaDiff.addChange(SUB_SCHEMA_CHANGED, jsonPath, changes);
         } else {
             if (!combinedSchemaOriginal.getCriterion().equals(combinedSchemaUpdate.getCriterion())) {

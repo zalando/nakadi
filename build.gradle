@@ -52,6 +52,13 @@ sourceSets {
         }
         resources.srcDir file('src/acceptance-test/resources')
     }
+    dbMigration {
+        java {
+            compileClasspath += main.output
+            runtimeClasspath += main.output
+            srcDir file('src/db-migration/java')
+        }
+    }
 }
 
 buildscript {
@@ -76,6 +83,8 @@ configurations {
     all*.exclude module : 'spring-boot-starter-logging'
     acceptanceTestCompile.extendsFrom testCompile
     acceptanceTestRuntime.extendsFrom testRuntime
+    dbMigrationCompile.extendsFrom compile
+    dbMigrationRuntime.extendsFrom runtime
     pgsql
 }
 

@@ -857,4 +857,3 @@ installing the most recent docker-compose version.
 Nakadi accepts contributions from the open-source community. Please see the [issue tracker](https://github.com/zalando/nakadi/issues) for things to work on.
 
 Before making a contribution, please let us know by posting a comment to the relevant issue. And if you would like to propose a new feature, do start a new issue explaining the feature you’d like to contribute.
-
