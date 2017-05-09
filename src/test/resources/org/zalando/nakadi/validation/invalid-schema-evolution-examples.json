@@ -161,6 +161,27 @@
         }
       ]
     },
+    "errors": ["TYPE_CHANGED #/anyOf/0"]
+  },
+  {
+    "description": "Do not allow changes to number of sub schemas",
+    "original_schema": {
+      "anyOf": [
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "update_schema": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
     "errors": ["SUB_SCHEMA_CHANGED #/"]
   },
   {

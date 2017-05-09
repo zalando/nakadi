@@ -107,6 +107,21 @@ public class SchemaEvolutionServiceTest {
     }
 
     @Test
+    public void whenNoSemanticalChangesButTextualChangedBumpPatch() throws Exception {
+        final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
+        final EventType oldEventType = builder.schema("{\"default\":\"this\"}").build();
+        final EventType newEventType = builder.schema("{\"default\":\"that\"}").build();
+
+        Mockito.doReturn(Optional.empty()).when(evolutionConstraint).validate(oldEventType, newEventType);
+
+        final EventType eventType = service.evolve(oldEventType, newEventType);
+
+        assertThat(eventType.getSchema().getVersion(), is(equalTo(new Version("1.0.1"))));
+
+        verify(evolutionConstraint).validate(oldEventType, newEventType);
+    }
+
+    @Test
     public void whenPatchChangesBumpVersion() throws Exception {
         final EventTypeTestBuilder builder = EventTypeTestBuilder.builder();
         final EventType oldEventType = builder.build();
