@@ -1,5 +1,6 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.base.Preconditions;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -25,4 +26,20 @@ public interface CursorConverter {
 
     NakadiCursor convert(SubscriptionCursorWithoutToken cursor) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
+
+
+    int VERSION_LENGTH = 3;
+
+    enum Version {
+        ZERO("000"),
+        ONE("001"),;
+        public final String code;
+
+        Version(final String code) {
+            Preconditions.checkArgument(
+                    code.length() == VERSION_LENGTH,
+                    "Version field length should be equal to " + VERSION_LENGTH);
+            this.code = code;
+        }
+    }
 }

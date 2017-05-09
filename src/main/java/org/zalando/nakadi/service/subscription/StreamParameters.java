@@ -1,5 +1,7 @@
 package org.zalando.nakadi.service.subscription;
 
+import org.zalando.nakadi.exceptions.UnprocessableEntityException;
+
 import javax.annotation.Nullable;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -40,8 +42,13 @@ public class StreamParameters {
     private StreamParameters(
             final int batchLimitEvents, @Nullable final Long streamLimitEvents, final long batchTimeoutMillis,
             @Nullable final Long streamTimeoutSeconds, @Nullable final Integer batchKeepAliveIterations,
-            final int maxUncommittedMessages, final long commitTimeoutMillis, final String consumingAppId) {
-        this.batchLimitEvents = batchLimitEvents;
+            final int maxUncommittedMessages, final long commitTimeoutMillis, final String consumingAppId)
+            throws UnprocessableEntityException {
+        if (batchLimitEvents > 0) {
+            this.batchLimitEvents = batchLimitEvents;
+        } else {
+            throw new UnprocessableEntityException("batch_limit can't be lower than 1");
+        }
         this.streamLimitEvents = Optional.ofNullable(streamLimitEvents).filter(v -> v != 0);
         this.batchTimeoutMillis = batchTimeoutMillis;
         this.streamTimeoutMillis = Optional.ofNullable(streamTimeoutSeconds)
@@ -76,7 +83,7 @@ public class StreamParameters {
             @Nullable final Integer batchKeepAliveIterations,
             final int maxUncommittedMessages,
             final long commitTimeoutSeconds,
-            final String consumingAppId) {
+            final String consumingAppId) throws UnprocessableEntityException {
         return new StreamParameters(
                 batchLimitEvents,
                 streamLimitEvents,

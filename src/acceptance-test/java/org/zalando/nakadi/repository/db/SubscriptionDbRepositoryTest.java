@@ -12,6 +12,7 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 
@@ -35,15 +36,16 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
             (sub1, sub2) -> sub2.getCreatedAt().compareTo(sub1.getCreatedAt());
 
     private SubscriptionDbRepository repository;
+    private HashGenerator hashGenerator = new HashGenerator();
 
     public SubscriptionDbRepositoryTest() {
         super("zn_data.subscription");
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
-        repository = new SubscriptionDbRepository(template, mapper, new UUIDGenerator());
+        repository = new SubscriptionDbRepository(template, mapper, new UUIDGenerator(), hashGenerator);
     }
 
     @Test
@@ -194,8 +196,11 @@ public class SubscriptionDbRepositoryTest extends AbstractDbRepositoryTest {
 
     private void insertSubscriptionToDB(final Subscription subscription) {
         try {
-            template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::JSONB)",
-                    subscription.getId(), mapper.writer().writeValueAsString(subscription));
+            template.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object, s_key_fields_hash) " +
+                    "VALUES (?, ?::JSONB, ?)",
+                    subscription.getId(),
+                    mapper.writer().writeValueAsString(subscription),
+                    hashGenerator.generateSubscriptionKeyFieldsHash(subscription));
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

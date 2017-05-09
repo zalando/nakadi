@@ -1,9 +1,15 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import java.util.Collection;
-import java.util.Map;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
+import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+
+import java.util.List;
 
 public interface ZkSubscriptionClient {
 
@@ -17,19 +23,11 @@ public interface ZkSubscriptionClient {
     void runLocked(Runnable function);
 
     /**
-     * Checks if path /nakadi/subscriptions/{subscriptionId} exists in zookeeper
-     *
-     * @return true if exists, false otherwise
-     * @throws Exception
-     */
-    boolean isSubscriptionCreated() throws Exception;
-
-    /**
      * Creates subscription node in zookeeper on path /nakadi/subscriptions/{subscriptionId}
      *
      * @return true if subscription was created. False if subscription already present. To operate on this value
      * additional field 'state' is used /nakadi/subscriptions/{subscriptionId}/state. Just after creation it has value
-     * CREATED. After {{@link #fillEmptySubscription(Map)}} call it will have value INITIALIZED. So true
+     * CREATED. After {{@link #fillEmptySubscription}} call it will have value INITIALIZED. So true
      * will be returned in case of state is equal to CREATED.
      */
     boolean createSubscription();
@@ -59,14 +57,13 @@ public interface ZkSubscriptionClient {
      * |  |- 1: {session: null, next_session: null, state: UNASSIGNED}
      * |   |- offset: {OFFSET}
      *
-     * @param partitionOffsets Data to use for subscription filling.
+     * @param cursors Data to use for subscription filling.
      */
-    void fillEmptySubscription(Map<Partition.PartitionKey, String> partitionOffsets);
+    void fillEmptySubscription(Collection<NakadiCursor> cursors);
 
 
     /**
      * Updates specified partition in zk.
-     *
      */
     void updatePartitionConfiguration(Partition partition);
 
@@ -106,14 +103,15 @@ public interface ZkSubscriptionClient {
      */
     ZKSubscription subscribeForTopologyChanges(Runnable listener);
 
-    ZKSubscription subscribeForOffsetChanges(Partition.PartitionKey key, Runnable commitListener);
+    ZKSubscription subscribeForOffsetChanges(TopicPartition key, Runnable commitListener);
 
     /**
      * Returns current offset value for specified partition key.
+     *
      * @param key Key to get offset for
      * @return commit offset
      */
-    long getOffset(Partition.PartitionKey key);
+    String getOffset(TopicPartition key);
 
     /**
      * Registers client connection using session id in /nakadi/subscriptions/{subscriptionId}/sessions/{session.id}
@@ -128,10 +126,42 @@ public interface ZkSubscriptionClient {
     /**
      * Transfers partitions to next client using data in zk. Updates topology_version if needed.
      *
-     * @param sessionId   Someone who actually tries to transfer data.
+     * @param sessionId  Someone who actually tries to transfer data.
      * @param partitions topic ids and partition ids of transferred data.
      */
-    void transfer(String sessionId, Collection<Partition.PartitionKey> partitions);
+    void transfer(String sessionId, Collection<TopicPartition> partitions);
 
+    /**
+     * Retrieves subscription data like partitions and sessions from ZK under lock.
+     *
+     * @return list of partitions and sessions wrapped in
+     * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
+     */
     ZkSubscriptionNode getZkSubscriptionNodeLocked();
+
+    /**
+     * Subscribes to cursor reset event.
+     *
+     * @param listener callback which is called when cursor reset happens
+     * @return {@link org.zalando.nakadi.service.subscription.zk.ZKSubscription}
+     */
+    ZKSubscription subscribeForCursorsReset(Runnable listener)
+            throws NakadiRuntimeException, UnsupportedOperationException;
+
+    /**
+     * Gets current status of cursor reset request.
+     *
+     * @return true if cursor reset in progress
+     */
+    boolean isCursorResetInProgress();
+
+    /**
+     * Resets subscription offsets for provided cursors.
+     *
+     * @param cursors cursors to reset
+     * @param timeout wait until give up resetting
+     * @throws OperationTimeoutException
+     * @throws ZookeeperException
+     */
+    void resetCursors(List<NakadiCursor> cursors, long timeout) throws OperationTimeoutException, ZookeeperException;
 }

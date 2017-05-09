@@ -2,6 +2,13 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +36,8 @@ import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
 import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.MultiTimelineEventConsumer;
@@ -39,13 +48,6 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.UUIDGenerator;
-
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class TimelineService {
@@ -87,7 +89,8 @@ public class TimelineService {
     }
 
     public void createTimeline(final String eventTypeName, final String storageId, final Client client)
-            throws ForbiddenAccessException, TimelineException, TopicRepositoryException {
+            throws ForbiddenAccessException, TimelineException, TopicRepositoryException, InconsistentStateException,
+            RepositoryProblemException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
@@ -136,7 +139,14 @@ public class TimelineService {
         if (timelines.isEmpty()) {
             return Collections.singletonList(getFakeTimeline(eventTypeCache.getEventType(eventType)));
         } else {
-            return timelines.stream().filter(t -> t.getSwitchedAt() != null).collect(Collectors.toList());
+            final Date currentDate = new Date();
+            return timelines.stream()
+                    .filter(t -> {
+                        final boolean timelineExpired = t.getCleanedUpAt() != null
+                                && currentDate.after(t.getCleanedUpAt());
+                        return t.getSwitchedAt() != null && !timelineExpired;
+                    })
+                    .collect(Collectors.toList());
         }
     }
 
@@ -174,14 +184,19 @@ public class TimelineService {
         return topicRepositoryHolder.getTopicRepository(defaultStorage);
     }
 
-    public EventConsumer createEventConsumer(final String clientId, final List<NakadiCursor> positions)
+    public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> positions)
             throws NakadiException, InvalidCursorException {
         final MultiTimelineEventConsumer result = new MultiTimelineEventConsumer(clientId, this, timelineSync);
         result.reassign(positions);
         return result;
     }
 
-    private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline) {
+    public EventConsumer.ReassignableEventConsumer createEventConsumer(@Nullable final String clientId) {
+        return new MultiTimelineEventConsumer(clientId, this, timelineSync);
+    }
+
+    private void switchTimelines(final Timeline activeTimeline, final Timeline nextTimeline)
+            throws InconsistentStateException, RepositoryProblemException, TimelineException, ConflictException {
         LOG.info("Switching timelines from {} to {}", activeTimeline, nextTimeline);
         try {
             timelineSync.startTimelineUpdate(activeTimeline.getEventType(), nakadiSettings.getTimelineWaitTimeoutMs());
@@ -200,6 +215,7 @@ public class TimelineService {
                     final Timeline.StoragePosition storagePosition =
                             topicRepositoryHolder.createStoragePosition(activeTimeline);
                     activeTimeline.setLatestPosition(storagePosition);
+                    scheduleTimelineCleanup(activeTimeline);
                     timelineDbRepository.updateTimelime(activeTimeline);
                 }
                 timelineDbRepository.updateTimelime(nextTimeline);
@@ -210,6 +226,20 @@ public class TimelineService {
             throw new TimelineException("Failed to create timeline in DB for: " + activeTimeline.getEventType(), tx);
         } finally {
             finishTimelineUpdate(activeTimeline.getEventType());
+        }
+    }
+
+    private void scheduleTimelineCleanup(final Timeline timeline) throws InconsistentStateException {
+        try {
+            final EventType eventType = eventTypeCache.getEventType(timeline.getEventType());
+            final Long retentionTime = eventType.getOptions().getRetentionTime();
+            if (retentionTime == null) {
+                throw new InconsistentStateException("Event type should has information about its retention time");
+            }
+            final Date cleanupDate = new Date(System.currentTimeMillis() + retentionTime);
+            timeline.setCleanedUpAt(cleanupDate);
+        } catch (final InternalNakadiException | NoSuchEventTypeException e) {
+            throw new InconsistentStateException("Unexpected error occurred when scheduling timeline cleanup", e);
         }
     }
 
@@ -309,4 +339,7 @@ public class TimelineService {
         }
     }
 
+    public void updateTimeline(final Timeline timeline) {
+        timelineDbRepository.updateTimelime(timeline);
+    }
 }

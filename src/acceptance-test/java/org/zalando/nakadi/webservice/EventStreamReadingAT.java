@@ -9,6 +9,7 @@ import com.jayway.restassured.response.Response;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -343,6 +344,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .get(STREAM_ENDPOINT);
     }
 
+    @Ignore
     @Test(timeout = 10000)
     public void whenExceedMaxConsumersNumThen429() throws IOException, InterruptedException, ExecutionException,
             TimeoutException {

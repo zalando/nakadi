@@ -6,6 +6,9 @@ package org.zalando.nakadi.exceptions.runtime;
  */
 public abstract class MyNakadiRuntimeException1 extends RuntimeException {
 
+    public MyNakadiRuntimeException1() {
+    }
+
     public MyNakadiRuntimeException1(final String message) {
         super(message);
     }

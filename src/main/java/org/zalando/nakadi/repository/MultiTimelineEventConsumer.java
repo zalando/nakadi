@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,7 +33,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.NakadiCollectionUtils;
 
-public class MultiTimelineEventConsumer implements EventConsumer {
+public class MultiTimelineEventConsumer implements EventConsumer.ReassignableEventConsumer {
     private final String clientId;
     /**
      * Contains latest offsets that were sent to client of this class
@@ -73,7 +74,6 @@ public class MultiTimelineEventConsumer implements EventConsumer {
     public Set<TopicPartition> getAssignment() {
         return latestOffsets.values().stream().map(NakadiCursor::getTopicPartition).collect(Collectors.toSet());
     }
-
 
     @Override
     public List<ConsumedEvent> readEvents() {
@@ -161,7 +161,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
             } else {
                 replacement = getBeforeFirstCursor(result, electedTimeline, cursor.getPartition());
             }
-            LOG.info("Replacing cursor from {} to {}", cursor, replacement);
+            LOG.info("Replacing cursor because of jumping between timelines from {} to {}", cursor, replacement);
             cursorReplacer.accept(replacement);
         }
         lastTimelinePosition.accept(electedTimeline.calculateNakadiLatestPosition(cursor.getPartition()));
@@ -227,6 +227,8 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : newAssignment.entrySet()) {
             if (!eventConsumers.containsKey(entry.getKey())) {
                 final TopicRepository repo = entry.getKey();
+                LOG.info("Creating underlying consumer for client id {} and cursors {}",
+                        clientId, Arrays.deepToString(entry.getValue().toArray()));
                 final EventConsumer consumer = repo.createEventConsumer(clientId, entry.getValue());
                 eventConsumers.put(repo, consumer);
             }
@@ -264,7 +266,7 @@ public class MultiTimelineEventConsumer implements EventConsumer {
         electTopicRepositories();
     }
 
-
+    @Override
     public void reassign(final Collection<NakadiCursor> newValues) throws NakadiException, InvalidCursorException {
         final Map<EventTypePartition, NakadiCursor> newCursorMap = newValues.stream()
                 .collect(Collectors.toMap(NakadiCursor::getEventTypePartition, Function.identity()));

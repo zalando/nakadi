@@ -2,12 +2,12 @@ package org.zalando.nakadi.webservice;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import java.util.List;
 import org.apache.curator.framework.CuratorFramework;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.stubbing.Answer;
+import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Subscription;
@@ -17,9 +17,14 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
+import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
+
+import java.util.List;
+
 import static com.google.common.base.Charsets.UTF_8;
 import static java.text.MessageFormat.format;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -48,6 +53,7 @@ public class CursorsServiceAT extends BaseAT {
         final NakadiCursor c2 = (NakadiCursor) invocation.getArguments()[1];
         return c1.getOffset().compareTo(c2.getOffset());
     };
+    private static final Client FULL_ACCESS_CLIENT = new FullAccessClient("nakadi");
 
     private static final String P1 = "p1";
     private static final String P2 = "p2";
@@ -91,7 +97,8 @@ public class CursorsServiceAT extends BaseAT {
         when(subscription.getEventTypes()).thenReturn(ImmutableSet.of(etName));
         final SubscriptionDbRepository subscriptionRepo = mock(SubscriptionDbRepository.class);
         when(subscriptionRepo.getSubscription(sid)).thenReturn(subscription);
-        cursorsService = new CursorsService(zkHolder, timelineService, subscriptionRepo, eventTypeRepository);
+        cursorsService = new CursorsService(zkHolder, timelineService, subscriptionRepo, eventTypeRepository,
+                mock(NakadiSettings.class));
 
         // bootstrap data in ZK
         CURATOR.create().creatingParentsIfNeeded().forPath(offsetPath(P1), OLD_OFFSET.getBytes(UTF_8));
@@ -108,7 +115,7 @@ public class CursorsServiceAT extends BaseAT {
 
     @Test
     public void whenCommitCursorsThenTrue() throws Exception {
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
         assertThat(commitResult, equalTo(ImmutableList.of(true)));
         checkCurrentOffsetInZk(P1, NEW_OFFSET);
     }
@@ -116,7 +123,7 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenStreamIdInvalidThenException() throws Exception {
         try {
-            cursorsService.commitCursors("wrong-stream-id", sid, testCursors);
+            cursorsService.commitCursors("wrong-stream-id", sid, testCursors, FULL_ACCESS_CLIENT);
             fail("Expected InvalidStreamIdException to be thrown");
         } catch (final InvalidStreamIdException ignore) {
         }
@@ -127,7 +134,7 @@ public class CursorsServiceAT extends BaseAT {
     public void whenPartitionIsStreamedToDifferentClientThenFalse() throws Exception {
         CURATOR.setData().forPath(partitionPath(P1), ("wrong-stream-id" + ": :ASSIGNED").getBytes(UTF_8));
         try {
-            cursorsService.commitCursors(streamId, sid, testCursors);
+            cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
             fail("Expected InvalidStreamIdException to be thrown");
         } catch (final InvalidStreamIdException ignore) {
         }
@@ -137,7 +144,7 @@ public class CursorsServiceAT extends BaseAT {
     @Test
     public void whenCommitOldCursorsThenFalse() throws Exception {
         testCursors = ImmutableList.of(new NakadiCursor(createFakeTimeline(etName, topic), P1, OLDEST_OFFSET));
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
         assertThat(commitResult, equalTo(ImmutableList.of(false)));
         checkCurrentOffsetInZk(P1, OLD_OFFSET);
     }
@@ -148,7 +155,7 @@ public class CursorsServiceAT extends BaseAT {
         final NakadiCursor c2 = new NakadiCursor(timeline, P2, NEW_OFFSET);
         testCursors = ImmutableList.of(c1, c2);
 
-        final List<Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<Boolean> result = cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
 
         assertFalse(result.get(0));
         assertTrue(result.get(1));
@@ -175,7 +182,7 @@ public class CursorsServiceAT extends BaseAT {
                 new NakadiCursor(timeline, P2, "000000000000000825")
         );
 
-        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors);
+        final List<Boolean> commitResult = cursorsService.commitCursors(streamId, sid, testCursors, FULL_ACCESS_CLIENT);
         assertThat(commitResult, equalTo(
                 ImmutableList.of(
                         true,
@@ -196,7 +203,7 @@ public class CursorsServiceAT extends BaseAT {
 
     @Test
     public void whenGetSubscriptionCursorsThenOk() throws Exception {
-        final List<NakadiCursor> cursors = cursorsService.getSubscriptionCursors(sid);
+        final List<NakadiCursor> cursors = cursorsService.getSubscriptionCursors(sid, FULL_ACCESS_CLIENT);
         assertThat(ImmutableSet.copyOf(cursors),
                 equalTo(ImmutableSet.of(
                         new NakadiCursor(timeline, P1, OLD_OFFSET),

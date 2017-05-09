@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.domain.SchemaChange.Type.ADDITIONAL_ITEMS_CHANGED;
@@ -33,6 +34,7 @@ import static org.zalando.nakadi.domain.SchemaChange.Type.REQUIRED_ARRAY_EXTENDE
 import static org.zalando.nakadi.domain.SchemaChange.Type.TITLE_CHANGED;
 import static org.zalando.nakadi.domain.Version.Level.MAJOR;
 import static org.zalando.nakadi.domain.Version.Level.NO_CHANGES;
+import static org.zalando.nakadi.domain.Version.Level.PATCH;
 
 public class SchemaEvolutionService {
 
@@ -95,7 +97,8 @@ public class SchemaEvolutionService {
 
         final List<SchemaChange> changes = schemaDiff.collectChanges(schema(original), schema(eventType));
 
-        final Version.Level changeLevel = semanticOfChange(changes, original.getCompatibilityMode());
+        final Version.Level changeLevel = semanticOfChange(original.getSchema().getSchema(),
+                eventType.getSchema().getSchema(), changes, original.getCompatibilityMode());
 
         if (isForwardToCompatibleUpgrade(original, eventType)) {
             validateCompatibilityModeMigration(original, eventType, changes);
@@ -140,18 +143,27 @@ public class SchemaEvolutionService {
         return change.getJsonPath() + ": " + errorMessages.get(change.getType());
     }
 
-    private Version.Level semanticOfChange(final List<SchemaChange> changes,
+    private Version.Level semanticOfChange(final String originalSchema, final String updatedSchema,
+                                           final List<SchemaChange> changes,
                                            final CompatibilityMode compatibilityMode) {
-        final Map<SchemaChange.Type, Version.Level> semanticOfChange = compatibilityMode
-                .equals(CompatibilityMode.COMPATIBLE) ? compatibleChanges : forwardChanges;
-        return changes.stream().map(SchemaChange::getType).map(semanticOfChange::get)
-                .reduce(NO_CHANGES, (acc, change) -> {
+        if (changes.isEmpty() && !originalSchema.equals(updatedSchema)) {
+            return PATCH;
+        } else {
+            final Map<SchemaChange.Type, Version.Level> semanticOfChange = compatibilityMode
+                    .equals(CompatibilityMode.COMPATIBLE) ? compatibleChanges : forwardChanges;
+            return changes.stream().map(SchemaChange::getType).map(semanticOfChange::get)
+                    .reduce(NO_CHANGES, collectOverallChange());
+        }
+    }
+
+    private BinaryOperator<Version.Level> collectOverallChange() {
+        return (acc, change) -> {
             if (Version.Level.valueOf(change.toString()).ordinal() < Version.Level.valueOf(acc.toString()).ordinal()) {
                 return change;
             } else {
                 return acc;
             }
-        });
+        };
     }
 
     private Schema schema(final EventTypeBase eventType) {

@@ -2,26 +2,31 @@ package org.zalando.nakadi.repository.db;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.zalando.nakadi.annotations.DB;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedTimelineException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @DB
 @Repository
 public class TimelineDbRepository extends AbstractDbRepository {
 
     public static final String BASE_TIMELINE_QUERY = "SELECT " +
-            "   tl_id, et_name, tl_order, t.st_id, tl_topic, " +
-            "   tl_created_at, tl_switched_at, tl_cleanup_at, tl_latest_position, " +
-            "   st_type, st_configuration " +
+            "   tl_id, et_name, tl_order, t.st_id, tl_topic, tl_created_at, tl_switched_at, tl_cleanup_at, " +
+            "   tl_latest_position, tl_deleted, st_type, st_configuration " +
             " FROM " +
             "   zn_data.timeline t " +
             "   JOIN zn_data.storage st USING (st_id) ";
@@ -48,16 +53,17 @@ public class TimelineDbRepository extends AbstractDbRepository {
         return Optional.ofNullable(timelines.isEmpty() ? null : timelines.get(0));
     }
 
-    public Timeline createTimeline(final Timeline timeline) {
+    public Timeline createTimeline(final Timeline timeline)
+            throws InconsistentStateException, RepositoryProblemException, DuplicatedTimelineException {
         if (null == timeline.getId()) {
             throw new IllegalArgumentException("Timeline id can not be null on create (" + timeline + ")");
         }
         try {
             jdbcTemplate.update(
                     "INSERT INTO zn_data.timeline(" +
-                            " tl_id, et_name, tl_order, st_id, tl_topic, " +
-                            " tl_created_at, tl_switched_at, tl_cleanup_at, tl_latest_position) " +
-                            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)",
+                            " tl_id, et_name, tl_order, st_id, tl_topic, tl_created_at, tl_switched_at, " +
+                            " tl_cleanup_at, tl_latest_position, tl_deleted) " +
+                            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
                     timeline.getId(),
                     timeline.getEventType(),
                     timeline.getOrder(),
@@ -67,14 +73,19 @@ public class TimelineDbRepository extends AbstractDbRepository {
                     timeline.getSwitchedAt(),
                     timeline.getCleanedUpAt(),
                     timeline.getLatestPosition() == null ? null :
-                            jsonMapper.writer().writeValueAsString(timeline.getLatestPosition()));
+                            jsonMapper.writer().writeValueAsString(timeline.getLatestPosition()),
+                    timeline.isDeleted());
             return timeline;
-        } catch (final JsonProcessingException ex) {
-            throw new IllegalArgumentException("Can not serialize latest position to json", ex);
+        } catch (final JsonProcessingException e) {
+            throw new InconsistentStateException("Can not serialize latest position to json", e);
+        } catch (final DuplicateKeyException e) {
+            throw new DuplicatedTimelineException("Timeline for this event-type with this order already exists", e);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("Repository problem occurred when creating timeline", e);
         }
     }
 
-    public void updateTimelime(final Timeline timeline) {
+    public void updateTimelime(final Timeline timeline) throws InconsistentStateException, RepositoryProblemException {
         if (null == timeline.getId()) {
             throw new IllegalArgumentException("Timeline id can not be null on update (" + timeline + ")");
         }
@@ -89,7 +100,8 @@ public class TimelineDbRepository extends AbstractDbRepository {
                             " tl_created_at=?, " +
                             " tl_switched_at=?, " +
                             " tl_cleanup_at=?, " +
-                            " tl_latest_position=?::jsonb " +
+                            " tl_latest_position=?::jsonb, " +
+                            " tl_deleted=? " +
                             " WHERE tl_id=?",
                     timeline.getEventType(),
                     timeline.getOrder(),
@@ -100,14 +112,29 @@ public class TimelineDbRepository extends AbstractDbRepository {
                     timeline.getCleanedUpAt(),
                     timeline.getLatestPosition() == null ? null :
                             jsonMapper.writer().writeValueAsString(timeline.getLatestPosition()),
+                    timeline.isDeleted(),
                     timeline.getId());
         } catch (final JsonProcessingException ex) {
-            throw new IllegalArgumentException("Can not serialize latest position to json", ex);
+            throw new InconsistentStateException("Can not serialize timeline latest position to json", ex);
+        } catch (final DataAccessException ex) {
+            throw new RepositoryProblemException("Repository problem occurred when updating timeline", ex);
         }
     }
 
     public void deleteTimeline(final UUID id) {
         jdbcTemplate.update("DELETE FROM zn_data.timeline WHERE tl_id=?", id);
+    }
+
+    public List<Timeline> getExpiredTimelines() throws RepositoryProblemException {
+        try {
+            return jdbcTemplate.query(
+                    BASE_TIMELINE_QUERY +
+                            " WHERE tl_deleted = FALSE AND tl_cleanup_at IS NOT NULL AND tl_cleanup_at < now()" +
+                            " ORDER BY t.et_name, t.tl_order",
+                    timelineRowMapper);
+        } catch (final DataAccessException e) {
+            throw new RepositoryProblemException("DB error occurred when fetching expired timelines", e);
+        }
     }
 
     private final RowMapper<Timeline> timelineRowMapper = (rs, rowNum) -> {
@@ -127,6 +154,7 @@ public class TimelineDbRepository extends AbstractDbRepository {
             result.setId((UUID) rs.getObject("tl_id"));
             result.setCleanedUpAt(rs.getTimestamp("tl_cleanup_at"));
             result.setSwitchedAt(rs.getTimestamp("tl_switched_at"));
+            result.setDeleted(rs.getBoolean("tl_deleted"));
             result.setLatestPosition(
                     result.getStorage().restorePosition(jsonMapper, rs.getString("tl_latest_position")));
             return result;
