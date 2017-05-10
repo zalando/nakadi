@@ -4,7 +4,7 @@ package org.zalando.nakadi.exceptions.runtime;
  * Parent class for Nakadi runtime exceptions
  * Name NakadiRuntimeException was already taken for some kind of wrapper. This name is a nice alternative ;)
  */
-public abstract class MyNakadiRuntimeException1 extends RuntimeException {
+public class MyNakadiRuntimeException1 extends RuntimeException {
 
     public MyNakadiRuntimeException1() {
     }
