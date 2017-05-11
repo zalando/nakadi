@@ -107,9 +107,9 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventTypeControllerTest {
 
-    private static final long TOPIC_RETENTION_MIN_MS = 100;
-    private static final long TOPIC_RETENTION_MAX_MS = 200;
-    private static final long TOPIC_RETENTION_TIME_MS = 150;
+    private static final long TOPIC_RETENTION_MIN_MS = 86400000;
+    private static final long TOPIC_RETENTION_MAX_MS = 345600000;
+    private static final long TOPIC_RETENTION_TIME_MS = 172800000;
     private static final int NAKADI_SEND_TIMEOUT = 10000;
     private static final int NAKADI_POLL_TIMEOUT = 10000;
     private static final long NAKADI_EVENT_MAX_BYTES = 1000000;
@@ -853,29 +853,29 @@ public class EventTypeControllerTest {
 
         getEventType(eventTypeName)
                 .andExpect(status().is2xxSuccessful())
-                .andExpect(content().string(new StringContains("\"options\":{\"retention_time\":150}")));
+                .andExpect(content().string(new StringContains("\"options\":{\"retention_time\":172800000}")));
     }
 
     @Test
     public void whenPostOptionsRetentionTimeBiggerThanMax() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
-        defaultEventType.getOptions().setRetentionTime(201L);
+        defaultEventType.getOptions().setRetentionTime(345600001L);
 
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().string(new StringContains(
-                        "Field \\\"options.retention_time\\\" can not be more than 200")));
+                        "Field \\\"options.retention_time\\\" can not be more than 345600000")));
     }
 
     @Test
     public void whenPostOptionsRetentionTimeSmallerThanMin() throws Exception {
         final EventType defaultEventType = buildDefaultEventType();
-        defaultEventType.getOptions().setRetentionTime(99L);
+        defaultEventType.getOptions().setRetentionTime(86399999L);
 
         postEventType(defaultEventType)
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().string(new StringContains(
-                        "Field \\\"options.retention_time\\\" can not be less than 100")));
+                        "Field \\\"options.retention_time\\\" can not be less than 86400000")));
     }
 
     @Test
@@ -936,7 +936,7 @@ public class EventTypeControllerTest {
 
         doThrow(DuplicatedEventTypeNameException.class)
                 .when(eventTypeRepository).saveEventType(any(EventType.class));
-        when(topicRepository.createTopic(0, 150L)).thenReturn("test-topic");
+        when(topicRepository.createTopic(0, 172800000L)).thenReturn("test-topic");
 
         postEventType(eventType)
                 .andExpect(status().isConflict())
@@ -949,7 +949,7 @@ public class EventTypeControllerTest {
     public void whenUpdateRetentionTimeAndKafkaFails() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         final EventTypeOptions eventTypeOptions = new EventTypeOptions();
-        eventTypeOptions.setRetentionTime(100L);
+        eventTypeOptions.setRetentionTime(172800000L);
         eventType.setOptions(eventTypeOptions);
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
         doThrow(TopicConfigException.class).when(topicRepository).setRetentionTime(anyString(), anyLong());
@@ -959,7 +959,7 @@ public class EventTypeControllerTest {
 
         final EventType eventType2 = EventTypeTestBuilder.builder().name(eventType.getName()).build();
         final EventTypeOptions eventTypeOptions2 = new EventTypeOptions();
-        eventTypeOptions2.setRetentionTime(200L);
+        eventTypeOptions2.setRetentionTime(172800001L);
         eventType2.setOptions(eventTypeOptions2);
 
         putEventType(eventType2, eventType2.getName(), "nakadi")
@@ -972,7 +972,7 @@ public class EventTypeControllerTest {
     public void whenUpdateRetentionTimeAndDbFails() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         final EventTypeOptions eventTypeOptions = new EventTypeOptions();
-        eventTypeOptions.setRetentionTime(100L);
+        eventTypeOptions.setRetentionTime(172800000L);
         eventType.setOptions(eventTypeOptions);
         doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
         doThrow(InternalNakadiException.class).when(eventTypeRepository).update(any());
@@ -982,7 +982,7 @@ public class EventTypeControllerTest {
 
         final EventType eventType2 = EventTypeTestBuilder.builder().name(eventType.getName()).build();
         final EventTypeOptions eventTypeOptions2 = new EventTypeOptions();
-        eventTypeOptions2.setRetentionTime(200L);
+        eventTypeOptions2.setRetentionTime(172800001L);
         eventType2.setOptions(eventTypeOptions2);
 
         putEventType(eventType2, eventType2.getName(), "nakadi")
