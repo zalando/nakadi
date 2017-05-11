@@ -8,6 +8,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.util.Map;
 import org.zalando.nakadi.config.JsonConfig;
+import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
 import org.zalando.nakadi.util.FeatureToggleService;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -45,14 +46,10 @@ import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.service.EventStream.BATCH_SEPARATOR;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
@@ -388,17 +385,6 @@ public class EventStreamTestSendBatchViaOutputStream {
     @Test
     public void testWriteStreamEvent() {
 
-        final Meter meter = mock(Meter.class);
-
-        final EventStream eventStream =
-            new EventStream(null,
-                null,
-                null,
-                null,
-                null,
-                meter,
-                null);
-
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final Cursor cursor = new Cursor("22", "000000000000000023");
         final ArrayList<String> events = Lists.newArrayList(
@@ -407,7 +393,7 @@ public class EventStreamTestSendBatchViaOutputStream {
             "{\"e\":\"f\"}");
 
         try {
-            eventStream.writeStreamEvent(baos, cursor, events);
+            EventStreamWriterBinary.INSTANCE.writeBatch(baos, cursor, events);
             final Map<String, Object> batch =
                 mapper.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {});
 
@@ -423,8 +409,6 @@ public class EventStreamTestSendBatchViaOutputStream {
             assertEquals("d", eventsM.get(1).get("c"));
             assertEquals("f", eventsM.get(2).get("e"));
 
-            verify(meter, times(1)).mark(anyInt());
-
         } catch (IOException e) {
             fail(e.getMessage());
         }
@@ -434,22 +418,12 @@ public class EventStreamTestSendBatchViaOutputStream {
     @Test
     public void testWriteStreamEventEmptyBatchProducesNoEventArray() {
 
-        final Meter meter = mock(Meter.class);
-
-        final EventStream eventStream =
-            new EventStream(null,
-                null,
-                null,
-                null,
-                null,
-                meter,
-                null);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final Cursor cursor = new Cursor("11", "000000000000000012");
         final ArrayList<String> events = Lists.newArrayList();
 
         try {
-            eventStream.writeStreamEvent(baos, cursor, events);
+            EventStreamWriterBinary.INSTANCE.writeBatch(baos, cursor, events);
             final String json = baos.toString();
 
             assertEquals("{\"cursor\":{\"partition\":\"11\",\"offset\":\"000000000000000012\"}}\n", json);
@@ -464,8 +438,6 @@ public class EventStreamTestSendBatchViaOutputStream {
             final List<Map<String, String>> eventsM = (List<Map<String, String>>) batch.get("events");
             // expecting events not to be written as an empty array
             assertNull(eventsM);
-
-            verify(meter, times(1)).mark(anyInt());
 
         } catch (IOException e) {
             fail(e.getMessage());
