@@ -109,7 +109,11 @@ public class EventTypeController {
 
     private void setDefaultEventTypeOptions(final EventTypeBase eventType) {
         final EventTypeOptions options = eventType.getOptions();
-        if (options.getRetentionTime() == null) {
+        if (options == null) {
+            final EventTypeOptions eventTypeOptions = new EventTypeOptions();
+            eventTypeOptions.setRetentionTime(nakadiSettings.getDefaultTopicRetentionMs());
+            eventType.setOptions(eventTypeOptions);
+        } else if (options.getRetentionTime() == null) {
             options.setRetentionTime(nakadiSettings.getDefaultTopicRetentionMs());
         }
     }
