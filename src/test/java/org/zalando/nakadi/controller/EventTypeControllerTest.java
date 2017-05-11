@@ -11,7 +11,6 @@ import com.google.common.collect.Multimap;
 import com.google.common.io.Resources;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -75,6 +74,7 @@ import java.util.concurrent.TimeoutException;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
@@ -827,7 +827,7 @@ public class EventTypeControllerTest {
 
         final ArgumentCaptor<EventTypeBase> eventTypeCaptor = ArgumentCaptor.forClass(EventTypeBase.class);
         verify(eventTypeRepository, times(1)).saveEventType(eventTypeCaptor.capture());
-        Assert.assertEquals(TOPIC_RETENTION_TIME_MS,
+        assertEquals(TOPIC_RETENTION_TIME_MS,
                 eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
     }
 
@@ -839,7 +839,7 @@ public class EventTypeControllerTest {
 
         final ArgumentCaptor<EventTypeBase> eventTypeCaptor = ArgumentCaptor.forClass(EventTypeBase.class);
         verify(eventTypeRepository, times(1)).saveEventType(eventTypeCaptor.capture());
-        Assert.assertEquals(TOPIC_RETENTION_TIME_MS,
+        assertEquals(TOPIC_RETENTION_TIME_MS,
                 eventTypeCaptor.getValue().getOptions().getRetentionTime().longValue());
     }
 
@@ -876,6 +876,32 @@ public class EventTypeControllerTest {
                 .andExpect(status().is4xxClientError())
                 .andExpect(content().string(new StringContains(
                         "Field \\\"options.retention_time\\\" can not be less than 100")));
+    }
+
+    @Test
+    public void whenPostNullOptions201() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setOptions(null);
+
+        postEventType(eventType)
+                .andExpect(status().isCreated());
+
+        final ArgumentCaptor<EventTypeBase> argument = ArgumentCaptor.forClass(EventTypeBase.class);
+        verify(eventTypeRepository).saveEventType(argument.capture());
+        assertEquals(TOPIC_RETENTION_TIME_MS, argument.getValue().getOptions().getRetentionTime().longValue());
+    }
+
+    @Test
+    public void whenPostNullRetentionTime201() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.getOptions().setRetentionTime(null);
+
+        postEventType(eventType)
+                .andExpect(status().isCreated());
+
+        final ArgumentCaptor<EventTypeBase> argument = ArgumentCaptor.forClass(EventTypeBase.class);
+        verify(eventTypeRepository).saveEventType(argument.capture());
+        assertEquals(TOPIC_RETENTION_TIME_MS, argument.getValue().getOptions().getRetentionTime().longValue());
     }
 
     @Test
