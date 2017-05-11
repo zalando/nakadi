@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import static com.google.common.base.Charsets.UTF_8;
 import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.service.EventStream;
+import org.zalando.nakadi.service.EventStreamWriter;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.view.SubscriptionCursor;
@@ -219,7 +220,7 @@ class StreamingState extends State {
             final NakadiCursor sentOffset = offsets.get(pk).getSentOffset();
             final String batch = serializeBatch(sentOffset, data, metadata);
 
-            final byte[] batchBytes = batch.getBytes(EventStream.UTF8);
+            final byte[] batchBytes = batch.getBytes(UTF_8);
             getOut().streamData(batchBytes);
             bytesSentMeter.mark(batchBytes.length);
             batchesSent++;
@@ -248,7 +249,7 @@ class StreamingState extends State {
         }
         metadata.ifPresent(s -> builder.append(",\"info\":{\"debug\":\"").append(s).append("\"}"));
 
-        builder.append("}").append(EventStream.BATCH_SEPARATOR);
+        builder.append("}").append(EventStreamWriter.BATCH_SEPARATOR);
         return builder.toString();
     }
 
