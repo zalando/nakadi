@@ -24,6 +24,7 @@ import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.util.HashGenerator;
 import org.zalando.nakadi.util.UUIDGenerator;
 
 import java.io.IOException;
@@ -45,12 +46,14 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
     private final SubscriptionMapper rowMapper = new SubscriptionMapper();
     private final UUIDGenerator uuidGenerator;
+    private final HashGenerator hashGenerator;
 
     @Autowired
     public SubscriptionDbRepository(final JdbcTemplate jdbcTemplate, final ObjectMapper jsonMapper,
-                                    final UUIDGenerator uuidGenerator) {
+                                    final UUIDGenerator uuidGenerator, final HashGenerator hashGenerator) {
         super(jdbcTemplate, jsonMapper);
         this.uuidGenerator = uuidGenerator;
+        this.hashGenerator = hashGenerator;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase)
@@ -58,12 +61,15 @@ public class SubscriptionDbRepository extends AbstractDbRepository {
 
         try {
             final String newId = uuidGenerator.randomUUID().toString();
+            final String keyFieldsHash = hashGenerator.generateSubscriptionKeyFieldsHash(subscriptionBase);
             final DateTime createdAt = new DateTime(DateTimeZone.UTC);
             final Subscription subscription = new Subscription(newId, createdAt, subscriptionBase);
 
-            jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object) VALUES (?, ?::JSONB)",
+            jdbcTemplate.update("INSERT INTO zn_data.subscription (s_id, s_subscription_object, s_key_fields_hash) " +
+                            "VALUES (?, ?::JSONB, ?)",
                     subscription.getId(),
-                    jsonMapper.writer().writeValueAsString(subscription));
+                    jsonMapper.writer().writeValueAsString(subscription),
+                    keyFieldsHash);
 
             return subscription;
         } catch (final JsonProcessingException e) {
