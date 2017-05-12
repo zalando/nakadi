@@ -31,6 +31,7 @@ import static org.hamcrest.core.Is.is;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.mockito.Mockito.doThrow;
@@ -47,14 +48,13 @@ import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import org.zalando.nakadi.view.Cursor;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
-public class EventStreamTest {
+public abstract class EventStreamTest {
 
     private static final String TOPIC = randomString();
     private static final String DUMMY = "DUMMY";
@@ -62,18 +62,24 @@ public class EventStreamTest {
 
     private static final Timeline TIMELINE = createFakeTimeline(TOPIC);
     private static CursorConverter cursorConverter;
-    private static FeatureToggleService featureToggleService;
+    private static EventStreamWriterProvider writerProvider;
 
     private final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
 
     @BeforeClass
-    public static void createCursorConverter() {
+    public static void setupMocks() {
         final TimelineService timelineService = mock(TimelineService.class);
         final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
         cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
-        featureToggleService = mock(FeatureToggleService.class);
-        cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
+        writerProvider = mock(EventStreamWriterProvider.class);
     }
+
+    @Before
+    public void setupWriter() {
+        when(writerProvider.getWriter()).thenReturn(createWriter());
+    }
+
+    protected abstract EventStreamWriter createWriter();
 
     @Test(timeout = 15000)
     public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
@@ -86,7 +92,7 @@ public class EventStreamTest {
         final OutputStream outputStreamMock = mock(OutputStream.class);
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, featureToggleService);
+                BYTES_FLUSHED_METER, writerProvider);
 
         final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true)));
         thread.start();
@@ -114,7 +120,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, featureToggleService);
+                BYTES_FLUSHED_METER, writerProvider);
         final AtomicBoolean streamOpen = new AtomicBoolean(true);
         final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen));
         thread.start();
@@ -131,7 +137,7 @@ public class EventStreamTest {
         thread.join();
     }
 
-    @Test(timeout = 3000)
+    @Test(timeout = 5000)
     public void whenStreamTimeoutIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -142,7 +148,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, featureToggleService);
+                BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -156,7 +162,7 @@ public class EventStreamTest {
                 .withStreamLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config,
-                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, featureToggleService);
+                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -172,7 +178,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, featureToggleService);
+                BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -191,7 +197,7 @@ public class EventStreamTest {
 
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER,
-            featureToggleService);
+                writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -216,7 +222,7 @@ public class EventStreamTest {
 
         final EventStream eventStream = new EventStream(
                 nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class),
-                cursorConverter, BYTES_FLUSHED_METER, featureToggleService);
+                cursorConverter, BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -248,7 +254,7 @@ public class EventStreamTest {
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
-                        BYTES_FLUSHED_METER, featureToggleService);
+                        BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -291,7 +297,7 @@ public class EventStreamTest {
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
-                        BYTES_FLUSHED_METER, featureToggleService);
+                        BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -384,7 +390,7 @@ public class EventStreamTest {
             "{\"e\":\"f\"}");
 
         try {
-            EventStreamWriterString.INSTANCE.writeBatch(baos, cursor, events);
+            writerProvider.getWriter().writeBatch(baos, cursor, events);
             final Map<String, Object> batch =
                 mapper.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {});
 
@@ -414,7 +420,7 @@ public class EventStreamTest {
         final ArrayList<String> events = Lists.newArrayList();
 
         try {
-            EventStreamWriterString.INSTANCE.writeBatch(baos, cursor, events);
+            writerProvider.getWriter().writeBatch(baos, cursor, events);
             final String json = baos.toString();
 
             assertEquals("{\"cursor\":{\"partition\":\"11\",\"offset\":\"000000000000000012\"}}\n", json);

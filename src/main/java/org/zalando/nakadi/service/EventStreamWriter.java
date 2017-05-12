@@ -19,12 +19,4 @@ public interface EventStreamWriter {
      */
     int writeBatch(OutputStream os, Cursor cursor, List<String> events) throws IOException;
 
-    static EventStreamWriter getWriter(boolean binary) {
-        if (binary) {
-            return EventStreamWriterBinary.INSTANCE;
-        } else {
-            return EventStreamWriterString.INSTANCE;
-        }
-    }
-
 }

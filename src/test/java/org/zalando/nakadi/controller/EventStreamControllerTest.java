@@ -192,8 +192,7 @@ public class EventStreamControllerTest {
                 .thenReturn(eventConsumerMock);
 
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(),
-            eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any()))
                 .thenReturn(eventStreamMock);
 
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
@@ -300,8 +299,7 @@ public class EventStreamControllerTest {
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(),
-            eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any()))
                 .thenReturn(eventStreamMock);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(1, 0, 1, 1, 0, null);
@@ -327,8 +325,7 @@ public class EventStreamControllerTest {
 
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
         final EventStream eventStreamMock = mock(EventStream.class);
-        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any(), any(), any(),
-            eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), configCaptor.capture(), any()))
                 .thenReturn(eventStreamMock);
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(1, 2, 3, 4, 5,
@@ -357,7 +354,7 @@ public class EventStreamControllerTest {
         verify(timelineService, times(1)).createEventConsumer(eq(KAFKA_CLIENT_ID),
                 eq(ImmutableList.of(new NakadiCursor(fakeTimeline, "0", "000000000000000000"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
-                eq(eventConsumerMock), eq(streamConfig), any(), any(), any(), eq(featureToggleService));
+                eq(eventConsumerMock), eq(streamConfig), any());
         verify(eventStreamMock, times(1)).streamEvents(any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
@@ -395,9 +392,7 @@ public class EventStreamControllerTest {
             }
             return null;
         }).when(eventStream).streamEvents(any());
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(),
-            eq(featureToggleService)))
-                .thenReturn(eventStream);
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server
         final StreamingResponseBody responseBody = createStreamingResponseBody();
@@ -443,8 +438,7 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(),
-            eq(featureToggleService)))
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any()))
                 .thenReturn(mock(EventStream.class));
 
         writeStream(SCOPE_READ);
@@ -462,9 +456,7 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any(), any(), any(),
-            eq(featureToggleService)))
-                .thenReturn(mock(EventStream.class));
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(mock(EventStream.class));
 
         writeStream(Collections.emptySet());
 

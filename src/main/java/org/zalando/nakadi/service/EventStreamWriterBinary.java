@@ -5,8 +5,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.view.Cursor;
 
+@Component
+@Qualifier("binary")
 class EventStreamWriterBinary implements EventStreamWriter {
     private static final byte[] B_BATCH_SEPARATOR = BATCH_SEPARATOR.getBytes(UTF_8);
 
@@ -58,8 +62,4 @@ class EventStreamWriterBinary implements EventStreamWriter {
         os.write(B_BATCH_SEPARATOR);
         return byteCount;
     }
-
-    private EventStreamWriterBinary() {
-    }
-    static final EventStreamWriterBinary INSTANCE = new EventStreamWriterBinary();
 }

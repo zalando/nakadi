@@ -1,21 +1,33 @@
 package org.zalando.nakadi.service;
 
-import java.io.OutputStream;
-
 import com.codahale.metrics.Meter;
+import java.io.OutputStream;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.util.FeatureToggleService;
 
 @Component
 public class EventStreamFactory {
 
+    private final CursorConverter cursorConverter;
+    private final EventStreamWriterProvider writerProvider;
+    private final BlacklistService blacklistService;
+
+    @Autowired
+    public EventStreamFactory(
+            final CursorConverter cursorConverter,
+            final EventStreamWriterProvider writerProvider,
+            final BlacklistService blacklistService) {
+        this.cursorConverter = cursorConverter;
+        this.writerProvider = writerProvider;
+        this.blacklistService = blacklistService;
+    }
+
+
     public EventStream createEventStream(final OutputStream outputStream, final EventConsumer eventConsumer,
-                                         final EventStreamConfig config, final BlacklistService blacklistService,
-                                         final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
-                                         final FeatureToggleService featureToggleService)
+                                         final EventStreamConfig config, final Meter bytesFlushedMeter)
             throws NakadiException, InvalidCursorException {
         return new EventStream(
                 eventConsumer,
@@ -24,6 +36,6 @@ public class EventStreamFactory {
                 blacklistService,
                 cursorConverter,
                 bytesFlushedMeter,
-                featureToggleService);
+                writerProvider);
     }
 }
