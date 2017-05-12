@@ -4,12 +4,14 @@ import com.codahale.metrics.Meter;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.OutputStream;
+import static java.lang.System.currentTimeMillis;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import static java.util.function.Function.identity;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
@@ -17,9 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.util.FeatureToggleService;
-import static java.lang.System.currentTimeMillis;
-import static java.util.function.Function.identity;
 
 public class EventStream {
 
@@ -31,21 +30,21 @@ public class EventStream {
     private final BlacklistService blacklistService;
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
-    private final FeatureToggleService featureToggleService;
+    private final EventStreamWriterProvider writer;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
                        final BlacklistService blacklistService,
                        final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
-                       final FeatureToggleService featureToggleService) {
+                       final EventStreamWriterProvider writer) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
         this.blacklistService = blacklistService;
         this.cursorConverter = cursorConverter;
         this.bytesFlushedMeter = bytesFlushedMeter;
-        this.featureToggleService = featureToggleService;
+        this.writer = writer;
     }
 
     public void streamEvents(final AtomicBoolean connectionReady) {
@@ -149,8 +148,7 @@ public class EventStream {
 
     private void sendBatch(final NakadiCursor topicPosition, final List<String> currentBatch)
             throws IOException {
-        final int bytesWritten = EventStreamWriter.getWriter(
-                featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.SEND_BATCH_VIA_OUTPUT_STREAM))
+        final int bytesWritten = writer.getWriter()
                 .writeBatch(outputStream, cursorConverter.convert(topicPosition), currentBatch);
         bytesFlushedMeter.mark(bytesWritten);
         outputStream.flush();
