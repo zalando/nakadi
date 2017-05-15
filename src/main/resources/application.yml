@@ -14,7 +14,7 @@ logging:
     org.zalando.nakadi.config: INFO
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/local_nakadi_db
+    url: jdbc:postgresql://localhost:5432/local_nakadi_db?socketTimeout=2;connectTimeout=2;loginTimeout=2
     username: nakadi
     password: nakadi
     driverClassName: org.postgresql.Driver
