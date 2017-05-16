@@ -34,7 +34,8 @@ public class TopicsController {
     }
 
     @RequestMapping(value = "{topic}", method = RequestMethod.GET)
-    public ResponseEntity<EventType> getEventTypeByTopic(@PathVariable("topic") final String topic, final Client client) {
+    public ResponseEntity<EventType> getEventTypeByTopic(@PathVariable("topic") final String topic,
+                                                         final Client client) {
         return ResponseEntity.ok(topicsService.getEventTypeByTopic(topic, client));
     }
 

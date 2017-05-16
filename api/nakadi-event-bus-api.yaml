@@ -1634,7 +1634,7 @@ paths:
           required: true
       responses:
         '200':
-          description: Event type wihch is represented by provided topic
+          description: Event type which is represented by provided topic
           schema:
             $ref: '#/definitions/EventType'
         '404':
