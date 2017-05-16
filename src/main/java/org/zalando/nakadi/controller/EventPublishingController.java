@@ -88,7 +88,7 @@ public class EventPublishingController {
             final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
 
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
-            reportSLOs(startingNanos, totalSizeBytes, eventCount);
+            reportSLOs(startingNanos, totalSizeBytes, eventCount, result);
 
             final ResponseEntity response = response(result);
             return response;
@@ -106,9 +106,12 @@ public class EventPublishingController {
         }
     }
 
-    private void reportSLOs(final long startingNanos, final int totalSizeBytes, final int eventCount) {
-        final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
-        LOG.info("[SLO] [publishing-latency] time={} size={} count={}", msSpent, totalSizeBytes, eventCount);
+    private void reportSLOs(final long startingNanos, final int totalSizeBytes, final int eventCount,
+                            final EventPublishResult eventPublishResult) {
+        if (eventPublishResult.getStatus() == EventPublishingStatus.SUBMITTED) {
+            final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
+            LOG.info("[SLO] [publishing-latency] time={} size={} count={}", msSpent, totalSizeBytes, eventCount);
+        }
     }
 
     private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final EventPublishResult result,
