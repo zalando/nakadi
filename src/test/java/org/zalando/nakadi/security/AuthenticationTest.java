@@ -10,8 +10,8 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.SpringApplicationConfiguration;
-import org.springframework.boot.test.WebIntegrationTest;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -70,8 +70,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringApplicationConfiguration(Application.class)
-@WebIntegrationTest(randomPort = true)
+@SpringBootTest(classes=Application.class, webEnvironment= WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = AFTER_CLASS)
 @ActiveProfiles("test")
 public abstract class AuthenticationTest {
