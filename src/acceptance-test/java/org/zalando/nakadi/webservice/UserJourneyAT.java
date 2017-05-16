@@ -46,7 +46,6 @@ import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import static org.zalando.nakadi.webservice.hila.StreamBatch.MatcherIgnoringToken.equalToBatchIgnoringToken;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.commitCursors;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
-import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.postEvents;
 
 public class UserJourneyAT extends RealEnvironmentAT {
 
@@ -125,7 +124,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
                         .withWaitBetweenEachTry(500));
 
         // push two events to event-type
-        postEvents(eventTypeName, EVENT1, EVENT2);
+        postEvents(EVENT1, EVENT2);
 
         // get offsets for partition
         jsonRequestSpec()
@@ -228,7 +227,7 @@ public class UserJourneyAT extends RealEnvironmentAT {
     public void userJourneyHila() throws InterruptedException, IOException {
         // create event-type and push some events
         createEventType();
-        postEvents(eventTypeName, rangeClosed(0, 3)
+        postEvents(rangeClosed(0, 3)
                 .boxed()
                 .map(x -> "{\"foo\":\"bar" + x + "\"}")
                 .collect(Collectors.toList())
@@ -317,6 +316,16 @@ public class UserJourneyAT extends RealEnvironmentAT {
                 .post("/event-types")
                 .then()
                 .statusCode(CREATED.value());
+    }
+
+    private void postEvents(final String... events) {
+        final String batch = "[" + String.join(",", events) + "]";
+        jsonRequestSpec()
+                .body(batch)
+                .when()
+                .post("/event-types/" + eventTypeName + "/events")
+                .then()
+                .statusCode(OK.value());
     }
 
     private RequestSpecification jsonRequestSpec() {
