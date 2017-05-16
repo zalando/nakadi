@@ -36,10 +36,7 @@ public class TopicsService {
             throw new ForbiddenAccessException("Request is forbidden for user " + client.getClientId());
         }
 
-        final Optional<String> etName = timelineDbRepository.listTimelinesOrdered().stream()
-                .filter(tl -> tl.isActive())
-                .filter(tl -> tl.getTopic().equals(topic))
-                .findFirst()
+        final Optional<String> etName = timelineDbRepository.listActiveTimelinesByTopic(topic)
                 .map(Timeline::getEventType);
 
         if (etName.isPresent()) {

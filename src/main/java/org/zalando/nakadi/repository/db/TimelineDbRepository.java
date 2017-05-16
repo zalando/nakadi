@@ -40,6 +40,12 @@ public class TimelineDbRepository extends AbstractDbRepository {
         return jdbcTemplate.query(BASE_TIMELINE_QUERY + " order by t.et_name, t.tl_order", timelineRowMapper);
     }
 
+    public Optional<Timeline> listActiveTimelinesByTopic(final String topic) {
+        final List<Timeline> timelines = jdbcTemplate.query(BASE_TIMELINE_QUERY +
+                "WHERE tl_topic=?", timelineRowMapper, topic);
+        return Optional.ofNullable(timelines.isEmpty() ? null : timelines.get(0));
+    }
+
     public List<Timeline> listTimelinesOrdered(final String eventType) {
         return jdbcTemplate.query(
                 BASE_TIMELINE_QUERY + " WHERE t.et_name=? order by t.tl_order",
