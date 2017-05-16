@@ -141,8 +141,6 @@ dependencies {
     compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
     compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
     compile 'org.apache.commons:commons-lang3:3.4'
-    compile 'org.zalando:problem-spring-web:0.5.0'
-    compile 'org.zalando:jackson-datatype-problem:0.5.0'
     compile 'org.zalando:nakadi-plugin-api:1.0.5'
     compile 'org.echocat.jomon:runtime:1.6.2'
 
