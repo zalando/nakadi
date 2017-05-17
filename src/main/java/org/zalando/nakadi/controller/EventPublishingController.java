@@ -1,5 +1,6 @@
 package org.zalando.nakadi.controller;
 
+import com.google.common.base.Charsets;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +26,7 @@ import org.zalando.problem.ThrowableProblem;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
-import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.ResponseEntity.status;
@@ -82,7 +83,12 @@ public class EventPublishingController {
         final long startingNanos = System.nanoTime();
         try {
             final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);
-            reportMetrics(eventTypeMetrics, result, eventsAsString, result.getResponses().size());
+
+            final int eventCount = result.getResponses().size();
+            final int totalSizeBytes = eventsAsString.getBytes(Charsets.UTF_8).length;
+
+            reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
+            reportSLOs(startingNanos, totalSizeBytes, eventCount, result);
 
             final ResponseEntity response = response(result);
             return response;
@@ -100,19 +106,26 @@ public class EventPublishingController {
         }
     }
 
+    private void reportSLOs(final long startingNanos, final int totalSizeBytes, final int eventCount,
+                            final EventPublishResult eventPublishResult) {
+        if (eventPublishResult.getStatus() == EventPublishingStatus.SUBMITTED) {
+            final long msSpent = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startingNanos);
+            LOG.info("[SLO] [publishing-latency] time={} size={} count={}", msSpent, totalSizeBytes, eventCount);
+        }
+    }
+
     private void reportMetrics(final EventTypeMetrics eventTypeMetrics, final EventPublishResult result,
-                               final String eventsAsString, final int eventCount) {
+                               final int totalSizeBytes, final int eventCount) {
         if (result.getStatus() == EventPublishingStatus.SUBMITTED) {
-            eventTypeMetrics.reportSizing(eventCount,
-                    eventsAsString.getBytes(StandardCharsets.UTF_8).length - eventCount - 1);
+            eventTypeMetrics.reportSizing(eventCount, totalSizeBytes - eventCount - 1);
         } else if (result.getStatus() == EventPublishingStatus.FAILED && eventCount != 0) {
-            final int successfulEvents= result.getResponses()
+            final int successfulEvents = result.getResponses()
                     .stream()
                     .filter(r -> r.getPublishingStatus() == EventPublishingStatus.SUBMITTED)
                     .collect(Collectors.toList())
                     .size();
-            final double avgEventSize = eventsAsString.getBytes(StandardCharsets.UTF_8).length / (double)eventCount;
-            eventTypeMetrics.reportSizing(successfulEvents, (int)Math.round(avgEventSize * successfulEvents));
+            final double avgEventSize = totalSizeBytes / (double) eventCount;
+            eventTypeMetrics.reportSizing(successfulEvents, (int) Math.round(avgEventSize * successfulEvents));
         }
     }
 
