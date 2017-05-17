@@ -92,7 +92,7 @@ public interface ZkSubscriptionClient {
      * @param key Key to get offset for
      * @return commit offset
      */
-    SubscriptionCursorWithoutToken getOffset(EventTypePartition key);
+    SubscriptionCursorWithoutToken getOffset(EventTypePartition key) throws NakadiRuntimeException;
 
     List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
                                 Comparator<SubscriptionCursorWithoutToken> comparator);

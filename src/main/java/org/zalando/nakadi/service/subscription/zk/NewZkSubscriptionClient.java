@@ -38,7 +38,7 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
  *     | |- {session_N}                     // Ephemeral node of session_N
  *     |
  *     |- topology                          // Persistent node that holds all assignment information about partitions
- *     |                                    // Contents is json serialized {@link Topology} object.
+ *     |                                    // Content is json serialized {@link Topology} object.
  *     |
  *     |- offsets                           // Node that holds up all the dynamic data for this subscription (offsets)
  *       |- {event_type_1}
@@ -177,7 +177,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public SubscriptionCursorWithoutToken getOffset(final EventTypePartition key) {
+    public SubscriptionCursorWithoutToken getOffset(final EventTypePartition key) throws NakadiRuntimeException {
         try {
             final String offset = new String(getCurator().getData().forPath(getOffsetPath(key)), UTF_8);
             return new SubscriptionCursorWithoutToken(key.getEventType(), key.getPartition(), offset);
