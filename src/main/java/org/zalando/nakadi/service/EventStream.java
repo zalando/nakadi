@@ -4,13 +4,14 @@ import com.codahale.metrics.Meter;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
+import static java.lang.System.currentTimeMillis;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import static java.util.function.Function.identity;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
@@ -18,15 +19,10 @@ import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.repository.EventConsumer;
-import org.zalando.nakadi.view.Cursor;
-import static java.lang.System.currentTimeMillis;
-import static java.util.function.Function.identity;
 
 public class EventStream {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventStream.class);
-    public static final String BATCH_SEPARATOR = "\n";
-    public static final Charset UTF8 = Charset.forName("UTF-8");
 
     private final OutputStream outputStream;
     private final EventConsumer eventConsumer;
@@ -34,18 +30,21 @@ public class EventStream {
     private final BlacklistService blacklistService;
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
+    private final EventStreamWriterProvider writer;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
                        final BlacklistService blacklistService,
-                       final CursorConverter cursorConverter, final Meter bytesFlushedMeter) {
+                       final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
+                       final EventStreamWriterProvider writer) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
         this.blacklistService = blacklistService;
         this.cursorConverter = cursorConverter;
         this.bytesFlushedMeter = bytesFlushedMeter;
+        this.writer = writer;
     }
 
     public void streamEvents(final AtomicBoolean connectionReady) {
@@ -147,31 +146,14 @@ public class EventStream {
                 .collect(Collectors.toMap(identity(), valueFunction));
     }
 
-    public static String createStreamEvent(final Cursor cursor, final List<String> events) {
-        final StringBuilder builder = new StringBuilder()
-                .append("{\"cursor\":{\"partition\":\"").append(cursor.getPartition())
-                .append("\",\"offset\":\"").append(cursor.getOffset()).append("\"}");
-        if (!events.isEmpty()) {
-            builder.append(",\"events\":[");
-            events.forEach(event -> builder.append(event).append(","));
-            builder.deleteCharAt(builder.length() - 1).append("]");
-        }
-
-        builder.append("}").append(BATCH_SEPARATOR);
-
-        return builder.toString();
-    }
-
     private void sendBatch(final NakadiCursor topicPosition, final List<String> currentBatch)
             throws IOException {
-        // create stream event batch for current partition and send it; if there were
-        // no events, it will be just a keep-alive
-        final String streamEvent = createStreamEvent(cursorConverter.convert(topicPosition), currentBatch);
-        final byte[] batchBytes = streamEvent.getBytes(UTF8);
-        outputStream.write(batchBytes);
-        bytesFlushedMeter.mark(batchBytes.length);
+        final int bytesWritten = writer.getWriter()
+                .writeBatch(outputStream, cursorConverter.convert(topicPosition), currentBatch);
+        bytesFlushedMeter.mark(bytesWritten);
         outputStream.flush();
     }
+
 
     public void close() throws IOException {
         this.eventConsumer.close();
