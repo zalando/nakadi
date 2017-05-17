@@ -2,24 +2,42 @@ package org.zalando.nakadi.service;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import static java.util.Collections.nCopies;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import static java.util.Optional.empty;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import static junit.framework.TestCase.assertSame;
+import static junit.framework.TestCase.fail;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.core.Is.is;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
@@ -27,23 +45,16 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
+import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import static java.util.Collections.nCopies;
-import static java.util.Optional.empty;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.arrayWithSize;
-import static org.hamcrest.core.Is.is;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.service.EventStream.BATCH_SEPARATOR;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import org.zalando.nakadi.view.Cursor;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
-public class EventStreamTest {
+public abstract class EventStreamTest {
 
     private static final String TOPIC = randomString();
     private static final String DUMMY = "DUMMY";
@@ -51,13 +62,24 @@ public class EventStreamTest {
 
     private static final Timeline TIMELINE = createFakeTimeline(TOPIC);
     private static CursorConverter cursorConverter;
+    private static EventStreamWriterProvider writerProvider;
+
+    private final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
 
     @BeforeClass
-    public static void createCursorConverter() {
+    public static void setupMocks() {
         final TimelineService timelineService = mock(TimelineService.class);
         final EventTypeCache eventTypeCache = mock(EventTypeCache.class);
         cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
+        writerProvider = mock(EventStreamWriterProvider.class);
     }
+
+    @Before
+    public void setupWriter() {
+        when(writerProvider.getWriter()).thenReturn(createWriter());
+    }
+
+    protected abstract EventStreamWriter createWriter();
 
     @Test(timeout = 15000)
     public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
@@ -70,7 +92,7 @@ public class EventStreamTest {
         final OutputStream outputStreamMock = mock(OutputStream.class);
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER);
+                BYTES_FLUSHED_METER, writerProvider);
 
         final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true)));
         thread.start();
@@ -98,7 +120,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER);
+                BYTES_FLUSHED_METER, writerProvider);
         final AtomicBoolean streamOpen = new AtomicBoolean(true);
         final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen));
         thread.start();
@@ -115,7 +137,7 @@ public class EventStreamTest {
         thread.join();
     }
 
-    @Test(timeout = 3000)
+    @Test(timeout = 5000)
     public void whenStreamTimeoutIsSetThenStreamIsClosed() throws NakadiException, IOException, InterruptedException {
         final EventStreamConfig config = EventStreamConfig
                 .builder()
@@ -126,7 +148,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER);
+                BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -140,7 +162,7 @@ public class EventStreamTest {
                 .withStreamLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config,
-                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER);
+                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -156,7 +178,7 @@ public class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER);
+                BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
         // if something goes wrong - the test should fail with a timeout
     }
@@ -174,7 +196,8 @@ public class EventStreamTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream = new EventStream(
-                emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER);
+                emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER,
+                writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -198,8 +221,8 @@ public class EventStreamTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         final EventStream eventStream = new EventStream(
-                nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER);
+                nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class),
+                cursorConverter, BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -231,7 +254,7 @@ public class EventStreamTest {
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
-                        BYTES_FLUSHED_METER);
+                        BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -274,7 +297,7 @@ public class EventStreamTest {
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
-                        BYTES_FLUSHED_METER);
+                        BYTES_FLUSHED_METER, writerProvider);
         eventStream.streamEvents(new AtomicBoolean(true));
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
@@ -355,4 +378,66 @@ public class EventStreamTest {
                 metadataStr);
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testWriteStreamEvent() {
+
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final Cursor cursor = new Cursor("22", "000000000000000023");
+        final ArrayList<String> events = Lists.newArrayList(
+            "{\"a\":\"b\"}",
+            "{\"c\":\"d\"}",
+            "{\"e\":\"f\"}");
+
+        try {
+            writerProvider.getWriter().writeBatch(baos, cursor, events);
+            final Map<String, Object> batch =
+                mapper.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {});
+
+            final Map<String, String> cursorM = (Map<String, String>) batch.get("cursor");
+            assertEquals("22", cursorM.get("partition"));
+            assertEquals("000000000000000023", cursorM.get("offset"));
+
+            final List<Map<String, String>> eventsM = (List<Map<String, String>>) batch.get("events");
+            assertSame(eventsM.size(), 3);
+
+            // check the order is preserved as well as the data via get
+            assertEquals("b", eventsM.get(0).get("a"));
+            assertEquals("d", eventsM.get(1).get("c"));
+            assertEquals("f", eventsM.get(2).get("e"));
+
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testWriteStreamEventEmptyBatchProducesNoEventArray() {
+
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final Cursor cursor = new Cursor("11", "000000000000000012");
+        final ArrayList<String> events = Lists.newArrayList();
+
+        try {
+            writerProvider.getWriter().writeBatch(baos, cursor, events);
+            final String json = baos.toString();
+
+            assertEquals("{\"cursor\":{\"partition\":\"11\",\"offset\":\"000000000000000012\"}}\n", json);
+
+            final Map<String, Object> batch =
+                mapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+
+            final Map<String, String> cursorM = (Map<String, String>) batch.get("cursor");
+            assertEquals("11", cursorM.get("partition"));
+            assertEquals("000000000000000012", cursorM.get("offset"));
+
+            final List<Map<String, String>> eventsM = (List<Map<String, String>>) batch.get("events");
+            // expecting events not to be written as an empty array
+            assertNull(eventsM);
+
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
+    }
 }

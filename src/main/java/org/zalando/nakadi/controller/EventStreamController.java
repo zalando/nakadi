@@ -222,8 +222,7 @@ public class EventStreamController {
                 final Meter bytesFlushedMeter = this.streamMetrics.meter(bytesFlushedMetricName);
 
                 eventStream = eventStreamFactory.createEventStream(
-                        outputStream, eventConsumer, streamConfig, blacklistService, cursorConverter,
-                        bytesFlushedMeter);
+                        outputStream, eventConsumer, streamConfig, bytesFlushedMeter);
 
                 outputStream.flush(); // Flush status code to client
 

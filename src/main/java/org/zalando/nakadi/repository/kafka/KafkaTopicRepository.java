@@ -22,6 +22,7 @@ import org.zalando.nakadi.domain.BatchItem;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.EventPublishingException;
@@ -59,6 +60,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Lists.partition;
 import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
@@ -334,6 +337,32 @@ public class KafkaTopicRepository implements TopicRepository {
                             kafkaTPs[i].partition(),
                             begins[i],
                             ends[i] - 1))
+                    .collect(toList());
+        } catch (final Exception e) {
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+        }
+    }
+
+    @Override
+    public List<PartitionEndStatistics> loadTopicEndStatistics(final Collection<Timeline> timelines)
+            throws ServiceUnavailableException {
+        try (Consumer<String, String> consumer = kafkaFactory.getConsumer()) {
+            final Map<TopicPartition, Timeline> backMap = new HashMap<>();
+            for (final Timeline timeline : timelines) {
+                consumer.partitionsFor(timeline.getTopic())
+                        .stream()
+                        .map(p -> new TopicPartition(p.topic(), p.partition()))
+                        .forEach(tp -> backMap.put(tp, timeline));
+            }
+            final List<TopicPartition> kafkaTPs = newArrayList(backMap.keySet());
+            consumer.assign(kafkaTPs);
+            consumer.seekToEnd(kafkaTPs.toArray(new TopicPartition[kafkaTPs.size()]));
+            return backMap.entrySet().stream()
+                    .map(e -> {
+                        final TopicPartition tp = e.getKey();
+                        final Timeline timeline = e.getValue();
+                        return new KafkaPartitionEndStatistics(timeline, tp.partition(), consumer.position(tp) - 1);
+                    })
                     .collect(toList());
         } catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);

@@ -18,7 +18,7 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.domain.PartitionStatistics;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
@@ -30,7 +30,7 @@ import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
+import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
 import org.zalando.nakadi.security.NakadiClient;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.service.subscription.model.Partition;
@@ -233,11 +233,11 @@ public class SubscriptionControllerTest {
         when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn("3");
         when(eventTypeRepository.findByName("myET"))
                 .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
-        final List<PartitionStatistics> statistics = Collections.singletonList(
-                new KafkaPartitionStatistics(TIMELINE, 0, 0, 13));
-        when(topicRepository.loadTopicStatistics(eq(Collections.singletonList(TIMELINE)))).thenReturn(statistics);
+        final List<PartitionEndStatistics> statistics = Collections.singletonList(
+                new KafkaPartitionEndStatistics(TIMELINE, 0, 13));
+        when(topicRepository.loadTopicEndStatistics(eq(Collections.singletonList(TIMELINE)))).thenReturn(statistics);
 
-        final List<SubscriptionEventTypeStats> subscriptionStats =
+        final List<SubscriptionEventTypeStats> expectedStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
                         "myET",
                         Collections.singleton(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
@@ -245,7 +245,7 @@ public class SubscriptionControllerTest {
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(subscriptionStats))));
+                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(expectedStats))));
     }
 
     @Test
