@@ -15,6 +15,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 public class OldZkSubscriptionClient extends AbstractZkSubscriptionClient {
@@ -157,8 +158,13 @@ public class OldZkSubscriptionClient extends AbstractZkSubscriptionClient {
         try {
             final String result =
                     new String(getCurator().getData().forPath(getOffsetPath(key)), UTF_8);
-            final String offset = KafkaCursor.toNakadiOffset(Long.parseLong(result));
-            return new SubscriptionCursorWithoutToken(key.getEventType(), key.getPartition(), offset);
+            if (Cursor.BEFORE_OLDEST_OFFSET.equalsIgnoreCase(result)) {
+                return new SubscriptionCursorWithoutToken(key.getEventType(), key.getPartition(), result);
+            }
+            return new SubscriptionCursorWithoutToken(
+                    key.getEventType(),
+                    key.getPartition(),
+                    KafkaCursor.toNakadiOffset(Long.parseLong(result)));
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
