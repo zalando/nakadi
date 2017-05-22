@@ -121,7 +121,7 @@ public interface ZkSubscriptionClient {
      * @return list of partitions and sessions wrapped in
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */
-    ZkSubscriptionNode getZkSubscriptionNodeLocked();
+    ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException;
 
     /**
      * Subscribes to cursor reset event.

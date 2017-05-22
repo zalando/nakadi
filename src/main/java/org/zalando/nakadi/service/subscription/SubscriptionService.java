@@ -216,7 +216,8 @@ public class SubscriptionService {
         try {
             zkSubscriptionNode.set(subscriptionClient.getZkSubscriptionNodeLocked());
         } catch (SubscriptionNotInitializedException ex) {
-            StartingState.initializeSubscriptionStructure(subscription, timelineService, converter, subscriptionClient);
+            subscriptionClient.runLocked(() -> StartingState.initializeSubscriptionStructure(
+                    subscription, timelineService, converter, subscriptionClient));
             zkSubscriptionNode.set(subscriptionClient.getZkSubscriptionNodeLocked());
         }
 
@@ -249,36 +250,39 @@ public class SubscriptionService {
 
         final Set<SubscriptionEventTypeStats.Partition> resultPartitions = new HashSet<>(stats.size());
         for (final PartitionEndStatistics stat : stats) {
-            if (!stat.getLast().getEventType().equals(eventType.getName())) {
+            final NakadiCursor lastPosition = stat.getLast();
+            if (!lastPosition.getEventType().equals(eventType.getName())) {
                 continue;
             }
-            final NakadiCursor lastPosition = stat.getLast();
-
-            final NakadiCursor currentPosition;
-            final SubscriptionCursorWithoutToken offset =
-                    client.getOffset(new EventTypePartition(eventType.getName(), stat.getPartition()));
-            try {
-                currentPosition = converter.convert(offset);
-            } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
-                    ServiceUnavailableException e) {
-                throw new MyNakadiRuntimeException1("Failed to convert cursor information for cursor ", e);
-            }
             Long distance;
-            try {
-                distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
-            } catch (final InvalidCursorOperation ex) {
-                if (ex.getReason() == InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER ||
-                        ex.getReason() == InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER) {
-                    distance = null;
-                } else {
-                    throw ex;
+            if (subscriptionNode.containsPartition(lastPosition.getEventTypePartition())) {
+                final NakadiCursor currentPosition;
+                final SubscriptionCursorWithoutToken offset =
+                        client.getOffset(new EventTypePartition(eventType.getName(), stat.getPartition()));
+                try {
+                    currentPosition = converter.convert(offset);
+                } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
+                        ServiceUnavailableException e) {
+                    throw new MyNakadiRuntimeException1("Failed to convert cursor information for cursor ", e);
                 }
+                try {
+                    distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
+                } catch (final InvalidCursorOperation ex) {
+                    if (ex.getReason() == InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER ||
+                            ex.getReason() == InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER) {
+                        distance = 0L;
+                    } else {
+                        throw ex;
+                    }
+                }
+            } else {
+                distance = null;
             }
             resultPartitions.add(new SubscriptionEventTypeStats.Partition(
                     lastPosition.getPartition(),
                     subscriptionNode.guessState(stat.getPartition()).getDescription(),
                     distance,
-                    subscriptionNode.guessStream(stat.getPartition())
+                    Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
             ));
         }
 

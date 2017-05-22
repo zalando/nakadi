@@ -350,8 +350,17 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZkSubscriptionNode getZkSubscriptionNodeLocked() {
+    public final ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException {
         final ZkSubscriptionNode subscriptionNode = new ZkSubscriptionNode();
+        try {
+            if (null == getCurator().checkExists().forPath(getSubscriptionPath(""))) {
+                return subscriptionNode;
+            }
+        } catch (final Exception e) {
+            // Zk communication failure
+            throw new NakadiRuntimeException(e);
+        }
+
         try {
             runLocked(() -> {
                 subscriptionNode.setPartitions(listPartitions());

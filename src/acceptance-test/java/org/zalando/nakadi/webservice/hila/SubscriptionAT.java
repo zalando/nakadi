@@ -1,6 +1,7 @@
 package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
@@ -33,10 +34,12 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.PaginationLinks;
 import org.zalando.nakadi.domain.PaginationWrapper;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
@@ -347,6 +350,29 @@ public class SubscriptionAT extends BaseAT {
         when().delete("/event-types/{event-type}", etName)
                 .then()
                 .statusCode(HttpStatus.SC_CONFLICT);
+    }
+
+    @Test
+    public void whenStatsOnNotInitializedSubscriptionThanCorrectResponse() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+        final Response response = when().get("/subscriptions/{sid}/stats", s.getId())
+                .thenReturn();
+        final ItemsWrapper<SubscriptionEventTypeStats> statsItems = MAPPER.readValue(
+                response.print(),
+                new TypeReference<ItemsWrapper<SubscriptionEventTypeStats>>() {
+                });
+        Assert.assertEquals(1, statsItems.getItems().size());
+        final SubscriptionEventTypeStats stats = statsItems.getItems().get(0);
+        Assert.assertEquals(et, stats.getEventType());
+        Assert.assertEquals(1, stats.getPartitions().size());
+        for (final SubscriptionEventTypeStats.Partition partition : stats.getPartitions()) {
+            Assert.assertNotNull(partition);
+            Assert.assertNotNull(partition.getPartition());
+            Assert.assertEquals("", partition.getStreamId());
+            Assert.assertNull(partition.getUnconsumedEvents());
+            Assert.assertEquals(partition.getState(), "unassigned");
+        }
     }
 
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {
