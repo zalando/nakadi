@@ -2,7 +2,6 @@ package org.zalando.nakadi.service.subscription.state;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -17,6 +16,7 @@ import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -38,14 +38,11 @@ public class StartingState extends State {
     private void createSubscriptionLocked() {
         // check that subscription initialized in zk.
         if (!getZk().isSubscriptionCreatedAndInitialized()) {
-
-            // if not - create subscription node etc.
-            final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
+            initializeSubscriptionStructure(
                     getContext().getSubscription(),
                     getContext().getTimelineService(),
-                    getContext().getCursorConverter());
-            getLog().info("Initial offsets are {}", Arrays.deepToString(cursors.toArray()));
-            getZk().fillEmptySubscription(cursors);
+                    getContext().getCursorConverter(),
+                    getZk());
         } else {
             final Session[] sessions = getZk().listSessions();
             final Partition[] partitions = getZk().listPartitions();
@@ -154,6 +151,18 @@ public class StartingState extends State {
         }
     }
 
+    public static void initializeSubscriptionStructure(
+            final Subscription subscription,
+            final TimelineService timelineService,
+            final CursorConverter cursorConverter,
+            final ZkSubscriptionClient zkSubscriptionClient) {
+        // if not - create subscription node etc.
+        final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
+                subscription,
+                timelineService,
+                cursorConverter);
+        zkSubscriptionClient.fillEmptySubscription(cursors);
+    }
 
     public static List<SubscriptionCursorWithoutToken> calculateStartPosition(
             final Subscription subscription,

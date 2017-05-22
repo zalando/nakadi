@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
@@ -51,7 +52,9 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.Result;
+import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionNotInitializedException;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -131,7 +134,7 @@ public class SubscriptionService {
                     subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                     owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
-            return Result.ok(new PaginationWrapper(subscriptions, paginationLinks));
+            return Result.ok(new PaginationWrapper<>(subscriptions, paginationLinks));
         } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
             return Result.problem(e.asProblem());
@@ -201,17 +204,24 @@ public class SubscriptionService {
 
         final List<PartitionEndStatistics> topicPartitions = loadPartitionEndStatistics(eventTypes);
 
-        final ZkSubscriptionClient zkSubscriptionClient;
+        final ZkSubscriptionClient subscriptionClient;
         try {
-            zkSubscriptionClient = subscriptionClientFactory.createClient(
+            subscriptionClient = subscriptionClientFactory.createClient(
                     subscription, "subscription." + subscription.getId() + ".stats");
         } catch (final InternalNakadiException | NoSuchEventTypeException e) {
             throw new ServiceUnavailableException("Failed to create client for subscriptions", e);
         }
-        final ZkSubscriptionNode zkSubscriptionNode = zkSubscriptionClient.getZkSubscriptionNodeLocked();
+
+        final AtomicReference<ZkSubscriptionNode> zkSubscriptionNode = new AtomicReference<>();
+        try {
+            zkSubscriptionNode.set(subscriptionClient.getZkSubscriptionNodeLocked());
+        } catch (SubscriptionNotInitializedException ex) {
+            StartingState.initializeSubscriptionStructure(subscription, timelineService, converter, subscriptionClient);
+            zkSubscriptionNode.set(subscriptionClient.getZkSubscriptionNodeLocked());
+        }
 
         return eventTypes.stream()
-                .map(et -> loadStats(et, zkSubscriptionNode, zkSubscriptionClient, topicPartitions))
+                .map(et -> loadStats(et, zkSubscriptionNode.get(), subscriptionClient, topicPartitions))
                 .collect(Collectors.toList());
     }
 
