@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
@@ -212,18 +211,22 @@ public class SubscriptionService {
             throw new ServiceUnavailableException("Failed to create client for subscriptions", e);
         }
 
-        final AtomicReference<ZkSubscriptionNode> zkSubscriptionNode = new AtomicReference<>();
+        final ZkSubscriptionNode zkSubscriptionNode = getZkSubscriptionNode(subscription, subscriptionClient);
+
+        return eventTypes.stream()
+                .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
+                .collect(Collectors.toList());
+    }
+
+    private ZkSubscriptionNode getZkSubscriptionNode(
+            final Subscription subscription, final ZkSubscriptionClient subscriptionClient) {
         try {
-            zkSubscriptionNode.set(subscriptionClient.getZkSubscriptionNodeLocked());
+            return subscriptionClient.getZkSubscriptionNodeLocked();
         } catch (SubscriptionNotInitializedException ex) {
             subscriptionClient.runLocked(() -> StartingState.initializeSubscriptionStructure(
                     subscription, timelineService, converter, subscriptionClient));
-            zkSubscriptionNode.set(subscriptionClient.getZkSubscriptionNodeLocked());
+            return subscriptionClient.getZkSubscriptionNodeLocked();
         }
-
-        return eventTypes.stream()
-                .map(et -> loadStats(et, zkSubscriptionNode.get(), subscriptionClient, topicPartitions))
-                .collect(Collectors.toList());
     }
 
     private List<PartitionEndStatistics> loadPartitionEndStatistics(final Collection<EventType> eventTypes)
