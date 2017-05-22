@@ -161,11 +161,11 @@ dependencies {
 
     // json
     compile 'org.everit.json:org.everit.json.schema:1.5.1'
-    compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.6.1') {
+    compile ('com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.8') {
         exclude module: "json"
     }
-    compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.6.1'
-    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.6.1'
+    compile 'com.fasterxml.jackson.datatype:jackson-datatype-joda:2.8.8'
+    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.8'
     compile ('org.zalando:twintip-spring-web:1.1.0') {
         exclude module: "spring-web"
         exclude module: "jackson-databind"
