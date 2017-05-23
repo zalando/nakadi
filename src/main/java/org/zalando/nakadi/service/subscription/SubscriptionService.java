@@ -31,7 +31,6 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
-import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -42,6 +41,7 @@ import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -178,52 +178,47 @@ public class SubscriptionService {
         }
     }
 
-    public Result<ItemsWrapper<SubscriptionEventTypeStats>> getSubscriptionStat(final String subscriptionId) {
+    public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId)
+            throws InconsistentStateException, NoSuchSubscriptionException, ServiceTemporaryUnavailableException {
+        final Subscription subscription;
         try {
-            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription);
-            return Result.ok(new ItemsWrapper<>(subscriptionStat));
-        } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
-            return Result.problem(e.asProblem());
-        } catch (final ServiceUnavailableException e) {
-            LOG.error("Error occurred when trying to get subscription stat: {}" + subscriptionId, e);
-            return Result.problem(e.asProblem());
+            subscription = subscriptionRepository.getSubscription(subscriptionId);
+        } catch (final ServiceUnavailableException ex) {
+            throw new InconsistentStateException(ex.getMessage());
         }
+        final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription);
+        return new ItemsWrapper<>(subscriptionStat);
     }
 
 
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription)
-            throws ServiceUnavailableException {
+            throws InconsistentStateException, ServiceTemporaryUnavailableException {
 
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
-        final List<PartitionEndStatistics> topicPartitions = loadPartitionEndStatistics(eventTypes);
+        final List<PartitionEndStatistics> topicPartitions;
+        try {
+            topicPartitions = loadPartitionEndStatistics(eventTypes);
+        } catch (final ServiceUnavailableException ex) {
+            throw new ServiceTemporaryUnavailableException(ex);
+        }
 
         final ZkSubscriptionClient subscriptionClient;
         try {
             subscriptionClient = subscriptionClientFactory.createClient(
                     subscription, "subscription." + subscription.getId() + ".stats");
         } catch (final InternalNakadiException | NoSuchEventTypeException e) {
-            throw new ServiceUnavailableException("Failed to create client for subscriptions", e);
+            throw new ServiceTemporaryUnavailableException(e);
         }
 
         final ZkSubscriptionNode zkSubscriptionNode = getZkSubscriptionNode(subscription, subscriptionClient);
 
-        try {
-            return eventTypes.stream()
-                    .map(Try.wrap(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions)))
-                    .map(Try::getOrThrow)
-                    .collect(Collectors.toList());
-        } catch (NakadiRuntimeException ex) {
-            if (ex.getCause() instanceof ServiceUnavailableException) {
-                throw (ServiceUnavailableException) ex.getCause();
-            }
-            throw new ServiceUnavailableException("Unknown exception during building stats objects", ex);
-        }
+        return eventTypes.stream()
+                .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
+                .collect(Collectors.toList());
     }
 
     private ZkSubscriptionNode getZkSubscriptionNode(
@@ -257,7 +252,8 @@ public class SubscriptionService {
             final EventType eventType,
             final ZkSubscriptionNode subscriptionNode,
             final ZkSubscriptionClient client,
-            final List<PartitionEndStatistics> stats) throws ServiceUnavailableException, InvalidCursorOperation {
+            final List<PartitionEndStatistics> stats)
+            throws ServiceTemporaryUnavailableException, InconsistentStateException {
 
         final Set<SubscriptionEventTypeStats.Partition> resultPartitions = new HashSet<>(stats.size());
         for (final PartitionEndStatistics stat : stats) {
@@ -274,7 +270,7 @@ public class SubscriptionService {
                     currentPosition = converter.convert(offset);
                 } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
                         ServiceUnavailableException e) {
-                    throw new ServiceUnavailableException("Failed to convert cursor information for cursor ", e);
+                    throw new ServiceTemporaryUnavailableException(e);
                 }
                 try {
                     distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
@@ -283,7 +279,7 @@ public class SubscriptionService {
                             ex.getReason() == InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER) {
                         distance = 0L;
                     } else {
-                        throw ex;
+                        throw new InconsistentStateException("Unexpected exception while calculating distance", ex);
                     }
                 }
             } else {

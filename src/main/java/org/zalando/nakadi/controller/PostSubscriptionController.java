@@ -1,9 +1,14 @@
 package org.zalando.nakadi.controller;
 
+import javax.validation.Valid;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
+import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import static org.springframework.http.HttpStatus.OK;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +21,7 @@ import org.springframework.web.util.UriComponents;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
@@ -27,19 +33,12 @@ import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
-
-import javax.validation.Valid;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
-
-import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
-import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import org.zalando.problem.MoreStatus;
+import org.zalando.problem.Problem;
+import org.zalando.problem.spring.web.advice.Responses;
 
 
 @RestController
@@ -65,9 +64,8 @@ public class PostSubscriptionController {
                                                      final Errors errors,
                                                      final NativeWebRequest request,
                                                      final Client client) {
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
+        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
+
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
@@ -116,4 +114,12 @@ public class PostSubscriptionController {
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(FeatureNotAvailableException.class)
+    public ResponseEntity<Problem> handleFeatureNotAvailable(
+            final FeatureNotAvailableException ex,
+            final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, "Feature is disabled"), request);
+
+    }
 }

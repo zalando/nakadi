@@ -10,6 +10,7 @@ import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import org.junit.Test;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -35,6 +36,7 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.ClientResolver;
@@ -42,6 +44,7 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.CursorsService;
 import org.zalando.nakadi.util.FeatureToggleService;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
@@ -181,7 +184,8 @@ public class CursorsControllerTest {
 
     @Test
     public void whenGetAndNoFeatureThenNotImplemented() throws Exception {
-        when(featureToggleService.isFeatureEnabled(any())).thenReturn(false);
+        Mockito.doThrow(new FeatureNotAvailableException("Not available", HIGH_LEVEL_API))
+                .when(featureToggleService).checkFeatureOn(eq(HIGH_LEVEL_API));
         getCursors().andExpect(status().is(HttpStatus.NOT_IMPLEMENTED.value()));
     }
 

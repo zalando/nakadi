@@ -10,7 +10,6 @@ import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.springframework.http.HttpStatus.OK;
 import org.springframework.http.ResponseEntity;
 import static org.springframework.http.ResponseEntity.noContent;
@@ -33,6 +32,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
@@ -76,9 +76,7 @@ public class CursorsController {
     public ResponseEntity<?> getCursors(@PathVariable("subscriptionId") final String subscriptionId,
                                         final NativeWebRequest request,
                                         final Client client) {
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
+        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
         try {
             final List<SubscriptionCursor> cursors = cursorsService.getSubscriptionCursors(subscriptionId, client)
                     .stream()
@@ -101,9 +99,7 @@ public class CursorsController {
                 "COMMIT_CURSORS sid:" + subscriptionId + ", size=" + cursorsIn.getItems().size(),
                 "isFeatureEnabled");
         try {
-            if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-                return new ResponseEntity<>(NOT_IMPLEMENTED);
-            }
+            featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
             try {
                 TimeLogger.addMeasure("convertToNakadiCursors");
@@ -139,6 +135,7 @@ public class CursorsController {
             @Valid @RequestBody final ItemsWrapper<SubscriptionCursorWithoutToken> cursors,
             final NativeWebRequest request,
             final Client client) {
+        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         try {
             cursorsService.resetCursors(subscriptionId, convertToNakadiCursors(cursors), client);
@@ -181,6 +178,13 @@ public class CursorsController {
                                                                          final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(new ValidationProblem(ex.getBindingResult()), request);
+    }
+
+    @ExceptionHandler(FeatureNotAvailableException.class)
+    public ResponseEntity<Problem> handleFeatureNotAllowed(final FeatureNotAvailableException ex,
+                                                           final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Problem.valueOf(Response.Status.NOT_IMPLEMENTED, "Feature is disabled"), request);
     }
 
 }

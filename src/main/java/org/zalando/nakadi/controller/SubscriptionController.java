@@ -1,26 +1,34 @@
 package org.zalando.nakadi.controller;
 
+import java.util.Set;
+import javax.annotation.Nullable;
+import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
-
-import javax.annotation.Nullable;
-import java.util.Set;
-
-import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import org.zalando.problem.Problem;
+import org.zalando.problem.spring.web.advice.Responses;
 
 
 @RestController
@@ -46,10 +54,8 @@ public class SubscriptionController {
             @RequestParam(value = "limit", required = false, defaultValue = "20") final int limit,
             @RequestParam(value = "offset", required = false, defaultValue = "0") final int offset,
             final NativeWebRequest request) {
+        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
         return WebResult.wrap(() ->
                 subscriptionService.listSubscriptions(owningApplication, eventTypes, limit, offset), request);
     }
@@ -57,9 +63,7 @@ public class SubscriptionController {
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ResponseEntity<?> getSubscription(@PathVariable("id") final String subscriptionId,
                                              final NativeWebRequest request) {
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
+        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         return WebResult.wrap(() -> subscriptionService.getSubscription(subscriptionId), request);
     }
@@ -67,22 +71,55 @@ public class SubscriptionController {
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> deleteSubscription(@PathVariable("id") final String subscriptionId,
                                                 final NativeWebRequest request, final Client client) {
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
+        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         return WebResult.wrap(() -> subscriptionService.deleteSubscription(subscriptionId, client), request,
                 HttpStatus.NO_CONTENT);
     }
 
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
-    public ResponseEntity<?> getSubscriptionStats(@PathVariable("id") final String subscriptionId,
-                                                  final NativeWebRequest request) {
-        if (!featureToggleService.isFeatureEnabled(HIGH_LEVEL_API)) {
-            return new ResponseEntity<>(NOT_IMPLEMENTED);
-        }
+    public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
+            @PathVariable("id") final String subscriptionId)
+            throws NakadiException, InconsistentStateException, ServiceTemporaryUnavailableException {
+        featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
-        return WebResult.wrap(() -> subscriptionService.getSubscriptionStat(subscriptionId), request);
+        return subscriptionService.getSubscriptionStat(subscriptionId);
+    }
+
+    @ExceptionHandler(NakadiException.class)
+    public ResponseEntity<Problem> handleNakadiException(final NakadiException ex,
+                                                         final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(ex.asProblem(), request);
+    }
+
+    @ExceptionHandler(FeatureNotAvailableException.class)
+    public ResponseEntity<Problem> handleFeatureTurnedOff(final FeatureNotAvailableException ex,
+                                                          final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, "Feature is disabled"), request);
+    }
+
+    @ExceptionHandler(InconsistentStateException.class)
+    public ResponseEntity<Problem> handleInconsistentState(final InconsistentStateException ex,
+                                                           final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(
+                Problem.valueOf(
+                        SERVICE_UNAVAILABLE,
+                        ex.getMessage()),
+                request);
+    }
+
+    @ExceptionHandler(ServiceTemporaryUnavailableException.class)
+    public ResponseEntity<Problem> handleServiceTemporaryUnavailable(final ServiceTemporaryUnavailableException ex,
+                                                                     final NativeWebRequest request) {
+        LOG.debug(ex.getMessage(), ex);
+        return Responses.create(
+                Problem.valueOf(
+                        SERVICE_UNAVAILABLE,
+                        ex.getMessage()),
+                request);
     }
 
 }
