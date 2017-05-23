@@ -2354,9 +2354,9 @@ definitions:
             unconsumed_events:
               type: number
               description: |
-                The amount of events in this partition that are not yet consumed within this subscription. May be not
-                determined at the moment when no events were yet consumed from the partition in this subscription (in
-                that case the property will be absent).
+                The amount of events in this partition that are not yet consumed within this subscription.
+                The property may be absent at the moment when no events were yet consumed from the partition in this
+                subscription (In case of `read_from` is `BEGIN` or `END`)
             stream_id:
               type: string
               description: the id of the stream that consumes data from this partition
