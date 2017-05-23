@@ -97,7 +97,7 @@ public class SubscriptionController {
     public ResponseEntity<Problem> handleFeatureTurnedOff(final FeatureNotAvailableException ex,
                                                           final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
-        return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, "Feature is disabled"), request);
+        return Responses.create(Problem.valueOf(NOT_IMPLEMENTED, ex.getMessage()), request);
     }
 
     @ExceptionHandler(InconsistentStateException.class)
