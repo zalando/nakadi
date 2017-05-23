@@ -31,6 +31,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
@@ -38,7 +39,6 @@ import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
-import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
@@ -213,9 +213,17 @@ public class SubscriptionService {
 
         final ZkSubscriptionNode zkSubscriptionNode = getZkSubscriptionNode(subscription, subscriptionClient);
 
-        return eventTypes.stream()
-                .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
-                .collect(Collectors.toList());
+        try {
+            return eventTypes.stream()
+                    .map(Try.wrap(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions)))
+                    .map(Try::getOrThrow)
+                    .collect(Collectors.toList());
+        } catch (NakadiRuntimeException ex) {
+            if (ex.getCause() instanceof ServiceUnavailableException) {
+                throw (ServiceUnavailableException) ex.getCause();
+            }
+            throw new ServiceUnavailableException("Unknown exception during building stats objects", ex);
+        }
     }
 
     private ZkSubscriptionNode getZkSubscriptionNode(
@@ -249,7 +257,7 @@ public class SubscriptionService {
             final EventType eventType,
             final ZkSubscriptionNode subscriptionNode,
             final ZkSubscriptionClient client,
-            final List<PartitionEndStatistics> stats) {
+            final List<PartitionEndStatistics> stats) throws ServiceUnavailableException, InvalidCursorOperation {
 
         final Set<SubscriptionEventTypeStats.Partition> resultPartitions = new HashSet<>(stats.size());
         for (final PartitionEndStatistics stat : stats) {
@@ -266,7 +274,7 @@ public class SubscriptionService {
                     currentPosition = converter.convert(offset);
                 } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
                         ServiceUnavailableException e) {
-                    throw new MyNakadiRuntimeException1("Failed to convert cursor information for cursor ", e);
+                    throw new ServiceUnavailableException("Failed to convert cursor information for cursor ", e);
                 }
                 try {
                     distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
