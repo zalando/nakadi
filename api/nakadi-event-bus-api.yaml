@@ -780,6 +780,7 @@ paths:
           description: |
             Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
             `unconsumed_events` to the response partition object.
+          type: string
       responses:
         '200':
           description: OK
@@ -857,7 +858,7 @@ paths:
               - if the `shift` provided leads to a cursor that is not yet existent, i.e. it's pointing to
               some cursor yet to be generated in the future.
             schema:
-              - $ref: '#/definitions/Problem'
+              $ref: '#/definitions/Problem'
           '403':
             description: Access forbidden
             schema:
@@ -1939,9 +1940,9 @@ definitions:
       - final_cursor
     properties:
       initial_cursor:
-        - $ref: "#/definitions/Cursor"
+        $ref: "#/definitions/Cursor"
       final_cursor:
-        - $ref: "#/definitions/Cursor"
+        $ref: "#/definitions/Cursor"
 
   CursorDistanceResult:
     allOf:
