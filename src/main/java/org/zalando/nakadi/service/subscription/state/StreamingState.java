@@ -48,7 +48,6 @@ class StreamingState extends State {
     private ZKSubscription topologyChangeSubscription;
     private EventConsumer.ReassignableEventConsumer eventConsumer;
     private boolean pollPaused;
-    private long lastCommitMillis;
     private long committedEvents;
     private long sentEvents;
     private long batchesSent;
@@ -56,6 +55,15 @@ class StreamingState extends State {
     // Uncommitted offsets are calculated right on exiting from Streaming state.
     private Map<TopicPartition, NakadiCursor> uncommittedOffsets;
     private ZKSubscription cursorResetSubscription;
+
+    /**
+     * Time that is used for commit timeout check. Commit timeout check is working only in case when there is something
+     * uncommitted. Value is updated in 2 cases: <ul>
+     * <li>something was committed</li>
+     * <li>stream moves from state when everything was committed to state with uncommitted events</li>
+     * </ul>
+     */
+    private long lastCommitMillis;
 
     @Override
     public void onEnter() {
@@ -97,8 +105,7 @@ class StreamingState extends State {
 
     private void checkCommitTimeout() {
         final long currentMillis = System.currentTimeMillis();
-        final boolean hasUncommitted = offsets.values().stream().anyMatch(d -> !d.isCommitted());
-        if (hasUncommitted) {
+        if (!isEverythingCommitted()) {
             final long millisFromLastCommit = currentMillis - lastCommitMillis;
             if (millisFromLastCommit >= getParameters().commitTimeoutMillis) {
                 final String debugMessage = "Commit timeout reached";
@@ -111,6 +118,10 @@ class StreamingState extends State {
         } else {
             scheduleTask(this::checkCommitTimeout, getParameters().commitTimeoutMillis, TimeUnit.MILLISECONDS);
         }
+    }
+
+    private boolean isEverythingCommitted() {
+        return offsets.values().stream().allMatch(PartitionData::isCommitted);
     }
 
     private void sendMetadata(final String metadata) {
@@ -192,12 +203,15 @@ class StreamingState extends State {
     private void streamToOutput() {
         final long currentTimeMillis = System.currentTimeMillis();
         int messagesAllowedToSend = (int) getMessagesAllowedToSend();
+        final boolean wasCommitted = isEverythingCommitted();
+        boolean sentSomething = false;
         for (final Map.Entry<TopicPartition, PartitionData> e : offsets.entrySet()) {
             List<ConsumedEvent> toSend;
             while (null != (toSend = e.getValue().takeEventsToStream(
                     currentTimeMillis,
                     Math.min(getParameters().batchLimitEvents, messagesAllowedToSend),
                     getParameters().batchTimeoutMillis))) {
+                sentSomething |= !toSend.isEmpty();
                 flushData(e.getKey(), toSend, batchesSent == 0 ? Optional.of("Stream started") : Optional.empty());
                 this.sentEvents += toSend.size();
                 if (toSend.isEmpty()) {
@@ -205,6 +219,9 @@ class StreamingState extends State {
                 }
                 messagesAllowedToSend -= toSend.size();
             }
+        }
+        if (wasCommitted && sentSomething) {
+            this.lastCommitMillis = System.currentTimeMillis();
         }
         pollPaused = getMessagesAllowedToSend() <= 0;
         if (!offsets.isEmpty() &&
