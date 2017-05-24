@@ -2397,7 +2397,7 @@ definitions:
         type: array
         description: |
           An array of subject attributes that are required for updating the event type. Any one of the attributes
-          defined in this array is sufficient to be authorized. The catch-all item takes precedence over all others,
+          defined in this array is sufficient to be authorized. The wildcard item takes precedence over all others,
           i.e. if it is present, all users are authorized.
         items:
           $ref: '#/definitions/AuthorizationAttribute'
@@ -2406,7 +2406,7 @@ definitions:
         type: array
         description: |
           An array of subject attributes that are required for reading events from the event type. Any one of the
-          attributes defined in this array is sufficient to be authorized. The catch-all item takes precedence over
+          attributes defined in this array is sufficient to be authorized. The wildcard item takes precedence over
           all others, i.e., if it is present, all users are authorized.
         items:
           $ref: '#/definitions/AuthorizationAttribute'
@@ -2415,7 +2415,7 @@ definitions:
         type: array
         description: |
           An array of subject attributes that are required for writing events to the event type. Any one of the
-          attributes defined in this array is sufficient to be authorized. The catch-all item takes precedence over
+          attributes defined in this array is sufficient to be authorized. The wildcard item takes precedence over
           all others, i.e. if it is present, all users are authorized.
         items:
           $ref: '#/definitions/AuthorizationAttribute'
@@ -2429,7 +2429,8 @@ definitions:
     type: object
     description: |
       An attribute for authorization. This object includes the type of attribute (team, permission, etc.),
-      and the attribute value. A catch-all can be represented with type 'ALL', and value 'ALL'.
+      and the attribute value. A wildcard can be represented with type 'ALL', and value 'ALL'. It means that all
+      authenticated users are allowed to perform an operation.
     properties:
       attribute_type:
         type: string
