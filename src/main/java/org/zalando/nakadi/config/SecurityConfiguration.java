@@ -58,7 +58,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers(GET, "/event-types/*/cursors-lag/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/subscriptions/*/events/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/subscriptions/*/cursors/**").access(hasScope(eventStreamReadScope))
-                    .antMatchers(PUT, "/subscriptions/*/cursors/**").access(hasScope(eventStreamReadScope))
+                    .antMatchers(POST, "/subscriptions/*/cursors/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/subscriptions/*/stats/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(POST, "/event-types/*/shifted-cursors").access(hasScope(eventStreamReadScope))
                     .antMatchers(POST, "/event-types/*/cursors-lag").access(hasScope(eventStreamReadScope))
