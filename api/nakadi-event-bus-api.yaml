@@ -2400,7 +2400,7 @@ definitions:
           defined in this array is sufficient to be authorized. The catch-all item takes precedence over all others,
           i.e. if it is present, all users are authorized.
         items:
-          $ref: '#/definitions/AccessControlListItem'
+          $ref: '#/definitions/AuthorizationAttribute'
         minItems: 1
       read:
         type: array
@@ -2409,7 +2409,7 @@ definitions:
           attributes defined in this array is sufficient to be authorized. The catch-all item takes precedence over
           all others, i.e., if it is present, all users are authorized.
         items:
-          $ref: '#/definitions/AccessControlListItem'
+          $ref: '#/definitions/AuthorizationAttribute'
         minItems: 1
       write:
         type: array
@@ -2418,14 +2418,14 @@ definitions:
           attributes defined in this array is sufficient to be authorized. The catch-all item takes precedence over
           all others, i.e. if it is present, all users are authorized.
         items:
-          $ref: '#/definitions/AccessControlListItem'
+          $ref: '#/definitions/AuthorizationAttribute'
         minItems: 1
     required:
       - admin
       - read
       - write
 
-  AccessControlListItem:
+  AuthorizationAttribute:
     type: object
     description: |
       An attribute for authorization. This object includes the type of attribute (team, permission, etc.),
