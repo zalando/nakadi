@@ -585,7 +585,7 @@ paths:
         Calculate the distance between two offsets. This is useful for performing checks for data completeness, when
         a client has read some batches and wants to be sure that all delivered events have been correctly processed.
 
-        If per-EventType authorization is enabled, the called must be authorized to read from the EventType.
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
       parameters:
         - name: name
           in: path
@@ -636,7 +636,7 @@ paths:
 
         It provides the number of unconsumed events for each cursor's partition.
 
-        If per-EventType authorization is enabled, the called must be authorized to read from the EventType.
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
       parameters:
         - name: name
           in: path
@@ -698,7 +698,7 @@ paths:
 
         This endpoint is mostly interesting for monitoring purposes or in cases when consumer wants
         to start consuming older messages.
-        If per-EventType authorization is enabled, the called must be authorized to read from the EventType.
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
 
       parameters:
         - name: name
@@ -806,7 +806,7 @@ paths:
         description: |
           Transforms a list of Cursors with `shift` into a list without `shift`s. This is useful when there is the need
           for randomly access events in the stream.
-          If per-EventType authorization is enabled, the called must be authorized to read from the EventType.
+          If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
 
         parameters:
           - name: name
@@ -878,7 +878,7 @@ paths:
         this endpoint is invoked several times with the same key subscription properties in body (order of even_types is
         not important) - the subscription will be created only once and for all other calls it will just return
         the subscription that was already created.
-        If per-EventType authorization is enabled, the called must be authorized to read from all the EventTypes in the
+        If per-EventType authorization is enabled, the caller must be authorized to read from all the EventTypes in the
         subscription.
       parameters:
         - name: subscription
