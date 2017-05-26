@@ -616,7 +616,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden
+          description: Access forbidden because of EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -681,7 +681,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden
+          description: Access forbidden because of EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -743,7 +743,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden
+          description: Access forbidden because of EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -791,7 +791,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden
+          description: Access forbidden because of EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -860,7 +860,7 @@ paths:
             schema:
               $ref: '#/definitions/Problem'
           '403':
-            description: Access forbidden
+            description: Access forbidden because of EventType authorization failure.
             schema:
               $ref: '#/definitions/Problem'
 
@@ -923,7 +923,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden
+          description: Access forbidden because of EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
     get:
