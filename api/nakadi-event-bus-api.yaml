@@ -2429,7 +2429,7 @@ definitions:
     type: object
     description: |
       An attribute for authorization. This object includes the type of attribute (team, permission, etc.),
-      and the attribute value. A wildcard can be represented with type 'ALL', and value 'ALL'. It means that all
+      and the attribute value. A wildcard can be represented with type '*', and value '*'. It means that all
       authenticated users are allowed to perform an operation.
     properties:
       attribute_type:
