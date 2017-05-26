@@ -616,7 +616,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden because of missing scope of EventType authorization failure.
+          description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -681,7 +681,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden because of missing scope of EventType authorization failure.
+          description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -743,7 +743,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden because of missing scope of EventType authorization failure.
+          description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -756,7 +756,7 @@ paths:
         - oauth2: ['nakadi.event_stream.read']
 
       description: |
-        Returns the given `Partition` of this EventType. If per-EventType authorization is enabled, the called must
+        Returns the given `Partition` of this EventType. If per-EventType authorization is enabled, the caller must
         be authorized to read from the EventType.
       parameters:
         - name: name
@@ -791,7 +791,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden because of missing scope of EventType authorization failure.
+          description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
 
@@ -860,7 +860,7 @@ paths:
             schema:
               $ref: '#/definitions/Problem'
           '403':
-            description: Access forbidden because of missing scope of EventType authorization failure.
+            description: Access forbidden because of missing scope or EventType authorization failure.
             schema:
               $ref: '#/definitions/Problem'
 
@@ -923,7 +923,7 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
         '403':
-          description: Access forbidden because of missing scope of EventType authorization failure.
+          description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
     get:
