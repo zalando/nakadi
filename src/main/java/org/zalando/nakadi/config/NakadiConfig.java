@@ -22,7 +22,6 @@ import org.zalando.nakadi.plugin.api.SystemProperties;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperLockFactory;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 
 @Configuration
 @EnableScheduling
@@ -38,11 +37,6 @@ public class NakadiConfig {
     @Bean
     public ZooKeeperLockFactory zooKeeperLockFactory(final ZooKeeperHolder zooKeeperHolder) {
         return new ZooKeeperLockFactory(zooKeeperHolder);
-    }
-
-    @Bean
-    public ZkSubscriptionClientFactory zkSubscriptionClientFactory(final ZooKeeperHolder zooKeeperHolder) {
-        return new ZkSubscriptionClientFactory(zooKeeperHolder);
     }
 
     @Bean

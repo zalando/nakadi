@@ -1,9 +1,9 @@
 package org.zalando.nakadi.view;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
+import org.zalando.nakadi.domain.EventTypePartition;
 
 @Immutable
 public class SubscriptionCursorWithoutToken extends Cursor {
@@ -20,6 +20,14 @@ public class SubscriptionCursorWithoutToken extends Cursor {
 
     public String getEventType() {
         return eventType;
+    }
+
+    public EventTypePartition getEventTypePartition() {
+        return new EventTypePartition(eventType, getPartition());
+    }
+
+    public SubscriptionCursor withToken(final String token) {
+        return new SubscriptionCursor(getPartition(), getOffset(), getEventType(), token);
     }
 
     @Override

@@ -1,6 +1,28 @@
 package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
+import static com.google.common.collect.Lists.newArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import static java.util.Collections.unmodifiableList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import static java.util.stream.Collectors.toList;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import kafka.admin.AdminUtils;
 import kafka.common.TopicExistsException;
 import kafka.server.ConfigType;
@@ -19,6 +41,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.BatchItem;
+import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
+import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
+import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
+import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.domain.EventPublishingStep;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -39,35 +65,6 @@ import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.zookeeper.ZooKeeperHolder;
 import org.zalando.nakadi.repository.zookeeper.ZookeeperSettings;
 import org.zalando.nakadi.util.UUIDGenerator;
-
-import javax.annotation.Nullable;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Lists.partition;
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toList;
-import static org.zalando.nakadi.domain.CursorError.NULL_OFFSET;
-import static org.zalando.nakadi.domain.CursorError.NULL_PARTITION;
-import static org.zalando.nakadi.domain.CursorError.PARTITION_NOT_FOUND;
-import static org.zalando.nakadi.domain.CursorError.UNAVAILABLE;
 
 public class KafkaTopicRepository implements TopicRepository {
 
@@ -383,11 +380,11 @@ public class KafkaTopicRepository implements TopicRepository {
     }
 
     @Override
-    public EventConsumer createEventConsumer(@Nullable final String clientId, final List<NakadiCursor> cursors)
+    public EventConsumer.LowLevelConsumer createEventConsumer(
+            @Nullable final String clientId, final List<NakadiCursor> cursors)
             throws ServiceUnavailableException, InvalidCursorException {
 
         final Map<NakadiCursor, KafkaCursor> cursorMapping = this.convertToKafkaCursors(cursors);
-        cursorMapping.entrySet().forEach(entry -> LOG.info("Mapped to {} from {}", entry.getValue(), entry.getKey()));
         final Map<TopicPartition, Timeline> timelineMap = cursorMapping.entrySet().stream()
                 .collect(Collectors.toMap(
                         entry -> new TopicPartition(entry.getValue().getTopic(), entry.getValue().getPartition()),

@@ -8,7 +8,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
-import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.Subscription;
@@ -209,8 +208,7 @@ public class StreamingContext implements SubscriptionStreamer {
             zkClient.runLocked(() -> {
                 final Partition[] changeset = rebalancer.apply(zkClient.listSessions(), zkClient.listPartitions());
                 if (changeset.length > 0) {
-                    Stream.of(changeset).forEach(zkClient::updatePartitionConfiguration);
-                    zkClient.incrementTopology();
+                    zkClient.updatePartitionsConfiguration(changeset);
                 }
             });
         }

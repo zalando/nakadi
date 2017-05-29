@@ -14,7 +14,7 @@ import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.repository.EventConsumer;
 
-public class NakadiKafkaConsumer implements EventConsumer {
+public class NakadiKafkaConsumer implements EventConsumer.LowLevelConsumer {
 
     private final Consumer<String, String> kafkaConsumer;
     private final long pollTimeout;

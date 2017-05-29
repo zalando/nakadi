@@ -2,6 +2,8 @@ package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static com.jayway.restassured.RestAssured.given;
+import static com.jayway.restassured.http.ContentType.JSON;
 import com.jayway.restassured.response.Response;
 import java.io.IOException;
 import java.util.Arrays;
@@ -14,75 +16,74 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.http.HttpStatus;
+import static org.hamcrest.Matchers.hasSize;
 import org.junit.Assert;
+import static org.junit.Assert.assertThat;
 import org.junit.Test;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.Try;
+import org.zalando.nakadi.util.TimeLogger;
+import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.webservice.BaseAT;
+import static org.zalando.nakadi.webservice.hila.SubscriptionAT.SUBSCRIPTIONS_URL;
 import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import org.zalando.nakadi.webservice.utils.TestStreamingClient;
-import static com.jayway.restassured.RestAssured.given;
-import static com.jayway.restassured.http.ContentType.JSON;
-import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertThat;
-import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import static org.zalando.nakadi.webservice.hila.SubscriptionAT.SUBSCRIPTIONS_URL;
 
-public class SubscriptionLoadAT extends BaseAT {
+public class SubscriptionLoadAT {
 
     private static final int EVENT_TYPE_COUNT = 2;
     private static final int PARTITION_PER_EVENT_TYPE = 8;
     private static final int MESSAGES_PER_EVENT_TYPE = PARTITION_PER_EVENT_TYPE * 10;
     private static final ObjectMapper MAPPER = (new JsonConfig()).jacksonObjectMapper();
 
-    private static class TimeLogger {
-        private long start = System.currentTimeMillis();
-
-        public void mark(final String message) {
-            final long now = System.currentTimeMillis();
-            System.out.println(message + " took " + (now - start));
-            start = now;
-        }
-    }
-
     @Test(timeout = 30000)
     public void testSubscriptionLoad() throws IOException, InterruptedException {
         // create event types
-        final TimeLogger timeLogger = new TimeLogger();
-        final List<EventType> eventTypeList = createEventTypes(EVENT_TYPE_COUNT, PARTITION_PER_EVENT_TYPE);
-        timeLogger.mark("Create event types");
+        List<TestStreamingClient> clients = null;
+        TimeLogger.startMeasure("testSubscriptionLoad", "createEventTypes");
+        try {
+            final List<EventType> eventTypeList = createEventTypes(EVENT_TYPE_COUNT, PARTITION_PER_EVENT_TYPE);
 
-        // publish events to each event type
-        eventTypeList.parallelStream().forEach(et -> sendEvents(et, MESSAGES_PER_EVENT_TYPE, PARTITION_PER_EVENT_TYPE));
-        timeLogger.mark("Publishing " + (MESSAGES_PER_EVENT_TYPE * EVENT_TYPE_COUNT) + " messages");
+            // publish events to each event type
+            TimeLogger.addMeasure("Publishing " + (MESSAGES_PER_EVENT_TYPE * EVENT_TYPE_COUNT) + " messages");
+            eventTypeList.parallelStream()
+                    .forEach(et -> sendEvents(et, MESSAGES_PER_EVENT_TYPE, PARTITION_PER_EVENT_TYPE));
 
-        // create subscription
-        final Subscription subscription = createSubscription(eventTypeList);
-        timeLogger.mark("Create subscription");
+            // create subscription
+            TimeLogger.addMeasure("Create subscription");
+            final Subscription subscription = createSubscription(eventTypeList);
 
-        final List<TestStreamingClient> clients = createSteamingClients(
-                subscription, Math.min(EVENT_TYPE_COUNT + 5, EVENT_TYPE_COUNT * PARTITION_PER_EVENT_TYPE));
-        clients.forEach(TestStreamingClient::start);
-        timeLogger.mark("Create " + clients.size() + " clients");
+            TimeLogger.addMeasure("Create clients");
+            clients = createSteamingClients(
+                    subscription, Math.min(EVENT_TYPE_COUNT + 5, EVENT_TYPE_COUNT * PARTITION_PER_EVENT_TYPE));
+            clients.forEach(TestStreamingClient::start);
 
-        // stream all the data.
-        final Map<String, String> receivedEvents = streamAllData(
-                clients, MESSAGES_PER_EVENT_TYPE * EVENT_TYPE_COUNT);
-        timeLogger.mark("Receive and commit " + receivedEvents.size() + " events");
+            // stream all the data.
+            TimeLogger.addMeasure("Receive and commit events");
+            final Map<String, String> receivedEvents = streamAllData(
+                    clients, MESSAGES_PER_EVENT_TYPE * EVENT_TYPE_COUNT);
 
-        // Close all connections
-        clients.parallelStream().forEach(TestStreamingClient::close);
-        timeLogger.mark("Closing connections");
+            // Close all connections
+            TimeLogger.addMeasure("Closing connections");
+            clients.parallelStream().forEach(TestStreamingClient::close);
 
-        // Check total events count
-        Assert.assertEquals(EVENT_TYPE_COUNT * MESSAGES_PER_EVENT_TYPE, receivedEvents.size());
-        // Check that every consumer received at least something
-        clients.stream().map(TestStreamingClient::getSessionId).forEach(
-                sessionId -> Assert.assertTrue(
-                        receivedEvents.values().stream().filter(v -> v.equals(sessionId)).count() > 0));
+            TimeLogger.addMeasure("checking");
+            // Check total events count
+            Assert.assertEquals(EVENT_TYPE_COUNT * MESSAGES_PER_EVENT_TYPE, receivedEvents.size());
+            // Check that every consumer received at least something
+            clients.stream().map(TestStreamingClient::getSessionId).forEach(
+                    sessionId -> Assert.assertTrue(
+                            receivedEvents.values().stream().filter(v -> v.equals(sessionId)).count() > 0));
+        } finally {
+            TimeLogger.addMeasure("stop_clients");
+            if (null != clients) {
+                clients.forEach(TestStreamingClient::close);
+            }
+            System.out.println(TimeLogger.finishMeasure());
+        }
     }
 
     private static SubscriptionCursor asNoTokenCursor(final SubscriptionCursor source) {
@@ -93,21 +94,16 @@ public class SubscriptionLoadAT extends BaseAT {
                 "");
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 15000)
     public void testCursorsForDifferentEventTypesAreCommittedAtATime() throws IOException {
-        final TimeLogger timeLogger = new TimeLogger();
-
         final EventType[] eventTypes = new EventType[]{
                 NakadiTestUtils.createBusinessEventTypeWithPartitions(2),
                 NakadiTestUtils.createBusinessEventTypeWithPartitions(1)};
-        timeLogger.mark("Create 2 event types");
 
         final Subscription subscription = createSubscription(Arrays.asList(eventTypes));
-        timeLogger.mark("Create subscription");
 
         sendEvents(eventTypes[0], 2, 2);
         sendEvents(eventTypes[1], 1, 1);
-        timeLogger.mark("Send 3 events");
 
         final TestStreamingClient client = createSteamingClients(subscription, 1).get(0).start();
 
@@ -214,7 +210,7 @@ public class SubscriptionLoadAT extends BaseAT {
         final String streamParams = "stream_limit=" + EVENT_TYPE_COUNT * MESSAGES_PER_EVENT_TYPE +
                 "&batch_size=1&batch_flush_timeout=1";
         return IntStream.range(0, consumerCount)
-                .mapToObj(index -> TestStreamingClient.create(URL, subscription.getId(), streamParams))
+                .mapToObj(index -> TestStreamingClient.create(BaseAT.URL, subscription.getId(), streamParams))
                 .collect(Collectors.toList());
     }
 
@@ -237,7 +233,7 @@ public class SubscriptionLoadAT extends BaseAT {
     }
 
     private static void sendEvents(final EventType eventType, final int eventCount, final int partitions) {
-        final Map<String, String> data = IntStream.range(0, eventCount).mapToObj(Integer::new).collect(
+        final Map<String, String> data = IntStream.range(0, eventCount).boxed().collect(
                 Collectors.toMap(
                         idx -> "et-" + eventType.getName() + "-" + idx,
                         idx -> String.valueOf(idx % partitions)));
@@ -246,7 +242,7 @@ public class SubscriptionLoadAT extends BaseAT {
 
     private static List<EventType> createEventTypes(final int count, final int partitions) {
         return IntStream.range(0, count)
-                .mapToObj(Integer::new)
+                .boxed()
                 .map(Try.wrap(index ->
                         NakadiTestUtils.createBusinessEventTypeWithPartitions(partitions)).andThen(Try::getOrThrow))
                 .collect(Collectors.toList());

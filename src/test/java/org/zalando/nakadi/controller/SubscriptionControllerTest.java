@@ -2,62 +2,18 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
-import org.junit.Test;
-import org.springframework.core.MethodParameter;
-import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
-import org.springframework.web.bind.support.WebDataBinderFactory;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.method.support.ModelAndViewContainer;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.ItemsWrapper;
-import org.zalando.nakadi.domain.PaginationLinks;
-import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.domain.PartitionEndStatistics;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
-import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.domain.TopicPartition;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.plugin.api.ApplicationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
-import org.zalando.nakadi.security.NakadiClient;
-import org.zalando.nakadi.service.subscription.SubscriptionService;
-import org.zalando.nakadi.service.subscription.model.Partition;
-import org.zalando.nakadi.service.subscription.model.Session;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
-import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.utils.JsonTestHelper;
-import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-import org.zalando.problem.Problem;
-import org.zalando.problem.ThrowableProblem;
-
-import javax.ws.rs.core.Response;
+import static java.text.MessageFormat.format;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-
-import static java.text.MessageFormat.format;
+import javax.ws.rs.core.Response;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import org.junit.Test;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
@@ -67,15 +23,61 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.test.web.servlet.ResultActions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.PaginationLinks;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.repository.kafka.KafkaPartitionEndStatistics;
+import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.CursorConverter;
+import org.zalando.nakadi.service.CursorOperationsService;
+import org.zalando.nakadi.service.subscription.SubscriptionService;
+import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.model.Session;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
+import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
+import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+import org.zalando.problem.Problem;
+import org.zalando.problem.ThrowableProblem;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class SubscriptionControllerTest {
@@ -89,6 +91,8 @@ public class SubscriptionControllerTest {
     private final StandaloneMockMvcBuilder mockMvcBuilder;
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
+    private final CursorConverter cursorConverter;
+    private final CursorOperationsService cursorOperationsService;
     private static final int PARTITIONS_PER_SUBSCRIPTION = 5;
     private static final Timeline TIMELINE = createFakeTimeline("topic");
 
@@ -101,17 +105,20 @@ public class SubscriptionControllerTest {
                 .thenReturn(false);
 
         topicRepository = mock(TopicRepository.class);
-        final ZkSubscriptionClientFactory zkSubscriptionClientFactory = mock(ZkSubscriptionClientFactory.class);
+        final SubscriptionClientFactory zkSubscriptionClientFactory = mock(SubscriptionClientFactory.class);
         zkSubscriptionClient = mock(ZkSubscriptionClient.class);
-        when(zkSubscriptionClientFactory.createZkSubscriptionClient(any())).thenReturn(zkSubscriptionClient);
+        when(zkSubscriptionClientFactory.createClient(any(), any())).thenReturn(zkSubscriptionClient);
         final TimelineService timelineService = mock(TimelineService.class);
         when(timelineService.getTimeline(any())).thenReturn(TIMELINE);
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         final NakadiSettings settings = mock(NakadiSettings.class);
         when(settings.getMaxSubscriptionPartitions()).thenReturn(PARTITIONS_PER_SUBSCRIPTION);
+        cursorOperationsService = mock(CursorOperationsService.class);
+        cursorConverter = mock(CursorConverter.class);
         final SubscriptionService subscriptionService = new SubscriptionService(subscriptionRepository,
-                zkSubscriptionClientFactory, timelineService, eventTypeRepository, null);
+                zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
+                cursorConverter, cursorOperationsService);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
@@ -222,24 +229,31 @@ public class SubscriptionControllerTest {
 
     @Test
     public void whenGetSubscriptionStatThenOk() throws Exception {
-        final Subscription subscription = builder().withEventType("myET").build();
-        final TopicPartition partitionKey = new TopicPartition("topic", "0");
-        final Partition[] partitions = {new Partition(partitionKey, "xz", "xz", Partition.State.ASSIGNED)};
+        final Subscription subscription = builder().withEventType(TIMELINE.getEventType()).build();
+        final Partition[] partitions = {
+                new Partition(TIMELINE.getEventType(), "0", "xz", null, Partition.State.ASSIGNED)};
         final ZkSubscriptionNode zkSubscriptionNode = new ZkSubscriptionNode();
         zkSubscriptionNode.setPartitions(partitions);
-        zkSubscriptionNode.setSessions(new Session[]{new Session("session-is", 0)});
+        zkSubscriptionNode.setSessions(new Session[]{new Session("xz", 0)});
         when(subscriptionRepository.getSubscription(subscription.getId())).thenReturn(subscription);
         when(zkSubscriptionClient.getZkSubscriptionNodeLocked()).thenReturn(zkSubscriptionNode);
-        when(zkSubscriptionClient.getOffset(partitionKey)).thenReturn("3");
-        when(eventTypeRepository.findByName("myET"))
-                .thenReturn(EventTypeTestBuilder.builder().name("myET").topic("topic").build());
+        final SubscriptionCursorWithoutToken currentOffset =
+                new SubscriptionCursorWithoutToken(TIMELINE.getEventType(), "0", "3");
+        when(zkSubscriptionClient.getOffset(new EventTypePartition(TIMELINE.getEventType(), "0")))
+                .thenReturn(currentOffset);
+        when(eventTypeRepository.findByName(TIMELINE.getEventType()))
+                .thenReturn(EventTypeTestBuilder.builder().name(TIMELINE.getEventType()).build());
         final List<PartitionEndStatistics> statistics = Collections.singletonList(
                 new KafkaPartitionEndStatistics(TIMELINE, 0, 13));
         when(topicRepository.loadTopicEndStatistics(eq(Collections.singletonList(TIMELINE)))).thenReturn(statistics);
+        final NakadiCursor currentCursor = mock(NakadiCursor.class);
+        when(cursorConverter.convert(eq(currentOffset))).thenReturn(currentCursor);
+        when(cursorOperationsService.calculateDistance(eq(currentCursor), eq(statistics.get(0).getLast())))
+                .thenReturn(10L);
 
         final List<SubscriptionEventTypeStats> expectedStats =
                 Collections.singletonList(new SubscriptionEventTypeStats(
-                        "myET",
+                        TIMELINE.getEventType(),
                         Collections.singleton(new SubscriptionEventTypeStats.Partition("0", "assigned", 10L, "xz")))
                 );
 

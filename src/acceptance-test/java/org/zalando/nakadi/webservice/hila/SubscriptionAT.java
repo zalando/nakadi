@@ -1,47 +1,26 @@
 package org.zalando.nakadi.webservice.hila;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.jayway.restassured.response.Response;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.http.HttpStatus;
-import org.apache.zookeeper.data.Stat;
-import org.junit.Assert;
-import org.junit.Test;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeBase;
-import org.zalando.nakadi.domain.EventTypePartition;
-import org.zalando.nakadi.domain.PaginationLinks;
-import org.zalando.nakadi.domain.PaginationWrapper;
-import org.zalando.nakadi.domain.Subscription;
-import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.repository.kafka.KafkaCursor;
-import org.zalando.nakadi.utils.JsonTestHelper;
-import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
-import org.zalando.nakadi.view.Cursor;
-import org.zalando.nakadi.view.SubscriptionCursor;
-import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-import org.zalando.nakadi.webservice.BaseAT;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
-import org.zalando.nakadi.webservice.utils.TestStreamingClient;
-import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.given;
 import static com.jayway.restassured.RestAssured.when;
 import static com.jayway.restassured.http.ContentType.JSON;
+import com.jayway.restassured.response.Response;
+import java.io.IOException;
 import static java.text.MessageFormat.format;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import static java.util.stream.IntStream.range;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.http.HttpStatus;
+import org.apache.zookeeper.data.Stat;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -49,14 +28,36 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
+import org.junit.Assert;
+import org.junit.Test;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeBase;
+import org.zalando.nakadi.domain.EventTypePartition;
+import org.zalando.nakadi.domain.ItemsWrapper;
+import org.zalando.nakadi.domain.PaginationLinks;
+import org.zalando.nakadi.domain.PaginationWrapper;
+import org.zalando.nakadi.domain.Subscription;
+import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
+import org.zalando.nakadi.utils.JsonTestHelper;
+import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
+import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createBusinessEventTypeWithPartitions;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscription;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createSubscriptionForEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishBusinessEventWithUserDefinedPartition;
+import org.zalando.nakadi.webservice.utils.TestStreamingClient;
 import static org.zalando.nakadi.webservice.utils.TestStreamingClient.SESSION_ID_UNKNOWN;
+import org.zalando.nakadi.webservice.utils.ZookeeperTestUtils;
 
 public class SubscriptionAT extends BaseAT {
 
@@ -201,7 +202,7 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_NO_CONTENT);
 
         // check that offset is actually committed to Zookeeper
-        String committedOffset = getCommittedOffsetFromZk(topic, subscription, "0");
+        String committedOffset = getCommittedOffsetFromZk(etName, subscription, "0");
         assertThat(committedOffset, equalTo(KafkaCursor.toNakadiOffset(25)));
 
         // commit lower offsets and expect 200
@@ -212,7 +213,7 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_OK);
 
         // check that committed offset in Zookeeper is not changed
-        committedOffset = getCommittedOffsetFromZk(topic, subscription, "0");
+        committedOffset = getCommittedOffsetFromZk(etName, subscription, "0");
         assertThat(committedOffset, equalTo(KafkaCursor.toNakadiOffset(25)));
     }
 
@@ -351,6 +352,29 @@ public class SubscriptionAT extends BaseAT {
                 .statusCode(HttpStatus.SC_CONFLICT);
     }
 
+    @Test
+    public void whenStatsOnNotInitializedSubscriptionThanCorrectResponse() throws IOException {
+        final String et = createEventType().getName();
+        final Subscription s = createSubscriptionForEventType(et);
+        final Response response = when().get("/subscriptions/{sid}/stats", s.getId())
+                .thenReturn();
+        final ItemsWrapper<SubscriptionEventTypeStats> statsItems = MAPPER.readValue(
+                response.print(),
+                new TypeReference<ItemsWrapper<SubscriptionEventTypeStats>>() {
+                });
+        Assert.assertEquals(1, statsItems.getItems().size());
+        final SubscriptionEventTypeStats stats = statsItems.getItems().get(0);
+        Assert.assertEquals(et, stats.getEventType());
+        Assert.assertEquals(1, stats.getPartitions().size());
+        for (final SubscriptionEventTypeStats.Partition partition : stats.getPartitions()) {
+            Assert.assertNotNull(partition);
+            Assert.assertNotNull(partition.getPartition());
+            Assert.assertEquals("", partition.getStreamId());
+            Assert.assertNull(partition.getUnconsumedEvents());
+            Assert.assertEquals(partition.getState(), "unassigned");
+        }
+    }
+
     private Response commitCursors(final Subscription subscription, final String cursor, final String streamId) {
         return given()
                 .body(cursor)
@@ -359,10 +383,10 @@ public class SubscriptionAT extends BaseAT {
                 .post(format(CURSORS_URL, subscription.getId()));
     }
 
-    private String getCommittedOffsetFromZk(final String topic, final Subscription subscription, final String partition)
-            throws Exception {
-        final String path = format("/nakadi/subscriptions/{0}/topics/{1}/{2}/offset", subscription.getId(),
-                topic, partition);
+    private String getCommittedOffsetFromZk(
+            final String eventType, final Subscription subscription, final String partition) throws Exception {
+        final String path = format("/nakadi/subscriptions/{0}/offsets/{1}/{2}", subscription.getId(),
+                eventType, partition);
         final byte[] data = CURATOR.getData().forPath(path);
         return new String(data, Charsets.UTF_8);
     }

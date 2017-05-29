@@ -10,19 +10,20 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.TopicPartition;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 
 class ClosingState extends State {
-    private final Supplier<Map<TopicPartition, NakadiCursor>> uncommittedOffsetsSupplier;
+    private final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier;
     private final LongSupplier lastCommitSupplier;
-    private Map<TopicPartition, NakadiCursor> uncommittedOffsets;
-    private final Map<TopicPartition, ZKSubscription> listeners = new HashMap<>();
+    private Map<EventTypePartition, NakadiCursor> uncommittedOffsets;
+    private final Map<EventTypePartition, ZKSubscription> listeners = new HashMap<>();
     private ZKSubscription topologyListener;
 
-    ClosingState(final Supplier<Map<TopicPartition, NakadiCursor>> uncommittedOffsetsSupplier,
+    ClosingState(final Supplier<Map<EventTypePartition, NakadiCursor>> uncommittedOffsetsSupplier,
                  final LongSupplier lastCommitSupplier) {
         this.uncommittedOffsetsSupplier = uncommittedOffsetsSupplier;
         this.lastCommitSupplier = lastCommitSupplier;
@@ -69,14 +70,14 @@ class ClosingState extends State {
     private void reactOnTopologyChange() {
 
         // Collect current partitions state from Zk
-        final Map<TopicPartition, Partition> partitions = new HashMap<>();
+        final Map<EventTypePartition, Partition> partitions = new HashMap<>();
         getZk().runLocked(() -> Stream.of(getZk().listPartitions())
                 .filter(p -> getSessionId().equals(p.getSession()))
                 .forEach(p -> partitions.put(p.getKey(), p)));
         // Select which partitions need to be freed from this session
         // Ithere
-        final Set<TopicPartition> freeRightNow = new HashSet<>();
-        final Set<TopicPartition> addListeners = new HashSet<>();
+        final Set<EventTypePartition> freeRightNow = new HashSet<>();
+        final Set<EventTypePartition> addListeners = new HashSet<>();
         for (final Partition p : partitions.values()) {
             if (Partition.State.REASSIGNING.equals(p.getState())) {
                 if (!uncommittedOffsets.containsKey(p.getKey())) {
@@ -98,7 +99,7 @@ class ClosingState extends State {
         tryCompleteState();
     }
 
-    private void registerListener(final TopicPartition key) {
+    private void registerListener(final EventTypePartition key) {
         listeners.put(
                 key,
                 getZk().subscribeForOffsetChanges(
@@ -106,16 +107,21 @@ class ClosingState extends State {
         reactOnOffset(key);
     }
 
-    private void offsetChanged(final TopicPartition key) {
+    private void offsetChanged(final EventTypePartition key) {
         if (listeners.containsKey(key)) {
             listeners.get(key).refresh();
         }
         reactOnOffset(key);
     }
 
-    private void reactOnOffset(final TopicPartition key) {
-        final String newOffset = getZk().getOffset(key);
-        if (uncommittedOffsets.containsKey(key) && uncommittedOffsets.get(key).getOffset().compareTo(newOffset) <= 0) {
+    private void reactOnOffset(final EventTypePartition key) {
+        final NakadiCursor newCursor;
+        try {
+            newCursor = getContext().getCursorConverter().convert(key.getEventType(), getZk().getOffset(key));
+        } catch (Exception ex) {
+            throw new NakadiRuntimeException(ex);
+        }
+        if (uncommittedOffsets.containsKey(key) && uncommittedOffsets.get(key).compareTo(newCursor) <= 0) {
             freePartitions(Collections.singletonList(key));
         }
         tryCompleteState();
@@ -127,9 +133,9 @@ class ClosingState extends State {
         }
     }
 
-    private void freePartitions(final Collection<TopicPartition> keys) {
+    private void freePartitions(final Collection<EventTypePartition> keys) {
         RuntimeException exceptionCaught = null;
-        for (final TopicPartition partitionKey : keys) {
+        for (final EventTypePartition partitionKey : keys) {
             uncommittedOffsets.remove(partitionKey);
             final ZKSubscription listener = listeners.remove(partitionKey);
             if (null != listener) {
