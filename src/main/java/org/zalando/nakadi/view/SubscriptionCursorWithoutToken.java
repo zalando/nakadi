@@ -1,5 +1,6 @@
 package org.zalando.nakadi.view;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
@@ -22,6 +23,7 @@ public class SubscriptionCursorWithoutToken extends Cursor {
         return eventType;
     }
 
+    @JsonIgnore
     public EventTypePartition getEventTypePartition() {
         return new EventTypePartition(eventType, getPartition());
     }
