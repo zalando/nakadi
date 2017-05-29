@@ -155,18 +155,25 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     private Topology readTopology() throws Exception {
-        final byte[] data = getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY));
-        final Topology result = objectMapper.readValue(data, Topology.class);
-        getLog().info("Topology is {}", result);
-        return result;
+        try {
+            final byte[] data = getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY));
+            final Topology result = objectMapper.readValue(data, Topology.class);
+            getLog().info("Topology is {}", result);
+            return result;
+        } catch (final IOException ex) {
+            throw new OldSubscriptionFormatException();
+        } catch (KeeperException.NoNodeException ex) {
+            throw new SubscriptionNotInitializedException(getSubscriptionId());
+        }
     }
 
     @Override
-    public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException {
+    public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException,
+            OldSubscriptionFormatException {
         try {
             return readTopology().getPartitions();
-        } catch (final KeeperException.NoNodeException e) {
-            throw new SubscriptionNotInitializedException(getSubscriptionId());
+        } catch (final SubscriptionNotInitializedException | OldSubscriptionFormatException e) {
+            throw e;
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }

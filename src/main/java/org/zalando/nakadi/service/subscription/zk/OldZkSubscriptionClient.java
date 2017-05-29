@@ -128,9 +128,18 @@ public class OldZkSubscriptionClient extends AbstractZkSubscriptionClient {
     @Override
     public Partition[] listPartitions() {
         getLog().info("fetching partitions information");
+
+        final List<String> zkPartitions;
+        try {
+            zkPartitions = getCurator().getChildren().forPath(getSubscriptionPath("/topics"));
+        } catch (KeeperException.NoNodeException ex) {
+            throw new SubscriptionNotInitializedException(getSubscriptionId());
+        } catch (final Exception e) {
+            throw new NakadiRuntimeException(e);
+        }
         try {
             final List<Partition> partitions = new ArrayList<>();
-            for (final String topic : getCurator().getChildren().forPath(getSubscriptionPath("/topics"))) {
+            for (final String topic : zkPartitions) {
                 for (final String partition : getCurator().getChildren().forPath(getSubscriptionPath("/topics/"
                         + topic))) {
                     partitions.add(deserializeNode(
@@ -141,8 +150,6 @@ public class OldZkSubscriptionClient extends AbstractZkSubscriptionClient {
                 }
             }
             return partitions.toArray(new Partition[partitions.size()]);
-        } catch (final KeeperException.NoNodeException e) {
-            throw new SubscriptionNotInitializedException(getSubscriptionId());
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }

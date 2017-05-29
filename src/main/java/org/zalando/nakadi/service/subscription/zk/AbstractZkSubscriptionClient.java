@@ -29,6 +29,7 @@ import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.OperationInterruptedException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.RequestInProgressException;
@@ -102,7 +103,7 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
             if (releaseException != null) {
                 throw releaseException;
             }
-        } catch (final NakadiRuntimeException e) {
+        } catch (final NakadiRuntimeException | MyNakadiRuntimeException1 e) {
             throw e;
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
@@ -207,15 +208,22 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     public final Session[] listSessions() {
         getLog().info("fetching sessions information");
         final List<Session> sessions = new ArrayList<>();
+        final List<String> zkSessions;
         try {
-            for (final String sessionId : getCurator().getChildren().forPath(getSubscriptionPath("/sessions"))) {
+            zkSessions = getCurator().getChildren().forPath(getSubscriptionPath("/sessions"));
+        } catch (final KeeperException.NoNodeException e) {
+            throw new SubscriptionNotInitializedException(getSubscriptionId());
+        } catch (Exception ex) {
+            throw new NakadiRuntimeException(ex);
+        }
+
+        try {
+            for (final String sessionId : zkSessions) {
                 final int weight = Integer.parseInt(new String(getCurator().getData()
                         .forPath(getSubscriptionPath("/sessions/" + sessionId)), UTF_8));
                 sessions.add(new Session(sessionId, weight));
             }
             return sessions.toArray(new Session[sessions.size()]);
-        } catch (final KeeperException.NoNodeException e) {
-            throw new SubscriptionNotInitializedException(getSubscriptionId());
         } catch (final Exception e) {
             throw new NakadiRuntimeException(e);
         }
@@ -350,7 +358,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
     }
 
     @Override
-    public final ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException {
+    public final ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException,
+            OldSubscriptionFormatException {
         final ZkSubscriptionNode subscriptionNode = new ZkSubscriptionNode();
         try {
             if (null == getCurator().checkExists().forPath(getSubscriptionPath(""))) {
@@ -366,11 +375,8 @@ public abstract class AbstractZkSubscriptionClient implements ZkSubscriptionClie
                 subscriptionNode.setPartitions(listPartitions());
                 subscriptionNode.setSessions(listSessions());
             });
-        } catch (final NakadiRuntimeException nre) {
-            final Exception cause = nre.getException();
-            if (!(cause instanceof KeeperException.NoNodeException)) {
-                throw new NakadiRuntimeException(cause);
-            }
+        } catch (final NakadiRuntimeException ex) {
+            // this line intentionally left to have the same behavior as it was before
             getLog().info("No data about provided subscription {} in ZK", getSubscriptionPath(""));
         }
 
