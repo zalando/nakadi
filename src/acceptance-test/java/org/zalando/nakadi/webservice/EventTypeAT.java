@@ -210,6 +210,26 @@ public class EventTypeAT extends BaseAT {
         assertRetentionTime(newRetentionTime, eventType.getName());
     }
 
+    @Test
+    public void whenUpdateRetentionTimeWithNullValueNoChange() throws Exception {
+        final EventType eventType = NakadiTestUtils.createEventType();
+        final Long defaultRetentionTime = 172800000L;
+        assertRetentionTime(defaultRetentionTime, eventType.getName());
+
+        eventType.getOptions().setRetentionTime(null);
+        final String updateBody = MAPPER.writer().writeValueAsString(eventType);
+        given().body(updateBody)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .put(ENDPOINT + "/" + eventType.getName())
+                .then()
+                .body(equalTo(""))
+                .statusCode(HttpStatus.SC_OK);
+
+        final EventType eventType1 = NakadiTestUtils.getEventType(eventType.getName());
+        Assert.assertEquals(defaultRetentionTime, eventType1.getOptions().getRetentionTime());
+    }
+
     private void assertRetentionTime(final Long checkingRetentionTime, final String etName) throws IOException {
         final EventType eventType = NakadiTestUtils.getEventType(etName);
         Assert.assertEquals(checkingRetentionTime, eventType.getOptions().getRetentionTime());

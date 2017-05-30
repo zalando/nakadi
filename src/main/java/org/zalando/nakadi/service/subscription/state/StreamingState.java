@@ -2,22 +2,7 @@ package org.zalando.nakadi.service.subscription.state;
 
 import com.codahale.metrics.Meter;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import static com.google.common.base.Charsets.UTF_8;
 import com.google.common.base.Preconditions;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalLong;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -37,6 +22,23 @@ import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.zk.ZKSubscription;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static com.google.common.base.Charsets.UTF_8;
 
 
 class StreamingState extends State {
@@ -493,7 +495,7 @@ class StreamingState extends State {
             if (commitResult.seekOnKafka) {
                 reconfigureKafkaConsumer(true);
             }
-            getLog().error("Committed items: " + commitResult.committedCount);
+
             if (commitResult.committedCount > 0) {
                 committedEvents += commitResult.committedCount;
                 this.lastCommitMillis = System.currentTimeMillis();
