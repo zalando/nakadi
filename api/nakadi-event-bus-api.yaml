@@ -2393,7 +2393,7 @@ definitions:
       events ('write'), one for consuming events ('read'), and one for administering an event type ('admin').
       Regardless of the values of the authorization properties, administrator accounts will always be authorized.
     properties:
-      admin:
+      admins:
         type: array
         description: |
           An array of subject attributes that are required for updating the event type. Any one of the attributes
@@ -2402,7 +2402,7 @@ definitions:
         items:
           $ref: '#/definitions/AuthorizationAttribute'
         minItems: 1
-      read:
+      readers:
         type: array
         description: |
           An array of subject attributes that are required for reading events from the event type. Any one of the
@@ -2411,7 +2411,7 @@ definitions:
         items:
           $ref: '#/definitions/AuthorizationAttribute'
         minItems: 1
-      write:
+      writeers:
         type: array
         description: |
           An array of subject attributes that are required for writing events to the event type. Any one of the
@@ -2421,9 +2421,9 @@ definitions:
           $ref: '#/definitions/AuthorizationAttribute'
         minItems: 1
     required:
-      - admin
-      - read
-      - write
+      - admins
+      - readers
+      - writers
 
   AuthorizationAttribute:
     type: object
