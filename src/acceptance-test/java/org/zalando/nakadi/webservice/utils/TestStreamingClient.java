@@ -1,14 +1,8 @@
 package org.zalando.nakadi.webservice.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.webservice.BaseAT;
-import org.zalando.nakadi.webservice.hila.StreamBatch;
-
-import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,13 +10,22 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
+import static java.text.MessageFormat.format;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static java.text.MessageFormat.format;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
+import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.view.SubscriptionCursor;
+import org.zalando.nakadi.webservice.BaseAT;
+import org.zalando.nakadi.webservice.hila.StreamBatch;
 
 public class TestStreamingClient implements Runnable {
 
@@ -39,6 +42,8 @@ public class TestStreamingClient implements Runnable {
     private String sessionId;
     private Optional<String> token;
     private volatile int responseCode;
+    private Consumer<List<StreamBatch>> batchesListener;
+    private final CountDownLatch started = new CountDownLatch(1);
 
     public TestStreamingClient(final String baseUrl, final String subscriptionId, final String params) {
         this.baseUrl = baseUrl;
@@ -80,6 +85,7 @@ public class TestStreamingClient implements Runnable {
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 throw new IOException("Response code is " + responseCode);
             }
+            started.countDown();
             sessionId = connection.getHeaderField("X-Nakadi-StreamId");
             final InputStream inputStream = connection.getInputStream();
             final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
@@ -101,21 +107,70 @@ public class TestStreamingClient implements Runnable {
         } catch (IOException e) {
             LOG.error(e.getMessage(), e);
         } finally {
+            if (null != batchesListener) {
+                batchesListener.accept(batches);
+            }
             close();
         }
     }
 
-    public TestStreamingClient start() {
+    private TestStreamingClient startInternal(final boolean wait) throws InterruptedException {
         if (!running) {
             running = true;
             batches.clear();
             headers.clear();
             final Thread thread = new Thread(this);
             thread.start();
+            if (wait) {
+                started.await();
+            }
             return this;
         } else {
             throw new IllegalStateException("Client has not yet finished with previous run");
         }
+    }
+
+    public TestStreamingClient start() {
+        try {
+            return startInternal(false);
+        } catch (final InterruptedException ignore) {
+            throw new RuntimeException(ignore);
+        }
+    }
+
+    public TestStreamingClient startWithAutocommit(final Consumer<List<StreamBatch>> batchesListener)
+            throws InterruptedException {
+        this.batchesListener = batchesListener;
+        final TestStreamingClient client = startInternal(true);
+        final Thread autocommitThread = new Thread(() -> {
+            int oldIdx = 0;
+            while (client.isRunning()) {
+                while (oldIdx < client.getBatches().size()) {
+                    final StreamBatch batch = client.getBatches().get(oldIdx);
+                    if (batch.getEvents() != null && !batch.getEvents().isEmpty()) {
+                        try {
+                            final SubscriptionCursor cursor = batch.getCursor();
+                            final int responseCode = NakadiTestUtils.commitCursors(
+                                    client.subscriptionId,
+                                    Collections.singletonList(batch.getCursor()),
+                                    client.getSessionId());
+                            LOG.info("Committing " + responseCode + ": " + cursor);
+                        } catch (JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    oldIdx += 1;
+                }
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        autocommitThread.setDaemon(true);
+        autocommitThread.start();
+        return client;
     }
 
     public boolean close() {

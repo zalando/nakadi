@@ -1,6 +1,16 @@
 package org.zalando.nakadi.service.subscription;
 
 import com.google.common.collect.ImmutableSet;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
@@ -18,42 +29,37 @@ import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
-import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.exceptions.runtime.DuplicatedSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
+import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.CursorConverter;
+import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.Result;
-import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.state.StartingState;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
+import org.zalando.nakadi.service.subscription.zk.SubscriptionNotInitializedException;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
-import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.Problem;
-
-import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 @Component
 public class SubscriptionService {
@@ -63,21 +69,27 @@ public class SubscriptionService {
 
     private final SubscriptionDbRepository subscriptionRepository;
     private final EventTypeRepository eventTypeRepository;
-    private final ZkSubscriptionClientFactory zkSubscriptionClientFactory;
+    private final SubscriptionClientFactory subscriptionClientFactory;
     private final TimelineService timelineService;
     private final SubscriptionValidationService subscriptionValidationService;
+    private final CursorConverter converter;
+    private final CursorOperationsService cursorOperationsService;
 
     @Autowired
     public SubscriptionService(final SubscriptionDbRepository subscriptionRepository,
-                               final ZkSubscriptionClientFactory zkSubscriptionClientFactory,
+                               final SubscriptionClientFactory subscriptionClientFactory,
                                final TimelineService timelineService,
                                final EventTypeRepository eventTypeRepository,
-                               final SubscriptionValidationService subscriptionValidationService) {
+                               final SubscriptionValidationService subscriptionValidationService,
+                               final CursorConverter converter,
+                               final CursorOperationsService cursorOperationsService) {
         this.subscriptionRepository = subscriptionRepository;
-        this.zkSubscriptionClientFactory = zkSubscriptionClientFactory;
+        this.subscriptionClientFactory = subscriptionClientFactory;
         this.timelineService = timelineService;
         this.eventTypeRepository = eventTypeRepository;
         this.subscriptionValidationService = subscriptionValidationService;
+        this.converter = converter;
+        this.cursorOperationsService = cursorOperationsService;
     }
 
     public Subscription createSubscription(final SubscriptionBase subscriptionBase, final Client client)
@@ -121,7 +133,7 @@ public class SubscriptionService {
                     subscriptionRepository.listSubscriptions(eventTypesFilter, owningAppOption, offset, limit);
             final PaginationLinks paginationLinks = SubscriptionsUriHelper.createSubscriptionPaginationLinks(
                     owningAppOption, eventTypesFilter, offset, limit, subscriptions.size());
-            return Result.ok(new PaginationWrapper(subscriptions, paginationLinks));
+            return Result.ok(new PaginationWrapper<>(subscriptions, paginationLinks));
         } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred during listing of subscriptions", e);
             return Result.problem(e.asProblem());
@@ -149,9 +161,8 @@ public class SubscriptionService {
             }
 
             subscriptionRepository.deleteSubscription(subscriptionId);
-
-            final ZkSubscriptionClient zkSubscriptionClient =
-                    zkSubscriptionClientFactory.createZkSubscriptionClient(subscriptionId);
+            final ZkSubscriptionClient zkSubscriptionClient = subscriptionClientFactory.createClient(
+                    subscription, "subscription." + subscriptionId + ".delete_subscription");
             zkSubscriptionClient.deleteSubscription();
 
             return Result.ok();
@@ -161,35 +172,68 @@ public class SubscriptionService {
         } catch (final ServiceUnavailableException e) {
             LOG.error("Error occurred when trying to delete subscription: {}", subscriptionId, e);
             return Result.problem(e.asProblem());
+        } catch (final NoSuchEventTypeException | InternalNakadiException e) {
+            LOG.error("Exception can not occur", e);
+            return Result.problem(e.asProblem());
         }
     }
 
-    public Result<ItemsWrapper<SubscriptionEventTypeStats>> getSubscriptionStat(final String subscriptionId) {
+    public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStat(final String subscriptionId)
+            throws InconsistentStateException, NoSuchSubscriptionException, ServiceTemporaryUnavailableException {
+        final Subscription subscription;
         try {
-            final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
-            final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription);
-            return Result.ok(new ItemsWrapper<>(subscriptionStat));
-        } catch (final NoSuchSubscriptionException e) {
-            LOG.debug("Failed to find subscription: {}", subscriptionId, e);
-            return Result.problem(e.asProblem());
-        } catch (final ServiceUnavailableException e) {
-            LOG.error("Error occurred when trying to get subscription stat: {}" + subscriptionId, e);
-            return Result.problem(e.asProblem());
+            subscription = subscriptionRepository.getSubscription(subscriptionId);
+        } catch (final ServiceUnavailableException ex) {
+            throw new InconsistentStateException(ex.getMessage());
         }
+        final List<SubscriptionEventTypeStats> subscriptionStat = createSubscriptionStat(subscription);
+        return new ItemsWrapper<>(subscriptionStat);
     }
+
 
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription)
-            throws ServiceUnavailableException {
-        final ZkSubscriptionClient zkSubscriptionClient =
-                zkSubscriptionClientFactory.createZkSubscriptionClient(subscription.getId());
-        final ZkSubscriptionNode zkSubscriptionNode = zkSubscriptionClient.getZkSubscriptionNodeLocked();
-
+            throws InconsistentStateException, ServiceTemporaryUnavailableException {
 
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)
                 .collect(Collectors.toList());
 
+        final List<PartitionEndStatistics> topicPartitions;
+        try {
+            topicPartitions = loadPartitionEndStatistics(eventTypes);
+        } catch (final ServiceUnavailableException ex) {
+            throw new ServiceTemporaryUnavailableException(ex);
+        }
+
+        final ZkSubscriptionClient subscriptionClient;
+        try {
+            subscriptionClient = subscriptionClientFactory.createClient(
+                    subscription, "subscription." + subscription.getId() + ".stats");
+        } catch (final InternalNakadiException | NoSuchEventTypeException e) {
+            throw new ServiceTemporaryUnavailableException(e);
+        }
+
+        final ZkSubscriptionNode zkSubscriptionNode = getZkSubscriptionNode(subscription, subscriptionClient);
+
+        return eventTypes.stream()
+                .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
+                .collect(Collectors.toList());
+    }
+
+    private ZkSubscriptionNode getZkSubscriptionNode(
+            final Subscription subscription, final ZkSubscriptionClient subscriptionClient) {
+        try {
+            return subscriptionClient.getZkSubscriptionNodeLocked();
+        } catch (SubscriptionNotInitializedException ex) {
+            subscriptionClient.runLocked(() -> StartingState.initializeSubscriptionStructure(
+                    subscription, timelineService, converter, subscriptionClient));
+            return subscriptionClient.getZkSubscriptionNodeLocked();
+        }
+    }
+
+    private List<PartitionEndStatistics> loadPartitionEndStatistics(final Collection<EventType> eventTypes)
+            throws ServiceUnavailableException {
         final List<PartitionEndStatistics> topicPartitions = new ArrayList<>();
 
         final Map<TopicRepository, List<Timeline>> timelinesByRepo = eventTypes.stream()
@@ -201,59 +245,55 @@ public class SubscriptionService {
             final List<Timeline> timelinesForRepo = repoEntry.getValue();
             topicPartitions.addAll(topicRepository.loadTopicEndStatistics(timelinesForRepo));
         }
-
-        return eventTypes.stream()
-                .map(eventType -> {
-                    final Set<SubscriptionEventTypeStats.Partition> statPartitions =
-                            topicPartitions.stream()
-                                    .filter(partition -> eventType.getTopic().equals(partition.getTopic()))
-                                    .map(Try.wrap(partition ->
-                                            mergePartitions(zkSubscriptionClient, zkSubscriptionNode, partition)))
-                                    .map(Try::getOrThrow)
-                                    .collect(Collectors.toCollection(() -> new TreeSet<>(
-                                            Comparator.comparingInt(p -> Integer.valueOf(p.getPartition()))))
-                                    );
-                    return new SubscriptionEventTypeStats(eventType.getName(), statPartitions);
-                })
-                .collect(Collectors.toList());
+        return topicPartitions;
     }
 
-    private SubscriptionEventTypeStats.Partition mergePartitions(
-            final ZkSubscriptionClient zkSubscriptionClient,
-            final ZkSubscriptionNode zkSubscriptionNode,
-            final PartitionEndStatistics topicPartition) throws NakadiException {
-        final boolean hasSessions = zkSubscriptionNode.getSessions().length > 0;
+    private SubscriptionEventTypeStats loadStats(
+            final EventType eventType,
+            final ZkSubscriptionNode subscriptionNode,
+            final ZkSubscriptionClient client,
+            final List<PartitionEndStatistics> stats)
+            throws ServiceTemporaryUnavailableException, InconsistentStateException {
 
-        final Partition partition = Arrays.stream(zkSubscriptionNode.getPartitions())
-                .filter(p -> p.getKey().getPartition().equals(topicPartition.getPartition())
-                        && p.getKey().getTopic().equals(topicPartition.getTopic()))
-                .findFirst()
-                .orElse(null);
-
-        return createPartition(zkSubscriptionClient, partition, topicPartition.getLast(), hasSessions);
-    }
-
-    private SubscriptionEventTypeStats.Partition createPartition(final ZkSubscriptionClient zkSubscriptionClient,
-                                                                 @Nullable final Partition partition,
-                                                                 final NakadiCursor topicPartition,
-                                                                 final boolean hasSessions) throws NakadiException {
-        final String partitionId = topicPartition.getPartition();
-        String partitionState = Partition.State.UNASSIGNED.getDescription();
-        String partitionSession = "";
-        Long unconsumedEvents = null;
-        if (partition != null) {
-            if (hasSessions) {
-                partitionState = partition.getState().getDescription();
-                partitionSession = partition.getSession();
+        final Set<SubscriptionEventTypeStats.Partition> resultPartitions = new HashSet<>(stats.size());
+        for (final PartitionEndStatistics stat : stats) {
+            final NakadiCursor lastPosition = stat.getLast();
+            if (!lastPosition.getEventType().equals(eventType.getName())) {
+                continue;
             }
-            final String total = topicPartition.getOffset();
-            if (!Cursor.BEFORE_OLDEST_OFFSET.equals(total)) {
-                final String clientOffset = zkSubscriptionClient.getOffset(partition.getKey());
-                // TODO! Use different service for this stuff
-                unconsumedEvents = Long.valueOf(total) - Long.valueOf(clientOffset);
+            Long distance;
+            if (subscriptionNode.containsPartition(lastPosition.getEventTypePartition())) {
+                final NakadiCursor currentPosition;
+                final SubscriptionCursorWithoutToken offset =
+                        client.getOffset(new EventTypePartition(eventType.getName(), stat.getPartition()));
+                try {
+                    currentPosition = converter.convert(offset);
+                } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
+                        ServiceUnavailableException e) {
+                    throw new ServiceTemporaryUnavailableException(e);
+                }
+                try {
+                    distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
+                } catch (final InvalidCursorOperation ex) {
+                    if (ex.getReason() == InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER ||
+                            ex.getReason() == InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER) {
+                        distance = 0L;
+                    } else {
+                        throw new InconsistentStateException("Unexpected exception while calculating distance", ex);
+                    }
+                }
+            } else {
+                distance = null;
             }
+            resultPartitions.add(new SubscriptionEventTypeStats.Partition(
+                    lastPosition.getPartition(),
+                    subscriptionNode.guessState(stat.getPartition()).getDescription(),
+                    distance,
+                    Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
+            ));
         }
-        return new SubscriptionEventTypeStats.Partition(
-                partitionId, partitionState, unconsumedEvents, partitionSession);
+
+        return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
     }
+
 }

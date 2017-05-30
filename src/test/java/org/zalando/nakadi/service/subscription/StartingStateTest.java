@@ -8,6 +8,9 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.Subscription;
@@ -18,9 +21,6 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.state.StartingState;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class StartingStateTest {
 
@@ -55,12 +55,13 @@ public class StartingStateTest {
     public void testGetSubscriptionOffsetsBegin() throws Exception {
         when(subscription.getReadFrom()).thenReturn(SubscriptionBase.InitialPosition.BEGIN);
 
+
         final NakadiCursor beforeBegin0 = mock(NakadiCursor.class);
-        when(beforeBegin0.getTopic()).thenReturn(ET_0);
-        when(beforeBegin0.getPartition()).thenReturn("0");
+        final SubscriptionCursorWithoutToken beforeBegin0Converted = mock(SubscriptionCursorWithoutToken.class);
+        when(cursorConverter.convertToNoToken(eq(beforeBegin0))).thenReturn(beforeBegin0Converted);
         final NakadiCursor beforeBegin1 = mock(NakadiCursor.class);
-        when(beforeBegin1.getTopic()).thenReturn(ET_1);
-        when(beforeBegin1.getPartition()).thenReturn("0");
+        final SubscriptionCursorWithoutToken beforeBegin1Converted = mock(SubscriptionCursorWithoutToken.class);
+        when(cursorConverter.convertToNoToken(eq(beforeBegin1))).thenReturn(beforeBegin1Converted);
 
         final TopicRepository firstTR = mock(TopicRepository.class);
 
@@ -81,12 +82,12 @@ public class StartingStateTest {
         when(timelineService.getTopicRepository(eq(timelineEt00))).thenReturn(firstTR);
         when(timelineService.getTopicRepository(eq(timelineEt10))).thenReturn(secondTR);
 
-        final List<NakadiCursor> cursors = StartingState.calculateStartPosition(
+        final List<SubscriptionCursorWithoutToken> cursors = StartingState.calculateStartPosition(
                 subscription, timelineService, cursorConverter);
 
         Assert.assertEquals(cursors.size(), 2);
-        Assert.assertEquals(beforeBegin0, cursors.get(0));
-        Assert.assertEquals(beforeBegin1, cursors.get(1));
+        Assert.assertEquals(beforeBegin0Converted, cursors.get(0));
+        Assert.assertEquals(beforeBegin1Converted, cursors.get(1));
     }
 
     @Test
@@ -94,11 +95,11 @@ public class StartingStateTest {
         when(subscription.getReadFrom()).thenReturn(SubscriptionBase.InitialPosition.END);
 
         final NakadiCursor end0 = mock(NakadiCursor.class);
-        when(end0.getTopic()).thenReturn(ET_0);
-        when(end0.getPartition()).thenReturn("0");
+        final SubscriptionCursorWithoutToken end0Converted = mock(SubscriptionCursorWithoutToken.class);
+        when(cursorConverter.convertToNoToken(eq(end0))).thenReturn(end0Converted);
         final NakadiCursor end1 = mock(NakadiCursor.class);
-        when(end1.getTopic()).thenReturn(ET_1);
-        when(end1.getPartition()).thenReturn("0");
+        final SubscriptionCursorWithoutToken end1Converted = mock(SubscriptionCursorWithoutToken.class);
+        when(cursorConverter.convertToNoToken(eq(end1))).thenReturn(end1Converted);
 
         final TopicRepository firstTR = mock(TopicRepository.class);
         final List<PartitionStatistics> statsForEt0 = Collections.singletonList(mock(PartitionStatistics.class));
@@ -113,11 +114,11 @@ public class StartingStateTest {
         when(timelineService.getTopicRepository(eq(timelineEt01))).thenReturn(firstTR);
         when(timelineService.getTopicRepository(eq(timelineEt11))).thenReturn(secondTR);
 
-        final List<NakadiCursor> cursors = StartingState.calculateStartPosition(subscription, timelineService,
-                cursorConverter);
+        final List<SubscriptionCursorWithoutToken> cursors = StartingState.calculateStartPosition(
+                subscription, timelineService, cursorConverter);
         Assert.assertEquals(cursors.size(), 2);
-        Assert.assertEquals(end0, cursors.get(0));
-        Assert.assertEquals(end1, cursors.get(1));
+        Assert.assertEquals(end0Converted, cursors.get(0));
+        Assert.assertEquals(end1Converted, cursors.get(1));
     }
 
     @Test
@@ -127,22 +128,11 @@ public class StartingStateTest {
         final SubscriptionCursorWithoutToken cursor2 = mock(SubscriptionCursorWithoutToken.class);
         when(subscription.getInitialCursors()).thenReturn(Lists.newArrayList(cursor1, cursor2));
 
-        final NakadiCursor middle0 = mock(NakadiCursor.class);
-        when(middle0.getTopic()).thenReturn(ET_0);
-        when(middle0.getPartition()).thenReturn("0");
-
-        final NakadiCursor middle1 = mock(NakadiCursor.class);
-        when(middle1.getTopic()).thenReturn(ET_1);
-        when(middle1.getPartition()).thenReturn("0");
-
-        when(cursorConverter.convert(cursor1)).thenReturn(middle0);
-        when(cursorConverter.convert(cursor2)).thenReturn(middle1);
-
-        final List<NakadiCursor> cursors = StartingState.calculateStartPosition(subscription, timelineService,
-                cursorConverter);
+        final List<SubscriptionCursorWithoutToken> cursors = StartingState.calculateStartPosition(
+                subscription, timelineService, cursorConverter);
         Assert.assertEquals(cursors.size(), 2);
-        Assert.assertEquals(middle0, cursors.get(0));
-        Assert.assertEquals(middle1, cursors.get(1));
+        Assert.assertEquals(cursor1, cursors.get(0));
+        Assert.assertEquals(cursor2, cursors.get(1));
     }
 
 }
