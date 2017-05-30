@@ -2415,8 +2415,7 @@ definitions:
         type: array
         description: |
           An array of subject attributes that are required for writing events to the event type. Any one of the
-          attributes defined in this array is sufficient to be authorized. The wildcard item takes precedence over
-          all others, i.e. if it is present, all users are authorized.
+          attributes defined in this array is sufficient to be authorized.
         items:
           $ref: '#/definitions/AuthorizationAttribute'
         minItems: 1
@@ -2429,7 +2428,7 @@ definitions:
     type: object
     description: |
       An attribute for authorization. This object includes the type of attribute (team, permission, etc.),
-      and the attribute value. A wildcard can be represented with type '*', and value '*'. It means that all
+      and the attribute value. A wildcard can be represented with key '*', and value '*'. It means that all
       authenticated users are allowed to perform an operation.
     properties:
       attribute_type:
