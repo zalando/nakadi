@@ -235,8 +235,10 @@ public class EventTypeService {
             try {
                 if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
                     updateTopicRetentionTime(eventTypeName, newRetentionTime);
-                    updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
+                } else {
+                    eventType.setOptions(original.getOptions());
                 }
+                updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
                 retentionTimeUpdated = true;
             } finally {
                 if (!retentionTimeUpdated) {
