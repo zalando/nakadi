@@ -126,7 +126,7 @@ public class OldZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public Partition[] listPartitions() {
+    public Partition[] listPartitions() throws NakadiRuntimeException {
         getLog().info("fetching partitions information");
 
         final List<String> zkPartitions;

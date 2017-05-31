@@ -49,7 +49,8 @@ public interface ZkSubscriptionClient {
     /**
      * Updates specified partitions in zk.
      */
-    void updatePartitionsConfiguration(Partition[] partitions) throws NakadiRuntimeException;
+    void updatePartitionsConfiguration(Partition[] partitions) throws NakadiRuntimeException,
+            SubscriptionNotInitializedException, OldSubscriptionFormatException;
 
     /**
      * Returns session list in zk related to this subscription.
@@ -113,7 +114,8 @@ public interface ZkSubscriptionClient {
      * @param sessionId  Someone who actually tries to transfer data.
      * @param partitions topic ids and partition ids of transferred data.
      */
-    void transfer(String sessionId, Collection<EventTypePartition> partitions);
+    void transfer(String sessionId, Collection<EventTypePartition> partitions)
+            throws NakadiRuntimeException, OldSubscriptionFormatException, SubscriptionNotInitializedException;
 
     /**
      * Retrieves subscription data like partitions and sessions from ZK under lock.

@@ -22,7 +22,7 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
  * Subscription client that uses topology as an object node and separates changeable data to a separate zk node.
  * The structure of zk data is like this:
  * <pre>
- *- nakadi
+ * - nakadi
  * +- locks
  * | |- subscription_{subscription_id}      // Node that is being used to guarantee consistency of subscription data
  * |
@@ -142,10 +142,10 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public void updatePartitionsConfiguration(final Partition[] partitions) throws NakadiRuntimeException {
+    public void updatePartitionsConfiguration(final Partition[] partitions) throws NakadiRuntimeException,
+            SubscriptionNotInitializedException, OldSubscriptionFormatException {
+        final Topology newTopology = readTopology().withUpdatedPartitions(partitions);
         try {
-            final Topology topology = readTopology();
-            final Topology newTopology = topology.withUpdatedPartitions(partitions);
             getCurator().setData().forPath(
                     getSubscriptionPath(NODE_TOPOLOGY),
                     objectMapper.writeValueAsBytes(newTopology));
@@ -154,7 +154,8 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         }
     }
 
-    private Topology readTopology() throws Exception {
+    private Topology readTopology() throws NakadiRuntimeException, OldSubscriptionFormatException,
+            SubscriptionNotInitializedException {
         try {
             final byte[] data = getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY));
             final Topology result = objectMapper.readValue(data, Topology.class);
@@ -164,19 +165,15 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             throw new OldSubscriptionFormatException();
         } catch (KeeperException.NoNodeException ex) {
             throw new SubscriptionNotInitializedException(getSubscriptionId());
+        } catch (final Exception ex) {
+            throw new NakadiRuntimeException(ex);
         }
     }
 
     @Override
     public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException,
             OldSubscriptionFormatException {
-        try {
-            return readTopology().getPartitions();
-        } catch (final SubscriptionNotInitializedException | OldSubscriptionFormatException e) {
-            throw e;
-        } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
-        }
+        return readTopology().getPartitions();
     }
 
     protected String getOffsetPath(final EventTypePartition etp) {
@@ -194,14 +191,11 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public void transfer(final String sessionId, final Collection<EventTypePartition> partitions) {
+    public void transfer(final String sessionId, final Collection<EventTypePartition> partitions)
+            throws NakadiRuntimeException, OldSubscriptionFormatException, SubscriptionNotInitializedException {
         getLog().info("session " + sessionId + " releases partitions " + partitions);
-        final Topology topology;
-        try {
-            topology = readTopology();
-        } catch (final Exception e) {
-            throw new NakadiRuntimeException(e);
-        }
+        final Topology topology = readTopology();
+
         final List<Partition> changeSet = new ArrayList<>();
         for (final EventTypePartition etp : partitions) {
             final Partition candidate = Stream.of(topology.getPartitions())
