@@ -2411,7 +2411,7 @@ definitions:
         items:
           $ref: '#/definitions/AuthorizationAttribute'
         minItems: 1
-      writeers:
+      writers:
         type: array
         description: |
           An array of subject attributes that are required for writing events to the event type. Any one of the
