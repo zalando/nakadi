@@ -293,7 +293,7 @@ class StreamingState extends State {
         if (null != eventConsumer) {
             try {
                 eventConsumer.close();
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new NakadiRuntimeException(e);
             } finally {
                 eventConsumer = null;

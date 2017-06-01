@@ -2,9 +2,6 @@ package org.zalando.nakadi.service.subscription;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,9 +15,14 @@ import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
+import org.zalando.nakadi.service.EventStreamWriterProvider;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class SubscriptionStreamerFactory {
@@ -34,6 +36,7 @@ public class SubscriptionStreamerFactory {
     private final CursorConverter cursorConverter;
     private final MetricRegistry metricRegistry;
     private final SubscriptionClientFactory zkClientFactory;
+    private final EventStreamWriterProvider eventStreamWriterProvider;
 
     @Autowired
     public SubscriptionStreamerFactory(
@@ -43,7 +46,8 @@ public class SubscriptionStreamerFactory {
             final ObjectMapper objectMapper,
             final CursorConverter cursorConverter,
             @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry,
-            final SubscriptionClientFactory zkClientFactory) {
+            final SubscriptionClientFactory zkClientFactory,
+            final EventStreamWriterProvider eventStreamWriterProvider) {
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
@@ -51,6 +55,7 @@ public class SubscriptionStreamerFactory {
         this.cursorConverter = cursorConverter;
         this.metricRegistry = metricRegistry;
         this.zkClientFactory = zkClientFactory;
+        this.eventStreamWriterProvider = eventStreamWriterProvider;
     }
 
     public SubscriptionStreamer build(
@@ -82,6 +87,7 @@ public class SubscriptionStreamerFactory {
                 .setSubscription(subscription)
                 .setMetricRegistry(metricRegistry)
                 .setTimelineService(timelineService)
+                .setWriter(eventStreamWriterProvider.getWriter())
                 .build();
     }
 
