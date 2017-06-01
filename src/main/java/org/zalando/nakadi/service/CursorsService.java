@@ -1,7 +1,6 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +32,8 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.model.Partition;
+import org.zalando.nakadi.service.subscription.state.StartingState;
+import org.zalando.nakadi.service.subscription.zk.OldSubscriptionFormatException;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionNotInitializedException;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
@@ -131,12 +132,18 @@ public class CursorsService {
                 subscription, "subscription." + subscriptionId + ".get_cursors");
         final ImmutableList.Builder<SubscriptionCursorWithoutToken> cursorsListBuilder = ImmutableList.builder();
 
+        Partition[] partitions;
         try {
-            for (final Partition p : zkSubscriptionClient.listPartitions()) {
-                cursorsListBuilder.add(zkSubscriptionClient.getOffset(p.getKey()));
-            }
-        } catch (SubscriptionNotInitializedException ex) {
-            return Collections.emptyList();
+            partitions = zkSubscriptionClient.listPartitions();
+        } catch (final OldSubscriptionFormatException ex) {
+            zkSubscriptionClient.runLocked(() -> StartingState.initializeSubscriptionStructure(
+                    subscription, timelineService, cursorConverter, zkSubscriptionClient));
+            partitions = zkSubscriptionClient.listPartitions();
+        } catch (final SubscriptionNotInitializedException ex) {
+            partitions = new Partition[]{};
+        }
+        for (final Partition p : partitions) {
+            cursorsListBuilder.add(zkSubscriptionClient.getOffset(p.getKey()));
         }
         return cursorsListBuilder.build();
     }

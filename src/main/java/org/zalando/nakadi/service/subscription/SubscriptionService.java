@@ -52,8 +52,8 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.subscription.state.StartingState;
+import org.zalando.nakadi.service.subscription.zk.OldSubscriptionFormatException;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
-import org.zalando.nakadi.service.subscription.zk.SubscriptionNotInitializedException;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -225,7 +225,7 @@ public class SubscriptionService {
             final Subscription subscription, final ZkSubscriptionClient subscriptionClient) {
         try {
             return subscriptionClient.getZkSubscriptionNodeLocked();
-        } catch (SubscriptionNotInitializedException ex) {
+        } catch (OldSubscriptionFormatException ex) {
             subscriptionClient.runLocked(() -> StartingState.initializeSubscriptionStructure(
                     subscription, timelineService, converter, subscriptionClient));
             return subscriptionClient.getZkSubscriptionNodeLocked();
