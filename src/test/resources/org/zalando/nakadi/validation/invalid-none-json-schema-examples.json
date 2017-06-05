@@ -1,0 +1,11 @@
+[
+  {
+    "description": "Non compatible schemas accept undefined attributes like \"example\"",
+    "schema": {
+      "example": {
+        "type": "string"
+      }
+    },
+    "errors": []
+  }
+]

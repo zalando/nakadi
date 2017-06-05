@@ -8,16 +8,19 @@ import org.everit.json.schema.loader.SchemaLoader;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.UnexpectedSchemaChangeException;
 import org.zalando.nakadi.validation.schema.ForbiddenAttributeIncompatibility;
-import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionConstraint;
 import org.zalando.nakadi.validation.schema.SchemaEvolutionIncompatibility;
+import org.zalando.nakadi.validation.schema.diff.SchemaDiff;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,8 +41,10 @@ import static org.zalando.nakadi.domain.Version.Level.PATCH;
 
 public class SchemaEvolutionService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaEvolutionService.class);
+
     private final List<SchemaEvolutionConstraint> schemaEvolutionConstraints;
-    private final Schema metaSchema;
+    private final Map<CompatibilityMode, Schema> metaSchema;
     private final SchemaDiff schemaDiff;
     private final Map<SchemaChange.Type, Version.Level> forwardChanges;
     private final Map<SchemaChange.Type, Version.Level> compatibleChanges;
@@ -49,7 +54,7 @@ public class SchemaEvolutionService {
             ADDITIONAL_PROPERTIES_CHANGED, ADDITIONAL_ITEMS_CHANGED);
 
 
-    public SchemaEvolutionService(final Schema metaSchema,
+    public SchemaEvolutionService(final Map<CompatibilityMode, Schema> metaSchema,
                                   final List<SchemaEvolutionConstraint> schemaEvolutionConstraints,
                                   final SchemaDiff schemaDiff,
                                   final Map<SchemaChange.Type, Version.Level> compatibleChanges,
@@ -63,11 +68,12 @@ public class SchemaEvolutionService {
         this.errorMessages = errorMessages;
     }
 
-    public List<SchemaIncompatibility> collectIncompatibilities(final JSONObject schemaJson) {
+    public List<SchemaIncompatibility> collectIncompatibilities(final CompatibilityMode compatibilityMode,
+                                                                final JSONObject schemaJson) {
         final List<SchemaIncompatibility> incompatibilities = new ArrayList<>();
 
         try {
-            metaSchema.validate(schemaJson);
+            metaSchema.get(compatibilityMode).validate(schemaJson);
         } catch (final ValidationException e) {
             collectErrorMessages(e, incompatibilities);
         }
@@ -99,6 +105,12 @@ public class SchemaEvolutionService {
 
         final Version.Level changeLevel = semanticOfChange(original.getSchema().getSchema(),
                 eventType.getSchema().getSchema(), changes, original.getCompatibilityMode());
+
+        if (changeLevel == NO_CHANGES && !original.getSchema().getSchema().equals(eventType.getSchema().getSchema())) {
+            LOG.error("undetected schema changes from {} to {}", original.getSchema().getSchema(),
+                    eventType.getSchema().getSchema());
+            throw new UnexpectedSchemaChangeException("undetected schema changes");
+        }
 
         if (isForwardToCompatibleUpgrade(original, eventType)) {
             validateCompatibilityModeMigration(original, eventType, changes);

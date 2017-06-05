@@ -1,0 +1,11 @@
+[
+  {
+    "description": "Invalid property at the root level",
+    "schema": {
+      "example": {
+        "type": "string"
+      }
+    },
+    "errors": ["Invalid schema found in [#]: extraneous key [example] is not permitted"]
+  }
+]

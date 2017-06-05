@@ -375,6 +375,9 @@ public class EventTypeService {
             JsonUtils.checkEventTypeSchemaValid(eventTypeSchema);
 
             final JSONObject schemaAsJson = new JSONObject(eventTypeSchema);
+
+            validateJsonSchemaConstraints(eventType.getCompatibilityMode(), schemaAsJson);
+
             final Schema schema = SchemaLoader.load(schemaAsJson);
 
             if (eventType.getCategory() == EventCategory.BUSINESS && schema.definesProperty("#/metadata")) {
@@ -384,10 +387,6 @@ public class EventTypeService {
             if (featureToggleService.isFeatureEnabled(CHECK_PARTITIONS_KEYS)) {
                 validatePartitionKeys(schema, eventType);
             }
-
-            if (eventType.getCompatibilityMode() == CompatibilityMode.COMPATIBLE) {
-                validateJsonSchemaConstraints(schemaAsJson);
-            }
         } catch (final JSONException e) {
             throw new InvalidEventTypeException("schema must be a valid json");
         } catch (final SchemaException e) {
@@ -395,8 +394,10 @@ public class EventTypeService {
         }
     }
 
-    private void validateJsonSchemaConstraints(final JSONObject schema) throws InvalidEventTypeException {
-        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService.collectIncompatibilities(schema);
+    private void validateJsonSchemaConstraints(final CompatibilityMode compatibilityMode, final JSONObject schema)
+            throws InvalidEventTypeException {
+        final List<SchemaIncompatibility> incompatibilities = schemaEvolutionService
+                .collectIncompatibilities(compatibilityMode, schema);
 
         if (!incompatibilities.isEmpty()) {
             final String errorMessage = incompatibilities.stream().map(Object::toString)

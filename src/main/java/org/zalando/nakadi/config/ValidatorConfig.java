@@ -9,6 +9,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.SchemaChange;
 import org.zalando.nakadi.domain.Version;
 import org.zalando.nakadi.validation.EventTypeOptionsValidator;
@@ -61,9 +62,10 @@ public class ValidatorConfig {
 
     @Bean
     public SchemaEvolutionService schemaEvolutionService() throws IOException {
-        final JSONObject metaSchemaJson = new JSONObject(Resources.toString(Resources.getResource("schema.json"),
-                Charsets.UTF_8));
-        final Schema metaSchema = SchemaLoader.load(metaSchemaJson);
+        final Map<CompatibilityMode, Schema> schemaValidator = new HashMap<>();
+        schemaValidator.put(CompatibilityMode.COMPATIBLE, loadSchema("compatible-schema.json"));
+        schemaValidator.put(CompatibilityMode.FORWARD, loadSchema("forward-schema.json"));
+        schemaValidator.put(CompatibilityMode.NONE, loadSchema("none-schema.json"));
 
         final List<SchemaEvolutionConstraint> schemaEvolutionConstraints = Lists.newArrayList(
                 new CategoryChangeConstraint(),
@@ -134,7 +136,14 @@ public class ValidatorConfig {
 
         final SchemaDiff diff = new SchemaDiff();
 
-        return new SchemaEvolutionService(metaSchema, schemaEvolutionConstraints, diff, compatibleChanges,
+        return new SchemaEvolutionService(schemaValidator, schemaEvolutionConstraints, diff, compatibleChanges,
                 forwardChanges, errorMessage);
+    }
+
+    private Schema loadSchema(final String filename) throws IOException {
+        final JSONObject metaSchemaJson = new JSONObject(
+                Resources.toString(Resources.getResource(filename), Charsets.UTF_8)
+        );
+        return SchemaLoader.load(metaSchemaJson);
     }
 }
