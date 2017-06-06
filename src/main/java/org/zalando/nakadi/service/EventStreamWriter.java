@@ -2,6 +2,7 @@ package org.zalando.nakadi.service;
 
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -22,6 +23,6 @@ public interface EventStreamWriter {
      */
     int writeBatch(OutputStream os, Cursor cursor, List<String> events) throws IOException;
 
-    int writeSubscriptionBatch(OutputStream os, Cursor cursor, List<ConsumedEvent> events,
+    int writeSubscriptionBatch(OutputStream os, SubscriptionCursor cursor, List<ConsumedEvent> events,
                                Optional<String> metadata) throws IOException;
 }

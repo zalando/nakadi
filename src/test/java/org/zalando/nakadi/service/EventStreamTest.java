@@ -23,6 +23,7 @@ import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
+import org.zalando.nakadi.view.SubscriptionCursor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -440,7 +441,7 @@ public abstract class EventStreamTest {
             // expecting events not to be written as an empty array
             assertNull(eventsM);
 
-        } catch (IOException e) {
+        } catch (final IOException e) {
             fail(e.getMessage());
         }
     }
@@ -448,7 +449,7 @@ public abstract class EventStreamTest {
     @Test
     public void testWriteStreamInfoWhenPresent() {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        final Cursor cursor = new Cursor("11", "000000000000000012");
+        final SubscriptionCursor cursor = new SubscriptionCursor("11", "000000000000000012", "event-type", "token-id");
         final ArrayList<ConsumedEvent> events = Lists.newArrayList(
                 new ConsumedEvent("{\"a\":\"b\"}", mock(NakadiCursor.class)));
 
@@ -459,6 +460,8 @@ public abstract class EventStreamTest {
             final JSONObject cursorM = batch.getJSONObject("cursor");
             assertEquals("11", cursorM.getString("partition"));
             assertEquals("000000000000000012", cursorM.getString("offset"));
+            assertEquals("event-type", cursorM.getString("event_type"));
+            assertEquals("token-id", cursorM.getString("cursor_token"));
 
             final JSONArray eventsM = batch.getJSONArray("events");
             assertSame(eventsM.length(), 1);
