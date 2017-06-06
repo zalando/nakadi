@@ -39,6 +39,9 @@ public class EventStreamWriterString implements EventStreamWriter {
 
         final byte[] batchBytes = eventsString.getBytes(UTF_8);
         os.write(batchBytes);
+
+        os.flush();
+
         return batchBytes.length;
     }
 
@@ -59,6 +62,9 @@ public class EventStreamWriterString implements EventStreamWriter {
 
         final byte[] batchBytes = eventsString.getBytes(UTF_8);
         os.write(batchBytes);
+
+        os.flush();
+
         return batchBytes.length;
     }
 }

@@ -245,8 +245,6 @@ class StreamingState extends State {
                     data,
                     metadata);
 
-            getOut().getOutputStream().flush();
-
             bytesSentMeter.mark(batchSize);
             batchesSent++;
         } catch (final IOException e) {

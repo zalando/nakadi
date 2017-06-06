@@ -151,7 +151,6 @@ public class EventStream {
         final int bytesWritten = writer.getWriter()
                 .writeBatch(outputStream, cursorConverter.convert(topicPosition), currentBatch);
         bytesFlushedMeter.mark(bytesWritten);
-        outputStream.flush();
     }
 
 
