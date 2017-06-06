@@ -27,6 +27,10 @@ public final class EventTypeOptionsValidator implements Validator {
     }
 
     private void checkRetentionTime(final Errors errors, final EventTypeOptions options) {
+        if (options == null) {
+            return;
+        }
+
         final Long retentionTime = options.getRetentionTime();
         if (retentionTime != null) {
             if (retentionTime > maxTopicRetentionMs) {

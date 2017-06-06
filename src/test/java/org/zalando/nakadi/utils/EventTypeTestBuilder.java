@@ -56,6 +56,7 @@ public class EventTypeTestBuilder {
         this.schema = new EventTypeSchema(new EventTypeSchemaBase(EventTypeSchema.Type.JSON_SCHEMA, DEFAULT_SCHEMA),
                 "1.0.0", randomDate());
         this.options = new EventTypeOptions();
+        this.options.setRetentionTime(172800000L);
         this.writeScopes = Collections.emptySet();
         this.readScopes = Collections.emptySet();
         this.compatibilityMode = CompatibilityMode.COMPATIBLE;

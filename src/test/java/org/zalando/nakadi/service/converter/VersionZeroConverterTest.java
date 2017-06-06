@@ -2,6 +2,7 @@ package org.zalando.nakadi.service.converter;
 
 import org.junit.Before;
 import org.junit.Test;
+import static org.mockito.Mockito.mock;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -9,8 +10,6 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
-
-import static org.mockito.Mockito.mock;
 
 public class VersionZeroConverterTest {
 
@@ -28,7 +27,7 @@ public class VersionZeroConverterTest {
     @Test(expected = InvalidCursorException.class)
     public void testInvalidChars() throws InternalNakadiException, InvalidCursorException, NoSuchEventTypeException,
             ServiceUnavailableException {
-        final Cursor cursor = new Cursor("0", "-1");
+        final Cursor cursor = new Cursor("0", "-1-");
         converter.convert("event-type", cursor);
     }
 }

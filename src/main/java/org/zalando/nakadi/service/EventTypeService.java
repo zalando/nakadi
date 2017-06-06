@@ -34,6 +34,7 @@ import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
@@ -226,10 +227,16 @@ public class EventTypeService {
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
             final Long newRetentionTime = eventTypeBase.getOptions().getRetentionTime();
             final Long oldRetentionTime = original.getOptions().getRetentionTime();
+            if (oldRetentionTime == null) {
+                // since we have some inconsistency in DB I will put here for a while
+                throw new InconsistentStateException("Empty value for retention time in existing EventType");
+            }
             boolean retentionTimeUpdated = false;
             try {
                 if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
                     updateTopicRetentionTime(eventTypeName, newRetentionTime);
+                } else {
+                    eventType.setOptions(original.getOptions());
                 }
                 updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
                 retentionTimeUpdated = true;
@@ -292,9 +299,6 @@ public class EventTypeService {
             throws InternalNakadiException, NoSuchEventTypeException {
 
         if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
-            if (oldRetentionTime == null) {
-                throw new InternalNakadiException("Empty value for retention time in existing EventType");
-            }
             final long retentionDiffMs = newRetentionTime - oldRetentionTime;
             final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventType);
 

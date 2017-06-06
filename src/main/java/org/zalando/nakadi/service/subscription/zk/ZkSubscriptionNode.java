@@ -1,5 +1,9 @@
 package org.zalando.nakadi.service.subscription.zk;
 
+import java.util.Optional;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 
@@ -32,5 +36,25 @@ public final class ZkSubscriptionNode {
 
     public Session[] getSessions() {
         return sessions;
+    }
+
+    public Partition.State guessState(final String partition) {
+        return getPartitionWithActiveSession(partition).map(Partition::getState).orElse(Partition.State.UNASSIGNED);
+    }
+
+    private Optional<Partition> getPartitionWithActiveSession(final String partition) {
+        return Stream.of(partitions)
+                .filter(p -> p.getPartition().equals(partition))
+                .filter(p -> Stream.of(sessions).anyMatch(s -> s.getId().equalsIgnoreCase(p.getSession())))
+                .findAny();
+    }
+
+    @Nullable
+    public String guessStream(final String partition) {
+        return getPartitionWithActiveSession(partition).map(Partition::getSession).orElse(null);
+    }
+
+    public boolean containsPartition(final EventTypePartition eventTypePartition) {
+        return Stream.of(getPartitions()).anyMatch(p -> p.getKey().equals(eventTypePartition));
     }
 }
