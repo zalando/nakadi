@@ -21,7 +21,7 @@ public interface EventStreamWriter {
      * @param events Events in batch
      * @return count of bytes written
      */
-    int writeBatch(OutputStream os, Cursor cursor, List<String> events) throws IOException;
+    int writeBatch(OutputStream os, Cursor cursor, List<byte[]> events) throws IOException;
 
     int writeSubscriptionBatch(OutputStream os, SubscriptionCursor cursor, List<ConsumedEvent> events,
                                Optional<String> metadata) throws IOException;

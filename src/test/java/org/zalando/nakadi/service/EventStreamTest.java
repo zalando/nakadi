@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.nCopies;
 import static java.util.Optional.empty;
 import static junit.framework.TestCase.assertSame;
@@ -62,7 +63,7 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 public abstract class EventStreamTest {
 
     private static final String TOPIC = randomString();
-    private static final String DUMMY = "DUMMY";
+    private static final byte[] DUMMY = "DUMMY".getBytes(UTF_8);
     private static final Meter BYTES_FLUSHED_METER = new MetricRegistry().meter("mock");
 
     private static final Timeline TIMELINE = createFakeTimeline(TOPIC);
@@ -233,9 +234,9 @@ public abstract class EventStreamTest {
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
-        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(5, DUMMY)))));
-        assertThat(batches[1], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(5, DUMMY)))));
-        assertThat(batches[2], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(5, new String(DUMMY))))));
+        assertThat(batches[1], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(5, new String(DUMMY))))));
+        assertThat(batches[2], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, new String(DUMMY))))));
     }
 
     @Test(timeout = 10000)
@@ -254,7 +255,7 @@ public abstract class EventStreamTest {
                 .range(0, eventNum)
                 .boxed()
                 .map(index -> new ConsumedEvent(
-                        "event" + index, new NakadiCursor(TIMELINE, "0", KafkaCursor.toNakadiOffset(index))))
+                        ("event" + index).getBytes(UTF_8), new NakadiCursor(TIMELINE, "0", KafkaCursor.toNakadiOffset(index))))
                 .collect(Collectors.toList()));
 
         final EventStream eventStream =
@@ -308,9 +309,9 @@ public abstract class EventStreamTest {
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
-        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
-        assertThat(batches[1], sameJSONAs(jsonBatch("1", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
-        assertThat(batches[2], sameJSONAs(jsonBatch("2", "000000000000000000", Optional.of(nCopies(2, DUMMY)))));
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, new String(DUMMY))))));
+        assertThat(batches[1], sameJSONAs(jsonBatch("1", "000000000000000000", Optional.of(nCopies(2, new String(DUMMY))))));
+        assertThat(batches[2], sameJSONAs(jsonBatch("2", "000000000000000000", Optional.of(nCopies(2, new String(DUMMY))))));
     }
 
     private static NakadiKafkaConsumer emptyConsumer() throws NakadiException {
@@ -389,10 +390,10 @@ public abstract class EventStreamTest {
 
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final Cursor cursor = new Cursor("22", "000000000000000023");
-        final ArrayList<String> events = Lists.newArrayList(
-            "{\"a\":\"b\"}",
-            "{\"c\":\"d\"}",
-            "{\"e\":\"f\"}");
+        final ArrayList<byte[]> events = Lists.newArrayList(
+            "{\"a\":\"b\"}".getBytes(),
+            "{\"c\":\"d\"}".getBytes(),
+            "{\"e\":\"f\"}".getBytes());
 
         try {
             writerProvider.getWriter().writeBatch(baos, cursor, events);
@@ -422,7 +423,7 @@ public abstract class EventStreamTest {
 
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final Cursor cursor = new Cursor("11", "000000000000000012");
-        final ArrayList<String> events = Lists.newArrayList();
+        final ArrayList<byte[]> events = Lists.newArrayList();
 
         try {
             writerProvider.getWriter().writeBatch(baos, cursor, events);
@@ -451,7 +452,7 @@ public abstract class EventStreamTest {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final SubscriptionCursor cursor = new SubscriptionCursor("11", "000000000000000012", "event-type", "token-id");
         final ArrayList<ConsumedEvent> events = Lists.newArrayList(
-                new ConsumedEvent("{\"a\":\"b\"}", mock(NakadiCursor.class)));
+                new ConsumedEvent("{\"a\":\"b\"}".getBytes(), mock(NakadiCursor.class)));
 
         try {
             writerProvider.getWriter().writeSubscriptionBatch(baos, cursor, events, Optional.of("something"));

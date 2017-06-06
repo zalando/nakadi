@@ -52,7 +52,7 @@ class EventStreamWriterBinary implements EventStreamWriter {
             + 1; //B_BATCH_SEPARATOR
 
     @Override
-    public int writeBatch(final OutputStream os, final Cursor cursor, final List<String> events) throws IOException {
+    public int writeBatch(final OutputStream os, final Cursor cursor, final List<byte[]> events) throws IOException {
         int byteCount = B_FIXED_BYTE_COUNT;
 
         os.write(B_CURSOR_PARTITION_BEGIN);
@@ -68,7 +68,7 @@ class EventStreamWriterBinary implements EventStreamWriter {
         if (!events.isEmpty()) {
             os.write(B_EVENTS_ARRAY_BEGIN);
             for (int i = 0; i < events.size(); i++) {
-                final byte[] event = events.get(i).getBytes(StandardCharsets.UTF_8);
+                final byte[] event = events.get(i);
                 os.write(event);
                 byteCount += event.length;
                 if (i < (events.size() - 1)) {
@@ -115,7 +115,7 @@ class EventStreamWriterBinary implements EventStreamWriter {
         if (!events.isEmpty()) {
             os.write(B_EVENTS_ARRAY_BEGIN);
             for (int i = 0; i < events.size(); i++) {
-                final byte[] event = events.get(i).getEvent().getBytes(StandardCharsets.UTF_8);
+                final byte[] event = events.get(i).getEvent();
                 os.write(event);
                 byteCount += event.length;
                 if (i < (events.size() - 1)) {
