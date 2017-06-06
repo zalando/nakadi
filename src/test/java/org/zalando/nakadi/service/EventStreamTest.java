@@ -6,37 +6,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import static java.util.Collections.nCopies;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import static java.util.Optional.empty;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import static junit.framework.TestCase.assertSame;
-import static junit.framework.TestCase.fail;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.arrayWithSize;
-import static org.hamcrest.core.Is.is;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -45,13 +20,42 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
-import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.view.Cursor;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static java.util.Collections.nCopies;
+import static java.util.Optional.empty;
+import static junit.framework.TestCase.assertSame;
+import static junit.framework.TestCase.fail;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
-import org.zalando.nakadi.view.Cursor;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public abstract class EventStreamTest {
@@ -406,7 +410,7 @@ public abstract class EventStreamTest {
             assertEquals("d", eventsM.get(1).get("c"));
             assertEquals("f", eventsM.get(2).get("e"));
 
-        } catch (IOException e) {
+        } catch (final IOException e) {
             fail(e.getMessage());
         }
     }
@@ -437,6 +441,31 @@ public abstract class EventStreamTest {
             assertNull(eventsM);
 
         } catch (IOException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    @Test
+    public void testWriteStreamInfoWhenPresent() {
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final Cursor cursor = new Cursor("11", "000000000000000012");
+        final ArrayList<ConsumedEvent> events = Lists.newArrayList(
+                new ConsumedEvent("{\"a\":\"b\"}", mock(NakadiCursor.class)));
+
+        try {
+            writerProvider.getWriter().writeSubscriptionBatch(baos, cursor, events, Optional.of("something"));
+            final JSONObject batch = new JSONObject(baos.toString());
+
+            final JSONObject cursorM = batch.getJSONObject("cursor");
+            assertEquals("11", cursorM.getString("partition"));
+            assertEquals("000000000000000012", cursorM.getString("offset"));
+
+            final JSONArray eventsM = batch.getJSONArray("events");
+            assertSame(eventsM.length(), 1);
+
+            assertEquals("something", batch.getJSONObject("info").getString("debug"));
+
+        } catch (final IOException e) {
             fail(e.getMessage());
         }
     }

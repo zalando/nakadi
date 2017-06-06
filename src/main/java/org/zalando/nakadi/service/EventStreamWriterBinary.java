@@ -1,13 +1,18 @@
 package org.zalando.nakadi.service;
 
-import static com.google.common.base.Charsets.UTF_8;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.view.Cursor;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
-import org.zalando.nakadi.view.Cursor;
+import java.util.Optional;
+import java.util.function.Function;
+
+import static com.google.common.base.Charsets.UTF_8;
 
 @Component
 @Qualifier("binary")
@@ -19,6 +24,8 @@ class EventStreamWriterBinary implements EventStreamWriter {
     private static final byte[] B_CURSOR_PARTITION_END = "\"}".getBytes(UTF_8);
     private static final byte[] B_CLOSE_CURLY_BRACKET = "}".getBytes(UTF_8);
     private static final byte[] B_EVENTS_ARRAY_BEGIN = ",\"events\":[".getBytes(UTF_8);
+    private static final byte[] B_DEBUG_BEGIN = ",\"info\":{\"debug\":\"".getBytes(UTF_8);
+    private static final byte[] B_DEBUG_END = "\"}".getBytes(UTF_8);
 
     private static final byte B_COMMA_DELIM = ',';
     private static final byte B_CLOSE_BRACKET = ']';
@@ -33,7 +40,20 @@ class EventStreamWriterBinary implements EventStreamWriter {
 
     @Override
     public int writeBatch(final OutputStream os, final Cursor cursor, final List<String> events) throws IOException {
+        return this.writeBatch(os, cursor, (List<Object>)(Object)events, Optional.empty(), (o) -> (String) o);
+    }
 
+    @Override
+    public int writeSubscriptionBatch(final OutputStream os, final Cursor cursor,
+                                      final List<ConsumedEvent> events,
+                                      final Optional<String> metadata) throws IOException {
+        return this.writeBatch(os, cursor, (List<Object>)(Object)events, metadata,
+                (o) -> ((ConsumedEvent)o).getEvent());
+    }
+
+    private int writeBatch(final OutputStream os, final Cursor cursor, final List<Object> events,
+                           final Optional<String> metadata,
+                           final Function<Object, String> extractor) throws IOException {
         int byteCount = B_FIXED_BYTE_COUNT;
 
         os.write(B_CURSOR_PARTITION_BEGIN);
@@ -48,7 +68,7 @@ class EventStreamWriterBinary implements EventStreamWriter {
         if (!events.isEmpty()) {
             os.write(B_EVENTS_ARRAY_BEGIN);
             for (int i = 0; i < events.size(); i++) {
-                final byte[] event = events.get(i).getBytes(StandardCharsets.UTF_8);
+                final byte[] event = extractor.apply(events.get(i)).getBytes(StandardCharsets.UTF_8);
                 os.write(event);
                 byteCount += event.length;
                 if (i < (events.size() - 1)) {
@@ -57,6 +77,17 @@ class EventStreamWriterBinary implements EventStreamWriter {
                     os.write(B_CLOSE_BRACKET);
                 }
             }
+        }
+        if (metadata.isPresent()) {
+            os.write(B_DEBUG_BEGIN);
+            byteCount += B_DEBUG_BEGIN.length;
+
+            final byte[] debug = metadata.get().getBytes(StandardCharsets.UTF_8);
+            os.write(debug);
+            byteCount += debug.length;
+
+            os.write(B_DEBUG_END);
+            byteCount += B_DEBUG_END.length;
         }
         os.write(B_CLOSE_CURLY_BRACKET);
         os.write(B_BATCH_SEPARATOR);

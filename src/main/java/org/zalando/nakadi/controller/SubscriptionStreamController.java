@@ -110,10 +110,8 @@ public class SubscriptionStreamController {
         }
 
         @Override
-        public void streamData(final byte[] data) throws IOException {
-            headersSent = true;
-            out.write(data);
-            out.flush();
+        public OutputStream getOutputStream() {
+            return this.out;
         }
     }
 
