@@ -8,11 +8,10 @@ import org.zalando.nakadi.view.SubscriptionCursor;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
-import static com.google.common.base.Charsets.UTF_8;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Component
 @Qualifier("binary")
@@ -56,11 +55,11 @@ class EventStreamWriterBinary implements EventStreamWriter {
         int byteCount = B_FIXED_BYTE_COUNT;
 
         os.write(B_CURSOR_PARTITION_BEGIN);
-        final byte[] partition = cursor.getPartition().getBytes(StandardCharsets.UTF_8);
+        final byte[] partition = cursor.getPartition().getBytes(UTF_8);
         os.write(partition);
         byteCount += partition.length;
         os.write(B_OFFSET_BEGIN);
-        final byte[] offset = cursor.getOffset().getBytes(StandardCharsets.UTF_8);
+        final byte[] offset = cursor.getOffset().getBytes(UTF_8);
         os.write(offset);
         byteCount += offset.length;
 
@@ -93,21 +92,21 @@ class EventStreamWriterBinary implements EventStreamWriter {
         int byteCount = B_FIXED_BYTE_COUNT_SUBSCRIPTION;
 
         os.write(B_CURSOR_PARTITION_BEGIN);
-        final byte[] partition = cursor.getPartition().getBytes(StandardCharsets.UTF_8);
+        final byte[] partition = cursor.getPartition().getBytes(UTF_8);
         os.write(partition);
         byteCount += partition.length;
         os.write(B_OFFSET_BEGIN);
-        final byte[] offset = cursor.getOffset().getBytes(StandardCharsets.UTF_8);
+        final byte[] offset = cursor.getOffset().getBytes(UTF_8);
         os.write(offset);
         byteCount += offset.length;
 
         os.write(B_EVENT_TYPE_BEGIN);
-        final byte[] eventType = cursor.getEventType().getBytes(StandardCharsets.UTF_8);
+        final byte[] eventType = cursor.getEventType().getBytes(UTF_8);
         os.write(eventType);
         byteCount += eventType.length;
 
         os.write(B_CURSOR_TOKEN_BEGIN);
-        final byte[] cursorToken = cursor.getCursorToken().getBytes(StandardCharsets.UTF_8);
+        final byte[] cursorToken = cursor.getCursorToken().getBytes(UTF_8);
         os.write(cursorToken);
         byteCount += cursorToken.length;
 
@@ -129,7 +128,7 @@ class EventStreamWriterBinary implements EventStreamWriter {
             os.write(B_DEBUG_BEGIN);
             byteCount += B_DEBUG_BEGIN.length;
 
-            final byte[] debug = metadata.get().getBytes(StandardCharsets.UTF_8);
+            final byte[] debug = metadata.get().getBytes(UTF_8);
             os.write(debug);
             byteCount += debug.length;
 
