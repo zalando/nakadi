@@ -29,7 +29,7 @@ public class EventStreamWriterString implements EventStreamWriter {
                 .append("\"}");
         if (!events.isEmpty()) {
             builder.append(",\"events\":[");
-            events.forEach(event -> builder.append(event.getEvent()).append(","));
+            events.forEach(event -> builder.append(new String(event.getEvent())).append(","));
             builder.deleteCharAt(builder.length() - 1).append("]");
         }
         metadata.ifPresent(s -> builder.append(",\"info\":{\"debug\":\"").append(s).append("\"}"));
@@ -46,13 +46,13 @@ public class EventStreamWriterString implements EventStreamWriter {
     }
 
     @Override
-    public int writeBatch(final OutputStream os, final Cursor cursor, final List<String> events) throws IOException {
+    public int writeBatch(final OutputStream os, final Cursor cursor, final List<byte[]> events) throws IOException {
         final StringBuilder builder = new StringBuilder()
                 .append("{\"cursor\":{\"partition\":\"").append(cursor.getPartition())
                 .append("\",\"offset\":\"").append(cursor.getOffset()).append("\"}");
         if (!events.isEmpty()) {
             builder.append(",\"events\":[");
-            events.forEach(event -> builder.append(event).append(","));
+            events.forEach(event -> builder.append(new String(event)).append(","));
             builder.deleteCharAt(builder.length() - 1).append("]");
         }
 

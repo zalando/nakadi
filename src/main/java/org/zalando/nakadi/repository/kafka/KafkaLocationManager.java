@@ -57,11 +57,11 @@ public class KafkaLocationManager {
                 try {
                     final byte[] brokerData = curator.getData().forPath(BROKERS_IDS_PATH + "/" + brokerId);
                     brokers.add(Broker.fromByteJson(brokerData));
-                } catch (Exception e) {
+                } catch (final Exception e) {
                     LOG.info(String.format("Failed to fetch connection string for broker %s", brokerId), e);
                 }
             }
-        } catch (Exception e) {
+        } catch (final Exception e) {
             LOG.error("Failed to fetch list of brokers from ZooKeeper", e);
         }
 
@@ -95,6 +95,8 @@ public class KafkaLocationManager {
     public Properties getKafkaConsumerProperties() {
         final Properties properties = (Properties) kafkaProperties.clone();
         properties.put("enable.auto.commit", kafkaSettings.getEnableAutoCommit());
+        properties.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        properties.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         return properties;
     }
 
