@@ -234,9 +234,12 @@ public abstract class EventStreamTest {
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
-        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(5, new String(DUMMY))))));
-        assertThat(batches[1], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(5, new String(DUMMY))))));
-        assertThat(batches[2], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, new String(DUMMY))))));
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000",
+                Optional.of(nCopies(5, new String(DUMMY))))));
+        assertThat(batches[1], sameJSONAs(jsonBatch("0", "000000000000000000",
+                Optional.of(nCopies(5, new String(DUMMY))))));
+        assertThat(batches[2], sameJSONAs(jsonBatch("0", "000000000000000000",
+                Optional.of(nCopies(2, new String(DUMMY))))));
     }
 
     @Test(timeout = 10000)
@@ -255,7 +258,8 @@ public abstract class EventStreamTest {
                 .range(0, eventNum)
                 .boxed()
                 .map(index -> new ConsumedEvent(
-                        ("event" + index).getBytes(UTF_8), new NakadiCursor(TIMELINE, "0", KafkaCursor.toNakadiOffset(index))))
+                        ("event" + index).getBytes(UTF_8), new NakadiCursor(TIMELINE, "0",
+                        KafkaCursor.toNakadiOffset(index))))
                 .collect(Collectors.toList()));
 
         final EventStream eventStream =
@@ -309,9 +313,12 @@ public abstract class EventStreamTest {
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
         assertThat(batches, arrayWithSize(3));
-        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000", Optional.of(nCopies(2, new String(DUMMY))))));
-        assertThat(batches[1], sameJSONAs(jsonBatch("1", "000000000000000000", Optional.of(nCopies(2, new String(DUMMY))))));
-        assertThat(batches[2], sameJSONAs(jsonBatch("2", "000000000000000000", Optional.of(nCopies(2, new String(DUMMY))))));
+        assertThat(batches[0], sameJSONAs(jsonBatch("0", "000000000000000000",
+                Optional.of(nCopies(2, new String(DUMMY))))));
+        assertThat(batches[1], sameJSONAs(jsonBatch("1", "000000000000000000",
+                Optional.of(nCopies(2, new String(DUMMY))))));
+        assertThat(batches[2], sameJSONAs(jsonBatch("2", "000000000000000000",
+                Optional.of(nCopies(2, new String(DUMMY))))));
     }
 
     private static NakadiKafkaConsumer emptyConsumer() throws NakadiException {
