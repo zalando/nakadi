@@ -97,8 +97,7 @@ public class MetadataEnrichmentStrategyTest {
         event.getJSONObject("metadata").put("flow_id", "something");
         final BatchItem batch = createBatchItem(event);
 
-        final String flowId = randomString();
-        FlowIdUtils.push(flowId);
+        FlowIdUtils.push("something-else");
         strategy.enrich(batch, eventType);
 
         assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo("something"));
