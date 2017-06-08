@@ -119,6 +119,20 @@ public class MetadataEnrichmentStrategyTest {
     }
 
     @Test
+    public void whenFlowIsNullOverrideIt() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        final JSONObject event = buildBusinessEvent();
+        event.getJSONObject("metadata").put("flow_id", (Object)null);
+        final BatchItem batch = createBatchItem(event);
+
+        final String flowId = randomString();
+        FlowIdUtils.push(flowId);
+        strategy.enrich(batch, eventType);
+
+        assertThat(batch.getEvent().getJSONObject("metadata").getString("flow_id"), equalTo(flowId));
+    }
+
+    @Test
     public void setPartition() throws Exception {
         final EventType eventType = buildDefaultEventType();
         final JSONObject event = buildBusinessEvent();
