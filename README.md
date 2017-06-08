@@ -62,7 +62,7 @@ The project also provides compatability with the [STUPS project](https://stups.i
 
 * Filtering of events for subscribing consumers.
 
-* Role base access control to data. 
+* Role based access control to data. 
 
 * Support for different streaming technologies and engines. Nakadi currently uses [Apache Kafka](http://kafka.apache.org/) as its broker, but other providers (such as Kinesis) will be possible. 
 
