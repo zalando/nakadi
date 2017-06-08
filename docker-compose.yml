@@ -13,11 +13,13 @@ services:
       - SPRING_PROFILES_ACTIVE
       - NAKADI_OAUTH2_MODE=OFF
       - NAKADI_FEATURETOGGLE_DEFAULT=true
-      - NAKADI_ZOOKEEPER_BROKERS=localhost:2181
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/local_nakadi_db
+      - NAKADI_ZOOKEEPER_BROKERS=zookeeper:2181
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/local_nakadi_db
       - SPRING_DATASOURCE_USERNAME=nakadi
       - SPRING_DATASOURCE_PASSWORD=nakadi
-    network_mode: "host"
+    links:
+      - zookeeper:zookeeper
+      - postgres:postgres
 
   postgres:
     image: postgres:9.5
@@ -29,25 +31,24 @@ services:
       POSTGRES_USER: nakadi
       POSTGRES_PASSWORD: nakadi
       POSTGRES_DB: local_nakadi_db
-    network_mode: "host"
 
   zookeeper:
     image: wurstmeister/zookeeper:3.4.6
-    network_mode: "host"
     ports:
       - "2181:2181"
 
   kafka:
     image: wurstmeister/kafka:0.9.0.0
-    network_mode: "host"
     ports:
       - "9092:9092"
     depends_on:
       - zookeeper
+    links:
+      - zookeeper:zookeeper
     environment:
       KAFKA_ADVERTISED_HOST_NAME: localhost
       KAFKA_ADVERTISED_PORT: 9092
-      KAFKA_ZOOKEEPER_CONNECT: localhost:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
       KAFKA_CREATE_TOPICS: "test-topic:8:1"
@@ -55,3 +56,4 @@ services:
       KAFKA_BROKER_ID: 0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
