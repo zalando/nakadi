@@ -6,15 +6,15 @@ import javax.annotation.concurrent.Immutable;
 @Immutable
 public class ConsumedEvent {
 
-    private final String event;
+    private final byte[] event;
     private final NakadiCursor position;
 
-    public ConsumedEvent(final String event, final NakadiCursor position) {
+    public ConsumedEvent(final byte[] event, final NakadiCursor position) {
         this.event = event;
         this.position = position;
     }
 
-    public String getEvent() {
+    public byte[] getEvent() {
         return event;
     }
 
