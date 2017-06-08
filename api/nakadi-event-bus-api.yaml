@@ -2049,7 +2049,7 @@ definitions:
           type: string
         description: |
           EventTypes to subscribe to.
-          The order is not important. Subscriptions that differ only be the order of EventTypes will be
+          The order is not important. Subscriptions that differ only by the order of EventTypes will be
           considered the same and will have the same id. The size of event_types list is limited by total number
           of partitions within these event types. Default limit for partition count is 100.
       consumer_group:
@@ -2075,7 +2075,7 @@ definitions:
           - `begin` - read from the oldest available event.
           - `end` - read from the most recent offset.
           - `cursors` - read from cursors provided in `initial_cursors` property.
-          Applied in the moment when client starts reading from a subscription.
+          Applied when the client starts reading from a subscription.
         default: 'end'
       initial_cursors:
         type: array
