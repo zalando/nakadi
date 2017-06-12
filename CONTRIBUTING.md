@@ -12,7 +12,7 @@ Below are a few guidelines we would like you to follow.
 If you need help, please reach out to us by opening an issue.
 
 ## Report a bug 
-Reporting bugs is one of the best ways to contribute. Before creating a bug report, please check that an [issue](https://github.com/zalando/nakadi/issues) reporting the same problem does not already exist. If there is an such an issue, you may add your information as a comment.
+Reporting bugs is one of the best ways to contribute. Before creating a bug report, please check that an [issue](https://github.com/zalando/nakadi/issues) reporting the same problem does not already exist. If there is such an issue, you may add your information as a comment.
 
 To report a new bug you should open an issue that summarizes the bug and set the label to "bug".
 
