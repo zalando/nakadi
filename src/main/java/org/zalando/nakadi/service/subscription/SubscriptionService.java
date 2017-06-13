@@ -51,8 +51,6 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.Result;
-import org.zalando.nakadi.service.subscription.state.StartingState;
-import org.zalando.nakadi.service.subscription.zk.OldSubscriptionFormatException;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
@@ -223,13 +221,7 @@ public class SubscriptionService {
 
     private ZkSubscriptionNode getZkSubscriptionNode(
             final Subscription subscription, final ZkSubscriptionClient subscriptionClient) {
-        try {
-            return subscriptionClient.getZkSubscriptionNodeLocked();
-        } catch (OldSubscriptionFormatException ex) {
-            subscriptionClient.runLocked(() -> StartingState.initializeSubscriptionStructure(
-                    subscription, timelineService, converter, subscriptionClient));
-            return subscriptionClient.getZkSubscriptionNodeLocked();
-        }
+        return subscriptionClient.getZkSubscriptionNodeLocked();
     }
 
     private List<PartitionEndStatistics> loadPartitionEndStatistics(final Collection<EventType> eventTypes)
