@@ -29,6 +29,7 @@ public class SubscriptionBase {
     private Set<String> eventTypes;
 
     @NotNull
+    @Size(min = 1, message = "must contain at least one character")
     private String consumerGroup = "default";
 
     @NotNull
