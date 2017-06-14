@@ -745,6 +745,7 @@ paths:
           description: |
             Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
             `unconsumed_events` to the response partition object.
+          type: string
       responses:
         '200':
           description: OK
@@ -817,7 +818,7 @@ paths:
               - if the `shift` provided leads to a cursor that is not yet existent, i.e. it's pointing to
               some cursor yet to be generated in the future.
             schema:
-              - $ref: '#/definitions/Problem'
+              $ref: '#/definitions/Problem'
 
   /subscriptions:
     post:
@@ -1889,13 +1890,13 @@ definitions:
       - final_cursor
     properties:
       initial_cursor:
-        - $ref: "/definitions/Cursor"
+        $ref: "#/definitions/Cursor"
       final_cursor:
-        - $ref: "/definitions/Cursor"
+        $ref: "#/definitions/Cursor"
 
   CursorDistanceResult:
     allOf:
-      - $ref: '/definitions/CursorDistanceQuery'
+      - $ref: '#/definitions/CursorDistanceQuery'
     required:
       - distance
     properties:
@@ -2059,6 +2060,7 @@ definitions:
           The value describing the use case of this subscription.
           In general that is an additional identifier used to differ subscriptions having the same
           owning_application and event_types.
+        minLength: 1
         default: 'default'
       created_at:
         type: string
