@@ -44,7 +44,7 @@ public class CursorOperationsService {
         if (!initialCursor.getPartition().equals(finalCursor.getPartition())) {
             throw new InvalidCursorOperation(CURSORS_WITH_DIFFERENT_PARTITION);
         } else if (initialCursor.getTimeline().getOrder() > finalCursor.getTimeline().getOrder()) {
-            throw new InvalidCursorOperation(INVERTED_TIMELINE_ORDER);
+            return - getDistanceDifferentTimelines(finalCursor, initialCursor);
         }
 
         if (initialCursor.getTimeline().getOrder() == finalCursor.getTimeline().getOrder()) {
@@ -56,9 +56,7 @@ public class CursorOperationsService {
 
     private long getDistanceSameTimeline(final NakadiCursor initialCursor, final NakadiCursor finalCursor) {
         final long distance = numberOfEventsBeforeCursor(finalCursor) - numberOfEventsBeforeCursor(initialCursor);
-        if (distance < 0) {
-            throw new InvalidCursorOperation(INVERTED_OFFSET_ORDER);
-        }
+
         return distance;
     }
 
