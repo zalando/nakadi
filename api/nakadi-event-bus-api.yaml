@@ -2044,6 +2044,7 @@ definitions:
         example: 'gizig'
         description: |
           The id of application owning the subscription.
+        minLength: 1
       event_types:
         type: array
         items:

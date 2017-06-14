@@ -22,6 +22,7 @@ public class SubscriptionBase {
     }
 
     @NotNull
+    @Size(min = 1, message = "must contain at least one character")
     private String owningApplication;
 
     @NotNull
