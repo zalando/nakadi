@@ -13,12 +13,19 @@ static configuration loaded during boot time. Once timelines were
 introduced, in order to ease the migration process and remove special
 cases from the implementation, a fake timeline was introduced.
 
-Fake timelines exist only in memory. They are Timelines that are not
-stored in the database. Fake timelines can be seen as a fallback
-strategy for when there is no actual timeline for a given event type.
+Fake timelines ease the transition from existent event types. The
+migration process is as follow:
 
-Also, fake timelines use the default storage defined in the
-application configuration.
+0. Initial state: all event types are associated to a Fake timeline.
+1. Create first real timeline: this step creates an entry in the
+   timeline table. But this timeline is still bound to the existent
+   storage. The only difference from a Fake timeline to the first Real
+   timeline is in the cursor format. With a Fake timeline, the old
+   version is used, i.e. "0000000000000001". Once a Real timeline is
+   created, this offset is exposed as "001-0001-000000000000000001".
+2. A second timeline is created: this timeline should have a different
+   storage and different topic is going to be created by Nakadi for
+   this event type.
 
 # Timeline creation
 
