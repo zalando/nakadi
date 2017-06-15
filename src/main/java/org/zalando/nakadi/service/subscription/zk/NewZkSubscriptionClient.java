@@ -3,12 +3,10 @@ package org.zalando.nakadi.service.subscription.zk;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import static com.google.common.base.Charsets.UTF_8;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
@@ -105,21 +103,9 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
             final String subscriptionId,
             final CuratorFramework curatorFramework,
             final String loggingPath,
-            final ObjectMapper objectMapper,
-            final Map<String, String> topicToEventType) {
-        super(subscriptionId, curatorFramework, loggingPath, topicToEventType);
+            final ObjectMapper objectMapper) {
+        super(subscriptionId, curatorFramework, loggingPath);
         this.objectMapper = objectMapper;
-    }
-
-    @Override
-    protected boolean checkTopologyVersion(final byte[] bytes) {
-        try {
-            objectMapper.readValue(bytes, Topology.class);
-            return true;
-        } catch (final IOException e) {
-            getLog().warn("Failed to check topology, will migrate to it (recreate subscription)", e);
-            return false;
-        }
     }
 
     @Override
@@ -143,7 +129,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
     @Override
     public void updatePartitionsConfiguration(final Partition[] partitions) throws NakadiRuntimeException,
-            SubscriptionNotInitializedException, OldSubscriptionFormatException {
+            SubscriptionNotInitializedException {
         final Topology newTopology = readTopology().withUpdatedPartitions(partitions);
         try {
             getCurator().setData().forPath(
@@ -154,15 +140,13 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
         }
     }
 
-    private Topology readTopology() throws NakadiRuntimeException, OldSubscriptionFormatException,
+    private Topology readTopology() throws NakadiRuntimeException,
             SubscriptionNotInitializedException {
         try {
             final byte[] data = getCurator().getData().forPath(getSubscriptionPath(NODE_TOPOLOGY));
             final Topology result = objectMapper.readValue(data, Topology.class);
             getLog().info("Topology is {}", result);
             return result;
-        } catch (final IOException ex) {
-            throw new OldSubscriptionFormatException();
         } catch (KeeperException.NoNodeException ex) {
             throw new SubscriptionNotInitializedException(getSubscriptionId());
         } catch (final Exception ex) {
@@ -171,8 +155,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
     }
 
     @Override
-    public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException,
-            OldSubscriptionFormatException {
+    public Partition[] listPartitions() throws NakadiRuntimeException, SubscriptionNotInitializedException {
         return readTopology().getPartitions();
     }
 
@@ -192,7 +175,7 @@ public class NewZkSubscriptionClient extends AbstractZkSubscriptionClient {
 
     @Override
     public void transfer(final String sessionId, final Collection<EventTypePartition> partitions)
-            throws NakadiRuntimeException, OldSubscriptionFormatException, SubscriptionNotInitializedException {
+            throws NakadiRuntimeException, SubscriptionNotInitializedException {
         getLog().info("session " + sessionId + " releases partitions " + partitions);
         final Topology topology = readTopology();
 

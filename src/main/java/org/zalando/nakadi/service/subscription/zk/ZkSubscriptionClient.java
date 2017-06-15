@@ -31,7 +31,7 @@ public interface ZkSubscriptionClient {
      * CREATED. After {{@link #fillEmptySubscription}} call it will have value INITIALIZED. So true
      * will be returned in case of state is equal to CREATED.
      */
-    boolean isSubscriptionCreatedAndInitialized();
+    boolean isSubscriptionCreatedAndInitialized() throws NakadiRuntimeException;
 
     /**
      * Deletes subscription with all its data in zookeeper
@@ -50,7 +50,7 @@ public interface ZkSubscriptionClient {
      * Updates specified partitions in zk.
      */
     void updatePartitionsConfiguration(Partition[] partitions) throws NakadiRuntimeException,
-            SubscriptionNotInitializedException, OldSubscriptionFormatException;
+            SubscriptionNotInitializedException;
 
     /**
      * Returns session list in zk related to this subscription.
@@ -115,7 +115,7 @@ public interface ZkSubscriptionClient {
      * @param partitions topic ids and partition ids of transferred data.
      */
     void transfer(String sessionId, Collection<EventTypePartition> partitions)
-            throws NakadiRuntimeException, OldSubscriptionFormatException, SubscriptionNotInitializedException;
+            throws NakadiRuntimeException, SubscriptionNotInitializedException;
 
     /**
      * Retrieves subscription data like partitions and sessions from ZK under lock.

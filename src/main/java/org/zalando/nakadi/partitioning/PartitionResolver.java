@@ -1,25 +1,23 @@
 package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableMap;
+import static com.google.common.collect.Lists.newArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.PartitioningException;
-import org.zalando.nakadi.service.timeline.TimelineService;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
-import static com.google.common.collect.Lists.newArrayList;
-import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STRATEGY;
+import org.zalando.nakadi.service.timeline.TimelineService;
 
 @Component
 public class PartitionResolver {
@@ -65,7 +63,7 @@ public class PartitionResolver {
         }
 
         final List<String> partitions = timelineService.getTopicRepository(eventType)
-                .listPartitionNames(eventType.getTopic());
+                .listPartitionNames(timelineService.getTimeline(eventType).getTopic());
         return partitionStrategy.calculatePartition(eventType, eventAsJson, partitions);
     }
 

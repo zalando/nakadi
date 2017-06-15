@@ -3,10 +3,24 @@ package org.zalando.nakadi.service;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.isOneOf;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.argThat;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CursorError;
 import org.zalando.nakadi.domain.EventType;
@@ -27,17 +41,6 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.subscription.SubscriptionValidationService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.isOneOf;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.argThat;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class SubscriptionValidationServiceTest {
 
@@ -54,6 +57,7 @@ public class SubscriptionValidationServiceTest {
     private CursorConverter cursorConverter;
     private Client client;
 
+
     @Before
     public void setUp() throws InternalNakadiException {
         final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
@@ -64,16 +68,24 @@ public class SubscriptionValidationServiceTest {
                 .thenReturn(ImmutableList.of(P0));
 
         etRepo = mock(EventTypeRepository.class);
-        when(etRepo.findByNameO(any())).thenAnswer(invocation -> {
-            final String etName = (String) invocation.getArguments()[0];
+        final Map<String, EventType> eventTypes = new HashMap<>();
+        for (final String etName : new String[]{ET1, ET2, ET3}) {
             final EventType eventType = new EventType();
             eventType.setName(etName);
             eventType.setTopic(topicForET(etName));
             eventType.setReadScopes(scopesForET(etName));
-            return Optional.of(eventType);
-        });
+            eventTypes.put(etName, eventType);
+        }
+        when(etRepo.findByNameO(any()))
+                .thenAnswer(invocation -> Optional.ofNullable(eventTypes.get(invocation.getArguments()[0])));
 
         final TimelineService timelineService = mock(TimelineService.class);
+        for (final EventType et : eventTypes.values()) {
+            final Timeline timeline = mock(Timeline.class);
+            when(timeline.getTopic()).thenReturn(et.getTopic());
+            when(timeline.getEventType()).thenReturn(et.getName());
+            when(timelineService.getTimeline(eq(et))).thenReturn(timeline);
+        }
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
         cursorConverter = mock(CursorConverter.class);

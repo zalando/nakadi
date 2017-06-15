@@ -16,7 +16,6 @@ import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
-import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
@@ -38,11 +37,11 @@ public class StartingState extends State {
     private void createSubscriptionLocked() {
         // check that subscription initialized in zk.
         if (!getZk().isSubscriptionCreatedAndInitialized()) {
-            initializeSubscriptionStructure(
+            final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
                     getContext().getSubscription(),
                     getContext().getTimelineService(),
-                    getContext().getCursorConverter(),
-                    getZk());
+                    getContext().getCursorConverter());
+            getZk().fillEmptySubscription(cursors);
         } else {
             final Session[] sessions = getZk().listSessions();
             final Partition[] partitions = getZk().listPartitions();
@@ -149,19 +148,6 @@ public class StartingState extends State {
                 final CursorConverter converter) {
             return subscription.getInitialCursors();
         }
-    }
-
-    public static void initializeSubscriptionStructure(
-            final Subscription subscription,
-            final TimelineService timelineService,
-            final CursorConverter cursorConverter,
-            final ZkSubscriptionClient zkSubscriptionClient) {
-        // if not - create subscription node etc.
-        final List<SubscriptionCursorWithoutToken> cursors = calculateStartPosition(
-                subscription,
-                timelineService,
-                cursorConverter);
-        zkSubscriptionClient.fillEmptySubscription(cursors);
     }
 
     public static List<SubscriptionCursorWithoutToken> calculateStartPosition(

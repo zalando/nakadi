@@ -2,12 +2,9 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -344,15 +341,6 @@ public class TimelineService {
 
     public void updateTimeline(final Timeline timeline) {
         timelineDbRepository.updateTimelime(timeline);
-    }
-
-    public Map<String, String> createTopicToEventTypeMapper(final Collection<String> eventTypes)
-            throws InternalNakadiException, NoSuchEventTypeException {
-        final Map<String, String> values = new HashMap<>();
-        for (final String eventType : eventTypes) {
-            getActiveTimelinesOrdered(eventType).forEach(timeline -> values.put(timeline.getTopic(), eventType));
-        }
-        return values;
     }
 
 }
