@@ -30,7 +30,7 @@ This is a rough outline of what the workflow for code contributions looks like:
 - Write good commit messages (see below).
 - Push your changes to a topic branch in your fork of the repository.
 - Submit a pull request to [zalando/nakadi](https://github.com/zalando/nakadi)
-- Your pull request must receive a :thumbsup: from two [Maintainers](https://github.com/zalando/nakadi/blob/master/MAINTAINERS)
+- Your pull request must receive a :thumbsup: from two [maintainers](https://github.com/zalando/nakadi/blob/master/MAINTAINERS)
 
 Thanks for your contributions!
 
