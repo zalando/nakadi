@@ -1,13 +1,14 @@
 package org.zalando.nakadi.plugin.auth;
 
-import org.json.JSONObject;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
+import org.zalando.nakadi.plugin.api.authz.Subject;
 
 public class DefaultAuthorizationService implements AuthorizationService {
 
     @Override
-    public boolean isAuthorized(String token, Operation operation, JSONObject eventType) {
+    public boolean isAuthorized(Subject subject, Operation operation, Resource resource) {
         return true;
     }
 
