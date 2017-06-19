@@ -8,7 +8,7 @@ import org.zalando.nakadi.plugin.api.authz.Subject;
 public class DefaultAuthorizationService implements AuthorizationService {
 
     @Override
-    public boolean isAuthorized(Subject subject, Operation operation, Resource resource) {
+    public boolean isAuthorized(final Subject subject, final Operation operation, final Resource resource) {
         return true;
     }
 
