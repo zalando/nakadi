@@ -42,6 +42,9 @@ if (project.hasProperty('dockerFile')) {
 
 repositories {
     mavenCentral()
+    flatDir {
+        dirs 'libs'
+    }
 }
 
 sourceSets {
@@ -146,7 +149,7 @@ dependencies {
     compile "io.dropwizard.metrics:metrics-servlets:$dropwizardVersion"
     compile "io.dropwizard.metrics:metrics-jvm:$dropwizardVersion"
     compile 'org.apache.commons:commons-lang3:3.5'
-    compile 'org.zalando:nakadi-plugin-api:1.0.5'
+    compile 'org.zalando:nakadi-plugin-api:1.1.0'
     compile 'org.echocat.jomon:runtime:1.6.3'
 
     // kafka & zookeeper
