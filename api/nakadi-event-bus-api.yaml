@@ -2427,19 +2427,19 @@ definitions:
   AuthorizationAttribute:
     type: object
     description: |
-      An attribute for authorization. This object includes a key, which represents the type of the attribute attribute
-      (which keys are allowed depends on which authorization plugin is deployed, and how it is configured), and a
-      value. A wildcard can be represented with key '*', and value '*'. It means that all authenticated users are
-      allowed to perform an operation.
+      An attribute for authorization. This object includes a category, which represents the type of the attribute
+      attribute (which categories are allowed depends on which authorization plugin is deployed, and how it is
+      configured), and a value. A wildcard can be represented with category '*', and value '*'. It means that all
+      authenticated users are allowed to perform an operation.
     properties:
-      key:
+      category:
         type: string
-        description: the type of attribute (e.g., 'team', or 'permission', depending on the Nakadi configuration)
+        description: the category of attribute (e.g., 'team', or 'permission', depending on the Nakadi configuration)
       value:
         type: string
         description: the value of the attribute
     required:
-      - key
+      - category
       - value
 
   SubscriptionEventTypeStats:
