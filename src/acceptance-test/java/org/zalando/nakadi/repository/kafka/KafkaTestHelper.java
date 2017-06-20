@@ -1,6 +1,7 @@
 package org.zalando.nakadi.repository.kafka;
 
 import kafka.admin.AdminUtils;
+import kafka.admin.RackAwareMode;
 import kafka.server.ConfigType;
 import kafka.utils.ZkUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -87,7 +88,7 @@ public class KafkaTestHelper {
                 .collect(Collectors.toList());
 
         consumer.assign(partitions);
-        consumer.seekToEnd(partitions.toArray(new TopicPartition[partitions.size()]));
+        consumer.seekToEnd(partitions);
 
         return partitions
                 .stream()
@@ -100,7 +101,7 @@ public class KafkaTestHelper {
         ZkUtils zkUtils = null;
         try {
             zkUtils = ZkUtils.apply(zkUrl, 30000, 10000, false);
-            AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties());
+            AdminUtils.createTopic(zkUtils, topic, 1, 1, new Properties(), RackAwareMode.Enforced$.MODULE$);
         }
         finally {
             if (zkUtils != null) {
