@@ -81,6 +81,9 @@ nakadi:
   auth:
     plugin:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
+  authz:
+    plugin:
+      factory: org.zalando.nakadi.plugin.auth.DefaultAuthorizationServiceFactory
   event.max.bytes: 999000
   timeline.wait.timeoutMs: 40000
   subscription:
