@@ -136,13 +136,8 @@ public class CursorOperationsController {
 
     private String clientErrorMessage(final InvalidCursorOperation.Reason reason) {
         switch (reason) {
-            case INVERTED_TIMELINE_ORDER: return "Inverted timelines. Final cursor must correspond to a newer " +
-                    "timeline than initial cursor.";
-
             case TIMELINE_NOT_FOUND: return "Timeline not found. It might happen in case the cursor refers to a " +
                     "timeline that has already expired.";
-            case INVERTED_OFFSET_ORDER: return "Inverted offsets. Final cursor offsets must be newer than initial " +
-                    "cursor offsets";
             case PARTITION_NOT_FOUND: return "Partition not found.";
             case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
                     "have matching partitions.";

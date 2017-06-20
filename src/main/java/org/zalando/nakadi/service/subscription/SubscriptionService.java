@@ -253,7 +253,7 @@ public class SubscriptionService {
             if (!lastPosition.getEventType().equals(eventType.getName())) {
                 continue;
             }
-            Long distance;
+            final Long distance;
             if (subscriptionNode.containsPartition(lastPosition.getEventTypePartition())) {
                 final NakadiCursor currentPosition;
                 final SubscriptionCursorWithoutToken offset =
@@ -267,12 +267,7 @@ public class SubscriptionService {
                 try {
                     distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
                 } catch (final InvalidCursorOperation ex) {
-                    if (ex.getReason() == InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER ||
-                            ex.getReason() == InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER) {
-                        distance = 0L;
-                    } else {
-                        throw new InconsistentStateException("Unexpected exception while calculating distance", ex);
-                    }
+                    throw new InconsistentStateException("Unexpected exception while calculating distance", ex);
                 }
             } else {
                 distance = null;
