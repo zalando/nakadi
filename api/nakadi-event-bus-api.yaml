@@ -583,7 +583,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: "#/definitions/CursorDistanceQuery"
+              $ref: '#/definitions/CursorDistanceQuery'
           required: true
       responses:
         '200':
@@ -745,6 +745,7 @@ paths:
           description: |
             Offset to query for unconsumed events. Depends on `partition` parameter. When present adds the property
             `unconsumed_events` to the response partition object.
+          type: string
       responses:
         '200':
           description: OK
@@ -817,7 +818,7 @@ paths:
               - if the `shift` provided leads to a cursor that is not yet existent, i.e. it's pointing to
               some cursor yet to be generated in the future.
             schema:
-              - $ref: '#/definitions/Problem'
+              $ref: '#/definitions/Problem'
 
   /subscriptions:
     post:
@@ -1617,6 +1618,34 @@ paths:
           schema:
             $ref: '#/definitions/Problem'
 
+  /topics/{name}:
+    get:
+      tags:
+        - topics-api
+      description: |
+        Retrieves the event type by provided topic.
+        It searches for event type using the latest active timeline.
+        The oauth resource owner username has to be equal to 'nakadi.oauth2.adminClientId' property
+      parameters:
+        - name: name
+          in: path
+          description: Name of the topic
+          type: string
+          required: true
+      responses:
+        '200':
+          description: Event type which is represented by provided topic
+          schema:
+            $ref: '#/definitions/EventType'
+        '404':
+          description: No such topic
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
 # ################################### #
 #                                     #
 #             Definitions             #
@@ -1889,13 +1918,13 @@ definitions:
       - final_cursor
     properties:
       initial_cursor:
-        - $ref: "/definitions/Cursor"
+        $ref: '#/definitions/Cursor'
       final_cursor:
-        - $ref: "/definitions/Cursor"
+        $ref: '#/definitions/Cursor'
 
   CursorDistanceResult:
     allOf:
-      - $ref: '/definitions/CursorDistanceQuery'
+      - $ref: '#/definitions/CursorDistanceQuery'
     required:
       - distance
     properties:
@@ -1922,7 +1951,7 @@ definitions:
 
   ShiftedCursor:
     allOf:
-      - $ref: "#/definitions/Cursor"
+      - $ref: '#/definitions/Cursor'
       - type: object
         properties:
           shift:
