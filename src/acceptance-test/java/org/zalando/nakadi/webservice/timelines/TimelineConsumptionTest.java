@@ -3,9 +3,14 @@ package org.zalando.nakadi.webservice.timelines;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import static com.jayway.restassured.RestAssured.given;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
+import org.apache.http.HttpStatus;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.zalando.nakadi.domain.EventType;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,11 +19,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
-import org.apache.http.HttpStatus;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.zalando.nakadi.domain.EventType;
+
+import static com.jayway.restassured.RestAssured.given;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.deleteTimeline;
@@ -190,7 +192,7 @@ public class TimelineConsumptionTest {
         // Do not test last case, because it makes no sense...
         for (int idx = -1; idx < expected.length - 1; ++idx) {
             final String[] receivedOffsets = readCursors(eventType.getName(),
-                    idx == -1 ? "BEGIN" : expected[idx], expected.length - 1 - idx, 1);
+                    idx == -1 ? "BEGIN" : expected[idx], expected.length - 1 - idx, 5);
             final String[] testedOffsets = Arrays.copyOfRange(expected, idx + 1, expected.length);
             Assert.assertArrayEquals(testedOffsets, receivedOffsets);
         }
