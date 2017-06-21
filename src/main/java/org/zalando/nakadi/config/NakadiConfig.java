@@ -35,11 +35,6 @@ public class NakadiConfig {
     }
 
     @Bean
-    public SystemProperties systemProperties(final ApplicationContext context) {
-        return name -> context.getEnvironment().getProperty(name);
-    }
-
-    @Bean
     @Qualifier("default_storage")
     public Storage defaultStorage(final StorageDbRepository storageDbRepository,
                                   final Environment environment) throws InternalNakadiException {
