@@ -25,8 +25,6 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
-import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER;
-import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.TIMELINE_NOT_FOUND;
 
@@ -46,22 +44,29 @@ public class CursorOperationsServiceTest {
     }
 
     @Test
-    public void whenCursorsOffsetsAreInvertedThenException() throws Exception {
+    public void whenCursorsOffsetsAreInvertedThenNegativeDistance() throws Exception {
         final NakadiCursor initialCursor = new NakadiCursor(timeline, "0", "0000000000000002");
         final NakadiCursor finalCursor = new NakadiCursor(timeline, "0", "0000000000000001");
 
-        expectException(initialCursor, finalCursor, INVERTED_OFFSET_ORDER);
+        final Long distance = service.calculateDistance(initialCursor, finalCursor);
+
+        assertThat(distance, equalTo(-1L));
     }
 
     @Test
-    public void whenCursorTimelinesAreInvertedThenException() throws Exception {
-        final Timeline initialTimeline = mockTimeline(1);
-        final Timeline finalTimeline = mockTimeline(0);
+    public void whenCursorTimelinesAreInvertedThenNegativeDistance() throws Exception {
+        final Timeline initialTimeline = mockTimeline(2, 7);
+        final Timeline intermediaryTimeline = mockTimeline(1, 9L);
+        final Timeline finalTimeline = mockTimeline(0, 5);
 
         final NakadiCursor initialCursor = new NakadiCursor(initialTimeline, "0", "0000000000000001");
-        final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000002");
+        final NakadiCursor finalCursor = new NakadiCursor(finalTimeline, "0", "0000000000000003");
 
-        expectException(initialCursor, finalCursor, INVERTED_TIMELINE_ORDER);
+        mockActiveTimelines(initialTimeline, intermediaryTimeline, finalTimeline);
+
+        final Long distance = service.calculateDistance(initialCursor, finalCursor);
+
+        assertThat(distance, equalTo(-14L));
     }
 
     @Test

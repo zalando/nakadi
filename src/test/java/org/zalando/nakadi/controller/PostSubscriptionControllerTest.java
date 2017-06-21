@@ -137,6 +137,24 @@ public class PostSubscriptionControllerTest {
     }
 
     @Test
+    public void whenCreateSubscriptionWithEmptyConsumerGroupThenUnprocessableEntity() throws Exception {
+        final SubscriptionBase subscriptionBase = builder()
+                .withConsumerGroup("")
+                .buildSubscriptionBase();
+        final Problem expectedProblem = invalidProblem("consumer_group", "must contain at least one character");
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
+    }
+
+    @Test
+    public void whenCreateSubscriptionWithEmptyOwningApplicationThenUnprocessableEntity() throws Exception {
+        final SubscriptionBase subscriptionBase = builder()
+                .withOwningApplication("")
+                .buildSubscriptionBase();
+        final Problem expectedProblem = invalidProblem("owning_application", "must contain at least one character");
+        checkForProblem(postSubscription(subscriptionBase), expectedProblem);
+    }
+
+    @Test
     public void whenOwningApplicationIsNullThenUnprocessableEntity() throws Exception {
         final SubscriptionBase subscriptionBase = builder()
                 .withOwningApplication(null)
