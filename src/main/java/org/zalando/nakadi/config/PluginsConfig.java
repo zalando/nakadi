@@ -20,7 +20,7 @@ public class PluginsConfig {
 
     @Bean
     @SuppressWarnings("unchecked")
-    public ApplicationService applicationService(@Value("${nakadi.auth.plugin.factory}") final String factoryName,
+    public ApplicationService applicationService(@Value("${nakadi.plugins.auth.factory}") final String factoryName,
                                                  final SystemProperties systemProperties,
                                                  final DefaultResourceLoader loader) {
         try {
@@ -35,7 +35,7 @@ public class PluginsConfig {
     }
 
     @Bean
-    public AuthorizationService authorizationService(@Value("${nakadi.authz.plugin.factory}") final String factoryName,
+    public AuthorizationService authorizationService(@Value("${nakadi.plugins.authz.factory}") final String factoryName,
                                                      final SystemProperties systemProperties,
                                                      final DefaultResourceLoader loader) {
         try {
