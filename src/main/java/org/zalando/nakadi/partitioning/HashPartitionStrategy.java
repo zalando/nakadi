@@ -53,8 +53,8 @@ public class HashPartitionStrategy implements PartitionStrategy {
             final int partitionIndex = abs(hashValue) % partitions.size();
             final String partition = partitions.get(partitionIndex);
 
-            LOG.info("[HASH_BUG] hash - values:{} -> hash:{} -> index:{} -> partition:{}; partitions of '{}': {}",
-                    fieldValues, hashValue, partitionIndex, partition, eventType.getName(),
+            LOG.info("[HASH_BUG] hash - values:{} -> hash:{} -> index:{} -> partition:{}; partitions of '{}' [PNUM:{}]: {}",
+                    fieldValues, hashValue, partitionIndex, partition, eventType.getName(), partitions.size(),
                     partitions.stream().collect(Collectors.joining(",")));
 
             return partition;
@@ -68,6 +68,5 @@ public class HashPartitionStrategy implements PartitionStrategy {
             }
         }
     }
-
 
 }
