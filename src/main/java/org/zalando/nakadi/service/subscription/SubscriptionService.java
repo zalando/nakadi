@@ -56,6 +56,7 @@ import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionClient;
 import org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.SubscriptionsUriHelper;
+import org.zalando.nakadi.util.TimeLogger;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 import org.zalando.problem.Problem;
 
@@ -192,10 +193,15 @@ public class SubscriptionService {
     private List<SubscriptionEventTypeStats> createSubscriptionStat(final Subscription subscription)
             throws InconsistentStateException, ServiceTemporaryUnavailableException {
 
+        TimeLogger.startMeasure("SUBSCRIPTION_STATS sid:" + subscription.getId(),
+                "getEventTypes");
+
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)
                 .collect(Collectors.toList());
+
+        TimeLogger.addMeasure("loadStats");
 
         final List<PartitionEndStatistics> topicPartitions;
         try {
@@ -203,6 +209,8 @@ public class SubscriptionService {
         } catch (final ServiceUnavailableException ex) {
             throw new ServiceTemporaryUnavailableException(ex);
         }
+
+        TimeLogger.addMeasure("createSubscriptionClient");
 
         final ZkSubscriptionClient subscriptionClient;
         try {
@@ -212,11 +220,18 @@ public class SubscriptionService {
             throw new ServiceTemporaryUnavailableException(e);
         }
 
+        TimeLogger.addMeasure("getZkSubscriptionNode");
+
         final ZkSubscriptionNode zkSubscriptionNode = getZkSubscriptionNode(subscription, subscriptionClient);
 
-        return eventTypes.stream()
+        TimeLogger.addMeasure("calculateDistances");
+
+        final List<SubscriptionEventTypeStats> result = eventTypes.stream()
                 .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
                 .collect(Collectors.toList());
+
+        LOG.info(TimeLogger.finishMeasure());
+        return result;
     }
 
     private ZkSubscriptionNode getZkSubscriptionNode(
