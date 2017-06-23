@@ -1,17 +1,17 @@
 package org.zalando.nakadi.exceptions;
 
-import org.zalando.problem.MoreStatus;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 
-import javax.ws.rs.core.Response;
+public class InvalidStreamIdException extends MyNakadiRuntimeException1 {
 
-public class InvalidStreamIdException extends NakadiException {
+    private final String streamId;
 
-    public InvalidStreamIdException(final String message) {
+    public InvalidStreamIdException(final String message, final String streamId) {
         super(message);
+        this.streamId = streamId;
     }
 
-    @Override
-    protected Response.StatusType getStatus() {
-        return MoreStatus.UNPROCESSABLE_ENTITY;
+    public String getStreamId() {
+        return streamId;
     }
 }

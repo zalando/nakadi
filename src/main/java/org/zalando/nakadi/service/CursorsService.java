@@ -103,7 +103,7 @@ public class CursorsService {
             NoSuchEventTypeException, InternalNakadiException {
 
         if (!subscriptionClient.isActiveSession(streamId)) {
-            throw new InvalidStreamIdException("Session with stream id " + streamId + " not found");
+            throw new InvalidStreamIdException("Session with stream id " + streamId + " not found", streamId);
         }
 
         final Map<EventTypePartition, String> partitionSessions = Stream.of(subscriptionClient.listPartitions())
@@ -117,7 +117,7 @@ public class CursorsService {
 
             if (!streamId.equals(partitionSession)) {
                 throw new InvalidStreamIdException("Cursor " + cursor + " cannot be committed with stream id "
-                        + streamId);
+                        + streamId, streamId);
             }
         }
     }
