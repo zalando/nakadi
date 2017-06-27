@@ -3,6 +3,8 @@ package org.zalando.nakadi.partitioning;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.InvalidPartitionKeyFieldsException;
@@ -17,11 +19,22 @@ import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
 
+@Component
 public class HashPartitionStrategy implements PartitionStrategy {
 
     private static final Logger LOG = LoggerFactory.getLogger(HashPartitionStrategy.class);
 
     private static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
+
+    private final HashPartitionStrategyCrutch hashPartitioningCrutch;
+    private final StringHash stringHash;
+
+    @Autowired
+    public HashPartitionStrategy(final HashPartitionStrategyCrutch hashPartitioningCrutch,
+                                 final StringHash stringHash) {
+        this.hashPartitioningCrutch = hashPartitioningCrutch;
+        this.stringHash = stringHash;
+    }
 
     @Override
     public String calculatePartition(final EventType eventType, final JSONObject event, final List<String> partitions)
@@ -44,17 +57,22 @@ public class HashPartitionStrategy implements PartitionStrategy {
                     .map(Try.wrap(okf -> {
                         final String fieldValue = traversableJsonEvent.get(okf).toString();
                         fieldValues.add(fieldValue);
-                        return fieldValue.hashCode();
+                        return stringHash.hashCode(fieldValue);
                     }))
                     .map(Try::getOrThrow)
                     .mapToInt(hc -> hc)
                     .sum();
 
-            final int partitionIndex = abs(hashValue) % partitions.size();
-            final String partition = partitions.get(partitionIndex);
 
+            int partitionIndex = abs(hashValue) % partitions.size();
+            partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitions.size());
+
+            final List<String> sortedPartitions = partitions.stream().sorted().collect(Collectors.toList());
+            final String partition = sortedPartitions.get(partitionIndex);
+
+            // todo: this should be removed after hash-partitioning-crutch is validated
             LOG.info("[HASH_BUG] hash - values:{} -> hash:{} -> index:{} -> partition:{}; " +
-                    "partitions of '{}' [PNUM:{}]: {}", fieldValues, hashValue, partitionIndex, partition,
+                            "partitions of '{}' [PNUM:{}]: {}", fieldValues, hashValue, partitionIndex, partition,
                     eventType.getName(), partitions.size(), partitions.stream().collect(Collectors.joining(",")));
 
             return partition;

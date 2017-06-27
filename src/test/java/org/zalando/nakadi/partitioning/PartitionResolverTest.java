@@ -40,15 +40,14 @@ public class PartitionResolverTest {
         timelineService = Mockito.mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
-        partitionResolver = new PartitionResolver(timelineService);
+        partitionResolver = new PartitionResolver(timelineService, mock(HashPartitionStrategy.class));
     }
 
     @Test
     public void whenResolvePartitionWithKnownStrategyThenOk() throws NakadiException {
 
         final EventType eventType = new EventType();
-        eventType.setPartitionKeyFields(ImmutableList.of("abc"));
-        eventType.setPartitionStrategy(HASH_STRATEGY);
+        eventType.setPartitionStrategy(RANDOM_STRATEGY);
 
         when(timelineService.getTimeline(eq(eventType))).thenReturn(mock(Timeline.class));
 
