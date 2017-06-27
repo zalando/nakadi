@@ -1,21 +1,20 @@
 package org.zalando.nakadi.validation;
 
-import org.everit.json.schema.FormatValidator;
-
 import java.time.OffsetDateTime;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+import org.everit.json.schema.FormatValidator;
 
 public class RFC3339DateTimeValidator implements FormatValidator {
 
     private final String errorMessage = "must be a valid date-time";
 
     // Valid offsets are either Z or hh:mm. The format hh:mm:ss is not valid
-    private final String dateTimeOffsetPattern = "^.*(Z|((\\+|-)\\d\\d:\\d\\d))$";
+    // Pattern is used to catch situations that are not covered by {@link OffsetDateTime#parse(CharSequence)}
+    private final String dateTimeOffsetPattern = "^.*[Tt]\\d{2}:\\d{2}:\\d{2}.*([zZ]|([+-]\\d{2}:\\d{2}))$";
     private final Pattern pattern = Pattern.compile(dateTimeOffsetPattern);
     private final Optional<String> error = Optional.of(errorMessage);
 
