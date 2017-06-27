@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class HashPartitionStrategyCrutch {
@@ -23,10 +24,30 @@ public class HashPartitionStrategyCrutch {
                                        @Value("${" + PROPERTY_PREFIX + ".max}") final int maxPartitionNum) {
 
         final ImmutableMap.Builder<Integer, List<Integer>> mapBuilder = ImmutableMap.builder();
-        for (int i = 1; i <= maxPartitionNum; i++) {
-            final List predefinedOrder = environment.getProperty(PROPERTY_PREFIX + ".p" + i, List.class);
+        for (int pCount = 1; pCount <= maxPartitionNum; pCount++) {
+
+            final String propertyName = PROPERTY_PREFIX + ".p" + pCount;
+            final List<String> predefinedOrder = (List<String>) environment.getProperty(propertyName, List.class);
+
             if (predefinedOrder != null) {
-                mapBuilder.put(i, predefinedOrder);
+                final List<Integer> predefinedOrderInt = predefinedOrder.stream()
+                        .map(Integer::parseInt)
+                        .collect(Collectors.toList());
+
+                // check that element count equals to number of partitions
+                if (pCount != predefinedOrder.size()) {
+                    throw new IllegalArgumentException(propertyName + " property has wrong count of elements");
+                }
+
+                // check that there is not index that is out of bounds
+                final int partitionMaxIndex = pCount - 1;
+                final boolean indexOutOfBouns = predefinedOrderInt.stream()
+                        .anyMatch(index -> index > partitionMaxIndex || index < 0);
+                if (indexOutOfBouns) {
+                    throw new IllegalArgumentException(propertyName + " property has wrong partition index");
+                }
+
+                mapBuilder.put(pCount, predefinedOrderInt);
             }
         }
         partitionsOrder = mapBuilder.build();
