@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.util.UUIDGenerator;
@@ -34,6 +35,15 @@ public class Timeline {
 
         public List<Long> getOffsets() {
             return offsets;
+        }
+
+        public long getLastOffsetForPartition(final int partition) {
+            if (partition >= offsets.size() || partition < 0) {
+                throw new IllegalArgumentException(
+                        "Partition " + partition + " is not present for offsets " +
+                                offsets.stream().map(String::valueOf).collect(Collectors.joining(",")));
+            }
+            return offsets.get(partition);
         }
 
         public void setOffsets(final List<Long> offsets) {
