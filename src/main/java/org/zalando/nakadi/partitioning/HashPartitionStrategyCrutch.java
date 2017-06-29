@@ -1,6 +1,8 @@
 package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -12,6 +14,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class HashPartitionStrategyCrutch {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HashPartitionStrategyCrutch.class);
 
     private static final String PROPERTY_PREFIX = "nakadi.hashPartitioning.overrideOrder";
 
@@ -51,6 +55,9 @@ public class HashPartitionStrategyCrutch {
             }
         }
         partitionsOrder = mapBuilder.build();
+
+        LOG.info("Initialized partitions override map with {} values:", partitionsOrder.size());
+        partitionsOrder.forEach((partitionCount, order) -> LOG.info("{}: {}", partitionCount, order));
     }
 
     public int adjustPartitionIndex(final int index, final int partitionNum) {
