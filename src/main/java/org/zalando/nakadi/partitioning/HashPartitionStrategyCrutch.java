@@ -21,7 +21,7 @@ public class HashPartitionStrategyCrutch {
     @Autowired
     @SuppressWarnings("unchecked")
     public HashPartitionStrategyCrutch(final Environment environment,
-                                       @Value("${" + PROPERTY_PREFIX + ".max}") final int maxPartitionNum) {
+                                       @Value("${" + PROPERTY_PREFIX + ".max:0}") final int maxPartitionNum) {
 
         final ImmutableMap.Builder<Integer, List<Integer>> mapBuilder = ImmutableMap.builder();
         for (int pCount = 1; pCount <= maxPartitionNum; pCount++) {
