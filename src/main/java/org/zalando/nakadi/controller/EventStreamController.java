@@ -141,7 +141,7 @@ public class EventStreamController {
             final Map<TopicRepository, List<NakadiCursor>> timelineToCursors = new HashMap<>();
             for (final NakadiCursor c: result) {
                 if (c.getTimeline().isDeleted()) {
-                    throw new InvalidCursorException(CursorError.UNAVAILABLE);
+                    throw new InvalidCursorException(CursorError.UNAVAILABLE, c);
                 }
                 final TopicRepository topicRepository = timelineService.getTopicRepository(c.getTimeline());
                 List<NakadiCursor> cursorList = timelineToCursors.get(topicRepository);
