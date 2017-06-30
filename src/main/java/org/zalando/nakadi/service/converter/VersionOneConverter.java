@@ -59,13 +59,13 @@ class VersionOneConverter implements VersionedConverter {
         } catch (final NumberFormatException ex) {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
-        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventTypeStr);
-        final EventType eventType = eventTypeCache.getEventType(eventTypeStr);
+        final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeStr);
         if (timelines.isEmpty()) {
             // Timeline probably was there some time ago, but now it is rolled back.
             // Therefore one should create NakadiCursor with version zero, checking that order is almost default one.
             Preconditions.checkArgument(
                     order == (Timeline.STARTING_ORDER + 1), "Fallback supported only for order next after initial");
+            final EventType eventType = eventTypeCache.getEventType(eventTypeStr);
             return new NakadiCursor(
                     timelineService.getFakeTimeline(eventType),
                     cursor.getPartition(),
