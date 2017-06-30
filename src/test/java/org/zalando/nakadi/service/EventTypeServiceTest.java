@@ -13,6 +13,7 @@ import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -49,12 +50,13 @@ public class EventTypeServiceTest {
     private final TimelineService timelineService = mock(TimelineService.class);
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+    private final AuthorizationService authorizationService = mock(AuthorizationService.class);
 
     @Before
     public void setUp() {
         eventTypeService = new EventTypeService(eventTypeRepository, timelineService, partitionResolver, enrichment,
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
-                timelineSync, transactionTemplate, nakadiSettings);
+                authorizationService, timelineSync, transactionTemplate, nakadiSettings);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);

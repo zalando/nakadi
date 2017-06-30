@@ -43,6 +43,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -130,6 +131,7 @@ public class EventTypeControllerTest {
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaEvolutionService();
+    private final AuthorizationService authorizationService = mock(AuthorizationService.class);
 
     private MockMvc mockMvc;
 
@@ -154,7 +156,7 @@ public class EventTypeControllerTest {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
-                featureToggleService, timelineSync, transactionTemplate, nakadiSettings);
+                featureToggleService, authorizationService, timelineSync, transactionTemplate, nakadiSettings);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
