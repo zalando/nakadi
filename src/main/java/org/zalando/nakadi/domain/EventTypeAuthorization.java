@@ -3,6 +3,7 @@ package org.zalando.nakadi.domain;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import javax.annotation.concurrent.Immutable;
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
@@ -12,14 +13,17 @@ import java.util.List;
 public class EventTypeAuthorization {
 
     @NotNull
+    @Valid
     @Size(min = 1, message = "must contain at least one attribute")
     private final List<EventTypeAuthorizationAttribute> admins;
 
     @NotNull
+    @Valid
     @Size(min = 1, message = "must contain at least one attribute")
     private final List<EventTypeAuthorizationAttribute> readers;
 
     @NotNull
+    @Valid
     @Size(min = 1, message = "must contain at least one attribute")
     private final List<EventTypeAuthorizationAttribute> writers;
 

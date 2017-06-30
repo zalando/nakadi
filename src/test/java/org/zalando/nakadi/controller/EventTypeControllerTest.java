@@ -27,6 +27,8 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.config.ValidatorConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.Subscription;
@@ -75,6 +77,7 @@ import java.util.concurrent.TimeoutException;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
@@ -367,6 +370,93 @@ public class EventTypeControllerTest {
                 .andExpect(content().contentType("application/problem+json"));
     }
 
+    private void postETAndExpect422WithProblem(final EventType eventType, final Problem expectedProblem)
+            throws Exception {
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
+    public void whenPostWithEmptyAuthorizationListThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setAuthorization(new EventTypeAuthorization(
+                ImmutableList.of(), ImmutableList.of(), ImmutableList.of()));
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.admins\\\" must contain at least one attribute")))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.readers\\\" must contain at least one attribute")))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.writers\\\" must contain at least one attribute")));
+    }
+
+    @Test
+    public void whenPostWithInvalidAuthAttributesThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        final EventTypeAuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
+        final EventTypeAuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
+        final EventTypeAuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");
+        final EventTypeAuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");
+
+        eventType.setAuthorization(new EventTypeAuthorization(
+                ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3, attr4)));
+
+        when(authorizationService.isAuthorizationAttributeValid(attr1)).thenReturn(false);
+        when(authorizationService.isAuthorizationAttributeValid(attr2)).thenReturn(true);
+        when(authorizationService.isAuthorizationAttributeValid(attr3)).thenReturn(true);
+        when(authorizationService.isAuthorizationAttributeValid(attr4)).thenReturn(false);
+
+        final Problem expectedProblem = new InvalidEventTypeException(
+                "authorization attribute type1:value1 is invalid, authorization attribute type4:value4 is invalid")
+                .asProblem();
+
+        postETAndExpect422WithProblem(eventType, expectedProblem);
+    }
+
+    @Test
+    public void whenPostWithNullAuthAttributesFieldsThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        final EventTypeAuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
+        final EventTypeAuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute(null, "value2");
+        final EventTypeAuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", null);
+
+        eventType.setAuthorization(new EventTypeAuthorization(
+                ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3)));
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.readers[0].data_type\\\" may not be null")))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.writers[0].value\\\" may not be null")));
+    }
+
+    @Test
+    public void whenPostWithValidAuthorizationThenCreated() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        final EventTypeAuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
+        final EventTypeAuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
+        final EventTypeAuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");
+
+        eventType.setAuthorization(new EventTypeAuthorization(
+                ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3)));
+
+        doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
+        when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());
+        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
+
+        postEventType(eventType).andExpect(status().isCreated());
+    }
+
     @Test
     public void whenPUTNotOwner403() throws Exception {
         final EventType eventType = buildDefaultEventType();
@@ -405,9 +495,7 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem = new InvalidEventTypeException("\"metadata\" property is reserved").asProblem();
 
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
+        postETAndExpect422WithProblem(eventType, expectedProblem);
     }
 
     @Test
@@ -420,9 +508,7 @@ public class EventTypeControllerTest {
         final Problem expectedProblem = new InvalidEventTypeException("Invalid schema: Invalid schema found in [#]: " +
                 "extraneous key [not] is not permitted").asProblem();
 
-        postEventType(eventType).andExpect(status().isUnprocessableEntity())
-                .andExpect(content().contentType("application/problem+json")).andExpect(content()
-                .string(matchesProblem(expectedProblem)));
+        postETAndExpect422WithProblem(eventType, expectedProblem);
     }
 
     @Test
@@ -772,8 +858,7 @@ public class EventTypeControllerTest {
                 new InvalidEventTypeException(
                         "schema must be a valid json: Unexpected token 'invalid' on line 1, char 1").asProblem();
 
-        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
-                matchesProblem(expectedProblem))));
+        postETAndExpect422WithProblem(eventType, expectedProblem);
     }
 
     @Test
@@ -786,8 +871,7 @@ public class EventTypeControllerTest {
 
         final Problem expectedProblem = new InvalidEventTypeException("schema must be a valid json-schema").asProblem();
 
-        postEventType(eventType).andExpect(status().isUnprocessableEntity()).andExpect((content().string(
-                matchesProblem(expectedProblem))));
+        postETAndExpect422WithProblem(eventType, expectedProblem);
     }
 
     @Test
