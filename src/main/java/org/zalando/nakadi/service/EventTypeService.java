@@ -399,7 +399,7 @@ public class EventTypeService {
                     throw new InvalidEventTypeException(errorMessage);
                 }
             } catch (final PluginException e) {
-                throw new ServiceUnavailableException("Error calling authorization plugin");
+                throw new ServiceUnavailableException("Error calling authorization plugin", e);
             }
         }
     }

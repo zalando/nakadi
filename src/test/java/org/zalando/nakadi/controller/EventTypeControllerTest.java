@@ -38,6 +38,7 @@ import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
@@ -45,6 +46,7 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -420,15 +422,33 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenPostAndPluginExceptionThen503() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+
+        eventType.setAuthorization(new EventTypeAuthorization(
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
+
+        when(authorizationService.isAuthorizationAttributeValid(any())).thenThrow(new PluginException("blah"));
+
+        final Problem expectedProblem = new ServiceUnavailableException("Error calling authorization plugin")
+                .asProblem();
+
+        postEventType(eventType)
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(matchesProblem(expectedProblem)));
+    }
+
+    @Test
     public void whenPostWithNullAuthAttributesFieldsThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        final EventTypeAuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
-        final EventTypeAuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute(null, "value2");
-        final EventTypeAuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", null);
-
         eventType.setAuthorization(new EventTypeAuthorization(
-                ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3)));
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new EventTypeAuthorizationAttribute(null, "value2")),
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", null))));
 
         postEventType(eventType)
                 .andExpect(status().isUnprocessableEntity())
@@ -443,12 +463,10 @@ public class EventTypeControllerTest {
     public void whenPostWithValidAuthorizationThenCreated() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
-        final EventTypeAuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
-        final EventTypeAuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
-        final EventTypeAuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");
-
         eventType.setAuthorization(new EventTypeAuthorization(
-                ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3)));
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
 
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());
