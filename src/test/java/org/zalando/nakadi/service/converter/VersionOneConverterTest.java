@@ -1,6 +1,5 @@
 package org.zalando.nakadi.service.converter;
 
-import java.util.Collections;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,6 +12,9 @@ import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaCursor;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.view.Cursor;
+
+import java.util.Collections;
+
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -51,8 +53,7 @@ public class VersionOneConverterTest {
         final Timeline firstTimeline = mock(Timeline.class);
         when(firstTimeline.getOrder()).thenReturn(1);
         final EventType eventType = mock(EventType.class);
-        when(eventTypeCache.getEventType(eq(eventTypeName))).thenReturn(eventType);
-        when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName)))
+        when(timelineService.getActiveTimelinesOrdered(eq(eventTypeName)))
                 .thenReturn(Collections.singletonList(firstTimeline));
 
         try {
@@ -70,8 +71,7 @@ public class VersionOneConverterTest {
         final Timeline firstTimeline = mock(Timeline.class);
         when(firstTimeline.getOrder()).thenReturn(16);
         final EventType eventType = mock(EventType.class);
-        when(eventTypeCache.getEventType(eq(eventTypeName))).thenReturn(eventType);
-        when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName)))
+        when(timelineService.getActiveTimelinesOrdered(eq(eventTypeName)))
                 .thenReturn(Collections.singletonList(firstTimeline));
         final NakadiCursor nakadiCursor = converter.convert(eventTypeName, cursor);
         Assert.assertEquals(firstTimeline, nakadiCursor.getTimeline());
