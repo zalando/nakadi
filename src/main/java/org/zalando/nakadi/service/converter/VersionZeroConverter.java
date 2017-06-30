@@ -48,12 +48,12 @@ public class VersionZeroConverter implements VersionedConverter {
         }
         if (offset.startsWith("-")) {
             return new NakadiCursor(
-                    timelineService.createAlmostFakeTimeline(eventType),
+                    timelineService.getFakeTimeline(eventType),
                     cursor.getPartition(),
                     cursor.getOffset());
         } else {
             return new NakadiCursor(
-                    timelineService.createAlmostFakeTimeline(eventType),
+                    timelineService.getFakeTimeline(eventType),
                     cursor.getPartition(),
                     StringUtils.leftPad(cursor.getOffset(), VERSION_ZERO_MIN_OFFSET_LENGTH, '0'));
         }

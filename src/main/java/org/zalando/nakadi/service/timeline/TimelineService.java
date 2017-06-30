@@ -161,14 +161,7 @@ public class TimelineService {
         }
     }
 
-    public Timeline getFakeTimeline(final EventType eventType) {
-        return Timeline.createFakeTimeline(eventType, defaultStorage);
-    }
-
-    /**
-     * Creates a fake timeline and marks it as deleted if there is the first real timeline is marked as deleted.
-     */
-    public Timeline createAlmostFakeTimeline(final EventType eventType)
+    public Timeline getFakeTimeline(final EventType eventType)
             throws InternalNakadiException, NoSuchEventTypeException {
         final Timeline fakeTimeline = Timeline.createFakeTimeline(eventType, defaultStorage);
         final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventType.getName());
@@ -177,7 +170,7 @@ public class TimelineService {
         }
         return fakeTimeline;
     }
-
+    
     public TopicRepository getTopicRepository(final EventTypeBase eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getTimeline(eventType);
