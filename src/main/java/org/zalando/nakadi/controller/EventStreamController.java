@@ -58,6 +58,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -74,9 +75,8 @@ import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUME
 @RestController
 public class EventStreamController {
 
-    private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
     public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
-
+    private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
     private final EventTypeRepository eventTypeRepository;
     private final TimelineService timelineService;
     private final ObjectMapper jsonMapper;
@@ -137,10 +137,20 @@ public class EventStreamController {
             if (result.isEmpty()) {
                 throw new InvalidCursorException(CursorError.INVALID_FORMAT);
             }
-            final Map<TopicRepository, List<NakadiCursor>> timelineToCursors = result.stream()
-                    .collect(Collectors.groupingBy(
-                            c -> timelineService.getTopicRepository(c.getTimeline())
-                    ));
+
+            final Map<TopicRepository, List<NakadiCursor>> timelineToCursors = new HashMap<>();
+            for (final NakadiCursor c: result) {
+                if (c.getTimeline().isDeleted()) {
+                    throw new InvalidCursorException(CursorError.UNAVAILABLE);
+                }
+                final TopicRepository topicRepository = timelineService.getTopicRepository(c.getTimeline());
+                List<NakadiCursor> cursorList = timelineToCursors.get(topicRepository);
+                if (cursorList == null) {
+                    cursorList = new ArrayList<>();
+                    timelineToCursors.put(topicRepository, cursorList);
+                }
+                cursorList.add(c);
+            }
             for (final Map.Entry<TopicRepository, List<NakadiCursor>> entry : timelineToCursors.entrySet()) {
                 entry.getKey().validateReadCursors(entry.getValue());
             }

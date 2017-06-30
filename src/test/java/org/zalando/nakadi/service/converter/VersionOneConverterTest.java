@@ -53,7 +53,7 @@ public class VersionOneConverterTest {
         final Timeline firstTimeline = mock(Timeline.class);
         when(firstTimeline.getOrder()).thenReturn(1);
         final EventType eventType = mock(EventType.class);
-        when(timelineService.getActiveTimelinesOrdered(eq(eventTypeName)))
+        when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName)))
                 .thenReturn(Collections.singletonList(firstTimeline));
 
         try {
@@ -71,7 +71,7 @@ public class VersionOneConverterTest {
         final Timeline firstTimeline = mock(Timeline.class);
         when(firstTimeline.getOrder()).thenReturn(16);
         final EventType eventType = mock(EventType.class);
-        when(timelineService.getActiveTimelinesOrdered(eq(eventTypeName)))
+        when(eventTypeCache.getTimelinesOrdered(eq(eventTypeName)))
                 .thenReturn(Collections.singletonList(firstTimeline));
         final NakadiCursor nakadiCursor = converter.convert(eventTypeName, cursor);
         Assert.assertEquals(firstTimeline, nakadiCursor.getTimeline());

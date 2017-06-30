@@ -59,7 +59,7 @@ class VersionOneConverter implements VersionedConverter {
         } catch (final NumberFormatException ex) {
             throw new InvalidCursorException(CursorError.INVALID_OFFSET);
         }
-        final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeStr);
+        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventTypeStr);
         if (timelines.isEmpty()) {
             // Timeline probably was there some time ago, but now it is rolled back.
             // Therefore one should create NakadiCursor with version zero, checking that order is almost default one.
