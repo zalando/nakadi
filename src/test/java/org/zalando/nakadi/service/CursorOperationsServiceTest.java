@@ -265,6 +265,23 @@ public class CursorOperationsServiceTest {
         assertEquals(service.unshiftCursor(moveBackward), new NakadiCursor(first, "0", "000000000000000001"));
     }
 
+    @Test
+    public void testShiftToInitialBegin() throws Exception {
+        final Timeline first = mockTimeline(1, 1L);
+        final Timeline last = mockOpenTimeline(2);
+        mockActiveTimelines(first, last);
+        final ShiftedNakadiCursor moveBack = new ShiftedNakadiCursor(last, "0", "000000000000000001", -4);
+        assertEquals(new NakadiCursor(first, "0", "-1"), service.unshiftCursor(moveBack));
+    }
+
+    @Test(expected = InvalidCursorOperation.class)
+    public void testShiftBeforeInitialBegin() throws Exception {
+        final Timeline first = mockTimeline(1, 1L);
+        mockActiveTimelines(first);
+        final ShiftedNakadiCursor moveBack = new ShiftedNakadiCursor(first, "0", "-1", -1);
+        service.unshiftCursor(moveBack);
+    }
+
     private void expectException(final NakadiCursor initialCursor, final NakadiCursor finalCursor,
                                  final InvalidCursorOperation.Reason invertedOffsetOrder) {
         try {
@@ -295,6 +312,8 @@ public class CursorOperationsServiceTest {
                     Collections.singletonList(latestOffset)));
         }
         when(timeline.isActive()).thenReturn(null == latestOffset);
+        when(timeline.isFake()).thenReturn(order == 0);
+        when(timeline.isFirstAfterFake()).thenReturn(order == 1);
 
         final TopicRepository repository = new KafkaTopicRepository(
                 mock(ZooKeeperHolder.class),

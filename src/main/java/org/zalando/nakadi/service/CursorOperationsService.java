@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
+import org.zalando.nakadi.domain.PartitionEndStatistics;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
@@ -79,16 +80,32 @@ public class CursorOperationsService {
                                 .filter(item -> item.getPartition().equalsIgnoreCase(c.getPartition()))
                                 .findAny().orElseThrow(() -> new InvalidCursorOperation(PARTITION_NOT_FOUND));
 
-                        final PartitionStatistics newestStat = newestStats.stream()
+                        NakadiCursor newestPosition = newestStats.stream()
                                 .filter(item -> item.getPartition().equalsIgnoreCase(c.getPartition()))
+                                .map(PartitionEndStatistics::getLast)
                                 .findAny().orElseThrow(() -> new InvalidCursorOperation(PARTITION_NOT_FOUND));
+                        // trick to avoid -1 position - move cursor to previous timeline while there is no data before
+                        // it
+                        while (timelineService.getTopicRepository(newestPosition.getTimeline())
+                                .numberOfEventsBeforeCursor(newestPosition) == -1) {
+                            final int prevOrder = newestPosition.getTimeline().getOrder() - 1;
+                            final Timeline prevTimeline = timelines.stream()
+                                    .filter(t -> t.getOrder() == prevOrder)
+                                    .findAny().orElse(null);
+                            if (null == prevTimeline) {
+                                break;
+                            }
+                            // We moved back, so timeline definitely have latest position set
+                            newestPosition = prevTimeline.getLatestPosition()
+                                    .toNakadiCursor(prevTimeline, newestPosition.getPartition());
+                        }
 
                         // It is safe to call calculate distance here, cause it will not involve any storage-related
                         // calls (in case of kafka)
                         return new NakadiCursorLag(
                                 oldestStat.getFirst(),
-                                newestStat.getLast(),
-                                calculateDistance(newestStat.getLast(), c)
+                                newestPosition,
+                                calculateDistance(c, newestPosition)
                         );
                     }).collect(Collectors.toList());
 
@@ -153,6 +170,15 @@ public class CursorOperationsService {
                     .numberOfEventsBeforeCursor(currentCursor);
             if (totalBefore < toMoveBack) {
                 toMoveBack -= totalBefore + 1; // +1 is because end is inclusive
+
+                // Next case is a special one. User must have ability to move to the begin (actually - position before
+                // begin event that is not within limits)
+                if ((currentCursor.getTimeline().isFirstAfterFake() || currentCursor.getTimeline().isFake())
+                        && toMoveBack == 0) {
+                    toMoveBack += totalBefore + 1;
+                    break;
+                }
+
                 final Timeline prevTimeline = getTimeline(
                         currentCursor.getEventType(),
                         currentCursor.getTimeline().getOrder() - 1);

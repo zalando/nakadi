@@ -3,18 +3,17 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.http.ContentType;
+import static org.hamcrest.core.IsEqual.equalTo;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
-
-import static org.hamcrest.core.IsEqual.equalTo;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import static org.zalando.nakadi.utils.TestUtils.randomTextString;
 import static org.zalando.nakadi.webservice.BaseAT.TIMELINE_REPOSITORY;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.postEvents;
 
 public class CursorOperationsAT {
@@ -209,7 +208,9 @@ public class CursorOperationsAT {
                 .when()
                 .post("/event-types/" + eventType.getName() + "/shifted-cursors")
                 .then()
-                .statusCode(UNPROCESSABLE_ENTITY.value());
+                .body("size()", equalTo(1))
+                .body("offset[0]", equalTo("001-0001-000000000000000002"))
+                .body("partition[0]", equalTo("0"));
 
         NakadiTestUtils.switchTimelineDefaultStorage(eventType);
 
