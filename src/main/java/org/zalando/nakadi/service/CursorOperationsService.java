@@ -3,6 +3,8 @@ package org.zalando.nakadi.service;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.NakadiCursor;
@@ -10,13 +12,12 @@ import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
 import org.zalando.nakadi.domain.ShiftedNakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
+import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSOR_FORMAT_EXCEPTION;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.TIMELINE_NOT_FOUND;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
@@ -26,6 +27,7 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 @Service
 public class CursorOperationsService {
     private final TimelineService timelineService;
+    private static final Logger LOG = LoggerFactory.getLogger(CursorOperationsService.class);
 
     @Autowired
     public CursorOperationsService(final TimelineService timelineService) {
@@ -105,87 +107,72 @@ public class CursorOperationsService {
     }
 
     public NakadiCursor unshiftCursor(final ShiftedNakadiCursor cursor) throws InvalidCursorOperation {
-        if (cursor.getShift() < 0) {
-            return moveCursorBackwards(cursor.getEventType(), cursor.getTimeline(), cursor.getPartition(),
-                    numberOfEventsBeforeCursor(cursor),
-                    cursor.getShift());
-        } else if (cursor.getShift() > 0) {
-            Timeline processedTimeline = cursor.getTimeline();
-            long stillToAdd = cursor.getShift();
-
-            NakadiCursor current = cursor;
-            while (processedTimeline.getLatestPosition() != null) {
-                final NakadiCursor timelineLastPosition = processedTimeline.getLatestPosition()
-                        .toNakadiCursor(processedTimeline, cursor.getPartition());
-                final long distance = calculateDistance(current, timelineLastPosition);
-                if (stillToAdd > distance) {
-                    stillToAdd -= distance;
-                    processedTimeline = getTimeline(current.getEventType(), processedTimeline.getOrder() + 1);
-                    current = timelineService.getTopicRepository(processedTimeline)
-                            .createBeforeBeginCursor(processedTimeline, current.getPartition());
-                } else {
-                    break;
-                }
-            }
-            if (stillToAdd > 0) {
-                return getTopicRepository(current.getTimeline()).shiftWithinTimeline(current, stillToAdd);
-            }
-        } else {
-            return new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
-        }
-    }
-
-    private NakadiCursor moveCursorBackwards(final String eventTypeName, final Timeline timeline,
-                                             final String partition, final long offset, final long shift) {
-        final long shiftedOffset = offset + shift;
-        if (shiftedOffset >= 0 ||
-                isBegin(eventTypeName, timeline, shiftedOffset)) { // move left in the same timeline
-            final String paddedOffset = getOffsetForPosition(timeline, shiftedOffset);
-            return new NakadiCursor(timeline, partition, paddedOffset);
-        } else { // move to previous timeline
-            final Timeline previousTimeline = getTimeline(eventTypeName, timeline.getOrder() - 1);
-            final long totalEventsInTimeline = totalEventsInTimeline(previousTimeline, partition);
-            return moveCursorBackwards(eventTypeName, previousTimeline, partition, totalEventsInTimeline,
-                    shift + offset);
-        }
-    }
-
-    private boolean isBegin(final String eventTypeName, final Timeline timeline, final long shiftedOffset) {
         try {
-            return shiftedOffset == -1 && timeline.getOrder() == timelineService
-                    .getActiveTimelinesOrdered(eventTypeName).get(0).getOrder();
-        } catch (final InternalNakadiException e) {
-            throw new RuntimeException(e);
-        } catch (final NoSuchEventTypeException e) {
-            throw new NotFoundException("event type not found " + eventTypeName, e);
+            if (cursor.getShift() < 0) {
+                return moveBack(cursor);
+            } else if (cursor.getShift() > 0) {
+                return moveForward(cursor);
+            } else {
+                return new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
+            }
+        } catch (final InvalidCursorException ex) {
+            LOG.warn("Can not shift cursor " + cursor, ex);
+            // This exception should not happen, so that is why there is special treatment.
+            throw new InvalidCursorOperation(CURSOR_FORMAT_EXCEPTION);
         }
     }
 
-    private NakadiCursor moveCursorForward(final String eventType, final Timeline timeline, final String partition,
-                                           final long offset, final long shift) {
-        if (offset + shift < totalEventsInTimeline(timeline, partition)) {
-            final long finalOffset = offset + shift;
-            final String paddedOffset = getOffsetForPosition(timeline, finalOffset);
-            return new NakadiCursor(timeline, partition, paddedOffset);
-        } else {
-            final long totalEventsInTimeline = totalEventsInTimeline(timeline, partition);
-            final long newShift = shift - (totalEventsInTimeline - offset);
-            final Timeline nextTimeline = getTimeline(eventType, timeline.getOrder() + 1);
-            return moveCursorForward(eventType, nextTimeline, partition, 0, newShift);
+    private NakadiCursor moveForward(final ShiftedNakadiCursor cursor) throws InvalidCursorException {
+        NakadiCursor currentCursor = cursor;
+        long stillToAdd = cursor.getShift();
+        while (currentCursor.getTimeline().getLatestPosition() != null) {
+            final NakadiCursor timelineLastPosition = currentCursor.getTimeline().getLatestPosition()
+                    .toNakadiCursor(currentCursor.getTimeline(), cursor.getPartition());
+            final long distance = calculateDistance(currentCursor, timelineLastPosition);
+            if (stillToAdd > distance) {
+                stillToAdd -= distance;
+                final Timeline nextTimeline = getTimeline(
+                        currentCursor.getEventType(), currentCursor.getTimeline().getOrder() + 1);
+                currentCursor = timelineService.getTopicRepository(nextTimeline)
+                        .createBeforeBeginCursor(nextTimeline, currentCursor.getPartition());
+            } else {
+                break;
+            }
         }
+        if (stillToAdd > 0) {
+            return getTopicRepository(currentCursor.getTimeline()).shiftWithinTimeline(currentCursor, stillToAdd);
+        }
+        return currentCursor;
     }
 
-    private String getOffsetForPosition(final Timeline timeline, final long shiftedOffset) {
-        return getTopicRepository(timeline).getOffsetForPosition(shiftedOffset);
+    private NakadiCursor moveBack(final ShiftedNakadiCursor cursor) throws InvalidCursorException {
+        NakadiCursor currentCursor = new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
+        long toMoveBack = -cursor.getShift();
+        while (toMoveBack > 0) {
+            final long totalBefore = timelineService.getTopicRepository(currentCursor.getTimeline())
+                    .numberOfEventsBeforeCursor(currentCursor);
+            if (totalBefore < toMoveBack) {
+                toMoveBack -= totalBefore + 1; // +1 is because end is inclusive
+                final Timeline prevTimeline = getTimeline(
+                        currentCursor.getEventType(),
+                        currentCursor.getTimeline().getOrder() - 1);
+                // When moving back latest position is always defined
+                currentCursor = prevTimeline.getLatestPosition()
+                        .toNakadiCursor(prevTimeline, currentCursor.getPartition());
+            } else {
+                break;
+            }
+        }
+        if (toMoveBack != 0) {
+            currentCursor = getTopicRepository(currentCursor.getTimeline())
+                    .shiftWithinTimeline(currentCursor, -toMoveBack);
+        }
+        return currentCursor;
     }
 
     private long numberOfEventsBeforeCursor(final NakadiCursor initialCursor) {
         final TopicRepository topicRepository = getTopicRepository(initialCursor.getTimeline());
         return topicRepository.numberOfEventsBeforeCursor(initialCursor);
-    }
-
-    private long totalEventsInTimeline(final Timeline timeline, final String partition) {
-        return getTopicRepository(timeline).totalEventsInPartition(timeline, partition);
     }
 
     private Timeline getTimeline(final String eventTypeName, final int order) {

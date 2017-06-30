@@ -135,6 +135,7 @@ public class CursorOperationsController {
             case TIMELINE_NOT_FOUND: return "Timeline not found. It might happen in case the cursor refers to a " +
                     "timeline that has already expired.";
             case PARTITION_NOT_FOUND: return "Partition not found.";
+            case CURSOR_FORMAT_EXCEPTION: return "Сursor format is not supported.";
             case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
                     "have matching partitions.";
             default:
