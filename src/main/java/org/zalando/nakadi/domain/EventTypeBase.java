@@ -116,6 +116,7 @@ public class EventTypeBase {
         this.setWriteScopes(eventType.getWriteScopes());
         this.setReadScopes(eventType.getReadScopes());
         this.setCompatibilityMode(eventType.getCompatibilityMode());
+        this.setAuthorization(eventType.getAuthorization());
     }
 
     public String getName() {
