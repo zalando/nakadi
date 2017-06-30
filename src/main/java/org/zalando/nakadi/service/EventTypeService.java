@@ -1,16 +1,8 @@
 package org.zalando.nakadi.service;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -25,6 +17,8 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
@@ -38,6 +32,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.NotFoundException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
@@ -47,6 +42,8 @@ import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.PluginException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
@@ -55,11 +52,23 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 import org.zalando.problem.Problem;
+
+import javax.ws.rs.core.Response;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
 public class EventTypeService {
@@ -74,6 +83,7 @@ public class EventTypeService {
     private final SchemaEvolutionService schemaEvolutionService;
     private final PartitionsCalculator partitionsCalculator;
     private final FeatureToggleService featureToggleService;
+    private final AuthorizationService authorizationService;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
     private final TransactionTemplate transactionTemplate;
@@ -87,6 +97,7 @@ public class EventTypeService {
                             final SchemaEvolutionService schemaEvolutionService,
                             final PartitionsCalculator partitionsCalculator,
                             final FeatureToggleService featureToggleService,
+                            final AuthorizationService authorizationService,
                             final TimelineSync timelineSync,
                             final TransactionTemplate transactionTemplate,
                             final NakadiSettings nakadiSettings) {
@@ -98,6 +109,7 @@ public class EventTypeService {
         this.schemaEvolutionService = schemaEvolutionService;
         this.partitionsCalculator = partitionsCalculator;
         this.featureToggleService = featureToggleService;
+        this.authorizationService = authorizationService;
         this.timelineSync = timelineSync;
         this.transactionTemplate = transactionTemplate;
         this.nakadiSettings = nakadiSettings;
@@ -113,6 +125,7 @@ public class EventTypeService {
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
+            validateAuthorization(eventType);
 
             final String topicName = topicRepository.createTopic(
                     partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
@@ -363,6 +376,31 @@ public class EventTypeService {
     private void validateName(final String name, final EventTypeBase eventType) throws InvalidEventTypeException {
         if (!eventType.getName().equals(name)) {
             throw new InvalidEventTypeException("path does not match resource name");
+        }
+    }
+
+    private void validateAuthorization(final EventTypeBase eventType) throws InvalidEventTypeException,
+            ServiceUnavailableException {
+        final EventTypeAuthorization auth = eventType.getAuthorization();
+
+        if (auth != null) {
+            final Stream<EventTypeAuthorizationAttribute> allAttributesStream = Stream.concat(Stream.concat(
+                    auth.getAdmins().stream(),
+                    auth.getReaders().stream()),
+                    auth.getWriters().stream());
+            try {
+                final String errorMessage = allAttributesStream
+                        .filter(attr -> !authorizationService.isAuthorizationAttributeValid(attr))
+                        .map(attr -> String.format("authorization attribute %s:%s is invalid",
+                                attr.getDataType(), attr.getValue()))
+                        .collect(Collectors.joining(", "));
+
+                if (!Strings.isNullOrEmpty(errorMessage)) {
+                    throw new InvalidEventTypeException(errorMessage);
+                }
+            } catch (final PluginException e) {
+                throw new ServiceUnavailableException("Error calling authorization plugin");
+            }
         }
     }
 
