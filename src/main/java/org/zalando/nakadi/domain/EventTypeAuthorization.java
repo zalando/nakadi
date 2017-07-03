@@ -30,20 +30,22 @@ public class EventTypeAuthorization {
     public EventTypeAuthorization(@JsonProperty("admins") final List<EventTypeAuthorizationAttribute> admins,
                                   @JsonProperty("readers") final List<EventTypeAuthorizationAttribute> readers,
                                   @JsonProperty("writers") final List<EventTypeAuthorizationAttribute> writers) {
-        this.admins = admins;
-        this.readers = readers;
-        this.writers = writers;
+        // actually these three properties should never be null but the validation framework first creates an object
+        // and then uses getters to check if values are null or not so we need to do this check to avoid exception
+        this.admins = admins == null ? null : Collections.unmodifiableList(admins);
+        this.readers = readers == null ? null : Collections.unmodifiableList(readers);
+        this.writers = writers == null ? null : Collections.unmodifiableList(writers);
     }
 
     public List<EventTypeAuthorizationAttribute> getAdmins() {
-        return admins == null ? null : Collections.unmodifiableList(admins);
+        return admins;
     }
 
     public List<EventTypeAuthorizationAttribute> getReaders() {
-        return readers == null ? null : Collections.unmodifiableList(readers);
+        return readers;
     }
 
     public List<EventTypeAuthorizationAttribute> getWriters() {
-        return writers == null ? null : Collections.unmodifiableList(writers);
+        return writers;
     }
 }
