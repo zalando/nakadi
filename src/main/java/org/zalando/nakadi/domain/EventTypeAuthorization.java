@@ -36,14 +36,14 @@ public class EventTypeAuthorization {
     }
 
     public List<EventTypeAuthorizationAttribute> getAdmins() {
-        return Collections.unmodifiableList(admins);
+        return admins == null ? null : Collections.unmodifiableList(admins);
     }
 
     public List<EventTypeAuthorizationAttribute> getReaders() {
-        return Collections.unmodifiableList(readers);
+        return readers == null ? null : Collections.unmodifiableList(readers);
     }
 
     public List<EventTypeAuthorizationAttribute> getWriters() {
-        return Collections.unmodifiableList(writers);
+        return writers == null ? null : Collections.unmodifiableList(writers);
     }
 }

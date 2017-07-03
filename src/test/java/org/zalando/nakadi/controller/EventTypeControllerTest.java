@@ -398,6 +398,22 @@ public class EventTypeControllerTest {
     }
 
     @Test
+    public void whenPostWithNullAuthorizationListThen422() throws Exception {
+        final EventType eventType = buildDefaultEventType();
+        eventType.setAuthorization(new EventTypeAuthorization(null, null, null));
+
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.admins\\\" may not be null")))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.readers\\\" may not be null")))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.writers\\\" may not be null")));
+    }
+
+    @Test
     public void whenPostWithInvalidAuthAttributesThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
