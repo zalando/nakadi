@@ -1,7 +1,6 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 
 import javax.annotation.Nullable;
@@ -56,7 +55,6 @@ public class EventTypeBase {
     private EventTypeOptions options;
 
     @Valid
-    @JsonInclude(JsonInclude.Include.NON_NULL)
     private EventTypeAuthorization authorization;
 
     private Set<String> writeScopes;

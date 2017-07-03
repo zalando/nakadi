@@ -243,7 +243,6 @@ public class EventTypeAT extends BaseAT {
                 ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
 
         final String body = MAPPER.writer().writeValueAsString(eventType);
-        System.out.println(body);
         given().body(body)
                 .header("accept", "application/json")
                 .contentType(JSON)
