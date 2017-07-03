@@ -208,6 +208,7 @@ public class CursorOperationsAT {
                 .when()
                 .post("/event-types/" + eventType.getName() + "/shifted-cursors")
                 .then()
+                .statusCode(OK.value())
                 .body("size()", equalTo(1))
                 .body("offset[0]", equalTo("001-0001-000000000000000002"))
                 .body("partition[0]", equalTo("0"));

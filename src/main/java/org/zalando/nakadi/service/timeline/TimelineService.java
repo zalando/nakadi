@@ -150,6 +150,16 @@ public class TimelineService {
         }
     }
 
+    public List<Timeline> getAllTimelinesOrdered(final String eventType)
+            throws InternalNakadiException, NoSuchEventTypeException {
+        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventType);
+        if (timelines.isEmpty()) {
+            return Collections.singletonList(getFakeTimeline(eventTypeCache.getEventType(eventType)));
+        } else {
+            return timelines;
+        }
+    }
+
     public Timeline getTimeline(final EventTypeBase eventType) throws TimelineException {
         try {
             final String eventTypeName = eventType.getName();

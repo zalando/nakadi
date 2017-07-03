@@ -3,7 +3,7 @@ package org.zalando.nakadi.service.subscription;
 import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -195,6 +195,7 @@ public class SubscriptionService {
         final List<EventType> eventTypes = subscription.getEventTypes().stream()
                 .map(Try.wrap(eventTypeRepository::findByName))
                 .map(Try::getOrThrow)
+                .sorted(Comparator.comparing(EventType::getName))
                 .collect(Collectors.toList());
 
         final List<PartitionEndStatistics> topicPartitions;
@@ -212,16 +213,11 @@ public class SubscriptionService {
             throw new ServiceTemporaryUnavailableException(e);
         }
 
-        final ZkSubscriptionNode zkSubscriptionNode = getZkSubscriptionNode(subscription, subscriptionClient);
+        final ZkSubscriptionNode zkSubscriptionNode = subscriptionClient.getZkSubscriptionNodeLocked();
 
         return eventTypes.stream()
                 .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
                 .collect(Collectors.toList());
-    }
-
-    private ZkSubscriptionNode getZkSubscriptionNode(
-            final Subscription subscription, final ZkSubscriptionClient subscriptionClient) {
-        return subscriptionClient.getZkSubscriptionNodeLocked();
     }
 
     private List<PartitionEndStatistics> loadPartitionEndStatistics(final Collection<EventType> eventTypes)
@@ -247,7 +243,7 @@ public class SubscriptionService {
             final List<PartitionEndStatistics> stats)
             throws ServiceTemporaryUnavailableException, InconsistentStateException {
 
-        final Set<SubscriptionEventTypeStats.Partition> resultPartitions = new HashSet<>(stats.size());
+        final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>(stats.size());
         for (final PartitionEndStatistics stat : stats) {
             final NakadiCursor lastPosition = stat.getLast();
             if (!lastPosition.getEventType().equals(eventType.getName())) {
@@ -279,7 +275,7 @@ public class SubscriptionService {
                     Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
             ));
         }
-
+        resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
         return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
     }
 

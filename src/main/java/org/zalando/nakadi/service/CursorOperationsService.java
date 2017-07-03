@@ -55,7 +55,7 @@ public class CursorOperationsService {
 
         for (int order = startOrder; order < Math.max(initialOrder, finalOrder); ++order) {
             final Timeline timeline = getTimeline(initialCursor.getEventType(), order);
-            final long eventsTotal = timelineService.getTopicRepository(timeline).totalEventsInPartition(
+            final long eventsTotal = getTopicRepository(timeline).totalEventsInPartition(
                     timeline, initialCursor.getPartition());
             result += (finalOrder > initialOrder) ? eventsTotal : -eventsTotal;
         }
@@ -86,7 +86,7 @@ public class CursorOperationsService {
                                 .findAny().orElseThrow(() -> new InvalidCursorOperation(PARTITION_NOT_FOUND));
                         // trick to avoid -1 position - move cursor to previous timeline while there is no data before
                         // it
-                        while (timelineService.getTopicRepository(newestPosition.getTimeline())
+                        while (getTopicRepository(newestPosition.getTimeline())
                                 .numberOfEventsBeforeCursor(newestPosition) == -1) {
                             final int prevOrder = newestPosition.getTimeline().getOrder() - 1;
                             final Timeline prevTimeline = timelines.stream()
@@ -115,8 +115,7 @@ public class CursorOperationsService {
     }
 
     private List<PartitionStatistics> getStatsForTimeline(final Timeline timeline) throws ServiceUnavailableException {
-        return timelineService.getTopicRepository(timeline)
-                .loadTopicStatistics(Collections.singletonList(timeline));
+        return getTopicRepository(timeline).loadTopicStatistics(Collections.singletonList(timeline));
     }
 
     public List<NakadiCursor> unshiftCursors(final List<ShiftedNakadiCursor> cursors) throws InvalidCursorOperation {
@@ -150,7 +149,7 @@ public class CursorOperationsService {
                 stillToAdd -= distance;
                 final Timeline nextTimeline = getTimeline(
                         currentCursor.getEventType(), currentCursor.getTimeline().getOrder() + 1);
-                currentCursor = timelineService.getTopicRepository(nextTimeline)
+                currentCursor = getTopicRepository(nextTimeline)
                         .createBeforeBeginCursor(nextTimeline, currentCursor.getPartition());
             } else {
                 break;
@@ -166,7 +165,7 @@ public class CursorOperationsService {
         NakadiCursor currentCursor = new NakadiCursor(cursor.getTimeline(), cursor.getPartition(), cursor.getOffset());
         long toMoveBack = -cursor.getShift();
         while (toMoveBack > 0) {
-            final long totalBefore = timelineService.getTopicRepository(currentCursor.getTimeline())
+            final long totalBefore = getTopicRepository(currentCursor.getTimeline())
                     .numberOfEventsBeforeCursor(currentCursor);
             if (totalBefore < toMoveBack) {
                 toMoveBack -= totalBefore + 1; // +1 is because end is inclusive
@@ -204,7 +203,7 @@ public class CursorOperationsService {
     private Timeline getTimeline(final String eventTypeName, final int order) {
         final List<Timeline> timelines;
         try {
-            timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
+            timelines = timelineService.getAllTimelinesOrdered(eventTypeName);
         } catch (final NakadiException e) {
             throw new RuntimeException(e);
         }
