@@ -9,14 +9,20 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.IntStream.range;
 import org.apache.commons.io.IOUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.zalando.nakadi.config.JsonConfig;
@@ -27,22 +33,14 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.problem.Problem;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.IntStream.range;
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
+import org.zalando.problem.Problem;
 
 public class TestUtils {
 
-    public static final String OWNING_APPLICATION = "event-producer-application";
-
     private static final String VALID_EVENT_TYPE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ";
 
-    private static final String VALID_EVENT_BODY_CHARS = VALID_EVENT_TYPE_NAME_CHARS + " \t!@#$%^&*()=+-_";
+//    private static final String VALID_EVENT_BODY_CHARS = VALID_EVENT_TYPE_NAME_CHARS + " \t!@#$%^&*()=+-_";
 
     private static final Random RANDOM = new Random();
     private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();

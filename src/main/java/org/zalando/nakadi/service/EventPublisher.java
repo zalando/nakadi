@@ -1,5 +1,11 @@
 package org.zalando.nakadi.service;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,23 +25,21 @@ import org.zalando.nakadi.exceptions.EnrichmentException;
 import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.EventValidationException;
+import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.PluginException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 @Component
 public class EventPublisher {
@@ -49,6 +53,7 @@ public class EventPublisher {
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
+    private final AuthorizationService authorizationService;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -56,17 +61,20 @@ public class EventPublisher {
                           final PartitionResolver partitionResolver,
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
-                          final TimelineSync timelineSync) {
+                          final TimelineSync timelineSync,
+                          final AuthorizationService authorizationService) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
+        this.authorizationService = authorizationService;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
-            throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException {
+            throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
+            ResourceAccessNotAuthorizedException {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
@@ -74,7 +82,7 @@ public class EventPublisher {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            client.checkScopes(eventType.getWriteScopes());
+            ensurePublishSecured(eventType, client);
 
             validate(batch, eventType);
             partition(batch, eventType);
@@ -109,6 +117,28 @@ public class EventPublisher {
             } catch (final IOException e) {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
             }
+        }
+    }
+
+    private void ensurePublishSecured(final EventType et, final Client client)
+            throws IllegalScopeException, InternalNakadiException, ResourceAccessNotAuthorizedException {
+        // TODO: authorization resource should be a part of event type, in order not to create it all the time, but use
+        //       prepared one instead, and it should not be nullable as well.
+        final Resource asAuthzResource = AuthzResourceBuilder.forEventType(et);
+        if (null != asAuthzResource) {
+            // FIXME: subject is null for now.
+            try {
+                final boolean writeAllowed = authorizationService.isAuthorized(
+                        null, AuthorizationService.Operation.WRITE, asAuthzResource);
+                if (!writeAllowed) {
+                    throw new ResourceAccessNotAuthorizedException(
+                            AuthorizationService.Operation.WRITE, asAuthzResource);
+                }
+            } catch (final PluginException ex) {
+                throw new InternalNakadiException("Plugin api call failed", ex);
+            }
+        } else {
+            client.checkScopes(et.getWriteScopes());
         }
     }
 
