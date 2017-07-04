@@ -23,6 +23,11 @@ public class AuthorizationValidatorTest {
     private final AuthorizationValidator validator;
     private final AuthorizationService authorizationService;
 
+    private AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");;
+    private AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");;
+    private AuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");;
+    private AuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");;
+
     public AuthorizationValidatorTest() {
         authorizationService = mock(AuthorizationService.class);
         validator = new AuthorizationValidator(authorizationService);
@@ -30,11 +35,6 @@ public class AuthorizationValidatorTest {
 
     @Test
     public void whenInvalidAuthAttributesThenInvalidEventTypeException() throws Exception {
-
-        final AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
-        final AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
-        final AuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");
-        final AuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");
 
         final EventTypeAuthorization auth = new EventTypeAuthorization(
                 ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3, attr4));
@@ -55,11 +55,6 @@ public class AuthorizationValidatorTest {
 
     @Test
     public void whenDuplicatesThenInvalidEventTypeException() throws Exception {
-
-        final AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
-        final AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
-        final AuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");
-        final AuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");
 
         final EventTypeAuthorization auth = new EventTypeAuthorization(
                 ImmutableList.of(attr1, attr3, attr2, attr1, attr1, attr3),
@@ -82,9 +77,9 @@ public class AuthorizationValidatorTest {
     public void whenPluginExceptionThenServiceUnavailableException() throws Exception {
 
         final EventTypeAuthorization auth = new EventTypeAuthorization(
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
-                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3")));
+                ImmutableList.of(attr1),
+                ImmutableList.of(attr2),
+                ImmutableList.of(attr3));
 
         when(authorizationService.isAuthorizationAttributeValid(any())).thenThrow(new PluginException("blah"));
 
