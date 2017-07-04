@@ -18,7 +18,6 @@ import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
-import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
@@ -43,6 +42,7 @@ import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.plugin.api.PluginException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -384,7 +384,7 @@ public class EventTypeService {
         final EventTypeAuthorization auth = eventType.getAuthorization();
 
         if (auth != null) {
-            final Stream<EventTypeAuthorizationAttribute> allAttributesStream = Stream.concat(Stream.concat(
+            final Stream<AuthorizationAttribute> allAttributesStream = Stream.concat(Stream.concat(
                     auth.getAdmins().stream(),
                     auth.getReaders().stream()),
                     auth.getWriters().stream());
