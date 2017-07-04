@@ -2,15 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -55,11 +46,22 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
 import org.zalando.problem.Problem;
+
+import javax.ws.rs.core.Response;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
 public class EventTypeService {
@@ -74,6 +76,7 @@ public class EventTypeService {
     private final SchemaEvolutionService schemaEvolutionService;
     private final PartitionsCalculator partitionsCalculator;
     private final FeatureToggleService featureToggleService;
+    private final AuthorizationValidator authorizationValidator;
     private final TimelineSync timelineSync;
     private final NakadiSettings nakadiSettings;
     private final TransactionTemplate transactionTemplate;
@@ -87,6 +90,7 @@ public class EventTypeService {
                             final SchemaEvolutionService schemaEvolutionService,
                             final PartitionsCalculator partitionsCalculator,
                             final FeatureToggleService featureToggleService,
+                            final AuthorizationValidator authorizationValidator,
                             final TimelineSync timelineSync,
                             final TransactionTemplate transactionTemplate,
                             final NakadiSettings nakadiSettings) {
@@ -98,6 +102,7 @@ public class EventTypeService {
         this.schemaEvolutionService = schemaEvolutionService;
         this.partitionsCalculator = partitionsCalculator;
         this.featureToggleService = featureToggleService;
+        this.authorizationValidator = authorizationValidator;
         this.timelineSync = timelineSync;
         this.transactionTemplate = transactionTemplate;
         this.nakadiSettings = nakadiSettings;
@@ -113,6 +118,7 @@ public class EventTypeService {
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
+            authorizationValidator.validateAuthorization(eventType.getAuthorization());
 
             final String topicName = topicRepository.createTopic(
                     partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
@@ -123,8 +129,7 @@ public class EventTypeService {
             try {
                 eventTypeRepository.saveEventType(eventType);
                 eventTypeCreated = true;
-            }
-            finally {
+            } finally {
                 if (!eventTypeCreated) {
                     try {
                         topicRepository.deleteTopic(topicName);
@@ -178,7 +183,7 @@ public class EventTypeService {
                     + " is currently in maintenance, please repeat request");
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
-            throw new EventTypeUnavailableException("Event type "+ eventTypeName
+            throw new EventTypeUnavailableException("Event type " + eventTypeName
                     + " is currently in maintenance, please repeat request");
         } catch (final NakadiException e) {
             LOG.error("Error deleting event type " + eventTypeName, e);
@@ -365,6 +370,8 @@ public class EventTypeService {
             throw new InvalidEventTypeException("path does not match resource name");
         }
     }
+
+
 
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {

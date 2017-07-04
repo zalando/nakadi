@@ -49,12 +49,13 @@ public class EventTypeServiceTest {
     private final TimelineService timelineService = mock(TimelineService.class);
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
 
     @Before
     public void setUp() {
         eventTypeService = new EventTypeService(eventTypeRepository, timelineService, partitionResolver, enrichment,
                 subscriptionDbRepository, schemaEvolutionService, partitionsCalculator, featureToggleService,
-                timelineSync, transactionTemplate, nakadiSettings);
+                authorizationValidator, timelineSync, transactionTemplate, nakadiSettings);
         when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
             final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
             return callback.doInTransaction(null);
