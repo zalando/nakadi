@@ -38,7 +38,6 @@ import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
@@ -46,14 +45,13 @@ import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
 import org.zalando.nakadi.plugin.api.ApplicationService;
-import org.zalando.nakadi.plugin.api.PluginException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.KafkaConfig;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.EventTypeService;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
@@ -136,7 +134,7 @@ public class EventTypeControllerTest {
     private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
     private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
             .schemaEvolutionService();
-    private final AuthorizationService authorizationService = mock(AuthorizationService.class);
+    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
 
     private MockMvc mockMvc;
 
@@ -161,7 +159,7 @@ public class EventTypeControllerTest {
 
         final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
                 partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
-                featureToggleService, authorizationService, timelineSync, transactionTemplate, nakadiSettings);
+                featureToggleService, authorizationValidator, timelineSync, transactionTemplate, nakadiSettings);
 
         final EventTypeOptionsValidator eventTypeOptionsValidator =
                 new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
@@ -414,31 +412,7 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithInvalidAuthAttributesThen422() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-
-        final EventTypeAuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
-        final EventTypeAuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
-        final EventTypeAuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");
-        final EventTypeAuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");
-
-        eventType.setAuthorization(new EventTypeAuthorization(
-                ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3, attr4)));
-
-        when(authorizationService.isAuthorizationAttributeValid(attr1)).thenReturn(false);
-        when(authorizationService.isAuthorizationAttributeValid(attr2)).thenReturn(true);
-        when(authorizationService.isAuthorizationAttributeValid(attr3)).thenReturn(true);
-        when(authorizationService.isAuthorizationAttributeValid(attr4)).thenReturn(false);
-
-        final Problem expectedProblem = new InvalidEventTypeException(
-                "authorization attribute type1:value1 is invalid, authorization attribute type4:value4 is invalid")
-                .asProblem();
-
-        postETAndExpect422WithProblem(eventType, expectedProblem);
-    }
-
-    @Test
-    public void whenPostAndPluginExceptionThen503() throws Exception {
+    public void whenPostAndAuthorizationInvalidThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
         eventType.setAuthorization(new EventTypeAuthorization(
@@ -446,15 +420,9 @@ public class EventTypeControllerTest {
                 ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
                 ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
 
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenThrow(new PluginException("blah"));
+        doThrow(new InvalidEventTypeException("dummy")).when(authorizationValidator).validateAuthorization(any());
 
-        final Problem expectedProblem = new ServiceUnavailableException("Error calling authorization plugin")
-                .asProblem();
-
-        postEventType(eventType)
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postETAndExpect422WithProblem(eventType, new InvalidEventTypeException("dummy").asProblem());
     }
 
     @Test
@@ -486,7 +454,6 @@ public class EventTypeControllerTest {
 
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
 
         postEventType(eventType).andExpect(status().isCreated());
     }
