@@ -23,10 +23,10 @@ public class AuthorizationValidatorTest {
     private final AuthorizationValidator validator;
     private final AuthorizationService authorizationService;
 
-    private AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");;
-    private AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");;
-    private AuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");;
-    private AuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");;
+    private final AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");;
+    private final AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");;
+    private final AuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");;
+    private final AuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");;
 
     public AuthorizationValidatorTest() {
         authorizationService = mock(AuthorizationService.class);
