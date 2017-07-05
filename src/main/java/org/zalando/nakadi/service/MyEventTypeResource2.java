@@ -23,7 +23,7 @@ class MyEventTypeResource2 implements Resource {
 
     @Override
     public String getType() {
-        return "EventType";
+        return "event-type";
     }
 
     @Override
