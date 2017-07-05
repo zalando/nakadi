@@ -1,8 +1,6 @@
 package org.zalando.nakadi.partitioning;
 
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.zalando.nakadi.domain.EventCategory;
@@ -13,7 +11,6 @@ import org.zalando.nakadi.exceptions.Try;
 import org.zalando.nakadi.util.JsonPathAccess;
 import org.zalando.nakadi.validation.JsonSchemaEnrichment;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,8 +18,6 @@ import static java.lang.Math.abs;
 
 @Component
 public class HashPartitionStrategy implements PartitionStrategy {
-
-    private static final Logger LOG = LoggerFactory.getLogger(HashPartitionStrategy.class);
 
     private static final String DATA_PATH_PREFIX = JsonSchemaEnrichment.DATA_CHANGE_WRAP_FIELD + ".";
 
