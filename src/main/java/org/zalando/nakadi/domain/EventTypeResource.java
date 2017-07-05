@@ -4,6 +4,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,17 +24,20 @@ public class EventTypeResource implements Resource {
     }
 
     @Override
+    @Nullable
     public String getName() {
         return name;
     }
 
     @Override
+    @Nullable
     public String getType() {
         return type;
     }
 
     @Override
-    public Optional<List<AuthorizationAttribute>> getAttributesForOperation(AuthorizationService.Operation operation) {
+    public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
+            final AuthorizationService.Operation operation) {
         return Optional.ofNullable(attributes.get(operation));
     }
 

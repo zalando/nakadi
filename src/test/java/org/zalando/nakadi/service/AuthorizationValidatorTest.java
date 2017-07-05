@@ -109,7 +109,8 @@ public class AuthorizationValidatorTest {
     }
 
     @Test(expected = ServiceTemporaryUnavailableException.class)
-    public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporaryUnavailableException() throws Exception {
+    public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporaryUnavailableException()
+            throws Exception {
         when(authorizationService.isAuthorized(any(), any(), any())).thenThrow(new PluginException("blah"));
         validator.authorizeEventTypeUpdate(EventTypeTestBuilder.builder()
                 .authorization(new EventTypeAuthorization(null, null, null)).build());
