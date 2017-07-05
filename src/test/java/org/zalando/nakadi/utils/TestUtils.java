@@ -40,8 +40,6 @@ public class TestUtils {
 
     private static final String VALID_EVENT_TYPE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ";
 
-//    private static final String VALID_EVENT_BODY_CHARS = VALID_EVENT_TYPE_NAME_CHARS + " \t!@#$%^&*()=+-_";
-
     private static final Random RANDOM = new Random();
     private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
 
