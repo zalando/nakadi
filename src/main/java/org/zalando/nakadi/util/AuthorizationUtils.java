@@ -5,6 +5,7 @@ import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
@@ -55,7 +56,7 @@ public class AuthorizationUtils {
                             authorizeStreamRead(authorizationService, client, eventType);
                         });
                     } catch (final InternalNakadiException e) {
-                        e.printStackTrace();
+                        throw new MyNakadiRuntimeException1("Failed authorizing");
                     }
                 }
         );
