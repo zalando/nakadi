@@ -28,7 +28,7 @@ info:
     stored in an underlying logical stream (the Topic) that is physically organized in disjoint
     collections of strictly ordered Events (the Partition). The EventType defines the field that
     acts as evaluator of the ordering (that is, its partition key); this ordering is guaranteed by
-    making Events whose partition key resolves to the sdefame Partition (usually a hash function on its
+    making Events whose partition key resolves to the same Partition (usually a hash function on its
     value) be persisted strictly ordered in a Partition.  In practice this means that all Events
     within a Partition have their relative order guaranteed: Events (of a same EventType) that are
     *about* a same data entity (that is, have the same value on its Partition key) reach always the
