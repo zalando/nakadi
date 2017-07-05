@@ -2201,7 +2201,7 @@ definitions:
           Required when 'partition_resolution_strategy' is set to 'hash'. Must be absent otherwise.
           Indicates the fields used for evaluation the partition of Events of this type.
 
-          If set it MUST be a valid required field as defined in the schema.
+          If this is set it MUST be a valid required field as defined in the schema.
 
       default_statistic:
         $ref: '#/definitions/EventTypeStatistics'
@@ -2285,7 +2285,7 @@ definitions:
   EventTypeStatistics:
     type: object
     description: |
-      Operational statistics for an EventType. This data MUST be provided by users on Event Type
+      Operational statistics for an EventType. This data may be provided by users on Event Type
       creation. Nakadi uses this object in order to provide an optimal number of partitions from a throughput perspective.
 
     properties:
