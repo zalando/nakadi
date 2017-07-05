@@ -3,17 +3,20 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Resource;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.service.BlacklistService;
@@ -29,6 +32,7 @@ import javax.ws.rs.core.Response;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -49,6 +53,10 @@ public class SubscriptionStreamControllerTest {
     private JsonTestHelper jsonHelper;
 
     private SubscriptionStreamerFactory subscriptionStreamerFactory;
+
+    private SubscriptionDbRepository subscriptionDbRepository;
+    private EventTypeRepository eventTypeRepository;
+    private AuthorizationService authorizationService;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -74,9 +82,15 @@ public class SubscriptionStreamControllerTest {
         final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
 
         subscriptionStreamerFactory = mock(SubscriptionStreamerFactory.class);
+        subscriptionDbRepository = mock(SubscriptionDbRepository.class);
+        eventTypeRepository = mock(EventTypeRepository.class);
+        authorizationService = mock(AuthorizationService.class);
+
+        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(true);
 
         controller = new SubscriptionStreamController(subscriptionStreamerFactory, featureToggleService, objectMapper,
-                crutch, nakadiSettings, blacklistService, metricRegistry);
+                crutch, nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository,
+                eventTypeRepository, authorizationService);
     }
 
     @Test
@@ -90,17 +104,18 @@ public class SubscriptionStreamControllerTest {
 
     @Test
     public void whenAccessDeniedThenForbidden() throws Exception {
-        final Resource resource = mock(Resource.class);
-        when(resource.getName()).thenReturn("some-name");
-        when(resource.getType()).thenReturn("some-type");
-        when(subscriptionStreamerFactory.build(any(), any(), any(), any(), any(), any())).thenThrow(
-                new AccessDeniedException(null, AuthorizationService.Operation.READ, resource));
+        final EventType eventType = mock(EventType.class);
+        final Subscription subscription = mock(Subscription.class);
+        when(subscription.getEventTypes()).thenReturn(Sets.newHashSet("some-name"));
+        when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(eventType));
+        when(subscriptionDbRepository.getSubscription(any())).thenReturn(subscription);
+        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
 
         final StreamingResponseBody responseBody = controller.streamEvents("abc", 0, 1, null, 10, null, null,
                 requestMock, responseMock, FULL_ACCESS_CLIENT);
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.FORBIDDEN,
-                "Access on READ some-type:some-name denied");
+                "Access on READ event-type:null denied");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 

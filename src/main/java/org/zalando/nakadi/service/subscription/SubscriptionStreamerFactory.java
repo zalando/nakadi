@@ -11,9 +11,6 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
@@ -27,13 +24,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.zalando.nakadi.util.AuthorizationUtils.authorizeSubscriptionRead;
-
 @Service
 public class SubscriptionStreamerFactory {
     @Value("${nakadi.kafka.poll.timeoutMs}")
     private long kafkaPollTimeout;
-    private final SubscriptionDbRepository subscriptionDbRepository;
     private final TimelineService timelineService;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private final CursorTokenService cursorTokenService;
@@ -42,22 +36,16 @@ public class SubscriptionStreamerFactory {
     private final MetricRegistry metricRegistry;
     private final SubscriptionClientFactory zkClientFactory;
     private final EventStreamWriterProvider eventStreamWriterProvider;
-    private final EventTypeRepository eventTypeRepository;
-    private final AuthorizationService authorizationService;
 
     @Autowired
     public SubscriptionStreamerFactory(
-            final SubscriptionDbRepository subscriptionDbRepository,
             final TimelineService timelineService,
             final CursorTokenService cursorTokenService,
             final ObjectMapper objectMapper,
             final CursorConverter cursorConverter,
             @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry,
             final SubscriptionClientFactory zkClientFactory,
-            final EventStreamWriterProvider eventStreamWriterProvider,
-            final EventTypeRepository eventTypeRepository,
-            final AuthorizationService authorizationService) {
-        this.subscriptionDbRepository = subscriptionDbRepository;
+            final EventStreamWriterProvider eventStreamWriterProvider) {
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -65,25 +53,18 @@ public class SubscriptionStreamerFactory {
         this.metricRegistry = metricRegistry;
         this.zkClientFactory = zkClientFactory;
         this.eventStreamWriterProvider = eventStreamWriterProvider;
-        this.eventTypeRepository = eventTypeRepository;
-        this.authorizationService = authorizationService;
     }
 
     public SubscriptionStreamer build(
-            final String subscriptionId,
+            final Subscription subscription,
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
             final AtomicBoolean connectionReady,
             final BlacklistService blacklistService,
             final Client client) throws NoSuchSubscriptionException, ServiceUnavailableException,
             InternalNakadiException, NoSuchEventTypeException {
-
-        final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
-
-        authorizeSubscriptionRead(eventTypeRepository, authorizationService, client, subscription);
-
         final Session session = Session.generate(1);
-        final String loggingPath = "subscription." + subscriptionId + "." + session.getId();
+        final String loggingPath = "subscription." + subscription.getId() + "." + session.getId();
         // Create streaming context
         return new StreamingContext.Builder()
                 .setOut(output)

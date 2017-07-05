@@ -15,8 +15,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.NakadiSettings;
+import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -36,6 +40,7 @@ import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
+import static org.zalando.nakadi.util.AuthorizationUtils.authorizeSubscriptionRead;
 import static org.zalando.nakadi.util.AuthorizationUtils.errorMessage;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
@@ -51,6 +56,9 @@ public class SubscriptionStreamController {
     private final NakadiSettings nakadiSettings;
     private final BlacklistService blacklistService;
     private final MetricRegistry metricRegistry;
+    private final SubscriptionDbRepository subscriptionDbRepository;
+    private final EventTypeRepository eventTypeRepository;
+    private final AuthorizationService authorizationService;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -59,7 +67,10 @@ public class SubscriptionStreamController {
                                         final ClosedConnectionsCrutch closedConnectionsCrutch,
                                         final NakadiSettings nakadiSettings,
                                         final BlacklistService blacklistService,
-                                        @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry) {
+                                        @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
+                                        final SubscriptionDbRepository subscriptionDbRepository,
+                                        final EventTypeRepository eventTypeRepository,
+                                        final AuthorizationService authorizationService) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
@@ -67,6 +78,9 @@ public class SubscriptionStreamController {
         this.nakadiSettings = nakadiSettings;
         this.blacklistService = blacklistService;
         this.metricRegistry = metricRegistry;
+        this.subscriptionDbRepository = subscriptionDbRepository;
+        this.eventTypeRepository = eventTypeRepository;
+        this.authorizationService = authorizationService;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -155,7 +169,11 @@ public class SubscriptionStreamController {
                 final StreamParameters streamParameters = StreamParameters.of(batchLimit, streamLimit, batchTimeout,
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
                         nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
-                streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output,
+                final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
+
+                authorizeSubscriptionRead(eventTypeRepository, authorizationService, client, subscription);
+
+                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
                         connectionReady, blacklistService, client);
                 streamer.stream();
             } catch (final InterruptedException ex) {
