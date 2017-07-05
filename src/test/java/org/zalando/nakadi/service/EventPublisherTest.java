@@ -114,7 +114,7 @@ public class EventPublisherTest {
 
         Mockito.doThrow(new ResourceAccessNotAuthorizedException(null, null))
                 .when(authzValidator)
-                .validateWrite(Mockito.eq(et));
+                .authorizeEventTypeWrite(Mockito.eq(et));
 
         publisher.publish(buildDefaultBatch(1).toString(), et.getName(), FULL_ACCESS_CLIENT);
     }

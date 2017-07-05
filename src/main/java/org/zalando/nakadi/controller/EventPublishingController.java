@@ -23,6 +23,7 @@ import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
@@ -90,7 +91,8 @@ public class EventPublishingController {
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
-                                             final Client client) throws ResourceAccessNotAuthorizedException {
+                                             final Client client)
+            throws ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
         final long startingNanos = System.nanoTime();
         try {
             final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);

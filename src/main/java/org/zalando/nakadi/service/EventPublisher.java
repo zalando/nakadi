@@ -29,6 +29,7 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
@@ -70,7 +71,7 @@ public class EventPublisher {
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
             throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
-            ResourceAccessNotAuthorizedException {
+            ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
@@ -78,7 +79,7 @@ public class EventPublisher {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            authValidator.validateWrite(eventType);
+            authValidator.authorizeEventTypeWrite(eventType);
             client.checkScopes(eventType.getWriteScopes());
 
             validate(batch, eventType);
