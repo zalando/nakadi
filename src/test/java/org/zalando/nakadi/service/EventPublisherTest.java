@@ -39,7 +39,9 @@ import org.zalando.nakadi.exceptions.EventPublishingException;
 import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
@@ -75,6 +77,7 @@ public class EventPublisherTest {
     private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
     private final TimelineSync timelineSync = mock(TimelineSync.class);
     private final Enrichment enrichment = mock(Enrichment.class);
+    private final AuthzChecker authzChecker = mock(AuthzChecker.class);
     private final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
             NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, TIMELINE_WAIT_TIMEOUT_MS, NAKADI_EVENT_MAX_BYTES,
             NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
@@ -86,7 +89,9 @@ public class EventPublisherTest {
         Mockito.when(ts.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
         final Timeline timeline = Mockito.mock(Timeline.class);
         Mockito.when(ts.getTimeline(any())).thenReturn(timeline);
-        publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync, null);
+
+        publisher = new EventPublisher(ts, cache, partitionResolver, enrichment, nakadiSettings, timelineSync,
+                authzChecker);
     }
 
     @Test
@@ -100,6 +105,22 @@ public class EventPublisherTest {
 
         assertThat(result.getStatus(), equalTo(EventPublishingStatus.SUBMITTED));
         verify(topicRepository, times(1)).syncPostBatch(any(), any());
+    }
+
+    @Test(expected = ResourceAccessNotAuthorizedException.class)
+    public void whenPublishAuthorizationIsTakenIntoAccount() throws Exception {
+        final EventType et = buildDefaultEventType();
+
+        mockSuccessfulValidation(et);
+
+        Mockito.doThrow(new ResourceAccessNotAuthorizedException(null, null))
+                .when(authzChecker)
+                .performCheck(
+                        Mockito.eq(et),
+                        Mockito.eq(AuthorizationService.Operation.WRITE),
+                        Mockito.any());
+
+        publisher.publish(buildDefaultBatch(1).toString(), et.getName(), FULL_ACCESS_CLIENT);
     }
 
     @Test
