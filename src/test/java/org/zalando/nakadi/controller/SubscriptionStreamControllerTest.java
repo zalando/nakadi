@@ -11,16 +11,21 @@ import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.problem.Problem;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -42,6 +47,8 @@ public class SubscriptionStreamControllerTest {
 
     private SubscriptionStreamController controller;
     private JsonTestHelper jsonHelper;
+
+    private SubscriptionStreamerFactory subscriptionStreamerFactory;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -66,7 +73,9 @@ public class SubscriptionStreamControllerTest {
 
         final NakadiSettings nakadiSettings = mock(NakadiSettings.class);
 
-        controller = new SubscriptionStreamController(null, featureToggleService, objectMapper,
+        subscriptionStreamerFactory = mock(SubscriptionStreamerFactory.class);
+
+        controller = new SubscriptionStreamController(subscriptionStreamerFactory, featureToggleService, objectMapper,
                 crutch, nakadiSettings, blacklistService, metricRegistry);
     }
 
@@ -76,6 +85,22 @@ public class SubscriptionStreamControllerTest {
                 requestMock, responseMock, FULL_ACCESS_CLIENT);
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "batch_limit can't be lower than 1");
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+    }
+
+    @Test
+    public void whenAccessDeniedThenForbidden() throws Exception {
+        final Resource resource = mock(Resource.class);
+        when(resource.getName()).thenReturn("some-name");
+        when(resource.getType()).thenReturn("some-type");
+        when(subscriptionStreamerFactory.build(any(), any(), any(), any(), any(), any())).thenThrow(
+                new AccessDeniedException(null, AuthorizationService.Operation.READ, resource));
+
+        final StreamingResponseBody responseBody = controller.streamEvents("abc", 0, 1, null, 10, null, null,
+                requestMock, responseMock, FULL_ACCESS_CLIENT);
+
+        final Problem expectedProblem = Problem.valueOf(Response.Status.FORBIDDEN,
+                "Access on READ some-type:some-name denied");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 

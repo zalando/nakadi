@@ -7,18 +7,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +32,9 @@ import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.metrics.MetricUtils;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -58,15 +48,31 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.AuthorizationUtils;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
+
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
+import static org.zalando.nakadi.util.AuthorizationUtils.authorizeStreamRead;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 
 @RestController
@@ -86,6 +92,7 @@ public class EventStreamController {
     private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
+    private final AuthorizationService authorizationService;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository,
@@ -98,7 +105,8 @@ public class EventStreamController {
                                  final BlacklistService blacklistService,
                                  final ConsumerLimitingService consumerLimitingService,
                                  final FeatureToggleService featureToggleService,
-                                 final CursorConverter cursorConverter) {
+                                 final CursorConverter cursorConverter,
+                                 final AuthorizationService authorizationService) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
@@ -110,6 +118,7 @@ public class EventStreamController {
         this.consumerLimitingService = consumerLimitingService;
         this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
+        this.authorizationService = authorizationService;
     }
 
     @VisibleForTesting
@@ -182,7 +191,10 @@ public class EventStreamController {
             try {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
+                // TODO: deprecate and remove previous authorization strategy
                 client.checkScopes(eventType.getReadScopes());
+
+                authorizeStreamRead(authorizationService, client, eventType);
 
                 // validate parameters
                 final EventStreamConfig streamConfig = EventStreamConfig.builder()
@@ -242,7 +254,10 @@ public class EventStreamController {
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             } catch (final IllegalScopeException e) {
+                // TODO: deprecate and remove previous authorization strategy
                 writeProblemResponse(response, outputStream, FORBIDDEN, e.getMessage());
+            } catch (final AccessDeniedException e) {
+                writeProblemResponse(response, outputStream, FORBIDDEN, AuthorizationUtils.errorMessage(e));
             } catch (final Exception e) {
                 LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());

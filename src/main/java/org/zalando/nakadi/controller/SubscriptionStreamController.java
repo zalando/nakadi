@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -35,6 +36,7 @@ import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
+import static org.zalando.nakadi.util.AuthorizationUtils.errorMessage;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
 @RestController
@@ -154,11 +156,15 @@ public class SubscriptionStreamController {
                         streamTimeout, streamKeepAliveLimit, maxUncommittedSize,
                         nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
                 streamer = subscriptionStreamerFactory.build(subscriptionId, streamParameters, output,
-                        connectionReady, blacklistService);
+                        connectionReady, blacklistService, client);
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
                 Thread.currentThread().interrupt();
+            } catch (final AccessDeniedException e) {
+                writeProblemResponse(response, output.getOutputStream(), Problem.valueOf(Response.Status.FORBIDDEN,
+                        errorMessage(e)));
+                output.getOutputStream().flush();
             } catch (final Exception e) {
                 output.onException(e);
             } finally {
