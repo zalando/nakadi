@@ -3,8 +3,7 @@
 
 *Nakadi* makes use of Oauth2 to provide security, there are three modes that can be 
 configured. In order to configure security for *Nakadi* you need to edit the *Nakadi* application.yml (env vars)
-                                                                                      and add oauth2
- validation endpoints. This is set via two environmental variables.
+ and add oauth2 validation endpoints. This is set via two environmental variables.
  
  * AuthenticationMode: Security model to use 
  
