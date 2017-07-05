@@ -1,7 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -11,20 +9,10 @@ import com.google.common.collect.Multimap;
 import com.google.common.io.Resources;
 import org.hamcrest.core.StringContains;
 import org.json.JSONObject;
-import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.config.SecuritySettings;
-import org.zalando.nakadi.config.ValidatorConfig;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
@@ -33,39 +21,20 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.enrichment.Enrichment;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
-import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
-import org.zalando.nakadi.plugin.api.ApplicationService;
-import org.zalando.nakadi.plugin.api.PluginException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
-import org.zalando.nakadi.repository.kafka.KafkaConfig;
-import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
-import org.zalando.nakadi.security.ClientResolver;
-import org.zalando.nakadi.service.EventTypeService;
-import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.service.timeline.TimelineSync;
-import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.util.UUIDGenerator;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.validation.EventTypeOptionsValidator;
-import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
-import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -73,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -94,95 +62,18 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_EVENT_TYPE_DELETION;
-import static org.zalando.nakadi.util.PrincipalMockFactory.mockPrincipal;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
-import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
-public class EventTypeControllerTest {
-
-    private static final long TOPIC_RETENTION_MIN_MS = 86400000;
-    private static final long TOPIC_RETENTION_MAX_MS = 345600000;
-    private static final long TOPIC_RETENTION_TIME_MS = 172800000;
-    private static final int NAKADI_SEND_TIMEOUT = 10000;
-    private static final int NAKADI_POLL_TIMEOUT = 10000;
-    private static final long NAKADI_EVENT_MAX_BYTES = 1000000;
-    private static final int NAKADI_SUBSCRIPTION_MAX_PARTITIONS = 8;
-    private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
-    private final TopicRepository topicRepository = mock(TopicRepository.class);
-    private final PartitionResolver partitionResolver = mock(PartitionResolver.class);
-    private final Enrichment enrichment = mock(Enrichment.class);
-    private final UUIDGenerator uuid = mock(UUIDGenerator.class);
-    private final UUID randomUUID = new UUIDGenerator().randomUUID();
-    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
-    private final SecuritySettings settings = mock(SecuritySettings.class);
-    private final ApplicationService applicationService = mock(ApplicationService.class);
-    private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
-    private final TimelineService timelineService = mock(TimelineService.class);
-    private final TimelineSync timelineSync = mock(TimelineSync.class);
-    private final TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
-    private final SchemaEvolutionService schemaEvolutionService = new ValidatorConfig()
-            .schemaEvolutionService();
-    private final AuthorizationService authorizationService = mock(AuthorizationService.class);
-
-    private MockMvc mockMvc;
+public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
     public EventTypeControllerTest() throws IOException {
-    }
-
-    @Before
-    public void init() throws Exception {
-
-        final NakadiSettings nakadiSettings = new NakadiSettings(0, 0, 0, TOPIC_RETENTION_TIME_MS, 0, 60,
-                NAKADI_POLL_TIMEOUT, NAKADI_SEND_TIMEOUT, 0, NAKADI_EVENT_MAX_BYTES,
-                NAKADI_SUBSCRIPTION_MAX_PARTITIONS);
-        final PartitionsCalculator partitionsCalculator = new KafkaConfig().createPartitionsCalculator(
-                "t2.large", objectMapper, nakadiSettings);
-        when(timelineService.getDefaultTopicRepository()).thenReturn(topicRepository);
-        when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
-        when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepository);
-        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
-            final TransactionCallback callback = (TransactionCallback) invocation.getArguments()[0];
-            return callback.doInTransaction(null);
-        });
-
-        final EventTypeService eventTypeService = new EventTypeService(eventTypeRepository, timelineService,
-                partitionResolver, enrichment, subscriptionRepository, schemaEvolutionService, partitionsCalculator,
-                featureToggleService, authorizationService, timelineSync, transactionTemplate, nakadiSettings);
-
-        final EventTypeOptionsValidator eventTypeOptionsValidator =
-                new EventTypeOptionsValidator(TOPIC_RETENTION_MIN_MS, TOPIC_RETENTION_MAX_MS);
-        final EventTypeController controller = new EventTypeController(eventTypeService,
-                featureToggleService, eventTypeOptionsValidator, applicationService, nakadiSettings, settings);
-        doReturn(randomUUID).when(uuid).randomUUID();
-
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
-                new MappingJackson2HttpMessageConverter(objectMapper);
-
-        doReturn(true).when(applicationService).exists(any());
-        doReturn(SecuritySettings.AuthMode.OFF).when(settings).getAuthMode();
-        doReturn("nakadi").when(settings).getAdminClientId();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_PARTITIONS_KEYS);
-
-        mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
-                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
-                .setControllerAdvice(new ExceptionHandling())
-                .build();
-
     }
 
     @Test
@@ -398,31 +289,23 @@ public class EventTypeControllerTest {
     }
 
     @Test
-    public void whenPostWithInvalidAuthAttributesThen422() throws Exception {
+    public void whenPostWithNullAuthorizationListThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
+        eventType.setAuthorization(new EventTypeAuthorization(null, null, null));
 
-        final EventTypeAuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
-        final EventTypeAuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
-        final EventTypeAuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");
-        final EventTypeAuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");
-
-        eventType.setAuthorization(new EventTypeAuthorization(
-                ImmutableList.of(attr1), ImmutableList.of(attr2), ImmutableList.of(attr3, attr4)));
-
-        when(authorizationService.isAuthorizationAttributeValid(attr1)).thenReturn(false);
-        when(authorizationService.isAuthorizationAttributeValid(attr2)).thenReturn(true);
-        when(authorizationService.isAuthorizationAttributeValid(attr3)).thenReturn(true);
-        when(authorizationService.isAuthorizationAttributeValid(attr4)).thenReturn(false);
-
-        final Problem expectedProblem = new InvalidEventTypeException(
-                "authorization attribute type1:value1 is invalid, authorization attribute type4:value4 is invalid")
-                .asProblem();
-
-        postETAndExpect422WithProblem(eventType, expectedProblem);
+        postEventType(eventType)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.admins\\\" may not be null")))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.readers\\\" may not be null")))
+                .andExpect(content().string(
+                        containsString("Field \\\"authorization.writers\\\" may not be null")));
     }
 
     @Test
-    public void whenPostAndPluginExceptionThen503() throws Exception {
+    public void whenPostAndAuthorizationInvalidThen422() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
         eventType.setAuthorization(new EventTypeAuthorization(
@@ -430,15 +313,9 @@ public class EventTypeControllerTest {
                 ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
                 ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
 
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenThrow(new PluginException("blah"));
+        doThrow(new InvalidEventTypeException("dummy")).when(authorizationValidator).validateAuthorization(any());
 
-        final Problem expectedProblem = new ServiceUnavailableException("Error calling authorization plugin")
-                .asProblem();
-
-        postEventType(eventType)
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(content().contentType("application/problem+json"))
-                .andExpect(content().string(matchesProblem(expectedProblem)));
+        postETAndExpect422WithProblem(eventType, new InvalidEventTypeException("dummy").asProblem());
     }
 
     @Test
@@ -470,7 +347,6 @@ public class EventTypeControllerTest {
 
         doReturn(eventType).when(eventTypeRepository).saveEventType(any(EventType.class));
         when(topicRepository.createTopic(anyInt(), any())).thenReturn(randomUUID.toString());
-        when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
 
         postEventType(eventType).andExpect(status().isCreated());
     }
@@ -1095,71 +971,4 @@ public class EventTypeControllerTest {
         verify(eventTypeRepository).update(any());
     }
 
-    private ResultActions deleteEventType(final String eventTypeName) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName));
-    }
-
-    private ResultActions deleteEventType(final String eventTypeName, final String clientId) throws Exception {
-        return mockMvc.perform(delete("/event-types/" + eventTypeName).principal(mockPrincipal(clientId)));
-    }
-
-    private ResultActions postEventType(final EventType eventType) throws Exception {
-        final String content = objectMapper.writeValueAsString(eventType);
-
-        return postEventType(content);
-    }
-
-    private ResultActions postEventType(final String content) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = post("/event-types").contentType(APPLICATION_JSON).content(
-                content);
-
-        return mockMvc.perform(requestBuilder);
-    }
-
-    private ResultActions putEventType(final EventType eventType, final String name, final String clientId)
-            throws Exception {
-        final String content = objectMapper.writeValueAsString(eventType);
-
-        return putEventType(content, name, clientId);
-    }
-
-    private ResultActions putEventType(final EventType eventType, final String name) throws Exception {
-        final String content = objectMapper.writeValueAsString(eventType);
-
-        return putEventType(content, name);
-    }
-
-    private ResultActions putEventType(final String content, final String name) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name).contentType(APPLICATION_JSON)
-                .content(content);
-        return mockMvc.perform(requestBuilder);
-    }
-
-    private ResultActions putEventType(final String content, final String name, final String clientId)
-            throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = put("/event-types/" + name)
-                .principal(mockPrincipal(clientId))
-                .contentType(APPLICATION_JSON)
-                .content(content);
-        return mockMvc.perform(requestBuilder);
-    }
-
-    private ResultActions getEventType(final String eventTypeName) throws Exception {
-        final MockHttpServletRequestBuilder requestBuilder = get("/event-types/" + eventTypeName);
-        return mockMvc.perform(requestBuilder);
-    }
-
-    private SameJSONAs<? super String> matchesProblem(final Problem expectedProblem) throws JsonProcessingException {
-        return sameJSONAs(asJsonString(expectedProblem));
-    }
-
-    private String asJsonString(final Object object) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(object);
-    }
-
-    private void disableETDeletionFeature() {
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-        doReturn(true).when(featureToggleService).isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION);
-    }
 }
