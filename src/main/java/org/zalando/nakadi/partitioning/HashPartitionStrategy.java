@@ -49,14 +49,12 @@ public class HashPartitionStrategy implements PartitionStrategy {
 
             final JsonPathAccess traversableJsonEvent = new JsonPathAccess(event);
 
-            final ArrayList<String> fieldValues = new ArrayList<>();
             final int hashValue = partitionKeyFields.stream()
                     // The problem is that JSONObject doesn't override hashCode(). Therefore convert it to
                     // a string first and then use hashCode()
                     .map(pkf -> EventCategory.DATA.equals(eventType.getCategory()) ? DATA_PATH_PREFIX + pkf : pkf)
                     .map(Try.wrap(okf -> {
                         final String fieldValue = traversableJsonEvent.get(okf).toString();
-                        fieldValues.add(fieldValue);
                         return stringHash.hashCode(fieldValue);
                     }))
                     .map(Try::getOrThrow)
@@ -68,14 +66,7 @@ public class HashPartitionStrategy implements PartitionStrategy {
             partitionIndex = hashPartitioningCrutch.adjustPartitionIndex(partitionIndex, partitions.size());
 
             final List<String> sortedPartitions = partitions.stream().sorted().collect(Collectors.toList());
-            final String partition = sortedPartitions.get(partitionIndex);
-
-            // todo: this should be removed after hash-partitioning-crutch is validated
-            LOG.info("[HASH_BUG] hash - values:{} -> hash:{} -> index:{} -> partition:{}; " +
-                            "partitions of '{}' [PNUM:{}]: {}", fieldValues, hashValue, partitionIndex, partition,
-                    eventType.getName(), partitions.size(), partitions.stream().collect(Collectors.joining(",")));
-
-            return partition;
+            return sortedPartitions.get(partitionIndex);
 
         } catch (NakadiRuntimeException e) {
             final Exception original = e.getException();
