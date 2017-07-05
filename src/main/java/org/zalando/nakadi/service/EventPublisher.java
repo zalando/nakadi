@@ -30,7 +30,6 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
 import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -50,7 +49,7 @@ public class EventPublisher {
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
-    private final AuthzChecker authzChecker;
+    private final AuthorizationValidator authValidator;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -59,14 +58,14 @@ public class EventPublisher {
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
                           final TimelineSync timelineSync,
-                          final AuthzChecker authzChecker) {
+                          final AuthorizationValidator authValidator) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
-        this.authzChecker = authzChecker;
+        this.authValidator = authValidator;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
@@ -79,7 +78,8 @@ public class EventPublisher {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
-            authzChecker.performCheck(eventType, AuthorizationService.Operation.WRITE, client);
+            authValidator.validateWrite(eventType);
+            client.checkScopes(eventType.getWriteScopes());
 
             validate(batch, eventType);
             partition(batch, eventType);
