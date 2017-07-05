@@ -26,6 +26,7 @@ import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.NotFoundException;
@@ -36,6 +37,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -49,9 +51,7 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
-import org.zalando.problem.Problem;
 
-import javax.ws.rs.core.Response;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Date;
@@ -211,65 +211,41 @@ public class EventTypeService {
         }
     }
 
-    public Result<Void> update(final String eventTypeName, final EventTypeBase eventTypeBase, final Client client)
-            throws TopicConfigException {
+    public void update(final String eventTypeName,
+                       final EventTypeBase eventTypeBase,
+                       final Client client)
+            throws TopicConfigException,
+            InconsistentStateException,
+            NakadiRuntimeException,
+            ServiceTemporarilyUnavailableException {
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType original = eventTypeRepository.findByName(eventTypeName);
             if (!client.idMatches(original.getOwningApplication())) {
-                return Result.forbidden("You don't have access to this event type");
+                throw new ForbiddenAccessException("You don't have access to this event type");
             }
 
+            authorizationValidator.authorizeEventTypeUpdate(original);
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
             partitionResolver.validate(eventTypeBase);
             final EventType eventType = schemaEvolutionService.evolve(original, eventTypeBase);
             eventType.setDefaultStatistic(
                     validateStatisticsUpdate(original.getDefaultStatistic(), eventType.getDefaultStatistic()));
-            final Long newRetentionTime = eventTypeBase.getOptions().getRetentionTime();
-            final Long oldRetentionTime = original.getOptions().getRetentionTime();
-            if (oldRetentionTime == null) {
-                // since we have some inconsistency in DB I will put here for a while
-                throw new InconsistentStateException("Empty value for retention time in existing EventType");
-            }
-            boolean retentionTimeUpdated = false;
-            try {
-                if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
-                    updateTopicRetentionTime(eventTypeName, newRetentionTime);
-                } else {
-                    eventType.setOptions(original.getOptions());
-                }
-                updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
-                retentionTimeUpdated = true;
-            } finally {
-                if (!retentionTimeUpdated) {
-                    updateTopicRetentionTime(eventTypeName, oldRetentionTime);
-                }
-            }
-
-            return Result.ok();
+            updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.error("Failed to wait for timeline switch", e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
-                    "Event type is currently in maintenance, please repeat request"));
+            throw new ServiceTemporarilyUnavailableException(
+                    "Event type is currently in maintenance, please repeat request", e);
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
-            return Result.problem(Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
-                    "Event type is currently in maintenance, please repeat request"));
-        } catch (final InvalidEventTypeException e) {
-            return Result.problem(e.asProblem());
-        } catch (final NoSuchEventTypeException e) {
-            LOG.debug("Could not find EventType: {}", eventTypeName);
-            return Result.problem(e.asProblem());
-        } catch (final NoSuchPartitionStrategyException e) {
-            LOG.debug("Partition strategy does not exist", e);
-            return Result.problem(e.asProblem());
+            throw new ServiceTemporarilyUnavailableException(
+                    "Event type is currently in maintenance, please repeat request", e);
         } catch (final NakadiException e) {
             LOG.error("Unable to update event type", e);
-            return Result.problem(e.asProblem());
+            throw new NakadiRuntimeException(e);
         } finally {
             try {
                 if (updatingCloser != null) {
@@ -277,6 +253,29 @@ public class EventTypeService {
                 }
             } catch (final IOException e) {
                 LOG.error("Exception occurred when releasing usage of event-type", e);
+            }
+        }
+    }
+
+    private void updateRetentionTime(final EventType original, final EventType eventType) throws NakadiException {
+        final Long newRetentionTime = eventType.getOptions().getRetentionTime();
+        final Long oldRetentionTime = original.getOptions().getRetentionTime();
+        if (oldRetentionTime == null) {
+            // since we have some inconsistency in DB I will put here for a while
+            throw new InconsistentStateException("Empty value for retention time in existing EventType");
+        }
+        boolean retentionTimeUpdated = false;
+        try {
+            if (newRetentionTime != null && !newRetentionTime.equals(oldRetentionTime)) {
+                updateTopicRetentionTime(original.getName(), newRetentionTime);
+            } else {
+                eventType.setOptions(original.getOptions());
+            }
+            updateEventTypeInDB(eventType, newRetentionTime, oldRetentionTime);
+            retentionTimeUpdated = true;
+        } finally {
+            if (!retentionTimeUpdated) {
+                updateTopicRetentionTime(original.getName(), oldRetentionTime);
             }
         }
     }
@@ -370,8 +369,6 @@ public class EventTypeService {
             throw new InvalidEventTypeException("path does not match resource name");
         }
     }
-
-
 
     private void validateSchema(final EventTypeBase eventType) throws InvalidEventTypeException {
         try {

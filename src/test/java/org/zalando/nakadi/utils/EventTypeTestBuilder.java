@@ -8,6 +8,7 @@ import org.zalando.nakadi.domain.CompatibilityMode;
 import org.zalando.nakadi.domain.EnrichmentStrategyDescriptor;
 import org.zalando.nakadi.domain.EventCategory;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
 import org.zalando.nakadi.domain.EventTypeSchema;
@@ -26,12 +27,11 @@ public class EventTypeTestBuilder {
 
     public static final String DEFAULT_OWNING_APPLICATION = "event-producer-application";
     private static final String DEFAULT_SCHEMA = "{ \"properties\": { \"foo\": { \"type\": \"string\" } } }";
-
+    private final List<ValidationStrategyConfiguration> validationStrategies;
     private String name;
     private String topic;
     private String owningApplication;
     private EventCategory category;
-    private final List<ValidationStrategyConfiguration> validationStrategies;
     private List<EnrichmentStrategyDescriptor> enrichmentStrategies;
     private String partitionStrategy;
     private List<String> partitionKeyFields;
@@ -43,6 +43,8 @@ public class EventTypeTestBuilder {
     private CompatibilityMode compatibilityMode;
     private DateTime createdAt;
     private DateTime updatedAt;
+    private EventTypeAuthorization authorization;
+
 
     public EventTypeTestBuilder() {
         this.name = TestUtils.randomValidEventTypeName();
@@ -62,6 +64,11 @@ public class EventTypeTestBuilder {
         this.compatibilityMode = CompatibilityMode.COMPATIBLE;
         this.createdAt = new DateTime(DateTimeZone.UTC);
         this.updatedAt = this.createdAt;
+        this.authorization = null;
+    }
+
+    public static EventTypeTestBuilder builder() {
+        return new EventTypeTestBuilder();
     }
 
     public EventTypeTestBuilder name(final String name) {
@@ -151,14 +158,16 @@ public class EventTypeTestBuilder {
         return this;
     }
 
+    public EventTypeTestBuilder authorization(final EventTypeAuthorization authorization) {
+        this.authorization = authorization;
+        return this;
+    }
+
     public EventType build() {
         final EventTypeBase eventTypeBase = new EventTypeBase(name, topic, owningApplication, category,
                 validationStrategies, enrichmentStrategies, partitionStrategy, partitionKeyFields, schema,
                 defaultStatistic, options, writeScopes, readScopes, compatibilityMode);
+        eventTypeBase.setAuthorization(authorization);
         return new EventType(eventTypeBase, this.schema.getVersion().toString(), this.createdAt, this.updatedAt);
-    }
-
-    public static EventTypeTestBuilder builder() {
-        return new EventTypeTestBuilder();
     }
 }

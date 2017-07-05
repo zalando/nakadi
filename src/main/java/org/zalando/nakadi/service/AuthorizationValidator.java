@@ -4,15 +4,21 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeResource;
+import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -92,6 +98,25 @@ public class AuthorizationValidator {
             }
         } catch (final PluginException e) {
             throw new ServiceUnavailableException("Error calling authorization plugin", e);
+        }
+    }
+
+    public void authorizeEventTypeUpdate(final EventType eventType)
+            throws ForbiddenAccessException, ServiceTemporarilyUnavailableException {
+        if (eventType.getAuthorization() == null) {
+            return;
+        }
+
+        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
+                Collections.singletonMap(AuthorizationService.Operation.ADMIN,
+                        eventType.getAuthorization().getAdmins()));
+        try {
+            if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
+                throw new ForbiddenAccessException("Updating the `EventType` is only allowed for clients that " +
+                        "satisfy the authorization `admin` requirements");
+            }
+        } catch (final PluginException e) {
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }
     }
 }
