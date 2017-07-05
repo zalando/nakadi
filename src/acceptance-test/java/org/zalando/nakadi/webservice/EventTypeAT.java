@@ -2,6 +2,7 @@ package org.zalando.nakadi.webservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import org.apache.http.HttpStatus;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
@@ -12,6 +13,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
@@ -228,6 +231,34 @@ public class EventTypeAT extends BaseAT {
 
         final EventType eventType1 = NakadiTestUtils.getEventType(eventType.getName());
         Assert.assertEquals(defaultRetentionTime, eventType1.getOptions().getRetentionTime());
+    }
+
+    @Test
+    public void whenPOSTEventTypeWithAuthorizationThenOk() throws JsonProcessingException {
+        final EventType eventType = buildDefaultEventType();
+
+        eventType.setAuthorization(new EventTypeAuthorization(
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type1", "value1")),
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
+                ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
+
+        final String body = MAPPER.writer().writeValueAsString(eventType);
+        given().body(body)
+                .header("accept", "application/json")
+                .contentType(JSON)
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(HttpStatus.SC_CREATED);
+
+        when().get(String.format("%s/%s", ENDPOINT, eventType.getName()))
+                .then()
+                .body("authorization.admins[0].data_type", equalTo("type1"))
+                .body("authorization.admins[0].value", equalTo("value1"))
+                .body("authorization.readers[0].data_type", equalTo("type2"))
+                .body("authorization.readers[0].value", equalTo("value2"))
+                .body("authorization.writers[0].data_type", equalTo("type3"))
+                .body("authorization.writers[0].value", equalTo("value3"));
     }
 
     private void assertRetentionTime(final Long checkingRetentionTime, final String etName) throws IOException {
