@@ -4,4 +4,8 @@ public class ServiceTemporaryUnavailableException extends MyNakadiRuntimeExcepti
     public ServiceTemporaryUnavailableException(final Exception cause) {
         super(cause.getMessage(), cause);
     }
+
+    public ServiceTemporaryUnavailableException(final String message, final Throwable cause) {
+        super(message, cause);
+    }
 }

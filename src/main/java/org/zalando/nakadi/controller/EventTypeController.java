@@ -143,10 +143,7 @@ public class EventTypeController {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        final Result<Void> update = eventTypeService.update(name, eventType, client);
-        if (!update.isSuccessful()) {
-            return Responses.create(update.getProblem(), request);
-        }
+        eventTypeService.update(name, eventType, client);
         return status(HttpStatus.OK).build();
     }
 

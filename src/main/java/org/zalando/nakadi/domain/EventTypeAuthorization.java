@@ -1,6 +1,7 @@
 package org.zalando.nakadi.domain;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 
 import javax.annotation.concurrent.Immutable;
 import javax.validation.Valid;
@@ -15,35 +16,35 @@ public class EventTypeAuthorization {
     @NotNull
     @Valid
     @Size(min = 1, message = "must contain at least one attribute")
-    private final List<EventTypeAuthorizationAttribute> admins;
+    private final List<AuthorizationAttribute> admins;
 
     @NotNull
     @Valid
     @Size(min = 1, message = "must contain at least one attribute")
-    private final List<EventTypeAuthorizationAttribute> readers;
+    private final List<AuthorizationAttribute> readers;
 
     @NotNull
     @Valid
     @Size(min = 1, message = "must contain at least one attribute")
-    private final List<EventTypeAuthorizationAttribute> writers;
+    private final List<AuthorizationAttribute> writers;
 
-    public EventTypeAuthorization(@JsonProperty("admins") final List<EventTypeAuthorizationAttribute> admins,
-                                  @JsonProperty("readers") final List<EventTypeAuthorizationAttribute> readers,
-                                  @JsonProperty("writers") final List<EventTypeAuthorizationAttribute> writers) {
+    public EventTypeAuthorization(@JsonProperty("admins") final List<AuthorizationAttribute> admins,
+                                  @JsonProperty("readers") final List<AuthorizationAttribute> readers,
+                                  @JsonProperty("writers") final List<AuthorizationAttribute> writers) {
         this.admins = admins;
         this.readers = readers;
         this.writers = writers;
     }
 
-    public List<EventTypeAuthorizationAttribute> getAdmins() {
+    public List<AuthorizationAttribute> getAdmins() {
         return Collections.unmodifiableList(admins);
     }
 
-    public List<EventTypeAuthorizationAttribute> getReaders() {
+    public List<AuthorizationAttribute> getReaders() {
         return Collections.unmodifiableList(readers);
     }
 
-    public List<EventTypeAuthorizationAttribute> getWriters() {
+    public List<AuthorizationAttribute> getWriters() {
         return Collections.unmodifiableList(writers);
     }
 }
