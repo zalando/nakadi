@@ -21,7 +21,7 @@ import org.zalando.nakadi.domain.SubscriptionEventTypeStats;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.WebResult;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
@@ -80,7 +80,7 @@ public class SubscriptionController {
     @RequestMapping(value = "/{id}/stats", method = RequestMethod.GET)
     public ItemsWrapper<SubscriptionEventTypeStats> getSubscriptionStats(
             @PathVariable("id") final String subscriptionId)
-            throws NakadiException, InconsistentStateException, ServiceTemporaryUnavailableException {
+            throws NakadiException, InconsistentStateException, ServiceTemporarilyUnavailableException {
         featureToggleService.checkFeatureOn(HIGH_LEVEL_API);
 
         return subscriptionService.getSubscriptionStat(subscriptionId);
@@ -111,8 +111,8 @@ public class SubscriptionController {
                 request);
     }
 
-    @ExceptionHandler(ServiceTemporaryUnavailableException.class)
-    public ResponseEntity<Problem> handleServiceTemporaryUnavailable(final ServiceTemporaryUnavailableException ex,
+    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
+    public ResponseEntity<Problem> handleServiceTemporaryUnavailable(final ServiceTemporarilyUnavailableException ex,
                                                                      final NativeWebRequest request) {
         LOG.debug(ex.getMessage(), ex);
         return Responses.create(

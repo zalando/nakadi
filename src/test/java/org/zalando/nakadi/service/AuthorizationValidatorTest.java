@@ -8,7 +8,7 @@ import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -108,7 +108,7 @@ public class AuthorizationValidatorTest {
                 .authorization(new EventTypeAuthorization(null, null, null)).build());
     }
 
-    @Test(expected = ServiceTemporaryUnavailableException.class)
+    @Test(expected = ServiceTemporarilyUnavailableException.class)
     public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporaryUnavailableException()
             throws Exception {
         when(authorizationService.isAuthorized(any(), any(), any())).thenThrow(new PluginException("blah"));

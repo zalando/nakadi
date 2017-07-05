@@ -10,7 +10,7 @@ import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -102,12 +102,12 @@ public class AuthorizationValidator {
     }
 
     public void authorizeEventTypeUpdate(final EventType eventType)
-            throws ForbiddenAccessException, ServiceTemporaryUnavailableException {
+            throws ForbiddenAccessException, ServiceTemporarilyUnavailableException {
         if (eventType.getAuthorization() == null) {
             return;
         }
 
-        final Resource resource = new EventTypeResource("/event-type", "event-type",
+        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
                 Collections.singletonMap(AuthorizationService.Operation.ADMIN,
                         eventType.getAuthorization().getAdmins()));
         try {
@@ -116,7 +116,7 @@ public class AuthorizationValidator {
                         "satisfy the authorization `admin` requirements");
             }
         } catch (final PluginException e) {
-            throw new ServiceTemporaryUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }
     }
 }

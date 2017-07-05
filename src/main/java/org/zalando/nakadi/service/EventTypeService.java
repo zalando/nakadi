@@ -37,7 +37,7 @@ import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -217,7 +217,7 @@ public class EventTypeService {
             throws TopicConfigException,
             InconsistentStateException,
             NakadiRuntimeException,
-            ServiceTemporaryUnavailableException {
+            ServiceTemporarilyUnavailableException {
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
@@ -237,11 +237,11 @@ public class EventTypeService {
             updateRetentionTime(original, eventType);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ServiceTemporaryUnavailableException(
+            throw new ServiceTemporarilyUnavailableException(
                     "Event type is currently in maintenance, please repeat request", e);
         } catch (final TimeoutException e) {
             LOG.error("Failed to wait for timeline switch", e);
-            throw new ServiceTemporaryUnavailableException(
+            throw new ServiceTemporarilyUnavailableException(
                     "Event type is currently in maintenance, please repeat request", e);
         } catch (final NakadiException e) {
             LOG.error("Unable to update event type", e);

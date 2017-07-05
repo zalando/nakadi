@@ -20,7 +20,7 @@ import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
@@ -140,9 +140,9 @@ public final class ExceptionHandling implements ProblemHandling {
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
 
-    @ExceptionHandler(ServiceTemporaryUnavailableException.class)
+    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
     public ResponseEntity<Problem> handleServiceTemporaryUnavailableException(
-            final ServiceTemporaryUnavailableException exception, final NativeWebRequest request) {
+            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
