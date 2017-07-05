@@ -2,21 +2,8 @@ package org.zalando.nakadi.service;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeAuthorization;
-import org.zalando.nakadi.domain.EventTypeResource;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.plugin.api.PluginException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Resource;
-
-import javax.annotation.Nullable;
+import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Sets.newHashSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -24,9 +11,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.newHashSet;
+import javax.annotation.Nullable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeResource;
+import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.plugin.api.PluginException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 
 @Service
 public class AuthorizationValidator {
@@ -101,7 +100,27 @@ public class AuthorizationValidator {
         }
     }
 
-    public void authorizeEventTypeUpdate(final EventType eventType)
+    public void authorizeEventTypeWrite(final EventType eventType)
+            throws ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
+        if (eventType.getAuthorization() == null) {
+            return;
+        }
+        final MyEventTypeResource2 resource = new MyEventTypeResource2(
+                eventType.getName(), eventType.getAuthorization());
+        try {
+            final boolean authorized = authorizationService.isAuthorized(
+                    null,
+                    AuthorizationService.Operation.WRITE,
+                    resource);
+            if (!authorized) {
+                throw new ResourceAccessNotAuthorizedException(AuthorizationService.Operation.WRITE, resource);
+            }
+        } catch (final PluginException ex) {
+            throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
+        }
+    }
+
+    public void authorizeEventTypeAdmin(final EventType eventType)
             throws ForbiddenAccessException, ServiceTemporarilyUnavailableException {
         if (eventType.getAuthorization() == null) {
             return;
