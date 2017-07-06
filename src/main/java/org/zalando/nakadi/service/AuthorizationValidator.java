@@ -2,8 +2,28 @@ package org.zalando.nakadi.service;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.newHashSet;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeResource;
+import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.exceptions.InternalNakadiException;
+import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.plugin.api.PluginException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
+import org.zalando.nakadi.plugin.api.authz.Subject;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.security.Client;
+
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -11,21 +31,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypeAuthorization;
-import org.zalando.nakadi.domain.EventTypeResource;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
-import org.zalando.nakadi.plugin.api.PluginException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-import org.zalando.nakadi.plugin.api.authz.Resource;
+
+import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Sets.newHashSet;
 
 @Service
 public class AuthorizationValidator {
@@ -47,6 +55,31 @@ public class AuthorizationValidator {
             checkAuthAttributesAreValid(allAttributes);
             checkAuthAttributesNoDuplicates(allAttributes);
         }
+    }
+
+    public void authorizeStreamRead(final Client client, final EventType eventType) throws AccessDeniedException {
+        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
+                Collections.singletonMap(AuthorizationService.Operation.READ,
+                        eventType.getAuthorization() == null ? null : eventType.getAuthorization().getReaders()));
+        final Subject subject = null;
+        if (!authorizationService.isAuthorized(subject, AuthorizationService.Operation.READ, resource)) {
+            throw new AccessDeniedException(subject, AuthorizationService.Operation.READ, resource);
+        }
+    }
+
+    public void authorizeSubscriptionRead(final EventTypeRepository eventTypeRepository, final Client client,
+                                          final SubscriptionBase subscriptionBase) throws AccessDeniedException {
+        subscriptionBase.getEventTypes().stream().forEach(
+                (eventTypeName) -> {
+                    try {
+                        eventTypeRepository.findByNameO(eventTypeName).ifPresent(eventType -> {
+                            authorizeStreamRead(client, eventType);
+                        });
+                    } catch (final InternalNakadiException e) {
+                        throw new ServiceTemporarilyUnavailableException(e);
+                    }
+                }
+        );
     }
 
     private void checkAuthAttributesNoDuplicates(final Map<String, List<AuthorizationAttribute>> allAttributes)

@@ -11,7 +11,7 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
+import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SubscriptionStreamerFactory {
     @Value("${nakadi.kafka.poll.timeoutMs}")
     private long kafkaPollTimeout;
-    private final SubscriptionDbRepository subscriptionDbRepository;
     private final TimelineService timelineService;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private final CursorTokenService cursorTokenService;
@@ -40,7 +39,6 @@ public class SubscriptionStreamerFactory {
 
     @Autowired
     public SubscriptionStreamerFactory(
-            final SubscriptionDbRepository subscriptionDbRepository,
             final TimelineService timelineService,
             final CursorTokenService cursorTokenService,
             final ObjectMapper objectMapper,
@@ -48,7 +46,6 @@ public class SubscriptionStreamerFactory {
             @Qualifier("streamMetricsRegistry") final MetricRegistry metricRegistry,
             final SubscriptionClientFactory zkClientFactory,
             final EventStreamWriterProvider eventStreamWriterProvider) {
-        this.subscriptionDbRepository = subscriptionDbRepository;
         this.timelineService = timelineService;
         this.cursorTokenService = cursorTokenService;
         this.objectMapper = objectMapper;
@@ -59,16 +56,15 @@ public class SubscriptionStreamerFactory {
     }
 
     public SubscriptionStreamer build(
-            final String subscriptionId,
+            final Subscription subscription,
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
             final AtomicBoolean connectionReady,
-            final BlacklistService blacklistService) throws NoSuchSubscriptionException, ServiceUnavailableException,
+            final BlacklistService blacklistService,
+            final Client client) throws NoSuchSubscriptionException, ServiceUnavailableException,
             InternalNakadiException, NoSuchEventTypeException {
-
-        final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
         final Session session = Session.generate(1);
-        final String loggingPath = "subscription." + subscriptionId + "." + session.getId();
+        final String loggingPath = "subscription." + subscription.getId() + "." + session.getId();
         // Create streaming context
         return new StreamingContext.Builder()
                 .setOut(output)
