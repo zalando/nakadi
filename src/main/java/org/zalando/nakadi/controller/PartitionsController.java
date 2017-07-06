@@ -1,10 +1,18 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.collect.Lists;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import static org.springframework.http.ResponseEntity.ok;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,7 +34,6 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
@@ -37,16 +44,6 @@ import org.zalando.nakadi.view.EventTypePartitionView;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.Responses;
-
-import javax.annotation.Nullable;
-import javax.ws.rs.core.Response;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.springframework.http.ResponseEntity.ok;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -76,12 +73,11 @@ public class PartitionsController {
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
     public ResponseEntity<?> listPartitions(@PathVariable("name") final String eventTypeName,
-                                            final NativeWebRequest request,
-                                            final Client client) {
+                                            final NativeWebRequest request) {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         try {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            authorizationValidator.authorizeStreamRead(client, eventType);
+            authorizationValidator.authorizeStreamRead(eventType);
 
             final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
             final List<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
@@ -116,12 +112,11 @@ public class PartitionsController {
     public ResponseEntity<?> getPartition(@PathVariable("name") final String eventTypeName,
                                           @PathVariable("partition") final String partition,
                                           @Nullable @RequestParam(value = "consumed_offset", required = false)
-                                              final String consumedOffset, final NativeWebRequest request,
-                                          final Client client) {
+                                              final String consumedOffset, final NativeWebRequest request) {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         try {
             final EventType eventType = eventTypeRepository.findByName(eventTypeName);
-            authorizationValidator.authorizeStreamRead(client, eventType);
+            authorizationValidator.authorizeStreamRead(eventType);
 
             if (consumedOffset != null) {
                 final CursorLag cursorLag = getCursorLag(eventTypeName, partition, consumedOffset);

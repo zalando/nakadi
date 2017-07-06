@@ -121,6 +121,11 @@ public class StreamingContext implements SubscriptionStreamer {
         streamInternal(new StartingState());
     }
 
+    @Override
+    public void stop(Exception ex) {
+        switchState(new CleanupState(ex));
+    }
+
     void onNodeShutdown() {
         log.info("Shutdown hook called. Trying to terminate subscription gracefully");
         switchState(new CleanupState(null));

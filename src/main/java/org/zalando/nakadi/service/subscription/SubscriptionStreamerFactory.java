@@ -2,6 +2,9 @@ package org.zalando.nakadi.service.subscription;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +14,6 @@ import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchSubscriptionException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
@@ -19,10 +21,6 @@ import org.zalando.nakadi.service.EventStreamWriterProvider;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.zk.SubscriptionClientFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
-
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class SubscriptionStreamerFactory {
@@ -60,8 +58,8 @@ public class SubscriptionStreamerFactory {
             final StreamParameters streamParameters,
             final SubscriptionOutput output,
             final AtomicBoolean connectionReady,
-            final BlacklistService blacklistService,
-            final Client client) throws NoSuchSubscriptionException, ServiceUnavailableException,
+            final BlacklistService blacklistService)
+            throws NoSuchSubscriptionException, ServiceUnavailableException,
             InternalNakadiException, NoSuchEventTypeException {
         final Session session = Session.generate(1);
         final String loggingPath = "subscription." + subscription.getId() + "." + session.getId();

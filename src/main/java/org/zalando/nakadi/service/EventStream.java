@@ -17,6 +17,7 @@ import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.repository.EventConsumer;
 
@@ -31,13 +32,16 @@ public class EventStream {
     private final CursorConverter cursorConverter;
     private final Meter bytesFlushedMeter;
     private final EventStreamWriterProvider writer;
+    private final AuthorizationValidator authorizationValidator;
+    private final EventType eventType;
 
     public EventStream(final EventConsumer eventConsumer,
                        final OutputStream outputStream,
                        final EventStreamConfig config,
                        final BlacklistService blacklistService,
                        final CursorConverter cursorConverter, final Meter bytesFlushedMeter,
-                       final EventStreamWriterProvider writer) {
+                       final EventStreamWriterProvider writer,
+                       final AuthorizationValidator authorizationValidator, EventType eventType) {
         this.eventConsumer = eventConsumer;
         this.outputStream = outputStream;
         this.config = config;
@@ -45,9 +49,17 @@ public class EventStream {
         this.cursorConverter = cursorConverter;
         this.bytesFlushedMeter = bytesFlushedMeter;
         this.writer = writer;
+        this.authorizationValidator = authorizationValidator;
+        this.eventType = eventType;
     }
 
-    public void streamEvents(final AtomicBoolean connectionReady) {
+    private void checkAuthorization(final AtomicBoolean recheck) {
+        if (recheck.getAndSet(false)) {
+            authorizationValidator.authorizeStreamRead(eventType);
+        }
+    }
+
+    public void streamEvents(AtomicBoolean connectionReady, final AtomicBoolean recheckAuthorization) {
         try {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
@@ -63,6 +75,9 @@ public class EventStream {
             final List<ConsumedEvent> consumedEvents = new LinkedList<>();
             while (connectionReady.get() &&
                     !blacklistService.isConsumptionBlocked(config.getEtName(), config.getConsumingAppId())) {
+
+                checkAuthorization(recheckAuthorization);
+
                 if (consumedEvents.isEmpty()) {
                     // TODO: There are a lot of optimizations here, one can significantly improve code by processing
                     // all events at the same time, instead of processing one by one.
