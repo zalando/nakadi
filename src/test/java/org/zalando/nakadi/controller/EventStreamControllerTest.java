@@ -27,7 +27,7 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -37,6 +37,7 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConsumerLimitingService;
@@ -87,6 +88,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 public class EventStreamControllerTest {
@@ -117,7 +119,7 @@ public class EventStreamControllerTest {
     private TimelineService timelineService;
     private MockMvc mockMvc;
     private Timeline fakeTimeline;
-    private AuthorizationService authorizationService;
+    private AuthorizationValidator authorizationValidator;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -161,16 +163,14 @@ public class EventStreamControllerTest {
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepositoryMock);
         when(timelineService.getFakeTimeline(any())).thenReturn(fakeTimeline);
 
-        authorizationService = mock(AuthorizationService.class);
+        authorizationValidator = mock(AuthorizationValidator.class);
 
         controller = new EventStreamController(
                 eventTypeRepository, timelineService, objectMapper, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
-                new CursorConverterImpl(eventTypeCache, timelineService), authorizationService);
+                new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator);
 
         settings = mock(SecuritySettings.class);
-
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(true);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
@@ -477,13 +477,15 @@ public class EventStreamControllerTest {
 
     @Test
     public void testAccessDenied() throws Exception {
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
+        Mockito.doThrow(AccessDeniedException.class).when(authorizationValidator)
+                .authorizeStreamRead(any(), any());
 
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any(), any());
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
 
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ event-type:test denied");
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 

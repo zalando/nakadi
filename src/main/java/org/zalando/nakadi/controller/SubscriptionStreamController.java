@@ -18,10 +18,10 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.subscription.StreamParameters;
@@ -40,7 +40,6 @@ import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
-import static org.zalando.nakadi.util.AuthorizationUtils.authorizeSubscriptionRead;
 import static org.zalando.nakadi.util.AuthorizationUtils.errorMessage;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 
@@ -58,7 +57,7 @@ public class SubscriptionStreamController {
     private final MetricRegistry metricRegistry;
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final EventTypeRepository eventTypeRepository;
-    private final AuthorizationService authorizationService;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -70,7 +69,7 @@ public class SubscriptionStreamController {
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
                                         final SubscriptionDbRepository subscriptionDbRepository,
                                         final EventTypeRepository eventTypeRepository,
-                                        final AuthorizationService authorizationService) {
+                                        final AuthorizationValidator authorizationValidator) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
@@ -80,7 +79,7 @@ public class SubscriptionStreamController {
         this.metricRegistry = metricRegistry;
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.eventTypeRepository = eventTypeRepository;
-        this.authorizationService = authorizationService;
+        this.authorizationValidator = authorizationValidator;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -171,7 +170,7 @@ public class SubscriptionStreamController {
                         nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
                 final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
-                authorizeSubscriptionRead(eventTypeRepository, authorizationService, client, subscription);
+                authorizationValidator.authorizeSubscriptionRead(eventTypeRepository, client, subscription);
 
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
                         connectionReady, blacklistService, client);

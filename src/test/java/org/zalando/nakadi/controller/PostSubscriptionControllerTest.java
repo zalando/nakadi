@@ -6,6 +6,7 @@ import com.google.common.collect.Sets;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -26,9 +27,9 @@ import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
@@ -51,6 +52,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
@@ -66,7 +68,7 @@ public class PostSubscriptionControllerTest {
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final SubscriptionService subscriptionService = mock(SubscriptionService.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
-    private final AuthorizationService authorizationService = mock(AuthorizationService.class);
+    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
 
 
     public PostSubscriptionControllerTest() throws Exception {
@@ -83,10 +85,8 @@ public class PostSubscriptionControllerTest {
         final EventType eventType = mock(EventType.class);
         when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(eventType));
 
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(true);
-
         final PostSubscriptionController controller = new PostSubscriptionController(featureToggleService,
-                applicationService, subscriptionService, eventTypeRepository, authorizationService);
+                applicationService, subscriptionService, eventTypeRepository, authorizationValidator);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
 
@@ -252,9 +252,11 @@ public class PostSubscriptionControllerTest {
         final Subscription subscription = mock(Subscription.class);
         when(subscription.getEventTypes()).thenReturn(Sets.newHashSet("event-type-name"));
         when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(mock(EventType.class)));
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
 
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ event-type:null denied");
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator)
+                .authorizeSubscriptionRead(any(), any(), any());
+
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
         checkForProblem(postSubscription(builder().buildSubscriptionBase()), expectedProblem);
     }
 

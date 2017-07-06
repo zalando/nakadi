@@ -14,11 +14,11 @@ import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
@@ -40,6 +40,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 public class SubscriptionStreamControllerTest {
@@ -56,7 +57,7 @@ public class SubscriptionStreamControllerTest {
 
     private SubscriptionDbRepository subscriptionDbRepository;
     private EventTypeRepository eventTypeRepository;
-    private AuthorizationService authorizationService;
+    private AuthorizationValidator authorizationValidator;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -84,13 +85,11 @@ public class SubscriptionStreamControllerTest {
         subscriptionStreamerFactory = mock(SubscriptionStreamerFactory.class);
         subscriptionDbRepository = mock(SubscriptionDbRepository.class);
         eventTypeRepository = mock(EventTypeRepository.class);
-        authorizationService = mock(AuthorizationService.class);
-
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(true);
+        authorizationValidator = mock(AuthorizationValidator.class);
 
         controller = new SubscriptionStreamController(subscriptionStreamerFactory, featureToggleService, objectMapper,
                 crutch, nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository,
-                eventTypeRepository, authorizationService);
+                eventTypeRepository, authorizationValidator);
     }
 
     @Test
@@ -109,13 +108,14 @@ public class SubscriptionStreamControllerTest {
         when(subscription.getEventTypes()).thenReturn(Sets.newHashSet("some-name"));
         when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(eventType));
         when(subscriptionDbRepository.getSubscription(any())).thenReturn(subscription);
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator)
+                .authorizeSubscriptionRead(any(), any(), any());
 
         final StreamingResponseBody responseBody = controller.streamEvents("abc", 0, 1, null, 10, null, null,
                 requestMock, responseMock, FULL_ACCESS_CLIENT);
 
         final Problem expectedProblem = Problem.valueOf(Response.Status.FORBIDDEN,
-                "Access on READ event-type:null denied");
+                "Access on READ some-type:some-name denied");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 

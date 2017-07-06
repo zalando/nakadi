@@ -34,11 +34,11 @@ import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.metrics.MetricUtils;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConnectionSlot;
@@ -72,7 +72,6 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
-import static org.zalando.nakadi.util.AuthorizationUtils.authorizeStreamRead;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 
 @RestController
@@ -92,7 +91,7 @@ public class EventStreamController {
     private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
-    private final AuthorizationService authorizationService;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository,
@@ -106,7 +105,7 @@ public class EventStreamController {
                                  final ConsumerLimitingService consumerLimitingService,
                                  final FeatureToggleService featureToggleService,
                                  final CursorConverter cursorConverter,
-                                 final AuthorizationService authorizationService) {
+                                 final AuthorizationValidator authorizationValidator) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
@@ -118,7 +117,7 @@ public class EventStreamController {
         this.consumerLimitingService = consumerLimitingService;
         this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
-        this.authorizationService = authorizationService;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @VisibleForTesting
@@ -194,7 +193,7 @@ public class EventStreamController {
                 // TODO: deprecate and remove previous authorization strategy
                 client.checkScopes(eventType.getReadScopes());
 
-                authorizeStreamRead(authorizationService, client, eventType);
+                authorizationValidator.authorizeStreamRead(client, eventType);
 
                 // validate parameters
                 final EventStreamConfig streamConfig = EventStreamConfig.builder()

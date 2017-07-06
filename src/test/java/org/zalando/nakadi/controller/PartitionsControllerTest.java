@@ -19,12 +19,12 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
 import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
@@ -52,6 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 
 public class PartitionsControllerTest {
 
@@ -96,7 +97,7 @@ public class PartitionsControllerTest {
 
     private FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
 
-    private final AuthorizationService authorizationService = mock(AuthorizationService.class);
+    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
 
     @Before
     public void before() throws InternalNakadiException, NoSuchEventTypeException {
@@ -115,9 +116,7 @@ public class PartitionsControllerTest {
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
         final CursorConverter cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
         final PartitionsController controller = new PartitionsController(timelineService, cursorConverter,
-                cursorOperationsService, eventTypeRepositoryMock, authorizationService);
-
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(true);
+                cursorOperationsService, eventTypeRepositoryMock, authorizationValidator);
 
         settings = mock(SecuritySettings.class);
 
@@ -182,7 +181,7 @@ public class PartitionsControllerTest {
     public void whenUnauthorizedGetPartitionThenForbiddenStatusCode() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
 
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any(), any());
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
@@ -193,7 +192,7 @@ public class PartitionsControllerTest {
     public void whenUnauthorizedGetPartitionsThenForbiddenStatusCode() throws Exception {
         when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
 
-        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any(), any());
 
         mockMvc.perform(
                 get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
