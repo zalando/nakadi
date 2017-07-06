@@ -27,6 +27,7 @@ import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
 import org.zalando.nakadi.exceptions.TopicDeletionException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.UnprocessableEntityException;
 import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.partitioning.PartitionStrategy;
@@ -313,9 +314,9 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
                 ImmutableList.of(new EventTypeAuthorizationAttribute("type2", "value2")),
                 ImmutableList.of(new EventTypeAuthorizationAttribute("type3", "value3"))));
 
-        doThrow(new InvalidEventTypeException("dummy")).when(authorizationValidator).validateAuthorization(any());
+        doThrow(new UnableProcessException("dummy")).when(authorizationValidator).validateAuthorizationObject(any());
 
-        postETAndExpect422WithProblem(eventType, new InvalidEventTypeException("dummy").asProblem());
+        postETAndExpect422WithProblem(eventType, Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "dummy"));
     }
 
     @Test

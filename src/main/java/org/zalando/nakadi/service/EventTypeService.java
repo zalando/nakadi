@@ -21,6 +21,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -118,7 +119,7 @@ public class EventTypeService {
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
-            authorizationValidator.validateAuthorization(eventType.getAuthorization());
+            authorizationValidator.validateAuthorizationObject(eventType.getAuthorization());
 
             final String topicName = topicRepository.createTopic(
                     partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
@@ -153,7 +154,7 @@ public class EventTypeService {
             throws EventTypeDeletionException,
             ForbiddenAccessException,
             NoEventTypeException,
-            UnableProcessException {
+            ConflictException {
         Closeable deletionCloser = null;
         Multimap<TopicRepository, String> topicsToDelete = null;
         try {
@@ -170,7 +171,7 @@ public class EventTypeService {
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
                     ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
             if (!subscriptions.isEmpty()) {
-                throw new UnableProcessException("Can't remove event type " + eventTypeName
+                throw new ConflictException("Can't remove event type " + eventTypeName
                         + ", as it has subscriptions");
             }
             topicsToDelete = transactionTemplate.execute(action -> {
@@ -217,7 +218,8 @@ public class EventTypeService {
             throws TopicConfigException,
             InconsistentStateException,
             NakadiRuntimeException,
-            ServiceTemporarilyUnavailableException {
+            ServiceTemporarilyUnavailableException,
+            UnableProcessException {
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
@@ -228,6 +230,7 @@ public class EventTypeService {
             }
 
             authorizationValidator.authorizeEventTypeUpdate(original);
+            authorizationValidator.validateAuthorizationObject(original, eventTypeBase);
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
             partitionResolver.validate(eventTypeBase);

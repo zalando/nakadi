@@ -6,10 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
@@ -38,8 +38,8 @@ public class AuthorizationValidator {
         this.authorizationService = authorizationService;
     }
 
-    public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws InvalidEventTypeException,
-            ServiceUnavailableException {
+    public void validateAuthorizationObject(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
+            ServiceTemporarilyUnavailableException {
         if (auth != null) {
             final Map<String, List<AuthorizationAttribute>> allAttributes = ImmutableMap.of(
                     "admins", auth.getAdmins(),
@@ -51,7 +51,7 @@ public class AuthorizationValidator {
     }
 
     private void checkAuthAttributesNoDuplicates(final Map<String, List<AuthorizationAttribute>> allAttributes)
-            throws InvalidEventTypeException {
+            throws UnableProcessException {
         final String duplicatesErrMessage = allAttributes.entrySet().stream()
                 .map(entry -> {
                     final String property = entry.getKey();
@@ -79,12 +79,12 @@ public class AuthorizationValidator {
                 .collect(Collectors.joining("; "));
 
         if (!Strings.isNullOrEmpty(duplicatesErrMessage)) {
-            throw new InvalidEventTypeException(duplicatesErrMessage);
+            throw new UnableProcessException(duplicatesErrMessage);
         }
     }
 
     private void checkAuthAttributesAreValid(final Map<String, List<AuthorizationAttribute>> allAttributes)
-            throws InvalidEventTypeException, ServiceUnavailableException {
+            throws UnableProcessException, ServiceTemporarilyUnavailableException {
         try {
             final String errorMessage = allAttributes.values().stream()
                     .flatMap(Collection::stream)
@@ -94,10 +94,10 @@ public class AuthorizationValidator {
                     .collect(Collectors.joining(", "));
 
             if (!Strings.isNullOrEmpty(errorMessage)) {
-                throw new InvalidEventTypeException(errorMessage);
+                throw new UnableProcessException(errorMessage);
             }
         } catch (final PluginException e) {
-            throw new ServiceUnavailableException("Error calling authorization plugin", e);
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }
     }
 
@@ -119,4 +119,21 @@ public class AuthorizationValidator {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }
     }
+
+    public void validateAuthorizationObject(final EventType original, final EventTypeBase newEventType)
+            throws UnableProcessException, ServiceTemporarilyUnavailableException {
+        final EventTypeAuthorization originalAuth = original.getAuthorization();
+        final EventTypeAuthorization newAuth = newEventType.getAuthorization();
+        if (originalAuth != null && newAuth == null) {
+            throw new UnableProcessException(
+                    "Changing authorization object to `null` is not possible due to existing one");
+        }
+
+        if (originalAuth != null && originalAuth.equals(newAuth)) {
+            return;
+        }
+
+        validateAuthorizationObject(newAuth);
+    }
+
 }

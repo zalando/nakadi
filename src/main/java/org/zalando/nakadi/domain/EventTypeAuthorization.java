@@ -10,6 +10,7 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @Immutable
 public class EventTypeAuthorization {
@@ -52,5 +53,25 @@ public class EventTypeAuthorization {
 
     public List<AuthorizationAttribute> getWriters() {
         return writers;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final EventTypeAuthorization that = (EventTypeAuthorization) o;
+        return Objects.equals(admins, that.admins) &&
+                Objects.equals(readers, that.readers) &&
+                Objects.equals(writers, that.writers);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(admins, readers, writers);
     }
 }

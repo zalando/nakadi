@@ -3,7 +3,9 @@ package org.zalando.nakadi.controller;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
 
 import javax.ws.rs.core.Response;
@@ -44,6 +46,19 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.FORBIDDEN,
                         "Updating the `EventType` is only allowed for clients that satisfy the authorization " +
                                 "`admin` requirements"))));
+    }
+
+    @Test
+    public void whenPUTNullAuthorizationForExistingAuthorization() throws Exception {
+        final EventType newEventType = EventTypeTestBuilder.builder().build();
+        doReturn(newEventType).when(eventTypeRepository).findByName(any());
+        doThrow(new UnableProcessException("Changing authorization object to `null` is not possible due to existing one"))
+                .when(authorizationValidator).validateAuthorizationObject(any(), any());
+
+        putEventType(newEventType, newEventType.getName())
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(matchesProblem(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
+                        "Changing authorization object to `null` is not possible due to existing one"))));
     }
 
 }
