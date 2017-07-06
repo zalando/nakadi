@@ -2,23 +2,23 @@ package org.zalando.nakadi.service;
 
 
 import com.google.common.collect.ImmutableList;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class AuthorizationValidatorTest {
 
@@ -49,7 +49,7 @@ public class AuthorizationValidatorTest {
         try {
             validator.validateAuthorization(auth);
             fail("Exception expected to be thrown");
-        } catch (final InvalidEventTypeException e) {
+        } catch (final UnableProcessException e) {
             assertThat(e.getMessage(), equalTo("authorization attribute type1:value1 is invalid, " +
                     "authorization attribute type4:value4 is invalid"));
         }
@@ -68,14 +68,14 @@ public class AuthorizationValidatorTest {
         try {
             validator.validateAuthorization(auth);
             fail("Exception expected to be thrown");
-        } catch (final InvalidEventTypeException e) {
+        } catch (final UnableProcessException e) {
             assertThat(e.getMessage(), equalTo(
                     "authorization property 'admins' contains duplicated attribute(s): type1:value1, type3:value3; " +
                             "authorization property 'readers' contains duplicated attribute(s): type2:value2"));
         }
     }
 
-    @Test(expected = ServiceUnavailableException.class)
+    @Test(expected = ServiceTemporarilyUnavailableException.class)
     public void whenPluginExceptionInIsAuthorizationAttributeValidThenServiceUnavailableException() throws Exception {
 
         final EventTypeAuthorization auth = new EventTypeAuthorization(

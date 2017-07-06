@@ -2,14 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.SchemaException;
 import org.everit.json.schema.loader.SchemaLoader;
@@ -29,6 +21,7 @@ import org.zalando.nakadi.domain.EventTypeStatistics;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.enrichment.Enrichment;
+import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.DuplicatedEventTypeNameException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
@@ -56,10 +49,20 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 import org.zalando.nakadi.util.JsonUtils;
 import org.zalando.nakadi.validation.SchemaEvolutionService;
 import org.zalando.nakadi.validation.SchemaIncompatibility;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_PARTITIONS_KEYS;
 
 @Component
 public class EventTypeService {
@@ -151,7 +154,7 @@ public class EventTypeService {
             throws EventTypeDeletionException,
             ForbiddenAccessException,
             NoEventTypeException,
-            UnableProcessException {
+            ConflictException {
         Closeable deletionCloser = null;
         Multimap<TopicRepository, String> topicsToDelete = null;
         try {
@@ -168,7 +171,7 @@ public class EventTypeService {
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
                     ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
             if (!subscriptions.isEmpty()) {
-                throw new UnableProcessException("Can't remove event type " + eventTypeName
+                throw new ConflictException("Can't remove event type " + eventTypeName
                         + ", as it has subscriptions");
             }
             topicsToDelete = transactionTemplate.execute(action -> {
@@ -215,7 +218,8 @@ public class EventTypeService {
             throws TopicConfigException,
             InconsistentStateException,
             NakadiRuntimeException,
-            ServiceTemporarilyUnavailableException {
+            ServiceTemporarilyUnavailableException,
+            UnableProcessException {
         Closeable updatingCloser = null;
         try {
             updatingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
@@ -226,6 +230,7 @@ public class EventTypeService {
             }
 
             authorizationValidator.authorizeEventTypeAdmin(original);
+            authorizationValidator.validateAuthorization(original, eventTypeBase);
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
             partitionResolver.validate(eventTypeBase);
