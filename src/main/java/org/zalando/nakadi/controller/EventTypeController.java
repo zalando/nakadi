@@ -174,7 +174,8 @@ public class EventTypeController {
     }
 
     @ExceptionHandler(UnableProcessException.class)
-    public ResponseEntity<Problem> unableProcess(final UnableProcessException exception, final NativeWebRequest request) {
+    public ResponseEntity<Problem> unableProcess(final UnableProcessException exception,
+                                                 final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }

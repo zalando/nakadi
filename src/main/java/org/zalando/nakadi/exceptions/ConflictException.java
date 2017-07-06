@@ -2,7 +2,7 @@ package org.zalando.nakadi.exceptions;
 
 public class ConflictException extends RuntimeException {
 
-    public ConflictException(String message) {
+    public ConflictException(final String message) {
         super(message);
     }
 

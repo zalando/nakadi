@@ -47,7 +47,7 @@ public class AuthorizationValidatorTest {
         when(authorizationService.isAuthorizationAttributeValid(attr4)).thenReturn(false);
 
         try {
-            validator.validateAuthorizationObject(auth);
+            validator.validateAuthorization(auth);
             fail("Exception expected to be thrown");
         } catch (final UnableProcessException e) {
             assertThat(e.getMessage(), equalTo("authorization attribute type1:value1 is invalid, " +
@@ -66,7 +66,7 @@ public class AuthorizationValidatorTest {
         when(authorizationService.isAuthorizationAttributeValid(any())).thenReturn(true);
 
         try {
-            validator.validateAuthorizationObject(auth);
+            validator.validateAuthorization(auth);
             fail("Exception expected to be thrown");
         } catch (final UnableProcessException e) {
             assertThat(e.getMessage(), equalTo(
@@ -85,25 +85,25 @@ public class AuthorizationValidatorTest {
 
         when(authorizationService.isAuthorizationAttributeValid(any())).thenThrow(new PluginException("blah"));
 
-        validator.validateAuthorizationObject(auth);
+        validator.validateAuthorization(auth);
     }
 
     @Test
     public void whenAuthorizationIsNullWhileUpdatingETThenOk() throws Exception {
-        validator.authorizeEventTypeUpdate(EventTypeTestBuilder.builder().authorization(null).build());
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder().authorization(null).build());
     }
 
     @Test(expected = ForbiddenAccessException.class)
     public void whenNotAuthorizedThenForbiddenAccessException() throws Exception {
         when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
-        validator.authorizeEventTypeUpdate(EventTypeTestBuilder.builder()
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new EventTypeAuthorization(null, null, null)).build());
     }
 
     @Test
     public void whenAuthorizedThenOk() throws Exception {
         when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(true);
-        validator.authorizeEventTypeUpdate(EventTypeTestBuilder.builder()
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new EventTypeAuthorization(null, null, null)).build());
     }
 
@@ -111,7 +111,7 @@ public class AuthorizationValidatorTest {
     public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporaryUnavailableException()
             throws Exception {
         when(authorizationService.isAuthorized(any(), any(), any())).thenThrow(new PluginException("blah"));
-        validator.authorizeEventTypeUpdate(EventTypeTestBuilder.builder()
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
                 .authorization(new EventTypeAuthorization(null, null, null)).build());
     }
 

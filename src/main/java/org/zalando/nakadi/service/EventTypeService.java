@@ -119,7 +119,7 @@ public class EventTypeService {
             validateSchema(eventType);
             enrichment.validate(eventType);
             partitionResolver.validate(eventType);
-            authorizationValidator.validateAuthorizationObject(eventType.getAuthorization());
+            authorizationValidator.validateAuthorization(eventType.getAuthorization());
 
             final String topicName = topicRepository.createTopic(
                     partitionsCalculator.getBestPartitionsCount(eventType.getDefaultStatistic()),
@@ -229,8 +229,8 @@ public class EventTypeService {
                 throw new ForbiddenAccessException("You don't have access to this event type");
             }
 
-            authorizationValidator.authorizeEventTypeUpdate(original);
-            authorizationValidator.validateAuthorizationObject(original, eventTypeBase);
+            authorizationValidator.authorizeEventTypeAdmin(original);
+            authorizationValidator.validateAuthorization(original, eventTypeBase);
             validateName(eventTypeName, eventTypeBase);
             validateSchema(eventTypeBase);
             partitionResolver.validate(eventTypeBase);

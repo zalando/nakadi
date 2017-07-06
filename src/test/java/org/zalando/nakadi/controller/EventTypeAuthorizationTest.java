@@ -39,7 +39,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         doReturn(eventType).when(eventTypeRepository).findByName(any());
         doThrow(new ForbiddenAccessException("Updating the `EventType` is only allowed for clients that " +
                 "satisfy the authorization `admin` requirements"))
-                .when(authorizationValidator).authorizeEventTypeUpdate(eventType);
+                .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
 
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isForbidden())
@@ -53,7 +53,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         final EventType newEventType = EventTypeTestBuilder.builder().build();
         doReturn(newEventType).when(eventTypeRepository).findByName(any());
         doThrow(new UnableProcessException("Changing authorization object to `null` is not possible due to existing one"))
-                .when(authorizationValidator).validateAuthorizationObject(any(), any());
+                .when(authorizationValidator).validateAuthorization(any(), any());
 
         putEventType(newEventType, newEventType.getName())
                 .andExpect(status().isUnprocessableEntity())

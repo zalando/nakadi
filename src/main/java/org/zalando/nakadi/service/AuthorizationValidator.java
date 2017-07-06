@@ -9,6 +9,7 @@ import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
@@ -38,7 +39,7 @@ public class AuthorizationValidator {
         this.authorizationService = authorizationService;
     }
 
-    public void validateAuthorizationObject(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
+    public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
             ServiceTemporarilyUnavailableException {
         if (auth != null) {
             final Map<String, List<AuthorizationAttribute>> allAttributes = ImmutableMap.of(
@@ -101,7 +102,27 @@ public class AuthorizationValidator {
         }
     }
 
-    public void authorizeEventTypeUpdate(final EventType eventType)
+    public void authorizeEventTypeWrite(final EventType eventType)
+            throws ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
+        if (eventType.getAuthorization() == null) {
+            return;
+        }
+        final MyEventTypeResource2 resource = new MyEventTypeResource2(
+                eventType.getName(), eventType.getAuthorization());
+        try {
+            final boolean authorized = authorizationService.isAuthorized(
+                    null,
+                    AuthorizationService.Operation.WRITE,
+                    resource);
+            if (!authorized) {
+                throw new ResourceAccessNotAuthorizedException(AuthorizationService.Operation.WRITE, resource);
+            }
+        } catch (final PluginException ex) {
+            throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
+        }
+    }
+
+    public void authorizeEventTypeAdmin(final EventType eventType)
             throws ForbiddenAccessException, ServiceTemporarilyUnavailableException {
         if (eventType.getAuthorization() == null) {
             return;
@@ -120,7 +141,7 @@ public class AuthorizationValidator {
         }
     }
 
-    public void validateAuthorizationObject(final EventType original, final EventTypeBase newEventType)
+    public void validateAuthorization(final EventType original, final EventTypeBase newEventType)
             throws UnableProcessException, ServiceTemporarilyUnavailableException {
         final EventTypeAuthorization originalAuth = original.getAuthorization();
         final EventTypeAuthorization newAuth = newEventType.getAuthorization();
@@ -133,7 +154,7 @@ public class AuthorizationValidator {
             return;
         }
 
-        validateAuthorizationObject(newAuth);
+        validateAuthorization(newAuth);
     }
 
 }
