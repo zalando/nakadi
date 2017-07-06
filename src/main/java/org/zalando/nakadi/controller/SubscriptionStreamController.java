@@ -194,7 +194,7 @@ public class SubscriptionStreamController {
                 streamer.set(subscriptionStreamerFactory.build(subscription, streamParameters, output,
                         connectionReady, blacklistService));
 
-                try (final Closeable ignore = authorizationChangeListener.registerListener(
+                try (Closeable ignore = authorizationChangeListener.registerListener(
                         eventTypeModificationListener, subscription.getEventTypes())) {
                     authorizationValidator.authorizeSubscriptionRead(eventTypeRepository, subscription);
 

@@ -30,6 +30,7 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
+import org.zalando.nakadi.service.AuthorizationChangeListener;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -56,6 +57,7 @@ public class SubscriptionStreamControllerTest {
     private SubscriptionDbRepository subscriptionDbRepository;
     private EventTypeRepository eventTypeRepository;
     private AuthorizationValidator authorizationValidator;
+    private AuthorizationChangeListener authorizationChangeListener;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -84,6 +86,7 @@ public class SubscriptionStreamControllerTest {
         subscriptionDbRepository = mock(SubscriptionDbRepository.class);
         eventTypeRepository = mock(EventTypeRepository.class);
         authorizationValidator = mock(AuthorizationValidator.class);
+        authorizationChangeListener = mock(AuthorizationChangeListener.class);
 
         controller = new SubscriptionStreamController(subscriptionStreamerFactory, featureToggleService, objectMapper,
                 crutch, nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository,
@@ -107,7 +110,7 @@ public class SubscriptionStreamControllerTest {
         when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(eventType));
         when(subscriptionDbRepository.getSubscription(any())).thenReturn(subscription);
         Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator)
-                .authorizeSubscriptionRead(any(), any(), any());
+                .authorizeSubscriptionRead(any(), any());
 
         final StreamingResponseBody responseBody = controller.streamEvents("abc", 0, 1, null, 10, null, null,
                 requestMock, responseMock, FULL_ACCESS_CLIENT);

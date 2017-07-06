@@ -96,9 +96,9 @@ public abstract class EventStreamTest {
         final OutputStream outputStreamMock = mock(OutputStream.class);
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), outputStreamMock, config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider, authorizationValidator, eventType);
+                BYTES_FLUSHED_METER, writerProvider);
 
-        final Thread thread = new Thread(() -> eventStream.streamEvents(connectionReady, new AtomicBoolean(true)));
+        final Thread thread = new Thread(() -> eventStream.streamEvents(new AtomicBoolean(true), () -> {}));
         thread.start();
 
         Thread.sleep(3000);
@@ -124,9 +124,9 @@ public abstract class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider, authorizationValidator, eventType);
+                BYTES_FLUSHED_METER, writerProvider);
         final AtomicBoolean streamOpen = new AtomicBoolean(true);
-        final Thread thread = new Thread(() -> eventStream.streamEvents(connectionReady, streamOpen));
+        final Thread thread = new Thread(() -> eventStream.streamEvents(streamOpen, () -> {}));
         thread.start();
 
         Thread.sleep(TimeUnit.SECONDS.toMillis(1));
@@ -152,8 +152,8 @@ public abstract class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider, authorizationValidator, eventType);
-        eventStream.streamEvents(connectionReady, new AtomicBoolean(true));
+                BYTES_FLUSHED_METER, writerProvider);
+        eventStream.streamEvents(new AtomicBoolean(true), () -> {});
         // if something goes wrong - the test should fail with a timeout
     }
 
@@ -166,8 +166,8 @@ public abstract class EventStreamTest {
                 .withStreamLimit(1)
                 .build();
         final EventStream eventStream = new EventStream(endlessDummyConsumer(), mock(OutputStream.class), config,
-                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, writerProvider, authorizationValidator, eventType);
-        eventStream.streamEvents(connectionReady, new AtomicBoolean(true));
+                mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER, writerProvider);
+        eventStream.streamEvents(new AtomicBoolean(true), () -> {});
         // if something goes wrong - the test should fail with a timeout
     }
 
@@ -182,8 +182,8 @@ public abstract class EventStreamTest {
                 .build();
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), mock(OutputStream.class), config, mock(BlacklistService.class), cursorConverter,
-                BYTES_FLUSHED_METER, writerProvider, authorizationValidator, eventType);
-        eventStream.streamEvents(connectionReady, new AtomicBoolean(true));
+                BYTES_FLUSHED_METER, writerProvider);
+        eventStream.streamEvents(new AtomicBoolean(true), () -> {});
         // if something goes wrong - the test should fail with a timeout
     }
 
@@ -201,8 +201,8 @@ public abstract class EventStreamTest {
 
         final EventStream eventStream = new EventStream(
                 emptyConsumer(), out, config, mock(BlacklistService.class), cursorConverter, BYTES_FLUSHED_METER,
-                writerProvider, authorizationValidator, eventType);
-        eventStream.streamEvents(connectionReady, new AtomicBoolean(true));
+                writerProvider);
+        eventStream.streamEvents(new AtomicBoolean(true), () -> {});
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
@@ -226,8 +226,8 @@ public abstract class EventStreamTest {
 
         final EventStream eventStream = new EventStream(
                 nCountDummyConsumerForPartition(12, "0"), out, config, mock(BlacklistService.class),
-                cursorConverter, BYTES_FLUSHED_METER, writerProvider, authorizationValidator, eventType);
-        eventStream.streamEvents(connectionReady, new AtomicBoolean(true));
+                cursorConverter, BYTES_FLUSHED_METER, writerProvider);
+        eventStream.streamEvents(new AtomicBoolean(true), () -> {});
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
@@ -262,8 +262,8 @@ public abstract class EventStreamTest {
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
-                        BYTES_FLUSHED_METER, writerProvider, authorizationValidator, eventType);
-        eventStream.streamEvents(connectionReady, new AtomicBoolean(true));
+                        BYTES_FLUSHED_METER, writerProvider);
+        eventStream.streamEvents(new AtomicBoolean(true), () -> {});
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 
@@ -305,8 +305,8 @@ public abstract class EventStreamTest {
 
         final EventStream eventStream =
                 new EventStream(predefinedConsumer(events), out, config, mock(BlacklistService.class), cursorConverter,
-                        BYTES_FLUSHED_METER, writerProvider, authorizationValidator, eventType);
-        eventStream.streamEvents(connectionReady, new AtomicBoolean(true));
+                        BYTES_FLUSHED_METER, writerProvider);
+        eventStream.streamEvents(new AtomicBoolean(true), () -> {});
 
         final String[] batches = out.toString().split(BATCH_SEPARATOR);
 

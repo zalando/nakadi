@@ -238,11 +238,21 @@ public class EventStreamController {
                 final Meter bytesFlushedMeter = this.streamMetrics.meter(bytesFlushedMetricName);
 
                 eventStream = eventStreamFactory.createEventStream(
-                        outputStream, eventConsumer, streamConfig, bytesFlushedMeter, eventType);
+                        outputStream, eventConsumer, streamConfig, bytesFlushedMeter);
 
                 outputStream.flush(); // Flush status code to client
 
-                eventStream.streamEvents(connectionReady, needCheckAuthorization);
+                eventStream.streamEvents(connectionReady, () -> {
+                    if (needCheckAuthorization.getAndSet(false)) {
+                        // in a case of exception all exceptions are treated in the same manner - all are internal
+                        // errors
+                        try {
+                            authorizationValidator.authorizeStreamRead(eventTypeRepository.findByName(eventTypeName));
+                        } catch (final InternalNakadiException | NoSuchEventTypeException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                });
             } catch (final UnparseableCursorException e) {
                 LOG.debug("Incorrect syntax of X-nakadi-cursors header: {}. Respond with BAD_REQUEST.",
                         e.getCursors(), e);

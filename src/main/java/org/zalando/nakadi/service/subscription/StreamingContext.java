@@ -122,7 +122,7 @@ public class StreamingContext implements SubscriptionStreamer {
     }
 
     @Override
-    public void stop(Exception ex) {
+    public void stop(final Exception ex) {
         switchState(new CleanupState(ex));
     }
 

@@ -5,6 +5,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
@@ -72,6 +73,7 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AuthorizationChangeListener;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -118,6 +120,7 @@ public class EventStreamControllerTest {
     private MockMvc mockMvc;
     private Timeline fakeTimeline;
     private AuthorizationValidator authorizationValidator;
+    private AuthorizationChangeListener authorizationChangeListener;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -162,11 +165,13 @@ public class EventStreamControllerTest {
         when(timelineService.getFakeTimeline(any())).thenReturn(fakeTimeline);
 
         authorizationValidator = mock(AuthorizationValidator.class);
-
+        authorizationChangeListener = mock(AuthorizationChangeListener.class);
+        when(authorizationChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
         controller = new EventStreamController(
                 eventTypeRepository, timelineService, objectMapper, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
-                new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator, authorizationChangeListener);
+                new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
+                authorizationChangeListener);
 
         settings = mock(SecuritySettings.class);
 
@@ -362,7 +367,7 @@ public class EventStreamControllerTest {
                 eq(ImmutableList.of(new NakadiCursor(fakeTimeline, "0", "000000000000000000"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
                 eq(eventConsumerMock), eq(streamConfig), any());
-        verify(eventStreamMock, times(1)).streamEvents(connectionReady, any());
+        verify(eventStreamMock, times(1)).streamEvents(any(), any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
     }
@@ -398,7 +403,7 @@ public class EventStreamControllerTest {
                 Thread.sleep(100);
             }
             return null;
-        }).when(eventStream).streamEvents(connectionReady, any());
+        }).when(eventStream).streamEvents(any(), any());
         when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server
@@ -463,7 +468,8 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(mock(EventStream.class));
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any()))
+                .thenReturn(mock(EventStream.class));
 
         writeStream(Collections.emptySet());
 
@@ -476,10 +482,10 @@ public class EventStreamControllerTest {
     @Test
     public void testAccessDenied() throws Exception {
         Mockito.doThrow(AccessDeniedException.class).when(authorizationValidator)
-                .authorizeStreamRead(any(), any());
+                .authorizeStreamRead(any());
 
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
-        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any(), any());
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any());
 
         final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
 
