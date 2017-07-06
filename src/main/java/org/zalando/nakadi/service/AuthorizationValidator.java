@@ -58,7 +58,9 @@ public class AuthorizationValidator {
     }
 
     public void authorizeStreamRead(final Client client, final EventType eventType) throws AccessDeniedException {
-        final Resource resource = createStreamResource(eventType);
+        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
+                Collections.singletonMap(AuthorizationService.Operation.READ,
+                        eventType.getAuthorization() == null ? null : eventType.getAuthorization().getReaders()));
         final Subject subject = null;
         if (!authorizationService.isAuthorized(subject, AuthorizationService.Operation.READ, resource)) {
             throw new AccessDeniedException(subject, AuthorizationService.Operation.READ, resource);
@@ -78,26 +80,6 @@ public class AuthorizationValidator {
                     }
                 }
         );
-    }
-
-    private Resource createStreamResource(final EventType eventType) {
-        return new Resource() {
-            @Override
-            public String getName() {
-                return eventType.getName();
-            }
-
-            @Override
-            public String getType() {
-                return "event-type";
-            }
-
-            @Override
-            public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
-                    final AuthorizationService.Operation operation) {
-                return Optional.ofNullable(eventType.getAuthorization()).map(EventTypeAuthorization::getReaders);
-            }
-        };
     }
 
     private void checkAuthAttributesNoDuplicates(final Map<String, List<AuthorizationAttribute>> allAttributes)
