@@ -1,5 +1,6 @@
 package org.zalando.nakadi.partitioning;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.junit.Ignore;
@@ -28,10 +29,17 @@ import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.generate;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.isIn;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
+import static org.zalando.nakadi.utils.TestUtils.loadEventType;
+import static org.zalando.nakadi.utils.TestUtils.readFile;
 import static org.zalando.nakadi.utils.TestUtils.resourceAsString;
 
 public class HashPartitionStrategyTest {
@@ -44,13 +52,19 @@ public class HashPartitionStrategyTest {
     private static List<JSONObject> eventSamplesB = null;
     private static List<JSONObject> eventSamplesC = null;
 
-    private final HashPartitionStrategy strategy = new HashPartitionStrategy();
+    private final HashPartitionStrategy strategy;
     private final EventType simpleEventType;
     private final ArrayList<List<JSONObject>> partitions = createEmptyPartitions(PARTITIONS.length);
 
     public HashPartitionStrategyTest() {
         simpleEventType = new EventType();
         simpleEventType.setPartitionKeyFields(asList("sku", "name"));
+
+        final HashPartitionStrategyCrutch hashPartitioningCrutch = mock(HashPartitionStrategyCrutch.class);
+        when(hashPartitioningCrutch.adjustPartitionIndex(anyInt(), anyInt()))
+                .thenAnswer(invocation -> invocation.getArguments()[0]); // don't do any adjustments
+
+        strategy = new HashPartitionStrategy(hashPartitioningCrutch, new StringHash());
     }
 
     @Test
@@ -146,6 +160,15 @@ public class HashPartitionStrategyTest {
         }
 
         System.out.println("probability to fail the test: " + failProbability);
+    }
+
+    @Test
+    public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
+        final EventType eventType = loadEventType(
+                "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
+        eventType.setPartitionStrategy(HASH_STRATEGY);
+        final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
+        assertThat(strategy.calculatePartition(eventType, event, ImmutableList.of("p0")), equalTo("p0"));
     }
 
     private double calculateVarianceOfUniformDistribution(final double[] samples) {

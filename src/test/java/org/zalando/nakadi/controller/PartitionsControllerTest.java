@@ -10,6 +10,7 @@ import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
@@ -22,10 +23,13 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.repository.kafka.KafkaPartitionStatistics;
+import org.zalando.nakadi.security.ClientResolver;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.CursorLag;
@@ -48,6 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 
 public class PartitionsControllerTest {
 
@@ -88,6 +93,12 @@ public class PartitionsControllerTest {
 
     private MockMvc mockMvc;
 
+    private SecuritySettings settings;
+
+    private FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
+
+    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
+
     @Before
     public void before() throws InternalNakadiException, NoSuchEventTypeException {
         final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
@@ -105,11 +116,15 @@ public class PartitionsControllerTest {
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepositoryMock);
         final CursorConverter cursorConverter = new CursorConverterImpl(eventTypeCache, timelineService);
         final PartitionsController controller = new PartitionsController(timelineService, cursorConverter,
-                cursorOperationsService);
+                cursorOperationsService, eventTypeRepositoryMock, authorizationValidator);
+
+        settings = mock(SecuritySettings.class);
 
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
                         new MappingJackson2HttpMessageConverter(objectMapper))
+                .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
+                .setControllerAdvice(new ExceptionHandling())
                 .build();
     }
 
@@ -160,6 +175,28 @@ public class PartitionsControllerTest {
                 get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
                 .andExpect(status().isOk())
                 .andExpect(content().string(jsonHelper.matchesObject(TEST_TOPIC_PARTITION_0)));
+    }
+
+    @Test
+    public void whenUnauthorizedGetPartitionThenForbiddenStatusCode() throws Exception {
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any(), any());
+
+        mockMvc.perform(
+                get(String.format("/event-types/%s/partitions/%s", TEST_EVENT_TYPE, TEST_PARTITION)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void whenUnauthorizedGetPartitionsThenForbiddenStatusCode() throws Exception {
+        when(eventTypeRepositoryMock.findByName(TEST_EVENT_TYPE)).thenReturn(EVENT_TYPE);
+
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any(), any());
+
+        mockMvc.perform(
+                get(String.format("/event-types/%s/partitions", TEST_EVENT_TYPE)))
+                .andExpect(status().isForbidden());
     }
 
     @Test

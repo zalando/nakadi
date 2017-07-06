@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.NakadiCursorLag;
 import org.zalando.nakadi.domain.PartitionStatistics;
@@ -24,6 +25,9 @@ import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
+import org.zalando.nakadi.repository.EventTypeRepository;
+import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.service.timeline.TimelineService;
@@ -54,21 +58,31 @@ public class PartitionsController {
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
     private static final String INVALID_CURSOR_MESSAGE = "invalid consumed_offset or partition";
+    private final EventTypeRepository eventTypeRepository;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public PartitionsController(final TimelineService timelineService,
                                 final CursorConverter cursorConverter,
-                                final CursorOperationsService cursorOperationsService) {
+                                final CursorOperationsService cursorOperationsService,
+                                final EventTypeRepository eventTypeRepository,
+                                final AuthorizationValidator authorizationValidator) {
         this.timelineService = timelineService;
         this.cursorConverter = cursorConverter;
         this.cursorOperationsService = cursorOperationsService;
+        this.eventTypeRepository = eventTypeRepository;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @RequestMapping(value = "/event-types/{name}/partitions", method = RequestMethod.GET)
     public ResponseEntity<?> listPartitions(@PathVariable("name") final String eventTypeName,
-                                            final NativeWebRequest request) {
+                                            final NativeWebRequest request,
+                                            final Client client) {
         LOG.trace("Get partitions endpoint for event-type '{}' is called", eventTypeName);
         try {
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+            authorizationValidator.authorizeStreamRead(client, eventType);
+
             final List<Timeline> timelines = timelineService.getActiveTimelinesOrdered(eventTypeName);
             final List<PartitionStatistics> firstStats = timelineService.getTopicRepository(timelines.get(0))
                     .loadTopicStatistics(Collections.singletonList(timelines.get(0)));
@@ -102,9 +116,13 @@ public class PartitionsController {
     public ResponseEntity<?> getPartition(@PathVariable("name") final String eventTypeName,
                                           @PathVariable("partition") final String partition,
                                           @Nullable @RequestParam(value = "consumed_offset", required = false)
-                                              final String consumedOffset, final NativeWebRequest request) {
+                                              final String consumedOffset, final NativeWebRequest request,
+                                          final Client client) {
         LOG.trace("Get partition endpoint for event-type '{}', partition '{}' is called", eventTypeName, partition);
         try {
+            final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+            authorizationValidator.authorizeStreamRead(client, eventType);
+
             if (consumedOffset != null) {
                 final CursorLag cursorLag = getCursorLag(eventTypeName, partition, consumedOffset);
                 return ok().body(cursorLag);

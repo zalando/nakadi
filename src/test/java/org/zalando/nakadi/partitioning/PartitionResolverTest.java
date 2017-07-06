@@ -1,32 +1,30 @@
 package org.zalando.nakadi.partitioning;
 
 import com.google.common.collect.ImmutableList;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.core.Is.is;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchPartitionStrategyException;
 import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.repository.TopicRepository;
+import org.zalando.nakadi.service.timeline.TimelineService;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.domain.EventCategory.UNDEFINED;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.HASH_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.RANDOM_STRATEGY;
 import static org.zalando.nakadi.partitioning.PartitionStrategy.USER_DEFINED_STRATEGY;
-import org.zalando.nakadi.repository.TopicRepository;
-import org.zalando.nakadi.service.timeline.TimelineService;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
-import static org.zalando.nakadi.utils.TestUtils.loadEventType;
-import static org.zalando.nakadi.utils.TestUtils.readFile;
 
 public class PartitionResolverTest {
 
@@ -40,15 +38,14 @@ public class PartitionResolverTest {
         timelineService = Mockito.mock(TimelineService.class);
         when(timelineService.getTopicRepository((Timeline) any())).thenReturn(topicRepository);
         when(timelineService.getTopicRepository((EventType) any())).thenReturn(topicRepository);
-        partitionResolver = new PartitionResolver(timelineService);
+        partitionResolver = new PartitionResolver(timelineService, mock(HashPartitionStrategy.class));
     }
 
     @Test
     public void whenResolvePartitionWithKnownStrategyThenOk() throws NakadiException {
 
         final EventType eventType = new EventType();
-        eventType.setPartitionKeyFields(ImmutableList.of("abc"));
-        eventType.setPartitionStrategy(HASH_STRATEGY);
+        eventType.setPartitionStrategy(RANDOM_STRATEGY);
 
         when(timelineService.getTimeline(eq(eventType))).thenReturn(mock(Timeline.class));
 
@@ -89,17 +86,6 @@ public class PartitionResolverTest {
         eventType.setPartitionStrategy(HASH_STRATEGY);
 
         partitionResolver.validate(eventType);
-    }
-
-    @Test
-    public void whenValidateWithHashPartitionStrategyAndDataChangeEventLookupIntoDataField() throws Exception {
-        final EventType eventType = loadEventType(
-                "org/zalando/nakadi/domain/event-type.with.partition-key-fields.json");
-        eventType.setPartitionStrategy(HASH_STRATEGY);
-        final JSONObject event = new JSONObject(readFile("sample-data-event.json"));
-        when(timelineService.getTimeline(eq(eventType))).thenReturn(mock(Timeline.class));
-
-        assertThat(partitionResolver.resolvePartition(eventType, event), is(notNullValue()));
     }
 
     @Test(expected = InvalidEventTypeException.class)

@@ -32,11 +32,13 @@ import org.zalando.nakadi.exceptions.NoConnectionSlotsException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConnectionSlot;
@@ -46,6 +48,7 @@ import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.util.AuthorizationUtils;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
@@ -88,6 +91,7 @@ public class EventStreamController {
     private final FeatureToggleService featureToggleService;
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository,
@@ -100,7 +104,8 @@ public class EventStreamController {
                                  final BlacklistService blacklistService,
                                  final ConsumerLimitingService consumerLimitingService,
                                  final FeatureToggleService featureToggleService,
-                                 final CursorConverter cursorConverter) {
+                                 final CursorConverter cursorConverter,
+                                 final AuthorizationValidator authorizationValidator) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
@@ -112,6 +117,7 @@ public class EventStreamController {
         this.consumerLimitingService = consumerLimitingService;
         this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @VisibleForTesting
@@ -193,7 +199,10 @@ public class EventStreamController {
             try {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
+                // TODO: deprecate and remove previous authorization strategy
                 client.checkScopes(eventType.getReadScopes());
+
+                authorizationValidator.authorizeStreamRead(client, eventType);
 
                 // validate parameters
                 final EventStreamConfig streamConfig = EventStreamConfig.builder()
@@ -253,7 +262,10 @@ public class EventStreamController {
             } catch (final InvalidCursorException e) {
                 writeProblemResponse(response, outputStream, PRECONDITION_FAILED, e.getMessage());
             } catch (final IllegalScopeException e) {
+                // TODO: deprecate and remove previous authorization strategy
                 writeProblemResponse(response, outputStream, FORBIDDEN, e.getMessage());
+            } catch (final AccessDeniedException e) {
+                writeProblemResponse(response, outputStream, FORBIDDEN, AuthorizationUtils.errorMessage(e));
             } catch (final Exception e) {
                 LOG.error("Error while trying to stream events. Respond with INTERNAL_SERVER_ERROR.", e);
                 writeProblemResponse(response, outputStream, INTERNAL_SERVER_ERROR, e.getMessage());

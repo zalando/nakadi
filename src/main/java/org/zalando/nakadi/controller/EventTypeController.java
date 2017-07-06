@@ -19,11 +19,16 @@ import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeOptions;
+import org.zalando.nakadi.exceptions.ConflictException;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeDeletionException;
 import org.zalando.nakadi.exceptions.runtime.EventTypeUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.InconsistentStateException;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.TopicConfigException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.nakadi.security.Client;
@@ -137,16 +142,18 @@ public class EventTypeController {
             @RequestBody @Valid final EventTypeBase eventType,
             final Errors errors,
             final NativeWebRequest request,
-            final Client client) {
+            final Client client)
+            throws TopicConfigException,
+            InconsistentStateException,
+            NakadiRuntimeException,
+            ServiceTemporarilyUnavailableException,
+            UnableProcessException {
         ValidationUtils.invokeValidator(eventTypeOptionsValidator, eventType.getOptions(), errors);
         if (errors.hasErrors()) {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        final Result<Void> update = eventTypeService.update(name, eventType, client);
-        if (!update.isSuccessful()) {
-            return Responses.create(update.getProblem(), request);
-        }
+        eventTypeService.update(name, eventType, client);
         return status(HttpStatus.OK).build();
     }
 
@@ -169,6 +176,12 @@ public class EventTypeController {
     @ExceptionHandler(UnableProcessException.class)
     public ResponseEntity<Problem> unableProcess(final UnableProcessException exception,
                                                  final NativeWebRequest request) {
+        LOG.debug(exception.getMessage(), exception);
+        return Responses.create(MoreStatus.UNPROCESSABLE_ENTITY, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Problem> conflict(final ConflictException exception, final NativeWebRequest request) {
         LOG.debug(exception.getMessage(), exception);
         return Responses.create(Response.Status.CONFLICT, exception.getMessage(), request);
     }
