@@ -16,6 +16,7 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
@@ -27,6 +28,7 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
+import static org.zalando.nakadi.util.AuthorizationUtils.errorMessage;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
@@ -75,6 +77,12 @@ public final class ExceptionHandling implements ProblemHandling {
     public ResponseEntity<Problem> noEventTypeException(final NoEventTypeException exception,
                                                         final NativeWebRequest request) {
         return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
+                                                         final NativeWebRequest request) {
+        return Responses.create(Response.Status.FORBIDDEN, errorMessage(exception), request);
     }
 
     @ExceptionHandler(IllegalScopeException.class)

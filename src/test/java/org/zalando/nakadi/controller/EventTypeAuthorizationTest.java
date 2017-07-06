@@ -52,7 +52,8 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
     public void whenPUTNullAuthorizationForExistingAuthorization() throws Exception {
         final EventType newEventType = EventTypeTestBuilder.builder().build();
         doReturn(newEventType).when(eventTypeRepository).findByName(any());
-        doThrow(new UnableProcessException("Changing authorization object to `null` is not possible due to existing one"))
+        doThrow(new UnableProcessException(
+                "Changing authorization object to `null` is not possible due to existing one"))
                 .when(authorizationValidator).validateAuthorization(any(), any());
 
         putEventType(newEventType, newEventType.getName())
