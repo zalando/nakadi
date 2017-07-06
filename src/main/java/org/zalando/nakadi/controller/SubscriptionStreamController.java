@@ -110,12 +110,17 @@ public class SubscriptionStreamController {
             if (!headersSent) {
                 headersSent = true;
                 try {
+                    if (ex instanceof AccessDeniedException) {
+                        writeProblemResponse(response, out, Problem.valueOf(Response.Status.FORBIDDEN,
+                                errorMessage((AccessDeniedException) ex)));
+                    }
                     if (ex instanceof NakadiException) {
                         writeProblemResponse(response, out, ((NakadiException) ex).asProblem());
                     } else {
                         writeProblemResponse(response, out, Problem.valueOf(Response.Status.SERVICE_UNAVAILABLE,
                                 "Failed to continue streaming"));
                     }
+                    out.flush();
                 } catch (final IOException e) {
                     LOG.error("Failed to write exception to response", e);
                 }
@@ -178,10 +183,6 @@ public class SubscriptionStreamController {
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
                 Thread.currentThread().interrupt();
-            } catch (final AccessDeniedException e) {
-                writeProblemResponse(response, output.getOutputStream(), Problem.valueOf(Response.Status.FORBIDDEN,
-                        errorMessage(e)));
-                output.getOutputStream().flush();
             } catch (final Exception e) {
                 output.onException(e);
             } finally {
