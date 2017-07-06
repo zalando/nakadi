@@ -43,11 +43,7 @@ import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 
 public class TestUtils {
 
-    public static final String OWNING_APPLICATION = "event-producer-application";
-
     private static final String VALID_EVENT_TYPE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ";
-
-    private static final String VALID_EVENT_BODY_CHARS = VALID_EVENT_TYPE_NAME_CHARS + " \t!@#$%^&*()=+-_";
 
     private static final Random RANDOM = new Random();
     private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();

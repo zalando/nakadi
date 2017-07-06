@@ -6,12 +6,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.SubscriptionBase;
+import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.exceptions.runtime.ServiceTemporaryUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
@@ -22,6 +25,7 @@ import org.zalando.nakadi.security.Client;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -70,7 +74,7 @@ public class AuthorizationValidator {
                             authorizeStreamRead(client, eventType);
                         });
                     } catch (final InternalNakadiException e) {
-                        throw new ServiceTemporaryUnavailableException(e);
+                        throw new ServiceTemporarilyUnavailableException(e);
                     }
                 }
         );
@@ -144,6 +148,45 @@ public class AuthorizationValidator {
             }
         } catch (final PluginException e) {
             throw new ServiceUnavailableException("Error calling authorization plugin", e);
+        }
+    }
+
+    public void authorizeEventTypeWrite(final EventType eventType)
+            throws ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
+        if (eventType.getAuthorization() == null) {
+            return;
+        }
+        final MyEventTypeResource2 resource = new MyEventTypeResource2(
+                eventType.getName(), eventType.getAuthorization());
+        try {
+            final boolean authorized = authorizationService.isAuthorized(
+                    null,
+                    AuthorizationService.Operation.WRITE,
+                    resource);
+            if (!authorized) {
+                throw new ResourceAccessNotAuthorizedException(AuthorizationService.Operation.WRITE, resource);
+            }
+        } catch (final PluginException ex) {
+            throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
+        }
+    }
+
+    public void authorizeEventTypeAdmin(final EventType eventType)
+            throws ForbiddenAccessException, ServiceTemporarilyUnavailableException {
+        if (eventType.getAuthorization() == null) {
+            return;
+        }
+
+        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
+                Collections.singletonMap(AuthorizationService.Operation.ADMIN,
+                        eventType.getAuthorization().getAdmins()));
+        try {
+            if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
+                throw new ForbiddenAccessException("Updating the `EventType` is only allowed for clients that " +
+                        "satisfy the authorization `admin` requirements");
+            }
+        } catch (final PluginException e) {
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }
     }
 }

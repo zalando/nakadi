@@ -2,31 +2,33 @@ package org.zalando.nakadi.service;
 
 
 import com.google.common.collect.ImmutableList;
-import org.junit.Test;
-import org.zalando.nakadi.domain.EventTypeAuthorization;
-import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
-import org.zalando.nakadi.exceptions.InvalidEventTypeException;
-import org.zalando.nakadi.exceptions.ServiceUnavailableException;
-import org.zalando.nakadi.plugin.api.PluginException;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
-import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
-
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import org.junit.Test;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import org.zalando.nakadi.domain.EventTypeAuthorization;
+import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
+import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.exceptions.InvalidEventTypeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
+import org.zalando.nakadi.plugin.api.PluginException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 
 public class AuthorizationValidatorTest {
 
     private final AuthorizationValidator validator;
     private final AuthorizationService authorizationService;
 
-    private final AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");;
-    private final AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");;
-    private final AuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");;
-    private final AuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");;
+    private final AuthorizationAttribute attr1 = new EventTypeAuthorizationAttribute("type1", "value1");
+    private final AuthorizationAttribute attr2 = new EventTypeAuthorizationAttribute("type2", "value2");
+    private final AuthorizationAttribute attr3 = new EventTypeAuthorizationAttribute("type3", "value3");
+    private final AuthorizationAttribute attr4 = new EventTypeAuthorizationAttribute("type4", "value4");
 
     public AuthorizationValidatorTest() {
         authorizationService = mock(AuthorizationService.class);
@@ -74,7 +76,7 @@ public class AuthorizationValidatorTest {
     }
 
     @Test(expected = ServiceUnavailableException.class)
-    public void whenPluginExceptionThenServiceUnavailableException() throws Exception {
+    public void whenPluginExceptionInIsAuthorizationAttributeValidThenServiceUnavailableException() throws Exception {
 
         final EventTypeAuthorization auth = new EventTypeAuthorization(
                 ImmutableList.of(attr1),
@@ -85,4 +87,32 @@ public class AuthorizationValidatorTest {
 
         validator.validateAuthorization(auth);
     }
+
+    @Test
+    public void whenAuthorizationIsNullWhileUpdatingETThenOk() throws Exception {
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder().authorization(null).build());
+    }
+
+    @Test(expected = ForbiddenAccessException.class)
+    public void whenNotAuthorizedThenForbiddenAccessException() throws Exception {
+        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
+                .authorization(new EventTypeAuthorization(null, null, null)).build());
+    }
+
+    @Test
+    public void whenAuthorizedThenOk() throws Exception {
+        when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(true);
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
+                .authorization(new EventTypeAuthorization(null, null, null)).build());
+    }
+
+    @Test(expected = ServiceTemporarilyUnavailableException.class)
+    public void whenPluginExceptionInAuthorizeEventTypeUpdateThenServiceTemporaryUnavailableException()
+            throws Exception {
+        when(authorizationService.isAuthorized(any(), any(), any())).thenThrow(new PluginException("blah"));
+        validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()
+                .authorization(new EventTypeAuthorization(null, null, null)).build());
+    }
+
 }

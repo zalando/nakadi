@@ -1,5 +1,11 @@
 package org.zalando.nakadi.service;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +28,8 @@ import org.zalando.nakadi.exceptions.EventValidationException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.PartitioningException;
+import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.partitioning.PartitionResolver;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 import org.zalando.nakadi.security.Client;
@@ -29,13 +37,6 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.validation.EventTypeValidator;
 import org.zalando.nakadi.validation.ValidationError;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 @Component
 public class EventPublisher {
@@ -49,6 +50,7 @@ public class EventPublisher {
     private final PartitionResolver partitionResolver;
     private final Enrichment enrichment;
     private final TimelineSync timelineSync;
+    private final AuthorizationValidator authValidator;
 
     @Autowired
     public EventPublisher(final TimelineService timelineService,
@@ -56,17 +58,20 @@ public class EventPublisher {
                           final PartitionResolver partitionResolver,
                           final Enrichment enrichment,
                           final NakadiSettings nakadiSettings,
-                          final TimelineSync timelineSync) {
+                          final TimelineSync timelineSync,
+                          final AuthorizationValidator authValidator) {
         this.timelineService = timelineService;
         this.eventTypeCache = eventTypeCache;
         this.partitionResolver = partitionResolver;
         this.enrichment = enrichment;
         this.nakadiSettings = nakadiSettings;
         this.timelineSync = timelineSync;
+        this.authValidator = authValidator;
     }
 
     public EventPublishResult publish(final String events, final String eventTypeName, final Client client)
-            throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException {
+            throws NoSuchEventTypeException, InternalNakadiException, EventTypeTimeoutException,
+            ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
 
         Closeable publishingCloser = null;
         final List<BatchItem> batch = BatchFactory.from(events);
@@ -74,6 +79,7 @@ public class EventPublisher {
             publishingCloser = timelineSync.workWithEventType(eventTypeName, nakadiSettings.getTimelineWaitTimeoutMs());
 
             final EventType eventType = eventTypeCache.getEventType(eventTypeName);
+            authValidator.authorizeEventTypeWrite(eventType);
             client.checkScopes(eventType.getWriteScopes());
 
             validate(batch, eventType);
