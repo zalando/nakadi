@@ -139,7 +139,7 @@ public class AuthorizationValidator {
                         eventType.getAuthorization().getAdmins()));
         try {
             if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
-                throw new ForbiddenAccessException("Updating the `EventType` is only allowed for clients that " +
+                throw new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
                         "satisfy the authorization `admin` requirements");
             }
         } catch (final PluginException e) {
