@@ -220,7 +220,11 @@ public class EventTypeCache {
             rwLock.readLock().unlock();
         }
         if (null != invalidatedEventType) {
-            for (final Consumer<String> listener : invalidationListeners) {
+            final List<Consumer<String>> toNotify;
+            synchronized (invalidationListeners) {
+                toNotify = new ArrayList<>(invalidationListeners);
+            }
+            for (final Consumer<String> listener : toNotify) {
                 listener.accept(invalidatedEventType);
             }
         }
@@ -246,7 +250,9 @@ public class EventTypeCache {
     }
 
     public void addInvalidationListener(final Consumer<String> onEventTypeInvalidated) {
-        this.invalidationListeners.add(onEventTypeInvalidated);
+        synchronized (invalidationListeners) {
+            invalidationListeners.add(onEventTypeInvalidated);
+        }
     }
 
     private static class CachedValue {
