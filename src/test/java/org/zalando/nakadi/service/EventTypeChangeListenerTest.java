@@ -22,7 +22,7 @@ public class EventTypeChangeListenerTest {
     @Before
     public void setUp() {
         final EventTypeCache cache = mock(EventTypeCache.class);
-        final ArgumentCaptor<Consumer<String>> changeCall = new ArgumentCaptor<>();
+        final ArgumentCaptor<Consumer> changeCall = ArgumentCaptor.forClass(Consumer.class);
 
         listener = new EventTypeChangeListener(cache);
         verify(cache, times(1)).addInvalidationListener(changeCall.capture());

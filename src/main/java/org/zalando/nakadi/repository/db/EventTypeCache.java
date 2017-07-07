@@ -5,13 +5,13 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -45,7 +45,7 @@ public class EventTypeCache {
     private final ZooKeeperHolder zkClient;
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
     private final TimelineSync timelineSync;
-    private final List<Consumer<String>> invalidationListeners = new ArrayList<>();
+    private final List<Consumer<String>> invalidationListeners = new CopyOnWriteArrayList<>();
     private Map<String, TimelineSync.ListenerRegistration> timelineRegistrations;
 
     public EventTypeCache(final EventTypeRepository eventTypeRepository,
@@ -220,11 +220,7 @@ public class EventTypeCache {
             rwLock.readLock().unlock();
         }
         if (null != invalidatedEventType) {
-            final List<Consumer<String>> toNotify;
-            synchronized (invalidationListeners) {
-                toNotify = new ArrayList<>(invalidationListeners);
-            }
-            for (final Consumer<String> listener : toNotify) {
+            for (final Consumer<String> listener : invalidationListeners) {
                 listener.accept(invalidatedEventType);
             }
         }
@@ -250,9 +246,7 @@ public class EventTypeCache {
     }
 
     public void addInvalidationListener(final Consumer<String> onEventTypeInvalidated) {
-        synchronized (invalidationListeners) {
-            invalidationListeners.add(onEventTypeInvalidated);
-        }
+        invalidationListeners.add(onEventTypeInvalidated);
     }
 
     private static class CachedValue {

@@ -165,6 +165,15 @@ public class EventStreamController {
         }
     }
 
+    private void authorizeStreamRead(final String eventType) throws AccessDeniedException,
+            ServiceTemporarilyUnavailableException {
+        try {
+            authorizationValidator.authorizeStreamRead(eventTypeRepository.findByName(eventType));
+        } catch (final InternalNakadiException | NoSuchEventTypeException ex) {
+            throw new ServiceTemporarilyUnavailableException(ex);
+        }
+    }
+
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("name") final String eventTypeName,
@@ -199,7 +208,7 @@ public class EventStreamController {
                 // TODO: deprecate and remove previous authorization strategy
                 client.checkScopes(eventType.getReadScopes());
 
-                authorizationValidator.authorizeStreamRead(eventType);
+                authorizeStreamRead(eventTypeName);
 
                 // validate parameters
                 final EventStreamConfig streamConfig = EventStreamConfig.builder()
@@ -245,13 +254,7 @@ public class EventStreamController {
 
                 eventStream.streamEvents(connectionReady, () -> {
                     if (needCheckAuthorization.getAndSet(false)) {
-                        // in a case of exception all exceptions are treated in the same manner - all are internal
-                        // errors
-                        try {
-                            authorizationValidator.authorizeStreamRead(eventTypeRepository.findByName(eventTypeName));
-                        } catch (final InternalNakadiException | NoSuchEventTypeException ex) {
-                            throw new ServiceTemporarilyUnavailableException(ex);
-                        }
+                        authorizeStreamRead(eventTypeName);
                     }
                 });
             } catch (final UnparseableCursorException e) {
