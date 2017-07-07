@@ -3,15 +3,12 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Sets;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,8 +19,6 @@ import static org.mockito.Mockito.when;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -38,7 +33,6 @@ import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
 import org.zalando.nakadi.utils.JsonTestHelper;
-import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import org.zalando.problem.Problem;
 
@@ -89,8 +83,7 @@ public class SubscriptionStreamControllerTest {
         eventTypeChangeListener = mock(EventTypeChangeListener.class);
 
         controller = new SubscriptionStreamController(subscriptionStreamerFactory, featureToggleService, objectMapper,
-                crutch, nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository,
-                eventTypeRepository, authorizationValidator, eventTypeChangeListener);
+                crutch, nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository);
     }
 
     @Test
@@ -99,24 +92,6 @@ public class SubscriptionStreamControllerTest {
                 requestMock, responseMock, FULL_ACCESS_CLIENT);
 
         final Problem expectedProblem = Problem.valueOf(UNPROCESSABLE_ENTITY, "batch_limit can't be lower than 1");
-        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
-    }
-
-    @Test
-    public void whenAccessDeniedThenForbidden() throws Exception {
-        final EventType eventType = mock(EventType.class);
-        final Subscription subscription = mock(Subscription.class);
-        when(subscription.getEventTypes()).thenReturn(Sets.newHashSet("some-name"));
-        when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(eventType));
-        when(subscriptionDbRepository.getSubscription(any())).thenReturn(subscription);
-        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator)
-                .authorizeSubscriptionRead(any(), any());
-
-        final StreamingResponseBody responseBody = controller.streamEvents("abc", 0, 1, null, 10, null, null,
-                requestMock, responseMock, FULL_ACCESS_CLIENT);
-
-        final Problem expectedProblem = Problem.valueOf(Response.Status.FORBIDDEN,
-                "Access on READ some-type:some-name denied");
         assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 

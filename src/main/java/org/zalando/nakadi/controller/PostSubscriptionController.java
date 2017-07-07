@@ -30,7 +30,6 @@ import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
@@ -51,19 +50,16 @@ public class PostSubscriptionController {
     private final FeatureToggleService featureToggleService;
     private final ApplicationService applicationService;
     private final SubscriptionService subscriptionService;
-    private final EventTypeRepository eventTypeRepository;
     private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public PostSubscriptionController(final FeatureToggleService featureToggleService,
                                       final ApplicationService applicationService,
                                       final SubscriptionService subscriptionService,
-                                      final EventTypeRepository eventTypeRepository,
                                       final AuthorizationValidator authorizationValidator) {
         this.featureToggleService = featureToggleService;
         this.applicationService = applicationService;
         this.subscriptionService = subscriptionService;
-        this.eventTypeRepository = eventTypeRepository;
         this.authorizationValidator = authorizationValidator;
     }
 
@@ -78,7 +74,7 @@ public class PostSubscriptionController {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        authorizationValidator.authorizeSubscriptionRead(eventTypeRepository, subscriptionBase);
+        authorizationValidator.authorizeSubscriptionRead(subscriptionBase);
 
         if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
                 && !applicationService.exists(subscriptionBase.getOwningApplication())) {

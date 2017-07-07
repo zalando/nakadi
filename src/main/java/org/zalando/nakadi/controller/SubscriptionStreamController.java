@@ -3,12 +3,9 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -29,13 +26,10 @@ import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
-import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -58,9 +52,6 @@ public class SubscriptionStreamController {
     private final BlacklistService blacklistService;
     private final MetricRegistry metricRegistry;
     private final SubscriptionDbRepository subscriptionDbRepository;
-    private final EventTypeRepository eventTypeRepository;
-    private final AuthorizationValidator authorizationValidator;
-    private final EventTypeChangeListener eventTypeChangeListener;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -70,10 +61,7 @@ public class SubscriptionStreamController {
                                         final NakadiSettings nakadiSettings,
                                         final BlacklistService blacklistService,
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
-                                        final SubscriptionDbRepository subscriptionDbRepository,
-                                        final EventTypeRepository eventTypeRepository,
-                                        final AuthorizationValidator authorizationValidator,
-                                        final EventTypeChangeListener eventTypeChangeListener) {
+                                        final SubscriptionDbRepository subscriptionDbRepository) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
@@ -82,9 +70,6 @@ public class SubscriptionStreamController {
         this.blacklistService = blacklistService;
         this.metricRegistry = metricRegistry;
         this.subscriptionDbRepository = subscriptionDbRepository;
-        this.eventTypeRepository = eventTypeRepository;
-        this.authorizationValidator = authorizationValidator;
-        this.eventTypeChangeListener = eventTypeChangeListener;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -166,7 +151,7 @@ public class SubscriptionStreamController {
 
             final AtomicBoolean connectionReady = closedConnectionsCrutch.listenForConnectionClose(request);
 
-            final AtomicReference<SubscriptionStreamer> streamer = new AtomicReference<>();
+            SubscriptionStreamer streamer = null;
             final SubscriptionOutputImpl output = new SubscriptionOutputImpl(response, outputStream);
             try {
                 if (blacklistService.isSubscriptionConsumptionBlocked(subscriptionId, client.getClientId())) {
@@ -180,26 +165,10 @@ public class SubscriptionStreamController {
                         nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
                 final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
-                final Consumer<String> eventTypeModificationListener = (eventTypeName) -> {
-                    try {
-                        authorizationValidator.authorizeSubscriptionRead(eventTypeRepository, subscription);
-                    } catch (final AccessDeniedException ex) {
-                        final SubscriptionStreamer streamerInstance = streamer.get();
-                        if (null != streamerInstance) {
-                            streamerInstance.stop(ex);
-                        }
-                    }
-                };
+                streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
+                        connectionReady, blacklistService);
 
-                streamer.set(subscriptionStreamerFactory.build(subscription, streamParameters, output,
-                        connectionReady, blacklistService));
-
-                try (Closeable ignore = eventTypeChangeListener.registerListener(
-                        eventTypeModificationListener, subscription.getEventTypes())) {
-                    authorizationValidator.authorizeSubscriptionRead(eventTypeRepository, subscription);
-
-                    streamer.get().stream();
-                }
+                streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);
                 Thread.currentThread().interrupt();

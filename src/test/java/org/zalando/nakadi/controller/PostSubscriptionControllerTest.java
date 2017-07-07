@@ -84,7 +84,7 @@ public class PostSubscriptionControllerTest {
         when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(eventType));
 
         final PostSubscriptionController controller = new PostSubscriptionController(featureToggleService,
-                applicationService, subscriptionService, eventTypeRepository, authorizationValidator);
+                applicationService, subscriptionService, authorizationValidator);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
 
@@ -252,7 +252,7 @@ public class PostSubscriptionControllerTest {
         when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(mock(EventType.class)));
 
         Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator)
-                .authorizeSubscriptionRead(any(), any());
+                .authorizeSubscriptionRead(any());
 
         final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
         checkForProblem(postSubscription(builder().buildSubscriptionBase()), expectedProblem);

@@ -36,10 +36,14 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 public class AuthorizationValidator {
 
     private final AuthorizationService authorizationService;
+    private final EventTypeRepository eventTypeRepository;
 
     @Autowired
-    public AuthorizationValidator(final AuthorizationService authorizationService) {
+    public AuthorizationValidator(
+            final AuthorizationService authorizationService,
+            final EventTypeRepository eventTypeRepository) {
         this.authorizationService = authorizationService;
+        this.eventTypeRepository = eventTypeRepository;
     }
 
     public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
@@ -154,14 +158,11 @@ public class AuthorizationValidator {
         }
     }
 
-    public void authorizeSubscriptionRead(final EventTypeRepository eventTypeRepository,
-                                          final SubscriptionBase subscriptionBase) throws AccessDeniedException {
-        subscriptionBase.getEventTypes().stream().forEach(
+    public void authorizeSubscriptionRead(final SubscriptionBase subscriptionBase) throws AccessDeniedException {
+        subscriptionBase.getEventTypes().forEach(
                 (eventTypeName) -> {
                     try {
-                        eventTypeRepository.findByNameO(eventTypeName).ifPresent(eventType -> {
-                            authorizeStreamRead(eventType);
-                        });
+                        eventTypeRepository.findByNameO(eventTypeName).ifPresent(this::authorizeStreamRead);
                     } catch (final InternalNakadiException e) {
                         throw new ServiceTemporarilyUnavailableException(e);
                     }
