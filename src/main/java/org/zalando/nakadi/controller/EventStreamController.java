@@ -51,13 +51,13 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.AuthorizationChangeListener;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -67,6 +67,7 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.AuthorizationUtils;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -92,7 +93,7 @@ public class EventStreamController {
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
     private final AuthorizationValidator authorizationValidator;
-    private final AuthorizationChangeListener authorizationChangeListener;
+    private final EventTypeChangeListener eventTypeChangeListener;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository,
@@ -107,7 +108,7 @@ public class EventStreamController {
                                  final FeatureToggleService featureToggleService,
                                  final CursorConverter cursorConverter,
                                  final AuthorizationValidator authorizationValidator,
-                                 final AuthorizationChangeListener authorizationChangeListener) {
+                                 final EventTypeChangeListener eventTypeChangeListener) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
@@ -120,7 +121,7 @@ public class EventStreamController {
         this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
-        this.authorizationChangeListener = authorizationChangeListener;
+        this.eventTypeChangeListener = eventTypeChangeListener;
     }
 
     @VisibleForTesting
@@ -191,7 +192,7 @@ public class EventStreamController {
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
             final AtomicBoolean needCheckAuthorization = new AtomicBoolean(false);
 
-            try (Closeable ignore = authorizationChangeListener.registerListener(et -> needCheckAuthorization.set(true),
+            try (Closeable ignore = eventTypeChangeListener.registerListener(et -> needCheckAuthorization.set(true),
                     Collections.singletonList(eventTypeName))) {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
@@ -249,7 +250,7 @@ public class EventStreamController {
                         try {
                             authorizationValidator.authorizeStreamRead(eventTypeRepository.findByName(eventTypeName));
                         } catch (final InternalNakadiException | NoSuchEventTypeException ex) {
-                            throw new RuntimeException(ex);
+                            throw new ServiceTemporarilyUnavailableException(ex);
                         }
                     }
                 });

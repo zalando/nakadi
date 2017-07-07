@@ -73,7 +73,6 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
-import org.zalando.nakadi.service.AuthorizationChangeListener;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
@@ -81,6 +80,7 @@ import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -120,7 +120,7 @@ public class EventStreamControllerTest {
     private MockMvc mockMvc;
     private Timeline fakeTimeline;
     private AuthorizationValidator authorizationValidator;
-    private AuthorizationChangeListener authorizationChangeListener;
+    private EventTypeChangeListener eventTypeChangeListener;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -165,13 +165,13 @@ public class EventStreamControllerTest {
         when(timelineService.getFakeTimeline(any())).thenReturn(fakeTimeline);
 
         authorizationValidator = mock(AuthorizationValidator.class);
-        authorizationChangeListener = mock(AuthorizationChangeListener.class);
-        when(authorizationChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
+        eventTypeChangeListener = mock(EventTypeChangeListener.class);
+        when(eventTypeChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
         controller = new EventStreamController(
                 eventTypeRepository, timelineService, objectMapper, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
                 new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
-                authorizationChangeListener);
+                eventTypeChangeListener);
 
         settings = mock(SecuritySettings.class);
 

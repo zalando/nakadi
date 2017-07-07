@@ -32,10 +32,10 @@ import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.AuthorizationChangeListener;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
@@ -60,7 +60,7 @@ public class SubscriptionStreamController {
     private final SubscriptionDbRepository subscriptionDbRepository;
     private final EventTypeRepository eventTypeRepository;
     private final AuthorizationValidator authorizationValidator;
-    private final AuthorizationChangeListener authorizationChangeListener;
+    private final EventTypeChangeListener eventTypeChangeListener;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -73,7 +73,7 @@ public class SubscriptionStreamController {
                                         final SubscriptionDbRepository subscriptionDbRepository,
                                         final EventTypeRepository eventTypeRepository,
                                         final AuthorizationValidator authorizationValidator,
-                                        final AuthorizationChangeListener authorizationChangeListener) {
+                                        final EventTypeChangeListener eventTypeChangeListener) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
@@ -84,7 +84,7 @@ public class SubscriptionStreamController {
         this.subscriptionDbRepository = subscriptionDbRepository;
         this.eventTypeRepository = eventTypeRepository;
         this.authorizationValidator = authorizationValidator;
-        this.authorizationChangeListener = authorizationChangeListener;
+        this.eventTypeChangeListener = eventTypeChangeListener;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -194,7 +194,7 @@ public class SubscriptionStreamController {
                 streamer.set(subscriptionStreamerFactory.build(subscription, streamParameters, output,
                         connectionReady, blacklistService));
 
-                try (Closeable ignore = authorizationChangeListener.registerListener(
+                try (Closeable ignore = eventTypeChangeListener.registerListener(
                         eventTypeModificationListener, subscription.getEventTypes())) {
                     authorizationValidator.authorizeSubscriptionRead(eventTypeRepository, subscription);
 

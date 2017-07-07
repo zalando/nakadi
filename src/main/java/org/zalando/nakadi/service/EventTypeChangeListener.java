@@ -18,10 +18,10 @@ import org.springframework.stereotype.Component;
 import org.zalando.nakadi.repository.db.EventTypeCache;
 
 @Component
-public class AuthorizationChangeListener {
+public class EventTypeChangeListener {
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private final Map<String, Set<InternalListener>> eventTypeToListeners = new HashMap<>();
-    private static final Logger LOG = LoggerFactory.getLogger(AuthorizationChangeListener.class);
+    private static final Logger LOG = LoggerFactory.getLogger(EventTypeChangeListener.class);
 
     private class InternalListener implements Closeable {
         private boolean closed = false;
@@ -50,7 +50,7 @@ public class AuthorizationChangeListener {
     }
 
     @Autowired
-    public AuthorizationChangeListener(final EventTypeCache eventTypeCache) {
+    public EventTypeChangeListener(final EventTypeCache eventTypeCache) {
         eventTypeCache.addInvalidationListener(this::onEventTypeInvalidated);
     }
 

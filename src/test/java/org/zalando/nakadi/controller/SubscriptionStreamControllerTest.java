@@ -30,10 +30,10 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.FullAccessClient;
-import org.zalando.nakadi.service.AuthorizationChangeListener;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
+import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
 import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
@@ -57,7 +57,7 @@ public class SubscriptionStreamControllerTest {
     private SubscriptionDbRepository subscriptionDbRepository;
     private EventTypeRepository eventTypeRepository;
     private AuthorizationValidator authorizationValidator;
-    private AuthorizationChangeListener authorizationChangeListener;
+    private EventTypeChangeListener eventTypeChangeListener;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -86,11 +86,11 @@ public class SubscriptionStreamControllerTest {
         subscriptionDbRepository = mock(SubscriptionDbRepository.class);
         eventTypeRepository = mock(EventTypeRepository.class);
         authorizationValidator = mock(AuthorizationValidator.class);
-        authorizationChangeListener = mock(AuthorizationChangeListener.class);
+        eventTypeChangeListener = mock(EventTypeChangeListener.class);
 
         controller = new SubscriptionStreamController(subscriptionStreamerFactory, featureToggleService, objectMapper,
                 crutch, nakadiSettings, blacklistService, metricRegistry, subscriptionDbRepository,
-                eventTypeRepository, authorizationValidator, authorizationChangeListener);
+                eventTypeRepository, authorizationValidator, eventTypeChangeListener);
     }
 
     @Test
