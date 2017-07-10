@@ -35,6 +35,7 @@ public class StartingState extends State {
                             return Response.Status.FORBIDDEN;
                         }
                     }));
+            return;
         }
         getZk().runLocked(this::createSubscriptionLocked);
     }
