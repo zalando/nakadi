@@ -10,6 +10,7 @@ import org.zalando.problem.Problem;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Optional;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -37,14 +38,14 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         final EventType eventType = EventTypeTestBuilder.builder().build();
 
         doReturn(eventType).when(eventTypeRepository).findByName(any());
-        doThrow(new ForbiddenAccessException("Updating the `EventType` is only allowed for clients that " +
+        doThrow(new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
                 "satisfy the authorization `admin` requirements"))
                 .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
 
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isForbidden())
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.FORBIDDEN,
-                        "Updating the `EventType` is only allowed for clients that satisfy the authorization " +
+                        "Editing the `EventType` is only allowed for clients that satisfy the authorization " +
                                 "`admin` requirements"))));
     }
 
@@ -60,6 +61,22 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(matchesProblem(Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY,
                         "Changing authorization object to `null` is not possible due to existing one"))));
+    }
+
+    @Test
+    public void whenDELETENotAuthorized200() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder().build();
+
+        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(any());
+        doThrow(new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
+                "satisfy the authorization `admin` requirements"))
+                .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
+
+        deleteEventType(eventType.getName())
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.FORBIDDEN,
+                        "Editing the `EventType` is only allowed for clients that satisfy the authorization " +
+                                "`admin` requirements"))));
     }
 
 }
