@@ -115,7 +115,7 @@ implemented in a separate plugin); and a Policy Enforcement Point (PEP), which e
 
 ### Default plugin
 
-The default plugin is part of the Nakadi codebase. It authorized all requests, and validates all attributes. If you 
+The default plugin is part of the Nakadi codebase. It authorizes all requests, and validates all attributes. If you 
 want to deploy Nakadi and use the resource authorization feature, you should provide your own plugin.
 
 ### Building your own
