@@ -35,6 +35,11 @@ info:
     same Partition, the relative ordering of them is secured. This mechanism implies that no
     statements can be made about the relative ordering of Events that are in different partitions.
 
+    * The **authorization** rules for the event type. The rules define who can produce events for
+    the event type (write), who can consume events from the event type (read), and who can update
+    the event type properties (admin). If the authorization rules are absent, then the event type
+    is open to all authenticated users.
+
     Except for defined enrichment rules, Nakadi will never manipulate the content of any Event.
 
     Clients of Nakadi can be grouped in 2 categories: **EventType owners** and **Clients** (clients
@@ -234,6 +239,9 @@ paths:
         The name field cannot be changed. Attempting to do so will result in a 422 failure.
 
         Modifications to the schema are constrained by the specified `compatibility_mode`.
+
+        Updating the `EventType` is only allowed for clients that satisfy the authorization `admin` requirements,
+        if it exists.
       parameters:
         - name: name
           in: path
@@ -263,6 +271,11 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden
+          schema:
+            $ref: '#/definitions/Problem'
+
     delete:
       tags:
         - schema-registry-api
@@ -280,6 +293,9 @@ paths:
 
          Depending on the Nakadi configuration, the oauth resource owner username may have to be equal to
          'nakadi.oauth2.adminClientId' property to be able to access this endpoint.
+
+         Updating the `EventType` is only allowed for clients that satisfy the authorization `admin` requirements,
+         if it exists.
 
       parameters:
         - name: name
@@ -568,6 +584,8 @@ paths:
 
         Calculate the distance between two offsets. This is useful for performing checks for data completeness, when
         a client has read some batches and wants to be sure that all delivered events have been correctly processed.
+
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
       parameters:
         - name: name
           in: path
@@ -597,6 +615,10 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/event-types/{name}/cursors-lag':
     post:
@@ -613,6 +635,8 @@ paths:
         in the stream its application is lagging.
 
         It provides the number of unconsumed events for each cursor's partition.
+
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
       parameters:
         - name: name
           in: path
@@ -656,6 +680,10 @@ paths:
           description: Unprocessable Entity
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/event-types/{name}/partitions':
     get:
@@ -670,6 +698,7 @@ paths:
 
         This endpoint is mostly interesting for monitoring purposes or in cases when consumer wants
         to start consuming older messages.
+        If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
 
       parameters:
         - name: name
@@ -713,6 +742,10 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
 
   /event-types/{name}/partitions/{partition}:
     get:
@@ -722,7 +755,9 @@ paths:
       security:
         - oauth2: ['nakadi.event_stream.read']
 
-      description: Returns the given `Partition` of this EventType
+      description: |
+        Returns the given `Partition` of this EventType. If per-EventType authorization is enabled, the caller must
+        be authorized to read from the EventType.
       parameters:
         - name: name
           in: path
@@ -755,6 +790,10 @@ paths:
           description: Client is not authenticated
           schema:
             $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
+          schema:
+            $ref: '#/definitions/Problem'
 
   '/event-types/{name}/shifted-cursors':
       post:
@@ -767,6 +806,7 @@ paths:
         description: |
           Transforms a list of Cursors with `shift` into a list without `shift`s. This is useful when there is the need
           for randomly access events in the stream.
+          If per-EventType authorization is enabled, the caller must be authorized to read from the EventType.
 
         parameters:
           - name: name
@@ -819,6 +859,10 @@ paths:
               some cursor yet to be generated in the future.
             schema:
               $ref: '#/definitions/Problem'
+          '403':
+            description: Access forbidden because of missing scope or EventType authorization failure.
+            schema:
+              $ref: '#/definitions/Problem'
 
   /subscriptions:
     post:
@@ -834,6 +878,8 @@ paths:
         this endpoint is invoked several times with the same key subscription properties in body (order of even_types is
         not important) - the subscription will be created only once and for all other calls it will just return
         the subscription that was already created.
+        If per-EventType authorization is enabled, the caller must be authorized to read from all the EventTypes in the
+        subscription.
       parameters:
         - name: subscription
           in: body
@@ -874,6 +920,10 @@ paths:
             $ref: '#/definitions/Problem'
         '422':
           description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/Problem'
+        '403':
+          description: Access forbidden because of missing scope or EventType authorization failure.
           schema:
             $ref: '#/definitions/Problem'
     get:
@@ -2209,6 +2259,9 @@ definitions:
       options:
         $ref: '#/definitions/EventTypeOptions'
 
+      authorization:
+        $ref: '#/definitions/EventTypeAuthorization'
+
       write_scopes:
         type: array
         items:
@@ -2218,6 +2271,8 @@ definitions:
           contains at least one of the scopes in this list.
           If no scopes provided then anyone can publish to this event type.
 
+          Usage of write_scopes is deprecated.
+
       read_scopes:
         type: array
         items:
@@ -2226,6 +2281,8 @@ definitions:
           This field is used for event consuming access control. Nakadi only authorises consumers whose session
           contains at least one of the scopes in this list.
           If no scopes provided then anyone can consume from this event type.
+
+          Usage of read_scopes is deprecated.
 
       created_at:
         type: string
@@ -2330,6 +2387,62 @@ definitions:
         default: 345600000 # 4 days
         description: |
           Number of milliseconds that Nakadi stores events published to this event type.
+
+  EventTypeAuthorization:
+    type: object
+    description: |
+      Authorization section for an event type. This section defines three access control lists: one for producing
+      events ('write'), one for consuming events ('read'), and one for administering an event type ('admin').
+      Regardless of the values of the authorization properties, administrator accounts will always be authorized.
+    properties:
+      admins:
+        type: array
+        description: |
+          An array of subject attributes that are required for updating the event type. Any one of the attributes
+          defined in this array is sufficient to be authorized. The wildcard item takes precedence over all others,
+          i.e. if it is present, all users are authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+      readers:
+        type: array
+        description: |
+          An array of subject attributes that are required for reading events from the event type. Any one of the
+          attributes defined in this array is sufficient to be authorized. The wildcard item takes precedence over
+          all others, i.e., if it is present, all users are authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+      writers:
+        type: array
+        description: |
+          An array of subject attributes that are required for writing events to the event type. Any one of the
+          attributes defined in this array is sufficient to be authorized.
+        items:
+          $ref: '#/definitions/AuthorizationAttribute'
+        minItems: 1
+    required:
+      - admins
+      - readers
+      - writers
+
+  AuthorizationAttribute:
+    type: object
+    description: |
+      An attribute for authorization. This object includes a data type, which represents the type of the attribute
+      attribute (which data types are allowed depends on which authorization plugin is deployed, and how it is
+      configured), and a value. A wildcard can be represented with data type '*', and value '*'. It means that all
+      authenticated users are allowed to perform an operation.
+    properties:
+      data_type:
+        type: string
+        description: the type of attribute (e.g., 'team', or 'permission', depending on the Nakadi configuration)
+      value:
+        type: string
+        description: the value of the attribute
+    required:
+      - data_type
+      - value
 
   SubscriptionEventTypeStats:
     type: object
