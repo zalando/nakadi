@@ -122,7 +122,7 @@ public class SubscriptionAT extends BaseAT {
 
     @Test
     public void testSubscriptionWithManyEventTypesIsCreated() throws IOException {
-        final List<String> eventTypes = IntStream.range(0, 30).mapToObj(i -> createEventType())
+        final List<String> eventTypes = IntStream.range(0, 10).mapToObj(i -> createEventType())
                 .map(EventTypeBase::getName)
                 .collect(Collectors.toList());
         final String subscription = "{\"owning_application\":\"app\",\"event_types\":" +
