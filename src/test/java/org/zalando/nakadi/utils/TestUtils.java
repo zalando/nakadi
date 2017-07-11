@@ -3,14 +3,26 @@ package org.zalando.nakadi.utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.IntStream.range;
 import org.apache.commons.io.IOUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.json.JSONObject;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.zalando.nakadi.config.JsonConfig;
@@ -24,29 +36,17 @@ import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.problem.Problem;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
-
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.IntStream.range;
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
+import org.zalando.problem.Problem;
 
 public class TestUtils {
 
     private static final String VALID_EVENT_TYPE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ";
 
     private static final Random RANDOM = new Random();
-    private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
+    public static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
+    public static final JsonTestHelper JSON_TEST_HELPER = new JsonTestHelper(OBJECT_MAPPER);
+    public static final MappingJackson2HttpMessageConverter JACKSON_2_HTTP_MESSAGE_CONVERTER = new MappingJackson2HttpMessageConverter(OBJECT_MAPPER);
 
     public static String randomUUID() {
         return UUID.randomUUID().toString();
@@ -152,13 +152,9 @@ public class TestUtils {
         return OBJECT_MAPPER.readValue(json, EventType.class);
     }
 
-    public static MappingJackson2HttpMessageConverter createMessageConverter() {
-        return new MappingJackson2HttpMessageConverter(new JsonConfig().jacksonObjectMapper());
-    }
-
     public static MockMvc mockMvcForController(final Object controller) {
         return standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), createMessageConverter())
+                .setMessageConverters(new StringHttpMessageConverter(), JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .build();
     }
 

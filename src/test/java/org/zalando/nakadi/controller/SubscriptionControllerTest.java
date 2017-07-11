@@ -1,6 +1,5 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import static java.text.MessageFormat.format;
 import java.util.Collections;
@@ -25,7 +24,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.ResultActions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -37,7 +35,6 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypePartition;
@@ -70,9 +67,9 @@ import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.SubscriptionsUriHelper.createSubscriptionListUri;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.RandomSubscriptionBuilder;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
+import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.createRandomSubscriptions;
 import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
@@ -86,8 +83,6 @@ public class SubscriptionControllerTest {
 
     private final SubscriptionDbRepository subscriptionRepository = mock(SubscriptionDbRepository.class);
     private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
-    private final ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
-    private final JsonTestHelper jsonHelper;
     private final StandaloneMockMvcBuilder mockMvcBuilder;
     private final TopicRepository topicRepository;
     private final ZkSubscriptionClient zkSubscriptionClient;
@@ -97,8 +92,6 @@ public class SubscriptionControllerTest {
     private static final Timeline TIMELINE = createFakeTimeline("topic");
 
     public SubscriptionControllerTest() throws Exception {
-        jsonHelper = new JsonTestHelper(objectMapper);
-
         final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
         when(featureToggleService.isFeatureEnabled(any())).thenReturn(true);
         when(featureToggleService.isFeatureEnabled(FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION))
@@ -120,13 +113,11 @@ public class SubscriptionControllerTest {
                 zkSubscriptionClientFactory, timelineService, eventTypeRepository, null,
                 cursorConverter, cursorOperationsService);
         final SubscriptionController controller = new SubscriptionController(featureToggleService, subscriptionService);
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
-                new MappingJackson2HttpMessageConverter(objectMapper);
         final ApplicationService applicationService = mock(ApplicationService.class);
         doReturn(true).when(applicationService).exists(any());
 
         mockMvcBuilder = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setControllerAdvice(new ExceptionHandling())
                 .setCustomArgumentResolvers(new TestHandlerMethodArgumentResolver());
     }
@@ -138,7 +129,7 @@ public class SubscriptionControllerTest {
 
         getSubscription(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(sameJSONAs(objectMapper.writeValueAsString(subscription))));
+                .andExpect(content().string(sameJSONAs(TestUtils.OBJECT_MAPPER.writeValueAsString(subscription))));
     }
 
     @Test
@@ -150,7 +141,7 @@ public class SubscriptionControllerTest {
 
         getSubscription(subscription.getId())
                 .andExpect(status().isNotFound())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     @Test
@@ -162,7 +153,7 @@ public class SubscriptionControllerTest {
 
         getSubscriptions()
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1)).listSubscriptions(ImmutableSet.of(), Optional.empty(), 0, 20);
     }
@@ -176,7 +167,7 @@ public class SubscriptionControllerTest {
 
         getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 0, 30)
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(subscriptionList)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(subscriptionList)));
 
         verify(subscriptionRepository, times(1))
                 .listSubscriptions(ImmutableSet.of("et1", "et2"), Optional.of("app"), 0, 30);
@@ -217,7 +208,7 @@ public class SubscriptionControllerTest {
 
         getSubscriptions(ImmutableSet.of("et1", "et2"), "app", 5, 10)
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(expectedResult)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedResult)));
     }
 
     @Test
@@ -259,7 +250,8 @@ public class SubscriptionControllerTest {
 
         getSubscriptionStats(subscription.getId())
                 .andExpect(status().isOk())
-                .andExpect(content().string(jsonHelper.matchesObject(new ItemsWrapper<>(expectedStats))));
+                .andExpect(content().string(
+                        TestUtils.JSON_TEST_HELPER.matchesObject(new ItemsWrapper<>(expectedStats))));
     }
 
     @Test
@@ -332,7 +324,7 @@ public class SubscriptionControllerTest {
         resultActions
                 .andExpect(status().is(expectedProblem.getStatus().getStatusCode()))
                 .andExpect(content().contentType(PROBLEM_CONTENT_TYPE))
-                .andExpect(content().string(jsonHelper.matchesObject(expectedProblem)));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(expectedProblem)));
     }
 
     private class TestHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {

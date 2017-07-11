@@ -3,7 +3,6 @@ package org.zalando.nakadi.service;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.io.ByteArrayOutputStream;
@@ -40,7 +39,6 @@ import org.junit.Test;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.ConsumedEvent;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.Timeline;
@@ -69,8 +67,6 @@ public class EventStreamTest {
     private static final Timeline TIMELINE = createFakeTimeline(TOPIC);
     private static CursorConverter cursorConverter;
     private static EventStreamWriterProvider writerProvider;
-
-    private final ObjectMapper mapper = new JsonConfig().jacksonObjectMapper();
 
     @BeforeClass
     public static void setupMocks() {
@@ -455,7 +451,7 @@ public class EventStreamTest {
         try {
             writerProvider.getWriter().writeBatch(baos, cursor, events);
             final Map<String, Object> batch =
-                    mapper.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {
+                    TestUtils.OBJECT_MAPPER.readValue(baos.toString(), new TypeReference<Map<String, Object>>() {
                     });
 
             final Map<String, String> cursorM = (Map<String, String>) batch.get("cursor");
@@ -490,7 +486,7 @@ public class EventStreamTest {
             assertEquals("{\"cursor\":{\"partition\":\"11\",\"offset\":\"000000000000000012\"}}\n", json);
 
             final Map<String, Object> batch =
-                    mapper.readValue(json, new TypeReference<Map<String, Object>>() {
+                    TestUtils.OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
                     });
 
             final Map<String, String> cursorM = (Map<String, String>) batch.get("cursor");

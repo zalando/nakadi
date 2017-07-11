@@ -1,22 +1,37 @@
 package org.zalando.nakadi.controller;
 
 import com.codahale.metrics.MetricRegistry;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import org.json.JSONException;
 import org.junit.Before;
 import org.junit.Test;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.mock;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.zalando.nakadi.config.JsonConfig;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.BatchItemResponse;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
+import static org.zalando.nakadi.domain.EventPublishingStatus.ABORTED;
+import static org.zalando.nakadi.domain.EventPublishingStatus.FAILED;
+import static org.zalando.nakadi.domain.EventPublishingStatus.SUBMITTED;
 import org.zalando.nakadi.domain.EventPublishingStep;
+import static org.zalando.nakadi.domain.EventPublishingStep.PARTITIONING;
+import static org.zalando.nakadi.domain.EventPublishingStep.PUBLISHING;
+import static org.zalando.nakadi.domain.EventPublishingStep.VALIDATING;
 import org.zalando.nakadi.exceptions.EventTypeTimeoutException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
@@ -24,39 +39,17 @@ import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
-import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.service.BlacklistService;
+import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.JsonTestHelper;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
-import static org.zalando.nakadi.domain.EventPublishingStatus.ABORTED;
-import static org.zalando.nakadi.domain.EventPublishingStatus.FAILED;
-import static org.zalando.nakadi.domain.EventPublishingStatus.SUBMITTED;
-import static org.zalando.nakadi.domain.EventPublishingStep.PARTITIONING;
-import static org.zalando.nakadi.domain.EventPublishingStep.PUBLISHING;
-import static org.zalando.nakadi.domain.EventPublishingStep.VALIDATING;
+import org.zalando.nakadi.utils.TestUtils;
 
 public class EventPublishingControllerTest {
 
     public static final String TOPIC = "my-topic";
     private static final String EVENT_BATCH = "[{\"payload\": \"My Event Payload\"}]";
 
-    private ObjectMapper objectMapper = new JsonConfig().jacksonObjectMapper();
     private MetricRegistry metricRegistry;
-    private JsonTestHelper jsonHelper;
     private EventPublisher publisher;
     private FeatureToggleService featureToggleService;
     private SecuritySettings settings;
@@ -67,7 +60,6 @@ public class EventPublishingControllerTest {
 
     @Before
     public void setUp() throws Exception {
-        jsonHelper = new JsonTestHelper(objectMapper);
         metricRegistry = new MetricRegistry();
         publisher = mock(EventPublisher.class);
         eventTypeMetricRegistry = new EventTypeMetricRegistry(metricRegistry);
@@ -79,10 +71,8 @@ public class EventPublishingControllerTest {
         final EventPublishingController controller =
                 new EventPublishingController(publisher, eventTypeMetricRegistry, blacklistService);
 
-        final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter
-                = new MappingJackson2HttpMessageConverter(objectMapper);
         mockMvc = standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(), jackson2HttpMessageConverter)
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(settings, featureToggleService))
                 .build();
     }
@@ -131,7 +121,7 @@ public class EventPublishingControllerTest {
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(content().string(jsonHelper.matchesObject(responses())));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(responses())));
     }
 
     @Test
@@ -145,7 +135,7 @@ public class EventPublishingControllerTest {
 
         postBatch(TOPIC, EVENT_BATCH)
                 .andExpect(status().isMultiStatus())
-                .andExpect(content().string(jsonHelper.matchesObject(responses())));
+                .andExpect(content().string(TestUtils.JSON_TEST_HELPER.matchesObject(responses())));
     }
 
     @Test

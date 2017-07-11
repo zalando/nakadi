@@ -1,18 +1,19 @@
 package org.zalando.nakadi.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
@@ -23,14 +24,10 @@ import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.PrincipalMockFactory;
+import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.nakadi.view.TimelineView;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
-
-import javax.ws.rs.core.Response;
-import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
 
 
 public class TimelinesControllerTest {
@@ -38,15 +35,12 @@ public class TimelinesControllerTest {
     private final TimelineService timelineService = Mockito.mock(TimelineService.class);
     private final SecuritySettings securitySettings = Mockito.mock(SecuritySettings.class);
     private final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
-    private final ObjectMapper objectMapper;
     private MockMvc mockMvc;
 
     public TimelinesControllerTest() {
         final TimelinesController controller = new TimelinesController(timelineService);
-        objectMapper = new JsonConfig().jacksonObjectMapper();
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setMessageConverters(new StringHttpMessageConverter(),
-                        new MappingJackson2HttpMessageConverter(objectMapper))
+                .setMessageConverters(new StringHttpMessageConverter(), TestUtils.JACKSON_2_HTTP_MESSAGE_CONVERTER)
                 .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
                 .build();
     }
@@ -74,7 +68,8 @@ public class TimelinesControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(timelineViews)));
+                .andExpect(MockMvcResultMatchers.content().json(
+                        TestUtils.OBJECT_MAPPER.writeValueAsString(timelineViews)));
     }
 
     @Test
@@ -94,7 +89,7 @@ public class TimelinesControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(MockMvcResultMatchers.status().isForbidden())
-                .andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(
+                .andExpect(MockMvcResultMatchers.content().json(TestUtils.OBJECT_MAPPER.writeValueAsString(
                         Problem.valueOf(Response.Status.FORBIDDEN, "whenForbiddenAccessExceptionThen403"))));
     }
 
@@ -106,7 +101,7 @@ public class TimelinesControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(MockMvcResultMatchers.status().isNotFound())
-                .andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(
+                .andExpect(MockMvcResultMatchers.content().json(TestUtils.OBJECT_MAPPER.writeValueAsString(
                         Problem.valueOf(Response.Status.NOT_FOUND, "whenNotFoundExceptionThen404"))));
     }
 
@@ -118,7 +113,7 @@ public class TimelinesControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(MockMvcResultMatchers.status().isUnprocessableEntity())
-                .andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(
+                .andExpect(MockMvcResultMatchers.content().json(TestUtils.OBJECT_MAPPER.writeValueAsString(
                         Problem.valueOf(MoreStatus.UNPROCESSABLE_ENTITY, "whenUnableProcessExceptionThen422"))));
     }
 
