@@ -11,8 +11,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
@@ -94,7 +94,7 @@ public class AuthorizationValidatorTest {
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder().authorization(null).build());
     }
 
-    @Test(expected = ForbiddenAccessException.class)
+    @Test(expected = AccessDeniedException.class)
     public void whenNotAuthorizedThenForbiddenAccessException() throws Exception {
         when(authorizationService.isAuthorized(any(), any(), any())).thenReturn(false);
         validator.authorizeEventTypeAdmin(EventTypeTestBuilder.builder()

@@ -45,7 +45,6 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static org.hamcrest.Matchers.containsString;
@@ -67,7 +66,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.zalando.nakadi.domain.EventCategory.BUSINESS;
-import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_APPLICATION_LEVEL_PERMISSIONS;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
 import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
@@ -353,29 +351,12 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPUTNotOwner403() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(any());
-
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to this event type");
-
-        putEventType(eventType, eventType.getName(), "alice")
-                .andExpect(status().isForbidden())
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenPUTAdmin200() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
         doReturn(eventType).when(eventTypeRepository).findByName(any());
 
         doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
 
         putEventType(eventType, eventType.getName(), "nakadi")
                 .andExpect(status().isOk());
@@ -438,24 +419,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenDeleteEventTypeThen403() throws Exception {
-        final EventType eventType = buildDefaultEventType();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-
-        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "You don't have access to event type "
-                + eventType.getName());
-
-        deleteEventType(eventType.getName(), "alice")
-                .andExpect(status().isForbidden())
-                .andExpect(content().string(matchesProblem(expectedProblem)));
-    }
-
-    @Test
     public void whenDeleteEventTypeNotAdminAndDeletionDeactivatedThenForbidden() throws Exception {
         final EventType eventType = buildDefaultEventType();
 
@@ -474,24 +437,6 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         postEventType(eventType);
         disableETDeletionFeature();
-
-        deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
-    }
-
-    @Test
-    public void whenDeleteEventTypeAdminThen200() throws Exception {
-
-        final EventType eventType = buildDefaultEventType();
-
-        doReturn(eventType).when(eventTypeRepository).findByName(eventType.getName());
-        doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(eventType.getName());
-
-        doReturn(SecuritySettings.AuthMode.BASIC).when(settings).getAuthMode();
-        doReturn(true).when(featureToggleService).isFeatureEnabled(CHECK_APPLICATION_LEVEL_PERMISSIONS);
-
-        final Multimap<TopicRepository, String> topicsToDelete = ArrayListMultimap.create();
-        topicsToDelete.put(topicRepository, eventType.getTopic());
-        doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
 
         deleteEventType(eventType.getName(), "nakadi").andExpect(status().isOk()).andExpect(content().string(""));
     }

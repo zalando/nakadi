@@ -2,8 +2,11 @@ package org.zalando.nakadi.controller;
 
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
+import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -34,19 +37,18 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
     }
 
     @Test
-    public void whenPUTNotAuthorized200() throws Exception {
+    public void whenPUTNotAuthorizedThen403() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
+        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
 
         doReturn(eventType).when(eventTypeRepository).findByName(any());
-        doThrow(new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
-                "satisfy the authorization `admin` requirements"))
+        doThrow(new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource))
                 .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
 
         putEventType(eventType, eventType.getName())
                 .andExpect(status().isForbidden())
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.FORBIDDEN,
-                        "Editing the `EventType` is only allowed for clients that satisfy the authorization " +
-                                "`admin` requirements"))));
+                        "Access on ADMIN event-type:"+ eventType.getName() + " denied"))));
     }
 
     @Test
@@ -66,17 +68,16 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
     @Test
     public void whenDELETENotAuthorized200() throws Exception {
         final EventType eventType = EventTypeTestBuilder.builder().build();
+        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
 
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(any());
-        doThrow(new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
-                "satisfy the authorization `admin` requirements"))
+        doThrow(new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource))
                 .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
 
         deleteEventType(eventType.getName())
                 .andExpect(status().isForbidden())
                 .andExpect(content().string(matchesProblem(Problem.valueOf(Response.Status.FORBIDDEN,
-                        "Editing the `EventType` is only allowed for clients that satisfy the authorization " +
-                                "`admin` requirements"))));
+                        "Access on ADMIN event-type:" + eventType.getName() + " denied"))));
     }
 
 }

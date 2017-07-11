@@ -4,9 +4,7 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 
-import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public class EventTypeResource implements Resource {

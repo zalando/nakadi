@@ -13,7 +13,6 @@ import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.Result;
 import org.zalando.nakadi.service.StorageService;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.problem.Problem;
 
 import java.util.ArrayList;
@@ -38,8 +37,6 @@ public class StoragesControllerTest {
 
     private final StorageService storageService = mock(StorageService.class);
     private final SecuritySettings securitySettings = mock(SecuritySettings.class);
-    private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
-
     private MockMvc mockMvc;
 
     @Before
@@ -52,7 +49,7 @@ public class StoragesControllerTest {
         mockMvc = standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
                         new MappingJackson2HttpMessageConverter(objectMapper))
-                .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(securitySettings))
                 .build();
     }
 

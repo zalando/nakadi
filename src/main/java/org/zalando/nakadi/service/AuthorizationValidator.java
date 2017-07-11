@@ -9,9 +9,7 @@ import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.SubscriptionBase;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
-import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
@@ -111,7 +109,7 @@ public class AuthorizationValidator {
     }
 
     public void authorizeEventTypeWrite(final EventType eventType)
-            throws ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         if (eventType.getAuthorization() == null) {
             return;
         }
@@ -123,7 +121,7 @@ public class AuthorizationValidator {
                     AuthorizationService.Operation.WRITE,
                     resource);
             if (!authorized) {
-                throw new ResourceAccessNotAuthorizedException(AuthorizationService.Operation.WRITE, resource);
+                throw new AccessDeniedException(null, AuthorizationService.Operation.WRITE, resource);
             }
         } catch (final PluginException ex) {
             throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
@@ -131,7 +129,7 @@ public class AuthorizationValidator {
     }
 
     public void authorizeEventTypeAdmin(final EventType eventType)
-            throws ForbiddenAccessException, ServiceTemporarilyUnavailableException {
+            throws AccessDeniedException, ServiceTemporarilyUnavailableException {
         if (eventType.getAuthorization() == null) {
             return;
         }
@@ -139,8 +137,7 @@ public class AuthorizationValidator {
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
             if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
-                throw new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
-                        "satisfy the authorization `admin` requirements");
+                throw new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource);
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
