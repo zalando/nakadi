@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.zalando.nakadi.exceptions.runtime.FeatureNotAvailableException;
 
 @Service
 public interface FeatureToggleService {
@@ -11,6 +12,12 @@ public interface FeatureToggleService {
     void setFeature(FeatureWrapper feature);
 
     boolean isFeatureEnabled(Feature feature);
+
+    default void checkFeatureOn(final Feature feature) {
+        if (!isFeatureEnabled(feature)) {
+            throw new FeatureNotAvailableException("Feature " + feature + " is disabled", feature);
+        }
+    }
 
     default List<FeatureWrapper> getFeatures() {
         return Arrays.stream(Feature.values())

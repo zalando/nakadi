@@ -24,8 +24,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.CURSORS_WITH_DIFFERENT_PARTITION;
-import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_OFFSET_ORDER;
-import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.INVERTED_TIMELINE_ORDER;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.PARTITION_NOT_FOUND;
 import static org.zalando.nakadi.exceptions.runtime.InvalidCursorOperation.Reason.TIMELINE_NOT_FOUND;
 
@@ -44,7 +42,7 @@ public class CursorOperationsService {
         if (!initialCursor.getPartition().equals(finalCursor.getPartition())) {
             throw new InvalidCursorOperation(CURSORS_WITH_DIFFERENT_PARTITION);
         } else if (initialCursor.getTimeline().getOrder() > finalCursor.getTimeline().getOrder()) {
-            throw new InvalidCursorOperation(INVERTED_TIMELINE_ORDER);
+            return - getDistanceDifferentTimelines(finalCursor, initialCursor);
         }
 
         if (initialCursor.getTimeline().getOrder() == finalCursor.getTimeline().getOrder()) {
@@ -56,9 +54,7 @@ public class CursorOperationsService {
 
     private long getDistanceSameTimeline(final NakadiCursor initialCursor, final NakadiCursor finalCursor) {
         final long distance = numberOfEventsBeforeCursor(finalCursor) - numberOfEventsBeforeCursor(initialCursor);
-        if (distance < 0) {
-            throw new InvalidCursorOperation(INVERTED_OFFSET_ORDER);
-        }
+
         return distance;
     }
 

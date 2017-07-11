@@ -1,15 +1,16 @@
 package org.zalando.nakadi.service.subscription.zk;
 
 import java.util.Collection;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.TopicPartition;
+import java.util.Comparator;
+import java.util.List;
+import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.runtime.OperationTimeoutException;
 import org.zalando.nakadi.exceptions.runtime.ZookeeperException;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
-
-import java.util.List;
+import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 
 public interface ZkSubscriptionClient {
 
@@ -30,62 +31,42 @@ public interface ZkSubscriptionClient {
      * CREATED. After {{@link #fillEmptySubscription}} call it will have value INITIALIZED. So true
      * will be returned in case of state is equal to CREATED.
      */
-    boolean createSubscription();
+    boolean isSubscriptionCreatedAndInitialized() throws NakadiRuntimeException;
 
     /**
-     * Deletes subscription wiht all its data in zookeeper
+     * Deletes subscription with all its data in zookeeper
      */
     void deleteSubscription();
 
     /**
      * Fills subscription object using partitions information provided (mapping from (topic, partition) to real offset
-     * (NOT "BEGIN"). Generated object in zk will look like this
-     * nakadi
-     * - {subscription_id}
-     * |- state: INITIALIZED
-     * |- event-types:
-     * ||- et1:
-     * |||- partitions:
-     * || |- 0: {session: null, next_session: null, state: UNASSIGNED}
-     * || ||- offset: {OFFSET}
-     * || |- 1: {session: null, next_session: null, state: UNASSIGNED}
-     * ||  |- offset: {OFFSET}
-     * ||- et2:
-     * | |-partitions:
-     * |  |- 0: {session: null, next_session: null, state: UNASSIGNED}
-     * |  ||- offset: {OFFSET}
-     * |  |- 1: {session: null, next_session: null, state: UNASSIGNED}
-     * |   |- offset: {OFFSET}
+     * (NOT "BEGIN").
      *
      * @param cursors Data to use for subscription filling.
      */
-    void fillEmptySubscription(Collection<NakadiCursor> cursors);
-
-
-    /**
-     * Updates specified partition in zk.
-     */
-    void updatePartitionConfiguration(Partition partition);
+    void fillEmptySubscription(Collection<SubscriptionCursorWithoutToken> cursors);
 
     /**
-     * Increments value in /nakadi/subscriptions/{subscriptionId}/topology_version
+     * Updates specified partitions in zk.
      */
-    void incrementTopology();
-
+    void updatePartitionsConfiguration(Partition[] partitions) throws NakadiRuntimeException,
+            SubscriptionNotInitializedException;
 
     /**
      * Returns session list in zk related to this subscription.
      *
      * @return List of existing sessions.
      */
-    Session[] listSessions();
+    Session[] listSessions() throws SubscriptionNotInitializedException;
+
+    boolean isActiveSession(String streamId) throws ServiceUnavailableException;
 
     /**
      * List partitions
      *
      * @return list of partitions related to this subscription.
      */
-    Partition[] listPartitions();
+    Partition[] listPartitions() throws SubscriptionNotInitializedException, NakadiRuntimeException;
 
     /**
      * Subscribes to changes of session list in /nakadi/subscriptions/{subscriptionId}/sessions.
@@ -103,15 +84,19 @@ public interface ZkSubscriptionClient {
      */
     ZKSubscription subscribeForTopologyChanges(Runnable listener);
 
-    ZKSubscription subscribeForOffsetChanges(TopicPartition key, Runnable commitListener);
+    ZKSubscription subscribeForOffsetChanges(EventTypePartition key, Runnable commitListener);
 
     /**
-     * Returns current offset value for specified partition key.
+     * Returns current offset value for specified partition key. Offset includes timeline and version data.
+     * The value that is stored there is a view value, so it will look like 001-0001-00000000000000000001
      *
      * @param key Key to get offset for
      * @return commit offset
      */
-    String getOffset(TopicPartition key);
+    SubscriptionCursorWithoutToken getOffset(EventTypePartition key) throws NakadiRuntimeException;
+
+    List<Boolean> commitOffsets(List<SubscriptionCursorWithoutToken> cursors,
+                                Comparator<SubscriptionCursorWithoutToken> comparator);
 
     /**
      * Registers client connection using session id in /nakadi/subscriptions/{subscriptionId}/sessions/{session.id}
@@ -129,7 +114,8 @@ public interface ZkSubscriptionClient {
      * @param sessionId  Someone who actually tries to transfer data.
      * @param partitions topic ids and partition ids of transferred data.
      */
-    void transfer(String sessionId, Collection<TopicPartition> partitions);
+    void transfer(String sessionId, Collection<EventTypePartition> partitions)
+            throws NakadiRuntimeException, SubscriptionNotInitializedException;
 
     /**
      * Retrieves subscription data like partitions and sessions from ZK under lock.
@@ -137,7 +123,7 @@ public interface ZkSubscriptionClient {
      * @return list of partitions and sessions wrapped in
      * {@link org.zalando.nakadi.service.subscription.zk.ZkSubscriptionNode}
      */
-    ZkSubscriptionNode getZkSubscriptionNodeLocked();
+    ZkSubscriptionNode getZkSubscriptionNodeLocked() throws SubscriptionNotInitializedException;
 
     /**
      * Subscribes to cursor reset event.
@@ -158,10 +144,11 @@ public interface ZkSubscriptionClient {
     /**
      * Resets subscription offsets for provided cursors.
      *
-     * @param cursors cursors to reset
+     * @param cursors cursors to reset to
      * @param timeout wait until give up resetting
      * @throws OperationTimeoutException
      * @throws ZookeeperException
      */
-    void resetCursors(List<NakadiCursor> cursors, long timeout) throws OperationTimeoutException, ZookeeperException;
+    void resetCursors(List<SubscriptionCursorWithoutToken> cursors, long timeout)
+            throws OperationTimeoutException, ZookeeperException;
 }

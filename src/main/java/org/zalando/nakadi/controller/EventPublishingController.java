@@ -1,21 +1,29 @@
 package org.zalando.nakadi.controller;
 
 import com.google.common.base.Charsets;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import static org.springframework.http.ResponseEntity.status;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.nakadi.domain.EventPublishResult;
 import org.zalando.nakadi.domain.EventPublishingStatus;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.exceptions.ResourceAccessNotAuthorizedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.EventTypeMetricRegistry;
 import org.zalando.nakadi.metrics.EventTypeMetrics;
 import org.zalando.nakadi.security.Client;
@@ -24,13 +32,6 @@ import org.zalando.nakadi.service.EventPublisher;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 import org.zalando.problem.spring.web.advice.Responses;
-
-import javax.ws.rs.core.Response;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import static org.springframework.http.ResponseEntity.status;
-import static org.springframework.web.bind.annotation.RequestMethod.POST;
 import static org.zalando.problem.spring.web.advice.Responses.create;
 
 @RestController
@@ -55,7 +56,7 @@ public class EventPublishingController {
     public ResponseEntity postEvent(@PathVariable final String eventTypeName,
                                     @RequestBody final String eventsAsString,
                                     final NativeWebRequest request,
-                                    final Client client) {
+                                    final Client client) throws ResourceAccessNotAuthorizedException {
         LOG.trace("Received event {} for event type {}", eventsAsString, eventTypeName);
         final EventTypeMetrics eventTypeMetrics = eventTypeMetricRegistry.metricsFor(eventTypeName);
 
@@ -75,11 +76,23 @@ public class EventPublishingController {
         }
     }
 
+    @ExceptionHandler(ResourceAccessNotAuthorizedException.class)
+    public ResponseEntity<Problem> processUnauthorizedAccess(final ResourceAccessNotAuthorizedException e,
+                                                             final NativeWebRequest request) {
+        return Responses.create(
+                Problem.valueOf(
+                        Response.Status.FORBIDDEN,
+                        "Operation " + e.getOperation() + " is not allowed for resource " + e.getResource()),
+                request);
+    }
+
+
     private ResponseEntity postEventInternal(final String eventTypeName,
                                              final String eventsAsString,
                                              final NativeWebRequest nativeWebRequest,
                                              final EventTypeMetrics eventTypeMetrics,
-                                             final Client client) {
+                                             final Client client)
+            throws ResourceAccessNotAuthorizedException, ServiceTemporarilyUnavailableException {
         final long startingNanos = System.nanoTime();
         try {
             final EventPublishResult result = publisher.publish(eventsAsString, eventTypeName, client);
@@ -90,8 +103,7 @@ public class EventPublishingController {
             reportMetrics(eventTypeMetrics, result, totalSizeBytes, eventCount);
             reportSLOs(startingNanos, totalSizeBytes, eventCount, result);
 
-            final ResponseEntity response = response(result);
-            return response;
+            return response(result);
         } catch (final JSONException e) {
             LOG.debug("Problem parsing event", e);
             return processJSONException(e, nativeWebRequest);

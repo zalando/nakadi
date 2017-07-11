@@ -3,6 +3,7 @@ package org.zalando.nakadi.webservice.timelines;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import static com.jayway.restassured.RestAssured.given;
 import com.jayway.restassured.response.Header;
 import com.jayway.restassured.response.Response;
 import java.io.IOException;
@@ -18,14 +19,12 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.webservice.BaseAT;
-import static com.jayway.restassured.RestAssured.given;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createEventType;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.createTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.deleteTimeline;
 import static org.zalando.nakadi.webservice.utils.NakadiTestUtils.publishEvent;
 
-public class TimelineConsumptionTest extends BaseAT {
+public class TimelineConsumptionTest {
     private static EventType eventType;
     private static String[] cursorsDuringPublish;
 

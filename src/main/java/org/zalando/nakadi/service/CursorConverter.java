@@ -20,6 +20,8 @@ public interface CursorConverter {
 
     SubscriptionCursor convert(NakadiCursor nakadiCursor, String token);
 
+    SubscriptionCursorWithoutToken convertToNoToken(NakadiCursor cursor);
+
     // Convert from view to model
     NakadiCursor convert(String eventTypeName, Cursor cursor) throws
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException, ServiceUnavailableException;

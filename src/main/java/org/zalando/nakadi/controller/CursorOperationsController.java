@@ -27,6 +27,7 @@ import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.Client;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorOperationsService;
 import org.zalando.nakadi.util.ValidListWrapper;
@@ -54,20 +55,28 @@ public class CursorOperationsController {
     private final CursorConverter cursorConverter;
     private final CursorOperationsService cursorOperationsService;
     private final EventTypeRepository eventTypeRepository;
+    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public CursorOperationsController(final CursorOperationsService cursorOperationsService,
-                             final CursorConverter cursorConverter, final EventTypeRepository eventTypeRepository) {
+                                      final CursorConverter cursorConverter,
+                                      final EventTypeRepository eventTypeRepository,
+                                      final AuthorizationValidator authorizationValidator) {
         this.cursorOperationsService = cursorOperationsService;
         this.cursorConverter = cursorConverter;
         this.eventTypeRepository = eventTypeRepository;
+        this.authorizationValidator = authorizationValidator;
     }
 
     @RequestMapping(path = "/event-types/{eventTypeName}/cursor-distances", method = RequestMethod.POST)
     public ResponseEntity<?> getDistance(@PathVariable("eventTypeName") final String eventTypeName,
                                          @Valid @RequestBody final ValidListWrapper<CursorDistance> queries,
-                                         final Client client) {
+                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
+        // TODO: remove once new authorization is in place
         checkReadScopes(eventTypeName, client);
+
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeStreamRead(client, eventType);
 
         queries.getList().forEach(query -> {
             try {
@@ -92,8 +101,12 @@ public class CursorOperationsController {
     @RequestMapping(path = "/event-types/{eventTypeName}/shifted-cursors", method = RequestMethod.POST)
     public ResponseEntity<?> moveCursors(@PathVariable("eventTypeName") final String eventTypeName,
                                          @Valid @RequestBody final ValidListWrapper<ShiftedCursor> cursors,
-                                         final Client client) {
+                                         final Client client) throws InternalNakadiException, NoSuchEventTypeException {
+        // TODO: remove once new authorization is in place
         checkReadScopes(eventTypeName, client);
+
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeStreamRead(client, eventType);
 
         final List<ShiftedNakadiCursor> domainCursor = cursors.getList().stream()
                 .map(this.toShiftedNakadiCursor(eventTypeName))
@@ -110,8 +123,12 @@ public class CursorOperationsController {
     @RequestMapping(path = "/event-types/{eventTypeName}/cursors-lag", method = RequestMethod.POST)
     public ResponseEntity<?> cursorsLag(@PathVariable("eventTypeName") final String eventTypeName,
                                         @Valid @RequestBody final ValidListWrapper<Cursor> cursors,
-                                        final Client client) {
+                                        final Client client) throws InternalNakadiException, NoSuchEventTypeException {
+        // TODO: remove once new authorization is in place
         checkReadScopes(eventTypeName, client);
+
+        final EventType eventType = eventTypeRepository.findByName(eventTypeName);
+        authorizationValidator.authorizeStreamRead(client, eventType);
 
         final List<NakadiCursor> domainCursor = cursors.getList().stream()
                 .map(toNakadiCursor(eventTypeName))
@@ -136,13 +153,8 @@ public class CursorOperationsController {
 
     private String clientErrorMessage(final InvalidCursorOperation.Reason reason) {
         switch (reason) {
-            case INVERTED_TIMELINE_ORDER: return "Inverted timelines. Final cursor must correspond to a newer " +
-                    "timeline than initial cursor.";
-
             case TIMELINE_NOT_FOUND: return "Timeline not found. It might happen in case the cursor refers to a " +
                     "timeline that has already expired.";
-            case INVERTED_OFFSET_ORDER: return "Inverted offsets. Final cursor offsets must be newer than initial " +
-                    "cursor offsets";
             case PARTITION_NOT_FOUND: return "Partition not found.";
             case CURSORS_WITH_DIFFERENT_PARTITION: return "Cursors with different partition. Pairs of cursors should " +
                     "have matching partitions.";

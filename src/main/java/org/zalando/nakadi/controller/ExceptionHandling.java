@@ -16,16 +16,19 @@ import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.TimelineException;
 import org.zalando.nakadi.exceptions.TopicCreationException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.exceptions.runtime.CursorConversionException;
 import org.zalando.nakadi.exceptions.runtime.MyNakadiRuntimeException1;
 import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.RepositoryProblemException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.problem.Problem;
 import org.zalando.problem.spring.web.advice.ProblemHandling;
 import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
+import static org.zalando.nakadi.util.AuthorizationUtils.errorMessage;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
@@ -72,8 +75,14 @@ public final class ExceptionHandling implements ProblemHandling {
 
     @ExceptionHandler(NoEventTypeException.class)
     public ResponseEntity<Problem> noEventTypeException(final NoEventTypeException exception,
-                                                               final NativeWebRequest request) {
+                                                        final NativeWebRequest request) {
         return Responses.create(Response.Status.NOT_FOUND, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
+                                                         final NativeWebRequest request) {
+        return Responses.create(Response.Status.FORBIDDEN, errorMessage(exception), request);
     }
 
     @ExceptionHandler(IllegalScopeException.class)
@@ -134,8 +143,16 @@ public final class ExceptionHandling implements ProblemHandling {
 
     @ExceptionHandler(CursorConversionException.class)
     public ResponseEntity<Problem> handleCursorConversionException(final CursorConversionException exception,
-                                                                final NativeWebRequest request) {
+                                                                   final NativeWebRequest request) {
         LOG.error(exception.getMessage(), exception);
         return Responses.create(UNPROCESSABLE_ENTITY, exception.getMessage(), request);
     }
+
+    @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
+    public ResponseEntity<Problem> handleServiceTemporaryUnavailableException(
+            final ServiceTemporarilyUnavailableException exception, final NativeWebRequest request) {
+        LOG.error(exception.getMessage(), exception);
+        return Responses.create(Response.Status.SERVICE_UNAVAILABLE, exception.getMessage(), request);
+    }
+
 }

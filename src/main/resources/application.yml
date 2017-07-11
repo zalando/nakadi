@@ -18,15 +18,17 @@ spring:
     username: nakadi
     password: nakadi
     driverClassName: org.postgresql.Driver
-    initialSize: 2
-    maxActive: 2
-    minIdle: 1
-    maxIdle: 1
-    testOnBorrow: true
-    validationQuery: SELECT 1
-    testWhileIdle: true
-    timeBetweenEvictionRunsMillis: 5000
-    minEvictableIdleTimeMillis: 60000
+    tomcat:
+      initial-size: 2
+      max-active: 2
+      min-idle: 1
+      max-idle: 1
+      test-on-borrow: true
+      validation-query: SELECT 1
+      test-while-idle: true
+      time-between-eviction-runs-millis: 5000
+      min-evictable-idle-time-millis: 60000
+      connection-properties: socketTimeout=2;connectTimeout=2;loginTimeout=2
 
 hystrix.command.default.execution.isolation.strategy: SEMAPHORE
 hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 15000
@@ -76,9 +78,11 @@ nakadi:
       eventTypeWrite: nakadi.event_type.write
       eventStreamRead: nakadi.event_stream.read
       eventStreamWrite: nakadi.event_stream.write
-  auth:
-    plugin:
+  plugins:
+    auth:
       factory: org.zalando.nakadi.plugin.auth.DefaultApplicationServiceFactory
+    authz:
+      factory: org.zalando.nakadi.plugin.auth.DefaultAuthorizationServiceFactory
   event.max.bytes: 999000
   timeline.wait.timeoutMs: 40000
   subscription:

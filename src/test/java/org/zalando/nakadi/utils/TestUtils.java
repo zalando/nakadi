@@ -3,12 +3,6 @@ package org.zalando.nakadi.utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
 import org.apache.commons.io.IOUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.joda.time.DateTime;
@@ -26,8 +20,19 @@ import org.zalando.nakadi.domain.EventTypeBase;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.problem.ValidationProblem;
 import org.zalando.problem.Problem;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -38,11 +43,7 @@ import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 
 public class TestUtils {
 
-    public static final String OWNING_APPLICATION = "event-producer-application";
-
     private static final String VALID_EVENT_TYPE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ";
-
-    private static final String VALID_EVENT_BODY_CHARS = VALID_EVENT_TYPE_NAME_CHARS + " \t!@#$%^&*()=+-_";
 
     private static final Random RANDOM = new Random();
     private static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
@@ -128,6 +129,13 @@ public class TestUtils {
 
     public static EventType buildDefaultEventType() {
         return EventTypeTestBuilder.builder().build();
+    }
+
+    public static AccessDeniedException mockAccessDeniedException() {
+        final Resource resource = mock(Resource.class);
+        when(resource.getName()).thenReturn("some-name");
+        when(resource.getType()).thenReturn("some-type");
+        return new AccessDeniedException(null, AuthorizationService.Operation.READ, resource);
     }
 
     public static String readFile(final String filename) throws IOException {

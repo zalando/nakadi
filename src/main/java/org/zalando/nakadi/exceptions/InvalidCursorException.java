@@ -66,7 +66,7 @@ public class InvalidCursorException extends Exception {
             case FORBIDDEN:
                 return "invalid stream id";
             case INVALID_FORMAT:
-                return "invalid cursor format";
+                return "invalid cursor format, partition: " + getPartition() + " offset: " + getOffset();
             case INVALID_OFFSET:
                 return "invalid offset " + getOffset() + " for partition " + getPartition();
             default:

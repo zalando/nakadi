@@ -1955,7 +1955,7 @@ definitions:
         format: int64
         description: |
           Number of events between two offsets. Initial offset is exclusive. It's only zero when both provided offsets
-          are equal. If the `final_cursor` is strictly smaller than the `initial_cursor` it results in client error.
+          are equal.
 
   Cursor:
     required:
@@ -2094,13 +2094,14 @@ definitions:
         example: 'gizig'
         description: |
           The id of application owning the subscription.
+        minLength: 1
       event_types:
         type: array
         items:
           type: string
         description: |
           EventTypes to subscribe to.
-          The order is not important. Subscriptions that differ only be the order of EventTypes will be
+          The order is not important. Subscriptions that differ only by the order of EventTypes will be
           considered the same and will have the same id. The size of event_types list is limited by total number
           of partitions within these event types. Default limit for partition count is 100.
       consumer_group:
@@ -2110,6 +2111,7 @@ definitions:
           The value describing the use case of this subscription.
           In general that is an additional identifier used to differ subscriptions having the same
           owning_application and event_types.
+        minLength: 1
         default: 'default'
       created_at:
         type: string
@@ -2126,7 +2128,7 @@ definitions:
           - `begin` - read from the oldest available event.
           - `end` - read from the most recent offset.
           - `cursors` - read from cursors provided in `initial_cursors` property.
-          Applied in the moment when client starts reading from a subscription.
+          Applied when the client starts reading from a subscription.
         default: 'end'
       initial_cursors:
         type: array
@@ -2249,7 +2251,7 @@ definitions:
           Required when 'partition_resolution_strategy' is set to 'hash'. Must be absent otherwise.
           Indicates the fields used for evaluation the partition of Events of this type.
 
-          If set it MUST be a valid required field as defined in the schema.
+          If this is set it MUST be a valid required field as defined in the schema.
 
       default_statistic:
         $ref: '#/definitions/EventTypeStatistics'
@@ -2340,7 +2342,7 @@ definitions:
   EventTypeStatistics:
     type: object
     description: |
-      Operational statistics for an EventType. This data MUST be provided by users on Event Type
+      Operational statistics for an EventType. This data may be provided by users on Event Type
       creation. Nakadi uses this object in order to provide an optimal number of partitions from a throughput perspective.
 
     properties:
@@ -2468,9 +2470,9 @@ definitions:
             unconsumed_events:
               type: number
               description: |
-                The amount of events in this partition that are not yet consumed within this subscription. May be not
-                determined at the moment when no events were yet consumed from the partition in this subscription (in
-                that case the property will be absent).
+                The amount of events in this partition that are not yet consumed within this subscription.
+                The property may be absent at the moment when no events were yet consumed from the partition in this
+                subscription (In case of `read_from` is `BEGIN` or `END`)
             stream_id:
               type: string
               description: the id of the stream that consumes data from this partition

@@ -79,11 +79,6 @@ public class NakadiCursor implements Comparable<NakadiCursor> {
                 && Objects.equals(this.offset, that.offset);
     }
 
-    // TODO: Remove method one subscriptions are transferred to use timelines.
-    public NakadiCursor withOffset(final String offset) {
-        return new NakadiCursor(timeline, partition, offset);
-    }
-
     @Override
     public int compareTo(final NakadiCursor other) {
         if ((other.getTimeline().isFake() && this.getTimeline().isFirstAfterFake())

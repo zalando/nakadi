@@ -52,7 +52,7 @@ public class EventStream {
             int messagesRead = 0;
             final Map<String, Integer> keepAliveInARow = createMapWithPartitionKeys(partition -> 0);
 
-            final Map<String, List<String>> currentBatches =
+            final Map<String, List<byte[]>> currentBatches =
                     createMapWithPartitionKeys(partition -> Lists.newArrayList());
             // Partition to NakadiCursor.
             final Map<String, NakadiCursor> latestOffsets = config.getCursors().stream().collect(
@@ -146,12 +146,11 @@ public class EventStream {
                 .collect(Collectors.toMap(identity(), valueFunction));
     }
 
-    private void sendBatch(final NakadiCursor topicPosition, final List<String> currentBatch)
+    private void sendBatch(final NakadiCursor topicPosition, final List<byte[]> currentBatch)
             throws IOException {
         final int bytesWritten = writer.getWriter()
                 .writeBatch(outputStream, cursorConverter.convert(topicPosition), currentBatch);
         bytesFlushedMeter.mark(bytesWritten);
-        outputStream.flush();
     }
 
 

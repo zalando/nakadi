@@ -257,6 +257,7 @@ public class Timeline {
         final Timeline timeline = new Timeline(
                 eventType.getName(), STARTING_ORDER, storage, eventType.getTopic(), FAKE_CREATION_TIME);
         timeline.fake = true;
+        timeline.setSwitchedAt(FAKE_CREATION_TIME);
         return timeline;
     }
 

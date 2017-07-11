@@ -4,19 +4,6 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,6 +27,7 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -49,6 +37,7 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConsumerLimitingService;
@@ -61,7 +50,23 @@ import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import org.zalando.problem.Problem;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
@@ -83,6 +88,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 public class EventStreamControllerTest {
@@ -113,6 +119,7 @@ public class EventStreamControllerTest {
     private TimelineService timelineService;
     private MockMvc mockMvc;
     private Timeline fakeTimeline;
+    private AuthorizationValidator authorizationValidator;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -136,7 +143,7 @@ public class EventStreamControllerTest {
 
         metricRegistry = new MetricRegistry();
         streamMetrics = new MetricRegistry();
-        final EventConsumer eventConsumerMock = mock(EventConsumer.class);
+        final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
         when(topicRepositoryMock.createEventConsumer(
                 eq(KAFKA_CLIENT_ID), any()))
                 .thenReturn(eventConsumerMock);
@@ -156,10 +163,12 @@ public class EventStreamControllerTest {
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepositoryMock);
         when(timelineService.getFakeTimeline(any())).thenReturn(fakeTimeline);
 
+        authorizationValidator = mock(AuthorizationValidator.class);
+
         controller = new EventStreamController(
                 eventTypeRepository, timelineService, objectMapper, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
-                new CursorConverterImpl(eventTypeCache, timelineService));
+                new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator);
 
         settings = mock(SecuritySettings.class);
 
@@ -186,7 +195,7 @@ public class EventStreamControllerTest {
     public void whenNoParamsThenDefaultsAreUsed() throws Exception {
         final ArgumentCaptor<EventStreamConfig> configCaptor = ArgumentCaptor.forClass(EventStreamConfig.class);
 
-        final EventConsumer eventConsumerMock = mock(EventConsumer.class);
+        final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
         when(topicRepositoryMock.createEventConsumer(
                 any(), any()))
                 .thenReturn(eventConsumerMock);
@@ -466,6 +475,20 @@ public class EventStreamControllerTest {
         clearScopes();
     }
 
+    @Test
+    public void testAccessDenied() throws Exception {
+        Mockito.doThrow(AccessDeniedException.class).when(authorizationValidator)
+                .authorizeStreamRead(any(), any());
+
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any(), any());
+
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
+
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
+    }
+
     private void clearScopes() {
         EVENT_TYPE.setReadScopes(Collections.emptySet());
     }
@@ -490,7 +513,7 @@ public class EventStreamControllerTest {
 
     private void prepareScopeRead() throws NakadiException, InvalidCursorException {
         EVENT_TYPE.setReadScopes(SCOPE_READ);
-        final EventConsumer eventConsumerMock = mock(EventConsumer.class);
+        final EventConsumer.LowLevelConsumer eventConsumerMock = mock(EventConsumer.LowLevelConsumer.class);
         when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
         when(topicRepositoryMock.createEventConsumer(
                 eq(KAFKA_CLIENT_ID), eq(ImmutableList.of(new NakadiCursor(fakeTimeline, "0", "0")))))
