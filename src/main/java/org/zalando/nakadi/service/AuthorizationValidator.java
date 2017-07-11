@@ -145,10 +145,17 @@ public class AuthorizationValidator {
     }
 
     public void authorizeStreamRead(final EventType eventType) throws AccessDeniedException {
+        if (eventType.getAuthorization() == null) {
+            return;
+        }
+
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
-        final Subject subject = null;
-        if (!authorizationService.isAuthorized(subject, AuthorizationService.Operation.READ, resource)) {
-            throw new AccessDeniedException(subject, AuthorizationService.Operation.READ, resource);
+        try {
+            if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.READ, resource)) {
+                throw new AccessDeniedException(null, AuthorizationService.Operation.READ, resource);
+            }
+        } catch (final PluginException e) {
+            throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
         }
     }
 
