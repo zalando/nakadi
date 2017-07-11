@@ -132,19 +132,24 @@ public class NakadiTestUtils {
                 .statusCode(HttpStatus.SC_OK);
     }
 
-    public static void publishBusinessEventWithUserDefinedPartition(final String eventType,
-                                                                    final String foo,
-                                                                    final String partition) {
-        final JSONObject metadata = new JSONObject();
-        metadata.put("eid", UUID.randomUUID().toString());
-        metadata.put("occurred_at", (new DateTime(DateTimeZone.UTC)).toString());
-        metadata.put("partition", partition);
+    public static void publishBusinessEventWithUserDefinedPartition(
+            final String eventType,
+            final int count,
+            final IntFunction<String> fooGenerator,
+            final IntFunction<String> partitionGenerator) {
+        publishEvents(
+                eventType,
+                count, i -> {
+                    final JSONObject metadata = new JSONObject();
+                    metadata.put("eid", UUID.randomUUID().toString());
+                    metadata.put("occurred_at", (new DateTime(DateTimeZone.UTC)).toString());
+                    metadata.put("partition", partitionGenerator.apply(i));
 
-        final JSONObject event = new JSONObject();
-        event.put("metadata", metadata);
-        event.put("foo", foo);
-
-        publishEvent(eventType, event.toString());
+                    final JSONObject event = new JSONObject();
+                    event.put("metadata", metadata);
+                    event.put("foo", fooGenerator.apply(i));
+                    return event.toString();
+                });
     }
 
     public static void publishBusinessEventsWithUserDefinedPartition(

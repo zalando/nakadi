@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import static java.util.stream.IntStream.range;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.http.HttpStatus;
 import org.apache.zookeeper.data.Stat;
@@ -241,10 +240,10 @@ public class SubscriptionAT extends BaseAT {
         final EventType et2 = createBusinessEventTypeWithPartitions(2);
 
         // write 10 events to each partition of two event-types
-        range(0, 10).forEach(x -> publishBusinessEventWithUserDefinedPartition(et1.getName(), "dummy", "0"));
-        range(0, 10).forEach(x -> publishBusinessEventWithUserDefinedPartition(et1.getName(), "dummy", "1"));
-        range(0, 10).forEach(x -> publishBusinessEventWithUserDefinedPartition(et2.getName(), "dummy", "0"));
-        range(0, 10).forEach(x -> publishBusinessEventWithUserDefinedPartition(et2.getName(), "dummy", "1"));
+        publishBusinessEventWithUserDefinedPartition(et1.getName(), 10, i -> "dummy", i -> "0");
+        publishBusinessEventWithUserDefinedPartition(et1.getName(), 10, i -> "dummy", i -> "1");
+        publishBusinessEventWithUserDefinedPartition(et2.getName(), 10, i -> "dummy", i -> "0");
+        publishBusinessEventWithUserDefinedPartition(et2.getName(), 10, i -> "dummy", i -> "1");
 
         // create subscription with initial cursors
         final SubscriptionBase subscriptionBase = RandomSubscriptionBuilder.builder()
