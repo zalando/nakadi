@@ -2,16 +2,6 @@ package org.zalando.nakadi.service;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.newHashSet;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
@@ -31,6 +21,17 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.repository.EventTypeRepository;
+
+import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Sets.newHashSet;
 
 @Service
 public class AuthorizationValidator {
@@ -114,7 +115,7 @@ public class AuthorizationValidator {
         if (eventType.getAuthorization() == null) {
             return;
         }
-        final MyEventTypeResource2 resource = new MyEventTypeResource2(
+        final EventTypeResource resource = new EventTypeResource(
                 eventType.getName(), eventType.getAuthorization());
         try {
             final boolean authorized = authorizationService.isAuthorized(
@@ -135,9 +136,7 @@ public class AuthorizationValidator {
             return;
         }
 
-        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
-                Collections.singletonMap(AuthorizationService.Operation.ADMIN,
-                        eventType.getAuthorization().getAdmins()));
+        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
             if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
                 throw new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
@@ -149,9 +148,7 @@ public class AuthorizationValidator {
     }
 
     public void authorizeStreamRead(final EventType eventType) throws AccessDeniedException {
-        final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
-                Collections.singletonMap(AuthorizationService.Operation.READ,
-                        eventType.getAuthorization() == null ? null : eventType.getAuthorization().getReaders()));
+        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         final Subject subject = null;
         if (!authorizationService.isAuthorized(subject, AuthorizationService.Operation.READ, resource)) {
             throw new AccessDeniedException(subject, AuthorizationService.Operation.READ, resource);
