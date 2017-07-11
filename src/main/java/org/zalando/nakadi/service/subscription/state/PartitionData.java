@@ -26,17 +26,18 @@ class PartitionData {
     private int keepAliveInARow;
 
     @VisibleForTesting
-    PartitionData(final ZKSubscription subscription, final NakadiCursor commitOffset) {
-        this(subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class));
+    PartitionData(final ZKSubscription subscription, final NakadiCursor commitOffset, final long currentTime) {
+        this(subscription, commitOffset, LoggerFactory.getLogger(PartitionData.class), currentTime);
     }
 
-    PartitionData(final ZKSubscription subscription, final NakadiCursor commitOffset, final Logger log) {
+    PartitionData(
+            final ZKSubscription subscription, final NakadiCursor commitOffset, final Logger log, final long currentTime) {
         this.subscription = subscription;
         this.log = log;
 
         this.commitOffset = commitOffset;
         this.sentOffset = commitOffset;
-        this.lastSendMillis = System.currentTimeMillis();
+        this.lastSendMillis = currentTime;
     }
 
     @Nullable

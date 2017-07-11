@@ -1,18 +1,18 @@
 package org.zalando.nakadi.service.subscription.state;
 
+import static java.lang.System.currentTimeMillis;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import org.junit.Test;
-import org.zalando.nakadi.domain.ConsumedEvent;
-import org.zalando.nakadi.domain.NakadiCursor;
-import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.repository.kafka.KafkaCursor;
-import static java.lang.System.currentTimeMillis;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import org.junit.Test;
 import static org.mockito.Mockito.mock;
+import org.zalando.nakadi.domain.ConsumedEvent;
+import org.zalando.nakadi.domain.NakadiCursor;
+import org.zalando.nakadi.domain.Timeline;
+import org.zalando.nakadi.repository.kafka.KafkaCursor;
 
 public class PartitionDataTest {
 
@@ -24,7 +24,7 @@ public class PartitionDataTest {
 
     @Test
     public void onNewOffsetsShouldSupportRollback() {
-        final PartitionData pd = new PartitionData(null, createCursor(100L));
+        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
         final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(90L));
 
         assertEquals(0L, cr.committedCount);
@@ -35,7 +35,7 @@ public class PartitionDataTest {
 
     @Test
     public void onNewOffsetsShouldSupportCommitInFuture() {
-        final PartitionData pd = new PartitionData(null, createCursor(100L));
+        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
         final PartitionData.CommitResult cr = pd.onCommitOffset(createCursor(110L));
 
         assertEquals(0L, cr.committedCount);
@@ -46,7 +46,7 @@ public class PartitionDataTest {
 
     @Test
     public void normalOperationShouldNotReconfigureKafkaConsumer() {
-        final PartitionData pd = new PartitionData(null, createCursor(100L));
+        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
         for (long i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent(("test_" + i).getBytes(), createCursor(100L + i + 1)));
         }
@@ -63,7 +63,7 @@ public class PartitionDataTest {
 
     @Test
     public void keepAliveCountShouldIncreaseOnEachEmptyCall() {
-        final PartitionData pd = new PartitionData(null, createCursor(100L));
+        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
         for (int i = 0; i < 100; ++i) {
             pd.takeEventsToStream(currentTimeMillis(), 10, 0L);
             assertEquals(i + 1, pd.getKeepAliveInARow());
@@ -79,28 +79,32 @@ public class PartitionDataTest {
     @Test
     public void eventsShouldBeStreamedOnTimeout() throws InterruptedException {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
-        final PartitionData pd = new PartitionData(null, createCursor(100L));
+        long currentTime = System.currentTimeMillis();
+
+        final PartitionData pd = new PartitionData(null, createCursor(100L), currentTime);
         for (int i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1)));
         }
-        List<ConsumedEvent> data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
+        List<ConsumedEvent> data = pd.takeEventsToStream(currentTime, 1000, timeout);
         assertNull(data);
         assertEquals(0, pd.getKeepAliveInARow());
-        Thread.sleep(timeout);
 
-        data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
+        currentTime += timeout + 1;
+
+        data = pd.takeEventsToStream(currentTime, 1000, timeout);
         assertNotNull(data);
         assertEquals(100, data.size());
 
         for (int i = 100; i < 200; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1)));
         }
-        data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
+        data = pd.takeEventsToStream(currentTime, 1000, timeout);
         assertNull(data);
         assertEquals(0, pd.getKeepAliveInARow());
-        Thread.sleep(timeout);
 
-        data = pd.takeEventsToStream(currentTimeMillis(), 1000, timeout);
+        currentTime += timeout + 1;
+
+        data = pd.takeEventsToStream(currentTime, 1000, timeout);
         assertNotNull(data);
         assertEquals(100, data.size());
     }
@@ -108,7 +112,7 @@ public class PartitionDataTest {
     @Test
     public void eventsShouldBeStreamedOnBatchSize() {
         final long timeout = TimeUnit.SECONDS.toMillis(1);
-        final PartitionData pd = new PartitionData(null, createCursor(100L));
+        final PartitionData pd = new PartitionData(null, createCursor(100L), System.currentTimeMillis());
         for (int i = 0; i < 100; ++i) {
             pd.addEvent(new ConsumedEvent("test".getBytes(), createCursor(i + 100L + 1)));
         }

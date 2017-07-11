@@ -690,7 +690,7 @@ public class EventTypeControllerTest extends EventTypeControllerTestCase {
 
         final Problem expectedProblem = Problem.valueOf(NOT_FOUND);
 
-        doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eventType.getName());
+        doThrow(NoSuchEventTypeException.class).when(eventTypeRepository).findByName(eq(eventType.getName()));
 
         putEventType(eventType, eventType.getName()).andExpect(status().isNotFound())
                 .andExpect(content().contentType("application/problem+json"))

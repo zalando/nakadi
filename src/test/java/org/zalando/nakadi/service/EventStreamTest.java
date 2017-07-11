@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import static java.util.Optional.empty;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -52,7 +53,6 @@ import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
-import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
@@ -60,7 +60,7 @@ import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class EventStreamTest {
 
-    private static final String TOPIC = randomString();
+    private static final String TOPIC = UUID.randomUUID().toString();
     private static final byte[] DUMMY = "DUMMY".getBytes(UTF_8);
     private static final Meter BYTES_FLUSHED_METER = new MetricRegistry().meter("mock");
 
@@ -129,7 +129,6 @@ public class EventStreamTest {
         }));
         thread.start();
 
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         waitFor(() -> Assert.assertTrue(thread.isAlive()));
 
         // simulation of client closing the connection using crutch
