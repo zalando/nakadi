@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
@@ -28,6 +29,7 @@ import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import static org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy.retryForSpecifiedTimeOf;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.echocat.jomon.runtime.util.Duration.duration;
+import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.Before;
@@ -425,11 +427,9 @@ public class EventStreamControllerTest {
             client.start();
             clients.add(client);
 
-            Thread.sleep(500);
-
-            executeWithRetry(
+            TestUtils.waitFor(
                     () -> assertThat(counter.getCount(), equalTo((long) clients.size())),
-                    retryForSpecifiedTimeOf(duration("5s"))
+                    TimeUnit.SECONDS.toMillis(5)
             );
 
         }

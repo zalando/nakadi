@@ -198,6 +198,10 @@ tasks.withType(FindBugs) {
     }
 }
 
+//tasks.withType(Test) {
+//    maxParallelForks = Runtime.runtime.availableProcessors()
+//}
+
 task generateScmSourceJson() {
     def rev = new ByteArrayOutputStream()
     exec {

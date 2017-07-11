@@ -52,6 +52,7 @@ import org.zalando.nakadi.repository.kafka.NakadiKafkaConsumer;
 import static org.zalando.nakadi.service.EventStreamWriter.BATCH_SEPARATOR;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
+import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
 import static org.zalando.nakadi.utils.TestUtils.randomString;
 import static org.zalando.nakadi.utils.TestUtils.waitFor;
@@ -59,7 +60,7 @@ import org.zalando.nakadi.view.Cursor;
 import org.zalando.nakadi.view.SubscriptionCursor;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
-public abstract class EventStreamTest {
+public class EventStreamTest {
 
     private static final String TOPIC = randomString();
     private static final byte[] DUMMY = "DUMMY".getBytes(UTF_8);
@@ -84,7 +85,9 @@ public abstract class EventStreamTest {
         when(writerProvider.getWriter()).thenReturn(createWriter());
     }
 
-    protected abstract EventStreamWriter createWriter();
+    protected EventStreamWriter createWriter() {
+        return new EventStreamWriterBinary();
+    }
 
     @Test(timeout = 15000)
     public void whenIOExceptionThenStreamIsClosed() throws NakadiException, InterruptedException, IOException {
@@ -103,16 +106,14 @@ public abstract class EventStreamTest {
         }));
         thread.start();
 
-        Thread.sleep(3000);
-        assertThat("As there are no exit conditions in config - the thread should be running",
-                thread.isAlive(), is(true));
+        TestUtils.waitFor(() -> assertThat("Thread should be running", thread.isAlive(), is(true)), 5000);
 
         // simulation of client closing the connection: this will end the eventStream
         doThrow(new IOException()).when(outputStreamMock).flush();
 
-        Thread.sleep(5000);
-        assertThat("The thread should be dead now, as we simulated that client closed connection",
-                thread.isAlive(), is(false));
+        TestUtils.waitFor(
+                () -> assertThat("The thread should be dead now, as we simulated that client closed connection",
+                        thread.isAlive(), is(false)), 10000);
         thread.join();
     }
 
@@ -241,7 +242,7 @@ public abstract class EventStreamTest {
                 .withCursors(ImmutableList.of(new NakadiCursor(TIMELINE, "0", "000000000000000000")))
                 .withBatchLimit(1)
                 .withBatchTimeout(1)
-                .withStreamTimeout(3)
+                .withStreamTimeout(2)
                 .build();
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
