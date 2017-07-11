@@ -24,11 +24,6 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
-import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
-import static org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy.retryForSpecifiedTimeOf;
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
-import static org.echocat.jomon.runtime.util.Duration.duration;
-import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.Before;
@@ -219,10 +214,8 @@ public class EventStreamControllerTest {
                 .withStreamTimeout(0)
                 .build();
         // we have to retry here as mockMvc exits at the very beginning, before the body starts streaming
-        executeWithRetry(() -> assertThat(configCaptor.getValue(), equalTo(expectedConfig)),
-                new RetryForSpecifiedTimeStrategy<Void>(2000)
-                        .withExceptionsThatForceRetry(MockitoException.class)
-                        .withWaitBetweenEachTry(50));
+        TestUtils.waitFor(
+                () -> assertThat(configCaptor.getValue(), equalTo(expectedConfig)), 2000, 50, MockitoException.class);
     }
 
     @Test

@@ -43,7 +43,6 @@ import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
-import org.zalando.nakadi.utils.JsonTestHelper;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;

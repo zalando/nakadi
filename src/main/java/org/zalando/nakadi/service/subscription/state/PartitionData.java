@@ -31,7 +31,10 @@ class PartitionData {
     }
 
     PartitionData(
-            final ZKSubscription subscription, final NakadiCursor commitOffset, final Logger log, final long currentTime) {
+            final ZKSubscription subscription,
+            final NakadiCursor commitOffset,
+            final Logger log,
+            final long currentTime) {
         this.subscription = subscription;
         this.log = log;
 

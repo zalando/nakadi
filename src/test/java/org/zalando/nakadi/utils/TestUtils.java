@@ -46,7 +46,8 @@ public class TestUtils {
     private static final Random RANDOM = new Random();
     public static final ObjectMapper OBJECT_MAPPER = new JsonConfig().jacksonObjectMapper();
     public static final JsonTestHelper JSON_TEST_HELPER = new JsonTestHelper(OBJECT_MAPPER);
-    public static final MappingJackson2HttpMessageConverter JACKSON_2_HTTP_MESSAGE_CONVERTER = new MappingJackson2HttpMessageConverter(OBJECT_MAPPER);
+    public static final MappingJackson2HttpMessageConverter JACKSON_2_HTTP_MESSAGE_CONVERTER =
+            new MappingJackson2HttpMessageConverter(OBJECT_MAPPER);
 
     public static String randomUUID() {
         return UUID.randomUUID().toString();
@@ -175,11 +176,15 @@ public class TestUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static void waitFor(final Runnable runnable, final long timeoutMs, final int intervalMs) {
+    public static void waitFor(final Runnable runnable, final long timeoutMs, final int intervalMs,
+                               final Class<? extends  Throwable>... additionalException) {
+        final Class<? extends Throwable>[] leadToRetry = new Class[additionalException.length + 1];
+        System.arraycopy(additionalException, 0, leadToRetry, 1, additionalException.length);
+        leadToRetry[0] = AssertionError.class;
         executeWithRetry(
                 runnable,
                 new RetryForSpecifiedTimeStrategy<Void>(timeoutMs)
-                        .withExceptionsThatForceRetry(AssertionError.class)
+                        .withExceptionsThatForceRetry(leadToRetry)
                         .withWaitBetweenEachTry(intervalMs));
     }
 
