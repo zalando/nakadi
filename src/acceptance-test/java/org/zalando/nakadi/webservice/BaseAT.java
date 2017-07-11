@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.parsing.Parser;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import org.apache.http.params.CoreConnectionPNames;
 import org.junit.BeforeClass;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -46,6 +48,8 @@ public abstract class BaseAT {
     static {
         RestAssured.port = PORT;
         RestAssured.defaultParser = Parser.JSON;
+        RestAssured.config().getHttpClientConfig().setParam(CoreConnectionPNames.SO_TIMEOUT, TimeUnit.SECONDS.toMillis(3));
+        RestAssured.config().getHttpClientConfig().setParam(CoreConnectionPNames.CONNECTION_TIMEOUT, 100);
     }
 
     @BeforeClass
