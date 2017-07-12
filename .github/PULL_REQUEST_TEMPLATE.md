@@ -1,4 +1,4 @@
-(Name of ticket)[link to ticket]
+[ARUHA-XXX: Name of ticket](link to ticket)
 
 ## Description
 A few sentences describing the overall goals of the pull request's
