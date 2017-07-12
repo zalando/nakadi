@@ -48,7 +48,8 @@ public abstract class BaseAT {
     static {
         RestAssured.port = PORT;
         RestAssured.defaultParser = Parser.JSON;
-        RestAssured.config().getHttpClientConfig().setParam(CoreConnectionPNames.SO_TIMEOUT, TimeUnit.SECONDS.toMillis(3));
+        RestAssured.config().getHttpClientConfig()
+                .setParam(CoreConnectionPNames.SO_TIMEOUT, TimeUnit.SECONDS.toMillis(3));
         RestAssured.config().getHttpClientConfig().setParam(CoreConnectionPNames.CONNECTION_TIMEOUT, 100);
     }
 

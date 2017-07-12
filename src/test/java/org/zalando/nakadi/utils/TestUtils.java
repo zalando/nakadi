@@ -202,10 +202,14 @@ public class TestUtils {
         return new DateTime(randomMillis, DateTimeZone.UTC);
     }
 
-    public static List<Subscription> createRandomSubscriptions(final int count) {
+    public static List<Subscription> createRandomSubscriptions(final int count, final String owningApp) {
         return range(0, count)
-                .mapToObj(i -> builder().build())
+                .mapToObj(i -> builder().withOwningApplication(owningApp).build())
                 .collect(toList());
+    }
+
+    public static List<Subscription> createRandomSubscriptions(final int count) {
+        return createRandomSubscriptions(count, randomTextString());
     }
 
     public static Timeline buildTimeline(final String etName) {
