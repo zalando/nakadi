@@ -49,13 +49,6 @@ public class EventStreamConfig {
         return streamLimit;
     }
 
-    public int getMessagesAllowedToSendInBatch(final int sentSoFar) {
-        if (streamLimit > 0) {
-            return Math.min(streamLimit - sentSoFar, batchLimit);
-        }
-        return batchLimit;
-    }
-
     public int getBatchTimeout() {
         return batchTimeout;
     }

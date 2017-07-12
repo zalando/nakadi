@@ -2,6 +2,9 @@ package org.zalando.nakadi.service.subscription;
 
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -12,10 +15,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.CursorTokenService;
 import org.zalando.nakadi.service.EventStreamWriter;
+import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
 import org.zalando.nakadi.service.subscription.state.CleanupState;
@@ -48,8 +54,12 @@ public class StreamingContext implements SubscriptionStreamer {
     private final Subscription subscription;
     private final MetricRegistry metricRegistry;
     private final EventStreamWriter writer;
+    private final AuthorizationValidator authorizationValidator;
+    private final EventTypeChangeListener eventTypeChangeListener;
+
     private State currentState = new DummyState();
     private ZKSubscription clientListChanges;
+    private Closeable authorizationCheckSubscription;
 
     private final Logger log;
 
@@ -72,6 +82,8 @@ public class StreamingContext implements SubscriptionStreamer {
         this.subscription = builder.subscription;
         this.metricRegistry = builder.metricRegistry;
         this.writer = builder.writer;
+        this.authorizationValidator = builder.authorizationValidator;
+        this.eventTypeChangeListener = builder.eventTypeChangeListener;
     }
 
     public TimelineService getTimelineService() {
@@ -226,6 +238,32 @@ public class StreamingContext implements SubscriptionStreamer {
         }
     }
 
+    public void unregisterAuthorizationUpdates() {
+        if (null != authorizationCheckSubscription) {
+            try {
+                authorizationCheckSubscription.close();
+            } catch (final IOException e) {
+                log.error("Failed to cancel subscription for authorization updates. " +
+                        "This operation should not throw exceptions at all", e);
+            } finally {
+                authorizationCheckSubscription = null;
+            }
+        }
+    }
+
+    public void registerForAuthorizationUpdates() {
+        Preconditions.checkArgument(authorizationCheckSubscription == null);
+        // In case of Authorization exception there will be a switch to CleanupState, cause it is a generic rule
+        // for each task - switch to CleanupState with exception as a parameter
+        // The reason for adding task is to execute this check on thread that still owns security context.
+        authorizationCheckSubscription = eventTypeChangeListener.registerListener(
+                (eventType) -> addTask(this::checkAccessAuthorized), subscription.getEventTypes());
+    }
+
+    public void checkAccessAuthorized() throws AccessDeniedException {
+        this.authorizationValidator.authorizeSubscriptionRead(subscription);
+    }
+
     public static final class Builder {
         private SubscriptionOutput out;
         private StreamParameters parameters;
@@ -244,6 +282,8 @@ public class StreamingContext implements SubscriptionStreamer {
         private MetricRegistry metricRegistry;
         private TimelineService timelineService;
         private EventStreamWriter writer;
+        private AuthorizationValidator authorizationValidator;
+        private EventTypeChangeListener eventTypeChangeListener;
 
         public Builder setOut(final SubscriptionOutput out) {
             this.out = out;
@@ -327,6 +367,16 @@ public class StreamingContext implements SubscriptionStreamer {
 
         public Builder setWriter(final EventStreamWriter writer) {
             this.writer = writer;
+            return this;
+        }
+
+        public Builder setAuthorizationValidator(final AuthorizationValidator authorizationValidator) {
+            this.authorizationValidator = authorizationValidator;
+            return this;
+        }
+
+        public Builder setEventTypeChangeListener(final EventTypeChangeListener eventTypeChangeListener) {
+            this.eventTypeChangeListener = eventTypeChangeListener;
             return this;
         }
 

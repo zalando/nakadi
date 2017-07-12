@@ -2,21 +2,37 @@ package org.zalando.nakadi.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Test;
+import static org.mockito.Matchers.any;
+import org.mockito.Mockito;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.zalando.nakadi.config.JsonConfig;
+import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.domain.SubscriptionBase;
 import org.zalando.nakadi.exceptions.IllegalScopeException;
@@ -24,29 +40,18 @@ import org.zalando.nakadi.exceptions.runtime.NoEventTypeException;
 import org.zalando.nakadi.exceptions.runtime.NoSubscriptionException;
 import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
+import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.nakadi.utils.JsonTestHelper;
-import org.zalando.problem.Problem;
-
-import java.util.HashSet;
-import java.util.Set;
-
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
+import org.zalando.nakadi.utils.JsonTestHelper;
 import static org.zalando.nakadi.utils.RandomSubscriptionBuilder.builder;
 import static org.zalando.nakadi.utils.TestUtils.invalidProblem;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
+import org.zalando.problem.Problem;
 import static uk.co.datumedge.hamcrest.json.SameJSONAs.sameJSONAs;
 
 public class PostSubscriptionControllerTest {
@@ -60,6 +65,9 @@ public class PostSubscriptionControllerTest {
     private final ApplicationService applicationService = mock(ApplicationService.class);
     private final FeatureToggleService featureToggleService = mock(FeatureToggleService.class);
     private final SubscriptionService subscriptionService = mock(SubscriptionService.class);
+    private final EventTypeRepository eventTypeRepository = mock(EventTypeRepository.class);
+    private final AuthorizationValidator authorizationValidator = mock(AuthorizationValidator.class);
+
 
     public PostSubscriptionControllerTest() throws Exception {
         jsonHelper = new JsonTestHelper(objectMapper);
@@ -72,8 +80,11 @@ public class PostSubscriptionControllerTest {
 
         when(subscriptionService.getSubscriptionUri(any())).thenCallRealMethod();
 
+        final EventType eventType = mock(EventType.class);
+        when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(eventType));
+
         final PostSubscriptionController controller = new PostSubscriptionController(featureToggleService,
-                applicationService, subscriptionService);
+                applicationService, subscriptionService, authorizationValidator);
         final MappingJackson2HttpMessageConverter jackson2HttpMessageConverter =
                 new MappingJackson2HttpMessageConverter(objectMapper);
 
@@ -231,6 +242,19 @@ public class PostSubscriptionControllerTest {
                 .thenThrow(new IllegalScopeException(ImmutableSet.of("dummyScope")));
 
         final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Client has to have scopes: [dummyScope]");
+        checkForProblem(postSubscription(builder().buildSubscriptionBase()), expectedProblem);
+    }
+
+    @Test
+    public void whenEventTypeIsNotAuthorizedThenForbidden() throws Exception {
+        final Subscription subscription = mock(Subscription.class);
+        when(subscription.getEventTypes()).thenReturn(Sets.newHashSet("event-type-name"));
+        when(eventTypeRepository.findByNameO(any())).thenReturn(Optional.of(mock(EventType.class)));
+
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator)
+                .authorizeSubscriptionRead(any());
+
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
         checkForProblem(postSubscription(builder().buildSubscriptionBase()), expectedProblem);
     }
 

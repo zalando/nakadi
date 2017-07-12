@@ -13,6 +13,7 @@ import org.zalando.nakadi.domain.Timeline;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.NoStreamingSlotsAvailable;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.subscription.model.Partition;
 import org.zalando.nakadi.service.subscription.model.Session;
@@ -22,6 +23,20 @@ import org.zalando.nakadi.view.SubscriptionCursorWithoutToken;
 public class StartingState extends State {
     @Override
     public void onEnter() {
+        // 1. Check authorization
+        getContext().registerForAuthorizationUpdates();
+        try {
+            getContext().checkAccessAuthorized();
+        } catch (final AccessDeniedException e) {
+            switchState(new CleanupState(
+                    new NakadiException(e.explain()) {
+                        @Override
+                        protected Response.StatusType getStatus() {
+                            return Response.Status.FORBIDDEN;
+                        }
+                    }));
+            return;
+        }
         getZk().runLocked(this::createSubscriptionLocked);
     }
 
@@ -62,7 +77,7 @@ public class StartingState extends State {
             return;
         }
 
-        registerSession();
+        getContext().registerSession();
 
         try {
             getOut().onInitialized(getSessionId());

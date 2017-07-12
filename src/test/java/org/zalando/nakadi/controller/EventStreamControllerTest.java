@@ -5,6 +5,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
@@ -60,6 +62,7 @@ import org.zalando.nakadi.exceptions.InvalidCursorException;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
 import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
@@ -70,18 +73,21 @@ import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.security.NakadiClient;
+import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.ConsumerLimitingService;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.converter.CursorConverterImpl;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.utils.JsonTestHelper;
 import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.nakadi.utils.TestUtils.createFakeTimeline;
+import static org.zalando.nakadi.utils.TestUtils.mockAccessDeniedException;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 import org.zalando.problem.Problem;
 
@@ -113,6 +119,8 @@ public class EventStreamControllerTest {
     private TimelineService timelineService;
     private MockMvc mockMvc;
     private Timeline fakeTimeline;
+    private AuthorizationValidator authorizationValidator;
+    private EventTypeChangeListener eventTypeChangeListener;
 
     @Before
     public void setup() throws NakadiException, UnknownHostException, InvalidCursorException {
@@ -156,10 +164,14 @@ public class EventStreamControllerTest {
         when(timelineService.getTopicRepository((EventTypeBase) any())).thenReturn(topicRepositoryMock);
         when(timelineService.getFakeTimeline(any())).thenReturn(fakeTimeline);
 
+        authorizationValidator = mock(AuthorizationValidator.class);
+        eventTypeChangeListener = mock(EventTypeChangeListener.class);
+        when(eventTypeChangeListener.registerListener(any(), any())).thenReturn(mock(Closeable.class));
         controller = new EventStreamController(
                 eventTypeRepository, timelineService, objectMapper, eventStreamFactoryMock, metricRegistry,
                 streamMetrics, crutch, blacklistService, consumerLimitingService, featureToggleService,
-                new CursorConverterImpl(eventTypeCache, timelineService));
+                new CursorConverterImpl(eventTypeCache, timelineService), authorizationValidator,
+                eventTypeChangeListener);
 
         settings = mock(SecuritySettings.class);
 
@@ -355,7 +367,7 @@ public class EventStreamControllerTest {
                 eq(ImmutableList.of(new NakadiCursor(fakeTimeline, "0", "000000000000000000"))));
         verify(eventStreamFactoryMock, times(1)).createEventStream(eq(outputStream),
                 eq(eventConsumerMock), eq(streamConfig), any());
-        verify(eventStreamMock, times(1)).streamEvents(any());
+        verify(eventStreamMock, times(1)).streamEvents(any(), any());
         verify(outputStream, times(2)).flush();
         verify(outputStream, times(1)).close();
     }
@@ -391,7 +403,7 @@ public class EventStreamControllerTest {
                 Thread.sleep(100);
             }
             return null;
-        }).when(eventStream).streamEvents(any());
+        }).when(eventStream).streamEvents(any(), any());
         when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(eventStream);
 
         // "connect" to the server
@@ -456,7 +468,8 @@ public class EventStreamControllerTest {
         final ArgumentCaptor<Integer> statusCaptor = getStatusCaptor();
         final ArgumentCaptor<String> contentTypeCaptor = getContentTypeCaptor();
 
-        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any())).thenReturn(mock(EventStream.class));
+        when(eventStreamFactoryMock.createEventStream(any(), any(), any(), any()))
+                .thenReturn(mock(EventStream.class));
 
         writeStream(Collections.emptySet());
 
@@ -464,6 +477,20 @@ public class EventStreamControllerTest {
         assertThat(contentTypeCaptor.getValue(), equalTo("application/problem+json"));
 
         clearScopes();
+    }
+
+    @Test
+    public void testAccessDenied() throws Exception {
+        Mockito.doThrow(AccessDeniedException.class).when(authorizationValidator)
+                .authorizeStreamRead(any());
+
+        when(eventTypeRepository.findByName(TEST_EVENT_TYPE_NAME)).thenReturn(EVENT_TYPE);
+        Mockito.doThrow(mockAccessDeniedException()).when(authorizationValidator).authorizeStreamRead(any());
+
+        final StreamingResponseBody responseBody = createStreamingResponseBody(0, 0, 0, 0, 0, null);
+
+        final Problem expectedProblem = Problem.valueOf(FORBIDDEN, "Access on READ some-type:some-name denied");
+        assertThat(responseToString(responseBody), jsonHelper.matchesObject(expectedProblem));
     }
 
     private void clearScopes() {
