@@ -1,11 +1,13 @@
-## Description
-A few sentences describing the overall goals of the pull request's commits.
+(Name of ticket)[link to ticket]
 
-## Todos
+## Description
+A few sentences describing the overall goals of the pull request's
+commits.
+
+## Review
 - [ ] Tests
 - [ ] Documentation
 - [ ] CHANGELOG
 
-## Deploy Notes
-Notes regarding deployment the contained body of work. These should note any
-db migrations, etc.
+## Deployment Notes
+These should highlight any db migrations, feature toggles, etc.
