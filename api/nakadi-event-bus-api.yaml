@@ -2392,7 +2392,7 @@ definitions:
     type: object
     description: |
       Authorization section for an event type. This section defines three access control lists: one for producing
-      events ('write'), one for consuming events ('read'), and one for administering an event type ('admin').
+      events ('writers'), one for consuming events ('readers'), and one for administering an event type ('admins').
       Regardless of the values of the authorization properties, administrator accounts will always be authorized.
     properties:
       admins:
