@@ -666,7 +666,7 @@ paths:
           schema:
             type: array
             items:
-              - $ref: '#/definitions/Cursor'
+              $ref: '#/definitions/Cursor'
       responses:
         '200':
           description: OK
@@ -836,7 +836,7 @@ paths:
             schema:
               type: array
               items:
-                - $ref: '#/definitions/ShiftedCursor'
+                $ref: '#/definitions/ShiftedCursor'
         responses:
           '200':
             description: OK
