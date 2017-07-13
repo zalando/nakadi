@@ -150,12 +150,8 @@ public class EventTypeService {
         }
     }
 
-    public void delete(final String eventTypeName, final Client client)
-            throws EventTypeDeletionException,
-            AccessDeniedException,
-            NoEventTypeException,
-            ConflictException,
-            ServiceTemporarilyUnavailableException {
+    public void delete(final String eventTypeName) throws EventTypeDeletionException, AccessDeniedException,
+            NoEventTypeException, ConflictException, ServiceTemporarilyUnavailableException {
         Closeable deletionCloser = null;
         Multimap<TopicRepository, String> topicsToDelete = null;
         try {

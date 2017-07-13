@@ -17,7 +17,6 @@ import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
-import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.repository.EventTypeRepository;
 
 import javax.annotation.Nullable;
@@ -121,7 +120,7 @@ public class AuthorizationValidator {
                     AuthorizationService.Operation.WRITE,
                     resource);
             if (!authorized) {
-                throw new AccessDeniedException(null, AuthorizationService.Operation.WRITE, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.WRITE, resource);
             }
         } catch (final PluginException ex) {
             throw new ServiceTemporarilyUnavailableException("Error while checking authorization", ex);
@@ -137,7 +136,7 @@ public class AuthorizationValidator {
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
             if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
-                throw new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);
@@ -152,7 +151,7 @@ public class AuthorizationValidator {
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
             if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.READ, resource)) {
-                throw new AccessDeniedException(null, AuthorizationService.Operation.READ, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.READ, resource);
             }
         } catch (final PluginException e) {
             throw new ServiceTemporarilyUnavailableException("Error calling authorization plugin", e);

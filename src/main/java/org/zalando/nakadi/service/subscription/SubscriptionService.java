@@ -152,7 +152,7 @@ public class SubscriptionService {
         }
     }
 
-    public Result<Void> deleteSubscription(final String subscriptionId, final Client client) {
+    public Result<Void> deleteSubscription(final String subscriptionId) {
         try {
             final Subscription subscription = subscriptionRepository.getSubscription(subscriptionId);
 

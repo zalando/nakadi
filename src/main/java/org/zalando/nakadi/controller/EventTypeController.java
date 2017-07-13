@@ -136,7 +136,7 @@ public class EventTypeController {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
 
-        eventTypeService.delete(eventTypeName, client);
+        eventTypeService.delete(eventTypeName);
 
         return status(HttpStatus.OK).build();
     }

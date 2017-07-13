@@ -36,7 +36,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
 
@@ -101,7 +100,7 @@ public class TimelinesControllerTest {
         final EventType eventType = EventTypeTestBuilder.builder().build();
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
 
-        Mockito.doThrow(new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource))
+        Mockito.doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))
                 .when(timelineService).delete(Mockito.any(), Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.delete("/event-types/event_type/timelines/timeli-uuid")
                 .contentType(MediaType.APPLICATION_JSON)

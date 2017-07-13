@@ -114,7 +114,7 @@ public class EventPublisherTest {
 
         mockSuccessfulValidation(et);
 
-        Mockito.doThrow(new AccessDeniedException(null, null, null))
+        Mockito.doThrow(new AccessDeniedException(null, null))
                 .when(authzValidator)
                 .authorizeEventTypeWrite(Mockito.eq(et));
 

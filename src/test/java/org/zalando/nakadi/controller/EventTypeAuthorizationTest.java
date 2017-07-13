@@ -42,7 +42,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
 
         doReturn(eventType).when(eventTypeRepository).findByName(any());
-        doThrow(new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource))
+        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))
                 .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
 
         putEventType(eventType, eventType.getName())
@@ -71,7 +71,7 @@ public class EventTypeAuthorizationTest extends EventTypeControllerTestCase {
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
 
         doReturn(Optional.of(eventType)).when(eventTypeRepository).findByNameO(any());
-        doThrow(new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource))
+        doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))
                 .when(authorizationValidator).authorizeEventTypeAdmin(eventType);
 
         deleteEventType(eventType.getName())

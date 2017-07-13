@@ -100,7 +100,7 @@ public class TimelineService {
 
             if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
                 final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
-                throw new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
             }
 
             final Storage storage = storageDbRepository.getStorage(storageId)
@@ -257,11 +257,11 @@ public class TimelineService {
 
             if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
                 final Resource resource = new EventTypeResource(eventTypeName, eventType.getAuthorization());
-                throw new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource);
+                throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
             }
-        } catch (NoSuchEventTypeException e) {
+        } catch (final NoSuchEventTypeException e) {
             throw new NotFoundException("EventType \"" + eventTypeName + "\" does not exist", e);
-        } catch (InternalNakadiException e) {
+        } catch (final InternalNakadiException e) {
             throw new TimelineException("Internal service error", e);
         }
 
@@ -329,7 +329,7 @@ public class TimelineService {
             throws AccessDeniedException, UnableProcessException, TimelineException {
         if (!client.getClientId().equals(securitySettings.getAdminClientId())) {
             final Resource resource = new EventTypeResource(eventTypeName, null);
-            throw new AccessDeniedException(null, AuthorizationService.Operation.ADMIN, resource);
+            throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
         }
 
         return getTimelines(eventTypeName);
