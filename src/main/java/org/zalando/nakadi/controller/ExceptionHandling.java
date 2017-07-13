@@ -28,7 +28,6 @@ import org.zalando.problem.spring.web.advice.Responses;
 
 import javax.ws.rs.core.Response;
 
-import static org.zalando.nakadi.util.AuthorizationUtils.errorMessage;
 import static org.zalando.problem.MoreStatus.UNPROCESSABLE_ENTITY;
 
 
@@ -82,7 +81,7 @@ public final class ExceptionHandling implements ProblemHandling {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Problem> accessDeniedException(final AccessDeniedException exception,
                                                          final NativeWebRequest request) {
-        return Responses.create(Response.Status.FORBIDDEN, errorMessage(exception), request);
+        return Responses.create(Response.Status.FORBIDDEN, exception.explain(), request);
     }
 
     @ExceptionHandler(IllegalScopeException.class)
