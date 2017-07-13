@@ -3,7 +3,6 @@ package org.zalando.nakadi.webservice;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.parsing.Parser;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.apache.http.params.CoreConnectionPNames;
 import org.junit.BeforeClass;
@@ -43,23 +42,14 @@ public abstract class BaseAT {
     }
 
     @BeforeClass
-    public static void initDB() throws Exception {
-//        try {
-//            EVENT_TYPE_REPO.findByName(EVENT_TYPE_NAME);
-//        } catch (final NoSuchEventTypeException e) {
-//            final EventType eventType = buildDefaultEventType();
-//            eventType.setName(EVENT_TYPE_NAME);
-//            eventType.setTopic(TEST_TOPIC);
-//            EVENT_TYPE_REPO.saveEventType(eventType);
-//        }
-
-        final Optional<Storage> defaultStorage = STORAGE_DB_REPOSITORY.getStorage("default");
-        if (!defaultStorage.isPresent()) {
-            final Storage storage = new Storage();
-            storage.setId("default");
-            storage.setType(Storage.Type.KAFKA);
-            storage.setConfiguration(new Storage.KafkaConfiguration(null, null, ZOOKEEPER_URL, ""));
+    public static void createDefaultStorage() {
+        final Storage storage = new Storage();
+        storage.setId("default");
+        storage.setType(Storage.Type.KAFKA);
+        storage.setConfiguration(new Storage.KafkaConfiguration(null, null, ZOOKEEPER_URL, ""));
+        try {
             STORAGE_DB_REPOSITORY.createStorage(storage);
+        } catch (final Exception ignore) {
         }
     }
 }
