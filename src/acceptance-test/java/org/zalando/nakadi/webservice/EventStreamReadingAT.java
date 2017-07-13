@@ -429,7 +429,7 @@ public class EventStreamReadingAT extends BaseAT {
         return future;
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 60000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
         // blocking streaming client after 3 seconds
         new Thread(() -> {
