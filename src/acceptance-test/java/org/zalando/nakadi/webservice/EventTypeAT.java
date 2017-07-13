@@ -17,16 +17,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.IsEqual.equalTo;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
-import org.junit.After;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
@@ -60,16 +58,13 @@ public class EventTypeAT extends BaseAT {
                 .then()
                 .statusCode(HttpStatus.SC_CREATED);
 
-        // TODO: Do not depend on order of the tests (last event type created is not the one on previous line)
-        // TODO: 2 body matchers in a row are not working correctly (size() here is much more than > 1)
         given()
                 .header("accept", "application/json")
                 .contentType(JSON)
                 .get(ENDPOINT)
                 .then()
                 .statusCode(HttpStatus.SC_OK)
-                .body("size()", equalTo(1))
-                .body("name[0]", equalTo(eventType.getName()));
+                .body("name", hasItems(eventType.getName()));
     }
 
     @Test
@@ -301,20 +296,6 @@ public class EventTypeAT extends BaseAT {
                         KafkaTestHelper.getTopicRetentionTime(topic, ZOOKEEPER_URL))));
     }
 
-    @After
-    public void tearDown() {
-        final DriverManagerDataSource datasource = new DriverManagerDataSource(
-                POSTGRES_URL,
-                POSTGRES_USER,
-                POSTGRES_PWD
-        );
-        final JdbcTemplate template = new JdbcTemplate(datasource);
-
-        template.execute("DELETE FROM zn_data.timeline");
-        template.execute("DELETE FROM zn_data.event_type_schema");
-        template.execute("DELETE FROM zn_data.event_type");
-    }
-
     private void postTimeline(final EventType eventType) {
         given().contentType(JSON)
                 .body(new JSONObject().put("storage_id", "default"))
@@ -327,8 +308,11 @@ public class EventTypeAT extends BaseAT {
         when().get(String.format("%s/%s", ENDPOINT, eventType.getName())).then().statusCode(HttpStatus.SC_NOT_FOUND);
         assertEquals(0, TIMELINE_REPOSITORY.listTimelinesOrdered(eventType.getName()).size());
         final KafkaTestHelper kafkaHelper = new KafkaTestHelper(KAFKA_URL);
-        final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
-        topics.forEach(topic -> assertThat(allTopics, not(hasItem(topic))));
+        // Kafka deletes topics asynchronously, so there may be a delay
+        waitFor(() -> {
+            final Set<String> allTopics = kafkaHelper.createConsumer().listTopics().keySet();
+            topics.forEach(topic -> assertThat(allTopics, not(hasItem(topic))));
+        }, 10000);
     }
 
     private void postEventType(final EventType eventType) throws JsonProcessingException {
