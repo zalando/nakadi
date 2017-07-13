@@ -10,14 +10,10 @@ import org.junit.BeforeClass;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
-import org.zalando.nakadi.domain.EventType;
 import org.zalando.nakadi.domain.Storage;
-import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
-import org.zalando.nakadi.utils.EventTypeTestBuilder;
-import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 
 public abstract class BaseAT {
 
@@ -30,13 +26,6 @@ public abstract class BaseAT {
 
     protected static final String ZOOKEEPER_URL = "localhost:2181";
     protected static final String KAFKA_URL = "localhost:9092";
-
-    protected static final String EVENT_TYPE_NAME = "test-event-type-name";
-    protected static final String TEST_TOPIC = "test-topic";
-    protected static final EventType EVENT_TYPE = EventTypeTestBuilder.builder()
-            .name(EVENT_TYPE_NAME)
-            .topic(TEST_TOPIC).build();
-    protected static final int PARTITIONS_NUM = 8;
 
     private static final JdbcTemplate JDBC_TEMPLATE = new JdbcTemplate(
             new DriverManagerDataSource(POSTGRES_URL, POSTGRES_USER, POSTGRES_PWD));
@@ -55,14 +44,14 @@ public abstract class BaseAT {
 
     @BeforeClass
     public static void initDB() throws Exception {
-        try {
-            EVENT_TYPE_REPO.findByName(EVENT_TYPE_NAME);
-        } catch (final NoSuchEventTypeException e) {
-            final EventType eventType = buildDefaultEventType();
-            eventType.setName(EVENT_TYPE_NAME);
-            eventType.setTopic(TEST_TOPIC);
-            EVENT_TYPE_REPO.saveEventType(eventType);
-        }
+//        try {
+//            EVENT_TYPE_REPO.findByName(EVENT_TYPE_NAME);
+//        } catch (final NoSuchEventTypeException e) {
+//            final EventType eventType = buildDefaultEventType();
+//            eventType.setName(EVENT_TYPE_NAME);
+//            eventType.setTopic(TEST_TOPIC);
+//            EVENT_TYPE_REPO.saveEventType(eventType);
+//        }
 
         final Optional<Storage> defaultStorage = STORAGE_DB_REPOSITORY.getStorage("default");
         if (!defaultStorage.isPresent()) {

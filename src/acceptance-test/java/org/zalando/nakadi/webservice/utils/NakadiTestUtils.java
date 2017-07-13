@@ -53,7 +53,7 @@ public class NakadiTestUtils {
         given()
                 .body(MAPPER.writeValueAsString(eventType))
                 .contentType(JSON)
-                .post("/event-types");
+                .post("/event-types").print();
     }
 
     public static void updateEventTypeInNakadi(final EventType eventType) throws JsonProcessingException {

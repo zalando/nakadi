@@ -1,38 +1,50 @@
 package org.zalando.nakadi.webservice;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import static com.jayway.restassured.RestAssured.get;
+import static com.jayway.restassured.RestAssured.when;
 import com.jayway.restassured.response.Response;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.PartitionInfo;
-import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.http.HttpStatus;
-import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.view.Cursor;
-import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
-
-import static com.jayway.restassured.RestAssured.get;
-import static com.jayway.restassured.RestAssured.when;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.PartitionInfo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import org.hamcrest.Matchers;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.springframework.http.HttpStatus;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
+import org.zalando.nakadi.repository.kafka.KafkaTestHelper;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
+import org.zalando.nakadi.view.Cursor;
 import static org.zalando.nakadi.webservice.utils.JsonTestHelper.asMap;
 import static org.zalando.nakadi.webservice.utils.JsonTestHelper.asMapsList;
+import org.zalando.nakadi.webservice.utils.NakadiTestUtils;
 
 public class PartitionsControllerAT extends BaseAT {
 
+    private static String eventTypeName;
+    private static String topicName;
     private KafkaTestHelper kafkaHelper;
 
     private Map<String, List<PartitionInfo>> actualTopics;
+
+    @BeforeClass
+    public static void setupClass() throws JsonProcessingException, NoSuchEventTypeException {
+        final EventType eventType = EventTypeTestBuilder.builder().build();
+        NakadiTestUtils.createEventTypeInNakadi(eventType);
+        topicName = BaseAT.EVENT_TYPE_REPO.findByName(eventType.getName()).getTopic();
+        eventTypeName = eventType.getName();
+    }
 
     @Before
     public void before() {
@@ -43,7 +55,7 @@ public class PartitionsControllerAT extends BaseAT {
     @Test
     public void whenListPartitionsThenOk() throws IOException {
         // ACT //
-        final Response response = when().get(String.format("/event-types/%s/partitions", EVENT_TYPE_NAME));
+        final Response response = when().get(String.format("/event-types/%s/partitions", eventTypeName));
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
@@ -56,7 +68,7 @@ public class PartitionsControllerAT extends BaseAT {
                 .map(map -> map.get("partition"))
                 .collect(Collectors.toSet());
         final Set<String> actualPartitions = actualTopics
-                .get(TEST_TOPIC)
+                .get(topicName)
                 .stream()
                 .map(pInfo -> Integer.toString(pInfo.partition()))
                 .collect(Collectors.toSet());
@@ -90,7 +102,7 @@ public class PartitionsControllerAT extends BaseAT {
     public void whenListPartitionsAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
         // ACT //
-        final String url = String.format("/event-types/%s/partitions", EVENT_TYPE_NAME);
+        final String url = String.format("/event-types/%s/partitions", eventTypeName);
         final List<Map<String, String>> partitionsInfoBefore = asMapsList(get(url).print());
 
         writeMessageToPartition(0);
@@ -105,7 +117,7 @@ public class PartitionsControllerAT extends BaseAT {
     @Test
     public void whenGetPartitionThenOk() throws IOException {
         // ACT //
-        final Response response = when().get(String.format("/event-types/%s/partitions/0", EVENT_TYPE_NAME));
+        final Response response = when().get(String.format("/event-types/%s/partitions/0", eventTypeName));
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
@@ -116,7 +128,7 @@ public class PartitionsControllerAT extends BaseAT {
     public void whenGetPartitionWithConsumedOffsetThenOk() throws IOException {
         // ACT //
         final Response response = when().get(String.format("/event-types/%s/partitions/0?consumed_offset=BEGIN",
-                EVENT_TYPE_NAME));
+                eventTypeName));
 
         // ASSERT //
         response.then().statusCode(HttpStatus.OK.value());
@@ -136,7 +148,7 @@ public class PartitionsControllerAT extends BaseAT {
     @Test
     public void whenGetPartitionThenPartitionNotFound() throws IOException {
         when()
-                .get(String.format("/event-types/%s/partitions/43766", EVENT_TYPE_NAME))
+                .get(String.format("/event-types/%s/partitions/43766", eventTypeName))
                 .then()
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .and()
@@ -147,7 +159,7 @@ public class PartitionsControllerAT extends BaseAT {
     public void whenGetPartitionAndWriteMessageThenOffsetInPartitionIsIncreased() throws ExecutionException,
             InterruptedException, IOException {
         // ACT //
-        final String url = String.format("/event-types/%s/partitions/0", EVENT_TYPE_NAME);
+        final String url = String.format("/event-types/%s/partitions/0", eventTypeName);
         final Map<String, String> partitionInfoBefore = asMap(get(url).print());
 
         writeMessageToPartition(0);
@@ -180,7 +192,7 @@ public class PartitionsControllerAT extends BaseAT {
 
     private void writeMessageToPartition(final int partition) throws InterruptedException, ExecutionException {
         final KafkaProducer<String, String> producer = kafkaHelper.createProducer();
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(TEST_TOPIC, partition, "blahKey",
+        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topicName, partition, "blahKey",
                 "blahValue");
         producer.send(producerRecord).get();
     }
