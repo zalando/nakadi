@@ -134,6 +134,21 @@ public class KafkaTopicRepository implements TopicRepository {
         } catch (final Exception e) {
             throw new TopicCreationException("Unable to create topic " + topic, e);
         }
+        // Next step is to wait for topic initialization. On can not skip this task, cause kafka instances may not
+        // receive information about topic creation, which in turn will block publishing.
+        // This kind of behavior was observed during tests, but may also present on highly loaded event types.
+        final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
+        final long borderTime = System.currentTimeMillis() + timeoutMillis;
+        boolean creationConfirmed = false;
+        while (!creationConfirmed && borderTime >= System.currentTimeMillis()) {
+            try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                final List<PartitionInfo> partitions = consumer.partitionsFor(topic);
+                creationConfirmed = null != partitions;
+            }
+        }
+        if (!creationConfirmed) {
+            throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
+        }
     }
 
     @Override
@@ -289,7 +304,9 @@ public class KafkaTopicRepository implements TopicRepository {
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)
             throws ServiceUnavailableException {
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-            final Optional<PartitionInfo> tp = consumer.partitionsFor(timeline.getTopic()).stream()
+            final List<PartitionInfo> topicPartitions = consumer.partitionsFor(timeline.getTopic());
+
+            final Optional<PartitionInfo> tp = topicPartitions.stream()
                     .filter(p -> KafkaCursor.toNakadiPartition(p.partition()).equals(partition))
                     .findAny();
             if (!tp.isPresent()) {
@@ -305,7 +322,8 @@ public class KafkaTopicRepository implements TopicRepository {
 
             return Optional.of(new KafkaPartitionStatistics(timeline, kafkaTP.partition(), begin, end - 1));
         } catch (final Exception e) {
-            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
+            throw new ServiceUnavailableException("Error occurred when fetching partitions offsets from " +
+                    timeline + " for partition " + partition, e);
         }
     }
 
