@@ -319,6 +319,7 @@ task fullAcceptanceTest(type: GradleBuild) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
+    maxParallelForks = 4
 }
 
 test {

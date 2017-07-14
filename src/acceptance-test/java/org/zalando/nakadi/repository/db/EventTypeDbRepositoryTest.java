@@ -1,5 +1,7 @@
 package org.zalando.nakadi.repository.db;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,7 +23,6 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.utils.TestUtils;
 import static org.zalando.nakadi.utils.TestUtils.buildDefaultEventType;
 import static org.zalando.nakadi.utils.TestUtils.randomUUID;
-import static org.zalando.nakadi.utils.TestUtils.randomValidEventTypeName;
 
 public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
@@ -195,14 +196,19 @@ public class EventTypeDbRepositoryTest extends AbstractDbRepositoryTest {
 
     @Test
     public void unknownAttributesAreIgnoredWhenDesserializing() throws Exception {
-        final String eventTypeName = randomValidEventTypeName();
+        final EventType eventType = buildDefaultEventType();
+        final ObjectNode node = (ObjectNode) TestUtils.OBJECT_MAPPER.readTree(
+                TestUtils.OBJECT_MAPPER.writeValueAsString(eventType));
+        node.set("unknown_attribute", new TextNode("will just be ignored"));
+
+        final String eventTypeName = eventType.getName();
         final String topic = randomUUID();
         final String insertSQL = "INSERT INTO zn_data.event_type (et_name, et_topic, et_event_type_object) " +
                 "VALUES (?, ?, to_json(?::json))";
         template.update(insertSQL,
                 eventTypeName,
                 topic,
-                "{\"unknow_attribute\": \"will just be ignored\"}");
+                TestUtils.OBJECT_MAPPER.writeValueAsString(node));
 
         final EventType persistedEventType = repository.findByName(eventTypeName);
 
