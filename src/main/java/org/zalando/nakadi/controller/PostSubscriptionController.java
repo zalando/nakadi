@@ -1,9 +1,14 @@
 package org.zalando.nakadi.controller;
 
+import javax.validation.Valid;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
+import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import static org.springframework.http.HttpStatus.OK;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -25,24 +30,16 @@ import org.zalando.nakadi.exceptions.runtime.TooManyPartitionsException;
 import org.zalando.nakadi.exceptions.runtime.WrongInitialCursorsException;
 import org.zalando.nakadi.plugin.api.ApplicationService;
 import org.zalando.nakadi.problem.ValidationProblem;
-import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.subscription.SubscriptionService;
 import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.problem.MoreStatus;
-import org.zalando.problem.Problem;
-import org.zalando.problem.spring.web.advice.Responses;
-
-import javax.validation.Valid;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
-
-import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
-import static org.springframework.http.HttpStatus.OK;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.CHECK_OWNING_APPLICATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.DISABLE_SUBSCRIPTION_CREATION;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import org.zalando.problem.MoreStatus;
+import org.zalando.problem.Problem;
+import org.zalando.problem.spring.web.advice.Responses;
 
 
 @RestController
@@ -53,19 +50,16 @@ public class PostSubscriptionController {
     private final FeatureToggleService featureToggleService;
     private final ApplicationService applicationService;
     private final SubscriptionService subscriptionService;
-    private final EventTypeRepository eventTypeRepository;
     private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public PostSubscriptionController(final FeatureToggleService featureToggleService,
                                       final ApplicationService applicationService,
                                       final SubscriptionService subscriptionService,
-                                      final EventTypeRepository eventTypeRepository,
                                       final AuthorizationValidator authorizationValidator) {
         this.featureToggleService = featureToggleService;
         this.applicationService = applicationService;
         this.subscriptionService = subscriptionService;
-        this.eventTypeRepository = eventTypeRepository;
         this.authorizationValidator = authorizationValidator;
     }
 
@@ -80,7 +74,7 @@ public class PostSubscriptionController {
             return Responses.create(new ValidationProblem(errors), request);
         }
 
-        authorizationValidator.authorizeSubscriptionRead(eventTypeRepository, client, subscriptionBase);
+        authorizationValidator.authorizeSubscriptionRead(subscriptionBase);
 
         if (featureToggleService.isFeatureEnabled(CHECK_OWNING_APPLICATION)
                 && !applicationService.exists(subscriptionBase.getOwningApplication())) {

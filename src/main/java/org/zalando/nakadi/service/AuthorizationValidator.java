@@ -2,6 +2,16 @@ package org.zalando.nakadi.service;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
+import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Sets.newHashSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.zalando.nakadi.domain.EventType;
@@ -21,28 +31,19 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.plugin.api.authz.Subject;
 import org.zalando.nakadi.repository.EventTypeRepository;
-import org.zalando.nakadi.security.Client;
-
-import javax.annotation.Nullable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.newHashSet;
 
 @Service
 public class AuthorizationValidator {
 
     private final AuthorizationService authorizationService;
+    private final EventTypeRepository eventTypeRepository;
 
     @Autowired
-    public AuthorizationValidator(final AuthorizationService authorizationService) {
+    public AuthorizationValidator(
+            final AuthorizationService authorizationService,
+            final EventTypeRepository eventTypeRepository) {
         this.authorizationService = authorizationService;
+        this.eventTypeRepository = eventTypeRepository;
     }
 
     public void validateAuthorization(@Nullable final EventTypeAuthorization auth) throws UnableProcessException,
@@ -139,7 +140,7 @@ public class AuthorizationValidator {
                         eventType.getAuthorization().getAdmins()));
         try {
             if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
-                throw new ForbiddenAccessException("Updating the `EventType` is only allowed for clients that " +
+                throw new ForbiddenAccessException("Editing the `EventType` is only allowed for clients that " +
                         "satisfy the authorization `admin` requirements");
             }
         } catch (final PluginException e) {
@@ -147,7 +148,7 @@ public class AuthorizationValidator {
         }
     }
 
-    public void authorizeStreamRead(final Client client, final EventType eventType) throws AccessDeniedException {
+    public void authorizeStreamRead(final EventType eventType) throws AccessDeniedException {
         final Resource resource = new EventTypeResource(eventType.getName(), "event-type",
                 Collections.singletonMap(AuthorizationService.Operation.READ,
                         eventType.getAuthorization() == null ? null : eventType.getAuthorization().getReaders()));
@@ -157,14 +158,11 @@ public class AuthorizationValidator {
         }
     }
 
-    public void authorizeSubscriptionRead(final EventTypeRepository eventTypeRepository, final Client client,
-                                          final SubscriptionBase subscriptionBase) throws AccessDeniedException {
-        subscriptionBase.getEventTypes().stream().forEach(
+    public void authorizeSubscriptionRead(final SubscriptionBase subscriptionBase) throws AccessDeniedException {
+        subscriptionBase.getEventTypes().forEach(
                 (eventTypeName) -> {
                     try {
-                        eventTypeRepository.findByNameO(eventTypeName).ifPresent(eventType -> {
-                            authorizeStreamRead(client, eventType);
-                        });
+                        eventTypeRepository.findByNameO(eventTypeName).ifPresent(this::authorizeStreamRead);
                     } catch (final InternalNakadiException e) {
                         throw new ServiceTemporarilyUnavailableException(e);
                     }

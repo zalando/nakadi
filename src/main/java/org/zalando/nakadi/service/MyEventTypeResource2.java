@@ -43,6 +43,6 @@ class MyEventTypeResource2 implements Resource {
 
     @Override
     public String toString() {
-        return "AuthorizedResource{event-type='" + name + "}";
+        return "AuthorizedResource{event-type='" + name + "'}";
     }
 }

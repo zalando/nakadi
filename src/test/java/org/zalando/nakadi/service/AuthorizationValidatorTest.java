@@ -2,7 +2,13 @@ package org.zalando.nakadi.service;
 
 
 import com.google.common.collect.ImmutableList;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import org.junit.Test;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.zalando.nakadi.domain.EventTypeAuthorization;
 import org.zalando.nakadi.domain.EventTypeAuthorizationAttribute;
 import org.zalando.nakadi.exceptions.ForbiddenAccessException;
@@ -11,14 +17,8 @@ import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableExcept
 import org.zalando.nakadi.plugin.api.PluginException;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.utils.EventTypeTestBuilder;
-
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class AuthorizationValidatorTest {
 
@@ -32,7 +32,8 @@ public class AuthorizationValidatorTest {
 
     public AuthorizationValidatorTest() {
         authorizationService = mock(AuthorizationService.class);
-        validator = new AuthorizationValidator(authorizationService);
+
+        validator = new AuthorizationValidator(authorizationService, mock(EventTypeRepository.class));
     }
 
     @Test

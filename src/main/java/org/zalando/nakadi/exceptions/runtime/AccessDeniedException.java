@@ -21,4 +21,8 @@ public class AccessDeniedException extends MyNakadiRuntimeException1 {
     public AuthorizationService.Operation getOperation() {
         return operation;
     }
+
+    public String explain() {
+        return "Access on " + operation + " " + resource.getType() + ":" + resource.getName() + " denied";
+    }
 }

@@ -7,6 +7,24 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +51,9 @@ import org.zalando.nakadi.exceptions.NoSuchEventTypeException;
 import org.zalando.nakadi.exceptions.ServiceUnavailableException;
 import org.zalando.nakadi.exceptions.UnparseableCursorException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.exceptions.runtime.ServiceTemporarilyUnavailableException;
 import org.zalando.nakadi.metrics.MetricUtils;
+import static org.zalando.nakadi.metrics.MetricUtils.metricNameFor;
 import org.zalando.nakadi.repository.EventConsumer;
 import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
@@ -47,9 +67,11 @@ import org.zalando.nakadi.service.CursorConverter;
 import org.zalando.nakadi.service.EventStream;
 import org.zalando.nakadi.service.EventStreamConfig;
 import org.zalando.nakadi.service.EventStreamFactory;
+import org.zalando.nakadi.service.EventTypeChangeListener;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.util.AuthorizationUtils;
 import org.zalando.nakadi.util.FeatureToggleService;
+import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUMERS_NUMBER;
 import org.zalando.nakadi.view.Cursor;
 import org.zalando.problem.Problem;
 
@@ -78,8 +100,9 @@ import static org.zalando.nakadi.util.FeatureToggleService.Feature.LIMIT_CONSUME
 @RestController
 public class EventStreamController {
 
-    public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
     private static final Logger LOG = LoggerFactory.getLogger(EventStreamController.class);
+    public static final String CONSUMERS_COUNT_METRIC_NAME = "consumers";
+
     private final EventTypeRepository eventTypeRepository;
     private final TimelineService timelineService;
     private final ObjectMapper jsonMapper;
@@ -92,6 +115,7 @@ public class EventStreamController {
     private final CursorConverter cursorConverter;
     private final MetricRegistry streamMetrics;
     private final AuthorizationValidator authorizationValidator;
+    private final EventTypeChangeListener eventTypeChangeListener;
 
     @Autowired
     public EventStreamController(final EventTypeRepository eventTypeRepository,
@@ -105,7 +129,8 @@ public class EventStreamController {
                                  final ConsumerLimitingService consumerLimitingService,
                                  final FeatureToggleService featureToggleService,
                                  final CursorConverter cursorConverter,
-                                 final AuthorizationValidator authorizationValidator) {
+                                 final AuthorizationValidator authorizationValidator,
+                                 final EventTypeChangeListener eventTypeChangeListener) {
         this.eventTypeRepository = eventTypeRepository;
         this.timelineService = timelineService;
         this.jsonMapper = jsonMapper;
@@ -118,6 +143,7 @@ public class EventStreamController {
         this.featureToggleService = featureToggleService;
         this.cursorConverter = cursorConverter;
         this.authorizationValidator = authorizationValidator;
+        this.eventTypeChangeListener = eventTypeChangeListener;
     }
 
     @VisibleForTesting
@@ -170,6 +196,15 @@ public class EventStreamController {
         }
     }
 
+    private void authorizeStreamRead(final String eventType) throws AccessDeniedException,
+            ServiceTemporarilyUnavailableException {
+        try {
+            authorizationValidator.authorizeStreamRead(eventTypeRepository.findByName(eventType));
+        } catch (final InternalNakadiException | NoSuchEventTypeException ex) {
+            throw new ServiceTemporarilyUnavailableException(ex);
+        }
+    }
+
     @RequestMapping(value = "/event-types/{name}/events", method = RequestMethod.GET)
     public StreamingResponseBody streamEvents(
             @PathVariable("name") final String eventTypeName,
@@ -195,14 +230,16 @@ public class EventStreamController {
             Counter consumerCounter = null;
             EventStream eventStream = null;
             List<ConnectionSlot> connectionSlots = ImmutableList.of();
+            final AtomicBoolean needCheckAuthorization = new AtomicBoolean(false);
 
-            try {
+            try (Closeable ignore = eventTypeChangeListener.registerListener(et -> needCheckAuthorization.set(true),
+                    Collections.singletonList(eventTypeName))) {
                 final EventType eventType = eventTypeRepository.findByName(eventTypeName);
 
                 // TODO: deprecate and remove previous authorization strategy
                 client.checkScopes(eventType.getReadScopes());
 
-                authorizationValidator.authorizeStreamRead(client, eventType);
+                authorizeStreamRead(eventTypeName);
 
                 // validate parameters
                 final EventStreamConfig streamConfig = EventStreamConfig.builder()
@@ -246,7 +283,11 @@ public class EventStreamController {
 
                 outputStream.flush(); // Flush status code to client
 
-                eventStream.streamEvents(connectionReady);
+                eventStream.streamEvents(connectionReady, () -> {
+                    if (needCheckAuthorization.getAndSet(false)) {
+                        authorizeStreamRead(eventTypeName);
+                    }
+                });
             } catch (final UnparseableCursorException e) {
                 LOG.debug("Incorrect syntax of X-nakadi-cursors header: {}. Respond with BAD_REQUEST.",
                         e.getCursors(), e);

@@ -154,7 +154,8 @@ public class EventTypeService {
             throws EventTypeDeletionException,
             ForbiddenAccessException,
             NoEventTypeException,
-            ConflictException {
+            ConflictException,
+            ServiceTemporarilyUnavailableException {
         Closeable deletionCloser = null;
         Multimap<TopicRepository, String> topicsToDelete = null;
         try {
@@ -168,6 +169,9 @@ public class EventTypeService {
             if (!client.idMatches(eventType.getOwningApplication())) {
                 throw new ForbiddenAccessException("You don't have access to event type " + eventTypeName);
             }
+
+            authorizationValidator.authorizeEventTypeAdmin(eventType);
+
             final List<Subscription> subscriptions = subscriptionRepository.listSubscriptions(
                     ImmutableSet.of(eventTypeName), Optional.empty(), 0, 1);
             if (!subscriptions.isEmpty()) {

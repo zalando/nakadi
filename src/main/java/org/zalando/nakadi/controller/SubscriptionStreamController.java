@@ -3,6 +3,13 @@ package org.zalando.nakadi.controller;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,30 +25,19 @@ import org.zalando.nakadi.config.NakadiSettings;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
-import org.zalando.nakadi.repository.EventTypeRepository;
+import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.security.Client;
-import org.zalando.nakadi.service.AuthorizationValidator;
 import org.zalando.nakadi.service.BlacklistService;
 import org.zalando.nakadi.service.ClosedConnectionsCrutch;
 import org.zalando.nakadi.service.subscription.StreamParameters;
 import org.zalando.nakadi.service.subscription.SubscriptionOutput;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamer;
 import org.zalando.nakadi.service.subscription.SubscriptionStreamerFactory;
-import org.zalando.nakadi.util.FeatureToggleService;
-import org.zalando.problem.Problem;
-
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.zalando.nakadi.metrics.MetricUtils.metricNameForSubscription;
 import static org.zalando.nakadi.util.AuthorizationUtils.errorMessage;
+import org.zalando.nakadi.util.FeatureToggleService;
 import static org.zalando.nakadi.util.FeatureToggleService.Feature.HIGH_LEVEL_API;
+import org.zalando.problem.Problem;
 
 @RestController
 public class SubscriptionStreamController {
@@ -56,8 +52,6 @@ public class SubscriptionStreamController {
     private final BlacklistService blacklistService;
     private final MetricRegistry metricRegistry;
     private final SubscriptionDbRepository subscriptionDbRepository;
-    private final EventTypeRepository eventTypeRepository;
-    private final AuthorizationValidator authorizationValidator;
 
     @Autowired
     public SubscriptionStreamController(final SubscriptionStreamerFactory subscriptionStreamerFactory,
@@ -67,9 +61,7 @@ public class SubscriptionStreamController {
                                         final NakadiSettings nakadiSettings,
                                         final BlacklistService blacklistService,
                                         @Qualifier("perPathMetricRegistry") final MetricRegistry metricRegistry,
-                                        final SubscriptionDbRepository subscriptionDbRepository,
-                                        final EventTypeRepository eventTypeRepository,
-                                        final AuthorizationValidator authorizationValidator) {
+                                        final SubscriptionDbRepository subscriptionDbRepository) {
         this.subscriptionStreamerFactory = subscriptionStreamerFactory;
         this.featureToggleService = featureToggleService;
         this.jsonMapper = objectMapper;
@@ -78,8 +70,6 @@ public class SubscriptionStreamController {
         this.blacklistService = blacklistService;
         this.metricRegistry = metricRegistry;
         this.subscriptionDbRepository = subscriptionDbRepository;
-        this.eventTypeRepository = eventTypeRepository;
-        this.authorizationValidator = authorizationValidator;
     }
 
     private class SubscriptionOutputImpl implements SubscriptionOutput {
@@ -175,10 +165,9 @@ public class SubscriptionStreamController {
                         nakadiSettings.getDefaultCommitTimeoutSeconds(), client.getClientId());
                 final Subscription subscription = subscriptionDbRepository.getSubscription(subscriptionId);
 
-                authorizationValidator.authorizeSubscriptionRead(eventTypeRepository, client, subscription);
-
                 streamer = subscriptionStreamerFactory.build(subscription, streamParameters, output,
-                        connectionReady, blacklistService, client);
+                        connectionReady, blacklistService);
+
                 streamer.stream();
             } catch (final InterruptedException ex) {
                 LOG.warn("Interrupted while streaming with " + streamer, ex);

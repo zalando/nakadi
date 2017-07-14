@@ -126,7 +126,12 @@ public class EventTypeController {
     @RequestMapping(value = "/{name:.+}", method = RequestMethod.DELETE)
     public ResponseEntity<?> delete(@PathVariable("name") final String eventTypeName,
                                     final NativeWebRequest request,
-                                    final Client client) {
+                                    final Client client)
+            throws EventTypeDeletionException,
+            ForbiddenAccessException,
+            NoEventTypeException,
+            ConflictException,
+            ServiceTemporarilyUnavailableException {
         if (featureToggleService.isFeatureEnabled(DISABLE_EVENT_TYPE_DELETION) && !isAdmin(client)) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
