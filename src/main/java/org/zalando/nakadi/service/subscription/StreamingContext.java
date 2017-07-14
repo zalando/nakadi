@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.nakadi.ShutdownHooks;
 import org.zalando.nakadi.domain.Subscription;
 import org.zalando.nakadi.exceptions.NakadiRuntimeException;
 import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
@@ -128,9 +129,14 @@ public class StreamingContext implements SubscriptionStreamer {
 
     @Override
     public void stream() throws InterruptedException {
-        // bugfix ARUHA-485
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> onNodeShutdown()));
-        streamInternal(new StartingState());
+        try (Closeable ignore = ShutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
+            streamInternal(new StartingState());
+        } catch (IOException ex) {
+            log.error(
+                    "Failed to delete shutdown hook for subscription {}. This method should not throw any exception",
+                    getSubscription(),
+                    ex);
+        }
     }
 
     void onNodeShutdown() {
