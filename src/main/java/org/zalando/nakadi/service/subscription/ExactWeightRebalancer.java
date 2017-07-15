@@ -30,7 +30,7 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
                 .filter(p -> p.mustBeRebalanced(activeSessionIds))
                 .collect(Collectors.toSet());
 
-        // State 2. Remove partitions from sessions that have too many of them.
+        // Stage 2. Remove partitions from sessions that have too many of them.
         // 2.1. collect information per session.
         final Map<String, List<Partition>> partitions = Stream.of(currentPartitions)
                 .filter(p -> !toRebalance.contains(p))
@@ -70,9 +70,12 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
             return new Partition[0];
         }
     }
-
+    /**
+     * Proportionally split an itemCount based on array of weights. Sum of the result array must be equal to itemCount.
+     * For example, a count 101 with weights [1, 1, 2] can be splitted to [25, 25, 51]
+     */
     static int[] splitByWeight(final int itemCount, final int[] weigths) {
-        if (itemCount < weigths.length) {
+        if (itemCount < weigths.length || weigths.length == 0) {
             throw new IllegalArgumentException("Can not rebalance " + itemCount + " onto " + weigths.length);
         }
         if (IntStream.of(weigths).filter(w -> w <= 0).findAny().isPresent()) {
@@ -80,22 +83,23 @@ class ExactWeightRebalancer implements BiFunction<Session[], Partition[], Partit
         }
         final int totalWeight = IntStream.of(weigths).sum();
         final int fixed = itemCount / totalWeight;
-        final int[] result = IntStream.of(weigths).map(w -> fixed * w).toArray();
+        final int size = weigths.length;
+        final int[] result = new int[size];
         if (fixed == 0) {
             Arrays.fill(result, 1);
-        }
-
-        int left = itemCount - IntStream.of(result).sum();
-
-        // Yes, it's bad way, I know. But failed to figure out other simple way for exact case.
-        while (left > 0) {
-            for (int i = 0; i < result.length && left > 0; ++i) {
-                final int v = Math.min(left, weigths[i]);
-                result[i] += v;
-                left -= v;
+            return result;
+        } else if (itemCount == totalWeight) {
+            return weigths;
+        } else {
+            double leftOver = 0.0;
+            for (int i = 0; i < size; i++) {
+                final double weightedValue = weigths[i] * itemCount * 1.0 / totalWeight + leftOver;
+                result[i] = (int) weightedValue;
+                leftOver = weightedValue - result[i];
             }
+            result[size - 1] = (int) (result[size - 1] + leftOver);
+            return result;
         }
-        return result;
     }
 
 }
