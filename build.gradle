@@ -198,10 +198,6 @@ tasks.withType(FindBugs) {
     }
 }
 
-//tasks.withType(Test) {
-//    maxParallelForks = Runtime.runtime.availableProcessors()
-//}
-
 task generateScmSourceJson() {
     def rev = new ByteArrayOutputStream()
     exec {
@@ -319,7 +315,8 @@ task fullAcceptanceTest(type: GradleBuild) {
 task acceptanceTest(type: Test) {
     testClassesDir = sourceSets.acceptanceTest.output.classesDir
     classpath = sourceSets.acceptanceTest.runtimeClasspath
-    maxParallelForks = 4
+//    maxParallelForks = Runtime.runtime.availableProcessors()
+    maxParallelForks = 1
 }
 
 test {
