@@ -103,7 +103,7 @@ paths:
     get:
       tags:
         - monitoring
-      summary: Get monitoring metrics
+      description: Get monitoring metrics
       responses:
         '200':
           description: Ok
@@ -666,7 +666,7 @@ paths:
           schema:
             type: array
             items:
-              - $ref: '#/definitions/Cursor'
+              $ref: '#/definitions/Cursor'
       responses:
         '200':
           description: OK
@@ -836,7 +836,7 @@ paths:
             schema:
               type: array
               items:
-                - $ref: '#/definitions/ShiftedCursor'
+                $ref: '#/definitions/ShiftedCursor'
         responses:
           '200':
             description: OK
@@ -2392,7 +2392,7 @@ definitions:
     type: object
     description: |
       Authorization section for an event type. This section defines three access control lists: one for producing
-      events ('write'), one for consuming events ('read'), and one for administering an event type ('admin').
+      events ('writers'), one for consuming events ('readers'), and one for administering an event type ('admins').
       Regardless of the values of the authorization properties, administrator accounts will always be authorized.
     properties:
       admins:

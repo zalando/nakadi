@@ -2,13 +2,6 @@ package org.zalando.nakadi.service.timeline;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +41,14 @@ import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
 import org.zalando.nakadi.security.Client;
 import org.zalando.nakadi.util.UUIDGenerator;
+
+import javax.annotation.Nullable;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TimelineService {
@@ -139,13 +140,8 @@ public class TimelineService {
         if (timelines.isEmpty()) {
             return Collections.singletonList(getFakeTimeline(eventTypeCache.getEventType(eventType)));
         } else {
-            final Date currentDate = new Date();
             return timelines.stream()
-                    .filter(t -> {
-                        final boolean timelineExpired = t.getCleanedUpAt() != null
-                                && currentDate.after(t.getCleanedUpAt());
-                        return t.getSwitchedAt() != null && !timelineExpired;
-                    })
+                    .filter(t -> t.getSwitchedAt() != null && !t.isDeleted())
                     .collect(Collectors.toList());
         }
     }
@@ -175,10 +171,16 @@ public class TimelineService {
         }
     }
 
-    public Timeline getFakeTimeline(final EventType eventType) {
-        return Timeline.createFakeTimeline(eventType, defaultStorage);
+    public Timeline getFakeTimeline(final EventType eventType)
+            throws InternalNakadiException, NoSuchEventTypeException {
+        final Timeline fakeTimeline = Timeline.createFakeTimeline(eventType, defaultStorage);
+        final List<Timeline> timelines = eventTypeCache.getTimelinesOrdered(eventType.getName());
+        if (timelines.size() > 1) {
+            fakeTimeline.setDeleted(timelines.get(0).isDeleted());
+        }
+        return fakeTimeline;
     }
-
+    
     public TopicRepository getTopicRepository(final EventTypeBase eventType)
             throws TopicRepositoryException, TimelineException {
         final Timeline timeline = getTimeline(eventType);
