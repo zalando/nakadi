@@ -103,7 +103,7 @@ paths:
     get:
       tags:
         - monitoring
-      summary: Get monitoring metrics
+      description: Get monitoring metrics
       responses:
         '200':
           description: Ok
