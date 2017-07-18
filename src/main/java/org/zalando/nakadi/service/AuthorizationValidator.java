@@ -116,7 +116,6 @@ public class AuthorizationValidator {
                 eventType.getName(), eventType.getAuthorization());
         try {
             final boolean authorized = authorizationService.isAuthorized(
-                    null,
                     AuthorizationService.Operation.WRITE,
                     resource);
             if (!authorized) {
@@ -135,7 +134,7 @@ public class AuthorizationValidator {
 
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
-            if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.ADMIN, resource)) {
+            if (!authorizationService.isAuthorized(AuthorizationService.Operation.ADMIN, resource)) {
                 throw new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource);
             }
         } catch (final PluginException e) {
@@ -150,7 +149,7 @@ public class AuthorizationValidator {
 
         final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
         try {
-            if (!authorizationService.isAuthorized(null, AuthorizationService.Operation.READ, resource)) {
+            if (!authorizationService.isAuthorized(AuthorizationService.Operation.READ, resource)) {
                 throw new AccessDeniedException(AuthorizationService.Operation.READ, resource);
             }
         } catch (final PluginException e) {
