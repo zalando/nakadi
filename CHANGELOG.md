@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Addition of a new authentication mode, 'REALM'
+
 ### Changed
 - The metrics endpoint documentation key "summary" changed to "description" in Open API file.
 
