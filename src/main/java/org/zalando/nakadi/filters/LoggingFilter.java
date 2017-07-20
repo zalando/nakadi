@@ -57,10 +57,10 @@ public class LoggingFilter extends OncePerRequestFilter {
     private Optional<String> getRealm() {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication instanceof OAuth2Authentication) {
-            Object details = ((OAuth2Authentication) authentication).getUserAuthentication().getDetails();
+            final Object details = ((OAuth2Authentication) authentication).getUserAuthentication().getDetails();
             if (details instanceof Map) {
-                Map map = (Map) details;
-                Object realm = map.get("realm");
+                final Map map = (Map) details;
+                final Object realm = map.get("realm");
                 if (realm != null && realm instanceof String) {
                     return Optional.of((String) realm);
                 }
