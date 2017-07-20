@@ -1,0 +1,58 @@
+---
+layout: default
+---
+
+{% assign sorted_collections = site.collections | sort: "position" %}
+{% for collection in sorted_collections %}
+    {% assign sorted_docs = collection.docs | sort: "position" %}
+        {% for doc in sorted_docs %}
+            {% if doc.collection == "documentation" %}
+                <div class="doc doc-full">
+                    <div class="info">
+                        <h2 class="title">
+                            <a id="{{ doc.slug }}"></a>
+                            {{ doc.title }}
+                        </h2>
+                        <p>{{ doc.content }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+{% endfor %}
+
+{% assign allData = site.data %}
+
+{% for data in allData %}
+
+    {% assign singleData = data[1] %}
+    <div class="doc">
+        <a id="{{ data[0] }}"></a>
+        <div class="info">
+            <h1 class="title"><a href="#{{ data[0] }}">
+                {{singleData.info.title}} v{{singleData.info.version}}
+            </a></h1>
+            {{singleData.info.description|newline_to_br| markdownify}}
+            <hr/>
+            {% include yaml.html data=singleData.info.contact %}
+        </div>
+    </div>
+
+
+    <h1 class="title">Methods</h1>
+
+    {% assign paths = singleData.paths | sort %}
+    {% for path in paths %}
+        {% for method in path[1] %}
+            {% include endpoint.html path=path method=method %}
+        {% endfor %}
+    {% endfor %}
+
+    <h1 class="title">Definitions</h1>
+
+    {% assign definitions = singleData.definitions | sort %}
+    {% for definition in definitions %}
+          {% include definition.html definition=definition %}
+    {% endfor %}
+{% endfor %}
+
+

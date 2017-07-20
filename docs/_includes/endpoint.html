@@ -1,0 +1,37 @@
+
+<div class="doc">
+    <a id="{{ path[0] }}_{{ method[0] }}"></a>
+    <div class="info">
+        <h2 class="title">
+                        <span class="method-{{ method[0] }}" data-after="{{ method[0] }}">
+                            <a href="#{{ path[0] }}_{{ method[0] }}"> {{ path[0] }} </a>
+                        </span>
+        </h2>
+        <p class="summary">{{ method[1].summary }}</p>
+        <article class="markdown">
+            {{ method[1].description | newline_to_br| markdownify }}
+        </article>
+
+        {% capture fileName %}{{ path[0] }}_{{ method[0] }}{% endcapture %}
+        {% comment %}
+        Todo: replace { and } dynamically
+        {% endcomment %}
+        {% assign fileNameStripped = fileName | replace: '/', '' | replace: '{id}', '_id' %}
+
+        {% for collection in site.collections %}
+        {% assign docs = collection.docs %}
+        {% for doc in docs %}
+        {% if doc.collection == "api" %}
+        {% if doc.slug ==  fileNameStripped %}
+        {{ doc.content }}
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+        {% endfor %}
+
+
+        {% assign parameters = method[1].parameters %}
+        {% include parameters.html data=parameters %}
+    </div>
+    {% include preview.html %}
+</div>

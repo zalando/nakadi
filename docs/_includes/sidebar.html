@@ -1,0 +1,77 @@
+<div class="sidebar">
+    <div class="site-name">
+        <h1>{{ site.title }}</h1>
+        <a class="github-button" href="https://github.com/zalando/nakadi"
+           data-size="large" aria-label="GitHub">GitHub</a>
+    </div>
+
+    {% assign allData = site.data %}
+
+    <ul class="navigation">
+
+        <!-- Navigation _documentation -->
+        <li class="first-level">
+            <span class="title">General</span>
+            {% assign sorted_collections = site.collections | sort: "position" %}
+            {% for collection in sorted_collections %}
+            <ul>
+                {% assign sorted_docs = collection.docs | sort: "position" %}
+                {% for doc in sorted_docs %}
+                {% if doc.collection == "documentation" %}
+                <li>
+                    <a href="#{{ doc.slug }}">
+                        {{ doc.title }}
+                    </a>
+                </li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+            {% endfor %}
+        </li>
+
+        <!-- Navigation for swagger yml files in _data -->
+        <li class="first-level">
+            {% assign methods_order = 'GET POST PUT PATCH DELETE CONNECT HEAD OPTIONS'|downcase|split: ' '%}
+            {% for data in allData %}
+
+            <span class="title">
+                <a href="#{{data[0]}}">{{data[1].info.title}} v{{data[1].info.version}}</a>
+            </span>
+            <!-- Methods-->
+            {% assign singleData = data[1].paths | sort %}
+            {% for path in singleData %}
+            <ul class="path">
+                <li>
+                    <div>{{path[0]}}</div>
+                {% assign methods = path[1] %}
+                {% for method_name in methods_order %}
+                    {% if methods[method_name] %}
+                    <a href="#{{ path[0] }}_{{ method_name }}">
+                        <span class="method-{{ method_name }}" data-after="{{ method_name }}"></span>
+                    </a>
+                    {% endif %}
+                {% endfor %}
+                </li>
+            </ul>
+            {% endfor %}
+            {% endfor %}
+
+
+            <span class="title">Definitions</span>
+            {% for data in allData %}
+            {% assign singleData = data[1].definitions | sort %}
+            {% for definition in singleData %}
+            <ul class="path">
+                <li>
+                    <a href="#definition_{{definition[0] }}">
+                                <span class="definition">
+                                    {{ definition[0] }}
+                                </span>
+                    </a>
+                </li>
+            </ul>
+            {% endfor %}
+            {% endfor %}
+        </li>
+    </ul>
+</div>

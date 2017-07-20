@@ -1,0 +1,99 @@
+{% assign known_keys = 'type $ref items description properties required name in schema allOf' %}
+{% assign type = include.type %}
+
+
+{% if type.type %}
+
+
+    {% if type.items %}
+        <div style="display: flex"><span class="array">Array of </span>
+        {% assign subtype = type.items %}
+        {% assign count = subtype|size %}
+        <span class="subtype{% if 1 < count %} many-items{% endif %}">
+
+          {% include type.html type=subtype %}
+          {% assign type = include.type %}
+        </span>
+        </div>
+    {% else %}
+        <span class="type">{{ type.type | capitalize }}</span>
+    {% endif %}
+
+    {% if type.properties %}
+        <div class="props-label">Object properties:</div>
+        <div class="props">
+            {% assign props = type.properties %}
+            {% assign required = type.required|join: ' ' %}
+            {% for prop in props %}
+            <div class="prop">
+
+
+                <span class="prop-name">{{ prop[0] }}
+                    {% if required contains prop[0] %}
+                    <span class="required"></span>
+                    {% endif %}
+                :</span>
+                <span class="value">
+                    {% assign value_type = prop[1] %}
+                    {% include type.html type=value_type  %}
+                    {% assign type = include.type %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+
+
+{% elsif type.schema %}
+
+    {% assign type2 = type.schema %}
+    {% include type.html type=type2  %}
+    {% assign type = include.type %}
+
+{% elsif type['$ref'] %}
+
+    {% assign def = type['$ref'] | split: '/' | last %}
+    <a class="type" href="#definition_{{ def }}">{{ def }}</a>
+
+{% else%}
+    -
+{% endif %}
+
+
+{% if type.allOf %}
+    <div class="mixin-label">Mixin:</div>
+    <ol>
+    {%for mix in type.allOf %}
+        <li>
+        {% include type.html type=mix  %}
+        {% assign type = include.type %}
+        </li>
+    {% endfor %}
+    </ol>
+{% endif %}
+
+{% for key in type %}
+    {% unless known_keys contains key[0]  %}
+    <div class="param">
+        {% if key[0] == 'enum' %}
+            {% assign value = key[1] | join: ', ' %}
+        {% else %}
+            {% assign value = key[1] %}
+        {% endif %}
+
+
+        <span class="key">{{ key[0] }}:</span><span class="value">
+            {% include yaml.html data=value  %}
+        </span>
+
+    </div>
+    {% endunless %}
+{% endfor %}
+
+{% if type.description %}
+<div class="description">
+    {{type.description| newline_to_br| markdownify }}
+</div>
+{% endif %}
+

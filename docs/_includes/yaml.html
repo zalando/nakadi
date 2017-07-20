@@ -1,0 +1,32 @@
+{% assign props = include.data%}
+
+
+{% if props.first %}
+
+
+<div class="props">
+    {% for prop in props %}
+    {% if prop[0] %}
+    <div>
+
+
+        <span class="prop-name">{{ prop[0] }}:</span>
+        <span class="value">
+            {% assign value = prop[1] %}
+            {% include yaml.html data=value  %}
+
+        </span>
+    </div>
+    {% else %}
+    <div>
+        <span class="value">
+            {% assign value = prop %}
+            {% include yaml.html data=value  %}
+        </span>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{%else %}
+{{props}}
+{% endif %}

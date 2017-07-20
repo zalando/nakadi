@@ -1,0 +1,61 @@
+{% assign definition = include.definition %}
+<div class="doc">
+    <a id="definition_{{ definition[0] }}"></a>
+    <div class="info">
+        <h2 class="title"><a href="#definition_{{ definition[0] }}">
+            {{ definition[0] }}
+        </a>
+        </h2>
+        <p class="summary">{{ definition[1].summary }}</p>
+        <p class="summary">{{ definition[1].description | markdownify }}</p>
+
+        {% capture fileName %}{{ definition[0] }}{% endcapture %}
+        {% comment %}
+        Todo: replace { and } dynamically
+        {% endcomment %}
+        {% assign fileNameStripped = fileName | replace: '/', '' | replace: '{id}', '_id' %}
+
+        {% for collection in site.collections %}
+        {% assign docs = collection.docs %}
+        {% for doc in docs %}
+        {% if doc.collection == "api" %}
+        {% if doc.slug ==  fileNameStripped %}
+        {{ doc.content }}
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+        {% endfor %}
+
+        {% if definition[1].allOf %}
+        <div class="mixin-label">Mixin:</div>
+        <ol>
+            {%for mix in definition[1].allOf %}
+            <li>
+                {% include type.html type=mix req=mix.required  %}
+                {% assign type = include.type %}
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        {% assign props = definition[1].properties %}
+        {% assign req = definition[1].required %}
+
+        {% include props.html data=props req=req %}
+        {% endif %}
+
+        {% assign known_keys = 'description properties required type allOf' %}
+        {% for key in definition[1] %}
+        {% unless known_keys contains key[0]  %}
+        <div class="param">
+            {% if key[0] == 'enum' %}
+            {% assign value = key[1] | join: ', ' %}
+            {% else %}
+            {% assign value = key[1] %}
+            {% endif %}
+            <span class="key">{{ key[0] }}:</span><span class="value">{{ value }}</span>
+        </div>
+        {% endunless %}
+        {% endfor %}
+
+    </div>
+</div>
