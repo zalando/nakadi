@@ -76,9 +76,14 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
                     .antMatchers(POST, "/subscriptions/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/subscriptions/**").access(hasScope(eventStreamReadScope))
                     .antMatchers(GET, "/health/**").permitAll()
-                    .anyRequest().access(hasUidScopeAndAnyRealm(realms));
+                    .anyRequest().access(hasScope(uidScope));
         }
         else if (settings.getAuthMode() == SecuritySettings.AuthMode.BASIC) {
+            http.authorizeRequests()
+                    .antMatchers(GET, "/health/**").permitAll()
+                    .anyRequest().access(hasScope(uidScope));
+        }
+        else if (settings.getAuthMode() == SecuritySettings.AuthMode.REALM) {
             http.authorizeRequests()
                     .antMatchers(GET, "/health/**").permitAll()
                     .anyRequest().access(hasUidScopeAndAnyRealm(realms));
