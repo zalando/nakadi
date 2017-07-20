@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - The metrics endpoint documentation key "summary" changed to "description" in Open API file.
 
+### Fixed
+- Fixed formatting of CursorDistanceResult in Open API file.
+
 ## [1.0.1] - 2017-07-14
 
 ### Fixed
