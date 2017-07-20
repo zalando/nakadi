@@ -50,7 +50,7 @@ public class LoggingFilter extends OncePerRequestFilter {
 
             // todo: delete after we collect the information we need
             // this is done as a separate log entry not to break the log parser we have for our access log
-            getRealm().ifPresent(realm -> LOG.info("[REALM] {} {}", realm, user));
+            LOG.info("[REALM] \"{}\" \"{}\"", getRealm().orElse("-"), user);
         }
     }
 
