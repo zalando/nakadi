@@ -2,6 +2,9 @@ package org.zalando.nakadi.filters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -11,6 +14,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.security.Principal;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -43,6 +47,25 @@ public class LoggingFilter extends OncePerRequestFilter {
                     user,
                     response.getStatus(),
                     timing);
+
+            // todo: delete after we collect the information we need
+            // this is done as a separate log entry not to break the log parser we have for our access log
+            getRealm().ifPresent(realm -> LOG.info("[REALM] {} {}", realm, user));
         }
+    }
+
+    private Optional<String> getRealm() {
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof OAuth2Authentication) {
+            Object details = ((OAuth2Authentication) authentication).getUserAuthentication().getDetails();
+            if (details instanceof Map) {
+                Map map = (Map) details;
+                Object realm = map.get("realm");
+                if (realm != null && realm instanceof String) {
+                    return Optional.of((String) realm);
+                }
+            }
+        }
+        return Optional.empty();
     }
 }
