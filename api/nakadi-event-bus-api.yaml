@@ -1947,7 +1947,7 @@ definitions:
   CursorDistanceResult:
     allOf:
       - $ref: '#/definitions/CursorDistanceQuery'
-      - type: Object        
+      - type: object        
         properties:
           distance:
             type: number
