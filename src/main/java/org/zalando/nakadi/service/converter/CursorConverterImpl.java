@@ -2,8 +2,13 @@ package org.zalando.nakadi.service.converter;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -40,6 +45,31 @@ public class CursorConverterImpl implements CursorConverter {
             throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
             InvalidCursorException {
         return convert(cursor.getEventType(), cursor);
+    }
+
+    @Override
+    public List<NakadiCursor> convert(final List<SubscriptionCursorWithoutToken> cursors)
+            throws InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException,
+            InvalidCursorException {
+        for (final SubscriptionCursorWithoutToken cursor: cursors) {
+            if (null == cursor.getPartition()) {
+                throw new InvalidCursorException(CursorError.NULL_PARTITION, cursor);
+            } else if (null == cursor.getOffset()) {
+                throw new InvalidCursorException(CursorError.NULL_OFFSET, cursor);
+            }
+        }
+        final LinkedHashMap<SubscriptionCursorWithoutToken, AtomicReference<NakadiCursor>> orderingMap =
+                new LinkedHashMap<>();
+        cursors.forEach(item -> orderingMap.put(item, new AtomicReference<>(null)));
+
+        final Map<Version, List<SubscriptionCursorWithoutToken>> mappedByVersions = cursors.stream()
+                .collect(Collectors.groupingBy(c -> guessVersion(c.getOffset())));
+        for (final Map.Entry<Version, List<SubscriptionCursorWithoutToken>> entry: mappedByVersions.entrySet()) {
+            final List<NakadiCursor> result = converters.get(entry.getKey()).convertBatched(entry.getValue());
+            IntStream.range(0, entry.getValue().size())
+                    .forEach(idx -> orderingMap.get(entry.getValue().get(idx)).set(result.get(idx)));
+        }
+        return orderingMap.values().stream().map(AtomicReference::get).collect(Collectors.toList());
     }
 
     @Override

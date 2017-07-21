@@ -1,6 +1,7 @@
 package org.zalando.nakadi.service;
 
 import com.google.common.base.Preconditions;
+import java.util.List;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.exceptions.InternalNakadiException;
 import org.zalando.nakadi.exceptions.InvalidCursorException;
@@ -27,6 +28,9 @@ public interface CursorConverter {
             InternalNakadiException, NoSuchEventTypeException, InvalidCursorException, ServiceUnavailableException;
 
     NakadiCursor convert(SubscriptionCursorWithoutToken cursor) throws
+            InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
+
+    List<NakadiCursor> convert(List<SubscriptionCursorWithoutToken> cursor) throws
             InternalNakadiException, NoSuchEventTypeException, ServiceUnavailableException, InvalidCursorException;
 
 

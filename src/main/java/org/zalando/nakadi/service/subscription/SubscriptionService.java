@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import org.slf4j.Logger;
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.zalando.nakadi.domain.EventType;
-import org.zalando.nakadi.domain.EventTypePartition;
 import org.zalando.nakadi.domain.ItemsWrapper;
 import org.zalando.nakadi.domain.NakadiCursor;
 import org.zalando.nakadi.domain.PaginationLinks;
@@ -215,9 +215,7 @@ public class SubscriptionService {
 
         final ZkSubscriptionNode zkSubscriptionNode = subscriptionClient.getZkSubscriptionNodeLocked();
 
-        return eventTypes.stream()
-                .map(et -> loadStats(et, zkSubscriptionNode, subscriptionClient, topicPartitions))
-                .collect(Collectors.toList());
+        return loadStats(eventTypes, zkSubscriptionNode, subscriptionClient, topicPartitions);
     }
 
     private List<PartitionEndStatistics> loadPartitionEndStatistics(final Collection<EventType> eventTypes)
@@ -236,47 +234,61 @@ public class SubscriptionService {
         return topicPartitions;
     }
 
-    private SubscriptionEventTypeStats loadStats(
-            final EventType eventType,
+    private List<SubscriptionEventTypeStats> loadStats(
+            final Collection<EventType> eventTypes,
             final ZkSubscriptionNode subscriptionNode,
             final ZkSubscriptionClient client,
             final List<PartitionEndStatistics> stats)
             throws ServiceTemporarilyUnavailableException, InconsistentStateException {
-
-        final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>(stats.size());
-        for (final PartitionEndStatistics stat : stats) {
-            final NakadiCursor lastPosition = stat.getLast();
-            if (!lastPosition.getEventType().equals(eventType.getName())) {
-                continue;
-            }
-            final Long distance;
-            if (subscriptionNode.containsPartition(lastPosition.getEventTypePartition())) {
-                final NakadiCursor currentPosition;
-                final SubscriptionCursorWithoutToken offset =
-                        client.getOffset(new EventTypePartition(eventType.getName(), stat.getPartition()));
-                try {
-                    currentPosition = converter.convert(offset);
-                } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
-                        ServiceUnavailableException e) {
-                    throw new ServiceTemporarilyUnavailableException(e);
-                }
-                try {
-                    distance = cursorOperationsService.calculateDistance(currentPosition, lastPosition);
-                } catch (final InvalidCursorOperation ex) {
-                    throw new InconsistentStateException("Unexpected exception while calculating distance", ex);
-                }
-            } else {
-                distance = null;
-            }
-            resultPartitions.add(new SubscriptionEventTypeStats.Partition(
-                    lastPosition.getPartition(),
-                    subscriptionNode.guessState(stat.getPartition()).getDescription(),
-                    distance,
-                    Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
-            ));
+        final List<SubscriptionEventTypeStats> result = new ArrayList<>(eventTypes.size());
+        final List<NakadiCursor> committedPositions;
+        try {
+            committedPositions = loadCommittedPositions(subscriptionNode, client);
+        } catch (final InternalNakadiException | NoSuchEventTypeException | InvalidCursorException |
+                ServiceUnavailableException e) {
+            throw new ServiceTemporarilyUnavailableException(e);
         }
-        resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
-        return new SubscriptionEventTypeStats(eventType.getName(), resultPartitions);
+
+        for (final EventType eventType : eventTypes) {
+            final List<SubscriptionEventTypeStats.Partition> resultPartitions = new ArrayList<>(stats.size());
+            for (final PartitionEndStatistics stat : stats) {
+                final NakadiCursor lastPosition = stat.getLast();
+                if (!lastPosition.getEventType().equals(eventType.getName())) {
+                    continue;
+                }
+                final Long distance = committedPositions.stream()
+                        .filter(pos -> pos.getEventTypePartition().equals(lastPosition.getEventTypePartition()))
+                        .findAny()
+                        .map(committed -> {
+                            try {
+                                return cursorOperationsService.calculateDistance(committed, lastPosition);
+                            } catch (final InvalidCursorOperation ex) {
+                                throw new InconsistentStateException(
+                                        "Unexpected exception while calculating distance", ex);
+                            }
+                        })
+                        .orElse(null);
+                resultPartitions.add(new SubscriptionEventTypeStats.Partition(
+                        lastPosition.getPartition(),
+                        subscriptionNode.guessState(stat.getPartition()).getDescription(),
+                        distance,
+                        Optional.ofNullable(subscriptionNode.guessStream(stat.getPartition())).orElse("")
+                ));
+            }
+            resultPartitions.sort(Comparator.comparing(SubscriptionEventTypeStats.Partition::getPartition));
+            result.add(new SubscriptionEventTypeStats(eventType.getName(), resultPartitions));
+        }
+        return result;
+    }
+
+    private List<NakadiCursor> loadCommittedPositions(
+            final ZkSubscriptionNode subscriptionNode,
+            final ZkSubscriptionClient client) throws InternalNakadiException, InvalidCursorException,
+            NoSuchEventTypeException, ServiceUnavailableException {
+        final List<SubscriptionCursorWithoutToken> views = Stream.of(subscriptionNode.getPartitions()).map(
+                partition -> client.getOffset(partition.getKey()))
+                .collect(Collectors.toList());
+        return converter.convert(views);
     }
 
 }

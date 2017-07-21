@@ -19,6 +19,24 @@ import org.zalando.nakadi.exceptions.runtime.TopicRepositoryException;
 
 public interface TopicRepository {
 
+    class TimelineAndPartition {
+        private final Timeline timeline;
+        private final String partition;
+
+        public TimelineAndPartition(final Timeline timeline, final String partition) {
+            this.timeline = timeline;
+            this.partition = partition;
+        }
+
+        public Timeline getTimeline() {
+            return timeline;
+        }
+
+        public String getPartition() {
+            return partition;
+        }
+    }
+
     String createTopic(int partitionCount, Long retentionTimeMs) throws TopicCreationException;
 
     void deleteTopic(String topic) throws TopicDeletionException;
@@ -28,6 +46,9 @@ public interface TopicRepository {
     void syncPostBatch(String topicId, List<BatchItem> batch) throws EventPublishingException;
 
     Optional<PartitionStatistics> loadPartitionStatistics(Timeline timeline, String partition)
+            throws ServiceUnavailableException;
+
+    List<Optional<PartitionStatistics>> loadPartitionStatistics(Collection<TimelineAndPartition> partitions)
             throws ServiceUnavailableException;
 
     List<PartitionStatistics> loadTopicStatistics(Collection<Timeline> timelines) throws ServiceUnavailableException;

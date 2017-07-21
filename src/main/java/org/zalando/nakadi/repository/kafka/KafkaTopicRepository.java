@@ -2,6 +2,7 @@ package org.zalando.nakadi.repository.kafka;
 
 import com.google.common.base.Preconditions;
 import static com.google.common.collect.Lists.newArrayList;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -287,22 +289,51 @@ public class KafkaTopicRepository implements TopicRepository {
     @Override
     public Optional<PartitionStatistics> loadPartitionStatistics(final Timeline timeline, final String partition)
             throws ServiceUnavailableException {
+        return loadPartitionStatistics(Collections.singletonList(new TimelineAndPartition(timeline, partition))).get(0);
+    }
+
+    @Override
+    public List<Optional<PartitionStatistics>> loadPartitionStatistics(
+            final Collection<TimelineAndPartition> partitions) throws ServiceUnavailableException {
+        final Map<String, Set<String>> topicToPartitions = partitions.stream().collect(
+                Collectors.groupingBy(
+                        tp -> tp.getTimeline().getTopic(),
+                        Collectors.mapping(TimelineAndPartition::getPartition, Collectors.toSet())
+                ));
         try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-            final Optional<PartitionInfo> tp = consumer.partitionsFor(timeline.getTopic()).stream()
-                    .filter(p -> KafkaCursor.toNakadiPartition(p.partition()).equals(partition))
-                    .findAny();
-            if (!tp.isPresent()) {
-                return Optional.empty();
+            final List<PartitionInfo> allKafkaPartitions = topicToPartitions.keySet().stream()
+                    .map(consumer::partitionsFor)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toList());
+            final List<TopicPartition> partitionsToQuery = allKafkaPartitions.stream()
+                    .filter(pi -> topicToPartitions.get(pi.topic())
+                            .contains(KafkaCursor.toNakadiPartition(pi.partition())))
+                    .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
+                    .collect(Collectors.toList());
+
+            consumer.assign(partitionsToQuery);
+            consumer.seekToBeginning(partitionsToQuery.toArray(new TopicPartition[0]));
+            final List<Long> begins = partitionsToQuery.stream().map(consumer::position).collect(toList());
+            consumer.seekToEnd(partitionsToQuery.toArray(new TopicPartition[0]));
+            final List<Long> ends = partitionsToQuery.stream().map(consumer::position).collect(toList());
+
+            final List<Optional<PartitionStatistics>> result = new ArrayList<>(partitions.size());
+            for (final TimelineAndPartition tap : partitions) {
+                // Now search for an index.
+                final Optional<PartitionStatistics> itemResult = IntStream.range(0, partitionsToQuery.size())
+                        .filter(i -> {
+                            final TopicPartition info = partitionsToQuery.get(i);
+                            return info.topic().equals(tap.getTimeline().getTopic()) &&
+                                    info.partition() == KafkaCursor.toKafkaPartition(tap.getPartition());
+                        }).mapToObj(indexFound -> (PartitionStatistics) new KafkaPartitionStatistics(
+                                tap.getTimeline(),
+                                partitionsToQuery.get(indexFound).partition(),
+                                begins.get(indexFound),
+                                ends.get(indexFound) - 1L))
+                        .findAny();
+                result.add(itemResult);
             }
-            final TopicPartition kafkaTP = tp.map(v -> new TopicPartition(v.topic(), v.partition())).get();
-            consumer.assign(Collections.singletonList(kafkaTP));
-            consumer.seekToBeginning(kafkaTP);
-
-            final long begin = consumer.position(kafkaTP);
-            consumer.seekToEnd(kafkaTP);
-            final long end = consumer.position(kafkaTP);
-
-            return Optional.of(new KafkaPartitionStatistics(timeline, kafkaTP.partition(), begin, end - 1));
+            return result;
         } catch (final Exception e) {
             throw new ServiceUnavailableException("Error occurred when fetching partitions offsets", e);
         }
