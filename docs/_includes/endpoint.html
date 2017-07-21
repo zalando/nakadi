@@ -1,18 +1,18 @@
 
 <div class="doc">
-    <a id="{{ path[0] }}_{{ method[0] }}"></a>
+    <a id="{{ include.path }}_{{ include.name }}"></a>
     <div class="info">
         <h2 class="title">
-                        <span class="method-{{ method[0] }}" data-after="{{ method[0] }}">
-                            <a href="#{{ path[0] }}_{{ method[0] }}"> {{ path[0] }} </a>
+                        <span class="method-{{ include.name }}" data-after="{{ include.name }}">
+                            <a href="#{{ include.path }}_{{ include.name }}"> {{ include.path }} </a>
                         </span>
         </h2>
-        <p class="summary">{{ method[1].summary }}</p>
+        <p class="summary">{{ include.method.summary }}</p>
         <article class="markdown">
-            {{ method[1].description | newline_to_br| markdownify }}
+            {{ include.method.description | newline_to_br| markdownify }}
         </article>
 
-        {% capture fileName %}{{ path[0] }}_{{ method[0] }}{% endcapture %}
+        {% capture fileName %}{{ include.path }}_{{ include.name }}{% endcapture %}
         {% comment %}
         Todo: replace { and } dynamically
         {% endcomment %}
@@ -30,8 +30,8 @@
         {% endfor %}
 
 
-        {% assign parameters = method[1].parameters %}
+        {% assign parameters = include.method.parameters %}
         {% include parameters.html data=parameters %}
     </div>
-    {% include preview.html %}
+    {% include preview.html method=include.method %}
 </div>

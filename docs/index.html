@@ -39,11 +39,14 @@ layout: default
 
 
     <h1 class="title">Methods</h1>
-
     {% assign paths = singleData.paths | sort %}
     {% for path in paths %}
-        {% for method in path[1] %}
-            {% include endpoint.html path=path method=method %}
+    {% assign path_name = path[0] %}
+        {% for method_name in site.defaults.method_order %}
+            {% assign method = path[1][method_name] %}
+            {% if method %}
+            {% include endpoint.html path=path_name name=method_name method=method %}
+            {% endif %}
         {% endfor %}
     {% endfor %}
 

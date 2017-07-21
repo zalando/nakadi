@@ -3,8 +3,6 @@ title: Introduction
 position: 1
 ---
 
-# Nakadi
-
 ## Nakadi Event Broker
 
 The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide an event broker infrastructure to:
