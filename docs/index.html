@@ -1,59 +1,191 @@
----
-layout: default
----
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="Nakadi Event Bus Broker">
+    <meta name="keywords" content="Nakadi, Event, Bus, Broker, Kafka">
+    <title>Nakadi</title>
+    <style>
 
-{% assign sorted_collections = site.collections | sort: "position" %}
-{% for collection in sorted_collections %}
-    {% assign sorted_docs = collection.docs | sort: "position" %}
-        {% for doc in sorted_docs %}
-            {% if doc.collection == "documentation" %}
-                <div class="doc doc-full">
-                    <div class="info">
-                        <h2 class="title">
-                            <a id="{{ doc.slug }}"></a>
-                            <a href="#{{ doc.slug }}">{{ doc.title }}</a>
-                        </h2>
-                        <p>{{ doc.content }}</p>
-                    </div>
-                </div>
-            {% endif %}
-        {% endfor %}
-{% endfor %}
+        body * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-{% assign allData = site.data %}
+        body {
+            background: #eef1f3;
+            color: #061a1f;
+            font-family: "sans-serif";
+            margin: 0;
+            height: 100%;
 
-{% for data in allData %}
+        }
 
-    {% assign singleData = data[1] %}
-    <div class="doc">
-        <a id="{{ data[0] }}"></a>
-        <div class="info">
-            <h1 class="title"><a href="#{{ data[0] }}">
-                {{singleData.info.title}} v{{singleData.info.version}}
-            </a></h1>
-            {{singleData.info.description|newline_to_br| markdownify}}
-            <hr/>
-            {% include yaml.html data=singleData.info.contact %}
-        </div>
+        header {
+            background: #222;
+            color: #fafafa;
+            position: fixed;
+            top: 0;
+            height: 50px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            z-index: 1000;
+        }
+
+        header h1 {
+            color: #00d8ff;
+            font-size: 24px;
+            line-height: 50px;
+            height: 50px;
+            display: inline-block;
+        }
+
+        nav ul {
+            display: inline-block;
+            vertical-align: top;
+
+        }
+
+        nav ul.right {
+            float: right;
+            width: auto;
+        }
+
+        nav li {
+            list-style: none;
+            display: inline-block;
+        }
+
+        nav li a, nav li a:visited {
+            display: inline-block;
+            margin-left: 20px;
+            height: 50px;
+            color: white;
+            text-decoration: none;
+            line-height: 50px;
+        }
+
+        .logo {
+            color: #d9534f;
+            font-size: 30px;
+        }
+
+        .banner {
+            text-align: center;
+            min-height: 360px;
+            background: #2d2d2d;
+            padding-top: 50px;
+            color: #e9e9e9;
+            font-weight: 300;
+        }
+
+        .banner h1 {
+            color: #61dafb;
+            font-weight: 400;
+            font-size: 60px;
+            margin: 40px 0 20px 0;
+        }
+
+        .banner h2 {
+            font-weight: 400;
+            font-size: 40px;
+            margin: 40px 0 20px 0;
+        }
+
+        .banner p {
+            margin: 20px 0 40px;
+        }
+
+        .column {
+            max-width: 960px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .button {
+            font-size: 24px;
+            background: #cc7a6f;
+            color: #fafafa;
+            border-radius: 4px;
+            padding: 8px 16px;
+            box-shadow: 1px 3px 3px rgba(0, 0, 0, 0.3);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            text-decoration: none;
+            margin: 30px;
+        }
+
+        .container {
+            display: flex;
+            min-height: 500px;
+        }
+
+        article {
+            margin: 20px;
+            padding: 20px;
+            color: #666;
+            flex: 1 1 0
+        }
+
+        article p {
+            margin: 20px 0;
+        }
+
+        footer {
+            text-align: right;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <nav class="column">
+        <h1><span class="logo">&lt;ნ&gt;</span> Nakadi</h1>
+        <ul>
+            <li><a href="manual.html">Docs</a></li>
+            <li><a href="manual.html#nakadi-event-bus-api">API</a></li>
+            <li><a href="https://github.com/zalando-nakadi/">Community</a></li>
+        </ul>
+        <ul class="right">
+            <li>
+                <a href="https://github.com/zalando/nakadi">GitHub</a>
+            </li>
+        </ul>
+    </nav>
+</header>
+
+<section class="banner">
+    <div class="column">
+        <h1>Nakadi</h1>
+        <h3>Event Bus Broker</h3>
+        <p>A distributed event bus that implements a RESTful API abstraction instead of Kafka-like queues</p>
+        <a class="button" href="manual.html">Get Started</a>
     </div>
+</section>
+<section class="column container">
 
+    <article><h1>RESTfull</h1>
+        <p>Abstract event delivery via a secured RESTful API. This allows microservices teams to maintain service
+            boundaries, and not directly depend on any specific message broker technology. Access to the API can be
+            managed and secured using OAuth scopes.</p>
+    </article>
+    <article><h1>JSON Schema</h1>
+        <p>Enable convenient development of event-driven applications and asynchronous microservices. Event types can be
+            defined with schemas and managed via a registry. Nakadi also has optional support for events describing
+            business processes and data changes using standard primitives for identity, timestamps, event types, and
+            causality.</p>
+    </article>
+    <article><h1>Flexibility</h1>
+        <p>Nakadi instances are stateless. They can be run on AWS with auto-scaling.</p>
+        <p>Using Timelines it is easy to move the traffic to another cluster without moving the data and any service
+            degradation.</p>
+    </article>
+</section>
+<footer>
+    <p>&copy; 2017 Zalando. All rights reserved.</p>
+</footer>
 
-    <h1 class="title">Methods</h1>
-    {% assign paths = singleData.paths | sort %}
-    {% for path in paths %}
-    {% assign path_name = path[0] %}
-        {% for method_name in site.defaults.method_order %}
-            {% assign method = path[1][method_name] %}
-            {% if method %}
-            {% include endpoint.html path=path_name name=method_name method=method %}
-            {% endif %}
-        {% endfor %}
-    {% endfor %}
-
-    <h1 class="title">Definitions</h1>
-
-    {% assign definitions = singleData.definitions | sort %}
-    {% for definition in definitions %}
-          {% include definition.html definition=definition %}
-    {% endfor %}
-{% endfor %}
+</body>
+</html>
