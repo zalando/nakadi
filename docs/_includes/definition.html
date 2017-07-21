@@ -10,20 +10,16 @@
         <p class="summary">{{ definition[1].description | markdownify }}</p>
 
         {% capture fileName %}{{ definition[0] }}{% endcapture %}
-        {% comment %}
-        Todo: replace { and } dynamically
-        {% endcomment %}
-        {% assign fileNameStripped = fileName | replace: '/', '' | replace: '{id}', '_id' %}
+
+
 
         {% for collection in site.collections %}
         {% assign docs = collection.docs %}
-        {% for doc in docs %}
-        {% if doc.collection == "api" %}
-        {% if doc.slug ==  fileNameStripped %}
-        {{ doc.content }}
-        {% endif %}
-        {% endif %}
-        {% endfor %}
+            {% for doc in docs %}
+                {% if doc.collection == "api" and doc.slug ==  fileName %}
+                    {{ doc.content }}
+                {% endif %}
+            {% endfor %}
         {% endfor %}
 
         {% if definition[1].allOf %}

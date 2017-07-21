@@ -4,7 +4,6 @@
 
 {% if type.type %}
 
-
     {% if type.items %}
         <div style="display: flex"><span class="array">Array of </span>
         {% assign subtype = type.items %}
@@ -43,8 +42,6 @@
         </div>
     {% endif %}
 
-
-
 {% elsif type.schema %}
 
     {% assign type2 = type.schema %}
@@ -81,7 +78,6 @@
         {% else %}
             {% assign value = key[1] %}
         {% endif %}
-
 
         <span class="key">{{ key[0] }}:</span><span class="value">
             {% include yaml.html data=value  %}

@@ -10,28 +10,25 @@
     <tbody>
     {% for parameter in parameters %}
 
+        {% if parameter['$ref'] %}
+            {% assign name = parameter['$ref']|split: '/'|last %}
+            {% assign param = site.data.nakadi-event-bus-api.parameters[name]%}
+        {% else %}
+            {% assign param = parameter %}
+        {% endif %}
 
-
-    {% if parameter['$ref'] %}
-    {% assign name = parameter['$ref']|split: '/'|last %}
-    {% assign param = site.data.nakadi-event-bus-api.parameters[name]%}
-    {% else %}
-    {% assign param = parameter %}
-    {% endif %}
-
-
-    <tr>
-        <td class="param-name">
-            {{ param.name }}
-            {% if param.required %}
-            <span class="required"> </span>
-            {% endif %}
-        </td>
-        <td>{{ param.in }}</td>
-        <td>{% assign type = param %}
-            {% include type.html type=type %}
-        </td>
-    </tr>
+        <tr>
+            <td class="param-name">
+                {{ param.name }}
+                {% if param.required %}
+                <span class="required"> </span>
+                {% endif %}
+            </td>
+            <td>{{ param.in }}</td>
+            <td>{% assign type = param %}
+                {% include type.html type=type %}
+            </td>
+        </tr>
 
     {% endfor %}
     </tbody>

@@ -65,21 +65,20 @@
             {% endfor %}
             {% endfor %}
 
-
             <span class="title">Definitions</span>
             {% for data in allData %}
-            {% assign singleData = data[1].definitions | sort %}
-            {% for definition in singleData %}
-            <ul class="path">
-                <li>
-                    <a href="#definition_{{definition[0] }}">
-                                <span class="definition">
-                                    {{ definition[0] }}
-                                </span>
-                    </a>
-                </li>
-            </ul>
-            {% endfor %}
+                {% assign singleData = data[1].definitions | sort %}
+                {% for definition in singleData %}
+                <ul class="path">
+                    <li>
+                        <a href="#definition_{{definition[0] }}">
+                                    <span class="definition">
+                                        {{ definition[0] }}
+                                    </span>
+                        </a>
+                    </li>
+                </ul>
+                {% endfor %}
             {% endfor %}
         </li>
     </ul>
