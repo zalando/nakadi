@@ -99,7 +99,7 @@ public class SecurityConfiguration extends ResourceServerConfigurerAdapter {
     }
 
     public static String hasUidScopeAndAnyRealm(final String realms) {
-        return MessageFormat.format("#oauth2.hasUidScopeAndAnyRealm({0})", realms);
+        return MessageFormat.format("#oauth2.hasUidScopeAndAnyRealm(''{0}'')", realms);
     }
 
     @Override
