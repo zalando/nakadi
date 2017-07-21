@@ -1947,16 +1947,16 @@ definitions:
   CursorDistanceResult:
     allOf:
       - $ref: '#/definitions/CursorDistanceQuery'
-    required:
-      - distance
-    properties:
-      distance:
-        type: number
-        format: int64
-        description: |
-          Number of events between two offsets. Initial offset is exclusive. It's only zero when both provided offsets
-          are equal.
-
+      - type: object        
+        properties:
+          distance:
+            type: number
+            format: int64
+            description: |
+              Number of events between two offsets. Initial offset is exclusive. It's only zero when both provided offsets
+              are equal.
+        required:
+          - distance
   Cursor:
     required:
       - partition
