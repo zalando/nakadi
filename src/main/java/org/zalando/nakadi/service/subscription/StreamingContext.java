@@ -131,7 +131,7 @@ public class StreamingContext implements SubscriptionStreamer {
     public void stream() throws InterruptedException {
         try (Closeable ignore = ShutdownHooks.addHook(this::onNodeShutdown)) { // bugfix ARUHA-485
             streamInternal(new StartingState());
-        } catch (IOException ex) {
+        } catch (final IOException ex) {
             log.error(
                     "Failed to delete shutdown hook for subscription {}. This method should not throw any exception",
                     getSubscription(),

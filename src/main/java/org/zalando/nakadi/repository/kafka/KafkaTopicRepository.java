@@ -37,6 +37,8 @@ import org.apache.kafka.common.errors.NetworkException;
 import org.apache.kafka.common.errors.NotLeaderForPartitionException;
 import org.apache.kafka.common.errors.UnknownServerException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
+import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
+import org.echocat.jomon.runtime.concurrent.Retryer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.nakadi.config.NakadiSettings;
@@ -138,15 +140,15 @@ public class KafkaTopicRepository implements TopicRepository {
         // receive information about topic creation, which in turn will block publishing.
         // This kind of behavior was observed during tests, but may also present on highly loaded event types.
         final long timeoutMillis = TimeUnit.SECONDS.toMillis(5);
-        final long borderTime = System.currentTimeMillis() + timeoutMillis;
-        boolean creationConfirmed = false;
-        while (!creationConfirmed && borderTime >= System.currentTimeMillis()) {
-            try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
-                final List<PartitionInfo> partitions = consumer.partitionsFor(topic);
-                creationConfirmed = null != partitions;
-            }
-        }
-        if (!creationConfirmed) {
+        final Boolean allowsConsumption = Retryer.executeWithRetry(() -> {
+                    try (Consumer<byte[], byte[]> consumer = kafkaFactory.getConsumer()) {
+                        return null != consumer.partitionsFor(topic);
+                    }
+                },
+                new RetryForSpecifiedTimeStrategy<Boolean>(timeoutMillis)
+                        .withWaitBetweenEachTry(100L)
+                        .withResultsThatForceRetry(Boolean.FALSE));
+        if (!Boolean.TRUE.equals(allowsConsumption)) {
             throw new TopicCreationException("Failed to confirm topic creation within " + timeoutMillis + " millis");
         }
     }
@@ -504,7 +506,7 @@ public class KafkaTopicRepository implements TopicRepository {
 
     @Override
     public void setRetentionTime(final String topic, final Long retentionMs) throws TopicConfigException {
-         try {
+        try {
             doWithZkUtils(zkUtils -> {
                 final Properties topicProps = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), topic);
                 topicProps.setProperty("retention.ms", Long.toString(retentionMs));

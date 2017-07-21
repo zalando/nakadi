@@ -33,7 +33,6 @@ public class TimelineConsumptionTest {
         final CountDownLatch finished = new CountDownLatch(1);
         final AtomicReference<String[]> inTimeCursors = new AtomicReference<>();
         createParallelConsumer(eventType.getName(), 8, finished, inTimeCursors::set);
-        final long start = System.currentTimeMillis();
         publishEvents(eventType.getName(), 2, i ->  "{\"foo\":\"bar\"}");
         createTimeline(eventType.getName());
         publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
@@ -43,7 +42,6 @@ public class TimelineConsumptionTest {
         publishEvents(eventType.getName(), 2, i -> "{\"foo\":\"bar\"}");
         finished.await();
         cursorsDuringPublish = inTimeCursors.get();
-        System.out.println("Total took: " + (System.currentTimeMillis() - start)/1000);
     }
 
     private static void createParallelConsumer(

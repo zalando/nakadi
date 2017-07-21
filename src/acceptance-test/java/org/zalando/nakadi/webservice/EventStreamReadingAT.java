@@ -326,7 +326,7 @@ public class EventStreamReadingAT extends BaseAT {
                 .body("detail", equalTo("non existing partition very_wrong_partition"));
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 10000)
     public void whenReadEventsForBlockedConsumerThen403() throws Exception {
         readEvents()
                 .then()
@@ -429,7 +429,7 @@ public class EventStreamReadingAT extends BaseAT {
         return future;
     }
 
-    @Test(timeout = 60000)
+    @Test(timeout = 10000)
     public void whenReadEventsConsumerIsBlocked() throws Exception {
         // blocking streaming client after 3 seconds
         new Thread(() -> {

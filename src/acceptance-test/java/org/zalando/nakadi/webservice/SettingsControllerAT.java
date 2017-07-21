@@ -27,12 +27,8 @@ public class SettingsControllerAT extends BaseAT {
     public void testBlockFlooder() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-        try {
-            Assert.assertNotNull(CURATOR.checkExists()
-                    .forPath("/nakadi/blacklist/consumers/event_types/" + eventType.getName()));
-        } finally {
-            whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-        }
+        Assert.assertNotNull(CURATOR.checkExists()
+                .forPath("/nakadi/blacklist/consumers/event_types/" + eventType.getName()));
     }
 
     @Test
@@ -50,18 +46,14 @@ public class SettingsControllerAT extends BaseAT {
     public void testGetFlooders() throws Exception {
         final EventType eventType = NakadiTestUtils.createEventType();
         blacklist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-        try {
-            TestUtils.waitFor(
-                    () -> given()
-                            .contentType(ContentType.JSON)
-                            .get(BLACKLIST_URL)
-                            .then()
-                            .statusCode(HttpStatus.SC_OK)
-                            .body("consumers.event_types", hasItems(eventType.getName())),
-                    1000, 200);
-        } finally {
-            whitelist(eventType.getName(), BlacklistService.Type.CONSUMER_ET);
-        }
+        TestUtils.waitFor(
+                () -> given()
+                        .contentType(ContentType.JSON)
+                        .get(BLACKLIST_URL)
+                        .then()
+                        .statusCode(HttpStatus.SC_OK)
+                        .body("consumers.event_types", hasItems(eventType.getName())),
+                1000, 200);
     }
 
     public static void blacklist(final String name, final BlacklistService.Type type) throws IOException {

@@ -11,6 +11,7 @@ import java.util.Random;
 import java.util.UUID;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
+import java.util.stream.Stream;
 import org.apache.commons.io.IOUtils;
 import org.echocat.jomon.runtime.concurrent.RetryForSpecifiedTimeStrategy;
 import static org.echocat.jomon.runtime.concurrent.Retryer.executeWithRetry;
@@ -178,9 +179,8 @@ public class TestUtils {
     @SuppressWarnings("unchecked")
     public static void waitFor(final Runnable runnable, final long timeoutMs, final int intervalMs,
                                final Class<? extends  Throwable>... additionalException) {
-        final Class<? extends Throwable>[] leadToRetry = new Class[additionalException.length + 1];
-        System.arraycopy(additionalException, 0, leadToRetry, 1, additionalException.length);
-        leadToRetry[0] = AssertionError.class;
+        final List<Class<? extends Throwable>> leadToRetry =
+                Stream.concat(Stream.of(additionalException), Stream.of(AssertionError.class)).collect(toList());
         executeWithRetry(
                 runnable,
                 new RetryForSpecifiedTimeStrategy<Void>(timeoutMs)

@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.domain.Storage;
+import org.zalando.nakadi.exceptions.runtime.DuplicatedStorageException;
 import org.zalando.nakadi.repository.db.EventTypeDbRepository;
 import org.zalando.nakadi.repository.db.StorageDbRepository;
 import org.zalando.nakadi.repository.db.TimelineDbRepository;
@@ -50,7 +51,7 @@ public abstract class BaseAT {
         storage.setConfiguration(new Storage.KafkaConfiguration(null, null, ZOOKEEPER_URL, ""));
         try {
             STORAGE_DB_REPOSITORY.createStorage(storage);
-        } catch (final Exception ignore) {
+        } catch (final DuplicatedStorageException ignore) {
         }
     }
 }
