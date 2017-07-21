@@ -13,20 +13,15 @@
         </article>
 
         {% capture fileName %}{{ include.path }}_{{ include.name }}{% endcapture %}
-        {% comment %}
-        Todo: replace { and } dynamically
-        {% endcomment %}
-        {% assign fileNameStripped = fileName | replace: '/', '' | replace: '{id}', '_id' %}
+        {% assign fileNameStripped = fileName | replace_first: '/', ''|replace: '/', '_' | replace: '{', ''| replace: '}', ''%}
 
         {% for collection in site.collections %}
-        {% assign docs = collection.docs %}
-        {% for doc in docs %}
-        {% if doc.collection == "api" %}
-        {% if doc.slug ==  fileNameStripped %}
-        {{ doc.content }}
-        {% endif %}
-        {% endif %}
-        {% endfor %}
+            {% assign docs = collection.docs %}
+            {% for doc in docs %}
+                {% if doc.collection == "api" and doc.slug ==  fileNameStripped%}
+                    {{ doc.content }}
+                {% endif %}
+            {% endfor %}
         {% endfor %}
 
 
