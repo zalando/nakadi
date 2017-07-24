@@ -35,13 +35,14 @@ The the definitions the file name is just a definition name in a lower case.
 Developers don't need to build it for production, but to build and test template 
 you need to install Ruby and then [Jekyll](https://jekyllrb.com/docs/installation/) 
 
+Then go to /docs folder and run
+
 ```bash
 sudo apt-get install ruby rube-dev 
 gem install jekyll
-
+bundle install
 ```
 
-Then go to /docs folder and run start dev server.
 Check the `_config.yml` file.
 For the local build it should contain empty base URLs.
 
@@ -53,7 +54,7 @@ url: ""
 Then run the build.
   
 ```bash
-bund exec jekyll serve
+bundle exec jekyll serve
 ``` 
 
 This will build the documentation and start the web server on port 4000.
