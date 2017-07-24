@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- The Nakadi manual merged to the project docs.
+- The template added to generate Nakadi website using github pages.  
+
 ### Changed
 - The metrics endpoint documentation key "summary" changed to "description" in Open API file.
 

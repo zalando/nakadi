@@ -1,0 +1,22 @@
+.parameters {
+  width: 100%;
+
+  th {
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 1px solid darken($color-lightgray, 5%);
+  }
+
+  tr:nth-child(even) td {
+    background: $color-lightgray;
+  }
+
+  td, th {
+    padding: 10px;
+  }
+
+  .param-name {
+    white-space: nowrap;
+    width: 120px;
+  }
+}
