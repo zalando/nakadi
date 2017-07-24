@@ -7,7 +7,7 @@ position: 1
 
 The goal of Nakadi (ნაკადი means "stream" in Georgian) is to provide an event broker infrastructure to:
 
-#### RESTfull 
+#### RESTful 
 
 Abstract event delivery via a secured [RESTful API](#nakadi-event-bus-api). This allows microservices teams to maintain service boundaries, and not directly depend on any specific message broker technology. Access to the API can be managed and secured using OAuth scopes.
 
@@ -89,5 +89,5 @@ HTTP/1.1 200 OK
 
 ## Nakadi community
 
-Nakadi ecosystem has a lot of related projects. Please check [zalando-nakadi](https://github.com/zalando-nakadi/)
+There is a large ecosystem of projects around Nakadi. Check they out on [zalando-nakadi](https://github.com/zalando-nakadi/)
 

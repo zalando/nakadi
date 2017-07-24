@@ -1,26 +1,71 @@
-# Swaggyll - A Jekyll Theme For Your Swagger API Documentation
+# Writing documentation
 
-> Swaggyll is a simple 3 column jekyll theme for a documentation of your API with [swagger specifications](http://swagger.io/specification/) and markdown files.
+The documentation is built by [GitHub pages](https://pages.github.com/) automatically.  
+It uses the GitHub pages [settings](https://github.com/zalando/nakadi/settings) "Source"
+with the value "master branch /docs folder".
+ 
+Every time when something merged to master branch GitHub rebuild and publish documentation.
+The `/docs` folder of this Nakadi repository correcpod to the root path of the [Nakadi web page](https://zalando.github.io/nakadi/).
 
-![Layout](./img/preview.png)
+To add new topic just put the markdown file to `/docs/_documentation` folder. 
+The document should have special header.
 
-## Setup
-1. Clone or download this repo
-1. edit url and title in the `_config.yml`
-1. add your swagger specification files (yml) to the `_data` folder
-1. add your markdown files (filename must be route + method ) which are giving additional informations to a route in the folder `_api`
-1. if you want to add some additional infos to your documentation, which doesn't belong to a specific route, add some markdown files to the `_documentation` folder.
-
-## Develop
-This theme was build with [Jekyll](http://jekyllrb.com/) version 3.4.0.
-
-To start/build the site on the preview server
-```bash
-$ bundle exec jekyll serve
 ```
-## Navigation
-The sidebar is automatically generated. For every file below `_documentation` there is one navigation link with the title of the file.
-Every path in the swagger specification below `_data` is a single navigation link.
+--- 
+title: Event schema
+position: 100
+---
+```
 
-## Theming
-All colors, sizes, fonts, and even breakpoints are completely customizable via scss. The config is available in `_sass/_config/`
+Where `title` is the link in the navigation menu and the `position` is the "weight" 
+of the link in the navigation menu.   
+
+Developers can add additional API decription for every path of definition by
+adding markdown documents to the `/docs/_api` forlder.
+The name of the document shold be  `path_method`. 
+Where in path all `/`, `{` and `} replaced by `_`.
+
+For example for endpoint `GET /event-types/{name}/events` the 
+ document name shold be `/docs/_api/event-types_name_events_get.md`
+ 
+The the definitions the file name is just a definition name in a lower case. 
+ 
+## Build locally
+
+Developers don't need to build it for production, but to build and test template 
+you need to install Ruby and then [Jekyll](https://jekyllrb.com/docs/installation/) 
+
+```bash
+sudo apt-get install ruby rube-dev 
+gem install jekyll
+
+```
+
+Then go to /docs folder and run start dev server.
+Check the `_config.yml` file.
+For the local build it should contain empty base URLs.
+
+``` 
+baseurl: ""
+url: ""
+```
+
+Then run the build.
+  
+```bash
+bund exec jekyll serve
+``` 
+
+This will build the documentation and start the web server on port 4000.
+
+Then you can see the result in the browser on  `http://localhost:4000`
+
+Every changes in the source will automatically rebuild documentation 
+so you only need to refresh the browser page.
+
+
+## Acknowledgments
+
+The template based on [swaggyll](https://github.com/hauptrolle/swaggyll) but heavily modified.
+
+
