@@ -17,10 +17,15 @@
     color: $title-color;
 
     a {
-      font-size: 20px;
+      font-size: 3rem;
       color: inherit;
       margin: 6px;
-      display: inline-block;
+      display: block;
+      border-bottom: none;
+      h1 {
+        margin: 0;
+        font-size: inherit;
+      }
     }
 
     a:focus {
@@ -30,6 +35,10 @@
     a:hover {
       transition: .2s;
       text-shadow: 0 0 20px white;
+    }
+
+    .github-button {
+      font-size: 1rem;
     }
 
     iframe {
@@ -65,10 +74,9 @@
       height: 50px;
       padding: 5px;
 
-      h1 {
+      a {
         font-size: 1.5rem;
-        margin: 0;
-
+        display: inline-block;
       }
     }
 
