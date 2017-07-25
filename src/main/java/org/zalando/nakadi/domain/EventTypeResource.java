@@ -4,41 +4,47 @@ import org.zalando.nakadi.plugin.api.authz.AuthorizationAttribute;
 import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
 import org.zalando.nakadi.plugin.api.authz.Resource;
 
-import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public class EventTypeResource implements Resource {
 
     private final String name;
-    private final String type;
-    private final Map<AuthorizationService.Operation, List<AuthorizationAttribute>> attributes;
+    private final EventTypeAuthorization etAuthorization;
 
-    public EventTypeResource(final String name,
-                             final String type,
-                             final Map<AuthorizationService.Operation, List<AuthorizationAttribute>> attributes) {
+    public EventTypeResource(final String name, final EventTypeAuthorization etAuthorization) {
         this.name = name;
-        this.type = type;
-        this.attributes = attributes;
+        this.etAuthorization = etAuthorization;
     }
 
     @Override
-    @Nullable
     public String getName() {
         return name;
     }
 
     @Override
-    @Nullable
     public String getType() {
-        return type;
+        return "event-type";
     }
 
     @Override
     public Optional<List<AuthorizationAttribute>> getAttributesForOperation(
             final AuthorizationService.Operation operation) {
-        return Optional.ofNullable(attributes.get(operation));
+        switch (operation) {
+            case READ:
+                return Optional.of(etAuthorization.getReaders());
+            case WRITE:
+                return Optional.of(etAuthorization.getWriters());
+            case ADMIN:
+                return Optional.of(etAuthorization.getAdmins());
+            default:
+                throw new IllegalArgumentException("Operation " + operation + " is not supported");
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "AuthorizedResource{event-type='" + name + "'}";
     }
 
 }

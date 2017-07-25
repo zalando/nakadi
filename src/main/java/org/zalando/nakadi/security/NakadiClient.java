@@ -14,11 +14,6 @@ public class NakadiClient extends Client {
     }
 
     @Override
-    public boolean idMatches(final String clientId) {
-        return super.getClientId().equals(clientId);
-    }
-
-    @Override
     public void checkScopes(final Set<String> allowedScopes) throws IllegalScopeException {
         if (!allowedScopes.isEmpty()) {
             allowedScopes.stream()

@@ -12,8 +12,6 @@ public abstract class Client {
         this.clientId = clientId;
     }
 
-    public abstract boolean idMatches(String clientId);
-
     public abstract void checkScopes(Set<String> allowedScopes) throws IllegalScopeException;
 
     public String getClientId() {

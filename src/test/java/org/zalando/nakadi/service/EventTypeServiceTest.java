@@ -17,7 +17,6 @@ import org.zalando.nakadi.repository.EventTypeRepository;
 import org.zalando.nakadi.repository.TopicRepository;
 import org.zalando.nakadi.repository.db.SubscriptionDbRepository;
 import org.zalando.nakadi.repository.kafka.PartitionsCalculator;
-import org.zalando.nakadi.security.FullAccessClient;
 import org.zalando.nakadi.service.timeline.TimelineService;
 import org.zalando.nakadi.service.timeline.TimelineSync;
 import org.zalando.nakadi.util.FeatureToggleService;
@@ -75,8 +74,8 @@ public class EventTypeServiceTest {
                 .listSubscriptions(ImmutableSet.of(eventType.getName()), Optional.empty(), 0, 1);
         doReturn(topicsToDelete).when(timelineService).deleteAllTimelinesForEventType(eventType.getName());
         try {
-            eventTypeService.delete(eventType.getName(), new FullAccessClient("client-ID"));
-        } catch (EventTypeDeletionException e) {
+            eventTypeService.delete(eventType.getName());
+        } catch (final EventTypeDeletionException e) {
             // check that topics are not deleted in Kafka
             verifyZeroInteractions(topicsToDelete);
             return;

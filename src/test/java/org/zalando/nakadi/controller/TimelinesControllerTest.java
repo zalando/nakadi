@@ -14,15 +14,19 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.zalando.nakadi.config.JsonConfig;
 import org.zalando.nakadi.config.SecuritySettings;
+import org.zalando.nakadi.domain.EventType;
+import org.zalando.nakadi.domain.EventTypeResource;
 import org.zalando.nakadi.domain.Storage;
 import org.zalando.nakadi.domain.Timeline;
-import org.zalando.nakadi.exceptions.ForbiddenAccessException;
 import org.zalando.nakadi.exceptions.NotFoundException;
 import org.zalando.nakadi.exceptions.UnableProcessException;
+import org.zalando.nakadi.exceptions.runtime.AccessDeniedException;
+import org.zalando.nakadi.plugin.api.authz.AuthorizationService;
+import org.zalando.nakadi.plugin.api.authz.Resource;
 import org.zalando.nakadi.security.ClientResolver;
 import org.zalando.nakadi.service.timeline.TimelineService;
-import org.zalando.nakadi.util.FeatureToggleService;
 import org.zalando.nakadi.util.PrincipalMockFactory;
+import org.zalando.nakadi.utils.EventTypeTestBuilder;
 import org.zalando.nakadi.view.TimelineView;
 import org.zalando.problem.MoreStatus;
 import org.zalando.problem.Problem;
@@ -32,22 +36,27 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.mockito.Mockito.when;
+import static org.zalando.nakadi.config.SecuritySettings.AuthMode.OFF;
+
 
 public class TimelinesControllerTest {
 
     private final TimelineService timelineService = Mockito.mock(TimelineService.class);
     private final SecuritySettings securitySettings = Mockito.mock(SecuritySettings.class);
-    private final FeatureToggleService featureToggleService = Mockito.mock(FeatureToggleService.class);
     private final ObjectMapper objectMapper;
     private MockMvc mockMvc;
 
     public TimelinesControllerTest() {
         final TimelinesController controller = new TimelinesController(timelineService);
         objectMapper = new JsonConfig().jacksonObjectMapper();
+        when(securitySettings.getAuthMode()).thenReturn(OFF);
+        when(securitySettings.getAdminClientId()).thenReturn("nakadi");
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new StringHttpMessageConverter(),
                         new MappingJackson2HttpMessageConverter(objectMapper))
-                .setCustomArgumentResolvers(new ClientResolver(securitySettings, featureToggleService))
+                .setCustomArgumentResolvers(new ClientResolver(securitySettings))
+                .setControllerAdvice(new ExceptionHandling())
                 .build();
     }
 
@@ -87,15 +96,19 @@ public class TimelinesControllerTest {
     }
 
     @Test
-    public void whenForbiddenAccessExceptionThen403() throws Exception {
-        Mockito.doThrow(new ForbiddenAccessException("whenForbiddenAccessExceptionThen403"))
+    public void whenAccessDeniedExceptionThen403() throws Exception {
+        final EventType eventType = EventTypeTestBuilder.builder().build();
+        final Resource resource = new EventTypeResource(eventType.getName(), eventType.getAuthorization());
+
+        Mockito.doThrow(new AccessDeniedException(AuthorizationService.Operation.ADMIN, resource))
                 .when(timelineService).delete(Mockito.any(), Mockito.any(), Mockito.any());
         mockMvc.perform(MockMvcRequestBuilders.delete("/event-types/event_type/timelines/timeli-uuid")
                 .contentType(MediaType.APPLICATION_JSON)
                 .principal(PrincipalMockFactory.mockPrincipal("nakadi")))
                 .andExpect(MockMvcResultMatchers.status().isForbidden())
                 .andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(
-                        Problem.valueOf(Response.Status.FORBIDDEN, "whenForbiddenAccessExceptionThen403"))));
+                        Problem.valueOf(Response.Status.FORBIDDEN,
+                                "Access on ADMIN event-type:" + eventType.getName()+ " denied"))));
     }
 
     @Test
