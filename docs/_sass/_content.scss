@@ -12,7 +12,8 @@
   }
 
   @include respond-to('medium') {
-    display: block;;
+    display: block;
+    overflow: auto;
   }
 
   .info {

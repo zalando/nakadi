@@ -19,4 +19,21 @@
     white-space: nowrap;
     width: 120px;
   }
+
+  @include respond-to('medium') {
+
+      td {
+
+        display: block;
+      }
+
+      th {
+        display: none;
+      }
+
+      .param-name {
+        width: 100%;
+        background: #f3e8db;
+      }
+  }
 }

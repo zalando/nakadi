@@ -13,7 +13,7 @@ html {
 .wrapper {
   padding-left: $sidebar-width;
 
-  @include respond-to('small') {
+  @include respond-to('medium') {
     padding-left: 0;
   }
 }
